@@ -5,7 +5,7 @@ import svgIconsPlugin from './vite-plugin-svg-icons';
 export default defineConfig({
   plugins: [svgIconsPlugin()],
   base: process.env.NODE_ENV === 'production' 
-    ? 'https://niolon.github.io/cifvis' 
+    ? 'https://niolon.github.io/cifvis/' 
     : '/cifvis/',
   server: {
     base: '/cifvis/'

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { create, all } from 'mathjs';
 import { CrystalViewer } from './crystal-viewer.js';
 import { SVG_ICONS } from 'virtual:svg-icons';
+import { formatValueEsd } from './formatting.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -269,12 +270,13 @@ export class CifViewWidget extends HTMLElement {
                 if (selection.type === 'atom') {
                     info = `${selection.data.label} (${selection.data.atomType})`;
                 } else if (selection.type === 'bond') {
-                    info = `${selection.data.atom1Label}-${selection.data.atom2Label}`;
+                    const bondLengthString = formatValueEsd(selection.data.bondLength, selection.data.bondLengthSU);
+                    info = `${selection.data.atom1Label}-${selection.data.atom2Label}: ${bondLengthString} Å`;
                 }
                 return `<span style="color:${color}">${info}</span>`;
             }).join(', ');
             
-            caption += selectionInfo;
+            caption += selectionInfo + ".";
         }
         
         this.captionElement.innerHTML = caption;
