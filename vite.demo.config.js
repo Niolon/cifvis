@@ -4,20 +4,17 @@ import svgIconsPlugin from './vite-plugin-svg-icons';
 
 export default defineConfig({
   plugins: [svgIconsPlugin()],
+  base: '/cifvis/',
   build: {
-    lib: {
-      entry: resolve(__dirname, 'src/index.js'),
-      name: 'CrystalViewer',
-      fileName: 'crystal-viewer'
-    },
     rollupOptions: {
-      external: ['three', 'mathjs'],
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        widget: resolve(__dirname, 'widget.html')
+      },
       output: {
-        globals: {
-          three: 'THREE',
-          mathjs: 'math'
-        }
+        inlineDynamicImports: false
       }
     }
-  }
+  },
+  publicDir: 'public'
 });
