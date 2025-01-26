@@ -43,6 +43,27 @@ function parseValue(entryString, splitSU = true) {
 }
 
 /**
+ * Parses a multiline string starting with semicolon.
+ * @param {Array<string>} lines - Array of lines 
+ * @param {number} startIndex - Starting index of multiline value
+ * @returns {Object} Object with parsed value and end index
+ */
+function parseMultiLineString(lines, startIndex) {
+    let result = '';
+    let i = startIndex + 1;
+    
+    while (i < lines.length && lines[i] !== ';') {
+        result += lines[i].replace(/\\([^\\])/g, '$1') + '\n';
+        i++;
+    }
+    
+    return {
+        value: result.trim(),
+        endIndex: i
+    };
+}
+
+/**
 * Represents a CIF (Crystallographic Information File) parser.
 * 
 * @property {string} rawCifBlocks - Raw CIF blocks after initial multiline merging
@@ -63,10 +84,8 @@ export class CIF {
     }
  
     /**
-     * Splits CIF content into blocks, merging multiline strings that span across blocks.
-     * A multiline string starting with ';' must be closed by a line containing only ';'.
-     * If this is not the case, we need to merge the next block into the current one.
-     * 
+     * Splits CIF content into blocks, while accounting for the fact that
+     * there might be data entries within a multiline string.
      * @param {string} cifText - Raw CIF content with added newlines
      * @returns {Array<string>} Array of raw block texts
      * @private
@@ -164,7 +183,7 @@ export class CifBlock {
 
         while (i < lines.length) {
             if (lines[i + 1] === ";") {
-                const mult = this.parseMultiLineString(lines, i + 1);
+                const mult = parseMultiLineString(lines, i + 1);
                 this.data[lines[i]] = mult.value;
                 i = mult.endIndex + 1;
                 continue;
@@ -210,30 +229,7 @@ export class CifBlock {
     set dataBlockName(value) {
         this._dataBlockName = value;
     }
-    /**
-     * Parses a multiline string value.
-     * @param {Array<string>} lines - Array of lines in the block
-     * @param {number} startIndex - Starting line index of the multiline value
-     * @returns {Object} Object containing:
-     *   - value {string}: The parsed multiline string
-     *   - endIndex {number}: Index of the closing semicolon
-     * @private
-     */
-    parseMultiLineString(lines, startIndex) {
-        let result = '';
-        let i = startIndex + 1;
-        
-        while (i < lines.length && lines[i] !== ';') {
-            // Treat backslashes literally in multiline strings
-            result += lines[i].replace(/\\([^\\])/g, '$1') + '\n';
-            i++;
-        }
-        
-        return {
-            value: result.trim(),
-            endIndex: i
-        };
-    }
+
     /**
      * Gets the value associated with a key in this block.
      * @param {string} key - The key to look up
@@ -263,12 +259,30 @@ export class CifLoop {
     * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
     */
     constructor(lines, splitSU = true) {
-        this.rawLines = lines;
         this.splitSU = splitSU;
+        let i = (lines[0].startsWith("loop_")) ? 1 : 0;
+        
+        // Get header section
+        while (i < lines.length && lines[i].startsWith("_")) {
+            i++;
+        }
+        this.headerLines = lines.slice(1, i);
+        
+        let dataEnd = i;
+        // Get data section
+        while (dataEnd < lines.length && !lines[dataEnd].startsWith("_") && 
+               !lines[dataEnd].startsWith("loop_") && !lines[dataEnd].startsWith("data_")) {
+            dataEnd++;
+        }
+        
+        this.dataLines = lines.slice(i, dataEnd);
+        this.endIndex = dataEnd + this.headerLines.length;
         this.headers = null;
         this.data = null;
-        this.endIndex = null;
         this.name = null;
+        
+        // Parse headers early for findCommonStart
+        this.name = this.findCommonStart();
     }
 
     /**
@@ -277,39 +291,30 @@ export class CifLoop {
     */
     parse() {
         if (this.data !== null) return;
-
-        this.headers = [];
+    
+        this.headers = [...this.headerLines]; // Copy to preserve originals
         this.data = {};
-        let i = 1;
-        
-        while (i < this.rawLines.length && this.rawLines[i].startsWith("_")) {
-            this.headers.push(this.rawLines[i]);
-            i++;
-        }
-
+    
         const dataArray = [];
-        while (i < this.rawLines.length && !this.rawLines[i].startsWith("_") && 
-               !this.rawLines[i].startsWith("loop_") && !this.rawLines[i].startsWith("data_")) {
-            
-            if (this.rawLines[i] === ";") {
-                const mult = this.parseMultiLineString(this.rawLines, i);
-                dataArray.push(mult.value);
-                i = mult.endIndex + 1;
+        for (const line of this.dataLines) {
+            if (line === ";") {
+                const mult = parseMultiLineString(this.dataLines, this.dataLines.indexOf(line));
+                dataArray.push(parseValue(mult.value, this.splitSU));
                 continue;
             }
-
+    
             const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
-            const matches = this.rawLines[i].match(regex);
-
-            for (const match of matches) {
-                dataArray.push(parseValue(match, this.splitSU));
+            const matches = line.match(regex);
+            if (matches) {
+                for (const match of matches) {
+                    dataArray.push(parseValue(match, this.splitSU));
+                }
             }
-            i++;
         }
-
+    
         const nEntries = this.headers.length;
-        let j = 0;
-        for (const header of this.headers) {
+        for (let j = 0; j < nEntries; j++) {
+            const header = this.headers[j];
             const headerValues = dataArray.slice(j).filter((_, index) => index % nEntries === 0);
             const hasSU = headerValues.some(value => !isNaN(value.su));
             
@@ -319,33 +324,7 @@ export class CifLoop {
             } else {
                 this.data[header] = headerValues.map(value => value.value);
             }
-            j++;
         }
-
-        this.endIndex = i;
-        this.name = this.findCommonStart().slice(0, -1);
-    }
-
-    /**
-    * Parses a multiline string value within the loop.
-    * @param {Array<string>} lines - Array of lines in the loop
-    * @param {number} startIndex - Starting index of multiline value
-    * @returns {Object} Object with parsed value and end index
-    * @private
-    */
-    parseMultiLineString(lines, startIndex) {
-        let result = '';
-        let i = startIndex + 1;
-        
-        while (i < lines.length && lines[i] !== ';') {
-            result += lines[i] + '\n';
-            i++;
-        }
-        
-        return {
-            value: result.trim(),
-            endIndex: i
-        };
     }
 
     /**
@@ -354,11 +333,11 @@ export class CifLoop {
     * @private
     */
     findCommonStart() {
-        if (!this.headers) return '';
+        if (!this.headerLines || this.headerLines.length === 0) return '';
         
-        const firstStr = this.headers[0];
+        const firstStr = this.headerLines[0];
         const matchStart = "_" + firstStr.split(/[\.\_]/)[1];
-        const matchingStrings = this.headers.filter(str => str.startsWith(matchStart));
+        const matchingStrings = this.headerLines.filter(str => str.startsWith(matchStart));
         
         let commonPrefix = '';
         for (let i = 0; i < firstStr.length; i++) {
@@ -370,7 +349,7 @@ export class CifLoop {
             }
         }
         
-        return commonPrefix;
+        return commonPrefix.slice(0, -1);
     }
 
     /**
