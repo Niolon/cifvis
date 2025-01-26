@@ -43,12 +43,12 @@ function parseValue(entryString, splitSU = true) {
 }
 
 /**
- * Represents a CIF (Crystallographic Information File) parser.
- * 
- * @property {string} rawText - Raw CIF content with added newlines
- * @property {boolean} splitSU - Whether to split standard uncertainties into value and SU
- * @property {Array<CifBlock>|null} blocks - Parsed CIF blocks, null until parse() is called
- */
+* Represents a CIF (Crystallographic Information File) parser.
+* 
+* @property {string} rawCifBlocks - Raw CIF blocks after initial multiline merging
+* @property {boolean} splitSU - Whether to split standard uncertainties into value and SU
+* @property {Array<CifBlock>|null} blocks - Parsed CIF blocks, created lazily when accessed
+*/
 export class CIF {
     /**
      * Creates a new CIF parser instance.
@@ -57,57 +57,70 @@ export class CIF {
      * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
      */
     constructor(cifString, splitSU = true) {
-        // add some newlines to make sure the text does not start with data directly
-        this.rawText = "\n\n" + cifString;
         this.splitSU = splitSU;
-        this.blocks = null;
+        this.rawCifBlocks = this.splitCifBlocks("\n\n" + cifString);
+        this.blocks = Array(this.rawCifBlocks.length).fill(null);
     }
+ 
     /**
-     * Parses the CIF content into blocks.
+     * Splits CIF content into blocks, merging multiline strings that span across blocks.
+     * A multiline string starting with ';' must be closed by a line containing only ';'.
+     * If this is not the case, we need to merge the next block into the current one.
+     * 
+     * @param {string} cifText - Raw CIF content with added newlines
+     * @returns {Array<string>} Array of raw block texts
+     * @private
      */
-    parse() {
-        if (this.blocks !== null) return;
-
-        this.blocks = [];
-        const blockTexts = this.rawText.split(/\ndata_/).slice(1);
+    splitCifBlocks(cifText) {
+        const blocks = [];
+        const blockTexts = cifText.split(/\ndata_/).slice(1);
         let i = 0;
+        
         while (i < blockTexts.length) {
             let text = blockTexts[i];
             const multilinePattern = /^\s*;[\s\w]*$/gm;
             const matches = text.match(multilinePattern);
             let count = matches ? matches.length : 0;
             
-            while (count % 2 === 1 && i < blockTexts.length) {
+            while (count % 2 === 1 && i + 1 < blockTexts.length) {
                 i++;
                 text += "\ndata_" + blockTexts[i];
                 const matches = text.match(multilinePattern);
                 count = matches ? matches.length : 0;
             }
             
-            this.blocks.push(new CifBlock(text, this.splitSU));
+            blocks.push(text);
             i++;
         }
+        return blocks;
     }
-
+ 
     /**
      * Gets a specific CIF data block.
      * @param {number} index - Block index (default: 0)
      * @returns {CifBlock} The requested CIF block
      */
     getBlock(index = 0) {
-        this.parse();
+        if (!this.blocks[index]) {
+            this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU);
+        }
         return this.blocks[index];
     }
-
+ 
     /**
      * Gets all parsed CIF blocks.
      * @returns {Array<CifBlock>} Array of all CIF blocks
      */
     getAllBlocks() {
-        this.parse();
+        for (let i = 0; i < this.blocks.length; i++) {
+            if (!this.blocks[i]) {
+                this.blocks[i] = new CifBlock(this.rawCifBlocks[i], this.splitSU);
+            }
+        }
         return this.blocks;
     }
 }
+
 /**
  * Represents a single data block within a CIF file.
  * 
