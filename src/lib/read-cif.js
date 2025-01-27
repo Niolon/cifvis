@@ -12,17 +12,18 @@
  * parseValue("-123(7)", true)    // Returns {value: -123, su: 7}
  * parseValue("'text'", true)     // Returns {value: "text", su: NaN}
  */
-function parseValue(entryString, splitSU = true) {
+export function parseValue(entryString, splitSU = true) {
     const suPattern = /([+-]?)(\d+\.?\d*)\((\d{1,2})\)/;
     const match = entryString.match(suPattern);
     let value, su;
-
+ 
     if (splitSU && match) {
         const [_, signString, numberString, suString] = match;
         const signMult = signString === "-" ? -1 : 1;
         if (numberString.includes(".")) {
-            value = signMult * parseFloat(numberString);
-            su = Math.pow(10, -1 * numberString.split(".")[1].length) * parseFloat(suString);
+            const decimals = numberString.split(".")[1].length;
+            value = Number((signMult * parseFloat(numberString)).toFixed(decimals));
+            su = Number((Math.pow(10, -decimals) * parseFloat(suString)).toFixed(decimals));
         } else {
             value = signMult * parseInt(numberString);
             su = parseInt(suString);
@@ -40,7 +41,7 @@ function parseValue(entryString, splitSU = true) {
         su = NaN;
     }
     return { value, su };
-}
+ }
 
 /**
  * Parses a multiline string starting with semicolon.
@@ -48,7 +49,7 @@ function parseValue(entryString, splitSU = true) {
  * @param {number} startIndex - Starting index of multiline value
  * @returns {Object} Object with parsed value and end index
  */
-function parseMultiLineString(lines, startIndex) {
+export function parseMultiLineString(lines, startIndex) {
     let result = '';
     let i = startIndex + 1;
     
@@ -196,7 +197,7 @@ export class CifBlock {
                 continue;
             }
 
-            const match = lines[i].match(/^(\S+)\s+(.*)$/);
+            const match = lines[i].match(/^(_\S+)\s+(.*)$/);
             if (match) {
                 const key = match[1];
                 const parsedValue = parseValue(match[2], this.splitSU);
@@ -258,9 +259,9 @@ export class CifLoop {
     * @param {Array<string>} lines - Raw lines of the loop construct
     * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
     */
-    constructor(lines, splitSU = true) {
+    constructor(lines, splitSU) {
         this.splitSU = splitSU;
-        let i = (lines[0].startsWith("loop_")) ? 1 : 0;
+        let i = 1;
         
         // Get header section
         while (i < lines.length && lines[i].startsWith("_")) {
@@ -271,12 +272,12 @@ export class CifLoop {
         let dataEnd = i;
         // Get data section
         while (dataEnd < lines.length && !lines[dataEnd].startsWith("_") && 
-               !lines[dataEnd].startsWith("loop_") && !lines[dataEnd].startsWith("data_")) {
+               !lines[dataEnd].startsWith("loop_")) {
             dataEnd++;
         }
         
         this.dataLines = lines.slice(i, dataEnd);
-        this.endIndex = dataEnd + this.headerLines.length;
+        this.endIndex = dataEnd;
         this.headers = null;
         this.data = null;
         this.name = null;
@@ -296,23 +297,34 @@ export class CifLoop {
         this.data = {};
     
         const dataArray = [];
-        for (const line of this.dataLines) {
-            if (line === ";") {
-                const mult = parseMultiLineString(this.dataLines, this.dataLines.indexOf(line));
-                dataArray.push(parseValue(mult.value, this.splitSU));
-                continue;
-            }
-    
-            const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
-            const matches = line.match(regex);
-            if (matches) {
-                for (const match of matches) {
-                    dataArray.push(parseValue(match, this.splitSU));
-                }
+        let i = 0;
+    while (i < this.dataLines.length) {
+        const line = this.dataLines[i];
+        
+        if (line === ";") {
+            const mult = parseMultiLineString(this.dataLines, i);
+            dataArray.push(parseValue(mult.value, this.splitSU));
+            i = mult.endIndex + 1;
+            continue;
+        }
+
+        const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
+        const matches = line.match(regex);
+        if (matches) {
+            for (const match of matches) {
+                dataArray.push(parseValue(match, this.splitSU));
             }
         }
+        i++;
+    }
     
         const nEntries = this.headers.length;
+
+        if (dataArray.length % nEntries != 0) {
+            throw new Error(`Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`)
+        } else if (dataArray.length === 0) {
+            throw new Error(`Loop ${this.name} has no data values.`)
+        }
         for (let j = 0; j < nEntries; j++) {
             const header = this.headers[j];
             const headerValues = dataArray.slice(j).filter((_, index) => index % nEntries === 0);
@@ -321,6 +333,7 @@ export class CifLoop {
             if (hasSU) {
                 this.data[header] = headerValues.map(value => value.value);
                 this.data[header + "_su"] = headerValues.map(value => value.su);
+                this.headers.push(header + "_su");
             } else {
                 this.data[header] = headerValues.map(value => value.value);
             }
@@ -334,6 +347,7 @@ export class CifLoop {
     */
     findCommonStart() {
         if (!this.headerLines || this.headerLines.length === 0) return '';
+        if (this.headerLines.length === 1) return this.headerLines[0].trim();
         
         const firstStr = this.headerLines[0];
         const matchStart = "_" + firstStr.split(/[\.\_]/)[1];
@@ -378,13 +392,6 @@ export class CifLoop {
     * @returns {string} Common prefix without the trailing underscore
     */
     getName() {
-        if (!this.name) {
-            if (!this.headers) {
-                this.parse();
-            } else {
-                this.name = this.findCommonStart().slice(0, -1);
-            }
-        }
         return this.name;
     }
 
@@ -393,9 +400,6 @@ export class CifLoop {
     * @returns {number} Index of the last line of the loop
     */
     getEndIndex() {
-        if (this.endIndex === null) {
-            this.parse();
-        }
         return this.endIndex;
     }
 }
