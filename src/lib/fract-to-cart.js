@@ -1,7 +1,6 @@
-import { create, all } from 'mathjs';
+import { create, all, Matrix } from 'mathjs';
 
-const config = { };
-const math = create(all, config);
+const math = create(all, {});
 
 /**
  * Calculates the transformation matrix for converting fractional to cartesian coordinates.
@@ -17,7 +16,7 @@ const math = create(all, config);
  * @param {number} cellParams.alpha - α angle in degrees
  * @param {number} cellParams.beta - β angle in degrees
  * @param {number} cellParams.gamma - γ angle in degrees
- * @returns {Array<Array<number>>} 3x3 transformation matrix
+ * @returns {Matrix} 3x3 transformation matrix
  */
 export function calculateFractToCartMatrix(cellParams) {
     // Convert angles to radians
@@ -46,8 +45,10 @@ export function calculateFractToCartMatrix(cellParams) {
 }
 
 /**
- * Converts an array of six unique ADPs to a symmetric 3x3 matrix
- * Order: [U11, U22, U33, U12, U13, U23]
+ * Converts anisotropic displacement parameters array to a symmetric 3x3 matrix
+ * @param {Array<number>} adp - ADPs [U11, U22, U33, U12, U13, U23]
+ * @returns {Matrix} 3x3 symmetric matrix
+ * @throws {Error} If input array length !== 6
  */
 export function adpToMatrix(adp) {
     return math.matrix([
@@ -58,8 +59,10 @@ export function adpToMatrix(adp) {
 }
 
 /**
- * Converts a symmetric 3x3 matrix to six unique ADPs
- * Order: [U11, U22, U33, U12, U13, U23]
+ * Converts symmetric 3x3 ADP matrix to six-parameter array
+ * @param {Matrix|Array<Array<number>>} uij_matrix - 3x3 symmetric matrix
+ * @returns {Array<number>} ADPs [U11, U22, U33, U12, U13, U23]
+ * @throws {Error} If input not 3x3 matrix
  */
 export function matrixToAdp(uij_matrix) {
     const m = math.matrix(uij_matrix);
@@ -74,11 +77,11 @@ export function matrixToAdp(uij_matrix) {
 }
 
 /**
- * Converts anisotropic displacement parameters from CIF to Cartesian convention.
- * 
- * @param {Array<Array<number>>} fractToCartMatrix - 3x3 matrix with cell vectors as row vectors
- * @param {Array<Array<number>>} adps - Array of ADPs, each containing [U11, U22, U33, U12, U13, U23]
- * @returns {Array<Array<number>>} Array of transformed ADPs in same order [U11, U22, U33, U12, U13, U23]
+ * Converts ADPs from CIF (fractional) to Cartesian convention
+ * @param {Matrix|Array<Array<number>>} fractToCartMatrix - 3x3 transformation matrix
+ * @param {Array<number>} adp - ADPs [U11, U22, U33, U12, U13, U23]
+ * @returns {Array<number>} Cartesian ADPs [U11, U22, U33, U12, U13, U23]
+ * @throws {Error} If matrix not 3x3 or ADP array length !== 6
  */
 export function uCifToUCart(fractToCartMatrix, adp) {
     const M = math.matrix(fractToCartMatrix);
