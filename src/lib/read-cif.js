@@ -232,13 +232,28 @@ export class CifBlock {
     }
 
     /**
-     * Gets the value associated with a key in this block.
-     * @param {string} key - The key to look up
-     * @returns {*} The value associated with the key
+     * Gets a value from the CIF block, trying multiple possible keys.
+     * @param {(string|Array<string>)} keys - Key or array of keys to try
+     * @param {*} [defaultValue=null] - Value to return if keys not found
+     * @returns {*} Found value or default value
+     * @throws {Error} If no keys found and no default provided
      */
-    get(key) {
+    get(keys, defaultValue=null) {
         this.parse();
-        return this.data[key];
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+        
+        for (const key of keyArray) {
+            const value = this.data[key];
+            if (value !== undefined) {
+                return value;
+            }
+        }
+        
+        if (defaultValue !== null) {
+            return defaultValue;
+        }
+        
+        throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF block`);
     }
 }
 
@@ -367,13 +382,52 @@ export class CifLoop {
     }
 
     /**
-    * Gets a column of values by header name.
-    * @param {string} header - The header/column name
-    * @returns {Array} Values for the specified column
+    * Gets column data for given keys.
+    * @param {(string|string[])} keys - Key or array of keys to try
+    * @param {*} [defaultValue=null] - Value to return if keys not found
+    * @returns {Array} Column data
+    * @throws {Error} If no keys found and no default provided
     */
-    get(header) {
+    get(keys, defaultValue=null) {
         this.parse();
-        return this.data[header];
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+        
+        for (const key of keyArray) {
+            const value = this.data[key];
+            if (value !== undefined) {
+                return value;
+            }
+        }
+        
+        if (defaultValue !== null) {
+            return defaultValue;
+        }
+        
+        throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF loop ${this.name}`);
+    }
+
+    /**
+     * Gets value at specific index for one of given keys.
+     * @param {(string|string[])} keys - Key or array of keys to try
+     * @param {number} index - Row index
+     * @param {*} [defaultValue=null] - Value to return if keys not found
+     * @returns {*} Value at index
+     * @throws {Error} If index out of bounds or keys not found
+     */
+    getIndex(keys, index, defaultValue=null) {
+        this.parse();
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (!keyArray.some(key => this.headers.includes(key))) {
+            if (defaultValue !== null) return defaultValue;
+            throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF loop ${this.name}`);
+        }
+
+        const column = this.get(keyArray);
+        if (index < column.length) {
+            return column[index];
+        }
+        throw new Error(`Tried to look up value of index ${index} in ${this.name}, but length is only ${column.length}`);
     }
 
     /**

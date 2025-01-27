@@ -5,44 +5,6 @@ import {
 
 import { CellSymmetry } from "./cell-symmetry.js";
 
-export function getCIFValue(block, keys, defaultValue=null) {
-    if (!block) {
-        throw new Error('CIF block is undefined or null');
-    }
-    
-    const keyArray = Array.isArray(keys) ? keys : [keys];
-    
-    for (const key of keyArray) {
-        const value = block.get(key);
-        if (value !== undefined) {
-            return value;
-        }
-    }
-    
-    if (defaultValue !== null) {
-        return defaultValue;
-    }
-    
-    throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF block`);
-}
-
-export function getCIFLoopValue(loop, keys, index, defaultValue=null) {
-    const value = getCIFValue(loop, keys, "INVaLiDVALue");
-
-    if (value != "INVaLiDVALue") {
-        return value[index];
-    }
-
-    if (defaultValue !== null) {
-        return defaultValue;
-    }
-
-    const keyArray = Array.isArray(keys) ? keys : [keys];
-
-    throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF loop`);
-}
-
-
 export class CrystalStructure {
     constructor(unitCell, atoms, bonds=[], hBonds=[], symmetry=null) {
         this.cell = unitCell;
@@ -50,14 +12,14 @@ export class CrystalStructure {
         this.bonds = bonds;
         this.hBonds = hBonds;
         this.connectedGroups = this.findConnectedGroups();
-        this.symmetry = symmetry ? symmetry : CellSymmetry("None", 0, ["x,y,z"]);
+        this.symmetry = symmetry ? symmetry : new CellSymmetry("None", 0, ["x,y,z"]);
     }
  
     static fromCIF(cifBlock) {
         const cell = UnitCell.fromCIF(cifBlock);
         
         const atomSite = cifBlock.get("_atom_site");
-        const labels = getCIFValue(atomSite, ['_atom_site.label', '_atom_site_label']);
+        const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
         const atoms = Array.from({length: labels.length}, (_, i) => Atom.fromCIF(cifBlock, i));
 
@@ -65,7 +27,7 @@ export class CrystalStructure {
         try {
             const bondLoop = cifBlock.get("_geom_bond");
             if (bondLoop) {
-                const nBonds = getCIFValue(bondLoop, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length;
+                const nBonds = bondLoop.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length;
                 for (let i = 0; i < nBonds; i++) {
                     bonds.push(Bond.fromCIF(cifBlock, i));
                 }
@@ -78,7 +40,7 @@ export class CrystalStructure {
         try {
             const hbondLoop = cifBlock.get("_geom_hbond");
             if (hbondLoop) {
-                const nHBonds = getCIFValue(hbondLoop, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length;
+                const nHBonds = hbondLoop.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length;
                 for (let i = 0; i < nHBonds; i++) {
                     hBonds.push(HBond.fromCIF(cifBlock, i));
                 }
@@ -241,12 +203,12 @@ export class UnitCell {
     static fromCIF(cifBlock) {
         try {
             return new UnitCell(
-                getCIFValue(cifBlock, ['_cell.length_a', '_cell_length_a']),
-                getCIFValue(cifBlock, ['_cell.length_b', '_cell_length_b']),
-                getCIFValue(cifBlock, ['_cell.length_c', '_cell_length_c']),
-                getCIFValue(cifBlock, ['_cell.angle_alpha', '_cell_angle_alpha']),
-                getCIFValue(cifBlock, ['_cell.angle_beta', '_cell_angle_beta']),
-                getCIFValue(cifBlock, ['_cell.angle_gamma', '_cell_angle_gamma'])
+                cifBlock.get(['_cell.length_a', '_cell_length_a']),
+                cifBlock.get(['_cell.length_b', '_cell_length_b']),
+                cifBlock.get(['_cell.length_c', '_cell_length_c']),
+                cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha']),
+                cifBlock.get(['_cell.angle_beta', '_cell_angle_beta']),
+                cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'])
             );
         } catch (error) {
             throw new Error(`Failed to create UnitCell: ${error.message}`);
@@ -339,10 +301,10 @@ export class Atom{
 
     static fromCIF(cifBlock, atomIndex=null, atomLabel=null) {
         const atomSite = cifBlock.get("_atom_site");
-        const labels = getCIFValue(atomSite, ['_atom_site.label', '_atom_site_label']);
+        const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
         let index = atomIndex;
-        if (!atomIndex === null && atomLabel) {
+        if (atomIndex === null && atomLabel) {
             index = labels.indexOf(atomLabel);
         } else if (!atomIndex === null) {
             throw new Error("either atomIndex or atomLabel need to be provided");
@@ -350,7 +312,7 @@ export class Atom{
         
         const label = labels[index];
         
-        const adpType = getCIFLoopValue(atomSite, 
+        const adpType = atomSite.getIndex( 
                 ['_atom_site.adp_type', '_atom_site_adp_type', 
                  '_atom_site.thermal_displace_type', '_atom_site_thermal_displace_type'],
                 index,
@@ -360,24 +322,24 @@ export class Atom{
         let adp = null;
         if (adpType === "Uiso") {
             adp = new UIsoADP(
-                getCIFLoopValue(atomSite, ['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index)
+                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index)
             );
         } else if (adpType === "Uani") {
             const anisoSite = cifBlock.get("_atom_site_aniso");
-            const anisoLabels = getCIFValue(anisoSite, ['_atom_site_aniso.label', '_atom_site_aniso_label']);
+            const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
             const anisoIndex = anisoLabels.indexOf(label);
      
             adp = new UAnisoADP(
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_11', '_atom_site_aniso_U_11'], anisoIndex),
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_22', '_atom_site_aniso_U_22'], anisoIndex),
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_33', '_atom_site_aniso_U_33'], anisoIndex),
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_12', '_atom_site_aniso_U_12'], anisoIndex),
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_13', '_atom_site_aniso_U_13'], anisoIndex),
-                getCIFLoopValue(anisoSite, ['_atom_site_aniso.u_23', '_atom_site_aniso_U_23'], anisoIndex)
+                anisoSite.getIndex(['_atom_site_aniso.u_11', '_atom_site_aniso_U_11'], anisoIndex),
+                anisoSite.getIndex(['_atom_site_aniso.u_22', '_atom_site_aniso_U_22'], anisoIndex),
+                anisoSite.getIndex(['_atom_site_aniso.u_33', '_atom_site_aniso_U_33'], anisoIndex),
+                anisoSite.getIndex(['_atom_site_aniso.u_12', '_atom_site_aniso_U_12'], anisoIndex),
+                anisoSite.getIndex(['_atom_site_aniso.u_13', '_atom_site_aniso_U_13'], anisoIndex),
+                anisoSite.getIndex(['_atom_site_aniso.u_23', '_atom_site_aniso_U_23'], anisoIndex)
             );
         }
         
-        const disorderGroup = getCIFLoopValue(atomSite, 
+        const disorderGroup = atomSite.getIndex(
             ["_atom_site.disorder_group", "_atom_site_disorder_group"],
             index,
             "."
@@ -385,10 +347,10 @@ export class Atom{
         
         return new Atom(
             label,
-            getCIFLoopValue(atomSite, ['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
-            getCIFLoopValue(atomSite, ['_atom_site.fract_x', '_atom_site_fract_x'], index),
-            getCIFLoopValue(atomSite, ['_atom_site.fract_y', '_atom_site_fract_y'], index),
-            getCIFLoopValue(atomSite, ['_atom_site.fract_y', '_atom_site_fract_z'], index),
+            atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
+            atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
+            atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
+            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index),
             adp, 
             disorderGroup === "." ? 0 : disorderGroup
         );
@@ -431,16 +393,13 @@ export class Bond {
     
     static fromCIF(cifBlock, bondIndex) {
         const bondLoop = cifBlock.get("_geom_bond");
-        const site2Symmetry = getCIFLoopValue(bondLoop, 
-            ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], bondIndex, "."
-        );
  
         return new Bond(
-            getCIFLoopValue(bondLoop, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], bondIndex),
-            getCIFLoopValue(bondLoop, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], bondIndex),
-            getCIFLoopValue(bondLoop, ["_geom_bond.distance", "_geom_bond_distance"], bondIndex),
-            getCIFLoopValue(bondLoop, ["_geom_bond.distance_su", "_geom_bond_distance_su"], bondIndex, NaN),
-            getCIFLoopValue(bondLoop, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], bondIndex, ".")
+            bondLoop.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], bondIndex),
+            bondLoop.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], bondIndex),
+            bondLoop.getIndex(["_geom_bond.distance", "_geom_bond_distance"], bondIndex),
+            bondLoop.getIndex(["_geom_bond.distance_su", "_geom_bond_distance_su"], bondIndex, NaN),
+            bondLoop.getIndex(["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], bondIndex, ".")
         );
     }
 }
@@ -478,18 +437,18 @@ export class Bond {
         const hBondLoop = cifBlock.get("_geom_hbond");
 
         return new HBond(
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], hBondIndex, NaN),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], hBondIndex, NaN),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], hBondIndex, NaN),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], hBondIndex),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], hBondIndex, NaN),
-            getCIFLoopValue(hBondLoop, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], hBondIndex, ".")
+            hBondLoop.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], hBondIndex, NaN),
+            hBondLoop.getIndex(["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], hBondIndex, NaN),
+            hBondLoop.getIndex(["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], hBondIndex, NaN),
+            hBondLoop.getIndex(["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], hBondIndex),
+            hBondLoop.getIndex(["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], hBondIndex, NaN),
+            hBondLoop.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], hBondIndex, ".")
         );
     }
 }

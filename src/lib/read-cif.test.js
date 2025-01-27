@@ -75,7 +75,7 @@ _cell_length_a 5.4309(5)`);
       expect(block.get('_cell_length_a')).toBe(5.4309);
     });
 
-    test('handles data_ entry in multiline string across blocks', () => {
+    test('handles data_ entry in multiline string', () => {
       const cif = new CIF(`data_test1
 loop_
 _note
@@ -338,4 +338,92 @@ _some_header
 _some_additional_header`);
   expect(() => block.get("_some").get("_some_header")).toThrow("Loop _some has no data values.");
  });
+ test('get handles multiple key options', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site_label
+_atom_site_type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(loop.get(['_atom_site.label', '_atom_site_label'])).toEqual(['C1']);
+});
+
+test('get returns default value when keys not found', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(loop.get('_nonexistent', 'default')).toBe('default');
+});
+
+test('get throws error when keys not found and no default', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(() => loop.get('_nonexistent')).toThrow('None of the keys');
+});
+
+test('getIndex retrieves specific value', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site_label
+_atom_site_type
+C1 C
+O1 O`);
+  
+  const loop = block.get('_atom_site');
+  expect(loop.getIndex('_atom_site_label', 1)).toBe('O1');
+});
+
+test('getIndex handles multiple key options', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(loop.getIndex(['_atom_site.label', '_atom_site_label'], 0)).toBe('C1');
+});
+
+test('getIndex returns default for non-existent keys', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(loop.getIndex('_nonexistent', 0, 'default')).toBe('default');
+});
+
+test('getIndex throws for out of bounds index', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(() => loop.getIndex('_atom_site.label', 1)).toThrow('Tried to look up value of index 1');
+});
+
+test('getIndex throws for non-existent keys without default', () => {
+  const block = new CifBlock(`test
+loop_
+_atom_site.label
+_atom_site.type
+C1 C`);
+  
+  const loop = block.get('_atom_site');
+  expect(() => loop.getIndex('_nonexistent', 0)).toThrow('None of the keys');
+});
 });
