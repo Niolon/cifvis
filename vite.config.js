@@ -7,8 +7,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.js'),
-      name: 'CrystalViewer',
-      fileName: 'crystal-viewer'
+      name: 'CifVis',
+      fileName: 'cifvis'
     },
     rollupOptions: {
       external: ['three', 'mathjs'],
