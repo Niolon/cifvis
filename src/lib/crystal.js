@@ -4,8 +4,18 @@ import {
 } from "./fract-to-cart.js"
 
 import { CellSymmetry } from "./cell-symmetry.js";
-
+/**
+* Represents a crystal structure with its unit cell, atoms, bonds and symmetry
+*/
 export class CrystalStructure {
+    /**
+    * Creates a new crystal structure
+    * @param {UnitCell} unitCell - Unit cell parameters
+    * @param {Atom[]} atoms - Array of atoms in the structure
+    * @param {Bond[]} [bonds=[]] - Array of bonds between atoms
+    * @param {HBond[]} [hBonds=[]] - Array of hydrogen bonds
+    * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
+    */
     constructor(unitCell, atoms, bonds=[], hBonds=[], symmetry=null) {
         this.cell = unitCell;
         this.atoms = atoms;
@@ -14,7 +24,12 @@ export class CrystalStructure {
         this.connectedGroups = this.findConnectedGroups();
         this.symmetry = symmetry ? symmetry : new CellSymmetry("None", 0, ["x,y,z"]);
     }
- 
+
+    /**
+    * Creates a CrystalStructure from CIF data
+    * @param {CifBlock} cifBlock - Parsed CIF data block
+    * @returns {CrystalStructure} New crystal structure instance
+    */
     static fromCIF(cifBlock) {
         const cell = UnitCell.fromCIF(cifBlock);
         
@@ -26,11 +41,9 @@ export class CrystalStructure {
         const bonds = [];
         try {
             const bondLoop = cifBlock.get("_geom_bond");
-            if (bondLoop) {
-                const nBonds = bondLoop.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length;
-                for (let i = 0; i < nBonds; i++) {
-                    bonds.push(Bond.fromCIF(cifBlock, i));
-                }
+            const nBonds = bondLoop.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length;
+            for (let i = 0; i < nBonds; i++) {
+                bonds.push(Bond.fromCIF(cifBlock, i));
             }
         } catch (error) {
             console.warn("No bonds found in CIF file");
@@ -39,12 +52,10 @@ export class CrystalStructure {
         const hBonds = [];
         try {
             const hbondLoop = cifBlock.get("_geom_hbond");
-            if (hbondLoop) {
                 const nHBonds = hbondLoop.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length;
                 for (let i = 0; i < nHBonds; i++) {
                     hBonds.push(HBond.fromCIF(cifBlock, i));
                 }
-            }
         } catch (error) {
             console.warn("No hydrogen bonds found in CIF file");
         }
@@ -53,6 +64,12 @@ export class CrystalStructure {
         return new CrystalStructure(cell, atoms, bonds, hBonds, symmetry);
     }
 
+    /**
+    * Finds an atom by its label 
+    * @param {string} atomLabel - Unique atom identifier
+    * @returns {Atom} Found atom
+    * @throws {Error} If atom with label not found
+    */
     getAtomByLabel(atomLabel) {
         for (const atom of this.atoms) {
             if (atom.label === atomLabel) {
@@ -62,6 +79,11 @@ export class CrystalStructure {
         throw new Error("Could not find atom with label: " + atomLabel);
     }
 
+    /**
+    * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
+    * from the provided atoms and bonds
+    * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
+    */
     findConnectedGroups() {
         // Map to track which atoms have been assigned to a group
         const atomGroupMap = new Map();
@@ -87,45 +109,42 @@ export class CrystalStructure {
             const atom2 = this.getAtomByLabel(bond.atom2Label);
 
             // Skip bonds to symmetry equivalent positions for initial grouping
-            if (bond.atom2SiteSymmetry !== "." && bond.atom2SiteSymmetry !== undefined) {
+            if (bond.atom2SiteSymmetry !== "." && bond.atom2SiteSymmetry !== null) {
                 continue;
             }
 
             let group1 = atomGroupMap.get(atom1.label);
             let group2 = atomGroupMap.get(atom2.label);
 
-            if (!group1 && !group2) {
-                // Create new group
+            const targetGroup = group1 || group2;
+
+            if (!targetGroup) {
+            // Create new group
                 const newGroup = getAtomGroup(atom1);
                 newGroup.atoms.add(atom1);
                 newGroup.atoms.add(atom2);
                 newGroup.bonds.add(bond);
                 atomGroupMap.set(atom1.label, newGroup);
                 atomGroupMap.set(atom2.label, newGroup);
-            } else if (group1 && !group2) {
-                // Add atom2 to group1
-                group1.atoms.add(atom2);
-                group1.bonds.add(bond);
-                atomGroupMap.set(atom2.label, group1);
-            } else if (!group1 && group2) {
-                // Add atom1 to group2
-                group2.atoms.add(atom1);
-                group2.bonds.add(bond);
-                atomGroupMap.set(atom1.label, group2);
-            } else if (group1 !== group2) {
-                // Merge groups
-                for (const atom of group2.atoms) {
-                    group1.atoms.add(atom);
-                    atomGroupMap.set(atom.label, group1);
+            } else {
+                // Add atoms to existing group
+                targetGroup.atoms.add(atom1);
+                targetGroup.atoms.add(atom2);
+                targetGroup.bonds.add(bond);
+                atomGroupMap.set(atom1.label, targetGroup);
+                atomGroupMap.set(atom2.label, targetGroup);
+                
+                if (group1 && group2 && group1 !== group2) {
+                    // Merge groups if both exist and are different
+                    for (const atom of group2.atoms) {
+                        group1.atoms.add(atom);
+                        atomGroupMap.set(atom.label, group1);
+                    }
+                    for (const bond of group2.bonds) {
+                        group1.bonds.add(bond);
+                    }
+                    groups.splice(groups.indexOf(group2), 1);
                 }
-                for (const bond of group2.bonds) {
-                    group1.bonds.add(bond);
-                }
-                for (const hbond of group2.hBonds) {
-                    group1.hBonds.add(hbond);
-                }
-                const groupIndex = groups.indexOf(group2);
-                groups.splice(groupIndex, 1);
             }
         }
 
@@ -136,49 +155,28 @@ export class CrystalStructure {
             const acceptorAtom = this.getAtomByLabel(hbond.acceptorAtomLabel);
 
             // Skip hbonds to symmetry equivalent positions for initial grouping
-            if (hbond.acceptorAtomSymmetry !== "." && hbond.acceptorAtomSymmetry !== undefined) {
+            if (hbond.acceptorAtomSymmetry !== "." && hbond.acceptorAtomSymmetry !== null) {
                 continue;
             }
 
             // Get or create groups for involved atoms
             const donorGroup = getAtomGroup(donorAtom);
-            const hydrogenGroup = getAtomGroup(hydrogenAtom);
             const acceptorGroup = getAtomGroup(acceptorAtom);
 
-            // Merge all groups into donor's group
-            if (donorGroup !== hydrogenGroup) {
-                for (const atom of hydrogenGroup.atoms) {
-                    donorGroup.atoms.add(atom);
-                    atomGroupMap.set(atom.label, donorGroup);
-                }
-                for (const bond of hydrogenGroup.bonds) {
-                    donorGroup.bonds.add(bond);
-                }
-                for (const hb of hydrogenGroup.hBonds) {
-                    donorGroup.hBonds.add(hb);
-                }
-                const groupIndex = groups.indexOf(hydrogenGroup);
-                groups.splice(groupIndex, 1);
-            }
-
-            if (donorGroup !== acceptorGroup) {
-                for (const atom of acceptorGroup.atoms) {
-                    donorGroup.atoms.add(atom);
-                    atomGroupMap.set(atom.label, donorGroup);
-                }
-                for (const bond of acceptorGroup.bonds) {
-                    donorGroup.bonds.add(bond);
-                }
-                for (const hb of acceptorGroup.hBonds) {
-                    donorGroup.hBonds.add(hb);
-                }
-                const groupIndex = groups.indexOf(acceptorGroup);
-                groups.splice(groupIndex, 1);
-            }
-
             donorGroup.hBonds.add(hbond);
+            acceptorGroup.hBonds.add(hbond)
         }
-
+        const unboundAtoms = this.atoms
+            .filter(atom => !groups.some(g => g.atoms.has(atom)));
+        
+        unboundAtoms.forEach(atom => {
+            const newGroup = {
+                atoms: new Set([atom]),
+                bonds: new Set(),
+                hBonds: new Set()
+            };
+            groups.push(newGroup);
+        });
         // Convert Sets to Arrays for easier handling
         return groups.map(group => ({
             atoms: Array.from(group.atoms),
@@ -188,7 +186,20 @@ export class CrystalStructure {
     }
 }
 
+/**
+* Represents the unit cell parameters of a crystal structure
+*/
 export class UnitCell {
+    /**
+    * Creates a new unit cell
+    * @param {number} a - a axis length in Å 
+    * @param {number} b - b axis length in Å
+    * @param {number} c - c axis length in Å 
+    * @param {number} alpha - α angle in degrees
+    * @param {number} beta - β angle in degrees
+    * @param {number} gamma - γ angle in degrees
+    * @throws {Error} If parameters invalid
+    */
     constructor(a, b, c, alpha, beta, gamma) {
         this._a = a;
         this._b = b;
@@ -200,19 +211,20 @@ export class UnitCell {
         this.fractToCartMatrix = calculateFractToCartMatrix(this)
     }
 
+    /**
+    * Creates a UnitCell from CIF data
+    * @param {CifBlock} cifBlock - Parsed CIF data block
+    * @returns {UnitCell} New unit cell instance
+    */
     static fromCIF(cifBlock) {
-        try {
-            return new UnitCell(
-                cifBlock.get(['_cell.length_a', '_cell_length_a']),
-                cifBlock.get(['_cell.length_b', '_cell_length_b']),
-                cifBlock.get(['_cell.length_c', '_cell_length_c']),
-                cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha']),
-                cifBlock.get(['_cell.angle_beta', '_cell_angle_beta']),
-                cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'])
-            );
-        } catch (error) {
-            throw new Error(`Failed to create UnitCell: ${error.message}`);
-        }
+        return new UnitCell(
+            cifBlock.get(['_cell.length_a', '_cell_length_a']),
+            cifBlock.get(['_cell.length_b', '_cell_length_b']),
+            cifBlock.get(['_cell.length_c', '_cell_length_c']),
+            cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha']),
+            cifBlock.get(['_cell.angle_beta', '_cell_angle_beta']),
+            cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'])
+        );
     }
  
     get a() {
@@ -288,6 +300,9 @@ export class UnitCell {
     }
 }
 
+/**
+* Represents an atom in a crystal structure
+*/
 export class Atom{
     constructor(label, atomType, fractX, fractY, fractZ, adp=null, disorderGroup=0) {
         this.label = label;
@@ -299,6 +314,15 @@ export class Atom{
         this.disorderGroup = disorderGroup;
     }
 
+    /**
+    * Creates an Atom from CIF data from either the index or the atom in the 
+    * _atom_site_loop
+    * @param {CifBlock} cifBlock - Parsed CIF data block
+    * @param {number} [atomIndex=null] - Index in _atom_site loop
+    * @param {string} [atomLabel=null] - Label to find atom by
+    * @returns {Atom} New atom instance
+    * @throws {Error} If neither index nor label provided
+    */
     static fromCIF(cifBlock, atomIndex=null, atomLabel=null) {
         const atomSite = cifBlock.get("_atom_site");
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
@@ -306,7 +330,7 @@ export class Atom{
         let index = atomIndex;
         if (atomIndex === null && atomLabel) {
             index = labels.indexOf(atomLabel);
-        } else if (!atomIndex === null) {
+        } else if (atomIndex === null) {
             throw new Error("either atomIndex or atomLabel need to be provided");
         }
         
@@ -322,7 +346,7 @@ export class Atom{
         let adp = null;
         if (adpType === "Uiso") {
             adp = new UIsoADP(
-                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index)
+                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index, 0.02)
             );
         } else if (adpType === "Uani") {
             const anisoSite = cifBlock.get("_atom_site_aniso");
@@ -357,14 +381,27 @@ export class Atom{
     }
 }
 
-
+/**
+* Represents isotropic atomic displacement parameters
+*/
 export class UIsoADP {
     constructor(uiso) {
         this.uiso = uiso;
     }
 }
 
+/**
+* Represents anisotropic atomic displacement parameters
+*/
 export class UAnisoADP {
+    /**
+     * @param {number} u11 - U11 component in Å²
+     * @param {number} u22 - U22 component in Å²
+     * @param {number} u33 - U33 component in Å²
+     * @param {number} u12 - U12 component in Å²
+     * @param {number} u13 - U13 component in Å²
+     * @param {number} u23 - U23 component in Å² 
+     */
     constructor(u11, u22, u33, u12, u13, u23) {
         this.u11 = u11;
         this.u22 = u22;
@@ -374,6 +411,11 @@ export class UAnisoADP {
         this.u23 = u23;
     }
 
+    /**
+    * Converts ADPs to Cartesian coordinate system
+    * @param {UnitCell} unitCell - Cell parameters for transformation
+    * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
+    */
     getUCart(unitCell) {
         return uCifToUCart(
             unitCell.fractToCartMatrix,
@@ -382,7 +424,18 @@ export class UAnisoADP {
     }
 }
 
+/**
+* Represents a covalent bond between atoms
+*/
 export class Bond {
+    /**
+    * Creates a new bond
+    * @param {string} atom1Label - Label of first atom
+    * @param {string} atom2Label - Label of second atom
+    * @param {number} [bondLength=null] - Bond length in Å
+    * @param {number} [bondLengthSU=null] - Standard uncertainty in bond length
+    * @param {string} [atom2SiteSymmetry=null] - Symmetry operation for second atom
+    */
     constructor(atom1Label, atom2Label, bondLength=null, bondLengthSU=null, atom2SiteSymmetry=null) {
         this.atom1Label = atom1Label;
         this.atom2Label = atom2Label;
@@ -390,7 +443,13 @@ export class Bond {
         this.bondLengthSU = bondLengthSU;
         this.atom2SiteSymmetry = atom2SiteSymmetry;
     }
-    
+
+    /**
+    * Creates a Bond from CIF data
+    * @param {CifBlock} cifBlock - Parsed CIF data block
+    * @param {number} bondIndex - Index in _geom_bond loop
+    * @returns {Bond} New bond instance
+    */
     static fromCIF(cifBlock, bondIndex) {
         const bondLoop = cifBlock.get("_geom_bond");
  
@@ -404,7 +463,25 @@ export class Bond {
     }
 }
 
- export class HBond {
+/**
+* Represents a hydrogen bond between atoms
+*/
+export class HBond {
+   /**
+    * Creates a new hydrogen bond
+    * @param {string} donorAtomLabel - Label of donor atom
+    * @param {string} hydrogenAtomLabel - Label of hydrogen atom
+    * @param {string} acceptorAtomLabel - Label of acceptor atom
+    * @param {number} donorHydrogenDistance - D-H distance in Å
+    * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
+    * @param {number} acceptorHydrogenDistance - H···A distance in Å
+    * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
+    * @param {number} donorAcceptorDistance - D···A distance in Å
+    * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
+    * @param {number} hBondAngle - D-H···A angle in degrees
+    * @param {number} hBondAngleSU - Standard uncertainty in angle
+    * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
+    */
     constructor(
         donorAtomLabel,
         hydrogenAtomLabel,
@@ -433,6 +510,12 @@ export class Bond {
         this.acceptorAtomSymmetry = acceptorAtomSymmetry;    
     }
     
+    /**
+    * Creates a HBond from CIF data
+    * @param {CifBlock} cifBlock - Parsed CIF data block  
+    * @param {number} hBondIndex - Index in _geom_hbond loop
+    * @returns {HBond} New hydrogen bond instance
+    */
     static fromCIF(cifBlock, hBondIndex) {
         const hBondLoop = cifBlock.get("_geom_hbond");
 

@@ -63,7 +63,7 @@ export class SymmetryOperation {
             }
         }
         
-        if (!symopLoop) {
+        if (symopLoop == "InVaLIdValue") {
             throw new Error("No symmetry operations found in CIF block");
         }
 
@@ -195,6 +195,11 @@ export class CellSymmetry {
                     break
                 }
             }
+        }
+
+        if (symopLoop == "InVaLIdValue") {
+            console.warn("No symmetry operations found in CIF block, will use P1")
+            return new CellSymmetry("Unknown", 0, [new SymmetryOperation("x,y,z")])
         }
         
         const operations = symopLoop.get([
