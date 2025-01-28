@@ -4,9 +4,9 @@ import { create, all } from 'mathjs';
 const config = { };
 const math = create(all, config);
 import defaultSettings from "./structure-settings.js";
-import { HBond, Bond, UAnisoADP } from "./crystal.js";
-import { adpToMatrix } from "./fract-to-cart.js";
-import { SymmetryGrower } from "./structure-modifiers.js";
+import { HBond, Bond, UAnisoADP } from "../structure/crystal.js";
+import { adpToMatrix } from "../structure/fract-to-cart.js";
+import { SymmetryGrower } from "../structure/structure-modifiers.js";
 
 /**
  * Calculate transformation matrix for ellipsoid visualization.

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { create, all } from 'mathjs';
-import { CIF } from './read-cif.js';
-import { CrystalStructure } from "./crystal.js";
+import { CIF } from '../cif/read-cif.js';
+import { CrystalStructure } from "../structure/crystal.js";
 import { ORTEP3JsStructure} from "./ortep.js";
 import { calculateStructureBounds, setupLighting, createFloor } from './staging.js';
 import defaultSettings from "./structure-settings.js";
 import { ViewerControls } from './viewer-controls.js';
-import { DisorderFilter, HydrogenFilter, SymmetryGrower } from "./structure-modifiers.js";
+import { DisorderFilter, HydrogenFilter, SymmetryGrower } from "../structure/structure-modifiers.js";
 
 const math = create(all);
 

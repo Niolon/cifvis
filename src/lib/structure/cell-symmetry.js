@@ -1,6 +1,6 @@
 import { create, all } from 'mathjs';
 import { UAnisoADP } from './crystal.js';
-import { CifLoop } from './read-cif.js';
+import { CifLoop } from '../cif/read-cif.js';
 
 const math = create(all);
 

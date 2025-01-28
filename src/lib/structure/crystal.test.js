@@ -1,6 +1,6 @@
 import { create, all } from 'mathjs';
 import { CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP } from './crystal.js';
-import { CIF, CifBlock } from './read-cif.js';
+import { CIF, CifBlock } from '../cif/read-cif.js';
 
 const math = create(all);
 
