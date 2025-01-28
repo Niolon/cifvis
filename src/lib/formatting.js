@@ -9,7 +9,7 @@
  */
 export function formatValueEsd(value, esd, noEsdDecimals=4) {
     if (!isFinite(1 / esd)) {
-        return roundToDecimals(value, noEsdDecimals).toString();
+        return roundToDecimals(value, noEsdDecimals).toFixed(noEsdDecimals);
     }
 
     let order = Math.floor(Math.log10(esd));
@@ -18,7 +18,11 @@ export function formatValueEsd(value, esd, noEsdDecimals=4) {
     }
 
     const roundedValue = roundToDecimals(value, -order);
-    const esdVal = Math.round(esd / Math.pow(10, order));
+    if (order < 0) {
+        const esdVal = Math.round(esd / Math.pow(10, order));
+        return `${roundedValue.toFixed(-order)}(${esdVal})`;
+    }
+    const esdVal = roundToDecimals(esd, order);
     return `${roundedValue}(${esdVal})`;
 }
 
@@ -29,7 +33,7 @@ export function formatValueEsd(value, esd, noEsdDecimals=4) {
  * @param {number} decimals - Number of decimal places
  * @returns {number} Rounded number
  */
-function roundToDecimals(value, decimals) {
+export function roundToDecimals(value, decimals) {
     const factor = Math.pow(10, decimals);
     return Math.round(value * factor) / factor;
 }
