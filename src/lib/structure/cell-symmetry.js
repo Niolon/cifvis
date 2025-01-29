@@ -16,36 +16,48 @@ export class SymmetryOperation {
         const vector = Array(3).fill(0);
         
         const components = instruction.split(',').map(comp => comp.trim().toUpperCase());
+        if (components.length !== 3) {
+            throw new Error('Symmetry operation must have exactly three components');
+        }
         
         components.forEach((component, xyz) => {
-            const fractionMatch = component.match(/(-?\d+)\/(\d+)(?![XYZ])/);
-            const decimalMatch = component.match(/(-?\d*\.\d+)(?![XYZ])/);
-            const integerMatch = component.match(/(-?\d+)(?![XYZ])/);
+            // First find all variable terms
+            const variablePattern = /([+-]?\d*\.?\d*(?:\/\d+)?)\*?([XYZ])/g;
+            let match;
             
-            if (fractionMatch) {
-                vector[xyz] = parseInt(fractionMatch[1]) / parseInt(fractionMatch[2]);
-            } else if (decimalMatch) {
-                vector[xyz] = parseFloat(decimalMatch[1]);
-            } else if (integerMatch) {
-                vector[xyz] = parseInt(integerMatch[1]);
-            }
-            
-            const terms = component.match(/(-?\d*\.?\d*[XYZ])/g) || [];
-            
-            terms.forEach(term => {
-                let coefficient = 1;
-                if (term.startsWith('-')) {
-                    coefficient = -1;
-                    term = term.substring(1);
-                }
-                if (term.length > 1 && term !== 'X' && term !== 'Y' && term !== 'Z') {
-                    coefficient *= parseFloat(term.slice(0, -1));
+            while ((match = variablePattern.exec(component)) !== null) {
+                let coefficient = match[1];
+                const variable = match[2];
+                
+                // Handle coefficient parsing
+                if (!coefficient || coefficient === '+') coefficient = '1';
+                else if (coefficient === '-') coefficient = '-1';
+                else if (coefficient.includes('/')) {
+                    const [num, den] = coefficient.split('/');
+                    coefficient = parseFloat(num) / parseFloat(den);
                 }
                 
-                const variable = term.slice(-1);
+                // Convert coefficient to number
+                coefficient = parseFloat(coefficient);
+                
+                // Map variable to matrix column
                 const col = variable === 'X' ? 0 : variable === 'Y' ? 1 : 2;
                 matrix[xyz][col] = coefficient;
-            });
+            }
+
+            // Remove all variable terms and their coefficients
+            const withoutVariables = component.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, '');
+            
+            // Now parse any remaining terms as translations
+            const translationTerms = withoutVariables.match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
+            for (const term of translationTerms) {
+                if (term.includes('/')) {
+                    const [num, den] = term.split('/');
+                    vector[xyz] += parseFloat(num) / parseFloat(den);
+                } else {
+                    vector[xyz] += parseFloat(term);
+                }
+            }
         });
         
         return { matrix, vector };
@@ -127,7 +139,7 @@ export class SymmetryOperation {
     }
 
     copy() {
-        const newOp = new SymmetryOperation('dummy');
+        const newOp = new SymmetryOperation('x,y,z');
         newOp.rotMatrix = math.clone(this.rotMatrix);
         newOp.transVector = math.clone(this.transVector);
         return newOp;
@@ -156,39 +168,51 @@ export class CellSymmetry {
         const transVector = translations.split('').map(t => parseInt(t) - 5);
         const symOp = this.symmetryOperations[symOpIndex];
         
-        const combinedOp = symOp.copy();
-        combinedOp.transVector = math.add(symOp.transVector, transVector);
+        //const combinedOp = symOp.copy();
+        //combinedOp.transVector = math.add(symOp.transVector, transVector);
 
-        return Array.isArray(atoms) ? 
-            combinedOp.applyToAtoms(atoms) : 
-            combinedOp.applyToAtom(atoms);
+        if (Array.isArray(atoms)) {
+            const newAtoms = symOp.applyToAtoms(atoms);
+            newAtoms.forEach(newAtom => {
+                newAtom.fractX += transVector[0];
+                newAtom.fractY += transVector[1];
+                newAtom.fractZ += transVector[2];
+            })
+            return newAtoms;
+        }
+
+        const newAtom = symOp.applyToAtom(atoms);
+        newAtom.fractX += transVector[0];
+        newAtom.fractY += transVector[1];
+        newAtom.fractZ += transVector[2];
+        return newAtom;
+
     }
 
     static fromCIF(cifBlock) {
         let spaceGroupName, spaceGroupNumber;
-        try {
-            spaceGroupName = cifBlock.get([
+        spaceGroupName = cifBlock.get(
+            [
                 "_space_group.name_H-M_full",
                 "_symmetry_space_group_name_H-M",
                 "_space_group_name_H-M_alt"
             ],
-            "Unknown spacegroup name"
-            );
+            "Unknown"
+        );
             
-            spaceGroupNumber = cifBlock.get([
+        spaceGroupNumber = cifBlock.get(
+            [
                 "_space_group.IT_number",
                 "_symmetry_Int_Tables_number",
                 "_space_group_IT_number",
             ],
             0
         );
-        } catch (error) {
-            console.warn("Space group information not found in CIF block");
-        }
+
 
         let symopLoop = cifBlock.get(["_space_group_symop", "_symmetry_equiv"], "InVaLIdValue");
 
-        if (symopLoop == "InVaLIdValue") {
+        if (symopLoop === "InVaLIdValue") {
             for (const entry of Object.entries(cifBlock.data)) {
                 if ((entry[0].startsWith("_symmetry_equiv") || entry[0].startsWith("_space_group_symop")) && entry[1]instanceof(CifLoop) ) {
                     symopLoop = entry[1];
@@ -209,15 +233,11 @@ export class CellSymmetry {
             "_symmetry_equiv_pos_as_xyz"
         ]);
 
-        if (!operations) {
-            throw new Error("No symmetry operation xyz strings found in CIF block");
-        }
-
         const symmetryOperations = operations.map((op, _) => new SymmetryOperation(op));
 
         return new CellSymmetry(
-            spaceGroupName || "Unknown",
-            spaceGroupNumber || 0,
+            spaceGroupName,
+            spaceGroupNumber,
             symmetryOperations
         );
     }
