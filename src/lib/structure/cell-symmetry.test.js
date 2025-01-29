@@ -1,6 +1,6 @@
 import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
 import { CIF, CifBlock } from '../cif/read-cif.js';
-import { UAnisoADP } from './crystal.js';
+import { UAnisoADP, UIsoADP, Atom } from './crystal.js';
 
 describe('SymmetryOperation', () => {
     describe('parseSymmetryInstruction', () => {
@@ -124,6 +124,37 @@ describe('SymmetryOperation', () => {
             expect(result.adp.u12).toBeCloseTo(-0.001);
             expect(result.adp.u13).toBeCloseTo(-0.002);
             expect(result.adp.u23).toBeCloseTo(-0.003);
+        });
+
+        test('preserves isotropic displacement parameters', () => {
+            const op = new SymmetryOperation('-x,y,-z');
+            const adp = new UIsoADP(0.025);
+            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, adp);
+            
+            const result = op.applyToAtom(originalAtom);
+            
+            // Verify it's a new instance
+            expect(result).toBeInstanceOf(Atom);
+            expect(result.adp).toBeInstanceOf(UIsoADP);
+            expect(result.adp).not.toBe(adp);
+            
+            // Verify isotropic ADP is preserved
+            expect(result.adp.uiso).toBe(0.025);
+            
+            // Verify coordinates are transformed
+            expect(result.fractX).toBeCloseTo(-0.5);
+            expect(result.fractY).toBeCloseTo(0.25);
+            expect(result.fractZ).toBeCloseTo(-0.75);
+        });
+    
+        test('handles null displacement parameters', () => {
+            const op = new SymmetryOperation('x,y,z');
+            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, null);
+            
+            const result = op.applyToAtom(originalAtom);
+            
+            expect(result).toBeInstanceOf(Atom);
+            expect(result.adp).toBeNull();
         });
     });
 
@@ -291,6 +322,37 @@ describe('CellSymmetry', () => {
             const sym = new CellSymmetry('P1', 1, ops);
             expect(() => sym.applySymmetry('2_555', {}))
                 .toThrow('Invalid symmetry operation number: 2');
+        });
+
+        test('transforms anisotropic displacement parameters', () => {
+            const op = new SymmetryOperation('-x,y,-z');
+            const adp = new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003);
+            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, adp);
+            
+            const result = op.applyToAtom(originalAtom);
+            
+            // Verify it's a new instance
+            expect(result).toBeInstanceOf(Atom);
+            expect(result.adp).toBeInstanceOf(UAnisoADP);
+            expect(result.adp).not.toBe(adp);
+            
+            // Verify transformed ADPs
+            expect(result.adp.u11).toBeCloseTo(0.01);
+            expect(result.adp.u22).toBeCloseTo(0.02);
+            expect(result.adp.u33).toBeCloseTo(0.03);
+            expect(result.adp.u12).toBeCloseTo(-0.001);
+            expect(result.adp.u13).toBeCloseTo(-0.002);
+            expect(result.adp.u23).toBeCloseTo(-0.003);
+        });
+
+        test('preserves disorder group', () => {
+            const op = new SymmetryOperation('x,y,z');
+            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, null, 2);
+            
+            const result = op.applyToAtom(originalAtom);
+            
+            expect(result).toBeInstanceOf(Atom);
+            expect(result.disorderGroup).toBe(2);
         });
     });
 
