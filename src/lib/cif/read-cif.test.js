@@ -90,7 +90,6 @@ data_test2
 _other value`);
       
       const blocks = cif.getAllBlocks();
-      console.log(blocks);
       expect(blocks).toHaveLength(2);
       expect(blocks[0].get('_note').get('_note')).toEqual(['first\ndata_test2\nnote\ndata_test3\nmore text']);
       expect(blocks[1].get('_other')).toBe('value');
