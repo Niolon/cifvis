@@ -1,3 +1,4 @@
+import { not } from 'mathjs';
 import { CIF, CifBlock, parseValue, parseMultiLineString } from './read-cif.js';
 
 describe('Parse Value Tests', () => {
@@ -65,17 +66,29 @@ _cell_length_a 3.2468(3)`);
       expect(blocks).toEqual([]);
     });
 
-    test('gets single block by index', () => {
+    test('gets single block by index by lazy evaluation', () => {
       const cif = new CIF(`
 data_block1
-_cell_length_a 5.4309(5)`);
-      
-      const block = cif.getBlock(0);
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 5.4312(3)`);
+
+      expect(cif.blocks).toEqual([null, null]);
+      // zero is default access
+      const block = cif.getBlock();
       expect(block.dataBlockName).toBe('block1');
       expect(block.get('_cell_length_a')).toBe(5.4309);
+      expect(cif.blocks[0]).not.toBe(null);
+      expect(cif.blocks[1]).toBe(null);
+
+      // second access is the already evaluated block
+      const block2 = cif.getBlock(0);
+      expect(block2.dataBlockName).toBe('block1');
+      expect(block2.get('_cell_length_a')).toBe(5.4309);
     });
 
-    test('handles data_ entry in multiline string', () => {
+    test('handles data_ entry in multiline string and test lazy evaluation', () => {
       const cif = new CIF(`data_test1
 loop_
 _note
@@ -88,11 +101,18 @@ more text
 ;
 data_test2
 _other value`);
-      
+      expect(cif.blocks).toEqual([null, null]);
       const blocks = cif.getAllBlocks();
       expect(blocks).toHaveLength(2);
       expect(blocks[0].get('_note').get('_note')).toEqual(['first\ndata_test2\nnote\ndata_test3\nmore text']);
       expect(blocks[1].get('_other')).toBe('value');
+      expect(cif.blocks).not.toEqual([null, null]);
+
+      // second access is the already evaluated block
+      const blocks2 = cif.getAllBlocks();
+      expect(blocks2).toHaveLength(2);
+      expect(blocks2[0].get('_note').get('_note')).toEqual(['first\ndata_test2\nnote\ndata_test3\nmore text']);
+      expect(blocks2[1].get('_other')).toBe('value');
      });
   });
 

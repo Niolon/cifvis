@@ -361,7 +361,6 @@ export class CifLoop {
     * @private
     */
     findCommonStart() {
-        if (!this.headerLines || this.headerLines.length === 0) return '';
         if (this.headerLines.length === 1) return this.headerLines[0].trim();
         
         const firstStr = this.headerLines[0];
