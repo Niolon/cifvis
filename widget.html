@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crystal Viewer Widget Demo</title>
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        cifview-widget {
+            width: 100%;
+            aspect-ratio: 1;
+            display: block;
+            border: 1px solid #ccc;
+        }
+    </style>
+  <script type="module" crossorigin src="/cifvis/assets/widget-2y2Wuyar.js"></script>
+</head>
+<body>
+    <div class="grid">
+        <cifview-widget
+            caption="Structure with disorder" 
+            src="./cif/disorder1.cif"
+            hydrogen-mode="constant">
+        </cifview-widget>
+        <cifview-widget
+            caption="Same structure, hydrogen atoms hidden" 
+            src="./cif/disorder1.cif"
+            hydrogen-mode="none">
+        </cifview-widget>
+    </div>
+</body>
+</html>
