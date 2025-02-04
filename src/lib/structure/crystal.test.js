@@ -1,5 +1,5 @@
 import { create, all } from 'mathjs';
-import { CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP } from './crystal.js';
+import { CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition } from './crystal.js';
 import { CIF, CifBlock } from '../cif/read-cif.js';
 
 const math = create(all);
@@ -7,7 +7,7 @@ const math = create(all);
 describe('CrystalStructure', () => {
   test('constructs with minimal parameters', () => {
     const cell = new UnitCell(10, 10, 10, 90, 90, 90);
-    const atoms = [new Atom('C1', 'C', 0, 0, 0)];
+    const atoms = [new Atom('C1', 'C', new FractPosition(0, 0, 0))];
     const structure = new CrystalStructure(cell, atoms);
 
     expect(structure.cell).toBe(cell);
@@ -67,8 +67,8 @@ data_test
   test('getAtomByLabel returns correct atom', () => {
     const cell = new UnitCell(10, 10, 10, 90, 90, 90);
     const atoms = [
-      new Atom('C1', 'C', 0, 0, 0),
-      new Atom('O1', 'O', 0.5, 0.5, 0.5)
+      new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+      new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5))
     ];
     const structure = new CrystalStructure(cell, atoms);
 
@@ -80,10 +80,10 @@ data_test
   test('findConnectedGroups identifies correct groups', () => {
     const cell = new UnitCell(10, 10, 10, 90, 90, 90);
     const atoms = [
-      new Atom('C1', 'C', 0, 0, 0),
-      new Atom('O1', 'O', 0.5, 0.5, 0.5),
-      new Atom('N1', 'N', 0.7, 0.7, 0.7),
-      new Atom('H1', 'H', 0.3, 0.4, 0.5)
+      new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+      new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),
+      new Atom('N1', 'N', new FractPosition(0.7, 0.7, 0.7)),
+      new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5))
     ];
     const bonds = [
       new Bond('C1', 'O1', 1.5),
@@ -103,12 +103,12 @@ data_test
   test('findConnectedGroups handles complex connectivity correctly', () => {
     const cell = new UnitCell(10, 10, 10, 90, 90, 90);
     const atoms = [
-      new Atom('C1', 'C', 0, 0, 0),
-      new Atom('O1', 'O', 0.5, 0.5, 0.5),
-      new Atom('N1', 'N', 0.7, 0.7, 0.7),
-      new Atom('H1', 'H', 0.3, 0.4, 0.5),
-      new Atom('P1', 'P', 0.8, 0.8, 0.8), // Unconnected atom
-      new Atom('F1', 'F', 0.9, 0.9, 0.9)  // Symmetry-only connected atom
+      new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+      new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),
+      new Atom('N1', 'N', new FractPosition(0.7, 0.7, 0.7)),
+      new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5)),
+      new Atom('P1', 'P', new FractPosition(0.8, 0.8, 0.8)), // Unconnected atom
+      new Atom('F1', 'F', new FractPosition(0.9, 0.9, 0.9))  // Symmetry-only connected atom
     ];
     const bonds = [
       new Bond('C1', 'O1', 1.5),           // Regular bond forming group 1
@@ -147,11 +147,11 @@ data_test
   test('group merging logic handles all cases correctly', () => {
     const cell = new UnitCell(10, 10, 10, 90, 90, 90);
     const atoms = [
-        new Atom('C1', 'C', 0, 0, 0),
-        new Atom('O1', 'O', 0.1, 0.1, 0.1),
-        new Atom('N1', 'N', 0.2, 0.2, 0.2),
-        new Atom('C2', 'C', 0.3, 0.3, 0.3),
-        new Atom('H1', 'H', 0.3, 0.4, 0.5)
+        new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+        new Atom('O1', 'O', new FractPosition(0.1, 0.1, 0.1)),
+        new Atom('N1', 'N', new FractPosition(0.2, 0.2, 0.2)),
+        new Atom('C2', 'C', new FractPosition(0.3, 0.3, 0.3)),
+        new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5))
     ];
     
     // Test cases:
@@ -327,7 +327,7 @@ _cell_angle_gamma 90
 
 describe('Atom', () => {
   test('constructs with basic parameters', () => {
-    const atom = new Atom('C1', 'C', 0, 0, 0);
+    const atom = new Atom('C1', 'C', new FractPosition(0,0,0), 0, 0);
     expect(atom.label).toBe('C1');
     expect(atom.atomType).toBe('C');
     expect(atom.disorderGroup).toBe(0);
@@ -425,6 +425,60 @@ C1 C 0 0 0 1
 
     expect(atom.disorderGroup).toBe(1);
   });
+});
+
+describe('Position Classes', () => {
+  const unitCell = new UnitCell(10, 10, 10, 90, 90, 90);
+
+  test('Position base class cannot be instantiated directly', () => {
+    expect(() => new BasePosition(1, 2, 3))
+        .toThrow('Position is an abstract class and cannot be instantiated directly');
+  });
+
+  test('Position provides array-like access', () => {
+      const pos = new FractPosition(1, 2, 3);
+      expect(pos[0]).toBe(1);
+      expect(pos[1]).toBe(2);
+      expect(pos[2]).toBe(3);
+      expect([...pos]).toEqual([1, 2, 3]);
+  });
+
+  test('Position getters/setters work correctly', () => {
+      const pos = new FractPosition(1, 2, 3);
+      
+      pos.x = 4;
+      pos.y = 5;
+      pos.z = 6;
+
+      expect(pos.x).toBe(4);
+      expect(pos.y).toBe(5);
+      expect(pos.z).toBe(6);
+      expect([...pos]).toEqual([4, 5, 6]);
+  });
+
+  test('FractPosition converts to CartPosition correctly', () => {
+      const fPos = new FractPosition(0.5, 0.5, 0.5);
+      const cPos = fPos.toCartesian(unitCell);
+      
+      expect(cPos).toBeInstanceOf(CartPosition);
+      expect(cPos.x).toBeCloseTo(5.0);
+      expect(cPos.y).toBeCloseTo(5.0);
+      expect(cPos.z).toBeCloseTo(5.0);
+  });
+
+  test('CartPosition toCartesian returns self', () => {
+      const cPos = new CartPosition(5, 5, 5);
+      const result = cPos.toCartesian(unitCell);
+      
+      expect(result).toBe(cPos);
+  });
+
+  test('toCartesian throws error if not implemented', () => {
+    class TestPosition extends BasePosition {}
+
+    test = new TestPosition(0.0, 0.0, 0.0)
+    expect(() => test.toCartesian()).toThrow('toCartesian must be implemented by subclass')
+  })
 });
 
 describe('Bond', () => {

@@ -372,9 +372,7 @@ class ORTEPAtom extends ORTEPObject{
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super();
         this.atom = atom;
-        const fract2cart = new THREE.Matrix3().fromArray(unitCell.fractToCartMatrix.toArray().flat());
-        const position = new THREE.Vector3(atom.fractX, atom.fractY, atom.fractZ);
-        position.applyMatrix3(fract2cart);
+        const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
         this.object3D = new THREE.Mesh(baseAtom, atomMaterial);
         this.object3D.position.copy(position);
@@ -400,9 +398,7 @@ class ORTEPAtom extends ORTEPObject{
 class ORTEPAniAtom extends ORTEPAtom{
     constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing=null, ADPRingMaterial=null) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        const fract2cart = new THREE.Matrix3().fromArray(math.flatten(unitCell.fractToCartMatrix).toArray());
-        const position = new THREE.Vector3(atom.fractX, atom.fractY, atom.fractZ);
-        position.applyMatrix3(fract2cart);
+        const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
         const ellipsoidMatrix = calcEllipsoidMatrix(atom.adp.getUCart(unitCell));
 
@@ -469,13 +465,10 @@ class ORTEPIsoAtom extends ORTEPAtom {
 class ORTEPBond extends ORTEPObject{
     constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
         super();
-        const fract2cart = new THREE.Matrix3().fromArray(crystalStructure.cell.fractToCartMatrix.toArray().flat());
         const bondAtom1 = crystalStructure.getAtomByLabel(bond.atom1Label);
         const bondAtom2 = crystalStructure.getAtomByLabel(bond.atom2Label);
-        const atom1position = new THREE.Vector3(bondAtom1.fractX, bondAtom1.fractY, bondAtom1.fractZ);
-        atom1position.applyMatrix3(fract2cart);
-        const atom2position = new THREE.Vector3(bondAtom2.fractX, bondAtom2.fractY, bondAtom2.fractZ);
-        atom2position.applyMatrix3(fract2cart);
+        const atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
+        const atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
         const bondTransform = calcBondTransform(atom1position, atom2position);
         this.object3D = new THREE.Mesh(baseBond, baseBondMaterial);
         this.object3D.applyMatrix4(bondTransform);
@@ -555,25 +548,14 @@ class ORTEPHBond extends ORTEPObject {
     constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
         super();
         this.baseHBond = baseHBond;
-        const fract2cart = new THREE.Matrix3().fromArray(crystalStructure.cell.fractToCartMatrix.toArray().flat());
         
         // Get the hydrogen atom position
         const hydrogenAtom = crystalStructure.getAtomByLabel(hbond.hydrogenAtomLabel);
-        const hydrogenPosition = new THREE.Vector3(
-            hydrogenAtom.fractX,
-            hydrogenAtom.fractY,
-            hydrogenAtom.fractZ
-        );
-        hydrogenPosition.applyMatrix3(fract2cart);
+        const hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
 
         // Get the acceptor atom position
         const acceptorAtom = crystalStructure.getAtomByLabel(hbond.acceptorAtomLabel);
-        const acceptorPosition = new THREE.Vector3(
-            acceptorAtom.fractX,
-            acceptorAtom.fractY,
-            acceptorAtom.fractZ
-        );
-        acceptorPosition.applyMatrix3(fract2cart);
+        const acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell))
 
         // Create dashed bond group with initial material
         this.object3D = new DashedBondGroup();

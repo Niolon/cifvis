@@ -34,9 +34,9 @@ viewer.onSelectionChange(selections => {
                 <div class="selection-title">Atom: ${item.data.label}</div>
                 <div class="selection-info">
                     <span>Type:</span><span>${item.data.atomType}</span>
-                    <span>X:</span><span>${item.data.fractX.toFixed(4)}</span>
-                    <span>Y:</span><span>${item.data.fractY.toFixed(4)}</span>
-                    <span>Z:</span><span>${item.data.fractZ.toFixed(4)}</span>
+                    <span>X:</span><span>${item.data.position.x.toFixed(4)}</span>
+                    <span>Y:</span><span>${item.data.position.y.toFixed(4)}</span>
+                    <span>Z:</span><span>${item.data.position.z.toFixed(4)}</span>
                 </div>
             `;
         } else if (item.type === 'bond') {

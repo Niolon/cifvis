@@ -1,6 +1,6 @@
 import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
 import { CIF, CifBlock } from '../cif/read-cif.js';
-import { UAnisoADP, UIsoADP, Atom } from './crystal.js';
+import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
 
 describe('SymmetryOperation', () => {
     describe('parseSymmetryInstruction', () => {
@@ -91,31 +91,27 @@ describe('SymmetryOperation', () => {
     describe('applyToAtom', () => {
         test('applies operation to atom position', () => {
             const op = new SymmetryOperation('-x+1/2,y+1/2,-z');
-            const atom = {
-                label: 'C1',
-                atomType: 'C',
-                fractX: 0.5,
-                fractY: 0.25,
-                fractZ: 0.75
-            };
+            const atom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.5, 0.25, 0.75)
+            );
             const result = op.applyToAtom(atom);
-            expect(result.fractX).toBeCloseTo(0.0);
-            expect(result.fractY).toBeCloseTo(0.75);
-            expect(result.fractZ).toBeCloseTo(-0.75);
+            expect(result.position.x).toBeCloseTo(0.0);
+            expect(result.position.y).toBeCloseTo(0.75);
+            expect(result.position.z).toBeCloseTo(-0.75);
             expect(result.label).toBe('C1');
             expect(result.atomType).toBe('C');
         });
 
         test('transforms anisotropic displacement parameters', () => {
             const op = new SymmetryOperation('-x,y,-z');
-            const atom = {
-                label: 'C1',
-                atomType: 'C',
-                fractX: 0.5,
-                fractY: 0.25,
-                fractZ: 0.75,
-                adp: new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003)
-            };
+            const atom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.5, 0.25, 0.75),
+                new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003)
+            );
             const result = op.applyToAtom(atom);
             expect(result.adp).toBeInstanceOf(UAnisoADP);
             expect(result.adp.u11).toBeCloseTo(0.01);
@@ -129,7 +125,7 @@ describe('SymmetryOperation', () => {
         test('preserves isotropic displacement parameters', () => {
             const op = new SymmetryOperation('-x,y,-z');
             const adp = new UIsoADP(0.025);
-            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, adp);
+            const originalAtom = new Atom('C1', 'C', new FractPosition(0.5, 0.25, 0.75), adp);
             
             const result = op.applyToAtom(originalAtom);
             
@@ -142,14 +138,14 @@ describe('SymmetryOperation', () => {
             expect(result.adp.uiso).toBe(0.025);
             
             // Verify coordinates are transformed
-            expect(result.fractX).toBeCloseTo(-0.5);
-            expect(result.fractY).toBeCloseTo(0.25);
-            expect(result.fractZ).toBeCloseTo(-0.75);
+            expect(result.position.x).toBeCloseTo(-0.5);
+            expect(result.position.y).toBeCloseTo(0.25);
+            expect(result.position.z).toBeCloseTo(-0.75);
         });
     
         test('handles null displacement parameters', () => {
             const op = new SymmetryOperation('x,y,z');
-            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, null);
+            const originalAtom = new Atom('C1', 'C', new FractPosition(0.5, 0.25, 0.75), null);
             
             const result = op.applyToAtom(originalAtom);
             
@@ -270,18 +266,16 @@ describe('CellSymmetry', () => {
                 new SymmetryOperation('-x,y,-z')
             ];
             const sym = new CellSymmetry('P2/m', 10, ops);
-            const atom = {
-                label: 'C1',
-                atomType: 'C',
-                fractX: 0.5,
-                fractY: 0.25,
-                fractZ: 0.75
-            };
+            const atom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.5, 0.25, 0.75)
+            );
             
             const result = sym.applySymmetry('2_456', atom);
-            expect(result.fractX).toBeCloseTo(-1.5);
-            expect(result.fractY).toBeCloseTo(0.25);
-            expect(result.fractZ).toBeCloseTo(0.25);
+            expect(result.position.x).toBeCloseTo(-1.5);
+            expect(result.position.y).toBeCloseTo(0.25);
+            expect(result.position.z).toBeCloseTo(0.25);
         });
 
         test('applies symmetry operation with translation to multiple atoms', () => {
@@ -291,30 +285,25 @@ describe('CellSymmetry', () => {
             ];
             const sym = new CellSymmetry('P2/m', 10, ops);
             const atoms = [
-                {
-                    label: 'C1',
-                    atomType: 'C',
-                    fractX: 0.5,
-                    fractY: 0.25,
-                    fractZ: 0.75
-                },
-                {
-                    label: 'B1',
-                    atomType: 'B',
-                    fractX: 0.1,
-                    fractY: 0.9,
-                    fractZ: -0.4
-                },
-                
+                new Atom(
+                    'C1',
+                    'C',
+                    new FractPosition(0.5, 0.25, 0.75)
+                ),
+                new Atom(
+                    'B1',
+                    'B',
+                    new FractPosition(0.1, 0.9, -0.4)
+                ),
             ];
             
             const results = sym.applySymmetry('2_456', atoms);
-            expect(results[0].fractX).toBeCloseTo(-1.5);
-            expect(results[0].fractY).toBeCloseTo(0.25);
-            expect(results[0].fractZ).toBeCloseTo(0.25);
-            expect(results[1].fractX).toBeCloseTo(-1.1);
-            expect(results[1].fractY).toBeCloseTo(0.9);
-            expect(results[1].fractZ).toBeCloseTo(1.4);
+            expect(results[0].position.x).toBeCloseTo(-1.5);
+            expect(results[0].position.y).toBeCloseTo(0.25);
+            expect(results[0].position.z).toBeCloseTo(0.25);
+            expect(results[1].position.x).toBeCloseTo(-1.1);
+            expect(results[1].position.y).toBeCloseTo(0.9);
+            expect(results[1].position.z).toBeCloseTo(1.4);
         });
 
         test('throws error for invalid symmetry operation number', () => {
@@ -327,7 +316,7 @@ describe('CellSymmetry', () => {
         test('transforms anisotropic displacement parameters', () => {
             const op = new SymmetryOperation('-x,y,-z');
             const adp = new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003);
-            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, adp);
+            const originalAtom = new Atom('C1', 'C', new FractPosition(0.5, 0.25, 0.75), adp);
             
             const result = op.applyToAtom(originalAtom);
             
@@ -347,7 +336,7 @@ describe('CellSymmetry', () => {
 
         test('preserves disorder group', () => {
             const op = new SymmetryOperation('x,y,z');
-            const originalAtom = new Atom('C1', 'C', 0.5, 0.25, 0.75, null, 2);
+            const originalAtom = new Atom('C1', 'C', new FractPosition(0.5, 0.25, 0.75), null, 2);
             
             const result = op.applyToAtom(originalAtom);
             

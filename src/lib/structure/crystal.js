@@ -1,9 +1,14 @@
+import { create, all } from 'mathjs';
+
 import {
     calculateFractToCartMatrix,
     uCifToUCart
 } from "./fract-to-cart.js"
 
 import { CellSymmetry } from "./cell-symmetry.js";
+
+const math = create(all, {});
+
 /**
 * Represents a crystal structure with its unit cell, atoms, bonds and symmetry
 */
@@ -151,7 +156,7 @@ export class CrystalStructure {
         // Process hydrogen bonds
         for (const hbond of this.hBonds) {
             const donorAtom = this.getAtomByLabel(hbond.donorAtomLabel);
-            const hydrogenAtom = this.getAtomByLabel(hbond.hydrogenAtomLabel);
+            ///const hydrogenAtom = this.getAtomByLabel(hbond.hydrogenAtomLabel);
             const acceptorAtom = this.getAtomByLabel(hbond.acceptorAtomLabel);
 
             // Skip hbonds to symmetry equivalent positions for initial grouping
@@ -308,12 +313,10 @@ export class UnitCell {
 * Represents an atom in a crystal structure
 */
 export class Atom{
-    constructor(label, atomType, fractX, fractY, fractZ, adp=null, disorderGroup=0) {
+    constructor(label, atomType, position, adp=null, disorderGroup=0) {
         this.label = label;
         this.atomType = atomType;
-        this.fractX = fractX;
-        this.fractY = fractY;
-        this.fractZ = fractZ;
+        this.position = position;
         this.adp = adp;
         this.disorderGroup = disorderGroup;
     }
@@ -339,6 +342,12 @@ export class Atom{
         }
         
         const label = labels[index];
+
+        const position = new FractPosition(
+            atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
+            atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
+            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index)
+        )
         
         const adpType = atomSite.getIndex( 
                 ['_atom_site.adp_type', '_atom_site_adp_type', 
@@ -376,14 +385,73 @@ export class Atom{
         return new Atom(
             label,
             atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
-            atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
-            atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
-            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index),
+            position,
             adp, 
             disorderGroup === "." ? 0 : disorderGroup
         );
     }
 }
+
+export class BasePosition {
+    #coords;
+ 
+    constructor(x, y, z) {
+        if (new.target === BasePosition) {
+            throw new TypeError('BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition');
+        }
+        this.#coords = [x, y, z];
+        Object.defineProperties(this, {
+            0: { get: () => this.#coords[0] },
+            1: { get: () => this.#coords[1] },
+            2: { get: () => this.#coords[2] },
+            length: { value: 3 },
+            [Symbol.iterator]: { 
+                value: function* () {
+                    yield this.#coords[0];
+                    yield this.#coords[1];
+                    yield this.#coords[2];
+                }
+            }
+        });
+    }
+ 
+    get x() { return this.#coords[0]; }
+    get y() { return this.#coords[1]; }
+    get z() { return this.#coords[2]; }
+
+    set x(value) { this.#coords[0] = value; }
+    set y(value) { this.#coords[1] = value; }
+    set z(value) { this.#coords[2] = value; }
+
+    toCartesian(unitCell) {
+       throw new Error('toCartesian must be implemented by subclass');
+    }
+}
+
+export class FractPosition extends BasePosition {
+    constructor(x, y, z) {
+        super(x, y, z);
+    }
+ 
+    toCartesian(unitCell) {
+        const cartCoords = math.multiply(
+            unitCell.fractToCartMatrix, 
+            math.matrix([this.x, this.y, this.z])
+        );
+        return new CartPosition(...cartCoords.toArray());
+    }
+ }
+ 
+ export class CartPosition extends BasePosition {
+    constructor(x, y, z) {
+        super(x, y, z);
+    }
+ 
+    toCartesian(unitCell) {
+        return this;
+    }
+ }
+
 
 /**
 * Represents isotropic atomic displacement parameters

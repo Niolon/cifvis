@@ -1,5 +1,5 @@
 import { BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower } from './structure-modifiers.js';
-import { CrystalStructure, UnitCell, Atom, Bond, HBond, UAnisoADP } from './crystal.js';
+import { CrystalStructure, UnitCell, Atom, Bond, HBond, UAnisoADP, FractPosition } from './crystal.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 
 class MockStructure {
@@ -78,7 +78,7 @@ class MockStructure {
     }
 
     addAtom(label, type, x = 0, y = 0, z = 0, disorderGroup = 0, adp = null) {
-        this.structure.atoms.push(new Atom(label, type, x, y, z, adp, disorderGroup));
+        this.structure.atoms.push(new Atom(label, type, new FractPosition(x, y, z), adp, disorderGroup));
         return this;
     }
 
@@ -487,9 +487,9 @@ describe('SymmetryGrower', () => {
             const structure = new CrystalStructure(
                 new UnitCell(10, 10, 10, 90, 90, 90),
                 [
-                    new Atom('O1', 'O', 0.1, 0.1, 0.1),
-                    new Atom('H1', 'H', 0.2, 0.2, 0.2),
-                    new Atom('N1', 'N', 0.3, 0.3, 0.3)
+                    new Atom('O1', 'O', new FractPosition(0.1, 0.1, 0.1)),
+                    new Atom('H1', 'H', new FractPosition(0.2, 0.2, 0.2)),
+                    new Atom('N1', 'N', new FractPosition(0.3, 0.3, 0.3))
                 ],
                 [],
                 [new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_555')]
@@ -504,8 +504,8 @@ describe('SymmetryGrower', () => {
             const structure = new CrystalStructure(
                 new UnitCell(10, 10, 10, 90, 90, 90),
                 [
-                    new Atom('C1', 'C', 0.1, 0.1, 0.1),
-                    new Atom('C2', 'C', 0.2, 0.2, 0.2)
+                    new Atom('C1', 'C', new FractPosition(0.1, 0.1, 0.1)),
+                    new Atom('C2', 'C', new FractPosition(0.2, 0.2, 0.2))
                 ],
                 [new Bond('C1', 'C2', 1.5, 0.01, '.')],
                 []
@@ -522,8 +522,8 @@ describe('SymmetryGrower', () => {
             const structure = new CrystalStructure(
                 new UnitCell(10, 10, 10, 90, 90, 90),
                 [
-                    new Atom('N1', 'N', 0.1, 0.1, 0.1),
-                    new Atom('C1', 'C', 0.2, 0.2, 0.2)
+                    new Atom('N1', 'N', new FractPosition(0.1, 0.1, 0.1)),
+                    new Atom('C1', 'C', new FractPosition(0.2, 0.2, 0.2))
                 ],
                 [
                     new Bond('C1', 'N1', 1.5, 0.01, '2_555'),

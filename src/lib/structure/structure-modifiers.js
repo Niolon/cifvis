@@ -1,4 +1,4 @@
-import { CrystalStructure, HBond, Bond } from './crystal.js';
+import { CrystalStructure, HBond, Bond, Atom } from './crystal.js';
 
 /**
  * Base class for structure filters that implement mode-based behavior
@@ -137,11 +137,14 @@ export class HydrogenFilter extends BaseFilter {
 
         const filteredAtoms = structure.atoms
             .filter(atom => atom.atomType !== 'H' || this.mode !== HydrogenFilter.MODES.NONE)
-            .map(atom => ({
-                ...atom,
-                adp: atom.atomType === 'H' && this.mode === HydrogenFilter.MODES.CONSTANT ? 
-                    null : atom.adp
-            }));
+            .map(atom => (new Atom(
+                atom.label,
+                atom.atomType,
+                atom.position,
+                atom.atomType === 'H' && this.mode === HydrogenFilter.MODES.CONSTANT ? 
+                    null : atom.adp,
+                atom.disorderGroup
+            )));
 
         const filteredBonds = structure.bonds
             .filter(bond => {
@@ -152,10 +155,9 @@ export class HydrogenFilter extends BaseFilter {
                 }
                 return true;
             })
-            .map(bond => ({ ...bond }));
-
+            
         const filteredHBonds = this.mode === HydrogenFilter.MODES.NONE ? 
-            [] : structure.hBonds.map(hbond => ({ ...hbond }));
+            [] : structure.hBonds;
 
         return new CrystalStructure(
             structure.cell,
@@ -433,7 +435,7 @@ export class SymmetryGrower extends BaseFilter {
             atoms: new Set(structure.atoms),
             bonds: new Set(structure.bonds),
             hBonds: new Set(structure.hBonds),
-            labels: new Set()
+            labels: new Set(structure.atoms.map(({label}) => label))
         };
 
         if (this.mode.startsWith("bonds-yes")) {
@@ -470,11 +472,18 @@ export class SymmetryGrower extends BaseFilter {
             }
         }
 
+        const hbondArray = Array.from(growthState.hBonds).filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel}) => {
+            const condition1 = growthState.labels.has(acceptorAtomLabel);
+            const condition2 = growthState.labels.has(hydrogenAtomLabel);
+            const condition3 = growthState.labels.has(donorAtomLabel);
+            return condition1 && condition2 && condition3;
+        });
+
         return new CrystalStructure(
             structure.cell,
             atomArray,
             Array.from(growthState.bonds),
-            Array.from(growthState.hBonds),
+            hbondArray,
             structure.symmetry
         );
     }

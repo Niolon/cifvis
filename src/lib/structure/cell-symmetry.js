@@ -1,5 +1,5 @@
 import { create, all } from 'mathjs';
-import { UAnisoADP, UIsoADP, Atom } from './crystal.js';
+import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
 import { CifLoop } from '../cif/read-cif.js';
 
 const math = create(all);
@@ -129,18 +129,16 @@ export class SymmetryOperation {
      * @param {Object} atom - Atom object with fractional coordinates
      * @param {string} atom.label - Atom label
      * @param {string} atom.atomType - Chemical element symbol
-     * @param {number} atom.fractX - Fractional x coordinate
-     * @param {number} atom.fractY - Fractional y coordinate
-     * @param {number} atom.fractZ - Fractional z coordinate
+     * @param {FractPosition} atom.position - Fractional position element
      * @param {(UAnisoADP|UIsoADP)} [atom.adp] - Anisotropic or isotropic displacement parameters
      * @param {number} [atom.disorderGroup] - Disorder group identifier
      * @returns {Atom} New atom instance with transformed coordinates and ADPs
      */
     applyToAtom(atom) {
-        const newPos = math.add(
-            math.multiply(this.rotMatrix, [atom.fractX, atom.fractY, atom.fractZ]),
+        const newPos = new FractPosition(...math.add(
+            math.multiply(this.rotMatrix, [atom.position.x, atom.position.y, atom.position.z]),
             this.transVector
-        );
+        ));
 
         let newAdp = null;
         if (atom.adp && atom.adp instanceof UAnisoADP) {
@@ -169,9 +167,7 @@ export class SymmetryOperation {
         return new Atom(
             atom.label,
             atom.atomType,
-            newPos[0],
-            newPos[1], 
-            newPos[2],
+            newPos,
             newAdp,
             atom.disorderGroup
         );
@@ -182,9 +178,7 @@ export class SymmetryOperation {
      * @param {Object[]} atoms - Array of atom objects
      * @param {string} atoms[].label - Atom label
      * @param {string} atoms[].atomType - Chemical element symbol
-     * @param {number} atoms[].fractX - Fractional x coordinate
-     * @param {number} atoms[].fractY - Fractional y coordinate
-     * @param {number} atoms[].fractZ - Fractional z coordinate
+     * @param {FractPosition} atoms[].position - Fractional position object
      * @param {(UAnisoADP|UIsoADP)} [atoms[].adp] - Anisotropic or isotropic displacement parameters
      * @param {number} [atoms[].disorderGroup] - Disorder group identifier
      * @returns {Atom[]} Array of new atom instances with transformed coordinates and ADPs
@@ -237,9 +231,8 @@ export class CellSymmetry {
      * @param {(Object|Object[])} atoms - Single atom object or array of atom objects
      * @param {string} atoms.label - Atom label
      * @param {string} atoms.atomType - Chemical element symbol
-     * @param {number} atoms.fractX - Fractional x coordinate
-     * @param {number} atoms.fractY - Fractional y coordinate
-     * @param {number} atoms.fractZ - Fractional z coordinate
+     * @param {FractPosition} atoms.position - Fractional coordinates
+
      * @param {(UAnisoADP|UIsoADP)} [atoms.adp] - Anisotropic or isotropic displacement parameters
      * @param {number} [atoms.disorderGroup] - Disorder group identifier
      * @returns {(Atom|Atom[])} New atom instance(s) with transformed coordinates and ADPs
@@ -262,17 +255,17 @@ export class CellSymmetry {
         if (Array.isArray(atoms)) {
             const newAtoms = symOp.applyToAtoms(atoms);
             newAtoms.forEach(newAtom => {
-                newAtom.fractX += transVector[0];
-                newAtom.fractY += transVector[1];
-                newAtom.fractZ += transVector[2];
+                newAtom.position.x += transVector[0];
+                newAtom.position.y += transVector[1];
+                newAtom.position.z += transVector[2];
             })
             return newAtoms;
         }
 
         const newAtom = symOp.applyToAtom(atoms);
-        newAtom.fractX += transVector[0];
-        newAtom.fractY += transVector[1];
-        newAtom.fractZ += transVector[2];
+        newAtom.position.x += transVector[0];
+        newAtom.position.y += transVector[1];
+        newAtom.position.z += transVector[2];
         return newAtom;
 
     }
