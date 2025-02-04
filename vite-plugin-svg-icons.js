@@ -4,6 +4,19 @@ import { resolve, join } from 'path';
 const VIRTUAL_MODULE_ID = 'virtual:svg-icons';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
+function cleanSvg(content) {
+  return content
+    .replace(/<\?xml[^>]*\?>\s*/g, '') // Remove XML declaration
+    .replace(/<!--[\s\S]*?-->/g, '') // Remove comments
+    .replace(/sodipodi:[^\s>]+(?:\s*=\s*"[^"]*")?\s*/g, '') // Remove sodipodi attributes
+    .replace(/inkscape:[^\s>]+(?:\s*=\s*"[^"]*")?\s*/g, '') // Remove inkscape attributes
+    .replace(/\s+xmlns:(?:sodipodi|inkscape)="[^"]*"\s*/g, '') // Remove sodipodi/inkscape namespaces
+    .replace(/\n\s*\n/g, '\n') // Remove empty lines
+    .replace(/>\s+</g, '><') // Remove whitespace between tags
+    .replace(/\s+/g, ' ') // Collapse remaining whitespace
+    .trim();
+}
+
 export default function svgIconsPlugin() {
   let icons = null;
 
@@ -29,7 +42,7 @@ export default function svgIconsPlugin() {
               const mode = modeParts.join('-');
               
               if (!icons[type]) icons[type] = {};
-              icons[type][mode] = content;
+              icons[type][mode] = cleanSvg(content);
             });
 
             console.log('Found SVG files:', svgFiles);
