@@ -110,6 +110,7 @@ export class CifViewWidget extends HTMLElement {
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
         container.appendChild(buttonContainer);
+        this.buttonContainer = buttonContainer;  // Store reference to button container
 
         const caption = document.createElement('div');
         caption.className = 'crystal-caption';
@@ -128,22 +129,33 @@ export class CifViewWidget extends HTMLElement {
         const data = this.getAttribute('data');
         if (src) await this.loadFromUrl(src);
         else if (data) await this.loadFromString(data);
+    }
 
-        // Add buttons only if applicable
-        if (this.viewer.state.baseStructure) {
-            const hasHydrogens = this.viewer.modifiers.hydrogen.getApplicableModes(this.viewer.state.baseStructure).length > 1;
-            const hasDisorder = this.viewer.modifiers.disorder.getApplicableModes(this.viewer.state.baseStructure).length > 1;
-            const hasSymmetry = this.viewer.modifiers.symmetry.getApplicableModes(this.viewer.state.baseStructure).length > 1;
+    clearButtons() {
+        if (this.buttonContainer) {
+            while (this.buttonContainer.firstChild) {
+                this.buttonContainer.removeChild(this.buttonContainer.firstChild);
+            }
+        }
+    }
 
-            if (hasHydrogens) {
-                this.addButton(buttonContainer, 'hydrogen', 'none', 'Toggle Hydrogen Display');
-            }
-            if (hasDisorder) {
-                this.addButton(buttonContainer, 'disorder', 'all', 'Toggle Disorder Display');
-            }
-            if (hasSymmetry) {
-                this.addButton(buttonContainer, 'symmetry', 'bonds-no-hbonds-no', 'Toggle Symmetry Display');
-            }
+    setupButtons() {
+        if (!this.viewer || !this.viewer.state.baseStructure) return;
+
+        this.clearButtons();
+        
+        const hasHydrogens = this.viewer.modifiers.hydrogen.getApplicableModes(this.viewer.state.baseStructure).length > 1;
+        const hasDisorder = this.viewer.modifiers.disorder.getApplicableModes(this.viewer.state.baseStructure).length > 1;
+        const hasSymmetry = this.viewer.modifiers.symmetry.getApplicableModes(this.viewer.state.baseStructure).length > 1;
+
+        if (hasHydrogens) {
+            this.addButton(this.buttonContainer, 'hydrogen', 'none', 'Toggle Hydrogen Display');
+        }
+        if (hasDisorder) {
+            this.addButton(this.buttonContainer, 'disorder', 'all', 'Toggle Disorder Display');
+        }
+        if (hasSymmetry) {
+            this.addButton(this.buttonContainer, 'symmetry', 'bonds-no-hbonds-no', 'Toggle Symmetry Display');
         }
     }
 
@@ -242,6 +254,7 @@ export class CifViewWidget extends HTMLElement {
             const response = await fetch(url);
             const text = await response.text();
             await this.viewer.loadStructure(text);
+            this.setupButtons();  // Setup buttons after loading
         } catch (error) {
             console.error('Error loading structure:', error);
         }
@@ -250,6 +263,7 @@ export class CifViewWidget extends HTMLElement {
     async loadFromString(data) {
         try {
             await this.viewer.loadStructure(data);
+            this.setupButtons();  // Setup buttons after loading
         } catch (error) {
             console.error('Error loading structure:', error);
         }
