@@ -279,6 +279,7 @@ export class CellSymmetry {
         let spaceGroupName, spaceGroupNumber;
         spaceGroupName = cifBlock.get(
             [
+                "_space_group.name_h-m_alt",
                 "_space_group.name_H-M_full",
                 "_symmetry_space_group_name_H-M",
                 "_space_group_name_H-M_alt"
@@ -288,6 +289,7 @@ export class CellSymmetry {
             
         spaceGroupNumber = cifBlock.get(
             [
+                "_space_group.it_number",
                 "_space_group.IT_number",
                 "_symmetry_Int_Tables_number",
                 "_space_group_IT_number",

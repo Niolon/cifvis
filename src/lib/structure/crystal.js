@@ -365,6 +365,10 @@ export class Atom{
             const anisoSite = cifBlock.get("_atom_site_aniso");
             const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
             const anisoIndex = anisoLabels.indexOf(label);
+
+            if (anisoIndex === null) {
+                throw new Error(`Atom ${label} as ADP type Uani, but was not found in atom_site_aniso.label`)
+            }
      
             adp = new UAnisoADP(
                 anisoSite.getIndex(['_atom_site_aniso.u_11', '_atom_site_aniso_U_11'], anisoIndex),
