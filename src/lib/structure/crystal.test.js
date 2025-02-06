@@ -382,6 +382,32 @@ C1 0.05 0.05 0.05 0 0 0
     expect(atom.adp.u11).toBe(0.05);
   });
 
+  test('fromCIF throws error if atom with Uani not in atom_site_aniso loop', () => {
+    const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+C1 C 0 0 0 Uani
+
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+N1 0.05 0.05 0.05 0 0 0
+    `;
+    const cif = new CIF(cifText);
+    expect(() => Atom.fromCIF(cif.getBlock(0), 0)).toThrow("Atom C1 has ADP type Uani, but was not found in atom_site_aniso.label")
+  });
+
   test('fromCIF creates atom with label or index', () => {
     const cifText = `
 data_test
@@ -558,5 +584,82 @@ describe('ADPs', () => {
     
     expect(cartParams).toHaveLength(6);
     expect(cartParams[0]).toBeCloseTo(0.05);
+  });
+
+  describe('UAnisoADP getEllipsoidMatrix', () => {
+    let mockUnitCell;
+    
+    beforeEach(() => {
+      mockUnitCell = {
+        fractToCartMatrix: math.matrix([
+          [10, 0, 0],
+          [0, 10, 0],
+          [0, 0, 10]
+        ])
+      };
+    });
+
+    test('handles symmetric ADP matrix', () => {
+      const adp = new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0);
+      const matrix = adp.getEllipsoidMatrix(mockUnitCell);
+      //const rowMagnitudes = [];
+      for (let i = 0; i < 3; i++) {
+        const row = [
+          matrix.get([i, 0]),
+          matrix.get([i, 1]),
+          matrix.get([i, 2])
+        ];
+        // Each row should have two zeros and one value abs(sqrt(0.01))
+        expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);
+        expect(Math.max(...row.map(Math.abs))).toBeCloseTo(0.1, 5);
+      }
+    });
+
+    test('normalizes eigenvectors when determinant ≠ 1', () => {
+      const adp = new UAnisoADP(0.02, 0.01, 0.03, 0.005, 0.008, 0.002);
+      const matrix = adp.getEllipsoidMatrix(mockUnitCell);
+      const det = math.det(matrix);
+      
+      expect(det).toBeGreaterThan(0.0);
+
+      const mockUnitCell2 = {
+        fractToCartMatrix: math.matrix([
+          [0, 0, 10],
+          [0, 10, 0],
+          [10, 0, 0]
+        ])
+      };
+      const matrix2 = adp.getEllipsoidMatrix(mockUnitCell2);
+      const det2 = math.det(matrix2);
+      
+      expect(det2).toBeGreaterThan(0.0);
+    });
+
+    test('transforms diagonal ADPs correctly', () => {
+      const adp = new UAnisoADP(0.01, 0.02, 0.03, 0, 0, 0);
+      const matrix = adp.getEllipsoidMatrix(mockUnitCell);
+      
+      // For diagonal ADPs, each row should have exactly one non-zero value
+      // equal to sqrt(Uii), with the other two values being zero
+      const expectedValues = [0.1, Math.sqrt(0.02), Math.sqrt(0.03)];
+      
+      // Count occurrences of each expected value in matrix rows
+      const rowMagnitudes = [];
+      for (let i = 0; i < 3; i++) {
+        const row = [
+          matrix.get([i, 0]),
+          matrix.get([i, 1]),
+          matrix.get([i, 2])
+        ];
+        // Each row should have two zeros and one value from expectedValues
+        expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);
+        rowMagnitudes.push(Math.max(...row.map(Math.abs)));
+      }
+      
+      // Check that each expected value appears exactly once
+      expectedValues.forEach(expected => {
+        expect(rowMagnitudes.filter(v => Math.abs(v - expected) < 1e-10)).toHaveLength(1);
+      });
+    });
   });
 });

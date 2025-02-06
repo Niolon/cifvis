@@ -21,42 +21,16 @@ import { SymmetryGrower } from "../structure/structure-modifiers.js";
  * For conversion from CIF convention, see R. W. Grosse-Kunstleve,
  * J. Appl. Cryst. (2002). 35, 477-480.
  */
-export function calcEllipsoidMatrix(uijCart) {
-    // Input validation
-    if (uijCart.length !== 6) {
-        throw new Error("This function needs six cartesian Uij parameters.");
-    }
-
-    // Create the symmetric matrix from Uij parameters
-    const uijMatrix = adpToMatrix(uijCart);
-
-    // Calculate eigenvalues and eigenvectors
-    const { values: _, eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
-    eigenvectors_obj.reverse();
-    const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
-    // Check determinant and normalize if needed
-    const eigenvalues = math.matrix(eigenvectors_obj.map(entry => entry.value));
-    const det = math.det(eigenvectors);
-    const sqrtEigenvalues = math.diag(eigenvalues.map(Math.sqrt));
-    
-    let transformationMatrix;
-    
-    if (math.abs(det - 1) > 1e-10) {
-        const normalizedEigenvectors = math.multiply(eigenvectors, 1/det);
-        transformationMatrix = math.multiply(normalizedEigenvectors, sqrtEigenvalues);
-    } else {
-        transformationMatrix = math.multiply(eigenvectors, sqrtEigenvalues);
-    }
+export function calcEllipsoidMatrix(uAnisoADPobj, unitCell) {
+    const transformationMatrix = uAnisoADPobj.getEllipsoidMatrix(unitCell);
 
     // Convert math.js matrix to array
-    const matrixArray = math.matrix(transformationMatrix).toArray();
-    const norms = math.diag(math.matrix(transformationMatrix.toArray().map(row => math.norm(row))));
+    const matrixArray = transformationMatrix.toArray();
 
     // Create THREE.js Matrix4
     // Note: Matrix4 is column-major, while our computation was row-major
     // Also need to expand from 3x3 to 4x4 with proper homogeneous coordinates
-    const matrix4 = new THREE.Matrix4();
-    matrix4.set(
+    const matrix4 = new THREE.Matrix4(
         matrixArray[0][0], matrixArray[0][1], matrixArray[0][2], 0,
         matrixArray[1][0], matrixArray[1][1], matrixArray[1][2], 0,
         matrixArray[2][0], matrixArray[2][1], matrixArray[2][2], 0,
@@ -400,7 +374,7 @@ class ORTEPAniAtom extends ORTEPAtom{
         super(atom, unitCell, baseAtom, atomMaterial);
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
-        const ellipsoidMatrix = calcEllipsoidMatrix(atom.adp.getUCart(unitCell));
+        const ellipsoidMatrix = calcEllipsoidMatrix(atom.adp, unitCell);
 
         if (ellipsoidMatrix.toArray().includes(NaN)){
             this.object3D = new THREE.Mesh(

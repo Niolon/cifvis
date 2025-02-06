@@ -2,7 +2,8 @@ import { create, all } from 'mathjs';
 
 import {
     calculateFractToCartMatrix,
-    uCifToUCart
+    uCifToUCart,
+    adpToMatrix
 } from "./fract-to-cart.js"
 
 import { CellSymmetry } from "./cell-symmetry.js";
@@ -366,8 +367,8 @@ export class Atom{
             const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
             const anisoIndex = anisoLabels.indexOf(label);
 
-            if (anisoIndex === null) {
-                throw new Error(`Atom ${label} as ADP type Uani, but was not found in atom_site_aniso.label`)
+            if (anisoIndex === -1) {
+                throw new Error(`Atom ${label} has ADP type Uani, but was not found in atom_site_aniso.label`)
             }
      
             adp = new UAnisoADP(
@@ -497,6 +498,33 @@ export class UAnisoADP {
             unitCell.fractToCartMatrix,
             [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23]
         );
+    }
+
+    /**
+    * Generates the transformation matrix to transform a sphere already scaled for probability
+    * to an ORTEP ellipsoid
+    * @param {UnitCell} unitCell - unitCell object for the unit cell information
+    * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
+    */
+    getEllipsoidMatrix(unitCell) {
+        const uijMatrix = adpToMatrix(this.getUCart(unitCell));
+        const { values: _, eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
+        const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
+
+        const eigenvalues = math.matrix(eigenvectors_obj.map(entry => entry.value));
+        const det = math.det(eigenvectors);
+        const sqrtEigenvalues = math.diag(eigenvalues.map(Math.sqrt));
+
+        let transformationMatrix;
+        // make sure it is a rotation -> no vertice direction inverted
+        if (math.abs(det - 1) > 1e-10) {
+            const normalizedEigenvectors = math.multiply(eigenvectors, 1/det);
+            transformationMatrix = math.multiply(normalizedEigenvectors, sqrtEigenvalues);
+        } else {
+            transformationMatrix = math.multiply(eigenvectors, sqrtEigenvalues);
+        }
+
+        return math.matrix(transformationMatrix);
     }
 }
 
