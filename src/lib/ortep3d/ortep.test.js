@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform } from './ortep.js';
+import {
+    ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
+    ORTEPObject, ORTEPGroupObject, ORTEPHBond
+ } from './ortep.js';
 import { UAnisoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import defaultSettings from './structure-settings.js';
 import { create, all } from 'mathjs';
@@ -374,5 +377,163 @@ describe('ORTEP3JsStructure', () => {
         if (structure) {
             structure.dispose();
         }
+    });
+});
+
+// Mock classes for testing
+class TestORTEPObject extends ORTEPObject {
+    createSelectionMarker(color, options) {
+        const marker = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            this.createSelectionMaterial(color)
+        );
+        marker.scale.multiplyScalar(options.selection.markerMult);
+        return marker;
+    }
+}
+
+class TestORTEPGroupObject extends ORTEPGroupObject {
+    createSelectionMarker(color, options) {
+        const marker = new THREE.Group();
+        this.children.forEach(child => {
+            if (child instanceof THREE.Mesh) {
+                const markerMesh = new THREE.Mesh(
+                    child.geometry,
+                    this.createSelectionMaterial(color)
+                );
+                markerMesh.matrix.copy(child.matrix);
+                marker.add(markerMesh);
+            }
+        });
+        return marker;
+    }
+}
+
+describe('ORTEP Base Classes', () => {
+    describe('ORTEPObject', () => {
+        let object;
+        const mockOptions = {
+            selection: {
+                markerMult: 1.3,
+                highlightEmissive: 0xaaaaaa
+            }
+        };
+
+        beforeEach(() => {
+            object = new TestORTEPObject(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshStandardMaterial()
+            );
+        });
+
+        test('initializes with null selection color', () => {
+            expect(object.selectionColor).toBeNull();
+        });
+
+        test('handles selection', () => {
+            object.select(0xff0000, mockOptions);
+            expect(object.selectionColor).toBe(0xff0000);
+            expect(object.marker).toBeTruthy();
+            expect(object.originalMaterial).toBeTruthy();
+        });
+
+        test('handles deselection', () => {
+            const originalMaterial = object.material;
+            object.select(0xff0000, mockOptions);
+            object.deselect();
+            expect(object.selectionColor).toBeNull();
+            expect(object.marker).toBeNull();
+            expect(object.material).toBe(originalMaterial);
+        });
+
+        test('properly disposes resources', () => {
+            const geometrySpy = jest.spyOn(object.geometry, 'dispose');
+            const materialSpy = jest.spyOn(object.material, 'dispose');
+            
+            object.dispose();
+            
+            expect(geometrySpy).toHaveBeenCalled();
+            expect(materialSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('ORTEPGroupObject', () => {
+        let group;
+        let child1, child2;
+        const mockOptions = {
+            selection: {
+                markerMult: 1.3,
+                highlightEmissive: 0xaaaaaa
+            }
+        };
+
+        beforeEach(() => {
+            group = new TestORTEPGroupObject();
+            child1 = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshStandardMaterial()
+            );
+            child2 = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshStandardMaterial()
+            );
+            group.add(child1, child2);
+        });
+
+        test('redirects raycasting from children to group', () => {
+            const raycaster = new THREE.Raycaster();
+            const intersects = [];
+            
+            // Position raycaster to hit child1
+            raycaster.ray.origin.set(0, 0, -5);
+            raycaster.ray.direction.set(0, 0, 1);
+            
+            child1.raycast(raycaster, intersects);
+            
+            expect(intersects.length).toBe(1);
+            expect(intersects[0].object).toBe(group);
+        });
+
+        test('handles selection for all children', () => {
+            group.select(0xff0000, mockOptions);
+            
+            expect(group.selectionColor).toBe(0xff0000);
+            expect(group.marker).toBeTruthy();
+            group.children.forEach(child => {
+                if (child !== group.marker) {
+                    expect(child.originalMaterial).toBeTruthy();
+                }
+            });
+        });
+
+        test('handles deselection for all children', () => {
+            const originalMaterials = group.children.map(child => child.material);
+            
+            group.select(0xff0000, mockOptions);
+            group.deselect();
+            
+            expect(group.selectionColor).toBeNull();
+            expect(group.marker).toBeNull();
+            
+            // Check each child has its original material restored
+            group.children.forEach((child, index) => {
+                expect(child.material).toBe(originalMaterials[index]);
+                expect(child.originalMaterial).toBeNull(); 
+            });
+        });
+
+        test('properly disposes all resources', () => {
+            const geometrySpies = group.children.map(child => 
+                jest.spyOn(child.geometry, 'dispose')
+            );
+            const materialSpies = group.children.map(child => 
+                jest.spyOn(child.material, 'dispose')
+            );
+            
+            group.dispose();
+            
+            geometrySpies.forEach(spy => expect(spy).toHaveBeenCalled());
+            materialSpies.forEach(spy => expect(spy).toHaveBeenCalled());
+        });
     });
 });

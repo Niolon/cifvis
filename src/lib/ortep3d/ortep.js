@@ -362,9 +362,17 @@ export class ORTEP3JsStructure {
 }
 
 
-class ORTEPObject extends THREE.Mesh{
+/**
+ * Base class for selectable THREE.js mesh objects that handle selection visualization
+ */
+export class ORTEPObject extends THREE.Mesh {
     constructor(geometry, material) {
         super(geometry, material);
+        this._selectionColor = null;
+    }
+
+    get selectionColor() {
+        return this._selectionColor;
     }
 
     createSelectionMaterial(color) {
@@ -377,18 +385,20 @@ class ORTEPObject extends THREE.Mesh{
     }
     
     select(color, options) {
+        this._selectionColor = color;
+        
         const highlightMaterial = this.material.clone();
-        highlightMaterial.emissive.setHex(options.selection.highlightEmissive);
+        highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
         this.originalMaterial = this.material;
         this.material = highlightMaterial;
 
         const marker = this.createSelectionMarker(color, options);
         this.add(marker);
         this.marker = marker;
-        this.selectionColor = color;
     }
 
     deselect() {
+        this._selectionColor = null;
         this.removeSelectionMarker();
     }
 
@@ -399,12 +409,8 @@ class ORTEPObject extends THREE.Mesh{
     removeSelectionMarker() {
         if (this.marker) {
             this.remove(this.marker);
-            try {
-                this.marker.geometry.dispose();
-                this.marker.material.dispose();
-            } catch {
-                this.marker.dispose()
-            }
+            this.marker.geometry?.dispose();
+            this.marker.material?.dispose();
             this.marker = null;
         }
         
@@ -414,9 +420,15 @@ class ORTEPObject extends THREE.Mesh{
             this.originalMaterial = null;
         }
     }
+
+    dispose() {
+        this.deselect();
+        this.geometry?.dispose();
+        this.material?.dispose();
+    }
 }
 
-class ORTEPAtom extends ORTEPObject {
+export class ORTEPAtom extends ORTEPObject {
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(baseAtom, atomMaterial);
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
@@ -441,7 +453,7 @@ class ORTEPAtom extends ORTEPObject {
     }
 }
 
-class ORTEPAniAtom extends ORTEPAtom {
+export class ORTEPAniAtom extends ORTEPAtom {
     constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing=null, ADPRingMaterial=null) {
         super(atom, unitCell, baseAtom, atomMaterial);
 
@@ -504,14 +516,14 @@ class ORTEPAniAtom extends ORTEPAtom {
     }
 }
 
-class ORTEPIsoAtom extends ORTEPAtom {
+export class ORTEPIsoAtom extends ORTEPAtom {
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
         this.scale.multiplyScalar(1.0/10.53);
     }
 }
 
-class ORTEPBond extends ORTEPObject {
+export class ORTEPBond extends ORTEPObject {
     constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
         super(baseBond, baseBondMaterial);
         const bondAtom1 = crystalStructure.getAtomByLabel(bond.atom1Label);
@@ -539,11 +551,18 @@ class ORTEPBond extends ORTEPObject {
         return outlineMesh;
     }
 }
-
-class ORTEPGroupObject extends THREE.Group {
+/**
+ * Base class for selectable THREE.js group objects that handle raycasting redirection
+ * and selection visualization for their mesh children
+ */
+export class ORTEPGroupObject extends THREE.Group {
     constructor() {
         super();
-        this.selectionColor = null;
+        this._selectionColor = null;
+    }
+
+    get selectionColor() {
+        return this._selectionColor;
     }
 
     add(...objects) {
@@ -585,7 +604,7 @@ class ORTEPGroupObject extends THREE.Group {
     }
     
     select(color, options) {
-        this.selectionColor = color;
+        this._selectionColor = color;
         
         // Handle materials for all children
         this.traverse(child => {
@@ -604,7 +623,7 @@ class ORTEPGroupObject extends THREE.Group {
     }
 
     deselect() {
-        this.selectionColor = null;
+        this._selectionColor = null;
 
         // Remove marker
         if (this.marker) {
@@ -636,9 +655,27 @@ class ORTEPGroupObject extends THREE.Group {
     createSelectionMarker(color, options) {
         throw new Error("createSelectionMarker needs to be implemented in a subclass");
     }
+
+    dispose() {
+        // Clean up selection-related resources
+        if (this.marker) {
+            this.deselect();
+        }
+
+        // Clean up all mesh resources
+        this.traverse(child => {
+            if (child instanceof THREE.Mesh) {
+                child.geometry?.dispose();
+                child.material?.dispose();
+            }
+        });
+    }
 }
 
-class ORTEPHBond extends ORTEPGroupObject {
+/**
+ * Represents a hydrogen bond visualization using dashed lines
+ */
+export class ORTEPHBond extends ORTEPGroupObject {
     constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
         super();
         this.userData = {
@@ -675,8 +712,6 @@ class ORTEPHBond extends ORTEPGroupObject {
             const segmentMesh = new THREE.Mesh(baseHBond, material.clone());
             segmentMesh.applyMatrix4(calcBondTransform(segStart, segEnd));
             segmentMesh.userData = this.userData;
-            segmentMesh.select = (color, options) => this.select(color, options);
-            segmentMesh.deselect = (color, options) => this.deselect(color, options);
             this.add(segmentMesh);
         }
     }
