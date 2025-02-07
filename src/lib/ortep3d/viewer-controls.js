@@ -221,7 +221,8 @@ export class ViewerControls {
                 objectsToIntersect.push(object);
             }
         });
-        const intersects = this.raycaster.intersectObjects(objectsToIntersect);
+        const intersects = this.raycaster.intersectObjects(objectsToIntersect)
+            .filter((intersect) => intersect.object.userData && intersect.object.userData.selectable);
         
         if (intersects.length > 0) {
             let clickedObject = intersects[0].object;
