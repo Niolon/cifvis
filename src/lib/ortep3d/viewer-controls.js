@@ -130,9 +130,9 @@ export class ViewerControls {
         
         if (intersects.length > 0) {
             let tappedObject = intersects[0].object;
-            this.viewer.handleSelection(tappedObject);
+            this.viewer.selections.handle(tappedObject);
         } else if (timeSinceLastTap < this.doubleClickDelay) {
-            this.viewer.clearSelections();
+            this.viewer.selections.clear();
         }
     }
 
@@ -217,18 +217,17 @@ export class ViewerControls {
         this.raycaster.setFromCamera(this.state.mouse, this.camera);
         const objectsToIntersect = [];
         this.moleculeContainer.traverse((object) => {
-            if (object instanceof THREE.Mesh && object.userData.selectable === true) {
+            if (object.userData.selectable === true) {
                 objectsToIntersect.push(object);
             }
         });
-        const intersects = this.raycaster.intersectObjects(objectsToIntersect)
-            .filter(i => i.object.userData.selectable !== false);
+        const intersects = this.raycaster.intersectObjects(objectsToIntersect);
         
         if (intersects.length > 0) {
             let clickedObject = intersects[0].object;
-            this.viewer.handleSelection(clickedObject);
+            this.viewer.selections.handle(clickedObject);
         } else if (timeSinceLastClick < this.doubleClickDelay) {
-            this.viewer.clearSelections();
+            this.viewer.selections.clear();
         }
     }
 

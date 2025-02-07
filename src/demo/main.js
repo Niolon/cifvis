@@ -17,7 +17,7 @@ function updateStatus(message, type = 'info') {
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body);
 viewer.animate();
-viewer.onSelectionChange(selections => {
+viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
     // Remove all existing selections
     while (container.firstChild) {

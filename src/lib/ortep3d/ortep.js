@@ -1,59 +1,34 @@
 import * as THREE from "three";
-import { create, all } from 'mathjs';
-
-const config = { };
-const math = create(all, config);
 import defaultSettings from "./structure-settings.js";
 import { HBond, Bond, UAnisoADP } from "../structure/crystal.js";
-import { adpToMatrix } from "../structure/fract-to-cart.js";
 import { SymmetryGrower } from "../structure/structure-modifiers.js";
 
 /**
  * Calculate transformation matrix for ellipsoid visualization.
- * 
- * @param {number[]} uijCart - Uij values in Cartesian coordinates. 
- *                            Order is U11, U22, U33, U12, U13, U23.
- * @returns {THREE.Matrix4} THREE.js Matrix4 transformation matrix for ellipsoid visualization.
- * 
- * @throws {Error} If input array does not contain exactly 6 values.
- * 
- * @notes
- * For conversion from CIF convention, see R. W. Grosse-Kunstleve,
- * J. Appl. Cryst. (2002). 35, 477-480.
+ * @param {UAnisoADP} uAnisoADPobj - Anisotropic displacement parameters object
+ * @param {UnitCell} unitCell - Unit cell object
+ * @returns {THREE.Matrix4} Transformation matrix for ellipsoid visualization
  */
-export function calcEllipsoidMatrix(uAnisoADPobj, unitCell) {
+export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
     const transformationMatrix = uAnisoADPobj.getEllipsoidMatrix(unitCell);
-
-    // Convert math.js matrix to array
     const matrixArray = transformationMatrix.toArray();
 
-    // Create THREE.js Matrix4
-    // Note: Matrix4 is column-major, while our computation was row-major
-    // Also need to expand from 3x3 to 4x4 with proper homogeneous coordinates
-    const matrix4 = new THREE.Matrix4(
+    return new THREE.Matrix4(
         matrixArray[0][0], matrixArray[0][1], matrixArray[0][2], 0,
         matrixArray[1][0], matrixArray[1][1], matrixArray[1][2], 0,
         matrixArray[2][0], matrixArray[2][1], matrixArray[2][2], 0,
         0, 0, 0, 1
     );
-    // matrix4.transpose();
-    return matrix4;
 }
 
-function calcBondTransform(position1, position2) {
-    // Calculate length and unit vector
+export function calcBondTransform(position1, position2) {
     const direction = position2.clone().sub(position1);
     const length = direction.length();
     const unit = direction.divideScalar(length);
-    
-    // Y-axis reference vector
     const yAxis = new THREE.Vector3(0, 1, 0);
-    
-    // Calculate rotation axis and angle
     const rotationAxis = new THREE.Vector3().crossVectors(unit, yAxis);
     const angle = -Math.acos(unit.dot(yAxis));
     
-    // Create and return transformation matrix
     return new THREE.Matrix4()
         .makeScale(1, length, 1)
         .premultiply(new THREE.Matrix4().makeRotationAxis(
@@ -64,138 +39,50 @@ function calcBondTransform(position1, position2) {
             position1.clone().add(position2).multiplyScalar(0.5)
         );
 }
-export class ORTEP3JsStructure {
-    constructor(crystalStructure, options = {}) {
+
+export class GeometryMaterialCache {
+    constructor(options = {}) {
+        const safeOptions = options || {};
         this.options = {
-            atomDetail: defaultSettings.atomDetail,
-            atomColorRoughness: defaultSettings.atomColorRoughness,
-            atomColorMetalness: defaultSettings.atomColorMetalness,
-            atomADPRingWidthFactor: defaultSettings.atomADPRingWidthFactor,
-            atomADPRingHeight: defaultSettings.atomADPRingHeight,
-            atomADPRingSections: defaultSettings.atomADPRingSections,
-            bondRadius: defaultSettings.bondRadius,
-            bondSections: defaultSettings.bondSections,
-            bondColor: defaultSettings.bondColor,
-            bondColorRoughness: defaultSettings.bondColorRoughness,
-            bondColorMetalness: defaultSettings.bondColorMetalness,
-            hbondRadius: defaultSettings.hbondRadius,
-            hbondColor: defaultSettings.hbondColor,
-            hbondColorRoughness: defaultSettings.hbondColorRoughness,
-            hbondColorMetalness: defaultSettings.hbondColorMetalness,
-            hbondDashSegmentLength: defaultSettings.hbondDashSegmentLength,
-            hbondDashFraction: defaultSettings.hbondDashFraction,
+            ...defaultSettings,
+            ...safeOptions,
             elementProperties: {
                 ...defaultSettings.elementProperties,
-                ...options.elementProperties
-            },
-            ...options
-        };
-        this.crystalStructure = crystalStructure;
-        this.scaling = 1.5384;
-        
-        this.createBaseGeometries()
-        this.createBaseMaterials()
-
-        this.colorMaterials = {};
-        this.atoms3D = [];
-
-        const atomLabels = this.crystalStructure.atoms.map(atom => atom.label);
-        
-        // Create atoms
-        for (const atom of this.crystalStructure.atoms) {
-            const [atomMaterial, ringMaterial] = this.getAtomMaterials(atom.atomType);
-            
-            if (atom.adp instanceof UAnisoADP) {
-                this.atoms3D.push(new ORTEPAniAtom(
-                    atom, 
-                    this.crystalStructure.cell,
-                    this.baseAtom,
-                    atomMaterial,
-                    this.baseADPRing,
-                    ringMaterial
-                ));
-            } else {
-                this.atoms3D.push(new ORTEPIsoAtom(
-                    atom, 
-                    this.crystalStructure.cell,
-                    this.baseAtom,
-                    atomMaterial,
-                ));
+                ...(safeOptions.elementProperties || {})
             }
-        }
+        };
 
-        // Handle regular bonds
-        const drawnBonds = this.crystalStructure.bonds.map(bond => {
-            return new Bond(
-                bond.atom1Label, 
-                SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry),
-                bond.bondLength, 
-                bond.bondLengthSU,
-                "."
-            );
-        })
-        .filter(bond => atomLabels.includes(bond.atom2Label));
+        this.scaling = 1.5384;
+        this.geometries = {};
+        this.materials = {};
+        this.elementMaterials = {};
 
-        this.bonds3D = [];
-        for (const bond of drawnBonds) {
-            this.bonds3D.push(new ORTEPBond(
-                bond,
-                this.crystalStructure,
-                this.baseBond,
-                this.baseBondMaterial
-            ));
-        }
-
-        const drawnHBonds = this.crystalStructure.hBonds.map(hBond => {
-            return new HBond(
-                hBond.donorAtomLabel,
-                hBond.hydrogenAtomLabel,
-                SymmetryGrower.combineSymOpLabel(hBond.acceptorAtomLabel, hBond.acceptorAtomSymmetry),
-                hBond.donorHydrogenDistance,
-                hBond.donorHydrogenDistanceSU,
-                hBond.acceptorHydrogenDistance,
-                hBond.acceptorHydrogenDistanceSU,
-                hBond.donorAcceptorDistance,
-                hBond.donorAcceptorDistanceSU,
-                hBond.hBondAngle,
-                hBond.hBondAngleSU,
-                "."
-            );
-        })
-        .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
-
-        // Handle hydrogen bonds
-        this.hBonds3D = [];
-        for (const hbond of drawnHBonds) {
-            this.hBonds3D.push(new ORTEPHBond(
-                hbond,
-                this.crystalStructure,
-                this.baseHBond,
-                this.baseHBondMaterial,
-                this.options.hbondDashSegmentLength,
-                this.options.hbondDashFraction
-            ));
-        }
+        this.initializeGeometries();
+        this.initializeMaterials();
     }
 
-    createBaseGeometries() {
-        this.baseAtom = new THREE.IcosahedronGeometry(
+    initializeGeometries() {
+        // Base atom geometry
+        this.geometries.atom = new THREE.IcosahedronGeometry(
             this.scaling, 
             this.options.atomDetail
         );
-        
-        this.baseADPRing = this.getADPHalfTorus();
 
-        this.baseBond = new THREE.CylinderGeometry(
-            this.options.bondRadius, 
-            this.options.bondRadius, 
-            0.98, 
-            this.options.bondSections, 
-            1, 
+        // ADP ring geometry
+        this.geometries.adpRing = this.createADPHalfTorus();
+
+        // Bond geometry
+        this.geometries.bond = new THREE.CylinderGeometry(
+            this.options.bondRadius,
+            this.options.bondRadius,
+            0.98,
+            this.options.bondSections,
+            1,
             true
         );
 
-        this.baseHBond = new THREE.CylinderGeometry(
+        // H-bond geometry
+        this.geometries.hbond = new THREE.CylinderGeometry(
             this.options.hbondRadius,
             this.options.hbondRadius,
             0.98,
@@ -205,23 +92,59 @@ export class ORTEP3JsStructure {
         );
     }
 
-    createBaseMaterials() {
-        this.baseBondMaterial = new THREE.MeshStandardMaterial({
+    initializeMaterials() {
+        // Base bond material
+        this.materials.bond = new THREE.MeshStandardMaterial({
             color: this.options.bondColor,
-            roughness: this.options.bondColorRoughness, 
+            roughness: this.options.bondColorRoughness,
             metalness: this.options.bondColorMetalness
         });
 
-        this.baseHBondMaterial = new THREE.MeshStandardMaterial({
+        // Base H-bond material
+        this.materials.hbond = new THREE.MeshStandardMaterial({
             color: this.options.hbondColor,
             roughness: this.options.hbondColorRoughness,
             metalness: this.options.hbondColorMetalness
         });
     }
 
-    getADPHalfTorus() {
+    validateElementType(elementType) {
+        if (!this.options.elementProperties[elementType]) {
+            throw new Error(
+                `Unknown element type: ${elementType}. ` +
+                `Please ensure element properties are defined.`
+            );
+        }
+    }
+
+    getAtomMaterials(atomType) {
+        this.validateElementType(atomType);
+
+        const key = `${atomType}_materials`;
+        if (!this.elementMaterials[key]) {
+            const elementProperty = this.options.elementProperties[atomType];
+            
+            const atomMaterial = new THREE.MeshStandardMaterial({
+                color: elementProperty.atomColor,
+                roughness: this.options.atomColorRoughness,
+                metalness: this.options.atomColorMetalness
+            });
+
+            const ringMaterial = new THREE.MeshStandardMaterial({
+                color: elementProperty.ringColor,
+                roughness: this.options.atomColorRoughness,
+                metalness: this.options.atomColorMetalness
+            });
+
+            this.elementMaterials[key] = [atomMaterial, ringMaterial];
+        }
+
+        return this.elementMaterials[key];
+    }
+
+    createADPHalfTorus() {
         const fullRing = new THREE.TorusGeometry(
-            this.scaling * this.options.atomADPRingWidthFactor, 
+            this.scaling * this.options.atomADPRingWidthFactor,
             this.options.atomADPRingHeight,
             this.options.atomADPInnerSections,
             this.options.atomADPRingSections
@@ -239,27 +162,17 @@ export class ORTEP3JsStructure {
             const idx2 = indices[i + 1] * 3;
             const idx3 = indices[i + 2] * 3;
             
-            const dist1 = Math.sqrt(
-                positions[idx1] * positions[idx1] + 
-                positions[idx1 + 1] * positions[idx1 + 1] + 
-                positions[idx1 + 2] * positions[idx1 + 2]
-            );
-            const dist2 = Math.sqrt(
-                positions[idx2] * positions[idx2] + 
-                positions[idx2 + 1] * positions[idx2 + 1] + 
-                positions[idx2 + 2] * positions[idx2 + 2]
-            );
-            const dist3 = Math.sqrt(
-                positions[idx3] * positions[idx3] + 
-                positions[idx3 + 1] * positions[idx3 + 1] + 
-                positions[idx3 + 2] * positions[idx3 + 2]
-            );
+            const vertices = [idx1, idx2, idx3].map(idx => ({
+                index: idx / 3,
+                distance: Math.sqrt(
+                    positions[idx] * positions[idx] +
+                    positions[idx + 1] * positions[idx + 1] +
+                    positions[idx + 2] * positions[idx + 2]
+                )
+            }));
             
-            // Only keep triangles where all vertices are outside sphere
-            if (dist1 >= this.scaling && dist2 >= this.scaling && dist3 >= this.scaling) {
-                keptIndices.add(indices[i]);
-                keptIndices.add(indices[i + 1]);
-                keptIndices.add(indices[i + 2]);
+            if (vertices.every(v => v.distance >= this.scaling)) {
+                vertices.forEach(v => keptIndices.add(indices[i + v.index % 3]));
             }
         }
         
@@ -294,74 +207,233 @@ export class ORTEP3JsStructure {
         baseADPRing.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
         baseADPRing.setIndex(newIndices);
         baseADPRing.computeVertexNormals();
-
         baseADPRing.rotateX(0.5 * Math.PI);
-        return baseADPRing
+        
+        fullRing.dispose();
+        return baseADPRing;
     }
 
-    // Rest of the class methods remain unchanged
-    getAtomMaterials(atomType) {
-        const elementProperty = this.options.elementProperties[atomType];
-        for (const color of [elementProperty.atomColor, elementProperty.ringColor]) {
-            if (!(color in this.colorMaterials)) {
-                const newMaterial = new THREE.MeshStandardMaterial({
-                    color: color,
-                    roughness: this.options.atomColorRoughness,
-                    metalness: this.options.atomColorMetalness
-                });
-                this.colorMaterials[color] = newMaterial;
+    dispose() {
+        Object.values(this.geometries).forEach(geometry => geometry.dispose());
+        Object.values(this.materials).forEach(material => material.dispose());
+        Object.values(this.elementMaterials).forEach(([atomMaterial, ringMaterial]) => {
+            atomMaterial.dispose();
+            ringMaterial.dispose();
+        });
+    }
+}
+
+export class ORTEP3JsStructure {
+    constructor(crystalStructure, options = {}) {
+        const safeOptions = options || {};
+        
+        // Handle deep merging of elementProperties
+        const mergedElementProperties = { ...defaultSettings.elementProperties };
+        if (safeOptions.elementProperties) {
+            Object.entries(safeOptions.elementProperties).forEach(([element, props]) => {
+                mergedElementProperties[element] = {
+                    ...mergedElementProperties[element],
+                    ...props
+                };
+            });
+        }
+
+        this.options = {
+            ...defaultSettings,
+            ...safeOptions,
+            elementProperties: mergedElementProperties
+        };
+        
+        this.crystalStructure = crystalStructure;
+        this.cache = new GeometryMaterialCache(this.options);
+        
+        this.createStructure();
+    }
+
+    createStructure() {
+        this.atoms3D = [];
+        this.bonds3D = [];
+        this.hBonds3D = [];
+
+        const atomLabels = this.crystalStructure.atoms.map(atom => atom.label);
+        
+        // Create atoms
+        for (const atom of this.crystalStructure.atoms) {
+            const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
+            
+            if (atom.adp instanceof UAnisoADP) {
+                this.atoms3D.push(new ORTEPAniAtom(
+                    atom,
+                    this.crystalStructure.cell,
+                    this.cache.geometries.atom,
+                    atomMaterial,
+                    this.cache.geometries.adpRing,
+                    ringMaterial
+                ));
+            } else {
+                this.atoms3D.push(new ORTEPIsoAtom(
+                    atom,
+                    this.crystalStructure.cell,
+                    this.cache.geometries.atom,
+                    atomMaterial
+                ));
             }
         }
-        const atomMaterial = this.colorMaterials[elementProperty.atomColor];
-        const ringMaterial = this.colorMaterials[elementProperty.ringColor];
-        return [atomMaterial, ringMaterial]
+
+        // Handle regular bonds
+        const drawnBonds = this.crystalStructure.bonds
+            .map(bond => new Bond(
+                bond.atom1Label,
+                SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry),
+                bond.bondLength,
+                bond.bondLengthSU,
+                "."
+            ))
+            .filter(bond => atomLabels.includes(bond.atom2Label));
+
+        for (const bond of drawnBonds) {
+            this.bonds3D.push(new ORTEPBond(
+                bond,
+                this.crystalStructure,
+                this.cache.geometries.bond,
+                this.cache.materials.bond
+            ));
+        }
+
+        // Handle hydrogen bonds
+        const drawnHBonds = this.crystalStructure.hBonds
+            .map(hBond => new HBond(
+                hBond.donorAtomLabel,
+                hBond.hydrogenAtomLabel,
+                SymmetryGrower.combineSymOpLabel(
+                    hBond.acceptorAtomLabel, 
+                    hBond.acceptorAtomSymmetry
+                ),
+                hBond.donorHydrogenDistance,
+                hBond.donorHydrogenDistanceSU,
+                hBond.acceptorHydrogenDistance,
+                hBond.acceptorHydrogenDistanceSU,
+                hBond.donorAcceptorDistance,
+                hBond.donorAcceptorDistanceSU,
+                hBond.hBondAngle,
+                hBond.hBondAngleSU,
+                "."
+            ))
+            .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
+
+        for (const hbond of drawnHBonds) {
+            this.hBonds3D.push(new ORTEPHBond(
+                hbond,
+                this.crystalStructure,
+                this.cache.geometries.hbond,
+                this.cache.materials.hbond,
+                this.options.hbondDashSegmentLength,
+                this.options.hbondDashFraction
+            ));
+        }
     }
 
     getGroup() {
-        const group = new THREE.Group;
+        const group = new THREE.Group();
         let meanAccumulator = new THREE.Vector3();
+        
         for (const atom3D of this.atoms3D) {
-            group.add(atom3D.object3D);
-            meanAccumulator.add(atom3D.object3D.position);
+            group.add(atom3D);
+            meanAccumulator.add(atom3D.position);
         }
+        
         for (const bond3D of this.bonds3D) {
-            group.add(bond3D.object3D);
+            group.add(bond3D);
         }
+        
         for (const hBond3D of this.hBonds3D) {
-            group.add(hBond3D.object3D);
+            group.add(hBond3D);
         }
+        
         meanAccumulator.divideScalar(-this.atoms3D.length);
         group.position.copy(meanAccumulator);
+        
         return group;
     }
-}
 
-class ORTEPObject {
-    createSelectionMarker(color, options) {
-        // Each subclass implements this
+    dispose() {
+        this.cache.dispose();
     }
 }
 
-class ORTEPAtom extends ORTEPObject{
+
+class ORTEPObject extends THREE.Mesh{
+    constructor(geometry, material) {
+        super(geometry, material);
+    }
+
+    createSelectionMaterial(color) {
+        return new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.BackSide
+        });
+    }
+    
+    select(color, options) {
+        const highlightMaterial = this.material.clone();
+        highlightMaterial.emissive.setHex(options.selection.highlightEmissive);
+        this.originalMaterial = this.material;
+        this.material = highlightMaterial;
+
+        const marker = this.createSelectionMarker(color, options);
+        this.add(marker);
+        this.marker = marker;
+        this.selectionColor = color;
+    }
+
+    deselect() {
+        this.removeSelectionMarker();
+    }
+
+    createSelectionMarker(color, options) {
+        throw new Error("createSelectionMarker needs to be implemented in a subclass");
+    }
+
+    removeSelectionMarker() {
+        if (this.marker) {
+            this.remove(this.marker);
+            try {
+                this.marker.geometry.dispose();
+                this.marker.material.dispose();
+            } catch {
+                this.marker.dispose()
+            }
+            this.marker = null;
+        }
+        
+        if (this.originalMaterial) {
+            this.material.dispose();
+            this.material = this.originalMaterial;
+            this.originalMaterial = null;
+        }
+    }
+}
+
+class ORTEPAtom extends ORTEPObject {
     constructor(atom, unitCell, baseAtom, atomMaterial) {
-        super();
-        this.atom = atom;
+        super(baseAtom, atomMaterial);
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
-        this.object3D = new THREE.Mesh(baseAtom, atomMaterial);
-        this.object3D.position.copy(position);
-        this.object3D.userData.type = 'atom';
-        this.object3D.userData.atomData = atom;
+        this.position.copy(position);
+        this.userData = {
+            type: 'atom',
+            atomData: atom,
+            selectable: true,
+            
+        };
     }
 
     createSelectionMarker(color, options) {
-        const outlineMesh = new THREE.Mesh(this.object3D.geometry, 
-            new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.9,
-                side: THREE.BackSide
-            })
+        const outlineMesh = new THREE.Mesh(
+            this.geometry, 
+            this.createSelectionMaterial(color)
         );
         outlineMesh.scale.multiplyScalar(options.selection.markerMult);
         outlineMesh.userData.selectable = false;
@@ -369,96 +441,97 @@ class ORTEPAtom extends ORTEPObject{
     }
 }
 
-class ORTEPAniAtom extends ORTEPAtom{
+class ORTEPAniAtom extends ORTEPAtom {
     constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing=null, ADPRingMaterial=null) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
-        const ellipsoidMatrix = calcEllipsoidMatrix(atom.adp, unitCell);
-
-        if (ellipsoidMatrix.toArray().includes(NaN)){
-            this.object3D = new THREE.Mesh(
-                new THREE.TetrahedronGeometry(1),
-                atomMaterial
-            );
-        } else {
-            this.object3D = new THREE.Mesh(baseAtom, atomMaterial);
-            for (const m of this.adpRingMatrices) {
-                const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
-                ringMesh.applyMatrix4(m);
-                ringMesh.userData.selectable = false;
-                //ringMesh.userData.parentAtom = this.mesh;
-                this.object3D.add(ringMesh);
+        const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
+        if (ellipsoidMatrix.toArray().includes(NaN)) {
+            this.geometry = new THREE.TetrahedronGeometry(1);
+        } else {            
+            if (baseADPRing && ADPRingMaterial) {
+                for (const matrix of this.adpRingMatrices) {
+                    const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
+                    ringMesh.applyMatrix4(matrix);
+                    ringMesh.userData.selectable = false;
+                    this.add(ringMesh);
+                }
             }
 
-            this.object3D.applyMatrix4(ellipsoidMatrix);
+            this.applyMatrix4(ellipsoidMatrix);
         }
-        this.object3D.position.copy(position);
-        this.object3D.userData.type = 'atom';
-        this.object3D.userData.atomData = atom;
-        this.object3D.userData.selectable = true;
+        
+        const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
+        this.position.copy(position);
+        this.userData = {
+            type: 'atom',
+            atomData: atom,
+            selectable: true,
+        };
+    }
+
+    createSelectionMarker(color, options) {
+        const outlineMesh = new THREE.Mesh(
+            this.geometry, 
+            this.createSelectionMaterial(color)
+        );
+        outlineMesh.scale.multiplyScalar(options.selection.markerMult);
+        outlineMesh.userData.selectable = false;
+        return outlineMesh;
     }
 
     get adpRingMatrices() {
-        const m_ring0 = new THREE.Matrix4();
-        m_ring0.set(
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0
-        );
-
-        const m_ring1 = new THREE.Matrix4();
-        m_ring1.set(
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, -1.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0
-        );
-
-        const m_ring2 = new THREE.Matrix4();
-        m_ring2.set(
-            0.0, -1.0, 0.0, 0.0,
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0
-        );
-        return [m_ring0, m_ring1, m_ring2];
+        return [
+            new THREE.Matrix4().set(
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ),
+            new THREE.Matrix4().set(
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, -1.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ),
+            new THREE.Matrix4().set(
+                0.0, -1.0, 0.0, 0.0,
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            )
+        ];
     }
 }
+
 class ORTEPIsoAtom extends ORTEPAtom {
     constructor(atom, unitCell, baseAtom, atomMaterial) {
-        super(atom, unitCell, baseAtom, atomMaterial)
-        this.object3D.scale.multiplyScalar(1.0/10.53);
-        this.object3D.userData.type = 'atom';
-        this.object3D.userData.atomData = atom;
-        this.object3D.userData.selectable = true;
+        super(atom, unitCell, baseAtom, atomMaterial);
+        this.scale.multiplyScalar(1.0/10.53);
     }
 }
 
-class ORTEPBond extends ORTEPObject{
+class ORTEPBond extends ORTEPObject {
     constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
-        super();
+        super(baseBond, baseBondMaterial);
         const bondAtom1 = crystalStructure.getAtomByLabel(bond.atom1Label);
         const bondAtom2 = crystalStructure.getAtomByLabel(bond.atom2Label);
         const atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
         const atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
         const bondTransform = calcBondTransform(atom1position, atom2position);
-        this.object3D = new THREE.Mesh(baseBond, baseBondMaterial);
-        this.object3D.applyMatrix4(bondTransform);
-        this.object3D.userData.type = 'bond';
-        this.object3D.userData.bondData = bond;
-        this.object3D.userData.selectable = true;
+        
+        this.applyMatrix4(bondTransform);
+        this.userData = {
+            type: 'bond',
+            bondData: bond,
+            selectable: true,
+        };
     }
 
     createSelectionMarker(color, options) {
-        const outlineMesh = new THREE.Mesh(this.object3D.geometry, 
-            new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.9,
-                side: THREE.BackSide
-            })
+        const outlineMesh = new THREE.Mesh(
+            this.geometry, 
+            this.createSelectionMaterial(color)
         );
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
         outlineMesh.scale.z *= options.selection.bondMarkerMult;
@@ -467,132 +540,153 @@ class ORTEPBond extends ORTEPObject{
     }
 }
 
-export class DashedBondGroup extends THREE.Group {
+class ORTEPGroupObject extends THREE.Group {
     constructor() {
         super();
-        this._material = null;
+        this.selectionColor = null;
     }
 
-    // Material getter/setter that propagates to all segments
-    get material() {
-        return this.children[0].material.clone();
-    }
-
-    set material(newMaterial) {
-        this._material = newMaterial;
-        // Update all child segments with the new material
-        this.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                child.material = newMaterial;
+    add(...objects) {
+        objects.forEach(object => {
+            if (object instanceof THREE.Mesh) {
+                // Store original raycast method
+                const originalRaycast = object.raycast;
+                
+                // Override raycast to redirect to parent
+                object.raycast = (raycaster, intersects) => {
+                    const meshIntersects = [];
+                    originalRaycast.call(object, raycaster, meshIntersects);
+                    
+                    if (meshIntersects.length > 0) {
+                        const intersection = meshIntersects[0];
+                        intersects.push({
+                            distance: intersection.distance,
+                            point: intersection.point,
+                            object: this, // Return parent group
+                            face: intersection.face,
+                            faceIndex: intersection.faceIndex,
+                            uv: intersection.uv
+                        });
+                    }
+                };
             }
         });
-    }
-
-    // Method to dispose of materials properly
-    dispose() {
-        if (this._material) {
-            this._material.dispose();
-        }
-        this.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                if (child.geometry) {
-                    child.geometry.dispose();
-                }
-            }
-        });
-    }
-
-    // Clone method that preserves material handling
-    clone(recursive = true) {
-        const clone = new DashedBondGroup();
-        clone.copy(this, recursive);
-        clone._material = this._material;
-        return clone;
-    }
-
-    // Copy method for proper cloning
-    copy(source, recursive = true) {
-        super.copy(source, recursive);
-        this._material = source._material;
-        return this;
-    }
-}
-
-class ORTEPHBond extends ORTEPObject {
-    constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
-        super();
-        this.baseHBond = baseHBond;
         
-        // Get the hydrogen atom position
-        const hydrogenAtom = crystalStructure.getAtomByLabel(hbond.hydrogenAtomLabel);
-        const hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
-
-        // Get the acceptor atom position
-        const acceptorAtom = crystalStructure.getAtomByLabel(hbond.acceptorAtomLabel);
-        const acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell))
-
-        // Create dashed bond group with initial material
-        this.object3D = new DashedBondGroup();
-        
-        // Calculate dash pattern using provided parameters
-        const totalLength = hydrogenPosition.distanceTo(acceptorPosition);
-        const idealNumSegments = Math.floor(totalLength / targetSegmentLength);
-        const numSegments = Math.max(1, idealNumSegments);
-        const actualSegmentLength = totalLength / numSegments;
-        const dashLength = actualSegmentLength * dashFraction;
-
-        // Store positions for selection marker
-        this.hydrogenPosition = hydrogenPosition;
-        this.acceptorPosition = acceptorPosition;
-
-        // Create dash segments
-        for (let i = 0; i < numSegments; i++) {
-            const startFraction = i / numSegments;
-            const endFraction = startFraction + (dashLength / totalLength);
-
-            const start = new THREE.Vector3().lerpVectors(
-                hydrogenPosition,
-                acceptorPosition,
-                startFraction
-            );
-            const end = new THREE.Vector3().lerpVectors(
-                hydrogenPosition,
-                acceptorPosition,
-                endFraction
-            );
-
-            // Create segment mesh (material will be set by DashedBondGroup)
-            const segmentMesh = new THREE.Mesh(baseHBond);
-            const segmentTransform = calcBondTransform(start, end);
-            segmentMesh.applyMatrix4(segmentTransform);
-            
-            // Add metadata for interaction
-            segmentMesh.userData.type = 'hbond_segment';
-            segmentMesh.userData.hbondData = hbond;
-            segmentMesh.userData.selectable = true;
-            segmentMesh.userData.parentGroup = this.object3D;
-
-            this.object3D.add(segmentMesh);
-        }
-        this.object3D.material = baseHBondMaterial;
-
-        // Add metadata to the bond group
-        this.object3D.userData.type = 'hbond';
-        this.object3D.userData.hbondData = hbond;
-        this.object3D.userData.selectable = true;
+        return super.add(...objects);
     }
 
-    createSelectionMarker(color, options) {
-        const markerGroup = new DashedBondGroup();
-        const outlineMaterial = new THREE.MeshBasicMaterial({
+    createSelectionMaterial(color) {
+        return new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
             opacity: 0.9,
             side: THREE.BackSide
         });
+    }
+    
+    select(color, options) {
+        this.selectionColor = color;
+        
+        // Handle materials for all children
+        this.traverse(child => {
+            if (child instanceof THREE.Mesh) {
+                const highlightMaterial = child.material.clone();
+                highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
+                child.originalMaterial = child.material;
+                child.material = highlightMaterial;
+            }
+        });
 
-        this.object3D.children.forEach(segment => {
-            const markerMesh = new THREE.Mesh(segment.geometry, outlineMaterial);
+        // Create and add marker
+        const marker = this.createSelectionMarker(color, options);
+        this.add(marker);
+        this.marker = marker;
+    }
+
+    deselect() {
+        this.selectionColor = null;
+
+        // Remove marker
+        if (this.marker) {
+            this.remove(this.marker);
+            if (this.marker instanceof THREE.Group) {
+                this.marker.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        child.geometry?.dispose();
+                        child.material?.dispose();
+                    }
+                });
+            } else {
+                this.marker.geometry?.dispose();
+                this.marker.material?.dispose();
+            }
+            this.marker = null;
+        }
+        
+        // Restore original materials
+        this.traverse(child => {
+            if (child instanceof THREE.Mesh && child.originalMaterial) {
+                child.material.dispose();
+                child.material = child.originalMaterial;
+                child.originalMaterial = null;
+            }
+        });
+    }
+
+    createSelectionMarker(color, options) {
+        throw new Error("createSelectionMarker needs to be implemented in a subclass");
+    }
+}
+
+class ORTEPHBond extends ORTEPGroupObject {
+    constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
+        super();
+        this.userData = {
+            type: 'hbond',
+            hbondData: hbond,
+            selectable: true,
+        };
+        
+        const hydrogenAtom = crystalStructure.getAtomByLabel(hbond.hydrogenAtomLabel);
+        const acceptorAtom = crystalStructure.getAtomByLabel(hbond.acceptorAtomLabel);
+        const hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
+        const acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell));
+
+        this.createDashedBondSegments(
+            hydrogenPosition, acceptorPosition,
+            baseHBond, baseHBondMaterial,
+            targetSegmentLength, dashFraction
+        );
+    }
+
+    createDashedBondSegments(start, end, baseHBond, material, targetLength, dashFraction) {
+        const totalLength = start.distanceTo(end);
+        const numSegments = Math.max(1, Math.floor(totalLength / targetLength));
+        const segmentLength = totalLength / numSegments;
+        const dashLength = segmentLength * dashFraction;
+
+        for (let i = 0; i < numSegments; i++) {
+            const startFraction = i / numSegments;
+            const endFraction = startFraction + (dashLength / totalLength);
+
+            const segStart = new THREE.Vector3().lerpVectors(start, end, startFraction);
+            const segEnd = new THREE.Vector3().lerpVectors(start, end, endFraction);
+
+            const segmentMesh = new THREE.Mesh(baseHBond, material.clone());
+            segmentMesh.applyMatrix4(calcBondTransform(segStart, segEnd));
+            segmentMesh.userData = this.userData;
+            segmentMesh.select = (color, options) => this.select(color, options);
+            segmentMesh.deselect = (color, options) => this.deselect(color, options);
+            this.add(segmentMesh);
+        }
+    }
+
+    createSelectionMarker(color, options) {
+        const markerGroup = new THREE.Group();
+        const material = this.createSelectionMaterial(color);
+
+        this.children.forEach(segment => {
+            const markerMesh = new THREE.Mesh(segment.geometry, material);
             markerMesh.applyMatrix4(segment.matrix);
             markerMesh.scale.x *= options.selection.bondMarkerMult;
             markerMesh.scale.y *= 0.8 * options.selection.bondMarkerMult;
@@ -600,6 +694,7 @@ class ORTEPHBond extends ORTEPObject {
             markerMesh.userData.selectable = false;
             markerGroup.add(markerMesh);
         });
+
         return markerGroup;
     }
 }

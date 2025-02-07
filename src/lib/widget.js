@@ -119,7 +119,7 @@ export class CifViewWidget extends HTMLElement {
         this.captionElement = caption;
 
         this.viewer = new CrystalViewer(container);
-        this.viewer.onSelectionChange(selections => {
+        this.viewer.selections.onChange(selections => {
             this.selections = selections;
             this.updateCaption();
         });

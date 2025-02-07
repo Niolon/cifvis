@@ -10,6 +10,131 @@ import { DisorderFilter, HydrogenFilter, SymmetryGrower } from "../structure/str
 
 const math = create(all);
 
+export class SelectionManager {
+    constructor(options) {
+        this.options = options;
+        this.selectedObjects = new Set();
+        this.selectionCallbacks = new Set();
+    }
+
+    handle(object) {
+        if (this.options.mode === 'single') {
+            this.selectedObjects.forEach(selected => {
+                this.remove(selected);
+            });
+            this.selectedObjects.clear();
+        }
+    
+        let color;
+        if (this.selectedObjects.has(object)) {
+            color = object.selectionColor;
+            this.remove(object);
+        } else {
+            this.add(object);
+            color = object.selectionColor;
+        }
+    
+        this.notifyCallbacks();
+        return color;
+    }
+
+    getNextColor() {
+        const colorCounts = new Map();
+        this.selectedObjects.forEach(obj => {
+            const color = obj.selectionColor;
+            colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        });
+        
+        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
+        if (!color) {
+            const minCount = Math.min(...colorCounts.values());
+            color = this.options.markerColors.find(c => 
+                colorCounts.get(c) === minCount
+            );
+        }
+        return color;
+    }
+    
+    add(object) {
+        const color = this.getNextColor();
+        object.select(color, this.options);
+        this.selectedObjects.add(object);
+
+    }
+
+    remove(object) {
+        this.selectedObjects.delete(object);
+        
+        object.deselect();
+    }
+
+    clear() {
+        this.selectedObjects.forEach(object => {
+            this.remove(object);
+        });
+        this.notifyCallbacks();
+    }
+
+    selectAtoms(atomLabels, moleculeContainer) {
+        this.clear();
+        atomLabels.forEach(label => {
+            const atom = this.findAtomMeshByLabel(label, moleculeContainer);
+            if (atom) {
+                this.add(atom);
+            }
+        });
+        this.notifyCallbacks();
+    }
+
+    findAtomMeshByLabel(label, moleculeContainer) {
+        let found = null;
+        moleculeContainer.traverse((object) => {
+            if (object.userData?.type === 'atom' && 
+                object.userData?.atomData?.label === label) {
+                found = object;
+            }
+        });
+        return found;
+    }
+
+    onChange(callback) {
+        this.selectionCallbacks.add(callback);
+    }
+
+    notifyCallbacks() {
+        const selections = Array.from(this.selectedObjects).map(object => ({
+            type: object.userData.type,
+            data: object.userData.type === 'hbond' ? object.userData.hbondData : 
+                  object.userData.type === 'bond' ? object.userData.bondData : 
+                  object.userData.atomData,
+            color: object.selectionColor
+        }));
+        this.selectionCallbacks.forEach(callback => callback(selections));
+    }
+
+    setMode(mode) {
+        if (mode !== 'single' && mode !== 'multiple') {
+            throw new Error('Selection mode must be either "single" or "multiple"');
+        }
+        
+        this.options.mode = mode;
+        
+        if (mode === 'single' && this.selectedObjects.size > 1) {
+            const selectedObjects = Array.from(this.selectedObjects);
+            const lastSelected = selectedObjects[selectedObjects.length - 1];
+            
+            this.clear();
+            this.add(lastSelected);
+            this.notifyCallbacks();
+        }
+    }
+
+    dispose() {
+        this.clearSelections();
+        this.selectionCallbacks.clear();
+    }
+}
+
 export class CrystalViewer {    
     constructor(container, options = {}) {
         this.container = container;
@@ -48,20 +173,21 @@ export class CrystalViewer {
         };
 
         this.state = {
-            selectedObjects: new Set(),
             isDragging: false,
             currentCifContent: null,
             currentStructure: null,
             currentFloor: null,
-            selectionCallbacks: new Set(),
             baseStructure: null,
             ortepObjects: new Map()
         };
+
         this.modifiers = {
             hydrogen: new HydrogenFilter(this.options.hydrogenMode),
             disorder: new DisorderFilter(this.options.disorderMode),
             symmetry: new SymmetryGrower(this.options.symmetryMode)
-        }
+        };
+
+        this.selections = new SelectionManager(this.options);
 
         this.setupScene();
         this.controls = new ViewerControls(this);
@@ -146,7 +272,7 @@ export class CrystalViewer {
 
     clearScene() {
         this.moleculeContainer.clear();
-        this.state.selectedObjects.clear();
+        this.selections.clear();
         if (this.state.currentFloor) {
             this.scene.remove(this.state.currentFloor);
         }
@@ -200,101 +326,8 @@ export class CrystalViewer {
         this.renderer.render(this.scene, this.camera);
     }
 
-    handleSelection(object) {
-        if (object.userData.type === 'hbond_segment') {
-            object = object.userData.parentGroup;
-        }
-    
-        if (this.options.selection.mode === 'single') {
-            this.state.selectedObjects.forEach(selected => {
-                this.removeSelection(selected);
-            });
-            this.state.selectedObjects.clear();
-        }
-    
-        let color;
-        if (this.state.selectedObjects.has(object)) {
-            color = object.userData.selectionColor;
-            this.removeSelection(object);
-        } else {
-            this.addSelection(object);
-            color = object.userData.selectionColor;
-        }
-    
-        this.notifySelectionCallbacks();
-        return color;
-    }
-
-    getNextSelectionColor() {
-        const colorCounts = new Map();
-        this.state.selectedObjects.forEach(obj => {
-            const color = obj.userData.selectionColor;
-            colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
-        });
-        
-        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
-        if (!color) {
-            const minCount = Math.min(...colorCounts.values());
-            color = this.options.selection.markerColors.find(c => 
-                colorCounts.get(c) === minCount
-            );
-        }
-        return color;
-    }
-    
-    addSelection(object) {
-        const color = this.getNextSelectionColor();
-        this.state.selectedObjects.add(object);
-        
-        const highlightMaterial = object.material.clone();
-        highlightMaterial.emissive.setHex(this.options.selection.highlightEmissive);
-        object.userData.originalMaterial = object.material;
-        object.material = highlightMaterial;
-
-        const ortepObject = this.state.ortepObjects.get(object);
-        const marker = ortepObject.createSelectionMarker(color, this.options);
-        object.add(marker);
-        object.userData.marker = marker;
-        object.userData.selectionColor = color;
-    }
-
-    removeSelection(object) {
-        this.state.selectedObjects.delete(object);
-        
-        if (object.userData.marker) {
-            object.remove(object.userData.marker);
-            try {
-                object.userData.marker.geometry.dispose();
-                object.userData.marker.material.dispose();
-            } catch {
-                object.userData.marker.dispose()
-            }
-            object.userData.marker = null;
-        }
-        
-        if (object.userData.originalMaterial) {
-            object.material.dispose();
-            object.material = object.userData.originalMaterial;
-            object.userData.originalMaterial = null;
-        }
-    }
-
-    clearSelections() {
-        this.state.selectedObjects.forEach(object => {
-            this.removeSelection(object);
-        });
-        this.notifySelectionCallbacks();
-    }
-
     selectAtoms(atomLabels) {
-        this.clearSelections();
-        atomLabels.forEach(label => {
-            const atom = this.findAtomMeshByLabel(label);
-            if (atom) {
-                this.addSelection(atom);
-            }
-        });
-        this.notifySelectionCallbacks();
+        this.selections.selectAtoms(atomLabels, this.moleculeContainer);
     }
 
     findAtomMeshByLabel(label) {
@@ -306,38 +339,6 @@ export class CrystalViewer {
             }
         });
         return found;
-    }
-
-    onSelectionChange(callback) {
-        this.state.selectionCallbacks.add(callback);
-    }
-
-    notifySelectionCallbacks() {
-        const selections = Array.from(this.state.selectedObjects).map(object => ({
-            type: object.userData.type,
-            data: object.userData.type === 'hbond' ? object.userData.hbondData : 
-                  object.userData.type === 'bond' ? object.userData.bondData : 
-                  object.userData.atomData,
-            color: object.userData.selectionColor
-        }));
-        this.state.selectionCallbacks.forEach(callback => callback(selections));
-    }
-
-    setSelectionMode(mode) {
-        if (mode !== 'single' && mode !== 'multiple') {
-            throw new Error('Selection mode must be either "single" or "multiple"');
-        }
-        
-        this.options.selection.mode = mode;
-        
-        if (mode === 'single' && this.state.selectedAtoms?.size > 1) {
-            const selectedAtoms = Array.from(this.state.selectedAtoms);
-            const lastSelected = selectedAtoms[selectedAtoms.length - 1];
-            
-            this.clearSelections();
-            this.addSelection(lastSelected);
-            this.notifySelectionCallbacks();
-        }
     }
 
     dispose() {
@@ -355,7 +356,7 @@ export class CrystalViewer {
                 }
             }
         });
-
+        this.selections.dispose();
         this.renderer.dispose();
 
         if (this.renderer.domElement.parentNode) {
