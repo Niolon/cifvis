@@ -50,6 +50,7 @@ export default {
     "atomADPRingHeight": 0.06,
     "atomADPRingSections": 18,
     "atomADPInnerSections": 7,
+    "atomConstantRadiusMultiplier": 0.3,
 
     // Bond visualisation settings
     "bondRadius": 0.05,

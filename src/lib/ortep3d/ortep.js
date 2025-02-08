@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import defaultSettings from "./structure-settings.js";
-import { HBond, Bond, UAnisoADP } from "../structure/crystal.js";
+import { HBond, Bond, UAnisoADP, UIsoADP } from "../structure/crystal.js";
 import { SymmetryGrower } from "../structure/structure-modifiers.js";
 
 /**
@@ -270,12 +270,20 @@ export class ORTEP3JsStructure {
                     this.cache.geometries.adpRing,
                     ringMaterial
                 ));
-            } else {
+            } else if (atom.adp instanceof UIsoADP) {
                 this.atoms3D.push(new ORTEPIsoAtom(
                     atom,
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
                     atomMaterial
+                ));
+            } else {
+                this.atoms3D.push(new ORTEPConstantAtom(
+                    atom,
+                    this.crystalStructure.cell,
+                    this.cache.geometries.atom,
+                    atomMaterial,
+                    this.options
                 ));
             }
         }
@@ -361,14 +369,17 @@ export class ORTEP3JsStructure {
     }
 }
 
-
 /**
  * Base class for selectable THREE.js mesh objects that handle selection visualization
  */
 export class ORTEPObject extends THREE.Mesh {
     constructor(geometry, material) {
+        if (new.target === ORTEPObject) {
+            throw new TypeError('ORTEPObject is an abstract class and cannot be instantiated directly.');
+        }
         super(geometry, material);
         this._selectionColor = null;
+        this.marker = null;
     }
 
     get selectionColor() {
@@ -438,7 +449,6 @@ export class ORTEPAtom extends ORTEPObject {
             type: 'atom',
             atomData: atom,
             selectable: true,
-            
         };
     }
 
@@ -454,20 +464,18 @@ export class ORTEPAtom extends ORTEPObject {
 }
 
 export class ORTEPAniAtom extends ORTEPAtom {
-    constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing=null, ADPRingMaterial=null) {
+    constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing, ADPRingMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
 
         const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
         if (ellipsoidMatrix.toArray().includes(NaN)) {
             this.geometry = new THREE.TetrahedronGeometry(1);
         } else {            
-            if (baseADPRing && ADPRingMaterial) {
-                for (const matrix of this.adpRingMatrices) {
-                    const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
-                    ringMesh.applyMatrix4(matrix);
-                    ringMesh.userData.selectable = false;
-                    this.add(ringMesh);
-                }
+            for (const matrix of this.adpRingMatrices) {
+                const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
+                ringMesh.applyMatrix4(matrix);
+                ringMesh.userData.selectable = false;
+                this.add(ringMesh);
             }
 
             this.applyMatrix4(ellipsoidMatrix);
@@ -482,15 +490,6 @@ export class ORTEPAniAtom extends ORTEPAtom {
         };
     }
 
-    createSelectionMarker(color, options) {
-        const outlineMesh = new THREE.Mesh(
-            this.geometry, 
-            this.createSelectionMaterial(color)
-        );
-        outlineMesh.scale.multiplyScalar(options.selection.markerMult);
-        outlineMesh.userData.selectable = false;
-        return outlineMesh;
-    }
 
     get adpRingMatrices() {
         return [
@@ -519,7 +518,22 @@ export class ORTEPAniAtom extends ORTEPAtom {
 export class ORTEPIsoAtom extends ORTEPAtom {
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        this.scale.multiplyScalar(1.0/10.53);
+        if (!atom.adp || !('uiso' in atom.adp)) {
+            throw new Error('Atom must have isotropic displacement parameters (UIsoADP)');
+        }
+        this.scale.multiplyScalar(Math.sqrt(atom.adp.uiso));
+    }
+}
+
+export class ORTEPConstantAtom extends ORTEPAtom {
+    constructor(atom, unitCell, baseAtom, atomMaterial, options) {
+        super(atom, unitCell, baseAtom, atomMaterial);
+        if (!options?.elementProperties?.[atom.atomType]?.radius) {
+            throw new Error(`Element properties not found for atom type: ${atom.atomType}`);
+        }
+        this.scale.multiplyScalar(
+            options.atomConstantRadiusMultiplier * options.elementProperties[atom.atomType].radius
+        );
     }
 }
 
@@ -551,14 +565,15 @@ export class ORTEPBond extends ORTEPObject {
         return outlineMesh;
     }
 }
-/**
- * Base class for selectable THREE.js group objects that handle raycasting redirection
- * and selection visualization for their mesh children
- */
+
 export class ORTEPGroupObject extends THREE.Group {
     constructor() {
+        if (new.target === ORTEPGroupObject) {
+            throw new TypeError('ORTEPGroupObject is an abstract class and cannot be instantiated directly.');
+        }
         super();
         this._selectionColor = null;
+        this.marker = null;
     }
 
     get selectionColor() {
@@ -628,17 +643,12 @@ export class ORTEPGroupObject extends THREE.Group {
         // Remove marker
         if (this.marker) {
             this.remove(this.marker);
-            if (this.marker instanceof THREE.Group) {
-                this.marker.traverse(child => {
-                    if (child instanceof THREE.Mesh) {
-                        child.geometry?.dispose();
-                        child.material?.dispose();
-                    }
-                });
-            } else {
-                this.marker.geometry?.dispose();
-                this.marker.material?.dispose();
-            }
+            this.marker.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                    child.geometry?.dispose();
+                    child.material?.dispose();
+                }
+            });
             this.marker = null;
         }
         
@@ -669,12 +679,10 @@ export class ORTEPGroupObject extends THREE.Group {
                 child.material?.dispose();
             }
         });
+        this.clear();
     }
 }
 
-/**
- * Represents a hydrogen bond visualization using dashed lines
- */
 export class ORTEPHBond extends ORTEPGroupObject {
     constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
         super();
