@@ -1,7 +1,7 @@
-import * as THREE from "three";
-import defaultSettings from "./structure-settings.js";
-import { HBond, Bond, UAnisoADP, UIsoADP } from "../structure/crystal.js";
-import { SymmetryGrower } from "../structure/structure-modifiers.js";
+import * as THREE from 'three';
+import defaultSettings from './structure-settings.js';
+import { HBond, Bond, UAnisoADP, UIsoADP } from '../structure/crystal.js';
+import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
 /**
  * Calculate transformation matrix for ellipsoid visualization.
@@ -112,7 +112,7 @@ export class GeometryMaterialCache {
         if (!this.options.elementProperties[elementType]) {
             throw new Error(
                 `Unknown element type: ${elementType}. ` +
-                `Please ensure element properties are defined.`
+                'Please ensure element properties are defined.'
             );
         }
     }
@@ -295,7 +295,7 @@ export class ORTEP3JsStructure {
                 SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry),
                 bond.bondLength,
                 bond.bondLengthSU,
-                "."
+                '.'
             ))
             .filter(bond => atomLabels.includes(bond.atom2Label));
 
@@ -325,7 +325,7 @@ export class ORTEP3JsStructure {
                 hBond.donorAcceptorDistanceSU,
                 hBond.hBondAngle,
                 hBond.hBondAngleSU,
-                "."
+                '.'
             ))
             .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
 
@@ -414,7 +414,7 @@ export class ORTEPObject extends THREE.Mesh {
     }
 
     createSelectionMarker(color, options) {
-        throw new Error("createSelectionMarker needs to be implemented in a subclass");
+        throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
     removeSelectionMarker() {
@@ -663,7 +663,7 @@ export class ORTEPGroupObject extends THREE.Group {
     }
 
     createSelectionMarker(color, options) {
-        throw new Error("createSelectionMarker needs to be implemented in a subclass");
+        throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
     dispose() {

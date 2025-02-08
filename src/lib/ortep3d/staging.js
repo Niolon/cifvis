@@ -28,7 +28,7 @@ export function setupLighting(scene, structureBounds) {
     // Remove all existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
     
-    const { size, center } = structureBounds;
+    const { size, __ } = structureBounds;
     const maxDimension = Math.max(size.x, size.y, size.z);
     const lightDistance = maxDimension;
     

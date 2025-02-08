@@ -141,7 +141,7 @@ class MockStructure {
                 throw new Error(`H-bond references non-existent acceptor atom ${hbond.acceptorAtomLabel}`);
             }
         }
-        this.structure.recalculateConnectedGroups()
+        this.structure.recalculateConnectedGroups();
 
         return this.structure;
     }
@@ -254,7 +254,7 @@ describe('BaseFilter', () => {
         }
 
         getApplicableModes(structure) {
-            if (structure === "structureAB") return [TestFilter.MODES.A, TestFilter.MODES.B];
+            if (structure === 'structureAB') return [TestFilter.MODES.A, TestFilter.MODES.B];
             return [TestFilter.MODES.D];
         }
 
@@ -271,9 +271,9 @@ describe('BaseFilter', () => {
 
     test('handles mode cycling', () => {
         const filter = new TestFilter(TestFilter.MODES.A);
-        expect(filter.cycleMode("structureAB")).toBe(TestFilter.MODES.B);
-        expect(filter.cycleMode("structureAB")).toBe(TestFilter.MODES.A);
-        expect(filter.cycleMode("structureAB")).toBe(TestFilter.MODES.B);
+        expect(filter.cycleMode('structureAB')).toBe(TestFilter.MODES.B);
+        expect(filter.cycleMode('structureAB')).toBe(TestFilter.MODES.A);
+        expect(filter.cycleMode('structureAB')).toBe(TestFilter.MODES.B);
     });
 
     test('handles invalid modes with fallback', () => {
@@ -281,14 +281,14 @@ describe('BaseFilter', () => {
         const consoleSpy = jest.spyOn(console, 'warn');
         expect(filter.mode).toBe(TestFilter.MODES.C);
         
-        filter.ensureValidMode("structureAB");
+        filter.ensureValidMode('structureAB');
         
         expect(consoleSpy).toHaveBeenCalled();
         expect(filter.mode).toBe(TestFilter.MODES.B);
         consoleSpy.mockRestore();
 
         // ensure that is also runs if not PREFERRED_FALLBACK_ORDER
-        filter.ensureValidMode("NotinMode");
+        filter.ensureValidMode('NotinMode');
         
         expect(filter.mode).toBe(TestFilter.MODES.D);
         consoleSpy.mockRestore();        
@@ -296,9 +296,9 @@ describe('BaseFilter', () => {
 
     test('setMode can handle uppercalse mode names', () => {
         const filter = new TestFilter(TestFilter.MODES.A);
-        filter.setMode("B");
-        expect(filter.mode).toBe(TestFilter.MODES.B)
-    })
+        filter.setMode('B');
+        expect(filter.mode).toBe(TestFilter.MODES.B);
+    });
 });
 
 describe('HydrogenFilter', () => {
@@ -393,8 +393,8 @@ describe('DisorderFilter', () => {
         const structure = MockStructure.createDefault({ 
             disorderGroups: [1, 3] // Create atoms A0 (group 1) and A1 (group 3)
         })
-        .addBond('A0', 'A1')  // Bond between groups 1 and 3
-        .build();
+            .addBond('A0', 'A1')  // Bond between groups 1 and 3
+            .build();
         
         const filter = new DisorderFilter(DisorderFilter.MODES.GROUP2);
         const filtered = filter.apply(structure);
@@ -409,8 +409,8 @@ describe('DisorderFilter', () => {
         const structure = MockStructure.createDefault({ 
             disorderGroups: [1, 2] 
         })
-        .addBond('A0', 'A1')  // Bond between disorder groups 1 and 2
-        .build();
+            .addBond('A0', 'A1')  // Bond between disorder groups 1 and 2
+            .build();
         
         const filter = new DisorderFilter(DisorderFilter.MODES.GROUP1);
         const filtered = filter.apply(structure);
@@ -425,8 +425,8 @@ describe('DisorderFilter', () => {
             hasHydrogens: true, 
             disorderGroups: [1, 2] 
         })
-        .addHBond('A0', 'H1', 'O1')  // H-bond with disordered donor
-        .build();
+            .addHBond('A0', 'H1', 'O1')  // H-bond with disordered donor
+            .build();
         
         const filter = new DisorderFilter(DisorderFilter.MODES.GROUP2);
         const filtered = filter.apply(structure);
@@ -441,8 +441,8 @@ describe('DisorderFilter', () => {
             hasHydrogens: true, 
             disorderGroups: [1, 2] 
         })
-        .addHBond('O1', 'A0', 'A1')  // H-bond with disordered H and acceptor
-        .build();
+            .addHBond('O1', 'A0', 'A1')  // H-bond with disordered H and acceptor
+            .build();
         
         const filter = new DisorderFilter(DisorderFilter.MODES.GROUP1);
         const filtered = filter.apply(structure);
@@ -651,7 +651,7 @@ describe('SymmetryGrower', () => {
             
             const atomsToGrow = [['NonExistentAtom', '2_555']];
             expect(() => grower.growAtomArray(structure, atomsToGrow, growthState))
-                .toThrow("Atom NonExistentAtom is not in any group. Typo or structure.recalculateConnectedGroups()?");
+                .toThrow('Atom NonExistentAtom is not in any group. Typo or structure.recalculateConnectedGroups()?');
         
         });
     });
@@ -683,7 +683,7 @@ describe('SymmetryGrower', () => {
             const errors = checkSymmetryGrowth(grown, {
                 checkSymmetries: ['2_545', '3_565', '4_655'],
                 excludeSymmetries: ['2_555', '3_568']
-            })
+            });
             expect(errors).toEqual([]);
 
             // check that original connecting bond is in set
@@ -703,17 +703,17 @@ describe('SymmetryGrower', () => {
                 checkSymmetries: ['3_568'],
                 excludeSymmetries: [
                     '2_545', '3_565', '4_655', // These come from bonds
-                    "2_555" // S1 is not connected to group
+                    '2_555' // S1 is not connected to group
                 ]
-            })
+            });
             expect(errors).toEqual([]);
 
-            expect(grown.atoms.some(a => a.label === "S1@2_555")).toBe(true);
+            expect(grown.atoms.some(a => a.label === 'S1@2_555')).toBe(true);
             expect(grown.hBonds.some(hb => 
-                hb.donorAtomLabel === 'N2' && hb.hydrogenAtomLabel === "H2" && hb.acceptorAtomLabel ==="O1@3_568"
+                hb.donorAtomLabel === 'N2' && hb.hydrogenAtomLabel === 'H2' && hb.acceptorAtomLabel ==='O1@3_568'
             )).toBe(true);
             expect(grown.bonds.some(b => b.atom1Label === 'N1' && b.atom2Label === 'N2@2_545')).toBe(false);
-        })
+        });
         
     
         test('grows both bond and hbond symmetry in BONDS_YES_HBONDS_YES mode', () => {
@@ -728,14 +728,14 @@ describe('SymmetryGrower', () => {
             const errors = checkSymmetryGrowth(grown, {
                 checkSymmetries: ['3_568', '2_545', '3_565', '4_655'],
                 excludeSymmetries: [
-                    "2_555" // S1 is not connected to group
+                    '2_555' // S1 is not connected to group
                 ]
-            })
+            });
             expect(errors).toEqual([]);
 
-            expect(grown.atoms.some(a => a.label === "S1@2_555")).toBe(true);
+            expect(grown.atoms.some(a => a.label === 'S1@2_555')).toBe(true);
             expect(grown.hBonds.some(hb => 
-                hb.donorAtomLabel === 'N2' && hb.hydrogenAtomLabel === "H2" && hb.acceptorAtomLabel ==="O1@3_568"
+                hb.donorAtomLabel === 'N2' && hb.hydrogenAtomLabel === 'H2' && hb.acceptorAtomLabel ==='O1@3_568'
             )).toBe(true);
             expect(grown.bonds.some(b => b.atom1Label === 'N1' && b.atom2Label === 'N2@2_545')).toBe(true);
         });
@@ -816,8 +816,8 @@ describe('SymmetryGrower', () => {
             const structure = MockStructure.createDefault({ 
                 hasHydrogens: true
             })
-            .addHBond('O1', 'H1', 'N1', '2_555')
-            .build();
+                .addHBond('O1', 'H1', 'N1', '2_555')
+                .build();
             
             const grower = new SymmetryGrower();
             const modes = grower.getApplicableModes(structure);

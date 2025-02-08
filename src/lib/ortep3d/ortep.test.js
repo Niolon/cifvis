@@ -3,7 +3,7 @@ import {
     ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
     ORTEPBond
- } from './ortep.js';
+} from './ortep.js';
 import { UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import defaultSettings from './structure-settings.js';
 import { create, all } from 'mathjs';
@@ -40,8 +40,6 @@ describe('Transformation Functions', () => {
             
             const matrix = calcBondTransform(pos1, pos2);
 
-            const vector = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix);
-            
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(1);
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(2);
             expect(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix).length()).toBeCloseTo(1);
@@ -57,8 +55,6 @@ describe('Transformation Functions', () => {
             const pos2 = new THREE.Vector3(0, 2, 0);
             
             const matrix = calcBondTransform(pos1, pos2);
-
-            const vector = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix);
             
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(Math.sqrt(2));
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(3);
@@ -1074,9 +1070,9 @@ describe('ORTEPGroupObject', () => {
         const geometrySpies = group.children
             .filter(child => child instanceof THREE.Mesh)
             .map(child => jest.spyOn(child.geometry, 'dispose'));
-            const materialSpies = group.children
-                .filter(child => child instanceof THREE.Mesh)
-                .map(child => jest.spyOn(child.material, 'dispose'));
+        const materialSpies = group.children
+            .filter(child => child instanceof THREE.Mesh)
+            .map(child => jest.spyOn(child.material, 'dispose'));
         
         group.dispose();
         
@@ -1222,7 +1218,7 @@ describe('ORTEPHBond', () => {
         const direction = acceptorPos.clone().sub(hydrogenPos).normalize();
 
         // Check each segment's position and orientation
-        hbond.children.forEach((segment, index) => {
+        hbond.children.forEach(segment => {
             const segmentPosition = new THREE.Vector3();
             segment.getWorldPosition(segmentPosition);
             

@@ -150,7 +150,7 @@ function initializeHydrogenButton() {
             const hydrogenIcon = hydrogenButton.querySelector('img');
             hydrogenIcon.src = `svg/hydrogen-${result.mode}.svg`;
         }
-        clearSelections()
+        clearSelections();
     });
 }
 
@@ -164,7 +164,7 @@ function initializeDisorderButton() {
             const disorderIcon = disorderButton.querySelector('img');
             disorderIcon.src = `svg/disorder-${result.mode}.svg`;
         }
-        clearSelections()
+        clearSelections();
     });
 }
 
@@ -177,7 +177,7 @@ function initializeSymmetryButton() {
             symmetryIcon.src = `svg/symmetry-${result.mode}.svg`;
         }
 
-        clearSelections()
+        clearSelections();
     });
 }
 

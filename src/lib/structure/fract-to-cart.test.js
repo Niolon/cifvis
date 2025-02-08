@@ -156,7 +156,7 @@ describe('uCifToUCart', () => {
 
         result.forEach((value, index) => {
             expect(value).toBeCloseTo(target[index], 5);
-        })
+        });
         
     });
 });

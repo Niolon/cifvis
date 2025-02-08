@@ -18,10 +18,10 @@ export function parseValue(entryString, splitSU = true) {
     let value, su;
  
     if (splitSU && match) {
-        const [_, signString, numberString, suString] = match;
-        const signMult = signString === "-" ? -1 : 1;
-        if (numberString.includes(".")) {
-            const decimals = numberString.split(".")[1].length;
+        const [__, signString, numberString, suString] = match;
+        const signMult = signString === '-' ? -1 : 1;
+        if (numberString.includes('.')) {
+            const decimals = numberString.split('.')[1].length;
             value = Number((signMult * parseFloat(numberString)).toFixed(decimals));
             su = Number((Math.pow(10, -decimals) * parseFloat(suString)).toFixed(decimals));
         } else {
@@ -36,12 +36,12 @@ export function parseValue(entryString, splitSU = true) {
                 value = entryString.replace(/\\([^\\])/g, '$1');
             }
         } else {
-            value = entryString.includes(".") ? parseFloat(entryString) : parseInt(entryString);
+            value = entryString.includes('.') ? parseFloat(entryString) : parseInt(entryString);
         }
         su = NaN;
     }
     return { value, su };
- }
+}
 
 /**
  * Parses a multiline string starting with semicolon.
@@ -80,7 +80,7 @@ export class CIF {
      */
     constructor(cifString, splitSU = true) {
         this.splitSU = splitSU;
-        this.rawCifBlocks = this.splitCifBlocks("\n\n" + cifString);
+        this.rawCifBlocks = this.splitCifBlocks('\n\n' + cifString);
         this.blocks = Array(this.rawCifBlocks.length).fill(null);
     }
  
@@ -104,7 +104,7 @@ export class CIF {
             
             while (count % 2 === 1 && i + 1 < blockTexts.length) {
                 i++;
-                text += "\ndata_" + blockTexts[i];
+                text += '\ndata_' + blockTexts[i];
                 const matches = text.match(multilinePattern);
                 count = matches ? matches.length : 0;
             }
@@ -170,8 +170,8 @@ export class CifBlock {
         if (this.data !== null) return;
 
         this.data = {};
-        const lines = this.rawText.replace(/\n;([^\n^\s])/, "\n;\n$1") // Make multiline strings clean
-            .split("\n")
+        const lines = this.rawText.replace(/\n;([^\n^\s])/, '\n;\n$1') // Make multiline strings clean
+            .split('\n')
             .map(line => {
                 const regex = /#(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
                 return line.split(regex)[0];
@@ -183,14 +183,14 @@ export class CifBlock {
         let i = 1;
 
         while (i < lines.length) {
-            if (lines[i + 1] === ";") {
+            if (lines[i + 1] === ';') {
                 const mult = parseMultiLineString(lines, i + 1);
                 this.data[lines[i]] = mult.value;
                 i = mult.endIndex + 1;
                 continue;
             }
             
-            if (lines[i].startsWith("loop_")) {
+            if (lines[i].startsWith('loop_')) {
                 const loop = new CifLoop(lines.slice(i), this.splitSU);
                 this.data[loop.getName()] = loop;
                 i += loop.getEndIndex();
@@ -203,18 +203,18 @@ export class CifBlock {
                 const parsedValue = parseValue(match[2], this.splitSU);
                 this.data[key] = parsedValue.value;
                 if (!isNaN(parsedValue.su)) {
-                    this.data[key + "_su"] = parsedValue.su;
+                    this.data[key + '_su'] = parsedValue.su;
                 }
-            } else if (lines[i].startsWith("_") && !lines[i+1].startsWith("_")) {
+            } else if (lines[i].startsWith('_') && !lines[i+1].startsWith('_')) {
                 const key = lines[i];
                 const parsedValue = parseValue(lines[i + 1], this.splitSU);
                 this.data[key] = parsedValue.value;
                 if (!isNaN(parsedValue.su)) {
-                    this.data[key + "_su"] = parsedValue.su;
+                    this.data[key + '_su'] = parsedValue.su;
                 }
                 i++;
             } else {
-                throw new Error('Could not parse line ' + String(i) + ": " + lines[i]);
+                throw new Error('Could not parse line ' + String(i) + ': ' + lines[i]);
             }
 
             i++;
@@ -224,7 +224,7 @@ export class CifBlock {
         if (!this._dataBlockName) {
             this.parse();
         }
-        return this._dataBlockName
+        return this._dataBlockName;
     }
 
     set dataBlockName(value) {
@@ -279,15 +279,15 @@ export class CifLoop {
         let i = 1;
         
         // Get header section
-        while (i < lines.length && lines[i].startsWith("_")) {
+        while (i < lines.length && lines[i].startsWith('_')) {
             i++;
         }
         this.headerLines = lines.slice(1, i);
         
         let dataEnd = i;
         // Get data section
-        while (dataEnd < lines.length && !lines[dataEnd].startsWith("_") && 
-               !lines[dataEnd].startsWith("loop_")) {
+        while (dataEnd < lines.length && !lines[dataEnd].startsWith('_') && 
+               !lines[dataEnd].startsWith('loop_')) {
             dataEnd++;
         }
         
@@ -313,32 +313,32 @@ export class CifLoop {
     
         const dataArray = [];
         let i = 0;
-    while (i < this.dataLines.length) {
-        const line = this.dataLines[i];
+        while (i < this.dataLines.length) {
+            const line = this.dataLines[i];
         
-        if (line === ";") {
-            const mult = parseMultiLineString(this.dataLines, i);
-            dataArray.push(parseValue(mult.value, this.splitSU));
-            i = mult.endIndex + 1;
-            continue;
-        }
-
-        const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
-        const matches = line.match(regex);
-        if (matches) {
-            for (const match of matches) {
-                dataArray.push(parseValue(match, this.splitSU));
+            if (line === ';') {
+                const mult = parseMultiLineString(this.dataLines, i);
+                dataArray.push(parseValue(mult.value, this.splitSU));
+                i = mult.endIndex + 1;
+                continue;
             }
+
+            const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
+            const matches = line.match(regex);
+            if (matches) {
+                for (const match of matches) {
+                    dataArray.push(parseValue(match, this.splitSU));
+                }
+            }
+            i++;
         }
-        i++;
-    }
     
         const nEntries = this.headers.length;
 
         if (dataArray.length % nEntries != 0) {
-            throw new Error(`Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`)
+            throw new Error(`Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`);
         } else if (dataArray.length === 0) {
-            throw new Error(`Loop ${this.name} has no data values.`)
+            throw new Error(`Loop ${this.name} has no data values.`);
         }
         for (let j = 0; j < nEntries; j++) {
             const header = this.headers[j];
@@ -347,8 +347,8 @@ export class CifLoop {
             
             if (hasSU) {
                 this.data[header] = headerValues.map(value => value.value);
-                this.data[header + "_su"] = headerValues.map(value => value.su);
-                this.headers.push(header + "_su");
+                this.data[header + '_su'] = headerValues.map(value => value.su);
+                this.headers.push(header + '_su');
             } else {
                 this.data[header] = headerValues.map(value => value.value);
             }
@@ -364,7 +364,7 @@ export class CifLoop {
         if (this.headerLines.length === 1) return this.headerLines[0].trim();
         
         const firstStr = this.headerLines[0];
-        const matchStart = "_" + firstStr.split(/[\.\_]/)[1];
+        const matchStart = '_' + firstStr.split(/[._]/)[1];
         const matchingStrings = this.headerLines.filter(str => str.startsWith(matchStart));
         
         let commonPrefix = '';

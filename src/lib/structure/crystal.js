@@ -4,9 +4,9 @@ import {
     calculateFractToCartMatrix,
     uCifToUCart,
     adpToMatrix
-} from "./fract-to-cart.js"
+} from './fract-to-cart.js';
 
-import { CellSymmetry } from "./cell-symmetry.js";
+import { CellSymmetry } from './cell-symmetry.js';
 
 const math = create(all, {});
 
@@ -28,7 +28,7 @@ export class CrystalStructure {
         this.bonds = bonds;
         this.hBonds = hBonds;
         this.recalculateConnectedGroups();
-        this.symmetry = symmetry ? symmetry : new CellSymmetry("None", 0, ["x,y,z"]);
+        this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, ['x,y,z']);
     }
 
     /**
@@ -39,31 +39,31 @@ export class CrystalStructure {
     static fromCIF(cifBlock) {
         const cell = UnitCell.fromCIF(cifBlock);
         
-        const atomSite = cifBlock.get("_atom_site");
+        const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
         const atoms = Array.from({length: labels.length}, (_, i) => Atom.fromCIF(cifBlock, i));
 
         const bonds = [];
         try {
-            const bondLoop = cifBlock.get("_geom_bond");
-            const nBonds = bondLoop.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length;
+            const bondLoop = cifBlock.get('_geom_bond');
+            const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
             for (let i = 0; i < nBonds; i++) {
                 bonds.push(Bond.fromCIF(cifBlock, i));
             }
-        } catch (error) {
-            console.warn("No bonds found in CIF file");
+        } catch {
+            console.warn('No bonds found in CIF file');
         }
 
         const hBonds = [];
         try {
-            const hbondLoop = cifBlock.get("_geom_hbond");
-                const nHBonds = hbondLoop.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length;
-                for (let i = 0; i < nHBonds; i++) {
-                    hBonds.push(HBond.fromCIF(cifBlock, i));
-                }
-        } catch (error) {
-            console.warn("No hydrogen bonds found in CIF file");
+            const hbondLoop = cifBlock.get('_geom_hbond');
+            const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
+            for (let i = 0; i < nHBonds; i++) {
+                hBonds.push(HBond.fromCIF(cifBlock, i));
+            }
+        } catch {
+            console.warn('No hydrogen bonds found in CIF file');
         }
         
         const symmetry = CellSymmetry.fromCIF(cifBlock);
@@ -82,7 +82,7 @@ export class CrystalStructure {
                 return atom;
             }
         }
-        throw new Error("Could not find atom with label: " + atomLabel);
+        throw new Error('Could not find atom with label: ' + atomLabel);
     }
 
     /**
@@ -115,7 +115,7 @@ export class CrystalStructure {
             const atom2 = this.getAtomByLabel(bond.atom2Label);
 
             // Skip bonds to symmetry equivalent positions for initial grouping
-            if (bond.atom2SiteSymmetry !== "." && bond.atom2SiteSymmetry !== null) {
+            if (bond.atom2SiteSymmetry !== '.' && bond.atom2SiteSymmetry !== null) {
                 continue;
             }
 
@@ -161,7 +161,7 @@ export class CrystalStructure {
             const acceptorAtom = this.getAtomByLabel(hbond.acceptorAtomLabel);
 
             // Skip hbonds to symmetry equivalent positions for initial grouping
-            if (hbond.acceptorAtomSymmetry !== "." && hbond.acceptorAtomSymmetry !== null) {
+            if (hbond.acceptorAtomSymmetry !== '.' && hbond.acceptorAtomSymmetry !== null) {
                 continue;
             }
 
@@ -218,7 +218,7 @@ export class UnitCell {
         this._beta = beta;
         this._gamma = gamma;
         
-        this.fractToCartMatrix = calculateFractToCartMatrix(this)
+        this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
 
     /**
@@ -243,7 +243,7 @@ export class UnitCell {
  
     set a(value) {
         if (value <= 0) {
-            throw new Error("Cell parameter 'a' must be positive");
+            throw new Error('Cell parameter \'a\' must be positive');
         }
         this._a = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -255,7 +255,7 @@ export class UnitCell {
  
     set b(value) {
         if (value <= 0) {
-            throw new Error("Cell parameter 'b' must be positive");
+            throw new Error('Cell parameter \'b\' must be positive');
         }
         this._b = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -267,7 +267,7 @@ export class UnitCell {
  
     set c(value) {
         if (value <= 0) {
-            throw new Error("Cell parameter 'c' must be positive");
+            throw new Error('Cell parameter \'c\' must be positive');
         }
         this._c = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -279,7 +279,7 @@ export class UnitCell {
  
     set alpha(value) {
         if (value <= 0 || value >= 180) {
-            throw new Error("Angle alpha must be between 0 and 180 degrees");
+            throw new Error('Angle alpha must be between 0 and 180 degrees');
         }
         this._alpha = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -291,7 +291,7 @@ export class UnitCell {
  
     set beta(value) {
         if (value <= 0 || value >= 180) {
-            throw new Error("Angle beta must be between 0 and 180 degrees");
+            throw new Error('Angle beta must be between 0 and 180 degrees');
         }
         this._beta = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -303,7 +303,7 @@ export class UnitCell {
  
     set gamma(value) {
         if (value <= 0 || value >= 180) {
-            throw new Error("Angle gamma must be between 0 and 180 degrees");
+            throw new Error('Angle gamma must be between 0 and 180 degrees');
         }
         this._gamma = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
@@ -332,14 +332,14 @@ export class Atom{
     * @throws {Error} If neither index nor label provided
     */
     static fromCIF(cifBlock, atomIndex=null, atomLabel=null) {
-        const atomSite = cifBlock.get("_atom_site");
+        const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
         let index = atomIndex;
         if (atomIndex === null && atomLabel) {
             index = labels.indexOf(atomLabel);
         } else if (atomIndex === null) {
-            throw new Error("either atomIndex or atomLabel need to be provided");
+            throw new Error('either atomIndex or atomLabel need to be provided');
         }
         
         const label = labels[index];
@@ -348,27 +348,27 @@ export class Atom{
             atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
             atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
             atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index)
-        )
+        );
         
         const adpType = atomSite.getIndex( 
-                ['_atom_site.adp_type', '_atom_site_adp_type', 
-                 '_atom_site.thermal_displace_type', '_atom_site_thermal_displace_type'],
-                index,
-                "Uiso"
-            );
+            ['_atom_site.adp_type', '_atom_site_adp_type', 
+                '_atom_site.thermal_displace_type', '_atom_site_thermal_displace_type'],
+            index,
+            'Uiso'
+        );
         
         let adp = null;
-        if (adpType === "Uiso") {
+        if (adpType === 'Uiso') {
             adp = new UIsoADP(
                 atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index, 0.02)
             );
-        } else if (adpType === "Uani") {
-            const anisoSite = cifBlock.get("_atom_site_aniso");
+        } else if (adpType === 'Uani') {
+            const anisoSite = cifBlock.get('_atom_site_aniso');
             const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
             const anisoIndex = anisoLabels.indexOf(label);
 
             if (anisoIndex === -1) {
-                throw new Error(`Atom ${label} has ADP type Uani, but was not found in atom_site_aniso.label`)
+                throw new Error(`Atom ${label} has ADP type Uani, but was not found in atom_site_aniso.label`);
             }
      
             adp = new UAnisoADP(
@@ -382,9 +382,9 @@ export class Atom{
         }
         
         const disorderGroup = atomSite.getIndex(
-            ["_atom_site.disorder_group", "_atom_site_disorder_group"],
+            ['_atom_site.disorder_group', '_atom_site_disorder_group'],
             index,
-            "."
+            '.'
         );
         
         return new Atom(
@@ -392,7 +392,7 @@ export class Atom{
             atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
             position,
             adp, 
-            disorderGroup === "." ? 0 : disorderGroup
+            disorderGroup === '.' ? 0 : disorderGroup
         );
     }
 }
@@ -429,7 +429,7 @@ export class BasePosition {
     set z(value) { this.#coords[2] = value; }
 
     toCartesian(unitCell) {
-       throw new Error('toCartesian must be implemented by subclass');
+        throw new Error('toCartesian must be implemented by subclass');
     }
 }
 
@@ -445,9 +445,9 @@ export class FractPosition extends BasePosition {
         );
         return new CartPosition(...cartCoords.toArray());
     }
- }
+}
  
- export class CartPosition extends BasePosition {
+export class CartPosition extends BasePosition {
     constructor(x, y, z) {
         super(x, y, z);
     }
@@ -455,7 +455,7 @@ export class FractPosition extends BasePosition {
     toCartesian(unitCell) {
         return this;
     }
- }
+}
 
 
 /**
@@ -508,7 +508,7 @@ export class UAnisoADP {
     */
     getEllipsoidMatrix(unitCell) {
         const uijMatrix = adpToMatrix(this.getUCart(unitCell));
-        const { values: _, eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
+        const { eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
         const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
 
         const eigenvalues = math.matrix(eigenvectors_obj.map(entry => entry.value));
@@ -555,14 +555,14 @@ export class Bond {
     * @returns {Bond} New bond instance
     */
     static fromCIF(cifBlock, bondIndex) {
-        const bondLoop = cifBlock.get("_geom_bond");
+        const bondLoop = cifBlock.get('_geom_bond');
  
         return new Bond(
-            bondLoop.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], bondIndex),
-            bondLoop.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], bondIndex),
-            bondLoop.getIndex(["_geom_bond.distance", "_geom_bond_distance"], bondIndex),
-            bondLoop.getIndex(["_geom_bond.distance_su", "_geom_bond_distance_su"], bondIndex, NaN),
-            bondLoop.getIndex(["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], bondIndex, ".")
+            bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
+            bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
+            bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
+            bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
+            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.')
         );
     }
 }
@@ -571,7 +571,7 @@ export class Bond {
 * Represents a hydrogen bond between atoms
 */
 export class HBond {
-   /**
+    /**
     * Creates a new hydrogen bond
     * @param {string} donorAtomLabel - Label of donor atom
     * @param {string} hydrogenAtomLabel - Label of hydrogen atom
@@ -621,21 +621,21 @@ export class HBond {
     * @returns {HBond} New hydrogen bond instance
     */
     static fromCIF(cifBlock, hBondIndex) {
-        const hBondLoop = cifBlock.get("_geom_hbond");
+        const hBondLoop = cifBlock.get('_geom_hbond');
 
         return new HBond(
-            hBondLoop.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], hBondIndex, NaN),
-            hBondLoop.getIndex(["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], hBondIndex, NaN),
-            hBondLoop.getIndex(["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], hBondIndex, NaN),
-            hBondLoop.getIndex(["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], hBondIndex),
-            hBondLoop.getIndex(["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], hBondIndex, NaN),
-            hBondLoop.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], hBondIndex, ".")
+            hBondLoop.getIndex(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.distance_dh', '_geom_hbond_distance_DH'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.distance_dh_su', '_geom_hbond_distance_DH_su'], hBondIndex, NaN),
+            hBondLoop.getIndex(['_geom_hbond.distance_ha', '_geom_hbond_distance_HA'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.distance_ha_su', '_geom_hbond_distance_HA_su'], hBondIndex, NaN),
+            hBondLoop.getIndex(['_geom_hbond.distance_da', '_geom_hbond_distance_DA'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
+            hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex),
+            hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
+            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.')
         );
     }
 }

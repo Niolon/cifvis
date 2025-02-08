@@ -86,26 +86,26 @@ export class SymmetryOperation {
      * @throws {Error} If no symmetry operations are found in the CIF block
      */
     static fromCIF(cifBlock, symOpIndex) {
-        let symopLoop = cifBlock.get(["_space_group_symop", "_symmetry_equiv"], "InVaLIdValue");
+        let symopLoop = cifBlock.get(['_space_group_symop', '_symmetry_equiv'], 'InVaLIdValue');
 
-        if (symopLoop == "InVaLIdValue") {
+        if (symopLoop == 'InVaLIdValue') {
             for (const entry of Object.entries(cifBlock.data)) {
-                if ((entry[0].startsWith("_symmetry_equiv") || entry[0].startsWith("_space_group_symop")) && entry[1]instanceof(CifLoop) ) {
+                if ((entry[0].startsWith('_symmetry_equiv') || entry[0].startsWith('_space_group_symop')) && entry[1]instanceof(CifLoop) ) {
                     symopLoop = entry[1];
-                    break
+                    break;
                 }
             }
         }
         
-        if (symopLoop == "InVaLIdValue") {
-            throw new Error("No symmetry operations found in CIF block");
+        if (symopLoop == 'InVaLIdValue') {
+            throw new Error('No symmetry operations found in CIF block');
         }
 
         const operation = symopLoop.getIndex([
-            "_space_group_symop.operation_xyz",
-            "_space_group_symop_operation_xyz",
-            "_symmetry_equiv.pos_as_xyz",
-            "_symmetry_equiv_pos_as_xyz"
+            '_space_group_symop.operation_xyz',
+            '_space_group_symop_operation_xyz',
+            '_symmetry_equiv.pos_as_xyz',
+            '_symmetry_equiv_pos_as_xyz'
         ], symOpIndex);
 
         return new SymmetryOperation(operation);
@@ -258,7 +258,7 @@ export class CellSymmetry {
                 newAtom.position.x += transVector[0];
                 newAtom.position.y += transVector[1];
                 newAtom.position.z += transVector[2];
-            })
+            });
             return newAtoms;
         }
 
@@ -279,49 +279,49 @@ export class CellSymmetry {
         let spaceGroupName, spaceGroupNumber;
         spaceGroupName = cifBlock.get(
             [
-                "_space_group.name_h-m_alt",
-                "_space_group.name_H-M_full",
-                "_symmetry_space_group_name_H-M",
-                "_space_group_name_H-M_alt"
+                '_space_group.name_h-m_alt',
+                '_space_group.name_H-M_full',
+                '_symmetry_space_group_name_H-M',
+                '_space_group_name_H-M_alt'
             ],
-            "Unknown"
+            'Unknown'
         );
             
         spaceGroupNumber = cifBlock.get(
             [
-                "_space_group.it_number",
-                "_space_group.IT_number",
-                "_symmetry_Int_Tables_number",
-                "_space_group_IT_number",
+                '_space_group.it_number',
+                '_space_group.IT_number',
+                '_symmetry_Int_Tables_number',
+                '_space_group_IT_number',
             ],
             0
         );
 
 
-        let symopLoop = cifBlock.get(["_space_group_symop", "_symmetry_equiv"], "InVaLIdValue");
+        let symopLoop = cifBlock.get(['_space_group_symop', '_symmetry_equiv'], 'InVaLIdValue');
 
-        if (symopLoop === "InVaLIdValue") {
+        if (symopLoop === 'InVaLIdValue') {
             for (const entry of Object.entries(cifBlock.data)) {
-                if ((entry[0].startsWith("_symmetry_equiv") || entry[0].startsWith("_space_group_symop")) && entry[1]instanceof(CifLoop) ) {
+                if ((entry[0].startsWith('_symmetry_equiv') || entry[0].startsWith('_space_group_symop')) && entry[1]instanceof(CifLoop) ) {
                     symopLoop = entry[1];
-                    break
+                    break;
                 }
             }
         }
 
-        if (symopLoop == "InVaLIdValue") {
-            console.warn("No symmetry operations found in CIF block, will use P1")
-            return new CellSymmetry("Unknown", 0, [new SymmetryOperation("x,y,z")])
+        if (symopLoop == 'InVaLIdValue') {
+            console.warn('No symmetry operations found in CIF block, will use P1');
+            return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
         }
         
         const operations = symopLoop.get([
-            "_space_group_symop.operation_xyz",
-            "_space_group_symop_operation_xyz",
-            "_symmetry_equiv.pos_as_xyz",
-            "_symmetry_equiv_pos_as_xyz"
+            '_space_group_symop.operation_xyz',
+            '_space_group_symop_operation_xyz',
+            '_symmetry_equiv.pos_as_xyz',
+            '_symmetry_equiv_pos_as_xyz'
         ]);
 
-        const symmetryOperations = operations.map((op, _) => new SymmetryOperation(op));
+        const symmetryOperations = operations.map(op => new SymmetryOperation(op));
 
         return new CellSymmetry(
             spaceGroupName,

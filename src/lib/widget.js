@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-import { create, all } from 'mathjs';
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { SVG_ICONS } from 'virtual:svg-icons';
 import { formatValueEsd } from './formatting.js';
@@ -195,17 +193,6 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
-    parseCustomIcons() {
-        const iconsAttr = this.getAttribute('icons');
-        if (!iconsAttr) return null;
-        try {
-            return JSON.parse(iconsAttr);
-        } catch (e) {
-            console.warn('Failed to parse custom icons:', e);
-            return null;
-        }
-    }
-
     addButton(container, type, mode, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
@@ -233,19 +220,19 @@ export class CifViewWidget extends HTMLElement {
         if (!this.viewer) return;
 
         switch (name) {
-            case 'caption':
-                this.baseCaption = newValue;
-                this.updateCaption();
-                break;
-            case 'src':
-                if (newValue) await this.loadFromUrl(newValue);
-                break;
-            case 'data':
-                if (newValue) await this.loadFromString(newValue);
-                break;
-            case 'icons':
-                this.customIcons = this.parseCustomIcons();
-                break;
+        case 'caption':
+            this.baseCaption = newValue;
+            this.updateCaption();
+            break;
+        case 'src':
+            if (newValue) await this.loadFromUrl(newValue);
+            break;
+        case 'data':
+            if (newValue) await this.loadFromString(newValue);
+            break;
+        case 'icons':
+            this.customIcons = this.parseCustomIcons();
+            break;
         }
     }
 
@@ -290,7 +277,7 @@ export class CifViewWidget extends HTMLElement {
                 return `<span style="color:${color}">${info}</span>`;
             }).join(', ');
             
-            caption += selectionInfo + ".";
+            caption += selectionInfo + '.';
         }
         
         this.captionElement.innerHTML = caption;

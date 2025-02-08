@@ -1,14 +1,12 @@
 import * as THREE from 'three';
-import { create, all } from 'mathjs';
 import { CIF } from '../cif/read-cif.js';
-import { CrystalStructure } from "../structure/crystal.js";
-import { ORTEP3JsStructure} from "./ortep.js";
-import { calculateStructureBounds, setupLighting, createFloor } from './staging.js';
-import defaultSettings from "./structure-settings.js";
+import { CrystalStructure } from '../structure/crystal.js';
+import { ORTEP3JsStructure} from './ortep.js';
+import { calculateStructureBounds, setupLighting } from './staging.js';
+import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
-import { DisorderFilter, HydrogenFilter, SymmetryGrower } from "../structure/structure-modifiers.js";
+import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
 
-const math = create(all);
 
 export class SelectionManager {
     constructor(options) {
@@ -105,8 +103,8 @@ export class SelectionManager {
         const selections = Array.from(this.selectedObjects).map(object => ({
             type: object.userData.type,
             data: object.userData.type === 'hbond' ? object.userData.hbondData : 
-                  object.userData.type === 'bond' ? object.userData.bondData : 
-                  object.userData.atomData,
+                object.userData.type === 'bond' ? object.userData.bondData : 
+                    object.userData.atomData,
             color: object.selectionColor
         }));
         this.selectionCallbacks.forEach(callback => callback(selections));
