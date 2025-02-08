@@ -214,16 +214,39 @@ describe('GeometryMaterialCache', () => {
         test('ADP ring has correct vertex filtering', () => {
             const ring = cache.createADPHalfTorus();
             const positions = ring.attributes.position.array;
+            const indices = ring.index.array;
             
-            // Check that all vertices are outside the scaling radius
+            // Check that each triangle has at least one vertex outside the scaling radius
+            for (let i = 0; i < indices.length; i += 3) {
+                const vertices = [
+                    indices[i] * 3,
+                    indices[i + 1] * 3,
+                    indices[i + 2] * 3
+                ].map(idx => ({
+                    distance: Math.sqrt(
+                        positions[idx] * positions[idx] +
+                        positions[idx + 1] * positions[idx + 1] +
+                        positions[idx + 2] * positions[idx + 2]
+                    )
+                }));
+                
+                expect(vertices.some(v => v.distance >= cache.scaling)).toBe(true);
+            }
+            
+            // Additionally verify that we have vertices both inside and outside
+            // to ensure we're actually creating a connection to the sphere
+            const distances = [];
             for (let i = 0; i < positions.length; i += 3) {
                 const distance = Math.sqrt(
                     positions[i] * positions[i] +
                     positions[i + 1] * positions[i + 1] +
                     positions[i + 2] * positions[i + 2]
                 );
-                expect(distance).toBeGreaterThanOrEqual(cache.scaling);
+                distances.push(distance);
             }
+            
+            expect(distances.some(d => d >= cache.scaling)).toBe(true);
+            expect(distances.some(d => d < cache.scaling)).toBe(true);
         });
 
         test('ADP ring has correct orientation', () => {

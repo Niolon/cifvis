@@ -171,7 +171,7 @@ export class GeometryMaterialCache {
                 )
             }));
             
-            if (vertices.every(v => v.distance >= this.scaling)) {
+            if (vertices.some(v => v.distance >= this.scaling)) {
                 vertices.forEach(v => keptIndices.add(indices[i + v.index % 3]));
             }
         }
