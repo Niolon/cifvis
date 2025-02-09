@@ -134,6 +134,7 @@ export class ViewerControls {
         } else if (timeSinceLastTap < this.doubleClickDelay) {
             this.viewer.selections.clear();
         }
+        this.viewer.requestRender();
     }
 
     rotateStructure(delta) {
@@ -164,6 +165,7 @@ export class ViewerControls {
             .normalize();
         this.camera.position.copy(direction.multiplyScalar(newDistance).add(this.viewer.cameraTarget));
         this.camera.lookAt(this.viewer.cameraTarget);
+        this.viewer.requestRender();
     }
 
     handleResize() {
@@ -171,6 +173,7 @@ export class ViewerControls {
         this.camera.aspect = rect.width / rect.height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(rect.width, rect.height);
+        this.viewer.requestRender();
     }
 
     handleWheel(event) {
@@ -193,6 +196,7 @@ export class ViewerControls {
         const delta = newMouse.clone().sub(this.state.mouse);
         this.rotateStructure(delta);
         this.state.mouse.copy(newMouse);
+        this.viewer.requestRender();
     }
 
     handleMouseDown(event) {
@@ -236,6 +240,7 @@ export class ViewerControls {
         } else if (timeSinceLastClick < this.doubleClickDelay) {
             this.viewer.selections.clear();
         }
+        this.viewer.requestRender();
     }
 
     dispose() {

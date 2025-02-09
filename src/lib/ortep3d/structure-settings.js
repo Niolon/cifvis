@@ -37,6 +37,8 @@ export default {
         'clickThreshold': 200,
     },
 
+    'renderMode': 'onDemand',
+
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
     'disorderMode': 'all',

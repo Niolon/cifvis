@@ -150,6 +150,13 @@ export class SelectionManager {
 
 export class CrystalViewer {    
     constructor(container, options = {}) {
+        const validRenderModes = ['constant', 'onDemand'];
+        if (options.renderMode && !validRenderModes.includes(options.renderMode)) {
+            throw new Error(
+                `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`
+            );
+        }
+
         this.container = container;
         this.options = {
             camera: {
@@ -183,6 +190,7 @@ export class CrystalViewer {
             hydrogenMode: options.hydrogenMode || defaultSettings.hydrogenMode,
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
+            renderMode: options.renderMode || defaultSettings.renderMode,
         };
 
         this.state = {
@@ -205,6 +213,7 @@ export class CrystalViewer {
         this.setupScene();
         this.controls = new ViewerControls(this);
         this.animate();
+        this.needsRender = true;
     }
 
     setupScene() {
@@ -278,6 +287,8 @@ export class CrystalViewer {
                 hydrogen: this.modifiers.hydrogen.mode,
                 disorder: this.modifiers.disorder.mode,
             };
+
+            this.requestRender();
     
             return { success: true };
         } catch (error) {
@@ -356,8 +367,17 @@ export class CrystalViewer {
     }
 
     animate() {
+        if (this.options.renderMode === 'constant' || this.needsRender) {
+            this.renderer.render(this.scene, this.camera);
+            this.needsRender = false;
+        }
         requestAnimationFrame(this.animate.bind(this));
-        this.renderer.render(this.scene, this.camera);
+    }
+
+    requestRender() {
+        if (this.options.renderMode === 'onDemand') {
+            this.needsRender = true;
+        }
     }
 
     selectAtoms(atomLabels) {
