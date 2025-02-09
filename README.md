@@ -1,10 +1,10 @@
-# CifVis - Crystal Structure Visualization
+# CifVis - Crystal Structure Visualisation
 
 A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif
 
 ## Features
 
-- Interactive 3D visualization of crystal structures
+- Interactive 3D visualisation of crystal structures
 - Support for anisotropic displacement parameters (ADPs)
 - Display of bonds and hydrogen bonds
 - Disorder group handling
@@ -47,7 +47,7 @@ import {
   CrystalViewer,   // Main viewer class
   CIF,             // CIF file parser
   CrystalStructure, // Crystal structure data model
-  ORTEP3JsStructure, // ORTEP-style structure visualization
+  ORTEP3JsStructure, // ORTEP-style structure visualisation
   CifViewWidget,    // Web component
   formatValueEsd    // Utility for formatting values with ESDs
 } from 'cifvis';
@@ -131,7 +131,7 @@ If you use this software in academic work, please cite it like this until a prop
 ```bibtex
 @software{cifvis,
   author = {Paul Niklas Ruth},
-  title = {CifVis: A JavaScript Library for Crystal Structure Visualization},
+  title = {CifVis: A JavaScript Library for Crystal Structure Visualisation},
   year = {2025},
   url = {https://github.com/niolon/cifvis}
 }

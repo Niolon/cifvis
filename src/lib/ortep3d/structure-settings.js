@@ -59,7 +59,7 @@ export default {
     'bondColorRoughness': 0.3,
     'bondColorMetalness': 0.1,
 
-    // Hydrogen bond visualization settings
+    // Hydrogen bond visualisation settings
     'hbondRadius': 0.04,         
     'hbondColor': '#AAAAAA',     
     'hbondColorRoughness': 0.3,  
