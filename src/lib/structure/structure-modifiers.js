@@ -22,6 +22,10 @@ export class BaseFilter {
         this.setMode(defaultMode);
     }
 
+    get requiresCameraUpdate() {
+        return false;
+    }
+
     /**
      * Gets the current mode
      * @returns {string} Current mode
@@ -342,6 +346,10 @@ export class SymmetryGrower extends BaseFilter {
         super(SymmetryGrower.MODES, mode, 'SymmetryGrower', SymmetryGrower.PREFERRED_FALLBACK_ORDER);
     }
 
+    get requiresCameraUpdate() {
+        return true;
+    }
+
     /**
      * Combines an atom label with a symmetry operation code to create a unique identifier
      * @param {string} atomLabel - Original atom label
@@ -583,18 +591,18 @@ export class AtomLabelFilter extends BaseFilter {
         }
 
         const filteredAtoms = structure.atoms.filter(atom => 
-            !this.filteredLabels.has(atom.label)
+            !this.filteredLabels.has(atom.label),
         );
 
         const filteredBonds = structure.bonds.filter(bond => 
             !this.filteredLabels.has(bond.atom1Label) && 
-            !this.filteredLabels.has(bond.atom2Label)
+            !this.filteredLabels.has(bond.atom2Label),
         );
 
         const filteredHBonds = structure.hBonds.filter(hBond => 
             !this.filteredLabels.has(hBond.donorAtomLabel) &&
             !this.filteredLabels.has(hBond.hydrogenAtomLabel) &&
-            !this.filteredLabels.has(hBond.acceptorAtomLabel)
+            !this.filteredLabels.has(hBond.acceptorAtomLabel),
         );
 
         return new CrystalStructure(

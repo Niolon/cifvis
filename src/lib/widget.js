@@ -147,17 +147,13 @@ export class CifViewWidget extends HTMLElement {
 
         this.clearButtons();
         
-        const hasHydrogens = this.viewer.modifiers.hydrogen.getApplicableModes(this.viewer.state.baseStructure).length > 1;
-        const hasDisorder = this.viewer.modifiers.disorder.getApplicableModes(this.viewer.state.baseStructure).length > 1;
-        const hasSymmetry = this.viewer.modifiers.symmetry.getApplicableModes(this.viewer.state.baseStructure).length > 1;
-
-        if (hasHydrogens) {
+        if (this.viewer.numberModifierModes('hydrogen') > 1) {
             this.addButton(this.buttonContainer, 'hydrogen', 'none', 'Toggle Hydrogen Display');
         }
-        if (hasDisorder) {
+        if (this.viewer.numberModifierModes('disorder') > 1) {
             this.addButton(this.buttonContainer, 'disorder', 'all', 'Toggle Disorder Display');
         }
-        if (hasSymmetry) {
+        if (this.viewer.numberModifierModes('symmetry') > 1) {
             this.addButton(this.buttonContainer, 'symmetry', 'bonds-no-hbonds-no', 'Toggle Symmetry Display');
         }
     }
@@ -214,7 +210,7 @@ export class CifViewWidget extends HTMLElement {
         container.appendChild(button);
 
         button.addEventListener('click', async () => {
-            const result = await this.viewer[`cycle${type.charAt(0).toUpperCase() + type.slice(1)}Mode`]();
+            const result = await this.viewer.cycleModifierMode(type);
             if (result.success) {
                 button.innerHTML = this.icons[type][result.mode];
             }

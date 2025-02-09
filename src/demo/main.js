@@ -147,7 +147,7 @@ function clearSelections() {
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
     hydrogenButton.addEventListener('click', async () => {
-        const result = await viewer.cycleHydrogenMode();
+        const result = await viewer.cycleModifierMode('hydrogen');
         if (result.success) {
             const hydrogenIcon = hydrogenButton.querySelector('img');
             hydrogenIcon.src = `svg/hydrogen-${result.mode}.svg`;
@@ -161,7 +161,7 @@ function initializeDisorderButton() {
     const disorderButton = document.getElementById('disorder-button');
         
     disorderButton.addEventListener('click', async () => {
-        const result = await viewer.cycleDisorderMode();
+        const result = await viewer.cycleModifierMode('disorder');
         if (result.success) {
             const disorderIcon = disorderButton.querySelector('img');
             disorderIcon.src = `svg/disorder-${result.mode}.svg`;
@@ -173,7 +173,7 @@ function initializeDisorderButton() {
 function initializeSymmetryButton() {
     const symmetryButton = document.getElementById('symmetry-button');
     symmetryButton.addEventListener('click', async () => {
-        const result = await viewer.cycleSymmetryMode();
+        const result = await viewer.cycleModifierMode('symmetry');
         if (result.success) {
             const symmetryIcon = symmetryButton.querySelector('img');
             symmetryIcon.src = `svg/symmetry-${result.mode}.svg`;
@@ -193,7 +193,7 @@ function initializeUI() {
 
 function adaptButtons() {
     const disorderButton = document.getElementById('disorder-button');
-    const hasDisorder = viewer.hasDisorderGroups();
+    const hasDisorder = viewer.numberModifierModes('disorder') > 1;
     disorderButton.style.display = hasDisorder ? 'flex' : 'none';
     if (hasDisorder) {
         const disorderIcon = disorderButton.querySelector('img');
@@ -201,7 +201,7 @@ function adaptButtons() {
     }
 
     const symmetryButton = document.getElementById('symmetry-button');
-    const hasSymmetryConnection = viewer.modifiers.symmetry.getApplicableModes(viewer.state.baseStructure).length > 1;
+    const hasSymmetryConnection = viewer.numberModifierModes('symmetry') > 1;
     symmetryButton.style.display = hasSymmetryConnection ? 'flex' : 'none';
     if (hasSymmetryConnection) {
         const symmetryIcon = symmetryButton.querySelector('img');

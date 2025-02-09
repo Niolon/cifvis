@@ -126,6 +126,22 @@ export class SelectionManager {
         }
     }
 
+    pruneInvalidSelections(container) {
+        // Remove selections for objects no longer in scene
+        const validObjects = new Set();
+        container.traverse((object) => {
+            if (object.userData?.selectable) {
+                validObjects.add(object);
+            }
+        });
+        
+        this.selectedObjects = new Set(
+            Array.from(this.selectedObjects)
+                .filter(obj => validObjects.has(obj)),
+        );
+        this.notifyCallbacks();
+    }
+
     dispose() {
         this.clearSelections();
         this.selectionCallbacks.clear();
@@ -223,26 +239,50 @@ export class CrystalViewer {
         this.raycaster.far = 100;
     }
 
-    async loadStructure(cifText=null) {
+    async loadStructure(cifText) {
+        // New structure loading only
+        this.clearScene(true); // Full clear
+        if (cifText) {
+            const cif = new CIF(cifText);
+            this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(0));
+        }
+        return this.updateStructure();
+    }
+    
+    async updateStructure(preserveCamera = false) {
+        // Handle filter updates
+        const oldCamera = preserveCamera ? {
+            position: this.camera.position.clone(),
+            rotation: this.camera.rotation.clone(),
+        } : null;
+    
         try {
-            this.clearScene();
-
-            if (cifText) {
-                this.state.currentCifContent = cifText;
-                const cif = new CIF(cifText, true);
-                this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(0));
-            }
-
+            this.clearScene(false); // Partial clear preserving selections
             const structure = this.applyFilters();
             const bounds = calculateStructureBounds(structure);
-            
-            this.updateCameraBounds(bounds);
-            setupLighting(this.scene, bounds);
-
+          
+            if (!preserveCamera) {
+                this.updateCameraBounds(bounds);
+            } else {
+                this.camera.position.copy(oldCamera.position);
+                this.camera.rotation.copy(oldCamera.rotation);
+            }
+    
+            // Only update lighting for symmetry changes
+            if (this.lastMode?.symmetry !== this.modifiers.symmetry.mode) {
+                setupLighting(this.scene, bounds);
+            }
+          
+            this.lastMode = {
+                symmetry: this.modifiers.symmetry.mode,
+                hydrogen: this.modifiers.hydrogen.mode,
+                disorder: this.modifiers.disorder.mode,
+            };
+    
             return { success: true };
         } catch (error) {
-            console.error('Error loading structure:', error);
-            return { success: false, error: error.message };
+            console.error('Error updating structure:', error);
+            return { success: false, error: error.message }; 
         }
     }
 
@@ -254,11 +294,6 @@ export class CrystalViewer {
 
         const ortep = new ORTEP3JsStructure(structure, this.options);
         
-        this.state.ortepObjects = new Map();
-        ortep.atoms3D.forEach(atom => this.state.ortepObjects.set(atom.object3D, atom));
-        ortep.bonds3D.forEach(bond => this.state.ortepObjects.set(bond.object3D, bond));
-        ortep.hBonds3D.forEach(hbond => this.state.ortepObjects.set(hbond.object3D, hbond));
-        
         const structureGroup = ortep.getGroup();
         this.setupStructureObjects(structureGroup);
         this.moleculeContainer.add(structureGroup);
@@ -267,12 +302,22 @@ export class CrystalViewer {
         return structureGroup;
     }
 
-    clearScene() {
-        this.moleculeContainer.clear();
-        this.selections.clear();
-        if (this.state.currentFloor) {
-            this.scene.remove(this.state.currentFloor);
+    clearScene(fullClear = true) {
+        if (fullClear) {
+            this.selections.clear();
+        } else {
+            this.selections.pruneInvalidSelections(this.moleculeContainer);
         }
+        // Dispose Three.js objects
+        this.moleculeContainer.traverse((object) => {
+            if (object.geometry) {
+                object.geometry.dispose(); 
+            }
+            if (object.material) {
+                object.material.dispose(); 
+            }
+        });
+        this.moleculeContainer.clear();
     }
 
     setupStructureObjects(structureGroup) {
@@ -295,29 +340,19 @@ export class CrystalViewer {
         this.camera.lookAt(this.cameraTarget);
     }
 
-    async cycleHydrogenMode() {
-        const mode = this.modifiers.hydrogen.cycleMode(this.state.baseStructure);
-        const result = await this.loadStructure();
+    async cycleModifierMode(modifierName) {
+        const selectedModifier = this.modifiers[modifierName];
+        const mode = selectedModifier.cycleMode(this.state.baseStructure);
+        const result = await this.updateStructure(selectedModifier.requiresCameraUpdate);
         return { ...result, mode };
     }
 
-    async cycleDisorderMode() {
-        const mode = this.modifiers.disorder.cycleMode(this.state.baseStructure);
-        const result = await this.loadStructure();
-        return { ...result, mode };
-    }
-
-    async cycleSymmetryMode() {
-        const mode = this.modifiers.symmetry.cycleMode(this.state.baseStructure);
-        const result = await this.loadStructure();
-        return { ...result, mode };
-    }
-
-    hasDisorderGroups() {
+    numberModifierModes(modifierName) {
         if (!this.state.baseStructure) {
             return false; 
         }
-        return this.modifiers.disorder.getApplicableModes(this.state.baseStructure).length > 1;
+        const selectedModifier = this.modifiers[modifierName];
+        return selectedModifier.getApplicableModes(this.state.baseStructure).length;
     }
 
     animate() {
@@ -327,17 +362,6 @@ export class CrystalViewer {
 
     selectAtoms(atomLabels) {
         this.selections.selectAtoms(atomLabels, this.moleculeContainer);
-    }
-
-    findAtomMeshByLabel(label) {
-        let found = null;
-        this.moleculeContainer.traverse((object) => {
-            if (object.userData?.type === 'atom' && 
-                object.userData?.atomData?.label === label) {
-                found = object;
-            }
-        });
-        return found;
     }
 
     dispose() {

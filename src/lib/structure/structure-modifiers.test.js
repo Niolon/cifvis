@@ -894,7 +894,7 @@ describe('AtomLabelFilter', () => {
         const filtered = filter.apply(structure);
         expect(filtered.atoms.some(atom => atom.label === 'C1')).toBe(false);
         expect(filtered.bonds.some(bond => 
-            bond.atom1Label === 'C1' || bond.atom2Label === 'C1'
+            bond.atom1Label === 'C1' || bond.atom2Label === 'C1',
         )).toBe(false);
     });
 
