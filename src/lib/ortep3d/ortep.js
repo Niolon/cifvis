@@ -4,10 +4,10 @@ import { HBond, Bond, UAnisoADP, UIsoADP } from '../structure/crystal.js';
 import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
 /**
- * Calculate transformation matrix for ellipsoid visualization.
+ * Calculate transformation matrix for ellipsoid visualisation.
  * @param {UAnisoADP} uAnisoADPobj - Anisotropic displacement parameters object
  * @param {UnitCell} unitCell - Unit cell object
- * @returns {THREE.Matrix4} Transformation matrix for ellipsoid visualization
+ * @returns {THREE.Matrix4} Transformation matrix for ellipsoid visualisation
  */
 export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
     const transformationMatrix = uAnisoADPobj.getEllipsoidMatrix(unitCell);
@@ -21,6 +21,12 @@ export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
     );
 }
 
+/**
+ * Calculates transformation matrix for bond placement between two points.
+ * @param {THREE.Vector3} position1 - Start position
+ * @param {THREE.Vector3} position2 - End position
+ * @returns {THREE.Matrix4} Transformation matrix
+ */
 export function calcBondTransform(position1, position2) {
     const direction = position2.clone().sub(position1);
     const length = direction.length();
@@ -40,7 +46,16 @@ export function calcBondTransform(position1, position2) {
         );
 }
 
+/**
+ * Cache for Three.js geometries and materials used in molecular visualisation.
+ * Allows for reuse of geometries and materials, which is more efficient than
+ * generating copies for every object.
+ */
 export class GeometryMaterialCache {
+    /**
+     * Creates a new geometry and material cache.
+     * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
+     */
     constructor(options = {}) {
         const safeOptions = options || {};
         this.options = {
@@ -61,6 +76,10 @@ export class GeometryMaterialCache {
         this.initializeMaterials();
     }
 
+    /**
+     * Creates and caches base geometries for atoms, ADP rings, bonds and H-bonds.
+     * @private
+     */
     initializeGeometries() {
         // Base atom geometry
         this.geometries.atom = new THREE.IcosahedronGeometry(
@@ -92,6 +111,10 @@ export class GeometryMaterialCache {
         );
     }
 
+    /**
+     * Creates and caches base materials for bonds and H-bonds.
+     * @private
+     */
     initializeMaterials() {
         // Base bond material
         this.materials.bond = new THREE.MeshStandardMaterial({
@@ -108,15 +131,27 @@ export class GeometryMaterialCache {
         });
     }
 
+    /**
+     * Validates that properties exist for given element type.
+     * @param {string} elementType - Chemical element symbol
+     * @throws {Error} If element properties not found
+     */
     validateElementType(elementType) {
         if (!this.options.elementProperties[elementType]) {
             throw new Error(
                 `Unknown element type: ${elementType}. ` +
-                'Please ensure element properties are defined.',
+                'Please ensure element properties are defined.' + 
+                'Pass the type settings as custom options, if' +
+                'they are element from periodic table',
             );
         }
     }
 
+    /**
+     * Gets or creates cached materials for given atom type.
+     * @param {string} atomType - Chemical element symbol
+     * @returns {[THREE.Material, THREE.Material]} Array containing [atomMaterial, ringMaterial]
+     */
     getAtomMaterials(atomType) {
         this.validateElementType(atomType);
 
@@ -142,6 +177,13 @@ export class GeometryMaterialCache {
         return this.elementMaterials[key];
     }
 
+    /**
+     * Creates geometry for anisotropic displacement parameter visualisation,
+     * by removing the inner vertices of a torus that would be obstructed by
+     * the atom sphere anyway.
+     * @private
+     * @returns {THREE.BufferGeometry} Half torus geometry for ADP visualisation
+     */
     createADPHalfTorus() {
         const fullRing = new THREE.TorusGeometry(
             this.scaling * this.options.atomADPRingWidthFactor,
@@ -213,6 +255,9 @@ export class GeometryMaterialCache {
         return baseADPRing;
     }
 
+    /**
+     * Cleans up all cached resources.
+     */
     dispose() {
         Object.values(this.geometries).forEach(geometry => geometry.dispose());
         Object.values(this.materials).forEach(material => material.dispose());
@@ -223,7 +268,15 @@ export class GeometryMaterialCache {
     }
 }
 
+/**
+ * Main class for creating 3D molecular structure visualisations.
+ */
 export class ORTEP3JsStructure {
+    /**
+     * Creates a new ORTEP structure visualisation.
+     * @param {CrystalStructure} crystalStructure - Input crystal structure
+     * @param {Object} [options] - Visualisation options
+     */
     constructor(crystalStructure, options = {}) {
         const safeOptions = options || {};
         
@@ -249,7 +302,10 @@ export class ORTEP3JsStructure {
         
         this.createStructure();
     }
-
+    /**
+     * Creates 3D representations of atoms, bonds and H-bonds.
+     * @private
+     */
     createStructure() {
         this.atoms3D = [];
         this.bonds3D = [];
@@ -341,6 +397,10 @@ export class ORTEP3JsStructure {
         }
     }
 
+    /**
+     * Returns a THREE.Group containing all visualisation objects.
+     * @returns {THREE.Group} Group containing all structure objects
+     */
     getGroup() {
         const group = new THREE.Group();
         const meanAccumulator = new THREE.Vector3();
@@ -364,15 +424,24 @@ export class ORTEP3JsStructure {
         return group;
     }
 
+    /**
+     * Cleans up all resources.
+     */
     dispose() {
         this.cache.dispose();
     }
 }
 
 /**
- * Base class for selectable THREE.js mesh objects that handle selection visualization
+ * Base class for selectable THREE.js mesh objects that handle selection visualisation
+ * @abstract
  */
 export class ORTEPObject extends THREE.Mesh {
+    /**
+     * Creates a new selectable object.
+     * @param {THREE.BufferGeometry} geometry - Object geometry
+     * @param {THREE.Material} material - Object material
+     */
     constructor(geometry, material) {
         if (new.target === ORTEPObject) {
             throw new TypeError('ORTEPObject is an abstract class and cannot be instantiated directly.');
@@ -386,6 +455,11 @@ export class ORTEPObject extends THREE.Mesh {
         return this._selectionColor;
     }
 
+    /**
+     * Creates material for selection highlighting.
+     * @param {number} color - Color in hex format
+     * @returns {THREE.Material} Selection highlight material
+     */
     createSelectionMaterial(color) {
         return new THREE.MeshBasicMaterial({
             color: color,
@@ -394,7 +468,12 @@ export class ORTEPObject extends THREE.Mesh {
             side: THREE.BackSide,
         });
     }
-    
+
+    /**
+     * Handles object selection.
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     select(color, options) {
         this._selectionColor = color;
         
@@ -408,15 +487,28 @@ export class ORTEPObject extends THREE.Mesh {
         this.marker = marker;
     }
 
+    /**
+     * Handles object deselection.
+     */
     deselect() {
         this._selectionColor = null;
         this.removeSelectionMarker();
     }
 
+    /**
+     * Creates visual marker for selection.
+     * @abstract
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     createSelectionMarker(color, options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
+    /**
+     * Removes selection marker and restores original material.
+     * @private
+     */
     removeSelectionMarker() {
         if (this.marker) {
             this.remove(this.marker);
@@ -432,6 +524,9 @@ export class ORTEPObject extends THREE.Mesh {
         }
     }
 
+    /**
+     * Cleans up resources.
+     */
     dispose() {
         this.deselect();
         this.geometry?.dispose();
@@ -439,7 +534,17 @@ export class ORTEPObject extends THREE.Mesh {
     }
 }
 
+/**
+ * Base class for atom visualisations.
+ */
 export class ORTEPAtom extends ORTEPObject {
+    /**
+     * Creates a new atom visualisation.
+     * @param {Atom} atom - Input atom data
+     * @param {UnitCell} unitCell - Unit cell parameters
+     * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
+     * @param {THREE.Material} atomMaterial - Atom material
+     */
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(baseAtom, atomMaterial);
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
@@ -452,6 +557,11 @@ export class ORTEPAtom extends ORTEPObject {
         };
     }
 
+    /**
+     * Creates visual marker for selection of atoms.
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
             this.geometry, 
@@ -463,7 +573,19 @@ export class ORTEPAtom extends ORTEPObject {
     }
 }
 
+/**
+ * Class for atoms with anisotropic displacement parameters.
+ */
 export class ORTEPAniAtom extends ORTEPAtom {
+    /**
+     * Creates a new anisotropic atom visualisation.
+     * @param {Atom} atom - Input atom data with anisotropic displacement parameters
+     * @param {UnitCell} unitCell - Unit cell parameters
+     * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
+     * @param {THREE.Material} atomMaterial - Atom material
+     * @param {THREE.BufferGeometry} baseADPRing - ADP ring geometry
+     * @param {THREE.Material} ADPRingMaterial - ADP ring material
+     */
     constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing, ADPRingMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
 
@@ -514,7 +636,18 @@ export class ORTEPAniAtom extends ORTEPAtom {
     }
 }
 
+/**
+ * Class for atoms with isotropic displacement parameters.
+ */
 export class ORTEPIsoAtom extends ORTEPAtom {
+    /**
+     * Creates a new isotropic atom visualisation.
+     * @param {Atom} atom - Input atom data with isotropic displacement parameters
+     * @param {UnitCell} unitCell - Unit cell parameters
+     * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
+     * @param {THREE.Material} atomMaterial - Atom material
+     * @throws {Error} If atom lacks isotropic displacement parameters
+     */
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
         if (!atom.adp || !('uiso' in atom.adp)) {
@@ -524,7 +657,19 @@ export class ORTEPIsoAtom extends ORTEPAtom {
     }
 }
 
+/**
+ * Class for atoms with visualised with constant radius.
+ */
 export class ORTEPConstantAtom extends ORTEPAtom {
+    /**
+     * Creates a new constant radius atom visualization.
+     * @param {Atom} atom - Input atom data
+     * @param {UnitCell} unitCell - Unit cell parameters
+     * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
+     * @param {THREE.Material} atomMaterial - Atom material
+     * @param {Object} options - Must contain elementProperties for atom type
+     * @throws {Error} If element properties not found
+     */
     constructor(atom, unitCell, baseAtom, atomMaterial, options) {
         super(atom, unitCell, baseAtom, atomMaterial);
         if (!options?.elementProperties?.[atom.atomType]?.radius) {
@@ -536,7 +681,17 @@ export class ORTEPConstantAtom extends ORTEPAtom {
     }
 }
 
+/**
+ * Class for chemical bond visualization.
+ */
 export class ORTEPBond extends ORTEPObject {
+    /**
+     * Creates a new bond visualization.
+     * @param {Bond} bond - Bond data
+     * @param {CrystalStructure} crystalStructure - Parent structure
+     * @param {THREE.BufferGeometry} baseBond - Bond geometry
+     * @param {THREE.Material} baseBondMaterial - Bond material
+     */
     constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
         super(baseBond, baseBondMaterial);
         const bondAtom1 = crystalStructure.getAtomByLabel(bond.atom1Label);
@@ -553,6 +708,11 @@ export class ORTEPBond extends ORTEPObject {
         };
     }
 
+    /**
+     * Creates visual marker for selection of bonds.
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
             this.geometry, 
@@ -565,7 +725,14 @@ export class ORTEPBond extends ORTEPObject {
     }
 }
 
+/**
+ * Abstract base class for grouped objects like dashed Bonds.
+ * @abstract
+ */
 export class ORTEPGroupObject extends THREE.Group {
+    /**
+     * Creates a new group object.
+     */
     constructor() {
         if (new.target === ORTEPGroupObject) {
             throw new TypeError('ORTEPGroupObject is an abstract class and cannot be instantiated directly.');
@@ -579,6 +746,11 @@ export class ORTEPGroupObject extends THREE.Group {
         return this._selectionColor;
     }
 
+    /**
+     * Adds objects with raycasting redirection.
+     * @param {...THREE.Object3D} objects - Objects to add
+     * @returns {this}
+     */
     add(...objects) {
         objects.forEach(object => {
             if (object instanceof THREE.Mesh) {
@@ -608,6 +780,11 @@ export class ORTEPGroupObject extends THREE.Group {
         return super.add(...objects);
     }
 
+    /**
+     * Creates material for selection highlighting.
+     * @param {number} color - Color in hex format
+     * @returns {THREE.Material} Selection highlight material
+     */
     createSelectionMaterial(color) {
         return new THREE.MeshBasicMaterial({
             color: color,
@@ -616,7 +793,12 @@ export class ORTEPGroupObject extends THREE.Group {
             side: THREE.BackSide,
         });
     }
-    
+
+    /**
+     * Handles group selection.
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     select(color, options) {
         this._selectionColor = color;
         
@@ -636,6 +818,9 @@ export class ORTEPGroupObject extends THREE.Group {
         this.marker = marker;
     }
 
+    /**
+     * Handles group deselection.
+     */
     deselect() {
         this._selectionColor = null;
 
@@ -661,10 +846,19 @@ export class ORTEPGroupObject extends THREE.Group {
         });
     }
 
+    /**
+     * Creates visual marker for selection.
+     * @abstract
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     createSelectionMarker(color, options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
+    /**
+     * Cleans up resources.
+     */
     dispose() {
         // Clean up selection-related resources
         if (this.marker) {
@@ -682,7 +876,19 @@ export class ORTEPGroupObject extends THREE.Group {
     }
 }
 
+/**
+ * Class for hydrogen bond visualization.
+ */
 export class ORTEPHBond extends ORTEPGroupObject {
+    /**
+     * Creates a new hydrogen bond visualization.
+     * @param {HBond} hbond - H-bond data
+     * @param {CrystalStructure} crystalStructure - Parent structure
+     * @param {THREE.BufferGeometry} baseHBond - H-bond geometry
+     * @param {THREE.Material} baseHBondMaterial - H-bond material
+     * @param {number} targetSegmentLength - Approximate target length for dashed segments
+     * @param {number} dashFraction - Fraction of segment that is solid
+     */
     constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
         super();
         this.userData = {
@@ -703,6 +909,16 @@ export class ORTEPHBond extends ORTEPGroupObject {
         );
     }
 
+    /**
+     * Creates dashed line segments for hydrogen bond visualization.
+     * @private
+     * @param {THREE.Vector3} start - Start position
+     * @param {THREE.Vector3} end - End position
+     * @param {THREE.BufferGeometry} baseHBond - Base H-bond geometry
+     * @param {THREE.Material} material - H-bond material
+     * @param {number} targetLength - approximate target segment length
+     * @param {number} dashFraction - Fraction of segment that is solid
+     */
     createDashedBondSegments(start, end, baseHBond, material, targetLength, dashFraction) {
         const totalLength = start.distanceTo(end);
         const numSegments = Math.max(1, Math.floor(totalLength / targetLength));
@@ -723,6 +939,11 @@ export class ORTEPHBond extends ORTEPGroupObject {
         }
     }
 
+    /**
+     * Creates visual marker for selection of hydrogen bond.
+     * @param {number} color - Selection color in hex format
+     * @param {Object} options - Selection options
+     */
     createSelectionMarker(color, options) {
         const markerGroup = new THREE.Group();
         const material = this.createSelectionMaterial(color);
