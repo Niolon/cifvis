@@ -1,6 +1,5 @@
 import { create, all } from 'mathjs';
 import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
-import { CifLoop } from '../cif/read-cif.js';
 
 const math = create(all);
 

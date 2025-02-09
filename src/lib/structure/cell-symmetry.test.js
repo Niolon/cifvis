@@ -201,7 +201,7 @@ _symmetry_equiv_pos_as_xyz
             const cif = new CIF(cifText);
             const block = cif.getBlock(0);
             expect(() => SymmetryOperation.fromCIF(block, 0))
-                .toThrow('No symmetry operations found in CIF block');
+                .toThrow('None of the keys');
         });
     });
     describe('copy', () => {
