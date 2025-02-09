@@ -97,9 +97,6 @@ export class SymmetryOperation {
                 '_symmetry_equiv_pos_as_xyz',
             ],
         );
-        if (!symopLoop) {
-            throw new Error('No symmetry operations found in CIF block');
-        }
 
         const operation = symopLoop.getIndex([
             '_space_group_symop.operation_xyz',
