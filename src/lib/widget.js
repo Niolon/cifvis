@@ -91,8 +91,8 @@ export class CifViewWidget extends HTMLElement {
             symmetry: { 
                 'bonds-yes-hbonds-yes': '',
                 'bonds-yes-hbonds-no': '',
-                'bonds-no-hbonds-no': ''
-            }
+                'bonds-no-hbonds-no': '',
+            },
         };
         return { ...defaultIcons, ...SVG_ICONS, ...this.customIcons };
     }
@@ -125,8 +125,11 @@ export class CifViewWidget extends HTMLElement {
         // Load structure first to determine which buttons to show
         const src = this.getAttribute('src');
         const data = this.getAttribute('data');
-        if (src) await this.loadFromUrl(src);
-        else if (data) await this.loadFromString(data);
+        if (src) {
+            await this.loadFromUrl(src); 
+        } else if (data) {
+            await this.loadFromString(data); 
+        }
     }
 
     clearButtons() {
@@ -138,7 +141,9 @@ export class CifViewWidget extends HTMLElement {
     }
 
     setupButtons() {
-        if (!this.viewer || !this.viewer.state.baseStructure) return;
+        if (!this.viewer || !this.viewer.state.baseStructure) {
+            return; 
+        }
 
         this.clearButtons();
         
@@ -162,16 +167,16 @@ export class CifViewWidget extends HTMLElement {
             const iconSources = {
                 hydrogen: {
                     src: this.getAttribute('hydrogen-icons'),
-                    modes: ['none', 'constant', 'anisotropic']
+                    modes: ['none', 'constant', 'anisotropic'],
                 },
                 disorder: {
                     src: this.getAttribute('disorder-icons'),
-                    modes: ['all', 'group1', 'group2']
+                    modes: ['all', 'group1', 'group2'],
                 },
                 symmetry: {
                     src: this.getAttribute('symmetry-icons'),
-                    modes: ['bonds-yes-hbonds-yes', 'bonds-yes-hbonds-no', 'bonds-no-hbonds-no']
-                }
+                    modes: ['bonds-yes-hbonds-yes', 'bonds-yes-hbonds-no', 'bonds-no-hbonds-no'],
+                },
             };
 
             const icons = {};
@@ -217,7 +222,9 @@ export class CifViewWidget extends HTMLElement {
     }
 
     async attributeChangedCallback(name, oldValue, newValue) {
-        if (!this.viewer) return;
+        if (!this.viewer) {
+            return; 
+        }
 
         switch (name) {
         case 'caption':
@@ -225,10 +232,14 @@ export class CifViewWidget extends HTMLElement {
             this.updateCaption();
             break;
         case 'src':
-            if (newValue) await this.loadFromUrl(newValue);
+            if (newValue) {
+                await this.loadFromUrl(newValue); 
+            }
             break;
         case 'data':
-            if (newValue) await this.loadFromString(newValue);
+            if (newValue) {
+                await this.loadFromString(newValue); 
+            }
             break;
         case 'icons':
             this.customIcons = this.parseCustomIcons();

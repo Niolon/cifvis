@@ -9,12 +9,12 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: resolve(__dirname, 'index.html'),
-                widget: resolve(__dirname, 'widget.html')
+                widget: resolve(__dirname, 'widget.html'),
             },
             output: {
-                inlineDynamicImports: false
-            }
-        }
+                inlineDynamicImports: false,
+            },
+        },
     },
-    publicDir: 'public'
+    publicDir: 'public',
 });

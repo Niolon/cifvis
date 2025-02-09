@@ -46,9 +46,11 @@ export class SymmetryOperation {
                 const variable = match[2];
                 
                 // Handle coefficient parsing
-                if (!coefficient || coefficient === '+') coefficient = '1';
-                else if (coefficient === '-') coefficient = '-1';
-                else if (coefficient.includes('/')) {
+                if (!coefficient || coefficient === '+') {
+                    coefficient = '1'; 
+                } else if (coefficient === '-') {
+                    coefficient = '-1'; 
+                } else if (coefficient.includes('/')) {
                     const [num, den] = coefficient.split('/');
                     coefficient = parseFloat(num) / parseFloat(den);
                 }
@@ -86,18 +88,17 @@ export class SymmetryOperation {
      * @throws {Error} If no symmetry operations are found in the CIF block
      */
     static fromCIF(cifBlock, symOpIndex) {
-        let symopLoop = cifBlock.get(['_space_group_symop', '_symmetry_equiv'], 'InVaLIdValue');
-
-        if (symopLoop == 'InVaLIdValue') {
-            for (const entry of Object.entries(cifBlock.data)) {
-                if ((entry[0].startsWith('_symmetry_equiv') || entry[0].startsWith('_space_group_symop')) && entry[1]instanceof(CifLoop) ) {
-                    symopLoop = entry[1];
-                    break;
-                }
-            }
-        }
-        
-        if (symopLoop == 'InVaLIdValue') {
+        const symopLoop = cifBlock.get(
+            [
+                '_space_group_symop',
+                '_symmetry_equiv',
+                '_space_group_symop.operation_xyz',
+                '_space_group_symop_operation_xyz',
+                '_symmetry_equiv.pos_as_xyz',
+                '_symmetry_equiv_pos_as_xyz',
+            ],
+        );
+        if (!symopLoop) {
             throw new Error('No symmetry operations found in CIF block');
         }
 
@@ -105,7 +106,7 @@ export class SymmetryOperation {
             '_space_group_symop.operation_xyz',
             '_space_group_symop_operation_xyz',
             '_symmetry_equiv.pos_as_xyz',
-            '_symmetry_equiv_pos_as_xyz'
+            '_symmetry_equiv_pos_as_xyz',
         ], symOpIndex);
 
         return new SymmetryOperation(operation);
@@ -119,7 +120,7 @@ export class SymmetryOperation {
     applyToPoint(point) {
         const result = math.add(
             math.multiply(this.rotMatrix, point),
-            this.transVector
+            this.transVector,
         );
         return Array.isArray(result) ? result : result.toArray();
     }
@@ -137,7 +138,7 @@ export class SymmetryOperation {
     applyToAtom(atom) {
         const newPos = new FractPosition(...math.add(
             math.multiply(this.rotMatrix, [atom.position.x, atom.position.y, atom.position.z]),
-            this.transVector
+            this.transVector,
         ));
 
         let newAdp = null;
@@ -145,7 +146,7 @@ export class SymmetryOperation {
             const uMatrix = [
                 [atom.adp.u11, atom.adp.u12, atom.adp.u13],
                 [atom.adp.u12, atom.adp.u22, atom.adp.u23],
-                [atom.adp.u13, atom.adp.u23, atom.adp.u33]
+                [atom.adp.u13, atom.adp.u23, atom.adp.u33],
             ];
             
             const R = this.rotMatrix;
@@ -158,7 +159,7 @@ export class SymmetryOperation {
                 newU[2][2], // u33
                 newU[0][1], // u12
                 newU[0][2], // u13
-                newU[1][2]  // u23
+                newU[1][2],  // u23
             );
         } else if (atom.adp && atom.adp instanceof UIsoADP) {
             newAdp = new UIsoADP(atom.adp.uiso);
@@ -169,7 +170,7 @@ export class SymmetryOperation {
             atom.atomType,
             newPos,
             newAdp,
-            atom.disorderGroup
+            atom.disorderGroup,
         );
     }
 
@@ -198,7 +199,6 @@ export class SymmetryOperation {
         return newOp;
     }
 }
-
 
 /**
  * Represents the complete symmetry information of a crystal structure
@@ -276,40 +276,39 @@ export class CellSymmetry {
      * @throws {Error} If no symmetry operation xyz strings found in CIF block
      */
     static fromCIF(cifBlock) {
-        let spaceGroupName, spaceGroupNumber;
-        spaceGroupName = cifBlock.get(
+        const spaceGroupName = cifBlock.get(
             [
                 '_space_group.name_h-m_alt',
                 '_space_group.name_H-M_full',
                 '_symmetry_space_group_name_H-M',
-                '_space_group_name_H-M_alt'
+                '_space_group_name_H-M_alt',
             ],
-            'Unknown'
+            'Unknown',
         );
             
-        spaceGroupNumber = cifBlock.get(
+        const spaceGroupNumber = cifBlock.get(
             [
                 '_space_group.it_number',
                 '_space_group.IT_number',
                 '_symmetry_Int_Tables_number',
                 '_space_group_IT_number',
             ],
-            0
+            0,
         );
 
-
-        let symopLoop = cifBlock.get(['_space_group_symop', '_symmetry_equiv'], 'InVaLIdValue');
+        const symopLoop = cifBlock.get(
+            [
+                '_space_group_symop',
+                '_symmetry_equiv',
+                '_space_group_symop.operation_xyz',
+                '_space_group_symop_operation_xyz',
+                '_symmetry_equiv.pos_as_xyz',
+                '_symmetry_equiv_pos_as_xyz',
+            ],
+            'InVaLIdValue',
+        );
 
         if (symopLoop === 'InVaLIdValue') {
-            for (const entry of Object.entries(cifBlock.data)) {
-                if ((entry[0].startsWith('_symmetry_equiv') || entry[0].startsWith('_space_group_symop')) && entry[1]instanceof(CifLoop) ) {
-                    symopLoop = entry[1];
-                    break;
-                }
-            }
-        }
-
-        if (symopLoop == 'InVaLIdValue') {
             console.warn('No symmetry operations found in CIF block, will use P1');
             return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
         }
@@ -318,7 +317,7 @@ export class CellSymmetry {
             '_space_group_symop.operation_xyz',
             '_space_group_symop_operation_xyz',
             '_symmetry_equiv.pos_as_xyz',
-            '_symmetry_equiv_pos_as_xyz'
+            '_symmetry_equiv_pos_as_xyz',
         ]);
 
         const symmetryOperations = operations.map(op => new SymmetryOperation(op));
@@ -326,7 +325,7 @@ export class CellSymmetry {
         return new CellSymmetry(
             spaceGroupName,
             spaceGroupNumber,
-            symmetryOperations
+            symmetryOperations,
         );
     }
 }

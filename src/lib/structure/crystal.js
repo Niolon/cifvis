@@ -3,7 +3,7 @@ import { create, all } from 'mathjs';
 import {
     calculateFractToCartMatrix,
     uCifToUCart,
-    adpToMatrix
+    adpToMatrix,
 } from './fract-to-cart.js';
 
 import { CellSymmetry } from './cell-symmetry.js';
@@ -42,7 +42,7 @@ export class CrystalStructure {
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
-        const atoms = Array.from({length: labels.length}, (_, i) => Atom.fromCIF(cifBlock, i));
+        const atoms = Array.from({ length: labels.length }, (_, i) => Atom.fromCIF(cifBlock, i));
 
         const bonds = [];
         try {
@@ -103,7 +103,7 @@ export class CrystalStructure {
             const newGroup = {
                 atoms: new Set(),
                 bonds: new Set(),
-                hBonds: new Set()
+                hBonds: new Set(),
             };
             groups.push(newGroup);
             return newGroup;
@@ -119,8 +119,8 @@ export class CrystalStructure {
                 continue;
             }
 
-            let group1 = atomGroupMap.get(atom1.label);
-            let group2 = atomGroupMap.get(atom2.label);
+            const group1 = atomGroupMap.get(atom1.label);
+            const group2 = atomGroupMap.get(atom2.label);
 
             const targetGroup = group1 || group2;
 
@@ -174,7 +174,6 @@ export class CrystalStructure {
                 acceptorGroup.hBonds.add(hbond);
             }
 
-
         }
         const unboundAtoms = this.atoms
             .filter(atom => !groups.some(g => g.atoms.has(atom)));
@@ -183,7 +182,7 @@ export class CrystalStructure {
             const newGroup = {
                 atoms: new Set([atom]),
                 bonds: new Set(),
-                hBonds: new Set()
+                hBonds: new Set(),
             };
             groups.push(newGroup);
         });
@@ -191,7 +190,7 @@ export class CrystalStructure {
         this.connectedGroups = groups.map(group => ({
             atoms: Array.from(group.atoms),
             bonds: Array.from(group.bonds),
-            hBonds: Array.from(group.hBonds)
+            hBonds: Array.from(group.hBonds),
         }));
     }
 }
@@ -233,7 +232,7 @@ export class UnitCell {
             cifBlock.get(['_cell.length_c', '_cell_length_c']),
             cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha']),
             cifBlock.get(['_cell.angle_beta', '_cell_angle_beta']),
-            cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'])
+            cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma']),
         );
     }
  
@@ -313,7 +312,7 @@ export class UnitCell {
 /**
 * Represents an atom in a crystal structure
 */
-export class Atom{
+export class Atom {
     constructor(label, atomType, position, adp=null, disorderGroup=0) {
         this.label = label;
         this.atomType = atomType;
@@ -347,20 +346,20 @@ export class Atom{
         const position = new FractPosition(
             atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
             atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
-            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index)
+            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index),
         );
         
         const adpType = atomSite.getIndex( 
             ['_atom_site.adp_type', '_atom_site_adp_type', 
                 '_atom_site.thermal_displace_type', '_atom_site_thermal_displace_type'],
             index,
-            'Uiso'
+            'Uiso',
         );
         
         let adp = null;
         if (adpType === 'Uiso') {
             adp = new UIsoADP(
-                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index, 0.02)
+                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index, 0.02),
             );
         } else if (adpType === 'Uani') {
             const anisoSite = cifBlock.get('_atom_site_aniso');
@@ -377,14 +376,14 @@ export class Atom{
                 anisoSite.getIndex(['_atom_site_aniso.u_33', '_atom_site_aniso_U_33'], anisoIndex),
                 anisoSite.getIndex(['_atom_site_aniso.u_12', '_atom_site_aniso_U_12'], anisoIndex),
                 anisoSite.getIndex(['_atom_site_aniso.u_13', '_atom_site_aniso_U_13'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_23', '_atom_site_aniso_U_23'], anisoIndex)
+                anisoSite.getIndex(['_atom_site_aniso.u_23', '_atom_site_aniso_U_23'], anisoIndex),
             );
         }
         
         const disorderGroup = atomSite.getIndex(
             ['_atom_site.disorder_group', '_atom_site_disorder_group'],
             index,
-            '.'
+            '.',
         );
         
         return new Atom(
@@ -392,14 +391,26 @@ export class Atom{
             atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
             position,
             adp, 
-            disorderGroup === '.' ? 0 : disorderGroup
+            disorderGroup === '.' ? 0 : disorderGroup,
         );
     }
 }
 
+/**
+ * Abstract base class for representing positions in 3D space
+ * @abstract
+ * @implements {Iterable<number>}
+ */
 export class BasePosition {
     #coords;
- 
+
+    /**
+     * Creates a new position
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate 
+     * @param {number} z - Z coordinate
+     * @throws {TypeError} If instantiated directly
+     */
     constructor(x, y, z) {
         if (new.target === BasePosition) {
             throw new TypeError('BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition');
@@ -415,48 +426,96 @@ export class BasePosition {
                     yield this.#coords[0];
                     yield this.#coords[1];
                     yield this.#coords[2];
-                }
-            }
+                },
+            },
         });
     }
- 
-    get x() { return this.#coords[0]; }
-    get y() { return this.#coords[1]; }
-    get z() { return this.#coords[2]; }
 
-    set x(value) { this.#coords[0] = value; }
-    set y(value) { this.#coords[1] = value; }
-    set z(value) { this.#coords[2] = value; }
+    get x() {
+        return this.#coords[0]; 
+    }
+    get y() {
+        return this.#coords[1]; 
+    }
+    get z() {
+        return this.#coords[2]; 
+    }
 
+    set x(value) {
+        this.#coords[0] = value; 
+    }
+    set y(value) {
+        this.#coords[1] = value; 
+    }
+    set z(value) {
+        this.#coords[2] = value; 
+    }
+
+    /**
+     * Converts from given coordinate system to Cartesian coordinates
+     * @abstract
+     * @param {UnitCell} unitCell - Unit cell for conversion
+     * @returns {CartPosition} Position in Cartesian coordinates
+     * @throws {Error} If not implemented by subclass
+     */
     toCartesian(unitCell) {
         throw new Error('toCartesian must be implemented by subclass');
     }
 }
 
+/**
+ * Represents a position in fractional coordinates
+ * @extends BasePosition
+ */
 export class FractPosition extends BasePosition {
+    /**
+     * Creates a new fractional position
+     * @param {number} x - X coordinate in fractional units
+     * @param {number} y - Y coordinate in fractional units 
+     * @param {number} z - Z coordinate in fractional units
+     */
     constructor(x, y, z) {
         super(x, y, z);
     }
- 
+
+    /**
+     * Converts to Cartesian coordinates using unit cell parameters
+     * @param {UnitCell} unitCell - Unit cell for conversion
+     * @returns {CartPosition} Position in Cartesian coordinates
+     */
     toCartesian(unitCell) {
         const cartCoords = math.multiply(
             unitCell.fractToCartMatrix, 
-            math.matrix([this.x, this.y, this.z])
+            math.matrix([this.x, this.y, this.z]),
         );
         return new CartPosition(...cartCoords.toArray());
     }
 }
- 
+
+/**
+ * Represents a position in Cartesian coordinates
+ * @extends BasePosition
+ */
 export class CartPosition extends BasePosition {
+    /**
+     * Creates a new Cartesian position
+     * @param {number} x - X coordinate in Angstroms
+     * @param {number} y - Y coordinate in Angstroms
+     * @param {number} z - Z coordinate in Angstroms
+     */
     constructor(x, y, z) {
         super(x, y, z);
     }
- 
+
+    /**
+     * Returns self since already in Cartesian coordinates
+     * @param {*} _ - Unused unit cell
+     * @returns {CartPosition} This position instance
+     */
     toCartesian(unitCell) {
         return this;
     }
 }
-
 
 /**
 * Represents isotropic atomic displacement parameters
@@ -496,7 +555,7 @@ export class UAnisoADP {
     getUCart(unitCell) {
         return uCifToUCart(
             unitCell.fractToCartMatrix,
-            [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23]
+            [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23],
         );
     }
 
@@ -562,7 +621,7 @@ export class Bond {
             bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
-            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.')
+            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.'),
         );
     }
 }
@@ -598,7 +657,7 @@ export class HBond {
         donorAcceptorDistanceSU,
         hBondAngle,
         hBondAngleSU,
-        acceptorAtomSymmetry
+        acceptorAtomSymmetry,
     ) {
         this.donorAtomLabel = donorAtomLabel;
         this.hydrogenAtomLabel = hydrogenAtomLabel;
@@ -635,7 +694,7 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex),
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.')
+            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.'),
         );
     }
 }

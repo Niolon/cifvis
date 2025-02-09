@@ -2,27 +2,27 @@ import { CIF, CifBlock, parseValue, parseMultiLineString } from './read-cif.js';
 
 describe('Parse Value Tests', () => {
     test('parses decimal with SU', () => {
-        expect(parseValue('123.456(7)', true)).toEqual({value: 123.456, su: 0.007});
-        expect(parseValue('-123.456(7)', true)).toEqual({value: -123.456, su: 0.007});
+        expect(parseValue('123.456(7)', true)).toEqual({ value: 123.456, su: 0.007 });
+        expect(parseValue('-123.456(7)', true)).toEqual({ value: -123.456, su: 0.007 });
     });
  
     test('parses integer with SU', () => {
-        expect(parseValue('123(7)', true)).toEqual({value: 123, su: 7});
-        expect(parseValue('-123(7)', true)).toEqual({value: -123, su: 7});
+        expect(parseValue('123(7)', true)).toEqual({ value: 123, su: 7 });
+        expect(parseValue('-123(7)', true)).toEqual({ value: -123, su: 7 });
     });
  
     test('parses regular numbers', () => {
-        expect(parseValue('123.456')).toEqual({value: 123.456, su: NaN});
-        expect(parseValue('123')).toEqual({value: 123, su: NaN});
+        expect(parseValue('123.456')).toEqual({ value: 123.456, su: NaN });
+        expect(parseValue('123')).toEqual({ value: 123, su: NaN });
     });
  
     test('parses quoted strings', () => {
-        expect(parseValue('\'text\'')).toEqual({value: 'text', su: NaN});
-        expect(parseValue('"text"')).toEqual({value: 'text', su: NaN});
+        expect(parseValue('\'text\'')).toEqual({ value: 'text', su: NaN });
+        expect(parseValue('"text"')).toEqual({ value: 'text', su: NaN });
     });
  
     test('respects splitSU flag', () => {
-        expect(parseValue('123.456(7)', false)).toEqual({value: '123.456(7)', su: NaN});
+        expect(parseValue('123.456(7)', false)).toEqual({ value: '123.456(7)', su: NaN });
     });
 });
  
@@ -31,7 +31,7 @@ describe('Parse MultiLine String Tests', () => {
         const lines = [';', 'line1', 'line2', ';'];
         expect(parseMultiLineString(lines, 0)).toEqual({
             value: 'line1\nline2',
-            endIndex: 3
+            endIndex: 3,
         });
     });
  
@@ -39,7 +39,7 @@ describe('Parse MultiLine String Tests', () => {
         const lines = [';', ';'];
         expect(parseMultiLineString(lines, 0)).toEqual({
             value: '',
-            endIndex: 1
+            endIndex: 1,
         });
     });
 });
@@ -221,7 +221,6 @@ O1 O`);
 
     });
 
-
     test('parses multiline strings in loops', () => {
         const block = new CifBlock(`test
 loop_
@@ -337,7 +336,9 @@ loop_
 _key_first
 _key_second
 oneentry`);
-        expect(() => block.get('_key').get('_key_first')).toThrow('Loop _key: Cannot distribute 1 values evenly into 2 columns');
+        expect(
+            () => block.get('_key').get('_key_first'),
+        ).toThrow('Loop _key: Cannot distribute 1 values evenly into 2 columns');
     });
     test('empty loop throws error', () => {
         const block = new CifBlock(`blockname

@@ -58,7 +58,7 @@ export function setupLighting(scene, structureBounds) {
     const fillLights = [
         { pos: [-1, -0.5, 1], intensity: 0.4 },
         { pos: [1, -0.5, 1], intensity: 0.4 },
-        { pos: [0, -0.5, 1], intensity: 0.3 }
+        { pos: [0, -0.5, 1], intensity: 0.3 },
     ];
 
     fillLights.forEach(({ pos, intensity }) => {
@@ -66,7 +66,7 @@ export function setupLighting(scene, structureBounds) {
         light.position.set(
             pos[0] * lightDistance,
             pos[1] * lightDistance,
-            pos[2] * lightDistance
+            pos[2] * lightDistance,
         );
         scene.add(light);
     });
@@ -85,7 +85,7 @@ export function createFloor(size) {
     //    metalness: 0.0
     //});
     const floorMaterial = new THREE.ShadowMaterial({
-        opacity: 0.1
+        opacity: 0.1,
     });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.castShadow = true;
@@ -93,7 +93,4 @@ export function createFloor(size) {
     floor.rotation.z = -Math.PI / 2;
     return floor;
 }
-
-
-
 

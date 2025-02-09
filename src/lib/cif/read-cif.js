@@ -18,7 +18,7 @@ export function parseValue(entryString, splitSU = true) {
     let value, su;
  
     if (splitSU && match) {
-        const [__, signString, numberString, suString] = match;
+        const [, signString, numberString, suString] = match;
         const signMult = signString === '-' ? -1 : 1;
         if (numberString.includes('.')) {
             const decimals = numberString.split('.')[1].length;
@@ -60,7 +60,7 @@ export function parseMultiLineString(lines, startIndex) {
     
     return {
         value: result.trim(),
-        endIndex: i
+        endIndex: i,
     };
 }
 
@@ -167,7 +167,9 @@ export class CifBlock {
      * Handles single values, multiline strings, and loops.
      */
     parse() {
-        if (this.data !== null) return;
+        if (this.data !== null) {
+            return; 
+        }
 
         this.data = {};
         const lines = this.rawText.replace(/\n;([^\n^\s])/, '\n;\n$1') // Make multiline strings clean
@@ -306,7 +308,9 @@ export class CifLoop {
     * Processes headers and values, handling standard uncertainties if enabled.
     */
     parse() {
-        if (this.data !== null) return;
+        if (this.data !== null) {
+            return; 
+        }
     
         this.headers = [...this.headerLines]; // Copy to preserve originals
         this.data = {};
@@ -335,8 +339,10 @@ export class CifLoop {
     
         const nEntries = this.headers.length;
 
-        if (dataArray.length % nEntries != 0) {
-            throw new Error(`Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`);
+        if (dataArray.length % nEntries !== 0) {
+            throw new Error(
+                `Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`,
+            );
         } else if (dataArray.length === 0) {
             throw new Error(`Loop ${this.name} has no data values.`);
         }
@@ -361,7 +367,9 @@ export class CifLoop {
     * @private
     */
     findCommonStart() {
-        if (this.headerLines.length === 1) return this.headerLines[0].trim();
+        if (this.headerLines.length === 1) {
+            return this.headerLines[0].trim(); 
+        }
         
         const firstStr = this.headerLines[0];
         const matchStart = '_' + firstStr.split(/[._]/)[1];
@@ -418,7 +426,9 @@ export class CifLoop {
         const keyArray = Array.isArray(keys) ? keys : [keys];
 
         if (!keyArray.some(key => this.headers.includes(key))) {
-            if (defaultValue !== null) return defaultValue;
+            if (defaultValue !== null) {
+                return defaultValue; 
+            }
             throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF loop ${this.name}`);
         }
 
@@ -426,7 +436,9 @@ export class CifLoop {
         if (index < column.length) {
             return column[index];
         }
-        throw new Error(`Tried to look up value of index ${index} in ${this.name}, but length is only ${column.length}`);
+        throw new Error(
+            `Tried to look up value of index ${index} in ${this.name}, but length is only ${column.length}`,
+        );
     }
 
     /**

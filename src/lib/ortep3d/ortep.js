@@ -17,7 +17,7 @@ export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
         matrixArray[0][0], matrixArray[0][1], matrixArray[0][2], 0,
         matrixArray[1][0], matrixArray[1][1], matrixArray[1][2], 0,
         matrixArray[2][0], matrixArray[2][1], matrixArray[2][2], 0,
-        0, 0, 0, 1
+        0, 0, 0, 1,
     );
 }
 
@@ -33,10 +33,10 @@ export function calcBondTransform(position1, position2) {
         .makeScale(1, length, 1)
         .premultiply(new THREE.Matrix4().makeRotationAxis(
             rotationAxis.normalize(),
-            angle
+            angle,
         ))
         .setPosition(
-            position1.clone().add(position2).multiplyScalar(0.5)
+            position1.clone().add(position2).multiplyScalar(0.5),
         );
 }
 
@@ -48,8 +48,8 @@ export class GeometryMaterialCache {
             ...safeOptions,
             elementProperties: {
                 ...defaultSettings.elementProperties,
-                ...(safeOptions.elementProperties || {})
-            }
+                ...(safeOptions.elementProperties || {}),
+            },
         };
 
         this.scaling = 1.5384;
@@ -65,7 +65,7 @@ export class GeometryMaterialCache {
         // Base atom geometry
         this.geometries.atom = new THREE.IcosahedronGeometry(
             this.scaling, 
-            this.options.atomDetail
+            this.options.atomDetail,
         );
 
         // ADP ring geometry
@@ -78,7 +78,7 @@ export class GeometryMaterialCache {
             0.98,
             this.options.bondSections,
             1,
-            true
+            true,
         );
 
         // H-bond geometry
@@ -88,7 +88,7 @@ export class GeometryMaterialCache {
             0.98,
             this.options.bondSections,
             1,
-            true
+            true,
         );
     }
 
@@ -97,14 +97,14 @@ export class GeometryMaterialCache {
         this.materials.bond = new THREE.MeshStandardMaterial({
             color: this.options.bondColor,
             roughness: this.options.bondColorRoughness,
-            metalness: this.options.bondColorMetalness
+            metalness: this.options.bondColorMetalness,
         });
 
         // Base H-bond material
         this.materials.hbond = new THREE.MeshStandardMaterial({
             color: this.options.hbondColor,
             roughness: this.options.hbondColorRoughness,
-            metalness: this.options.hbondColorMetalness
+            metalness: this.options.hbondColorMetalness,
         });
     }
 
@@ -112,7 +112,7 @@ export class GeometryMaterialCache {
         if (!this.options.elementProperties[elementType]) {
             throw new Error(
                 `Unknown element type: ${elementType}. ` +
-                'Please ensure element properties are defined.'
+                'Please ensure element properties are defined.',
             );
         }
     }
@@ -127,13 +127,13 @@ export class GeometryMaterialCache {
             const atomMaterial = new THREE.MeshStandardMaterial({
                 color: elementProperty.atomColor,
                 roughness: this.options.atomColorRoughness,
-                metalness: this.options.atomColorMetalness
+                metalness: this.options.atomColorMetalness,
             });
 
             const ringMaterial = new THREE.MeshStandardMaterial({
                 color: elementProperty.ringColor,
                 roughness: this.options.atomColorRoughness,
-                metalness: this.options.atomColorMetalness
+                metalness: this.options.atomColorMetalness,
             });
 
             this.elementMaterials[key] = [atomMaterial, ringMaterial];
@@ -147,7 +147,7 @@ export class GeometryMaterialCache {
             this.scaling * this.options.atomADPRingWidthFactor,
             this.options.atomADPRingHeight,
             this.options.atomADPInnerSections,
-            this.options.atomADPRingSections
+            this.options.atomADPRingSections,
         );
         
         const positions = fullRing.attributes.position.array;
@@ -167,8 +167,8 @@ export class GeometryMaterialCache {
                 distance: Math.sqrt(
                     positions[idx] * positions[idx] +
                     positions[idx + 1] * positions[idx + 1] +
-                    positions[idx + 2] * positions[idx + 2]
-                )
+                    positions[idx + 2] * positions[idx + 2],
+                ),
             }));
             
             if (vertices.some(v => v.distance >= this.scaling)) {
@@ -185,7 +185,7 @@ export class GeometryMaterialCache {
             newPositions.push(
                 positions[idx],
                 positions[idx + 1],
-                positions[idx + 2]
+                positions[idx + 2],
             );
             indexMap.set(oldIndex, newIndex++);
         });
@@ -198,7 +198,7 @@ export class GeometryMaterialCache {
                 newIndices.push(
                     indexMap.get(indices[i]),
                     indexMap.get(indices[i + 1]),
-                    indexMap.get(indices[i + 2])
+                    indexMap.get(indices[i + 2]),
                 );
             }
         }
@@ -233,7 +233,7 @@ export class ORTEP3JsStructure {
             Object.entries(safeOptions.elementProperties).forEach(([element, props]) => {
                 mergedElementProperties[element] = {
                     ...mergedElementProperties[element],
-                    ...props
+                    ...props,
                 };
             });
         }
@@ -241,7 +241,7 @@ export class ORTEP3JsStructure {
         this.options = {
             ...defaultSettings,
             ...safeOptions,
-            elementProperties: mergedElementProperties
+            elementProperties: mergedElementProperties,
         };
         
         this.crystalStructure = crystalStructure;
@@ -268,14 +268,14 @@ export class ORTEP3JsStructure {
                     this.cache.geometries.atom,
                     atomMaterial,
                     this.cache.geometries.adpRing,
-                    ringMaterial
+                    ringMaterial,
                 ));
             } else if (atom.adp instanceof UIsoADP) {
                 this.atoms3D.push(new ORTEPIsoAtom(
                     atom,
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
-                    atomMaterial
+                    atomMaterial,
                 ));
             } else {
                 this.atoms3D.push(new ORTEPConstantAtom(
@@ -283,7 +283,7 @@ export class ORTEP3JsStructure {
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
                     atomMaterial,
-                    this.options
+                    this.options,
                 ));
             }
         }
@@ -295,7 +295,7 @@ export class ORTEP3JsStructure {
                 SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry),
                 bond.bondLength,
                 bond.bondLengthSU,
-                '.'
+                '.',
             ))
             .filter(bond => atomLabels.includes(bond.atom2Label));
 
@@ -304,7 +304,7 @@ export class ORTEP3JsStructure {
                 bond,
                 this.crystalStructure,
                 this.cache.geometries.bond,
-                this.cache.materials.bond
+                this.cache.materials.bond,
             ));
         }
 
@@ -315,7 +315,7 @@ export class ORTEP3JsStructure {
                 hBond.hydrogenAtomLabel,
                 SymmetryGrower.combineSymOpLabel(
                     hBond.acceptorAtomLabel, 
-                    hBond.acceptorAtomSymmetry
+                    hBond.acceptorAtomSymmetry,
                 ),
                 hBond.donorHydrogenDistance,
                 hBond.donorHydrogenDistanceSU,
@@ -325,7 +325,7 @@ export class ORTEP3JsStructure {
                 hBond.donorAcceptorDistanceSU,
                 hBond.hBondAngle,
                 hBond.hBondAngleSU,
-                '.'
+                '.',
             ))
             .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
 
@@ -336,14 +336,14 @@ export class ORTEP3JsStructure {
                 this.cache.geometries.hbond,
                 this.cache.materials.hbond,
                 this.options.hbondDashSegmentLength,
-                this.options.hbondDashFraction
+                this.options.hbondDashFraction,
             ));
         }
     }
 
     getGroup() {
         const group = new THREE.Group();
-        let meanAccumulator = new THREE.Vector3();
+        const meanAccumulator = new THREE.Vector3();
         
         for (const atom3D of this.atoms3D) {
             group.add(atom3D);
@@ -391,7 +391,7 @@ export class ORTEPObject extends THREE.Mesh {
             color: color,
             transparent: true,
             opacity: 0.9,
-            side: THREE.BackSide
+            side: THREE.BackSide,
         });
     }
     
@@ -455,7 +455,7 @@ export class ORTEPAtom extends ORTEPObject {
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
             this.geometry, 
-            this.createSelectionMaterial(color)
+            this.createSelectionMaterial(color),
         );
         outlineMesh.scale.multiplyScalar(options.selection.markerMult);
         outlineMesh.userData.selectable = false;
@@ -490,27 +490,26 @@ export class ORTEPAniAtom extends ORTEPAtom {
         };
     }
 
-
     get adpRingMatrices() {
         return [
             new THREE.Matrix4().set(
                 1.0, 0.0, 0.0, 0.0,
                 0.0, 1.0, 0.0, 0.0,
                 0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                0.0, 0.0, 0.0, 1.0,
             ),
             new THREE.Matrix4().set(
                 1.0, 0.0, 0.0, 0.0,
                 0.0, 0.0, -1.0, 0.0,
                 0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                0.0, 0.0, 0.0, 1.0,
             ),
             new THREE.Matrix4().set(
                 0.0, -1.0, 0.0, 0.0,
                 1.0, 0.0, 0.0, 0.0,
                 0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
-            )
+                0.0, 0.0, 0.0, 1.0,
+            ),
         ];
     }
 }
@@ -532,7 +531,7 @@ export class ORTEPConstantAtom extends ORTEPAtom {
             throw new Error(`Element properties not found for atom type: ${atom.atomType}`);
         }
         this.scale.multiplyScalar(
-            options.atomConstantRadiusMultiplier * options.elementProperties[atom.atomType].radius
+            options.atomConstantRadiusMultiplier * options.elementProperties[atom.atomType].radius,
         );
     }
 }
@@ -557,7 +556,7 @@ export class ORTEPBond extends ORTEPObject {
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
             this.geometry, 
-            this.createSelectionMaterial(color)
+            this.createSelectionMaterial(color),
         );
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
         outlineMesh.scale.z *= options.selection.bondMarkerMult;
@@ -599,7 +598,7 @@ export class ORTEPGroupObject extends THREE.Group {
                             object: this, // Return parent group
                             face: intersection.face,
                             faceIndex: intersection.faceIndex,
-                            uv: intersection.uv
+                            uv: intersection.uv,
                         });
                     }
                 };
@@ -614,7 +613,7 @@ export class ORTEPGroupObject extends THREE.Group {
             color: color,
             transparent: true,
             opacity: 0.9,
-            side: THREE.BackSide
+            side: THREE.BackSide,
         });
     }
     
@@ -700,7 +699,7 @@ export class ORTEPHBond extends ORTEPGroupObject {
         this.createDashedBondSegments(
             hydrogenPosition, acceptorPosition,
             baseHBond, baseHBondMaterial,
-            targetSegmentLength, dashFraction
+            targetSegmentLength, dashFraction,
         );
     }
 

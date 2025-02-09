@@ -79,7 +79,9 @@ function initializeFileUpload() {
 
     fileInput.addEventListener('change', async (event) => {
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+            return; 
+        }
     
         try {
             updateStatus('Reading file...', 'info');

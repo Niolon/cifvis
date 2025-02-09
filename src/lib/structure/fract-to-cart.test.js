@@ -3,7 +3,7 @@ import {
     calculateFractToCartMatrix, 
     adpToMatrix, 
     matrixToAdp, 
-    uCifToUCart 
+    uCifToUCart, 
 } from './fract-to-cart.js';
 
 const math = create(all);
@@ -16,14 +16,14 @@ describe('calculateFractToCartMatrix', () => {
             c: 10,
             alpha: 90,
             beta: 90,
-            gamma: 90
+            gamma: 90,
         };
         
         const result = calculateFractToCartMatrix(cellParams);
         const expectedMatrix = math.matrix([
             [10, 0, 0],
             [0, 10, 0],
-            [0, 0, 10]
+            [0, 0, 10],
         ]);
         
         expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-10);
@@ -36,14 +36,14 @@ describe('calculateFractToCartMatrix', () => {
             c: 15,
             alpha: 90,
             beta: 90,
-            gamma: 90
+            gamma: 90,
         };
         
         const result = calculateFractToCartMatrix(cellParams);
         const expectedMatrix = math.matrix([
             [5, 0, 0],
             [0, 10, 0],
-            [0, 0, 15]
+            [0, 0, 15],
         ]);
         
         expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-10);
@@ -56,7 +56,7 @@ describe('calculateFractToCartMatrix', () => {
             c: 15,
             alpha: 90,
             beta: 100,
-            gamma: 90
+            gamma: 90,
         };
         
         const result = calculateFractToCartMatrix(cellParams);
@@ -64,7 +64,7 @@ describe('calculateFractToCartMatrix', () => {
         const expectedMatrix = math.matrix([
             [5, 0, -2.604723],
             [0, 10, 0],
-            [0, 0, 14.772116]
+            [0, 0, 14.772116],
         ]);
         
         expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-6);
@@ -77,7 +77,7 @@ describe('calculateFractToCartMatrix', () => {
             c: 7,
             alpha: 85,
             beta: 95,
-            gamma: 105
+            gamma: 105,
         };
         
         const result = calculateFractToCartMatrix(cellParams);
@@ -117,7 +117,7 @@ describe('uCifToUCart', () => {
         const cubicMatrix = math.matrix([
             [10, 0, 0],
             [0, 10, 0],
-            [0, 0, 10]
+            [0, 0, 10],
         ]);
         
         const adps = [0.01, 0.02, 0.03, 0.001, 0.002, 0.003];
@@ -132,7 +132,7 @@ describe('uCifToUCart', () => {
         const orthoMatrix = math.matrix([
             [5, 0, 0],
             [0, 8, 0],
-            [0, 0, 12]
+            [0, 0, 12],
         ]);
         
         const orthoResult = uCifToUCart(orthoMatrix, adps);
@@ -147,7 +147,7 @@ describe('uCifToUCart', () => {
         const fractToCartMatrix = math.matrix([
             [5, 0, -2.607837],
             [0, 10, 0],
-            [0, 0, 14.781476]
+            [0, 0, 14.781476],
         ]);
         
         const adps = [0.01, 0.02, 0.03, 0.001, 0.002, 0.003];

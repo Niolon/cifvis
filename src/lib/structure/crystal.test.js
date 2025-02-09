@@ -68,7 +68,7 @@ data_test
         const cell = new UnitCell(10, 10, 10, 90, 90, 90);
         const atoms = [
             new Atom('C1', 'C', new FractPosition(0, 0, 0)),
-            new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5))
+            new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),
         ];
         const structure = new CrystalStructure(cell, atoms);
 
@@ -83,14 +83,14 @@ data_test
             new Atom('C1', 'C', new FractPosition(0, 0, 0)),
             new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),
             new Atom('N1', 'N', new FractPosition(0.7, 0.7, 0.7)),
-            new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5))
+            new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5)),
         ];
         const bonds = [
             new Bond('C1', 'O1', 1.5),
-            new Bond('C1', 'N1', 1.5)
+            new Bond('C1', 'N1', 1.5),
         ];
         const hBonds = [
-            new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.')
+            new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
@@ -108,7 +108,7 @@ data_test
             new Atom('N1', 'N', new FractPosition(0.7, 0.7, 0.7)),
             new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5)),
             new Atom('P1', 'P', new FractPosition(0.8, 0.8, 0.8)), // Unconnected atom
-            new Atom('F1', 'F', new FractPosition(0.9, 0.9, 0.9))  // Symmetry-only connected atom
+            new Atom('F1', 'F', new FractPosition(0.9, 0.9, 0.9)),  // Symmetry-only connected atom
         ];
         const bonds = [
             new Bond('C1', 'O1', 1.5),           // Regular bond forming group 1
@@ -117,7 +117,7 @@ data_test
         ];
         const hBonds = [
             new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),  // Regular H-bond in group 1
-            new HBond('N1', 'H1', 'F1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_665')  // Symmetry H-bond - should be excluded
+            new HBond('N1', 'H1', 'F1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_665'),  // Symmetry H-bond - should be excluded
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
@@ -151,7 +151,7 @@ data_test
             new Atom('O1', 'O', new FractPosition(0.1, 0.1, 0.1)),
             new Atom('N1', 'N', new FractPosition(0.2, 0.2, 0.2)),
             new Atom('C2', 'C', new FractPosition(0.3, 0.3, 0.3)),
-            new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5))
+            new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5)),
         ];
     
         // Test cases:
@@ -163,7 +163,7 @@ data_test
             new Bond('O1', 'H1', 0.98),
             new Bond('N1', 'C2', 1.3),
             new Bond('C2', 'C1', 1.5),
-            new Bond('O1', 'N1', 1.4)
+            new Bond('O1', 'N1', 1.4),
         ];
 
         const hbonds = [
@@ -178,7 +178,7 @@ data_test
         expect(group.atoms.length).toBe(5);
         expect(group.bonds.length).toBe(5);
         atoms.forEach(atom => 
-            expect(group.atoms.includes(atom)).toBe(true)
+            expect(group.atoms.includes(atom)).toBe(true),
         );
     });
     test('logs warning when no bonds found in CIF', () => {
@@ -270,21 +270,39 @@ _cell_angle_gamma 90
         });
     
         test('validates cell lengths', () => {
-            expect(() => { cell.a = 0; }).toThrow('Cell parameter \'a\' must be positive');
-            expect(() => { cell.b = -1; }).toThrow('Cell parameter \'b\' must be positive');
-            expect(() => { cell.c = -5; }).toThrow('Cell parameter \'c\' must be positive');
+            expect(() => {
+                cell.a = 0; 
+            }).toThrow('Cell parameter \'a\' must be positive');
+            expect(() => {
+                cell.b = -1; 
+            }).toThrow('Cell parameter \'b\' must be positive');
+            expect(() => {
+                cell.c = -5; 
+            }).toThrow('Cell parameter \'c\' must be positive');
         });
     
         test('validates angles', () => {
-            expect(() => { cell.alpha = 0; }).toThrow('Angle alpha must be between 0 and 180 degrees');
-            expect(() => { cell.beta = 180; }).toThrow('Angle beta must be between 0 and 180 degrees');
-            expect(() => { cell.gamma = -1; }).toThrow('Angle gamma must be between 0 and 180 degrees');
-            expect(() => { cell.alpha = 200; }).toThrow('Angle alpha must be between 0 and 180 degrees');
+            expect(() => {
+                cell.alpha = 0; 
+            }).toThrow('Angle alpha must be between 0 and 180 degrees');
+            expect(() => {
+                cell.beta = 180; 
+            }).toThrow('Angle beta must be between 0 and 180 degrees');
+            expect(() => {
+                cell.gamma = -1; 
+            }).toThrow('Angle gamma must be between 0 and 180 degrees');
+            expect(() => {
+                cell.alpha = 200; 
+            }).toThrow('Angle alpha must be between 0 and 180 degrees');
         });
     
         test('allows valid parameters', () => {
-            expect(() => { cell.a = 15; }).not.toThrow();
-            expect(() => { cell.alpha = 120; }).not.toThrow();
+            expect(() => {
+                cell.a = 15; 
+            }).not.toThrow();
+            expect(() => {
+                cell.alpha = 120; 
+            }).not.toThrow();
         });
     });
     
@@ -327,7 +345,7 @@ _cell_angle_gamma 90
 
 describe('Atom', () => {
     test('constructs with basic parameters', () => {
-        const atom = new Atom('C1', 'C', new FractPosition(0,0,0), 0, 0);
+        const atom = new Atom('C1', 'C', new FractPosition(0, 0, 0), 0, 0);
         expect(atom.label).toBe('C1');
         expect(atom.atomType).toBe('C');
         expect(atom.disorderGroup).toBe(0);
@@ -540,7 +558,7 @@ describe('HBond', () => {
         const hBond = new HBond(
             'O1', 'H1', 'O2',
             1.0, 0.01, 2.0, 0.02,
-            2.8, 0.03, 175, 1, '1_555'
+            2.8, 0.03, 175, 1, '1_555',
         );
         expect(hBond.donorAtomLabel).toBe('O1');
         expect(hBond.hydrogenAtomLabel).toBe('H1');
@@ -594,8 +612,8 @@ describe('ADPs', () => {
                 fractToCartMatrix: math.matrix([
                     [10, 0, 0],
                     [0, 10, 0],
-                    [0, 0, 10]
-                ])
+                    [0, 0, 10],
+                ]),
             };
         });
 
@@ -607,7 +625,7 @@ describe('ADPs', () => {
                 const row = [
                     matrix.get([i, 0]),
                     matrix.get([i, 1]),
-                    matrix.get([i, 2])
+                    matrix.get([i, 2]),
                 ];
                 // Each row should have two zeros and one value abs(sqrt(0.01))
                 expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);
@@ -626,8 +644,8 @@ describe('ADPs', () => {
                 fractToCartMatrix: math.matrix([
                     [0, 0, 10],
                     [0, 10, 0],
-                    [10, 0, 0]
-                ])
+                    [10, 0, 0],
+                ]),
             };
             const matrix2 = adp.getEllipsoidMatrix(mockUnitCell2);
             const det2 = math.det(matrix2);
@@ -649,7 +667,7 @@ describe('ADPs', () => {
                 const row = [
                     matrix.get([i, 0]),
                     matrix.get([i, 1]),
-                    matrix.get([i, 2])
+                    matrix.get([i, 2]),
                 ];
                 // Each row should have two zeros and one value from expectedValues
                 expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);

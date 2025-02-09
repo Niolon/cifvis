@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { CIF } from '../cif/read-cif.js';
 import { CrystalStructure } from '../structure/crystal.js';
-import { ORTEP3JsStructure} from './ortep.js';
+import { ORTEP3JsStructure } from './ortep.js';
 import { calculateStructureBounds, setupLighting } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
-
 
 export class SelectionManager {
     constructor(options) {
@@ -47,7 +46,7 @@ export class SelectionManager {
         if (!color) {
             const minCount = Math.min(...colorCounts.values());
             color = this.options.markerColors.find(c => 
-                colorCounts.get(c) === minCount
+                colorCounts.get(c) === minCount,
             );
         }
         return color;
@@ -105,7 +104,7 @@ export class SelectionManager {
             data: object.userData.type === 'hbond' ? object.userData.hbondData : 
                 object.userData.type === 'bond' ? object.userData.bondData : 
                     object.userData.atomData,
-            color: object.selectionColor
+            color: object.selectionColor,
         }));
         this.selectionCallbacks.forEach(callback => callback(selections));
     }
@@ -140,15 +139,15 @@ export class CrystalViewer {
             camera: {
                 ...defaultSettings.camera,
                 initialPosition: new THREE.Vector3(...defaultSettings.camera.initialPosition),
-                ...(options.camera || {})
+                ...(options.camera || {}),
             },
             selection: {
                 ...defaultSettings.selection,
-                ...(options.selection || {})
+                ...(options.selection || {}),
             },
             interaction: {
                 ...defaultSettings.interaction,
-                ...(options.interaction || {})
+                ...(options.interaction || {}),
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
@@ -163,11 +162,11 @@ export class CrystalViewer {
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
             elementProperties: {
                 ...defaultSettings.elementProperties,
-                ...options.elementProperties
+                ...options.elementProperties,
             },
             hydrogenMode: options.hydrogenMode || defaultSettings.hydrogenMode,
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
-            symmetryMode: options.symmetryMode || defaultSettings.symmetryMode
+            symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
         };
 
         this.state = {
@@ -176,13 +175,13 @@ export class CrystalViewer {
             currentStructure: null,
             currentFloor: null,
             baseStructure: null,
-            ortepObjects: new Map()
+            ortepObjects: new Map(),
         };
 
         this.modifiers = {
             hydrogen: new HydrogenFilter(this.options.hydrogenMode),
             disorder: new DisorderFilter(this.options.disorderMode),
-            symmetry: new SymmetryGrower(this.options.symmetryMode)
+            symmetry: new SymmetryGrower(this.options.symmetryMode),
         };
 
         this.selections = new SelectionManager(this.options);
@@ -198,7 +197,7 @@ export class CrystalViewer {
             this.options.camera.fov,
             this.container.clientWidth / this.container.clientHeight,  // Use container aspect ratio
             this.options.camera.near,
-            this.options.camera.far
+            this.options.camera.far,
         );
         
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -315,7 +314,9 @@ export class CrystalViewer {
     }
 
     hasDisorderGroups() {
-        if (!this.state.baseStructure) return false;
+        if (!this.state.baseStructure) {
+            return false; 
+        }
         return this.modifiers.disorder.getApplicableModes(this.state.baseStructure).length > 1;
     }
 

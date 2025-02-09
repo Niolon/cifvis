@@ -9,7 +9,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [1, 0, 0],
                 [0, 1, 0],
-                [0, 0, 1]
+                [0, 0, 1],
             ]);
             expect(op.transVector).toEqual([0, 0, 0]);
         });
@@ -19,7 +19,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [-1, 0, 0],
                 [0, -1, 0],
-                [0, 0, -1]
+                [0, 0, -1],
             ]);
             expect(op.transVector).toEqual([0, 0, 0]);
         });
@@ -29,7 +29,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [1, 0, 0],
                 [0, 1, 0],
-                [0, 0, 1]
+                [0, 0, 1],
             ]);
             expect(op.transVector).toEqual([0.5, 0, 0.25]);
         });
@@ -39,7 +39,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [0, -1, 0],
                 [0, 0, 1],
-                [1, 0, 0]
+                [1, 0, 0],
             ]);
             expect(op.transVector).toEqual([0.25, -0.5, 0]);
         });
@@ -48,7 +48,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [-1, 1, 0],
                 [-1, 0, 0],
-                [0, 0, 1]
+                [0, 0, 1],
             ]);
             expect(op.transVector).toEqual([0, 0, 0.5]);
         });
@@ -58,7 +58,7 @@ describe('SymmetryOperation', () => {
             expect(op.rotMatrix).toEqual([
                 [2, 0, 0],
                 [0, 0.5, 0],
-                [0, 0, 2]
+                [0, 0, 2],
             ]);
             expect(op.transVector).toEqual([0, 0, 0.5]);
         });
@@ -94,7 +94,7 @@ describe('SymmetryOperation', () => {
             const atom = new Atom(
                 'C1',
                 'C',
-                new FractPosition(0.5, 0.25, 0.75)
+                new FractPosition(0.5, 0.25, 0.75),
             );
             const result = op.applyToAtom(atom);
             expect(result.position.x).toBeCloseTo(0.0);
@@ -110,7 +110,7 @@ describe('SymmetryOperation', () => {
                 'C1',
                 'C',
                 new FractPosition(0.5, 0.25, 0.75),
-                new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003)
+                new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003),
             );
             const result = op.applyToAtom(atom);
             expect(result.adp).toBeInstanceOf(UAnisoADP);
@@ -170,7 +170,7 @@ x,y,z
             expect(op.rotMatrix).toEqual([
                 [-1, 0, 0],
                 [0, 1, 0],
-                [0, 0, -1]
+                [0, 0, -1],
             ]);
             expect(op.transVector).toEqual([0, 0, 0]);
         });
@@ -191,7 +191,7 @@ _symmetry_equiv_pos_as_xyz
             expect(op.rotMatrix).toEqual([
                 [-1, 0, 0],
                 [0, 1, 0],
-                [0, 0, -1]
+                [0, 0, -1],
             ]);
             expect(op.transVector).toEqual([0, 0, 0]);
         });
@@ -247,7 +247,7 @@ describe('CellSymmetry', () => {
         test('generates equivalent positions for P-1', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,-y,-z')
+                new SymmetryOperation('-x,-y,-z'),
             ];
             const sym = new CellSymmetry('P-1', 2, ops);
             const point = [0.25, 0.25, 0.25];
@@ -263,13 +263,13 @@ describe('CellSymmetry', () => {
         test('applies symmetry operation with translation', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y,-z')
+                new SymmetryOperation('-x,y,-z'),
             ];
             const sym = new CellSymmetry('P2/m', 10, ops);
             const atom = new Atom(
                 'C1',
                 'C',
-                new FractPosition(0.5, 0.25, 0.75)
+                new FractPosition(0.5, 0.25, 0.75),
             );
             
             const result = sym.applySymmetry('2_456', atom);
@@ -281,19 +281,19 @@ describe('CellSymmetry', () => {
         test('applies symmetry operation with translation to multiple atoms', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y,-z')
+                new SymmetryOperation('-x,y,-z'),
             ];
             const sym = new CellSymmetry('P2/m', 10, ops);
             const atoms = [
                 new Atom(
                     'C1',
                     'C',
-                    new FractPosition(0.5, 0.25, 0.75)
+                    new FractPosition(0.5, 0.25, 0.75),
                 ),
                 new Atom(
                     'B1',
                     'B',
-                    new FractPosition(0.1, 0.9, -0.4)
+                    new FractPosition(0.1, 0.9, -0.4),
                 ),
             ];
             
@@ -357,7 +357,7 @@ x,y,z
 -x,y+1/2,-z+1/2
 -x,-y,-z
 x,-y+1/2,z+1/2
-`,`
+`, `
 data_test2
 _symmetry_space_group_name_H-M 'P 21/c'
 _symmetry_Int_Tables_number 14
@@ -368,7 +368,7 @@ loop_
  2 -x,y+1/2,-z+1/2
  3 -x,-y,-z
  4 x,-y+1/2,z+1/2
-`
+`,
             ];
             for (const cifText of cifTexts) {
                 const cif = new CIF(cifText);
@@ -393,7 +393,7 @@ loop_
             expect(sym.symmetryOperations[0].rotMatrix).toEqual([
                 [1, 0, 0],
                 [0, 1, 0],
-                [0, 0, 1]
+                [0, 0, 1],
             ]);
         });
     });

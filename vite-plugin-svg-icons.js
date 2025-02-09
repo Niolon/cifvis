@@ -41,7 +41,9 @@ export default function svgIconsPlugin() {
                             const [type, ...modeParts] = file.replace('.svg', '').split('-');
                             const mode = modeParts.join('-');
               
-                            if (!icons[type]) icons[type] = {};
+                            if (!icons[type]) {
+                                icons[type] = {}; 
+                            }
                             icons[type][mode] = cleanSvg(content);
                         });
 
@@ -54,6 +56,6 @@ export default function svgIconsPlugin() {
                 }
                 return `export const SVG_ICONS = ${JSON.stringify(icons, null, 2)};`;
             }
-        }
+        },
     };
 }

@@ -50,7 +50,7 @@ export class BaseFilter {
         if (!validModes.includes(usedMode)) {
             throw new Error(
                 `Invalid ${this.filterName} mode: "${mode}". ` +
-                `Valid modes are: ${validModes.join(', ')}`
+                `Valid modes are: ${validModes.join(', ')}`,
             );
         }
         this._mode = usedMode;
@@ -112,13 +112,13 @@ export class HydrogenFilter extends BaseFilter {
     static MODES = Object.freeze({
         NONE: 'none',
         CONSTANT: 'constant',
-        ANISOTROPIC: 'anisotropic'
+        ANISOTROPIC: 'anisotropic',
     });
 
     static PREFERRED_FALLBACK_ORDER = [
         HydrogenFilter.MODES.ANISOTROPIC,
         HydrogenFilter.MODES.CONSTANT,
-        HydrogenFilter.MODES.NONE
+        HydrogenFilter.MODES.NONE,
     ];
 
     /**
@@ -145,7 +145,7 @@ export class HydrogenFilter extends BaseFilter {
                 atom.position,
                 atom.atomType === 'H' && this.mode === HydrogenFilter.MODES.CONSTANT ? 
                     null : atom.adp,
-                atom.disorderGroup
+                atom.disorderGroup,
             )));
 
         const filteredBonds = structure.bonds
@@ -166,7 +166,7 @@ export class HydrogenFilter extends BaseFilter {
             filteredAtoms,
             filteredBonds,
             filteredHBonds,
-            structure.symmetry
+            structure.symmetry,
         );
     }
 
@@ -179,12 +179,14 @@ export class HydrogenFilter extends BaseFilter {
         const modes = [HydrogenFilter.MODES.NONE];
         const hasHydrogens = structure.atoms.some(atom => atom.atomType === 'H');
         
-        if (!hasHydrogens) return modes;
+        if (!hasHydrogens) {
+            return modes; 
+        }
         
         modes.push(HydrogenFilter.MODES.CONSTANT);
         
         const hasAnisoHydrogens = structure.atoms.some(atom => 
-            atom.atomType === 'H' && atom.adp?.constructor.name === 'UAnisoADP'
+            atom.atomType === 'H' && atom.adp?.constructor.name === 'UAnisoADP',
         );
         
         if (hasAnisoHydrogens) {
@@ -203,13 +205,13 @@ export class DisorderFilter extends BaseFilter {
     static MODES = Object.freeze({
         ALL: 'all',
         GROUP1: 'group1',
-        GROUP2: 'group2'
+        GROUP2: 'group2',
     });
 
     static PREFERRED_FALLBACK_ORDER = [
         DisorderFilter.MODES.ALL,
         DisorderFilter.MODES.GROUP1,
-        DisorderFilter.MODES.GROUP2
+        DisorderFilter.MODES.GROUP2,
     ];                
 
     /**
@@ -229,8 +231,12 @@ export class DisorderFilter extends BaseFilter {
         this.ensureValidMode(structure);
 
         const filteredAtoms = structure.atoms.filter(atom => {
-            if (this.mode === DisorderFilter.MODES.GROUP1 && atom.disorderGroup > 1) return false;
-            if (this.mode === DisorderFilter.MODES.GROUP2 && atom.disorderGroup === 1) return false;
+            if (this.mode === DisorderFilter.MODES.GROUP1 && atom.disorderGroup > 1) {
+                return false; 
+            }
+            if (this.mode === DisorderFilter.MODES.GROUP2 && atom.disorderGroup === 1) {
+                return false; 
+            }
             return true;
         });
 
@@ -239,10 +245,14 @@ export class DisorderFilter extends BaseFilter {
             const atom2 = structure.getAtomByLabel(bond.atom2Label);
             
             if (this.mode === DisorderFilter.MODES.GROUP1 && 
-                (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) return false;
+                (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
+                return false; 
+            }
             
             if (this.mode === DisorderFilter.MODES.GROUP2 && 
-                (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) return false;
+                (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
+                return false; 
+            }
             
             return true;
         });
@@ -272,7 +282,7 @@ export class DisorderFilter extends BaseFilter {
             filteredAtoms,
             filteredBonds,
             filteredHBonds,
-            structure.symmetry
+            structure.symmetry,
         );
     }
 
@@ -285,7 +295,9 @@ export class DisorderFilter extends BaseFilter {
         const modes = [DisorderFilter.MODES.ALL];
         const hasDisorder = structure.atoms.some(atom => atom.disorderGroup > 0);
         
-        if (!hasDisorder) return modes;
+        if (!hasDisorder) {
+            return modes; 
+        }
         
         if (structure.atoms.some(atom => atom.disorderGroup === 1)) {
             modes.push(DisorderFilter.MODES.GROUP1);
@@ -313,13 +325,13 @@ export class SymmetryGrower extends BaseFilter {
         BONDS_NO_HBONDS_NONE: 'bonds-no-hbonds-none',
         BONDS_NONE_HBONDS_YES: 'bonds-none-hbonds-yes',
         BONDS_NONE_HBONDS_NO: 'bonds-none-hbonds-no',
-        BONDS_NONE_HBONDS_NONE: 'bonds-none-hbonds-none'
+        BONDS_NONE_HBONDS_NONE: 'bonds-none-hbonds-none',
     });
 
     static PREFERRED_FALLBACK_ORDER = [
         SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
         SymmetryGrower.MODES.BONDS_NO_HBONDS_NONE,
-        SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO
+        SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO,
     ];
 
     /**
@@ -352,10 +364,10 @@ export class SymmetryGrower extends BaseFilter {
 
         const hBondAtoms = structure.hBonds
             .filter(({ acceptorAtomSymmetry }) => 
-                acceptorAtomSymmetry && acceptorAtomSymmetry !== '.'
+                acceptorAtomSymmetry && acceptorAtomSymmetry !== '.',
             )
             .map(({ acceptorAtomLabel, acceptorAtomSymmetry }) => 
-                [acceptorAtomLabel, acceptorAtomSymmetry]
+                [acceptorAtomLabel, acceptorAtomSymmetry],
             );
 
         return { bondAtoms, hBondAtoms };
@@ -372,10 +384,12 @@ export class SymmetryGrower extends BaseFilter {
     growAtomArray(structure, atomsToGrow, growthState) {
         for (const [atomLabel, symOp] of atomsToGrow) {
             const newLabel = SymmetryGrower.combineSymOpLabel(atomLabel, symOp);
-            if (growthState.labels.has(newLabel)) continue;
+            if (growthState.labels.has(newLabel)) {
+                continue; 
+            }
 
             const group = structure.connectedGroups.find(group => 
-                group.atoms.some(atom => atom.label === atomLabel)
+                group.atoms.some(atom => atom.label === atomLabel),
             );
 
             if (!group) {
@@ -390,19 +404,19 @@ export class SymmetryGrower extends BaseFilter {
             });
 
             group.bonds
-                .filter(({atom2SiteSymmetry}) => atom2SiteSymmetry === '.')
+                .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
                 .forEach(bond => {
                     growthState.bonds.add(new Bond(
                         SymmetryGrower.combineSymOpLabel(bond.atom1Label, symOp),
                         SymmetryGrower.combineSymOpLabel(bond.atom2Label, symOp),
                         bond.bondLength,
                         bond.bondLengthSU,
-                        '.'
+                        '.',
                     ));
                 });
 
             group.hBonds
-                .filter(({acceptorAtomSymmetry}) => acceptorAtomSymmetry === '.')
+                .filter(({ acceptorAtomSymmetry }) => acceptorAtomSymmetry === '.')
                 .forEach(hBond => {
                     growthState.hBonds.add(new HBond(
                         SymmetryGrower.combineSymOpLabel(hBond.donorAtomLabel, symOp),
@@ -416,7 +430,7 @@ export class SymmetryGrower extends BaseFilter {
                         hBond.donorAcceptorDistanceSU,
                         hBond.hBondAngle,
                         hBond.hBondAngleSU,
-                        '.'
+                        '.',
                     ));
                 });
         }
@@ -437,7 +451,7 @@ export class SymmetryGrower extends BaseFilter {
             atoms: new Set(structure.atoms),
             bonds: new Set(structure.bonds),
             hBonds: new Set(structure.hBonds),
-            labels: new Set(structure.atoms.map(({label}) => label))
+            labels: new Set(structure.atoms.map(({ label }) => label)),
         };
 
         if (this.mode.startsWith('bonds-yes')) {
@@ -451,16 +465,20 @@ export class SymmetryGrower extends BaseFilter {
         const atomArray = Array.from(growthState.atoms);
 
         for (const bond of structure.bonds) {
-            if (bond.atom2SiteSymmetry === '.') continue;
+            if (bond.atom2SiteSymmetry === '.') {
+                continue; 
+            }
             const symmLabel = SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry);
             if (atomArray.some(a => a.label === symmLabel)) {
                 growthState.bonds.add(
-                    new Bond(bond.atom1Label, symmLabel, bond.bondLength, bond.bondLengthSU, '.')
+                    new Bond(bond.atom1Label, symmLabel, bond.bondLength, bond.bondLengthSU, '.'),
                 );
             }
         }
         for (const hBond of structure.hBonds) {
-            if (hBond.acceptorAtomSymmetry === '.') continue;
+            if (hBond.acceptorAtomSymmetry === '.') {
+                continue; 
+            }
             const symmLabel = SymmetryGrower.combineSymOpLabel(hBond.acceptorAtomLabel, hBond.acceptorAtomSymmetry);
             if (atomArray.some(a => a.label === symmLabel)) {
                 growthState.hBonds.add(
@@ -468,13 +486,13 @@ export class SymmetryGrower extends BaseFilter {
                         hBond.donorAtomLabel, hBond.hydrogenAtomLabel, symmLabel, hBond.donorHydrogenDistance,
                         hBond.donorHydrogenDistanceSU, hBond.acceptorHydrogenDistance, hBond.acceptorHydrogenDistanceSU,
                         hBond.donorAcceptorDistance, hBond.donorAcceptorDistanceSU, hBond.hBondAngle, hBond.hBondAngleSU, 
-                        '.'
-                    )
+                        '.',
+                    ),
                 );
             }
         }
 
-        const hbondArray = Array.from(growthState.hBonds).filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel}) => {
+        const hbondArray = Array.from(growthState.hBonds).filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel }) => {
             const condition1 = growthState.labels.has(acceptorAtomLabel);
             const condition2 = growthState.labels.has(hydrogenAtomLabel);
             const condition3 = growthState.labels.has(donorAtomLabel);
@@ -486,7 +504,7 @@ export class SymmetryGrower extends BaseFilter {
             atomArray,
             Array.from(growthState.bonds),
             hbondArray,
-            structure.symmetry
+            structure.symmetry,
         );
     }
     /**
@@ -506,14 +524,14 @@ export class SymmetryGrower extends BaseFilter {
         if (!hasGrowableBonds) {
             return [
                 SymmetryGrower.MODES.BONDS_NONE_HBONDS_YES,
-                SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO
+                SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO,
             ];
         }
 
         if (!hasGrowableHBonds) {
             return [
                 SymmetryGrower.MODES.BONDS_YES_HBONDS_NONE,
-                SymmetryGrower.MODES.BONDS_NO_HBONDS_NONE
+                SymmetryGrower.MODES.BONDS_NO_HBONDS_NONE,
             ];
         }
 
@@ -521,7 +539,7 @@ export class SymmetryGrower extends BaseFilter {
             SymmetryGrower.MODES.BONDS_YES_HBONDS_YES,
             SymmetryGrower.MODES.BONDS_YES_HBONDS_NO,
             SymmetryGrower.MODES.BONDS_NO_HBONDS_YES,
-            SymmetryGrower.MODES.BONDS_NO_HBONDS_NO
+            SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
         ];
     }
 }

@@ -38,7 +38,7 @@ export function calculateFractToCartMatrix(cellParams) {
     const M = math.matrix([
         [cellParams.a, cellParams.b * cosGamma, cellParams.c * cosBeta],
         [0, cellParams.b * sinGamma, cellParams.c * (cosAlpha - cosBeta * cosGamma) / sinGamma],
-        [0, 0, cellParams.c * V / sinGamma]
+        [0, 0, cellParams.c * V / sinGamma],
     ]);
     
     return M;
@@ -54,7 +54,7 @@ export function adpToMatrix(adp) {
     return math.matrix([
         [adp[0], adp[3], adp[4]],
         [adp[3], adp[1], adp[5]],
-        [adp[4], adp[5], adp[2]]
+        [adp[4], adp[5], adp[2]],
     ]);
 }
 
@@ -72,7 +72,7 @@ export function matrixToAdp(uij_matrix) {
         m.get([2, 2]),  // U33
         m.get([0, 1]),  // U12
         m.get([0, 2]),  // U13
-        m.get([1, 2])   // U23
+        m.get([1, 2]),   // U23
     ];
 }
 

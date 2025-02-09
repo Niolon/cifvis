@@ -17,7 +17,7 @@ export class ViewerControls {
             lastClickTime: 0,
             clickStartTime: 0,
             pinchStartDistance: 0,
-            lastTouchRotation: 0
+            lastTouchRotation: 0,
         };
 
         this.setupEventListeners();
@@ -44,7 +44,7 @@ export class ViewerControls {
         const rect = this.container.getBoundingClientRect();
         this.state.mouse.set(
             ((clientX - rect.left) / rect.width) * 2 - 1,
-            -((clientY - rect.top) / rect.height) * 2 + 1
+            -((clientY - rect.top) / rect.height) * 2 + 1,
         );
     }
 
@@ -73,7 +73,7 @@ export class ViewerControls {
             const touch = event.touches[0];
             const newMouse = new THREE.Vector2(
                 ((touch.clientX - rect.left) / rect.width) * 2 - 1,
-                -((touch.clientY - rect.top) / rect.height) * 2 + 1
+                -((touch.clientY - rect.top) / rect.height) * 2 + 1,
             );
             
             const delta = newMouse.clone().sub(this.state.mouse);
@@ -129,7 +129,7 @@ export class ViewerControls {
             .filter(i => i.object.userData.selectable !== false);
         
         if (intersects.length > 0) {
-            let tappedObject = intersects[0].object;
+            const tappedObject = intersects[0].object;
             this.viewer.selections.handle(tappedObject);
         } else if (timeSinceLastTap < this.doubleClickDelay) {
             this.viewer.selections.clear();
@@ -140,14 +140,14 @@ export class ViewerControls {
         this.moleculeContainer.applyMatrix4(
             new THREE.Matrix4().makeRotationAxis(
                 new THREE.Vector3(0, 1, 0),
-                delta.x * this.options.interaction.rotationSpeed
-            )
+                delta.x * this.options.interaction.rotationSpeed,
+            ),
         );
         this.moleculeContainer.applyMatrix4(
             new THREE.Matrix4().makeRotationAxis(
                 new THREE.Vector3(1, 0, 0),
-                -delta.y * this.options.interaction.rotationSpeed
-            )
+                -delta.y * this.options.interaction.rotationSpeed,
+            ),
         );
     }
 
@@ -156,7 +156,7 @@ export class ViewerControls {
         const newDistance = THREE.MathUtils.clamp(
             currentDistance + zoomDelta,
             this.options.camera.minDistance,
-            this.options.camera.maxDistance
+            this.options.camera.maxDistance,
         );
         
         const direction = this.camera.position.clone()
@@ -179,13 +179,15 @@ export class ViewerControls {
     }
 
     handleMouseMove(event) {
-        if (!this.state.isDragging) return;
+        if (!this.state.isDragging) {
+            return; 
+        }
         
         const newMouse = new THREE.Vector2();
         const rect = this.container.getBoundingClientRect();
         newMouse.set(
             ((event.clientX - rect.left) / rect.width) * 2 - 1,
-            -((event.clientY - rect.top) / rect.height) * 2 + 1
+            -((event.clientY - rect.top) / rect.height) * 2 + 1,
         );
         
         const delta = newMouse.clone().sub(this.state.mouse);
@@ -205,8 +207,12 @@ export class ViewerControls {
 
     handleClick(event) {
         const clickEndTime = Date.now();
-        if (clickEndTime - this.state.clickStartTime > this.options.interaction.clickThreshold) return;
-        if (this.state.isDragging) return;
+        if (clickEndTime - this.state.clickStartTime > this.options.interaction.clickThreshold) {
+            return; 
+        }
+        if (this.state.isDragging) {
+            return; 
+        }
 
         const currentTime = Date.now();
         const timeSinceLastClick = currentTime - this.state.lastClickTime;
@@ -225,7 +231,7 @@ export class ViewerControls {
             .filter((intersect) => intersect.object.userData && intersect.object.userData.selectable);
         
         if (intersects.length > 0) {
-            let clickedObject = intersects[0].object;
+            const clickedObject = intersects[0].object;
             this.viewer.selections.handle(clickedObject);
         } else if (timeSinceLastClick < this.doubleClickDelay) {
             this.viewer.selections.clear();

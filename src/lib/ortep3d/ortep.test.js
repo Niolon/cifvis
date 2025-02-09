@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
     ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
-    ORTEPBond
+    ORTEPBond,
 } from './ortep.js';
 import { UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import defaultSettings from './structure-settings.js';
@@ -17,8 +17,8 @@ describe('Transformation Functions', () => {
                 getEllipsoidMatrix: jest.fn().mockReturnValue(math.matrix([
                     [0.1, 0.2, 0.3],
                     [0.4, 0.5, 0.6],
-                    [0.7, 0.8, 0.9]
-                ]))
+                    [0.7, 0.8, 0.9],
+                ])),
             };
             
             const matrix = getThreeEllipsoidMatrix(mockUAnisoADP, {});
@@ -28,7 +28,7 @@ describe('Transformation Functions', () => {
                 0.1, 0.4, 0.7, 0,
                 0.2, 0.5, 0.8, 0,
                 0.3, 0.6, 0.9, 0,
-                0, 0, 0, 1
+                0, 0, 0, 1,
             ]);
         });
     });
@@ -65,7 +65,6 @@ describe('Transformation Functions', () => {
             expect(matrix.elements[13]).toBeCloseTo(1); // y
             expect(matrix.elements[14]).toBeCloseTo(0); // z
         });
-
 
         test('creates correct transformation for diagonal bond', () => {
             const pos1 = new THREE.Vector3(0.5, 0.5, 0.5);
@@ -122,7 +121,7 @@ describe('GeometryMaterialCache', () => {
             const customOptions = {
                 atomDetail: 4,
                 bondRadius: 0.0001,
-                bondColor: '#ff0000'
+                bondColor: '#ff0000',
             };
             const customCache = new GeometryMaterialCache(customOptions);
 
@@ -157,9 +156,9 @@ describe('GeometryMaterialCache', () => {
                 elementProperties: {
                     'Custom': {
                         atomColor: '#ffffff',
-                        ringColor: '#000000'
-                    }
-                }
+                        ringColor: '#000000',
+                    },
+                },
             });
 
             expect(() => customCache.validateElementType('Custom')).not.toThrow();
@@ -218,13 +217,13 @@ describe('GeometryMaterialCache', () => {
                 const vertices = [
                     indices[i] * 3,
                     indices[i + 1] * 3,
-                    indices[i + 2] * 3
+                    indices[i + 2] * 3,
                 ].map(idx => ({
                     distance: Math.sqrt(
                         positions[idx] * positions[idx] +
                         positions[idx + 1] * positions[idx + 1] +
-                        positions[idx + 2] * positions[idx + 2]
-                    )
+                        positions[idx + 2] * positions[idx + 2],
+                    ),
                 }));
                 
                 expect(vertices.some(v => v.distance >= cache.scaling)).toBe(true);
@@ -237,7 +236,7 @@ describe('GeometryMaterialCache', () => {
                 const distance = Math.sqrt(
                     positions[i] * positions[i] +
                     positions[i + 1] * positions[i + 1] +
-                    positions[i + 2] * positions[i + 2]
+                    positions[i + 2] * positions[i + 2],
                 );
                 distances.push(distance);
             }
@@ -307,7 +306,6 @@ describe('GeometryMaterialCache', () => {
     });
 });
 
-
 describe('ORTEP3JsStructure', () => {
     let structure;
     let mockCrystalStructure;
@@ -320,13 +318,13 @@ describe('ORTEP3JsStructure', () => {
             new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5),
                 new UIsoADP(0.02)),
             new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1), 
-                new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0))
+                new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0)),
         ];
         const bonds = [
-            new Bond('C1', 'O1', 1.5, 0.01)
+            new Bond('C1', 'O1', 1.5, 0.01),
         ];
         const hbonds = [
-            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1)
+            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
         ];
         
         mockCrystalStructure = new CrystalStructure(cell, atoms, bonds, hbonds);
@@ -345,8 +343,8 @@ describe('ORTEP3JsStructure', () => {
             
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
-                    'C': { ringColor: newRingColor }
-                }
+                    'C': { ringColor: newRingColor },
+                },
             });
             
             expect(structure.options.elementProperties.C.atomColor).toBe(originalAtomColor);
@@ -368,8 +366,8 @@ describe('ORTEP3JsStructure', () => {
             
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
-                    'C': { ringColor: '#00ff00' }
-                }
+                    'C': { ringColor: '#00ff00' },
+                },
             });
             
             expect(structure.options.elementProperties.O).toEqual(originalOxygenProps);
@@ -406,7 +404,7 @@ class TestORTEPObject extends ORTEPObject {
     createSelectionMarker(color, options) {
         const marker = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
-            this.createSelectionMaterial(color)
+            this.createSelectionMaterial(color),
         );
         marker.scale.multiplyScalar(options.selection.markerMult);
         return marker;
@@ -418,14 +416,14 @@ describe('ORTEPObject', () => {
     const mockOptions = {
         selection: {
             markerMult: 1.3,
-            highlightEmissive: 0xaaaaaa
-        }
+            highlightEmissive: 0xaaaaaa,
+        },
     };
 
     beforeEach(() => {
         object = new TestORTEPObject(
             new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshStandardMaterial()
+            new THREE.MeshStandardMaterial(),
         );
     });
 
@@ -500,13 +498,13 @@ describe('ORTEPAtom and subclasses', () => {
             elementProperties: {
                 'C': { radius: 0.76 },
                 'O': { radius: 0.66 },
-                'H': { radius: 0.31 }
+                'H': { radius: 0.31 },
             },
             atomConstantRadiusMultiplier: 0.3,
             selection: {
                 markerMult: 1.3,
-                highlightEmissive: 0xaaaaaa
-            }
+                highlightEmissive: 0xaaaaaa,
+            },
         };
     });
 
@@ -523,7 +521,7 @@ describe('ORTEPAtom and subclasses', () => {
             mockAtom = new Atom(
                 'C1',
                 'C',
-                new FractPosition(0.1, 0.2, 0.3)
+                new FractPosition(0.1, 0.2, 0.3),
             );
         });
 
@@ -574,7 +572,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'C1',
                 'C',
                 new FractPosition(0.1, 0.2, 0.3),
-                new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003)
+                new UAnisoADP(0.01, 0.02, 0.03, 0.001, 0.002, 0.003),
             );
         });
 
@@ -585,7 +583,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockGeometry, 
                 mockMaterial,
                 mockADPRing,
-                mockRingMaterial
+                mockRingMaterial,
             );
             
             expect(ortepAtom.geometry).toBe(mockGeometry);
@@ -607,14 +605,14 @@ describe('ORTEPAtom and subclasses', () => {
                 'C1',
                 'C',
                 new FractPosition(0.1, 0.2, 0.3),
-                new UAnisoADP(NaN, 0.02, 0.03, 0.001, 0.002, 0.003)
+                new UAnisoADP(NaN, 0.02, 0.03, 0.001, 0.002, 0.003),
             );
             
             const ortepAtom = new ORTEPAniAtom(
                 invalidAtom,
                 mockUnitCell,
                 mockGeometry,
-                mockMaterial
+                mockMaterial,
             );
             
             // Should fall back to tetrahedron geometry
@@ -628,7 +626,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockGeometry,
                 mockMaterial,
                 mockADPRing,
-                mockRingMaterial
+                mockRingMaterial,
             );
             
             const matrices = ortepAtom.adpRingMatrices;
@@ -659,7 +657,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'C1',
                 'C',
                 new FractPosition(0.1, 0.2, 0.3),
-                new UIsoADP(0.025)
+                new UIsoADP(0.025),
             );
         });
 
@@ -677,14 +675,14 @@ describe('ORTEPAtom and subclasses', () => {
             const invalidAtom = new Atom(
                 'C1',
                 'C',
-                new FractPosition(0.1, 0.2, 0.3)
+                new FractPosition(0.1, 0.2, 0.3),
             );
             
             expect(() => new ORTEPIsoAtom(
                 invalidAtom,
                 mockUnitCell,
                 mockGeometry,
-                mockMaterial
+                mockMaterial,
             )).toThrow('Atom must have isotropic displacement parameters (UIsoADP)');
         });
     });
@@ -694,7 +692,7 @@ describe('ORTEPAtom and subclasses', () => {
             mockAtom = new Atom(
                 'C1',
                 'C',
-                new FractPosition(0.1, 0.2, 0.3)
+                new FractPosition(0.1, 0.2, 0.3),
             );
         });
 
@@ -704,7 +702,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockUnitCell, 
                 mockGeometry, 
                 mockMaterial,
-                mockOptions
+                mockOptions,
             );
             
             const expectedScale = mockOptions.atomConstantRadiusMultiplier * 
@@ -718,7 +716,7 @@ describe('ORTEPAtom and subclasses', () => {
             const unknownAtom = new Atom(
                 'X1',
                 'X',  // Unknown element
-                new FractPosition(0.1, 0.2, 0.3)
+                new FractPosition(0.1, 0.2, 0.3),
             );
             
             expect(() => new ORTEPConstantAtom(
@@ -726,7 +724,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockUnitCell,
                 mockGeometry,
                 mockMaterial,
-                mockOptions
+                mockOptions,
             )).toThrow('Element properties not found for atom type: X');
         });
 
@@ -735,7 +733,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockAtom,
                 mockUnitCell,
                 mockGeometry,
-                mockMaterial
+                mockMaterial,
             )).toThrow('Element properties not found for atom type: C');
         });
     });
@@ -760,20 +758,20 @@ describe('ORTEPBond', () => {
             selection: {
                 markerMult: 1.3,
                 bondMarkerMult: 1.7,
-                highlightEmissive: 0xaaaaaa
-            }
+                highlightEmissive: 0xaaaaaa,
+            },
         };
 
         // Create atoms
         mockAtom1 = new Atom(
             'C1',
             'C',
-            new FractPosition(0, 0, 0)
+            new FractPosition(0, 0, 0),
         );
         mockAtom2 = new Atom(
             'O1',
             'O',
-            new FractPosition(0.1, 0.1, 0.1)
+            new FractPosition(0.1, 0.1, 0.1),
         );
 
         // Create bond
@@ -781,13 +779,13 @@ describe('ORTEPBond', () => {
             'C1',
             'O1',
             1.5,
-            0.01
+            0.01,
         );
 
         // Create crystal structure
         mockCrystalStructure = new CrystalStructure(
             mockUnitCell,
-            [mockAtom1, mockAtom2]
+            [mockAtom1, mockAtom2],
         );
     });
 
@@ -801,7 +799,7 @@ describe('ORTEPBond', () => {
             mockBond,
             mockCrystalStructure,
             mockGeometry,
-            mockMaterial
+            mockMaterial,
         );
 
         expect(ortepBond.geometry).toBe(mockGeometry);
@@ -816,7 +814,7 @@ describe('ORTEPBond', () => {
             mockBond,
             mockCrystalStructure,
             mockGeometry,
-            mockMaterial
+            mockMaterial,
         );
 
         // Calculate expected positions
@@ -843,7 +841,7 @@ describe('ORTEPBond', () => {
             mockBond,
             mockCrystalStructure,
             mockGeometry,
-            mockMaterial
+            mockMaterial,
         );
 
         // Calculate expected direction
@@ -869,14 +867,14 @@ describe('ORTEPBond', () => {
             'X1',  // Non-existent atom
             'O1',
             1.5,
-            0.01
+            0.01,
         );
 
         expect(() => new ORTEPBond(
             invalidBond,
             mockCrystalStructure,
             mockGeometry,
-            mockMaterial
+            mockMaterial,
         )).toThrow('Could not find atom with label: X1');
     });
 
@@ -885,7 +883,7 @@ describe('ORTEPBond', () => {
             mockBond,
             mockCrystalStructure,
             mockGeometry,
-            mockMaterial
+            mockMaterial,
         );
 
         const marker = ortepBond.createSelectionMarker(0xff0000, mockOptions);
@@ -906,7 +904,7 @@ describe('ORTEPBond', () => {
             { pos1: [0, 0, 0], pos2: [0.2, 0, 0] },    // Along x-axis
             { pos1: [0, 0, 0], pos2: [0, 0.2, 0] },    // Along y-axis
             { pos1: [0, 0, 0], pos2: [0, 0, 0.2] },    // Along z-axis
-            { pos1: [0, 0, 0], pos2: [0.1, 0.1, 0.1] } // Diagonal
+            { pos1: [0, 0, 0], pos2: [0.1, 0.1, 0.1] }, // Diagonal
         ];
 
         testCases.forEach(({ pos1, pos2 }) => {
@@ -917,7 +915,7 @@ describe('ORTEPBond', () => {
                 mockBond,
                 mockCrystalStructure,
                 mockGeometry,
-                mockMaterial
+                mockMaterial,
             );
 
             // Calculate expected positions and length
@@ -955,19 +953,19 @@ describe('ORTEPGroupObject', () => {
     const mockOptions = {
         selection: {
             markerMult: 1.3,
-            highlightEmissive: 0xaaaaaa
-        }
+            highlightEmissive: 0xaaaaaa,
+        },
     };
 
     beforeEach(() => {
         group = new TestORTEPGroupObject();
         child1 = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshStandardMaterial()
+            new THREE.MeshStandardMaterial(),
         );
         child2 = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshStandardMaterial()
+            new THREE.MeshStandardMaterial(),
         );
         group.add(child1, child2);
     });
@@ -1082,10 +1080,10 @@ describe('ORTEPGroupObject', () => {
 
     test('properly disposes all resources when not selected', () => {
         const geometrySpies = group.children.map(child => 
-            jest.spyOn(child.geometry, 'dispose')
+            jest.spyOn(child.geometry, 'dispose'),
         );
         const materialSpies = group.children.map(child => 
-            jest.spyOn(child.material, 'dispose')
+            jest.spyOn(child.material, 'dispose'),
         );
         
         // Dispose without ever selecting
@@ -1117,25 +1115,25 @@ describe('ORTEPHBond', () => {
             selection: {
                 markerMult: 1.3,
                 bondMarkerMult: 1.7,
-                highlightEmissive: 0xaaaaaa
-            }
+                highlightEmissive: 0xaaaaaa,
+            },
         };
 
         // Create atoms
         mockDonor = new Atom(
             'O1',
             'O',
-            new FractPosition(0, 0, 0)
+            new FractPosition(0, 0, 0),
         );
         mockHydrogen = new Atom(
             'H1',
             'H',
-            new FractPosition(0.1, 0, 0)
+            new FractPosition(0.1, 0, 0),
         );
         mockAcceptor = new Atom(
             'N1',
             'N',
-            new FractPosition(0.2, 0, 0)
+            new FractPosition(0.2, 0, 0),
         );
 
         // Create H-bond
@@ -1151,13 +1149,13 @@ describe('ORTEPHBond', () => {
             0.03, // D···A distance SU
             175,  // D-H···A angle
             1,    // Angle SU
-            '.'   // Symmetry
+            '.',   // Symmetry
         );
 
         // Create crystal structure
         mockCrystalStructure = new CrystalStructure(
             mockUnitCell,
-            [mockDonor, mockHydrogen, mockAcceptor]
+            [mockDonor, mockHydrogen, mockAcceptor],
         );
     });
 
@@ -1173,7 +1171,7 @@ describe('ORTEPHBond', () => {
             mockGeometry,
             mockMaterial,
             0.3,  // targetSegmentLength
-            0.6   // dashFraction
+            0.6,   // dashFraction
         );
 
         expect(hbond.userData.type).toBe('hbond');
@@ -1189,7 +1187,7 @@ describe('ORTEPHBond', () => {
             mockGeometry,
             mockMaterial,
             targetSegmentLength,
-            0.6
+            0.6,
         );
 
         // Calculate expected number of segments
@@ -1210,7 +1208,7 @@ describe('ORTEPHBond', () => {
             mockGeometry,
             mockMaterial,
             targetSegmentLength,
-            dashFraction
+            dashFraction,
         );
 
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
@@ -1243,7 +1241,7 @@ describe('ORTEPHBond', () => {
             mockGeometry,
             mockMaterial,
             targetSegmentLength,
-            dashFraction
+            dashFraction,
         );
 
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
@@ -1267,7 +1265,7 @@ describe('ORTEPHBond', () => {
             mockGeometry,
             mockMaterial,
             0.3,
-            0.6
+            0.6,
         );
 
         const marker = hbond.createSelectionMarker(0xff0000, mockOptions);
