@@ -543,3 +543,74 @@ export class SymmetryGrower extends BaseFilter {
         ];
     }
 }
+
+/**
+ * Filter that removes specified atoms and their connected bonds from a structure
+ * @extends BaseFilter
+ */
+export class AtomLabelFilter extends BaseFilter {
+    static MODES = Object.freeze({
+        ON: 'on',
+        OFF: 'off',
+    });
+
+    /**
+     * Creates a new atom label filter
+     * @param {string[]} [filteredLabels=[]] - Array of atom labels to filter
+     * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
+     */
+    constructor(filteredLabels = [], mode = AtomLabelFilter.MODES.OFF) {
+        super(AtomLabelFilter.MODES, mode, 'AtomLabelFilter', []);
+        this.filteredLabels = new Set(filteredLabels);
+    }
+
+    /**
+     * Updates the list of filtered atom labels
+     * @param {string[]} labels - New array of atom labels to filter
+     */
+    setFilteredLabels(labels) {
+        this.filteredLabels = new Set(labels);
+    }
+
+    /**
+     * Applies the filter to a structure, removing specified atoms and their bonds
+     * @param {CrystalStructure} structure - Structure to filter
+     * @returns {CrystalStructure} New structure with atoms removed if filter is on
+     */
+    apply(structure) {
+        if (this.mode === AtomLabelFilter.MODES.OFF) {
+            return structure;
+        }
+
+        const filteredAtoms = structure.atoms.filter(atom => 
+            !this.filteredLabels.has(atom.label)
+        );
+
+        const filteredBonds = structure.bonds.filter(bond => 
+            !this.filteredLabels.has(bond.atom1Label) && 
+            !this.filteredLabels.has(bond.atom2Label)
+        );
+
+        const filteredHBonds = structure.hBonds.filter(hBond => 
+            !this.filteredLabels.has(hBond.donorAtomLabel) &&
+            !this.filteredLabels.has(hBond.hydrogenAtomLabel) &&
+            !this.filteredLabels.has(hBond.acceptorAtomLabel)
+        );
+
+        return new CrystalStructure(
+            structure.cell,
+            filteredAtoms,
+            filteredBonds,
+            filteredHBonds,
+            structure.symmetry,
+        );
+    }
+
+    /**
+     * Gets applicable modes - both modes are always available
+     * @returns {Array<string>} Array containing both ON and OFF modes
+     */
+    getApplicableModes() {
+        return Object.values(AtomLabelFilter.MODES);
+    }
+}

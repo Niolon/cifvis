@@ -1,4 +1,4 @@
-import { BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower } from './structure-modifiers.js';
+import { BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower, AtomLabelFilter } from './structure-modifiers.js';
 import { CrystalStructure, UnitCell, Atom, Bond, HBond, UAnisoADP, FractPosition } from './crystal.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 
@@ -853,5 +853,69 @@ describe('SymmetryGrower', () => {
             expect(grower.getApplicableModes(structure))
                 .toEqual([SymmetryGrower.MODES.BONDS_NONE_HBONDS_NONE]);
         });
+    });
+});
+
+describe('AtomLabelFilter', () => {
+    test('constructs with empty filter list', () => {
+        const filter = new AtomLabelFilter();
+        expect(filter.mode).toBe(AtomLabelFilter.MODES.OFF);
+        expect(filter.filteredLabels.size).toBe(0);
+    });
+
+    test('constructs with filter list', () => {
+        const filter = new AtomLabelFilter(['C1', 'O1']);
+        expect(filter.filteredLabels.size).toBe(2);
+        expect(filter.filteredLabels.has('C1')).toBe(true);
+        expect(filter.filteredLabels.has('O1')).toBe(true);
+    });
+
+    test('allows updating filter list', () => {
+        const filter = new AtomLabelFilter(['C1']);
+        filter.setFilteredLabels(['O1', 'N1']);
+        expect(filter.filteredLabels.size).toBe(2);
+        expect(filter.filteredLabels.has('C1')).toBe(false);
+        expect(filter.filteredLabels.has('O1')).toBe(true);
+        expect(filter.filteredLabels.has('N1')).toBe(true);
+    });
+
+    test('returns original structure when filter off', () => {
+        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
+        const filter = new AtomLabelFilter(['C1', 'O1'], AtomLabelFilter.MODES.OFF);
+        
+        const filtered = filter.apply(structure);
+        expect(filtered).toBe(structure);
+    });
+
+    test('filters atoms and related bonds', () => {
+        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
+        const filter = new AtomLabelFilter(['C1'], AtomLabelFilter.MODES.ON);
+        
+        const filtered = filter.apply(structure);
+        expect(filtered.atoms.some(atom => atom.label === 'C1')).toBe(false);
+        expect(filtered.bonds.some(bond => 
+            bond.atom1Label === 'C1' || bond.atom2Label === 'C1'
+        )).toBe(false);
+    });
+
+    test('filters atoms and related h-bonds', () => {
+        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
+        const filter = new AtomLabelFilter(['O1'], AtomLabelFilter.MODES.ON);
+        
+        const filtered = filter.apply(structure);
+        expect(filtered.hBonds.some(hbond => 
+            hbond.donorAtomLabel === 'O1' || 
+            hbond.hydrogenAtomLabel === 'H1' ||
+            hbond.acceptorAtomLabel === 'O1',
+        )).toBe(false);
+    });
+
+    test('returns both applicable modes', () => {
+        const filter = new AtomLabelFilter();
+        const modes = filter.getApplicableModes();
+        expect(modes).toEqual([
+            AtomLabelFilter.MODES.ON,
+            AtomLabelFilter.MODES.OFF,
+        ]);
     });
 });
