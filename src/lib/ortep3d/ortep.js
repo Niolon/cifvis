@@ -496,7 +496,7 @@ export class ORTEPObject extends THREE.Mesh {
      * @param {number} color - Selection color in hex format
      * @param {Object} options - Selection options
      */
-    createSelectionMarker(color, options) {
+    createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
@@ -847,7 +847,7 @@ export class ORTEPGroupObject extends THREE.Group {
      * @param {number} color - Selection color in hex format
      * @param {Object} options - Selection options
      */
-    createSelectionMarker(color, options) {
+    createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 

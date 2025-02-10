@@ -456,11 +456,11 @@ export class BasePosition {
     /**
      * Converts from given coordinate system to Cartesian coordinates
      * @abstract
-     * @param {UnitCell} unitCell - Unit cell for conversion
+     * @param {UnitCell} _unitCell - Unit cell for conversion
      * @returns {CartPosition} Position in Cartesian coordinates
      * @throws {Error} If not implemented by subclass
      */
-    toCartesian(unitCell) {
+    toCartesian(_unitCell) {
         throw new Error('toCartesian must be implemented by subclass');
     }
 }
@@ -514,7 +514,7 @@ export class CartPosition extends BasePosition {
      * @param {*} _ - Unused unit cell
      * @returns {CartPosition} This position instance
      */
-    toCartesian(unitCell) {
+    toCartesian(_unitCell) {
         return this;
     }
 }

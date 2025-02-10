@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export class ViewerControls {
-    constructor(viewer, options = {}) {
+    constructor(viewer) {
         this.viewer = viewer;
         this.container = viewer.container;
         this.camera = viewer.camera;

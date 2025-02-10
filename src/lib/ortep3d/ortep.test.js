@@ -934,7 +934,7 @@ describe('ORTEPBond', () => {
 });
 
 class TestORTEPGroupObject extends ORTEPGroupObject {
-    createSelectionMarker(color, options) {
+    createSelectionMarker(color, _options) {
         const marker = new THREE.Group();
         const material = this.createSelectionMaterial(color);
         

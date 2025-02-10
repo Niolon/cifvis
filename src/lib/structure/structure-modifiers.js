@@ -76,7 +76,7 @@ export class BaseFilter {
      * @returns {CrystalStructure} Filtered structure
      * @throws {Error} If not implemented by subclass
      */
-    apply(structure) {
+    apply(_structure) {
         throw new Error('Method "apply" must be implemented by subclass');
     }
 
@@ -87,7 +87,7 @@ export class BaseFilter {
      * @returns {string[]} Array of applicable mode names
      * @throws {Error} If not implemented by subclass
      */
-    getApplicableModes(structure) {
+    getApplicableModes(_structure) {
         throw new Error('Method "getApplicableModes" must be implemented by subclass');
     }
 

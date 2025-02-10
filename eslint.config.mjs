@@ -25,6 +25,7 @@ export default [
                 'args': 'after-used',
                 'ignoreRestSiblings': true,
                 'varsIgnorePattern': '^_',
+                'argsIgnorePattern': '^_',
             }],
             //'no-console': ['warn'],
             'no-debugger': 'error',
