@@ -292,6 +292,9 @@ export class CrystalViewer {
         
         // Calculate initial rotation
         const rotation = structureOrientationMatrix(this.state.currentStructure);
+        if (this.container.clientHeight > this.container.clientWidth) {
+            rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+        }
         if (rotation) {
             this.moleculeContainer.setRotationFromMatrix(rotation);
             this.moleculeContainer.updateMatrix();

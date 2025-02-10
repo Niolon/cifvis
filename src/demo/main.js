@@ -135,14 +135,6 @@ function initializeFileUpload() {
     });
 }
 
-function clearSelections() {
-    const container = document.getElementById('selection-container');
-
-    while (container.firstChild) {
-        container.firstChild.remove();
-    }
-}
-
 // Hydrogen mode button
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
@@ -152,7 +144,6 @@ function initializeHydrogenButton() {
             const hydrogenIcon = hydrogenButton.querySelector('img');
             hydrogenIcon.src = `svg/hydrogen-${result.mode}.svg`;
         }
-        clearSelections();
     });
 }
 
@@ -166,7 +157,6 @@ function initializeDisorderButton() {
             const disorderIcon = disorderButton.querySelector('img');
             disorderIcon.src = `svg/disorder-${result.mode}.svg`;
         }
-        clearSelections();
     });
 }
 
@@ -178,8 +168,6 @@ function initializeSymmetryButton() {
             const symmetryIcon = symmetryButton.querySelector('img');
             symmetryIcon.src = `svg/symmetry-${result.mode}.svg`;
         }
-
-        clearSelections();
     });
 }
 
