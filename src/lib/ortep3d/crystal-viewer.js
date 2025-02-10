@@ -147,7 +147,6 @@ export class SelectionManager {
         this.selectionCallbacks.clear();
     }
 }
-
 export class CrystalViewer {    
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
@@ -192,7 +191,7 @@ export class CrystalViewer {
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
         };
-
+  
         this.state = {
             isDragging: false,
             currentCifContent: null,
@@ -200,6 +199,7 @@ export class CrystalViewer {
             currentFloor: null,
             baseStructure: null,
             ortepObjects: new Map(),
+            structureCenter: new THREE.Vector3(),
         };
 
         this.modifiers = {
@@ -220,7 +220,7 @@ export class CrystalViewer {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
             this.options.camera.fov,
-            this.container.clientWidth / this.container.clientHeight,  // Use container aspect ratio
+            this.container.clientWidth / this.container.clientHeight,
             this.options.camera.near,
             this.options.camera.far,
         );
@@ -229,7 +229,6 @@ export class CrystalViewer {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.container.appendChild(this.renderer.domElement);
         
-        // Add CSS to ensure renderer canvas fills container
         this.renderer.domElement.style.width = '100%';
         this.renderer.domElement.style.height = '100%';
         
@@ -263,21 +262,61 @@ export class CrystalViewer {
 
     async setupNewStructure() {
         this.selections.clear();
-        this.update3DOrtep();
-        const rotation = structureOrientationMatrix(this.state.currentStructure);
-        this.moleculeContainer.setRotationFromMatrix(rotation);
         
-        this.updateCamera(this.state.currentStructure);
-        // Setup lighting
+        // Complete reset of molecule container
+        this.moleculeContainer.position.set(0, 0, 0);
+        this.moleculeContainer.rotation.set(0, 0, 0);
+        this.moleculeContainer.scale.set(1, 1, 1);
+        this.moleculeContainer.updateMatrix();
+        this.moleculeContainer.matrixAutoUpdate = true;  // Enable auto updates for new transformations
+        this.moleculeContainer.updateMatrixWorld(true);
+        
+        // Reset camera target and position
+        this.cameraTarget.set(0, 0, 0);
+        this.camera.position.copy(this.options.camera.initialPosition);
+        this.camera.lookAt(this.cameraTarget);
+        
+        // Reset structure center
+        this.state.structureCenter.set(0, 0, 0);
+        
+        this.update3DOrtep();
+
+        // Calculate center from clean structure state
+        const extent = new THREE.Box3().setFromObject(this.state.currentStructure);
+        extent.getCenter(this.state.structureCenter);
+        
+        // Center the structure
+        this.state.currentStructure.children.forEach(child => {
+            child.position.sub(this.state.structureCenter);
+        });
+        
+        // Calculate initial rotation
+        const rotation = structureOrientationMatrix(this.state.currentStructure);
+        if (rotation) {
+            this.moleculeContainer.setRotationFromMatrix(rotation);
+            this.moleculeContainer.updateMatrix();
+        }
+        
+        this.updateCamera();
         setupLighting(this.scene, this.state.currentStructure);
         this.requestRender();
     }
     
     async updateStructure() {
         try {
+            const currentRotation = this.moleculeContainer.matrix.clone();
             this.update3DOrtep();
+            
+            // Use the same center as initial structure
+            this.state.currentStructure.children.forEach(child => {
+                child.position.sub(this.state.structureCenter);
+            });
+            
+            // Restore rotation
+            this.moleculeContainer.matrix.copy(currentRotation);
+            this.moleculeContainer.matrixAutoUpdate = false;
+            
             this.requestRender();
-    
             return { success: true };
         } catch (error) {
             console.error('Error updating structure:', error);
@@ -285,15 +324,6 @@ export class CrystalViewer {
         }
     }
     
-    updateCamera() {
-        const distance = calculateCameraDistance(this.state.currentStructure);
-        this.camera.position.set(0, 0, distance);
-        this.camera.rotation.set(0, 0, 0);
-        this.camera.lookAt(this.cameraTarget);
-        this.options.camera.minDistance = distance * 0.2;
-        this.options.camera.maxDistance = distance * 2;
-    }
-
     update3DOrtep() {
         this.removeStructure();
         let structure = this.state.baseStructure;
@@ -302,11 +332,19 @@ export class CrystalViewer {
         }
 
         const ortep = new ORTEP3JsStructure(structure, this.options);
-        
         const ortep3DGroup = ortep.getGroup();
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
         this.selections.pruneInvalidSelections(this.moleculeContainer);
+    }
+    
+    updateCamera() {
+        const distance = calculateCameraDistance(this.state.currentStructure, this.camera.fov);
+        this.camera.position.set(0, 0, distance);
+        this.camera.rotation.set(0, 0, 0);
+        this.camera.lookAt(this.cameraTarget);
+        this.options.camera.minDistance = distance * 0.2;
+        this.options.camera.maxDistance = distance * 2;
     }
 
     removeStructure() {

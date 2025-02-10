@@ -403,11 +403,9 @@ export class ORTEP3JsStructure {
      */
     getGroup() {
         const group = new THREE.Group();
-        const meanAccumulator = new THREE.Vector3();
         
         for (const atom3D of this.atoms3D) {
             group.add(atom3D);
-            meanAccumulator.add(atom3D.position);
         }
         
         for (const bond3D of this.bonds3D) {
@@ -417,9 +415,6 @@ export class ORTEP3JsStructure {
         for (const hBond3D of this.hBonds3D) {
             group.add(hBond3D);
         }
-        
-        meanAccumulator.divideScalar(-this.atoms3D.length);
-        group.position.copy(meanAccumulator);
         
         return group;
     }
