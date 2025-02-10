@@ -241,7 +241,9 @@ describe('BaseFilter', () => {
 
         const filter = new IncompleteFilter();
         expect(() => filter.apply({})).toThrow('Method "apply" must be implemented by subclass');
-        expect(() => filter.getApplicableModes({})).toThrow('Method "getApplicableModes" must be implemented by subclass');
+        expect(() => filter.getApplicableModes({})).toThrow(
+            'Method "getApplicableModes" must be implemented by subclass',
+        );
     });
 
     class TestFilter extends BaseFilter {

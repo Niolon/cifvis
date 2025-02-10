@@ -64,7 +64,9 @@ describe('SymmetryOperation', () => {
         });
 
         test('more entries than 3', () => {
-            expect(() => new SymmetryOperation('x,x,y,z')).toThrow('Symmetry operation must have exactly three components');
+            expect(
+                () => new SymmetryOperation('x,x,y,z'),
+            ).toThrow('Symmetry operation must have exactly three components');
         });
     });
 

@@ -61,10 +61,10 @@ export class BaseFilter {
     }
 
     ensureValidMode(structure) {
-        const applicableModes = this.getApplicableModes(structure);
-        if (!applicableModes.includes(this.mode)) {
+        const validModes = this.getApplicableModes(structure);
+        if (!validModes.includes(this.mode)) {
             const oldMode = this.mode;
-            this.mode = this.PREFERRED_FALLBACK_ORDER.find(mode => applicableModes.includes(mode)) || applicableModes[0];
+            this.mode = this.PREFERRED_FALLBACK_ORDER.find( mode => validModes.includes(mode)) || validModes[0];
             console.warn(`${this.filterName} mode ${oldMode} was not applicable, chaged to ${this.mode}`);
         }
     }
@@ -401,7 +401,9 @@ export class SymmetryGrower extends BaseFilter {
             );
 
             if (!group) {
-                throw new Error(`Atom ${atomLabel} is not in any group. Typo or structure.recalculateConnectedGroups()?`);
+                throw new Error(
+                    `Atom ${atomLabel} is not in any group. Typo or structure.recalculateConnectedGroups()?`,
+                );
             }
             
             const symmetryAtoms = structure.symmetry.applySymmetry(symOp, group.atoms);
@@ -491,21 +493,24 @@ export class SymmetryGrower extends BaseFilter {
             if (atomArray.some(a => a.label === symmLabel)) {
                 growthState.hBonds.add(
                     new HBond(
-                        hBond.donorAtomLabel, hBond.hydrogenAtomLabel, symmLabel, hBond.donorHydrogenDistance,
-                        hBond.donorHydrogenDistanceSU, hBond.acceptorHydrogenDistance, hBond.acceptorHydrogenDistanceSU,
-                        hBond.donorAcceptorDistance, hBond.donorAcceptorDistanceSU, hBond.hBondAngle, hBond.hBondAngleSU, 
+                        hBond.donorAtomLabel, hBond.hydrogenAtomLabel, symmLabel,
+                        hBond.donorHydrogenDistance, hBond.donorHydrogenDistanceSU, 
+                        hBond.acceptorHydrogenDistance, hBond.acceptorHydrogenDistanceSU,
+                        hBond.donorAcceptorDistance, hBond.donorAcceptorDistanceSU, 
+                        hBond.hBondAngle, hBond.hBondAngleSU, 
                         '.',
                     ),
                 );
             }
         }
 
-        const hbondArray = Array.from(growthState.hBonds).filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel }) => {
-            const condition1 = growthState.labels.has(acceptorAtomLabel);
-            const condition2 = growthState.labels.has(hydrogenAtomLabel);
-            const condition3 = growthState.labels.has(donorAtomLabel);
-            return condition1 && condition2 && condition3;
-        });
+        const hbondArray = Array.from(growthState.hBonds)
+            .filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel }) => {
+                const condition1 = growthState.labels.has(acceptorAtomLabel);
+                const condition2 = growthState.labels.has(hydrogenAtomLabel);
+                const condition3 = growthState.labels.has(donorAtomLabel);
+                return condition1 && condition2 && condition3;
+            });
 
         return new CrystalStructure(
             structure.cell,

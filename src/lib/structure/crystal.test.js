@@ -1,5 +1,7 @@
 import { create, all } from 'mathjs';
-import { CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition } from './crystal.js';
+import { 
+    CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition, 
+} from './crystal.js';
 import { CIF } from '../cif/read-cif.js';
 
 const math = create(all);
@@ -116,8 +118,12 @@ data_test
             new Bond('C1', 'F1', 1.5, null, '2_665'),  // Symmetry bond - should be excluded
         ];
         const hBonds = [
-            new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),  // Regular H-bond in group 1
-            new HBond('N1', 'H1', 'F1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_665'),  // Symmetry H-bond - should be excluded
+            new HBond(
+                'O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.',
+            ),  // Regular H-bond in group 1
+            new HBond(
+                'N1', 'H1', 'F1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_665',
+            ),  // Symmetry H-bond - should be excluded
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
@@ -423,7 +429,9 @@ _atom_site_aniso_U_23
 N1 0.05 0.05 0.05 0 0 0
     `;
         const cif = new CIF(cifText);
-        expect(() => Atom.fromCIF(cif.getBlock(0), 0)).toThrow('Atom C1 has ADP type Uani, but was not found in atom_site_aniso.label');
+        expect(() => Atom.fromCIF(cif.getBlock(0), 0)).toThrow(
+            'Atom C1 has ADP type Uani, but was not found in atom_site_aniso.label',
+        );
     });
 
     test('fromCIF creates atom with label or index', () => {

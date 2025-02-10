@@ -4,7 +4,9 @@ import {
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
     ORTEPBond,
 } from './ortep.js';
-import { UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell } from '../structure/crystal.js';
+import { 
+    UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell, 
+} from '../structure/crystal.js';
 import defaultSettings from './structure-settings.js';
 import { create, all } from 'mathjs';
 

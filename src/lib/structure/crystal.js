@@ -413,7 +413,9 @@ export class BasePosition {
      */
     constructor(x, y, z) {
         if (new.target === BasePosition) {
-            throw new TypeError('BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition');
+            throw new TypeError(
+                'BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition',
+            );
         }
         this.#coords = [x, y, z];
         Object.defineProperties(this, {

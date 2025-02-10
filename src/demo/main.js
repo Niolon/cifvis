@@ -49,13 +49,16 @@ viewer.selections.onChange(selections => {
             `;
         } else if (item.type === 'hbond') {
             // Format values with their standard uncertainties
+            const dLabel = item.data.hydrogenAtomLabel;
+            const hLabel = item.data.hydrogenAtomLabel;
+            const aLabel = item.data.acceptorAtomLabel;
             const dhLength = formatValueEsd(item.data.donorHydrogenDistance, item.data.donorHydrogenDistanceSU);
             const haLength = formatValueEsd(item.data.acceptorHydrogenDistance, item.data.acceptorHydrogenDistanceSU);
             const daLength = formatValueEsd(item.data.donorAcceptorDistance, item.data.donorAcceptorDistanceSU);
             const angle = formatValueEsd(item.data.hBondAngle, item.data.hBondAngleSU);
 
             box.innerHTML = `
-                <div class="selection-title">H-Bond: ${item.data.donorAtomLabel} - ${item.data.hydrogenAtomLabel} ··· ${item.data.acceptorAtomLabel}</div>
+                <div class="selection-title">H-Bond: ${dLabel} - ${hLabel} ··· ${aLabel}</div>
                 <div class="selection-info">
                     <span>D-H:</span><span>${dhLength} Å</span>
                     <span>H···A:</span><span>${haLength} Å</span>
@@ -89,7 +92,6 @@ function initializeFileUpload() {
             const result = await viewer.loadStructure(text);
             if (result.success) {
                 updateStatus('Structure loaded successfully', 'success');
-                clearSelections();
                 adaptButtons();
             } else {
                 updateStatus('Error loading structure: ' + result.error, 'error');
@@ -123,7 +125,6 @@ function initializeFileUpload() {
             const result = await viewer.loadStructure(text);
             if (result.success) {
                 updateStatus('Structure loaded successfully', 'success');
-                clearSelections();
                 adaptButtons();
             } else {
                 updateStatus('Error loading structure: ' + result.error, 'error');
