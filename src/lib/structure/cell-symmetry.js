@@ -1,4 +1,4 @@
-import { create, all } from 'mathjs';
+import { create, all, isInteger } from 'mathjs';
 import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
 
 const math = create(all);
@@ -235,14 +235,20 @@ export class CellSymmetry {
      * @throws {Error} If symmetry operation number is invalid
      */
     applySymmetry(positionCode, atoms) {
-        const [symOpNum, translations] = positionCode.split('_');
-        const symOpIndex = parseInt(symOpNum) - 1;
-        
+        let transVector, symOpIndex;
+        try {
+            const [symOpNum, translations] = positionCode.split('_');
+            symOpIndex = parseInt(symOpNum) - 1;
+            transVector = translations.split('').map(t => parseInt(t) - 5);
+        } catch {
+            symOpIndex = positionCode - 1;
+            transVector = [0, 0, 0];
+        } 
+            
         if (symOpIndex < 0 || symOpIndex >= this.symmetryOperations.length) {
-            throw new Error(`Invalid symmetry operation number: ${symOpNum}`);
+            throw new Error(`Invalid symmetry operation number: ${symOpIndex + 1}`);
         }
 
-        const transVector = translations.split('').map(t => parseInt(t) - 5);
         const symOp = this.symmetryOperations[symOpIndex];
         
         //const combinedOp = symOp.copy();
