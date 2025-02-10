@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CIF } from '../cif/read-cif.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
-import { calculateStructureBounds, setupLighting } from './staging.js';
+import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
@@ -153,7 +153,7 @@ export class CrystalViewer {
         const validRenderModes = ['constant', 'onDemand'];
         if (options.renderMode && !validRenderModes.includes(options.renderMode)) {
             throw new Error(
-                `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`
+                `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
             );
         }
 
@@ -249,77 +249,67 @@ export class CrystalViewer {
     }
 
     async loadStructure(cifText) {
-        // New structure loading only
-        this.clearScene(true); // Full clear
-        if (cifText) {
+        try {
             const cif = new CIF(cifText);
             this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(0));
+            await this.setupNewStructure();            
+    
+            return { success: true };
+        } catch (error) {
+            console.error('Error loading structure:', error);
+            return { success: false, error: error.message };
         }
-        return this.updateStructure();
+    }
+
+    async setupNewStructure() {
+        this.selections.clear();
+        this.update3DOrtep();
+        const rotation = structureOrientationMatrix(this.state.currentStructure);
+        this.moleculeContainer.setRotationFromMatrix(rotation);
+        
+        this.updateCamera(this.state.currentStructure);
+        // Setup lighting
+        setupLighting(this.scene, this.state.currentStructure);
+        this.requestRender();
     }
     
-    async updateStructure(preserveCamera = false) {
-        // Handle filter updates
-        const oldCamera = preserveCamera ? {
-            position: this.camera.position.clone(),
-            rotation: this.camera.rotation.clone(),
-        } : null;
-    
+    async updateStructure() {
         try {
-            this.clearScene(false); // Partial clear preserving selections
-            const structure = this.applyFilters();
-            const bounds = calculateStructureBounds(structure);
-          
-            if (!preserveCamera) {
-                this.updateCameraBounds(bounds);
-            } else {
-                this.camera.position.copy(oldCamera.position);
-                this.camera.rotation.copy(oldCamera.rotation);
-            }
-    
-            // Only update lighting for symmetry changes
-            if (this.lastMode?.symmetry !== this.modifiers.symmetry.mode) {
-                setupLighting(this.scene, bounds);
-            }
-          
-            this.lastMode = {
-                symmetry: this.modifiers.symmetry.mode,
-                hydrogen: this.modifiers.hydrogen.mode,
-                disorder: this.modifiers.disorder.mode,
-            };
-
+            this.update3DOrtep();
             this.requestRender();
     
             return { success: true };
         } catch (error) {
             console.error('Error updating structure:', error);
-            return { success: false, error: error.message }; 
+            return { success: false, error: error.message };
         }
     }
+    
+    updateCamera() {
+        const distance = calculateCameraDistance(this.state.currentStructure);
+        this.camera.position.set(0, 0, distance);
+        this.camera.rotation.set(0, 0, 0);
+        this.camera.lookAt(this.cameraTarget);
+        this.options.camera.minDistance = distance * 0.2;
+        this.options.camera.maxDistance = distance * 2;
+    }
 
-    applyFilters() {
+    update3DOrtep() {
+        this.removeStructure();
         let structure = this.state.baseStructure;
-        for (const modifyer of Object.values(this.modifiers)) {
-            structure = modifyer.apply(structure);
+        for (const modifier of Object.values(this.modifiers)) {
+            structure = modifier.apply(structure);
         }
 
         const ortep = new ORTEP3JsStructure(structure, this.options);
         
-        const structureGroup = ortep.getGroup();
-        this.setupStructureObjects(structureGroup);
-        this.moleculeContainer.add(structureGroup);
-        this.state.currentStructure = structureGroup;
-        
-        return structureGroup;
+        const ortep3DGroup = ortep.getGroup();
+        this.moleculeContainer.add(ortep3DGroup);
+        this.state.currentStructure = ortep3DGroup;
+        this.selections.pruneInvalidSelections(this.moleculeContainer);
     }
 
-    clearScene(fullClear = true) {
-        if (fullClear) {
-            this.selections.clear();
-        } else {
-            this.selections.pruneInvalidSelections(this.moleculeContainer);
-        }
-        // Dispose Three.js objects
+    removeStructure() {
         this.moleculeContainer.traverse((object) => {
             if (object.geometry) {
                 object.geometry.dispose(); 
@@ -331,30 +321,15 @@ export class CrystalViewer {
         this.moleculeContainer.clear();
     }
 
-    setupStructureObjects(structureGroup) {
-        structureGroup.traverse((object) => {
-            if (object instanceof THREE.Mesh) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-    }
-
-    updateCameraBounds(bounds) {
-        const maxDimension = Math.max(bounds.size.x, bounds.size.y, bounds.size.z);
-        this.options.camera.minDistance = maxDimension * 0.5;
-        this.options.camera.maxDistance = maxDimension * 5;
-        
-        const initialDistance = maxDimension * 2;
-        this.camera.position.set(0, 0, initialDistance);
-        this.camera.rotation.set(0, 0, 0);
-        this.camera.lookAt(this.cameraTarget);
-    }
-
     async cycleModifierMode(modifierName) {
         const selectedModifier = this.modifiers[modifierName];
         const mode = selectedModifier.cycleMode(this.state.baseStructure);
-        const result = await this.updateStructure(selectedModifier.requiresCameraUpdate);
+        let result;
+        if (selectedModifier.requiresCameraUpdate) {
+            result = await this.setupNewStructure();
+        } else {
+            result = await this.updateStructure();
+        }
         return { ...result, mode };
     }
 
