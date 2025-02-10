@@ -215,6 +215,7 @@ C1 C
 O1 O`);
    
         const loop = block.get('_atom_site');
+        expect(loop.getHeaders()).toEqual(['_atom_site_label', '_atom_site_type']);
         expect(loop.get('_atom_site_label')).toEqual(['C1', 'O1']);
         expect(loop.get('_atom_site_type')).toEqual(['C', 'O']);
         expect(loop.getHeaders()).toEqual(['_atom_site_label', '_atom_site_type']);
