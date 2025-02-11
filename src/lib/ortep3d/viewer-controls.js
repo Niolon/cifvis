@@ -214,7 +214,7 @@ export class ViewerControls {
             const delta = this.clientToMouseCoordinates(
                 currentCentroid.x - this.state.twoFingerStartPos.x,
                 currentCentroid.y - this.state.twoFingerStartPos.y,
-            );
+            ).multiplyScalar(0.001);
             
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
