@@ -118,6 +118,7 @@ export class ViewerControls {
         this.moleculeContainer.applyMatrix4(
             new THREE.Matrix4().makeRotationAxis(xAxis, -delta.y * rotationSpeed),
         );
+        this.viewer.requestRender();
     }
 
     handleZoom(zoomDelta) {
@@ -135,9 +136,37 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
+    resetCameraPosition() {
+        this.camera.position.x = this.state.initialCameraPosition.x;
+        this.camera.position.y = this.state.initialCameraPosition.y;
+        this.camera.rotation.set(0, 0, 0);
+        this.viewer.requestRender();
+    }
+
+    panCamera(delta) {
+        const distance = this.camera.position.length();
+        const scale = distance;
+        
+        const right = new THREE.Vector3();
+        const up = new THREE.Vector3();
+        this.camera.matrix.extractBasis(right, up, new THREE.Vector3());
+        
+        const moveX = -delta.x * scale;
+        const moveY = -delta.y * scale;
+        
+        this.camera.position.addScaledVector(right, moveX);
+        this.camera.position.addScaledVector(up, moveY);
+        
+        this.viewer.requestRender();
+    }
+
     handleTouchStart(event) {
         event.preventDefault();
         const touches = event.touches;
+
+        const currentTime = Date.now();
+        this.handleSelection(touches[0], currentTime - this.state.lastClickTime);
+        this.state.lastClickTime = currentTime;
         
         if (touches.length === 1) {
             this.state.isDragging = true;
@@ -234,30 +263,6 @@ export class ViewerControls {
         this.state.lastRightClickTime = currentTime;
     }
 
-    resetCameraPosition() {
-        this.camera.position.x = this.state.initialCameraPosition.x;
-        this.camera.position.y = this.state.initialCameraPosition.y;
-        this.camera.rotation.set(0, 0, 0);
-        this.viewer.requestRender();
-    }
-
-    panCamera(delta) {
-        const distance = this.camera.position.length();
-        const scale = distance;
-        
-        const right = new THREE.Vector3();
-        const up = new THREE.Vector3();
-        this.camera.matrix.extractBasis(right, up, new THREE.Vector3());
-        
-        const moveX = -delta.x * scale;
-        const moveY = -delta.y * scale;
-        
-        this.camera.position.addScaledVector(right, moveX);
-        this.camera.position.addScaledVector(up, moveY);
-        
-        this.viewer.requestRender();
-    }
-
     handleMouseDown(event) {
         if (event.button === 2) {
             this.state.isPanning = true;
@@ -288,7 +293,6 @@ export class ViewerControls {
         }
         
         this.state.mouse.copy(newMouse);
-        this.viewer.requestRender();
     }
 
     handleMouseUp() {
