@@ -160,7 +160,6 @@ export class ViewerControls {
     handleTouchMove(event) {
         event.preventDefault();
         const touches = event.touches;
-        const rect = this.container.getBoundingClientRect();
         
         if (touches.length === 1 && this.state.isDragging) {
             const touch = touches[0];
@@ -168,13 +167,7 @@ export class ViewerControls {
             const delta = new THREE.Vector2(
                 newCoord.x - this.state.mouse.x,
                 newCoord.y - this.state.mouse.y,
-            )
-            //const newX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-            //const newY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-            //const delta = new THREE.Vector2(
-            //    newX - this.state.mouse.x,
-            //    newY - this.state.mouse.y,
-            //);
+            );
             
             this.rotateStructure(delta);
             this.state.mouse.set(newCoord.x, newCoord.y);
@@ -192,14 +185,12 @@ export class ViewerControls {
                 (touches[0].clientX + touches[1].clientX) / 2,
                 (touches[0].clientY + touches[1].clientY) / 2,
             );
-            // const delta = new THREE.Vector2(
-            //     ((currentCentroid.x - this.state.twoFingerStartPos.x) / rect.width) * 2,
-            //     -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2,
-            // );
+
             const delta = this.clientToMouseCoordinates(
                 currentCentroid.x - this.state.twoFingerStartPos.x,
                 currentCentroid.y - this.state.twoFingerStartPos.y,
             );
+            
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
         }
