@@ -2,8 +2,8 @@ export default {
     'camera': {
         'minDistance': 1,
         'maxDistance': 100,
-        'wheelZoomSpeed': 0.03,
-        'pinchZoomSpeed': 0.1,
+        'wheelZoomSpeed': 0.0008,
+        'pinchZoomSpeed': 0.001,
         'initialPosition': [0, 0, 10],
         'fov': 45,
         'near': 0.1,

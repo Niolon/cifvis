@@ -100,18 +100,19 @@ export class ViewerControls {
         const yAxis = new THREE.Vector3(0, 1, 0);
 
         this.moleculeContainer.applyMatrix4(
-            new THREE.Matrix4().makeRotationAxis(yAxis, delta.x * rotationSpeed)
+            new THREE.Matrix4().makeRotationAxis(yAxis, delta.x * rotationSpeed),
         );
         this.moleculeContainer.applyMatrix4(
-            new THREE.Matrix4().makeRotationAxis(xAxis, -delta.y * rotationSpeed)
+            new THREE.Matrix4().makeRotationAxis(xAxis, -delta.y * rotationSpeed),
         );
     }
 
     handleZoom(zoomDelta) {
         const { minDistance, maxDistance } = this.options.camera;
+        const maxTravel = maxDistance - minDistance;
         const currentDistance = this.camera.position.length();
         const newDistance = THREE.MathUtils.clamp(
-            currentDistance + zoomDelta,
+            currentDistance + zoomDelta * maxTravel,
             minDistance,
             maxDistance,
         );
@@ -138,7 +139,7 @@ export class ViewerControls {
             // Store centroid of two fingers for panning
             this.state.twoFingerStartPos.set(
                 (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2
+                (touches[0].clientY + touches[1].clientY) / 2,
             );
         }
     }
@@ -154,7 +155,7 @@ export class ViewerControls {
             const newY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
             const delta = new THREE.Vector2(
                 newX - this.state.mouse.x,
-                newY - this.state.mouse.y
+                newY - this.state.mouse.y,
             );
             
             this.rotateStructure(delta);
@@ -171,11 +172,11 @@ export class ViewerControls {
             // Handle two-finger pan
             const currentCentroid = new THREE.Vector2(
                 (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2
+                (touches[0].clientY + touches[1].clientY) / 2,
             );
             const delta = new THREE.Vector2(
                 ((currentCentroid.x - this.state.twoFingerStartPos.x) / rect.width) * 2,
-                -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2
+                -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2,
             );
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
@@ -283,7 +284,9 @@ export class ViewerControls {
     }
 
     handleClick(event) {
-        if (event.button !== 0) return; // Only handle left clicks
+        if (event.button !== 0) {
+            return; 
+        } // Only handle left clicks
         
         const clickDuration = Date.now() - this.state.clickStartTime;
         if (clickDuration > this.options.interaction.clickThreshold || this.state.isDragging) {
