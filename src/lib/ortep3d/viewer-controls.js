@@ -236,7 +236,8 @@ export class ViewerControls {
 
     resetCameraPosition() {
         // Reset camera to initial position
-        this.camera.position.copy(this.state.initialCameraPosition);
+        this.camera.position.x = this.state.initialCameraPosition.x;
+        this.camera.position.y = this.state.initialCameraPosition.y;
         this.camera.rotation.set(0, 0, 0);
         this.viewer.requestRender();
     }
@@ -244,7 +245,7 @@ export class ViewerControls {
     panCamera(delta) {
         // Scale the movement based on camera distance
         const distance = this.camera.position.length();
-        const scale = distance * 0.002; // Adjust this value to change pan sensitivity
+        const scale = distance
         
         // Create offset in camera's local space
         const right = new THREE.Vector3();
@@ -253,7 +254,7 @@ export class ViewerControls {
         
         // Move camera directly without affecting the look direction
         const moveX = -delta.x * scale;
-        const moveY = delta.y * scale;
+        const moveY = -delta.y * scale;
         
         this.camera.position.addScaledVector(right, moveX);
         this.camera.position.addScaledVector(up, moveY);
