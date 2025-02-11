@@ -176,11 +176,12 @@ export class ViewerControls {
             const dy = touches[0].clientY - touches[1].clientY;
             this.state.pinchStartDistance = Math.hypot(dx, dy);
             
-            // Store centroid of two fingers for panning
-            this.state.twoFingerStartPos.set(
+            // Calculate and store centroid in normalized coordinates right away
+            const startCentroid = this.clientToMouseCoordinates(
                 (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2,
+                (touches[0].clientY + touches[1].clientY) / 2
             );
+            this.state.twoFingerStartPos.copy(startCentroid);
         }
     }
 
@@ -213,10 +214,9 @@ export class ViewerControls {
                 (touches[0].clientY + touches[1].clientY) / 2,
             );
 
-            const delta = this.clientToMouseCoordinates(
-                currentCentroid.x - this.state.twoFingerStartPos.x,
-                currentCentroid.y - this.state.twoFingerStartPos.y,
-            );
+            const currentMousePos = this.clientToMouseCoordinates(currentCentroid.x, currentCentroid.y);
+            const startMousePos = this.clientToMouseCoordinates(this.state.twoFingerStartPos.x, this.state.twoFingerStartPos.y);
+            const delta = currentMousePos.sub(startMousePos);
             
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
