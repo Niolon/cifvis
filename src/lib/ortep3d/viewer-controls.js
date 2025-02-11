@@ -204,11 +204,13 @@ export class ViewerControls {
             this.rotateStructure(delta);
             this.state.mouse.set(newCoord.x, newCoord.y);
         } else if (touches.length === 2) {
-            // Initialize two-finger state if it wasn't set (can happen when second finger is added)
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            const distance = Math.hypot(dx, dy);
+
+            // Initialize two-finger state if it wasn't set
             if (!this.state.pinchStartDistance) {
-                const dx = touches[0].clientX - touches[1].clientX;
-                const dy = touches[0].clientY - touches[1].clientY;
-                this.state.pinchStartDistance = Math.hypot(dx, dy);
+                this.state.pinchStartDistance = distance;
                 
                 const startCentroid = this.clientToMouseCoordinates(
                     (touches[0].clientX + touches[1].clientX) / 2,
@@ -217,10 +219,6 @@ export class ViewerControls {
                 this.state.twoFingerStartPos.copy(startCentroid);
                 return; // Skip this frame to avoid jumps
             }
-
-            const dx = touches[0].clientX - touches[1].clientX;
-            const dy = touches[0].clientY - touches[1].clientY;
-            const distance = Math.hypot(dx, dy);
             
             // Handle pinch zoom
             this.handleZoom((this.state.pinchStartDistance - distance) * this.options.camera.pinchZoomSpeed);
@@ -260,6 +258,7 @@ export class ViewerControls {
             }
             
             this.state.isDragging = false;
+            this.state.pinchStartDistance = 0;  // Reset pinch distance when ending gesture
         }
     }
 
