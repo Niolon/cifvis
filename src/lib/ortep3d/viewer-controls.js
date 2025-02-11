@@ -166,22 +166,26 @@ export class ViewerControls {
         event.preventDefault();
         const touches = event.touches;
         
-        if (touches.length === 1) {
+        if (touches.length === 1 && !this.state.isDragging) {
             this.state.isDragging = true;
             this.state.clickStartTime = Date.now();
             this.updateMouseCoordinates(touches[0].clientX, touches[0].clientY);
         } else if (touches.length === 2) {
+            // Only initialize two-finger state if we weren't already dragging
+            // This prevents jumps when a second finger is added
+            if (!this.state.isDragging) {
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                this.state.pinchStartDistance = Math.hypot(dx, dy);
+                
+                // Calculate and store centroid in normalized coordinates right away
+                const startCentroid = this.clientToMouseCoordinates(
+                    (touches[0].clientX + touches[1].clientX) / 2,
+                    (touches[0].clientY + touches[1].clientY) / 2
+                );
+                this.state.twoFingerStartPos.copy(startCentroid);
+            }
             this.state.isDragging = false;
-            const dx = touches[0].clientX - touches[1].clientX;
-            const dy = touches[0].clientY - touches[1].clientY;
-            this.state.pinchStartDistance = Math.hypot(dx, dy);
-            
-            // Calculate and store centroid in normalized coordinates right away
-            const startCentroid = this.clientToMouseCoordinates(
-                (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2
-            );
-            this.state.twoFingerStartPos.copy(startCentroid);
         }
     }
 
@@ -200,6 +204,20 @@ export class ViewerControls {
             this.rotateStructure(delta);
             this.state.mouse.set(newCoord.x, newCoord.y);
         } else if (touches.length === 2) {
+            // Initialize two-finger state if it wasn't set (can happen when second finger is added)
+            if (!this.state.pinchStartDistance) {
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                this.state.pinchStartDistance = Math.hypot(dx, dy);
+                
+                const startCentroid = this.clientToMouseCoordinates(
+                    (touches[0].clientX + touches[1].clientX) / 2,
+                    (touches[0].clientY + touches[1].clientY) / 2
+                );
+                this.state.twoFingerStartPos.copy(startCentroid);
+                return; // Skip this frame to avoid jumps
+            }
+
             const dx = touches[0].clientX - touches[1].clientX;
             const dy = touches[0].clientY - touches[1].clientY;
             const distance = Math.hypot(dx, dy);
@@ -208,16 +226,12 @@ export class ViewerControls {
             this.handleZoom((this.state.pinchStartDistance - distance) * this.options.camera.pinchZoomSpeed);
             this.state.pinchStartDistance = distance;
             
-            // Handle two-finger pan
-            const currentCentroid = new THREE.Vector2(
+            const currentCentroid = this.clientToMouseCoordinates(
                 (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2,
+                (touches[0].clientY + touches[1].clientY) / 2
             );
-
-            const currentMousePos = this.clientToMouseCoordinates(currentCentroid.x, currentCentroid.y);
-            const startMousePos = this.clientToMouseCoordinates(this.state.twoFingerStartPos.x, this.state.twoFingerStartPos.y);
-            const delta = currentMousePos.sub(startMousePos);
             
+            const delta = currentCentroid.clone().sub(this.state.twoFingerStartPos);
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
         }
