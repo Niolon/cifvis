@@ -1,8 +1,8 @@
 import { create, all } from 'mathjs';
 import { 
     CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition, 
-} from './crystal.js';
-import { CIF } from '../cif/read-cif.js';
+} from './crystal.mjs';
+import { CIF } from '../cif/read-cif.mjs';
 
 const math = create(all);
 

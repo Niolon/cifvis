@@ -1,5 +1,5 @@
 import { create, all } from 'mathjs';
-import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
+import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.mjs';
 
 const math = create(all);
 

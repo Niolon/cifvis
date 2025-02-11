@@ -6,8 +6,8 @@ import {
 } from './ortep.js';
 import { 
     UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell, 
-} from '../structure/crystal.js';
-import defaultSettings from './structure-settings.js';
+} from '../structure/crystal.mjs';
+import defaultSettings from './structure-settings.mjs';
 import { create, all } from 'mathjs';
 
 const math = create(all);
