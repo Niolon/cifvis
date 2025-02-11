@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export class ViewerControls {
+export class ViewerControls {    
     constructor(viewer) {
         this.viewer = viewer;
         this.state = {
@@ -73,12 +73,6 @@ export class ViewerControls {
         );
     }
 
-    // updateMouseCoordinates(clientX, clientY) {
-    //     const rect = this.container.getBoundingClientRect();
-    //     // Map coordinates to [-1, 1] range in a simpler way
-    //     this.state.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    //     this.state.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-    // }
     updateMouseCoordinates(clientX, clientY) {
         const mCoord = this.clientToMouseCoordinates(clientX, clientY);
         this.state.mouse.x = mCoord.x;
@@ -144,16 +138,23 @@ export class ViewerControls {
     }
 
     panCamera(delta) {
-        const distance = this.camera.position.length();
-        const scale = distance;
+        const distance = this.camera.position.z;
         
+        // Calculate the size of the view frustum at the object's distance
+        const fovRadians = this.camera.fov * Math.PI / 180;
+        const frustumHeight = 2 * Math.tan(fovRadians / 2) * distance;
+        const frustumWidth = frustumHeight * this.camera.aspect;
+        
+        // Convert screen coordinates to world space movement
+        const moveX = -delta.x * frustumWidth;
+        const moveY = -delta.y * frustumHeight;
+        
+        // Get camera's right and up vectors
         const right = new THREE.Vector3();
         const up = new THREE.Vector3();
         this.camera.matrix.extractBasis(right, up, new THREE.Vector3());
         
-        const moveX = -delta.x * scale;
-        const moveY = -delta.y * scale;
-        
+        // Move camera in the view plane
         this.camera.position.addScaledVector(right, moveX);
         this.camera.position.addScaledVector(up, moveY);
         
@@ -214,7 +215,7 @@ export class ViewerControls {
             const delta = this.clientToMouseCoordinates(
                 currentCentroid.x - this.state.twoFingerStartPos.x,
                 currentCentroid.y - this.state.twoFingerStartPos.y,
-            ).multiplyScalar(-0.001);
+            );
             
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
@@ -318,7 +319,20 @@ export class ViewerControls {
 
     handleResize() {
         const rect = this.container.getBoundingClientRect();
-        this.camera.aspect = rect.width / rect.height;
+        const aspect = rect.width / rect.height;
+        this.camera.aspect = aspect;
+
+        // Calculate field of view to fit object based on smallest dimension
+        const targetFov = this.options.camera.fov;
+        
+        if (rect.width < rect.height) {
+            // Width is limiting factor, adjust FOV to maintain object size
+            this.camera.fov = 2 * Math.atan(Math.tan(targetFov * Math.PI / 360) / aspect) * 180 / Math.PI;
+        } else {
+            // Height is limiting factor, use target FOV directly
+            this.camera.fov = targetFov;
+        }
+
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(rect.width, rect.height);
         this.viewer.requestRender();
