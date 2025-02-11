@@ -141,6 +141,7 @@ export class ViewerControls {
         const distance = this.camera.position.z;
         
         // Calculate the size of the view frustum at the object's distance
+        // Factor 2 missing from height as delta goes from -1 to 1 -> 2
         const fovRadians = this.camera.fov * Math.PI / 180;
         const frustumHeight = Math.tan(fovRadians / 2) * distance;
         const frustumWidth = frustumHeight * this.camera.aspect;
