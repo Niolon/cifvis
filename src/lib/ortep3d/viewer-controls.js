@@ -163,10 +163,6 @@ export class ViewerControls {
     handleTouchStart(event) {
         event.preventDefault();
         const touches = event.touches;
-
-        const currentTime = Date.now();
-        this.handleSelection(touches[0], currentTime - this.state.lastClickTime);
-        this.state.lastClickTime = currentTime;
         
         if (touches.length === 1) {
             this.state.isDragging = true;
@@ -233,7 +229,7 @@ export class ViewerControls {
         if (event.touches.length === 0 && event.changedTouches.length > 0) {
             const touchDuration = Date.now() - this.state.clickStartTime;
             
-            if (touchDuration < this.options.interaction.clickThreshold && !this.state.isDragging) {
+            if (touchDuration < this.options.interaction.clickThreshold) {
                 const touch = event.changedTouches[0];
                 const currentTime = Date.now();
                 
