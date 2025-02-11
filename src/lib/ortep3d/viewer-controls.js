@@ -67,10 +67,9 @@ export class ViewerControls {
 
     updateMouseCoordinates(clientX, clientY) {
         const rect = this.container.getBoundingClientRect();
-        this.state.mouse.set(
-            ((clientX - rect.left) / rect.width) * 2 - 1,
-            -((clientY - rect.top) / rect.height) * 2 + 1,
-        );
+        // Map coordinates to [-1, 1] range in a simpler way
+        this.state.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        this.state.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     }
 
     handleSelection(point, timeSinceLastInteraction) {
@@ -150,17 +149,19 @@ export class ViewerControls {
     handleTouchMove(event) {
         event.preventDefault();
         const touches = event.touches;
+        const rect = this.container.getBoundingClientRect();
         
         if (touches.length === 1 && this.state.isDragging) {
             const touch = touches[0];
-            const rect = this.container.getBoundingClientRect();
-            const newMouse = new THREE.Vector2(
-                ((touch.clientX - rect.left) / rect.width) * 2 - 1,
-                -((touch.clientY - rect.top) / rect.height) * 2 + 1,
+            const newX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+            const newY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+            const delta = new THREE.Vector2(
+                newX - this.state.mouse.x,
+                newY - this.state.mouse.y,
             );
             
-            this.rotateStructure(newMouse.clone().sub(this.state.mouse));
-            this.state.mouse.copy(newMouse);
+            this.rotateStructure(delta);
+            this.state.mouse.set(newX, newY);
         } else if (touches.length === 2) {
             const dx = touches[0].clientX - touches[1].clientX;
             const dy = touches[0].clientY - touches[1].clientY;
@@ -175,7 +176,6 @@ export class ViewerControls {
                 (touches[0].clientX + touches[1].clientX) / 2,
                 (touches[0].clientY + touches[1].clientY) / 2,
             );
-            const rect = this.container.getBoundingClientRect();
             const delta = new THREE.Vector2(
                 ((currentCentroid.x - this.state.twoFingerStartPos.x) / rect.width) * 2,
                 -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2,
@@ -194,17 +194,24 @@ export class ViewerControls {
         if (event.cancelable) {
             event.preventDefault();
         }
-        if (event.touches.length === 0) {
+        
+        if (event.touches.length === 0 && event.changedTouches.length > 0) {
             const touchDuration = Date.now() - this.state.clickStartTime;
             
             if (touchDuration < this.options.interaction.clickThreshold && !this.state.isDragging) {
+                const touch = event.changedTouches[0];
                 const currentTime = Date.now();
-                this.handleSelection(
-                    event.changedTouches[0], 
-                    currentTime - this.state.lastClickTime,
-                );
+                
+                // Create a synthetic mouse event for selection
+                const fakeEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                };
+                
+                this.handleSelection(fakeEvent, currentTime - this.state.lastClickTime);
                 this.state.lastClickTime = currentTime;
             }
+            
             this.state.isDragging = false;
         }
     }
