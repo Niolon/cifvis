@@ -65,11 +65,24 @@ export class ViewerControls {
         window.addEventListener('resize', resize);
     }
 
-    updateMouseCoordinates(clientX, clientY) {
+    clientToMouseCoordinates(clientX, clientY) {
         const rect = this.container.getBoundingClientRect();
-        // Map coordinates to [-1, 1] range in a simpler way
-        this.state.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-        this.state.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        return new THREE.Vector2(
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            -((clientY - rect.top) / rect.height) * 2 + 1,
+        );
+    }
+
+    // updateMouseCoordinates(clientX, clientY) {
+    //     const rect = this.container.getBoundingClientRect();
+    //     // Map coordinates to [-1, 1] range in a simpler way
+    //     this.state.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    //     this.state.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    // }
+    updateMouseCoordinates(clientX, clientY) {
+        const mCoord = this.clientToMouseCoordinates(clientX, clientY);
+        this.state.mouse.x = mCoord.x;
+        this.state.mouse.y = mCoord.y;
     }
 
     handleSelection(point, timeSinceLastInteraction) {
@@ -151,15 +164,20 @@ export class ViewerControls {
         
         if (touches.length === 1 && this.state.isDragging) {
             const touch = touches[0];
-            const newX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-            const newY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+            const newCoord = this.clientToMouseCoordinates(touch.clientX, touch.clientY);
             const delta = new THREE.Vector2(
-                newX - this.state.mouse.x,
-                newY - this.state.mouse.y,
-            );
+                newCoord.x - this.state.mouse.x,
+                newCoord.y - this.state.mouse.y,
+            )
+            //const newX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+            //const newY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+            //const delta = new THREE.Vector2(
+            //    newX - this.state.mouse.x,
+            //    newY - this.state.mouse.y,
+            //);
             
             this.rotateStructure(delta);
-            this.state.mouse.set(newX, newY);
+            this.state.mouse.set(newCoord.x, newCoord.y);
         } else if (touches.length === 2) {
             const dx = touches[0].clientX - touches[1].clientX;
             const dy = touches[0].clientY - touches[1].clientY;
@@ -174,9 +192,13 @@ export class ViewerControls {
                 (touches[0].clientX + touches[1].clientX) / 2,
                 (touches[0].clientY + touches[1].clientY) / 2,
             );
-            const delta = new THREE.Vector2(
-                ((currentCentroid.x - this.state.twoFingerStartPos.x) / rect.width) * 2,
-                -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2,
+            // const delta = new THREE.Vector2(
+            //     ((currentCentroid.x - this.state.twoFingerStartPos.x) / rect.width) * 2,
+            //     -((currentCentroid.y - this.state.twoFingerStartPos.y) / rect.height) * 2,
+            // );
+            const delta = this.clientToMouseCoordinates(
+                currentCentroid.x - this.state.twoFingerStartPos.x,
+                currentCentroid.y - this.state.twoFingerStartPos.y,
             );
             this.panCamera(delta);
             this.state.twoFingerStartPos.copy(currentCentroid);
