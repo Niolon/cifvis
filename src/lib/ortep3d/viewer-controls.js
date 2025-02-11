@@ -101,6 +101,26 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
+    handleMouseClick(point, timeSinceLastInteraction) {
+        // Set mouse raycaster thresholds
+        const mouseThresholds = this.options.interaction.mouseRaycast;
+        this.raycaster.params.Line.threshold = mouseThresholds.lineThreshold;
+        this.raycaster.params.Points.threshold = mouseThresholds.pointsThreshold;
+        this.raycaster.params.Mesh.threshold = mouseThresholds.meshThreshold;
+
+        this.handleSelection(point, timeSinceLastInteraction);
+    }
+
+    handleTouchSelect(point, timeSinceLastInteraction) {
+        // Set touch raycaster thresholds
+        const touchThresholds = this.options.interaction.touchRaycast;
+        this.raycaster.params.Line.threshold = touchThresholds.lineThreshold;
+        this.raycaster.params.Points.threshold = touchThresholds.pointsThreshold;
+        this.raycaster.params.Mesh.threshold = touchThresholds.meshThreshold;
+
+        this.handleSelection(point, timeSinceLastInteraction);
+    }
+
     rotateStructure(delta) {
         const rotationSpeed = this.options.interaction.rotationSpeed;
         const xAxis = new THREE.Vector3(1, 0, 0);
@@ -253,7 +273,7 @@ export class ViewerControls {
                     clientY: touch.clientY,
                 };
                 
-                this.handleSelection(fakeEvent, currentTime - this.state.lastClickTime);
+                this.handleTouchSelect(fakeEvent, currentTime - this.state.lastClickTime);
                 this.state.lastClickTime = currentTime;
             }
             
@@ -322,7 +342,7 @@ export class ViewerControls {
         }
 
         const currentTime = Date.now();
-        this.handleSelection(event, currentTime - this.state.lastClickTime);
+        this.handleMouseClick(event, currentTime - this.state.lastClickTime);
         this.state.lastClickTime = currentTime;
     }
 

@@ -31,6 +31,16 @@ export default {
     'interaction': {
         'rotationSpeed': 5,
         'clickThreshold': 200,
+        'mouseRaycast': {
+            'lineThreshold': 0.5,
+            'pointsThreshold': 0.5,
+            'meshThreshold': 0.1,
+        },
+        'touchRaycast': {
+            'lineThreshold': 2.0,
+            'pointsThreshold': 2.0,
+            'meshThreshold': 0.2,
+        },
     },
 
     'renderMode': 'onDemand',
