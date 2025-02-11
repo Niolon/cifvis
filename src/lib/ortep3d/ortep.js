@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import defaultSettings from './structure-settings.mjs';
-import { HBond, Bond, UAnisoADP, UIsoADP } from '../structure/crystal.mjs';
-import { SymmetryGrower } from '../structure/structure-modifiers.mjs';
+import defaultSettings from './structure-settings.js';
+import { HBond, Bond, UAnisoADP, UIsoADP } from '../structure/crystal.js';
+import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
 /**
  * Calculate transformation matrix for ellipsoid visualisation.

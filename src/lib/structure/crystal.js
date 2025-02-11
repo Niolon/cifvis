@@ -4,9 +4,9 @@ import {
     calculateFractToCartMatrix,
     uCifToUCart,
     adpToMatrix,
-} from './fract-to-cart.mjs';
+} from './fract-to-cart.js';
 
-import { CellSymmetry } from './cell-symmetry.mjs';
+import { CellSymmetry } from './cell-symmetry.js';
 
 const math = create(all, {});
 

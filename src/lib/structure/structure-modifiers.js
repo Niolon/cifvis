@@ -1,4 +1,4 @@
-import { CrystalStructure, HBond, Bond, Atom } from './crystal.mjs';
+import { CrystalStructure, HBond, Bond, Atom } from './crystal.js';
 
 /**
  * Base class for structure filters that implement mode-based behavior

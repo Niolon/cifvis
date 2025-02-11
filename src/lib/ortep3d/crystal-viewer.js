@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { CIF } from '../cif/read-cif.mjs';
-import { CrystalStructure } from '../structure/crystal.mjs';
-import { ORTEP3JsStructure } from './ortep.mjs';
-import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.mjs';
-import defaultSettings from './structure-settings.mjs';
-import { ViewerControls } from './viewer-controls.mjs';
-import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.mjs';
+import { CIF } from '../cif/read-cif.js';
+import { CrystalStructure } from '../structure/crystal.js';
+import { ORTEP3JsStructure } from './ortep.js';
+import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
+import defaultSettings from './structure-settings.js';
+import { ViewerControls } from './viewer-controls.js';
+import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
 
 export class SelectionManager {
     constructor(options) {
