@@ -142,7 +142,7 @@ export class ViewerControls {
         
         // Calculate the size of the view frustum at the object's distance
         const fovRadians = this.camera.fov * Math.PI / 180;
-        const frustumHeight = 2 * Math.tan(fovRadians / 2) * distance;
+        const frustumHeight = Math.tan(fovRadians / 2) * distance;
         const frustumWidth = frustumHeight * this.camera.aspect;
         
         // Convert screen coordinates to world space movement
