@@ -12,6 +12,94 @@ export class SelectionManager {
         this.options = options;
         this.selectedObjects = new Set();
         this.selectionCallbacks = new Set();
+        this.selectedData = new Set();
+    }
+
+    pruneInvalidSelections(container) {
+        // Clear old visual selections since the objects no longer exist
+        this.selectedObjects.clear();
+
+        // Collect all available data in current structure
+        const availableData = new Set();
+        container.traverse((object) => {
+            if (object.userData?.selectable) {
+                const data = this.getObjectData(object);
+                if (data) {
+                    availableData.add(JSON.stringify(data));
+                }
+            }
+        });
+
+        // Remove any stored data that doesn't exist in current structure
+        this.selectedData = new Set(
+            Array.from(this.selectedData).filter(stored => 
+                availableData.has(JSON.stringify({
+                    type: stored.type,
+                    ...this.getDataWithoutColor(stored),
+                })),
+            ),
+        );
+
+        // Find and select visual objects that match our remaining stored data
+        container.traverse((object) => {
+            if (object.userData?.selectable) {
+                const data = this.getObjectData(object);
+                if (this.hasMatchingData(data)) {
+                    const color = this.getColorForData(data);
+                    object.select(color, this.options);
+                    this.selectedObjects.add(object);
+                }
+            }
+        });
+
+        this.notifyCallbacks();
+    }
+
+    getDataWithoutColor(data) {
+        const { color, ...rest } = data;
+        return rest;
+    }
+
+    getObjectData(object) {
+        if (!object.userData) {
+            return null; 
+        }
+        
+        switch (object.userData.type) {
+        case 'atom':
+            return {
+                type: 'atom',
+                label: object.userData.atomData.label,
+            };
+        case 'bond':
+            return {
+                type: 'bond',
+                atom1: object.userData.bondData.atom1Label,
+                atom2: object.userData.bondData.atom2Label,
+            };
+        case 'hbond':
+            return {
+                type: 'hbond',
+                donor: object.userData.hbondData.donorAtomLabel,
+                hydrogen: object.userData.hbondData.hydrogenAtomLabel,
+                acceptor: object.userData.hbondData.acceptorAtomLabel,
+            };
+        default:
+            return null;
+        }
+    }
+
+    hasMatchingData(data) {
+        if (!data) {
+            return false; 
+        }
+
+        return Array.from(this.selectedData).some(stored => this.matchData(stored, data));
+    }
+
+    getColorForData(data) {
+        const stored = Array.from(this.selectedData).find(stored => this.matchData(stored, data));
+        return stored ? stored.color : this.getNextColor();
     }
 
     handle(object) {
@@ -20,48 +108,58 @@ export class SelectionManager {
                 this.remove(selected);
             });
             this.selectedObjects.clear();
+            this.selectedData.clear();
         }
-    
+
+        const data = this.getObjectData(object);
+        if (!data) {
+            return null; 
+        }
+
         let color;
-        if (this.selectedObjects.has(object)) {
+        if (this.hasMatchingData(data)) {
             color = object.selectionColor;
             this.remove(object);
+            this.selectedData = new Set(
+                Array.from(this.selectedData).filter(stored => !this.matchData(stored, data)),
+            );
         } else {
-            this.add(object);
-            color = object.selectionColor;
+            color = this.getNextColor();
+            this.add(object, color);
+            this.selectedData.add({ ...data, color });
         }
-    
+
         this.notifyCallbacks();
         return color;
     }
 
-    getNextColor() {
-        const colorCounts = new Map();
-        this.selectedObjects.forEach(obj => {
-            const color = obj.selectionColor;
-            colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
-        });
-        
-        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
-        if (!color) {
-            const minCount = Math.min(...colorCounts.values());
-            color = this.options.markerColors.find(c => 
-                colorCounts.get(c) === minCount,
-            );
+    matchData(data1, data2) {
+        if (data1.type !== data2.type) {
+            return false; 
         }
-        return color;
-    }
-    
-    add(object) {
-        const color = this.getNextColor();
-        object.select(color, this.options);
-        this.selectedObjects.add(object);
 
+        switch (data1.type) {
+        case 'atom':
+            return data1.label === data2.label;
+        case 'bond':
+            return (data1.atom1 === data2.atom1 && data1.atom2 === data2.atom2) ||
+                       (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
+        case 'hbond':
+            return data1.donor === data2.donor &&
+                       data1.hydrogen === data2.hydrogen &&
+                       data1.acceptor === data2.acceptor;
+        default:
+            return false;
+        }
+    }
+
+    add(object, color) {
+        object.select(color || this.getNextColor(), this.options);
+        this.selectedObjects.add(object);
     }
 
     remove(object) {
         this.selectedObjects.delete(object);
-        
         object.deselect();
     }
 
@@ -69,29 +167,25 @@ export class SelectionManager {
         this.selectedObjects.forEach(object => {
             this.remove(object);
         });
+        this.selectedObjects.clear();
+        this.selectedData.clear();
         this.notifyCallbacks();
     }
 
-    selectAtoms(atomLabels, moleculeContainer) {
-        this.clear();
-        atomLabels.forEach(label => {
-            const atom = this.findAtomMeshByLabel(label, moleculeContainer);
-            if (atom) {
-                this.add(atom);
-            }
+    getNextColor() {
+        const colorCounts = new Map();
+        this.selectedData.forEach(data => {
+            colorCounts.set(data.color, (colorCounts.get(data.color) || 0) + 1);
         });
-        this.notifyCallbacks();
-    }
-
-    findAtomMeshByLabel(label, moleculeContainer) {
-        let found = null;
-        moleculeContainer.traverse((object) => {
-            if (object.userData?.type === 'atom' && 
-                object.userData?.atomData?.label === label) {
-                found = object;
-            }
-        });
-        return found;
+        
+        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
+        if (!color) {
+            const minCount = Math.min(...colorCounts.values());
+            color = this.options.selection.markerColors.find(c => 
+                colorCounts.get(c) === minCount,
+            );
+        }
+        return color;
     }
 
     onChange(callback) {
@@ -119,34 +213,23 @@ export class SelectionManager {
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
             const lastSelected = selectedObjects[selectedObjects.length - 1];
+            const lastData = this.getObjectData(lastSelected);
             
             this.clear();
-            this.add(lastSelected);
+            if (lastData) {
+                this.add(lastSelected);
+                this.selectedData.add({ ...lastData, color: lastSelected.selectionColor });
+            }
             this.notifyCallbacks();
         }
     }
 
-    pruneInvalidSelections(container) {
-        // Remove selections for objects no longer in scene
-        const validObjects = new Set();
-        container.traverse((object) => {
-            if (object.userData?.selectable) {
-                validObjects.add(object);
-            }
-        });
-        
-        this.selectedObjects = new Set(
-            Array.from(this.selectedObjects)
-                .filter(obj => validObjects.has(obj)),
-        );
-        this.notifyCallbacks();
-    }
-
     dispose() {
-        this.clearSelections();
+        this.clear();
         this.selectionCallbacks.clear();
     }
 }
+
 export class CrystalViewer {    
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
