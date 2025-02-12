@@ -312,7 +312,7 @@ export class CifLoop {
             return; 
         }
     
-        this.headers = [...this.headerLines]; // Copy to preserve originals
+        this.headers = [...this.headerLines];
         this.data = {};
     
         const dataArray = [];
@@ -326,19 +326,21 @@ export class CifLoop {
                 i = mult.endIndex + 1;
                 continue;
             }
-
-            const regex = /('[^']+'|"[^"]+"|[^\s'"]+)/g;
-            const matches = line.match(regex);
-            if (matches) {
-                for (const match of matches) {
-                    dataArray.push(parseValue(match, this.splitSU));
-                }
+    
+            const tokenRegex = /'([^']*(?:(?<! )'[^']*)*)'|"([^"]*(?:(?<! )"[^"]*)*)"|\S+/g;
+            let match;
+    
+            while ((match = tokenRegex.exec(line)) !== null) {
+                // If it was a quoted string, use the captured group (1 or 2), otherwise use full match
+                const value = match[1] || match[2] || match[0];
+                dataArray.push(parseValue(value, this.splitSU));
             }
+    
             i++;
         }
     
         const nEntries = this.headers.length;
-
+    
         if (dataArray.length % nEntries !== 0) {
             throw new Error(
                 `Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`,

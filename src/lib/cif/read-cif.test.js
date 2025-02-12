@@ -24,6 +24,26 @@ describe('Parse Value Tests', () => {
     test('respects splitSU flag', () => {
         expect(parseValue('123.456(7)', false)).toEqual({ value: '123.456(7)', su: NaN });
     });
+
+    test('handles embedded quotes not followed by whitespace', () => {
+        expect(parseValue('a dog\'s life')).toEqual({ value: 'a dog\'s life', su: NaN });
+        expect(parseValue('C1\'')).toEqual({ value: 'C1\'', su: NaN });
+    });
+
+    test('handles properly quoted strings', () => {
+        expect(parseValue('\'simple quoted\'')).toEqual({ value: 'simple quoted', su: NaN });
+        expect(parseValue('"double quoted"')).toEqual({ value: 'double quoted', su: NaN });
+    });
+
+    test('preserves embedded quotes in unquoted strings', () => {
+        expect(parseValue('don\'t')).toEqual({ value: 'don\'t', su: NaN });
+        expect(parseValue('say"cheese"now')).toEqual({ value: 'say"cheese"now', su: NaN });
+    });
+
+    test('handles escaped characters', () => {
+        expect(parseValue('escaped\\;character')).toEqual({ value: 'escaped;character', su: NaN });
+        expect(parseValue('"escaped\\;character"')).toEqual({ value: 'escaped;character', su: NaN });
+    });
 });
  
 describe('Parse MultiLine String Tests', () => {
@@ -188,6 +208,32 @@ entry
             expect(block.get('_some_multiline_entry')).toBe('normal formatting\nentry');
             expect(block.get('_another_multiline_entry')).toBe('more sloppy\nentry');
         });
+
+        test('handles embedded quotes according to spec', () => {
+            const block = new CifBlock(`test
+_text1 'a dog's life'
+_text2 'a dog's'
+_text3 'a dog's  tail'
+_text4 "don't stop"
+_text5 "don't"
+_text6 a'quoted'text
+_text7 O'Brian's`);
+            
+            // eslint-disable-next-line quotes
+            expect(block.get('_text1')).toBe("a dog's life");
+            // eslint-disable-next-line quotes
+            expect(block.get('_text2')).toBe("a dog's");
+            // eslint-disable-next-line quotes
+            expect(block.get('_text3')).toBe("a dog's  tail");  // Should stop at space after quote
+            // eslint-disable-next-line quotes
+            expect(block.get('_text4')).toBe("don't stop");    // Should stop at space after quote
+            // eslint-disable-next-line quotes
+            expect(block.get('_text5')).toBe("don't");
+            // eslint-disable-next-line quotes
+            expect(block.get('_text6')).toBe("a'quoted'text");
+            // eslint-disable-next-line quotes
+            expect(block.get('_text7')).toBe("O'Brian's");
+        });
         test('parses block with splitSU=false', () => {
             const cif = new CIF(`data_test
 _cell_length_a 123.456(7)`, false);
@@ -252,19 +298,6 @@ _cell_angle_alpha
         expect(loop.get('_cell_length_a_su')).toEqual([0.0005, 0.0008]);
         expect(loop.get('_cell_angle_alpha')).toEqual([90.000, 90.000]);
         expect(loop.get('_cell_angle_alpha_su')).toEqual([0.012, 0.015]);
-    });
-
-    test('handles mixed quoted and unquoted values', () => {
-        const block = new CifBlock(`test
-loop_
-_test_name
-_test_type
-'Complex 1' C
-"Complex 2" 'C H'`);
-   
-        const loop = block.get('_test');
-        expect(loop.get('_test_name')).toEqual(['Complex 1', 'Complex 2']);
-        expect(loop.get('_test_type')).toEqual(['C', 'C H']);
     });
 
     test('handles empty and whitespace lines', () => {
@@ -435,5 +468,70 @@ C1 C`);
   
         const loop = block.get('_atom_site');
         expect(() => loop.getIndex('_nonexistent', 0)).toThrow('None of the keys');
+    });
+
+    test('handles embedded quotes in loop values', () => {
+        const cifText = `test
+loop_
+_atom_label
+_atom_note
+C1' 'a dog's life'
+N7' "isn't this fun"`;
+
+        const block = new CifBlock(cifText);
+        const loop = block.get('_atom');
+        // eslint-disable-next-line quotes
+        expect(loop.get('_atom_label')).toEqual(["C1'", "N7'"]);
+        // eslint-disable-next-line quotes
+        expect(loop.get('_atom_note')).toEqual(["a dog's life", "isn't this fun"]);
+    });
+
+    test('handles mixed quoted and unquoted values', () => {
+        const cifText = `test
+loop_
+_some_id
+_some_label
+_some_note
+1 C1' simple
+2 O1 'quoted value'
+3 N1' "double quoted"`;
+
+        const block = new CifBlock(cifText);
+        const loop = block.get('_some');
+        expect(loop.get('_some_id')).toEqual([1, 2, 3]);
+        expect(loop.get('_some_label')).toEqual(['C1\'', 'O1', 'N1\'']);
+        expect(loop.get('_some_note')).toEqual(['simple', 'quoted value', 'double quoted']);
+    });
+
+    test('preserves whitespace in quoted strings', () => {
+        const cifText = `test
+loop_
+_some_id
+_some_note
+1 'spaced    out'
+2 "  leading space"
+3 'trailing space  '`;
+
+        const block = new CifBlock(cifText);
+        const loop = block.get('_some');
+        expect(loop.get('_some_note')).toEqual([
+            'spaced    out',
+            '  leading space',
+            'trailing space  ',
+        ]);
+    });
+
+    test('handles empty quoted strings', () => {
+        const cifText = `test
+loop_
+_some_id
+_some_note
+1 ''
+2 ""
+3 'value'`;
+
+        const block = new CifBlock(cifText);
+        const loop = block.get('_some');
+        expect(loop.get('_some_note')).toEqual(['', '', 'value']);
     });
 });
