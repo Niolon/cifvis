@@ -204,7 +204,7 @@ export class ViewerControls {
                 // Calculate and store centroid in normalized coordinates right away
                 const startCentroid = this.clientToMouseCoordinates(
                     (touches[0].clientX + touches[1].clientX) / 2,
-                    (touches[0].clientY + touches[1].clientY) / 2
+                    (touches[0].clientY + touches[1].clientY) / 2,
                 );
                 this.state.twoFingerStartPos.copy(startCentroid);
             }
@@ -237,7 +237,7 @@ export class ViewerControls {
                 
                 const startCentroid = this.clientToMouseCoordinates(
                     (touches[0].clientX + touches[1].clientX) / 2,
-                    (touches[0].clientY + touches[1].clientY) / 2
+                    (touches[0].clientY + touches[1].clientY) / 2,
                 );
                 this.state.twoFingerStartPos.copy(startCentroid);
                 return; // Skip this frame to avoid jumps
@@ -249,7 +249,7 @@ export class ViewerControls {
             
             const currentCentroid = this.clientToMouseCoordinates(
                 (touches[0].clientX + touches[1].clientX) / 2,
-                (touches[0].clientY + touches[1].clientY) / 2
+                (touches[0].clientY + touches[1].clientY) / 2,
             );
             
             const delta = currentCentroid.clone().sub(this.state.twoFingerStartPos);
