@@ -44,7 +44,7 @@ export function inferElementFromLabel(label) {
         'EU', 'GD', 'TB', 'DY', 'HO', 'ER', 'TM', 'YB', 'LU', 'HF',
         'TA', 'RE', 'OS', 'IR', 'PT', 'AU', 'HG', 'TL', 'PB', 'BI',
         'PO', 'AT', 'RN', 'FR', 'RA', 'AC', 'TH', 'PA', 'NP', 'PU',
-        'AM', 'CM'
+        'AM', 'CM',
     ];
 
     // First try: Match two-letter elements
@@ -451,7 +451,7 @@ export class Atom {
             '.',
         );
 
-        let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false)
+        let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false);
 
         if (!atomType) {
             atomType = inferElementFromLabel(label);

@@ -10,7 +10,7 @@ const config = {
     errorLogFile: 'cif-test-errors.log',
     summaryFile: 'cif-test-summary.log',
     batchSize: 50,  // Process files in batches to manage memory
-    gcThreshold: 1000  // Force garbage collection every N files
+    gcThreshold: 1000,  // Force garbage collection every N files
 };
 
 // Statistics tracking
@@ -23,8 +23,8 @@ const stats = {
         CIF: 0,
         CrystalStructure: 0,
         ORTEP: 0,
-        symmetry: 0
-    }
+        symmetry: 0,
+    },
 };
 
 // Capture and suppress console warnings
@@ -60,10 +60,10 @@ async function testCIFFile(filePath) {
         success: {
             CIF: false,
             structure: false,
-            ORTEP: false
+            ORTEP: false,
         },
         errors: [],
-        warnings: []
+        warnings: [],
     };
 
     let cif = null, structure = null, ortep = null;
