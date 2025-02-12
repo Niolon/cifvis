@@ -109,7 +109,8 @@ export class CrystalStructure {
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
-        const atoms = Array.from({ length: labels.length }, (_, i) => Atom.fromCIF(cifBlock, i));
+        const atoms = Array.from({ length: labels.length }, (_, i) => Atom.fromCIF(cifBlock, i))
+            .filter(atom => atom.label !== '.' || atom.atomType !== '.'); // filter dummys
 
         const bonds = [];
         try {
@@ -147,7 +148,8 @@ export class CrystalStructure {
                 return atom;
             }
         }
-        throw new Error('Could not find atom with label: ' + atomLabel);
+        const availableLabels = this.atoms.map(atom => atom.label).join(', ');
+        throw new Error(`Could not find atom with label: ${atomLabel}, available are: ${availableLabels}`);
     }
 
     /**
