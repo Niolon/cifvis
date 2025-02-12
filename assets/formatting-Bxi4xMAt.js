@@ -1,0 +1,1 @@
+function f(n,t,r=4){if(!isFinite(1/t))return a(n,r).toFixed(r);let o=Math.floor(Math.log10(t));t*Math.pow(10,-o)<2&&(o-=1);const u=a(n,-o);if(o<0){const i=Math.round(t/Math.pow(10,o));return`${u.toFixed(-o)}(${i})`}const e=a(t,o);return`${u}(${e})`}function a(n,t){const r=Math.pow(10,t);return Math.round(n*r)/r}export{f};
