@@ -1,5 +1,9 @@
 import { create, all } from 'mathjs';
-import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
+//import spacegroup from '@chemistry/space-groups';
+
+import { Atom, FractPosition } from './crystal.js';
+import { UAnisoADP, UIsoADP } from './adp.js';
+import { CifLoop } from '../cif/read-cif.js';
 
 const math = create(all);
 
@@ -302,6 +306,7 @@ export class CellSymmetry {
             [
                 '_space_group_symop',
                 '_symmetry_equiv',
+                '_symmetry_equiv_pos',
                 '_space_group_symop.operation_xyz',
                 '_space_group_symop_operation_xyz',
                 '_symmetry_equiv.pos_as_xyz',
@@ -310,24 +315,57 @@ export class CellSymmetry {
             false,
         );
 
+        if (symopLoop && !(symopLoop instanceof CifLoop)) {
+            // it is a string?
+            return new CellSymmetry(
+                spaceGroupName,
+                spaceGroupNumber,
+                [new SymmetryOperation(symopLoop)],
+            );
+        }
+
         if (!symopLoop) {
+            console.warn(Object.keys(cifBlock).filter(key => key.includes('sym')));
+        }
+
+        if (symopLoop) {
+            const operations = symopLoop.get([
+                '_space_group_symop.operation_xyz',
+                '_space_group_symop_operation_xyz',
+                '_symmetry_equiv.pos_as_xyz',
+                '_symmetry_equiv_pos_as_xyz',
+            ]);
+    
+            const symmetryOperations = operations.map(op => new SymmetryOperation(op));
+    
+            return new CellSymmetry(
+                spaceGroupName,
+                spaceGroupNumber,
+                symmetryOperations,
+            );
+            // } else if (spaceGroupNumber !== 0) {
+            //     const lookupGroup = spacegroup.SpaceGroup.getById(spaceGroupNumber);
+            //     return new CellSymmetry(
+            //         lookupGroup.hm,
+            //         spaceGroupNumber,
+            //         lookupGroup.s,
+            //     );
+
+        // } else if (spaceGroupName !== 'Unknown') {
+        //     try {
+        //         const lookupGroup = spacegroup.SpaceGroup.getByHMName(spaceGroupName);
+        //         return new CellSymmetry(
+        //             spaceGroupName,
+        //             lookupGroup.id,
+        //             lookupGroup.s,
+        //         );
+        //     } catch {
+        //         console.warn('No symmetry operations found in CIF block, will use P1');
+        //         return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
+        //     }
+        } else {
             console.warn('No symmetry operations found in CIF block, will use P1');
             return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
         }
-        
-        const operations = symopLoop.get([
-            '_space_group_symop.operation_xyz',
-            '_space_group_symop_operation_xyz',
-            '_symmetry_equiv.pos_as_xyz',
-            '_symmetry_equiv_pos_as_xyz',
-        ]);
-
-        const symmetryOperations = operations.map(op => new SymmetryOperation(op));
-
-        return new CellSymmetry(
-            spaceGroupName,
-            spaceGroupNumber,
-            symmetryOperations,
-        );
     }
 }

@@ -1,8 +1,10 @@
 import { create, all } from 'mathjs';
+
 import { 
-    CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition,
+    CrystalStructure, UnitCell, Atom, Bond, HBond, FractPosition, BasePosition, CartPosition,
     inferElementFromLabel, 
 } from './crystal.js';
+import { UIsoADP, UAnisoADP } from './adp.js';
 import { CIF } from '../cif/read-cif.js';
 
 const math = create(all);
@@ -509,6 +511,88 @@ N1 0.05 0.05 0.05 0 0 0
             'Atom C1 has ADP type Uani, but was not found in atom_site_aniso.label',
         );
     });
+    test('handles Biso values', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+_atom_site_B_iso_or_equiv
+C1 C 0 0 0 Biso 5.0
+`;
+        const cif = new CIF(cifText);
+        const atom = Atom.fromCIF(cif.getBlock(0), 0);
+
+        expect(atom.adp).toBeInstanceOf(UIsoADP);
+        expect(atom.adp.uiso).toBeCloseTo(5.0 / (8 * Math.PI * Math.PI));
+    });
+
+    test('handles Bani values', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+_atom_site_biso
+C1 C 0 0 0 Bani 0.03
+
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_B_11
+_atom_site_aniso_B_22
+_atom_site_aniso_B_33
+_atom_site_aniso_B_12
+_atom_site_aniso_B_13
+_atom_site_aniso_B_23
+C1 5.0 5.0 5.0 0 0 0
+`;
+        const cif = new CIF(cifText);
+        const atom = Atom.fromCIF(cif.getBlock(0), 0);
+
+        expect(atom.adp).toBeInstanceOf(UAnisoADP);
+        const expectedU = 5.0 / (8 * Math.PI * Math.PI);
+        expect(atom.adp.u11).toBeCloseTo(expectedU);
+        expect(atom.adp.u22).toBeCloseTo(expectedU);
+        expect(atom.adp.u33).toBeCloseTo(expectedU);
+        expect(atom.adp.u12).toBeCloseTo(0);
+        expect(atom.adp.u13).toBeCloseTo(0);
+        expect(atom.adp.u23).toBeCloseTo(0);
+    });
+
+    test('throws error when Bani atom not found in aniso loop', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+C1 C 0 0 0 Bani
+
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_B_11
+_atom_site_aniso_B_22
+_atom_site_aniso_B_33
+_atom_site_aniso_B_12
+_atom_site_aniso_B_13
+_atom_site_aniso_B_23
+C2 5.0 5.0 5.0 0 0 0
+`;
+        const cif = new CIF(cifText);
+        expect(() => Atom.fromCIF(cif.getBlock(0), 0))
+            .toThrow('Atom C1 has ADP type Bani, but was not found in atom_site_aniso.label');
+    });
 
     test('fromCIF creates atom with label or index', () => {
         const cifText = `
@@ -670,98 +754,5 @@ O1 H1 O2 1.0 2.0 2.8 175 1_555
         expect(hBond.donorAtomLabel).toBe('O1');
         expect(hBond.hydrogenAtomLabel).toBe('H1');
         expect(hBond.acceptorAtomSymmetry).toBe('1_555');
-    });
-});
-
-describe('ADPs', () => {
-    test('UIsoADP stores single parameter', () => {
-        const adp = new UIsoADP(0.05);
-        expect(adp.uiso).toBe(0.05);
-    });
-
-    test('UAnisoADP calculates cartesian parameters', () => {
-        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
-        const adp = new UAnisoADP(0.05, 0.05, 0.05, 0, 0, 0);
-        const cartParams = adp.getUCart(cell);
-    
-        expect(cartParams).toHaveLength(6);
-        expect(cartParams[0]).toBeCloseTo(0.05);
-    });
-
-    describe('UAnisoADP getEllipsoidMatrix', () => {
-        let mockUnitCell;
-    
-        beforeEach(() => {
-            mockUnitCell = {
-                fractToCartMatrix: math.matrix([
-                    [10, 0, 0],
-                    [0, 10, 0],
-                    [0, 0, 10],
-                ]),
-            };
-        });
-
-        test('handles symmetric ADP matrix', () => {
-            const adp = new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0);
-            const matrix = adp.getEllipsoidMatrix(mockUnitCell);
-            //const rowMagnitudes = [];
-            for (let i = 0; i < 3; i++) {
-                const row = [
-                    matrix.get([i, 0]),
-                    matrix.get([i, 1]),
-                    matrix.get([i, 2]),
-                ];
-                // Each row should have two zeros and one value abs(sqrt(0.01))
-                expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);
-                expect(Math.max(...row.map(Math.abs))).toBeCloseTo(0.1, 5);
-            }
-        });
-
-        test('normalizes eigenvectors when determinant ≠ 1', () => {
-            const adp = new UAnisoADP(0.02, 0.01, 0.03, 0.005, 0.008, 0.002);
-            const matrix = adp.getEllipsoidMatrix(mockUnitCell);
-            const det = math.det(matrix);
-      
-            expect(det).toBeGreaterThan(0.0);
-
-            const mockUnitCell2 = {
-                fractToCartMatrix: math.matrix([
-                    [0, 0, 10],
-                    [0, 10, 0],
-                    [10, 0, 0],
-                ]),
-            };
-            const matrix2 = adp.getEllipsoidMatrix(mockUnitCell2);
-            const det2 = math.det(matrix2);
-      
-            expect(det2).toBeGreaterThan(0.0);
-        });
-
-        test('transforms diagonal ADPs correctly', () => {
-            const adp = new UAnisoADP(0.01, 0.02, 0.03, 0, 0, 0);
-            const matrix = adp.getEllipsoidMatrix(mockUnitCell);
-      
-            // For diagonal ADPs, each row should have exactly one non-zero value
-            // equal to sqrt(Uii), with the other two values being zero
-            const expectedValues = [0.1, Math.sqrt(0.02), Math.sqrt(0.03)];
-      
-            // Count occurrences of each expected value in matrix rows
-            const rowMagnitudes = [];
-            for (let i = 0; i < 3; i++) {
-                const row = [
-                    matrix.get([i, 0]),
-                    matrix.get([i, 1]),
-                    matrix.get([i, 2]),
-                ];
-                // Each row should have two zeros and one value from expectedValues
-                expect(row.filter(v => Math.abs(v) < 1e-10)).toHaveLength(2);
-                rowMagnitudes.push(Math.max(...row.map(Math.abs)));
-            }
-      
-            // Check that each expected value appears exactly once
-            expectedValues.forEach(expected => {
-                expect(rowMagnitudes.filter(v => Math.abs(v - expected) < 1e-10)).toHaveLength(1);
-            });
-        });
     });
 });

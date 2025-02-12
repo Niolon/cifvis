@@ -1,5 +1,6 @@
 import { BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower, AtomLabelFilter } from './structure-modifiers.js';
-import { CrystalStructure, UnitCell, Atom, Bond, HBond, UAnisoADP, FractPosition } from './crystal.js';
+import { CrystalStructure, UnitCell, Atom, Bond, HBond, FractPosition } from './crystal.js';
+import { UAnisoADP } from './adp.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 
 class MockStructure {

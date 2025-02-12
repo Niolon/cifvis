@@ -1,12 +1,8 @@
 import { create, all } from 'mathjs';
 
-import {
-    calculateFractToCartMatrix,
-    uCifToUCart,
-    adpToMatrix,
-} from './fract-to-cart.js';
-
+import { calculateFractToCartMatrix } from './fract-to-cart.js';
 import { CellSymmetry } from './cell-symmetry.js';
+import { ADPFactory } from './adp.js';
 
 const math = create(all, {});
 
@@ -24,16 +20,6 @@ export function inferElementFromLabel(label) {
     // Standardize to uppercase for matching
     const upperLabel = label.toUpperCase();
     
-    // If the label is just 1-2 characters, it might be a pure element symbol
-    if (upperLabel.length <= 2 && /^[A-Z][A-Z]?$/.test(upperLabel)) {
-        return formatElementSymbol(upperLabel);
-    }
-    
-    // Clean the label by removing charge notations
-    const cleanLabel = upperLabel
-        .replace(/[0-9]*[+-][0-9]*$/, '')  // Remove trailing charges like 2+ or +2
-        .replace(/^.*?(?=[A-Z])/, '');        // Remove any prefix before first capital letter
-    
     // List of all two-letter elements for matching
     const TWO_LETTER_ELEMENTS = [
         'HE', 'LI', 'BE', 'NE', 'NA', 'MG', 'AL', 'SI', 'CL', 'AR',
@@ -49,14 +35,14 @@ export function inferElementFromLabel(label) {
 
     // First try: Match two-letter elements
     const twoLetterPattern = new RegExp(`^(${TWO_LETTER_ELEMENTS.join('|')})`);
-    const twoLetterMatch = cleanLabel.match(twoLetterPattern);
+    const twoLetterMatch = upperLabel.match(twoLetterPattern);
     
     if (twoLetterMatch) {
         return formatElementSymbol(twoLetterMatch[1]);
     }
     
     // Second try: Match single-letter elements
-    const oneLetterMatch = cleanLabel.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
+    const oneLetterMatch = upperLabel.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
     
     if (oneLetterMatch) {
         return formatElementSymbol(oneLetterMatch[1]);
@@ -389,14 +375,14 @@ export class Atom {
     }
 
     /**
-    * Creates an Atom from CIF data from either the index or the atom in the 
-    * _atom_site_loop
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @param {number} [atomIndex=null] - Index in _atom_site loop
-    * @param {string} [atomLabel=null] - Label to find atom by
-    * @returns {Atom} New atom instance
-    * @throws {Error} If neither index nor label provided
-    */
+     * Creates an Atom from CIF data from either the index or the atom in the 
+     * _atom_site_loop
+     * @param {CifBlock} cifBlock - Parsed CIF data block
+     * @param {number} [atomIndex=null] - Index in _atom_site loop
+     * @param {string} [atomLabel=null] - Label to find atom by
+     * @returns {Atom} New atom instance
+     * @throws {Error} If neither index nor label provided
+     */
     static fromCIF(cifBlock, atomIndex=null, atomLabel=null) {
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
@@ -410,54 +396,24 @@ export class Atom {
         
         const label = labels[index];
 
+        let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false);
+        if (!atomType) {
+            atomType = inferElementFromLabel(label);
+        }
+
         const position = new FractPosition(
             atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
             atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
             atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index),
         );
         
-        const adpType = atomSite.getIndex( 
-            ['_atom_site.adp_type', '_atom_site_adp_type', 
-                '_atom_site.thermal_displace_type', '_atom_site_thermal_displace_type'],
-            index,
-            'Uiso',
-        );
-        
-        let adp = null;
-        if (adpType === 'Uiso') {
-            adp = new UIsoADP(
-                atomSite.getIndex(['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'], index, 0.02),
-            );
-        } else if (adpType === 'Uani') {
-            const anisoSite = cifBlock.get('_atom_site_aniso');
-            const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
-            const anisoIndex = anisoLabels.indexOf(label);
-
-            if (anisoIndex === -1) {
-                throw new Error(`Atom ${label} has ADP type Uani, but was not found in atom_site_aniso.label`);
-            }
-     
-            adp = new UAnisoADP(
-                anisoSite.getIndex(['_atom_site_aniso.u_11', '_atom_site_aniso_U_11'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_22', '_atom_site_aniso_U_22'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_33', '_atom_site_aniso_U_33'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_12', '_atom_site_aniso_U_12'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_13', '_atom_site_aniso_U_13'], anisoIndex),
-                anisoSite.getIndex(['_atom_site_aniso.u_23', '_atom_site_aniso_U_23'], anisoIndex),
-            );
-        }
-        
+        const adp = ADPFactory.createADP(cifBlock, index);
+    
         const disorderGroup = atomSite.getIndex(
             ['_atom_site.disorder_group', '_atom_site_disorder_group'],
             index,
             '.',
         );
-
-        let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false);
-
-        if (!atomType) {
-            atomType = inferElementFromLabel(label);
-        }
         
         return new Atom(
             label,
@@ -589,76 +545,6 @@ export class CartPosition extends BasePosition {
      */
     toCartesian(_unitCell) {
         return this;
-    }
-}
-
-/**
-* Represents isotropic atomic displacement parameters
-*/
-export class UIsoADP {
-    constructor(uiso) {
-        this.uiso = uiso;
-    }
-}
-
-/**
-* Represents anisotropic atomic displacement parameters
-*/
-export class UAnisoADP {
-    /**
-     * @param {number} u11 - U11 component in Å²
-     * @param {number} u22 - U22 component in Å²
-     * @param {number} u33 - U33 component in Å²
-     * @param {number} u12 - U12 component in Å²
-     * @param {number} u13 - U13 component in Å²
-     * @param {number} u23 - U23 component in Å² 
-     */
-    constructor(u11, u22, u33, u12, u13, u23) {
-        this.u11 = u11;
-        this.u22 = u22;
-        this.u33 = u33;
-        this.u12 = u12;
-        this.u13 = u13;
-        this.u23 = u23;
-    }
-
-    /**
-    * Converts ADPs to Cartesian coordinate system
-    * @param {UnitCell} unitCell - Cell parameters for transformation
-    * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
-    */
-    getUCart(unitCell) {
-        return uCifToUCart(
-            unitCell.fractToCartMatrix,
-            [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23],
-        );
-    }
-
-    /**
-    * Generates the transformation matrix to transform a sphere already scaled for probability
-    * to an ORTEP ellipsoid
-    * @param {UnitCell} unitCell - unitCell object for the unit cell information
-    * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
-    */
-    getEllipsoidMatrix(unitCell) {
-        const uijMatrix = adpToMatrix(this.getUCart(unitCell));
-        const { eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
-        const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
-
-        const eigenvalues = math.matrix(eigenvectors_obj.map(entry => entry.value));
-        const det = math.det(eigenvectors);
-        const sqrtEigenvalues = math.diag(eigenvalues.map(Math.sqrt));
-
-        let transformationMatrix;
-        // make sure it is a rotation -> no vertice direction inverted
-        if (math.abs(det - 1) > 1e-10) {
-            const normalizedEigenvectors = math.multiply(eigenvectors, 1/det);
-            transformationMatrix = math.multiply(normalizedEigenvectors, sqrtEigenvalues);
-        } else {
-            transformationMatrix = math.multiply(eigenvectors, sqrtEigenvalues);
-        }
-
-        return math.matrix(transformationMatrix);
     }
 }
 

@@ -173,6 +173,7 @@ export default {
         'Pu': { 'radius': 1.87, 'atomColor': '#006bff', 'ringColor': '#ffffff' },
         'Am': { 'radius': 1.8, 'atomColor': '#545cf2', 'ringColor': '#ffffff' },
         'Cm': { 'radius': 1.69, 'atomColor': '#785ce3', 'ringColor': '#ffffff' },
+        'Bk': { 'radius': 1.65, 'atomColor': '#8a4fe3', 'ringColor': '#ffffff' }, 
+        'Cf': { 'radius': 1.81, 'atomColor': '#a136d4', 'ringColor': '#ffffff' }, 
     },
-    
 };

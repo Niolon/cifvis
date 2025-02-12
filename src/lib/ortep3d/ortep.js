@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import defaultSettings from './structure-settings.js';
-import { HBond, Bond, UAnisoADP, UIsoADP, inferElementFromLabel } from '../structure/crystal.js';
+import { HBond, Bond, inferElementFromLabel } from '../structure/crystal.js';
+import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
 /**
@@ -671,11 +672,16 @@ export class ORTEPConstantAtom extends ORTEPAtom {
      */
     constructor(atom, unitCell, baseAtom, atomMaterial, options) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        if (!options?.elementProperties?.[atom.atomType]?.radius) {
-            throw new Error(`Element properties not found for atom type: ${atom.atomType}`);
+        let elementType = atom.atomType;
+        try {
+            if (!options.elementProperties[elementType]) {   
+                elementType = inferElementFromLabel(atom.atomType);
+            } 
+        } catch {
+            throw new Error(`Element properties not found for atom type: '${atom.atomType}'`);
         }
         this.scale.multiplyScalar(
-            options.atomConstantRadiusMultiplier * options.elementProperties[atom.atomType].radius,
+            options.atomConstantRadiusMultiplier * options.elementProperties[elementType].radius,
         );
     }
 }

@@ -5,8 +5,9 @@ import {
     ORTEPBond,
 } from './ortep.js';
 import { 
-    UAnisoADP, UIsoADP, Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell, 
+    Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell, 
 } from '../structure/crystal.js';
+import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
 import { create, all } from 'mathjs';
 
@@ -727,7 +728,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockGeometry,
                 mockMaterial,
                 mockOptions,
-            )).toThrow('Element properties not found for atom type: X');
+            )).toThrow('Element properties not found for atom type: \'X\'');
         });
 
         test('throws error when options not provided', () => {
@@ -736,7 +737,7 @@ describe('ORTEPAtom and subclasses', () => {
                 mockUnitCell,
                 mockGeometry,
                 mockMaterial,
-            )).toThrow('Element properties not found for atom type: C');
+            )).toThrow('Element properties not found for atom type: \'C\'');
         });
     });
 });

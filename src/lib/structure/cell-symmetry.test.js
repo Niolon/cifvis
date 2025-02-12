@@ -1,6 +1,7 @@
 import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
 import { CIF } from '../cif/read-cif.js';
-import { UAnisoADP, UIsoADP, Atom, FractPosition } from './crystal.js';
+import { Atom, FractPosition } from './crystal.js';
+import { UAnisoADP, UIsoADP } from './adp.js';
 
 describe('SymmetryOperation', () => {
     describe('parseSymmetryInstruction', () => {
