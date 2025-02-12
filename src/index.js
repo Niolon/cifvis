@@ -1,8 +1,8 @@
 // Export core functionality that doesn't depend on DOM
-export { CIF } from './lib/cif/read-cif';
-export { CrystalStructure } from './lib/structure/crystal';
-export { ORTEP3JsStructure } from './lib/ortep3d/ortep';
-export { formatValueEsd } from './lib/formatting';
+export { CIF } from './lib/cif/read-cif.js';
+export { CrystalStructure } from './lib/structure/crystal.js';
+export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
+export { formatValueEsd } from './lib/formatting.js';
 
 // Default exports for environments without DOM
 let CrystalViewer = class {

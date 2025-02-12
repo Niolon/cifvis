@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:demo": "vite build --config vite.demo.config.mjs",
     "test": "jest",
+    "test:cod": "node test-on-cod.mjs ./cod",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
