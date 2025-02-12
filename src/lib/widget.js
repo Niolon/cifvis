@@ -297,5 +297,3 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 }
-
-customElements.define('cifview-widget', CifViewWidget);
