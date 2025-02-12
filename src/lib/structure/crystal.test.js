@@ -41,15 +41,14 @@ describe('inferElementFromLabel', () => {
     // Test two-letter elements
     test('correctly identifies two-letter elements', () => {
         const testCases = [
-            ['He', 'He'], ['Li', 'Li'], ['Be', 'Be'], ['Na', 'Na'], ['Mg', 'Mg'],
-            ['Al', 'Al'], ['Si', 'Si'], ['Cl', 'Cl'], ['Fe', 'Fe'], ['Co', 'Co'],
-            ['Ni', 'Ni'], ['Cu', 'Cu'], ['Zn', 'Zn'], ['Ag', 'Ag'], ['Au', 'Au'],
+            'He', 'Li', 'Be', 'Na', 'Mg', 'Al', 'Si', 'Cl', 'Fe', 'Co',
+            'Ni', 'Cu', 'Zn', 'Ag', 'Au', 
         ];
         
-        testCases.forEach(([input, expected]) => {
-            expect(inferElementFromLabel(`${input}1`)).toBe(expected);
-            expect(inferElementFromLabel(input.toUpperCase())).toBe(expected);
-            expect(inferElementFromLabel(input.toLowerCase())).toBe(expected);
+        testCases.forEach((element) => {
+            expect(inferElementFromLabel(`${element}1`)).toBe(element);
+            expect(inferElementFromLabel(element.toUpperCase())).toBe(element);
+            expect(inferElementFromLabel(element.toLowerCase())).toBe(element);
         });
     });
 
@@ -77,6 +76,7 @@ describe('inferElementFromLabel', () => {
         expect(inferElementFromLabel('H+')).toBe('H');
         expect(inferElementFromLabel('OH-')).toBe('O');
         expect(inferElementFromLabel('Na+')).toBe('Na');
+        expect(inferElementFromLabel('Na+0')).toBe('Na');
         expect(inferElementFromLabel('K1+')).toBe('K');
         expect(inferElementFromLabel('O2-')).toBe('O');
         expect(inferElementFromLabel('Zn2+')).toBe('Zn');
