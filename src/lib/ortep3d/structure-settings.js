@@ -77,6 +77,7 @@ export default {
 
     'elementProperties': {
         'H': { 'radius': 0.31, 'atomColor': '#ffffff', 'ringColor': '#000000' },
+        'D': { 'radius': 0.31, 'atomColor': '#ffffff', 'ringColor': '#000000' },
         'He': { 'radius': 0.28, 'atomColor': '#d9ffff', 'ringColor': '#000000' },
         'Li': { 'radius': 1.28, 'atomColor': '#cc80ff', 'ringColor': '#000000' },
         'Be': { 'radius': 0.96, 'atomColor': '#c2ff00', 'ringColor': '#000000' },

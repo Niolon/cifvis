@@ -11,6 +11,73 @@ import { CellSymmetry } from './cell-symmetry.js';
 const math = create(all, {});
 
 /**
+ * Infers element symbol from an atom label using crystallographic naming conventions
+ * @param {string} label - Atom label to analyze
+ * @returns {string} Properly capitalized element symbol
+ * @throws {Error} If no valid element symbol could be inferred
+ */
+export function inferElementFromLabel(label) {
+    if (!label || typeof label !== 'string') {
+        throw new Error(`Invalid atom label: ${label}`);
+    }
+
+    // Standardize to uppercase for matching
+    const upperLabel = label.toUpperCase();
+    
+    // If the label is just 1-2 characters, it might be a pure element symbol
+    if (upperLabel.length <= 2 && /^[A-Z][A-Z]?$/.test(upperLabel)) {
+        return formatElementSymbol(upperLabel);
+    }
+    
+    // Clean the label by removing charge notations
+    const cleanLabel = upperLabel
+        .replace(/[0-9]*[+-][0-9]*$/, '')  // Remove trailing charges like 2+ or +2
+        .replace(/^.*?(?=[A-Z])/, '');        // Remove any prefix before first capital letter
+    
+    // List of all two-letter elements for matching
+    const TWO_LETTER_ELEMENTS = [
+        'HE', 'LI', 'BE', 'NE', 'NA', 'MG', 'AL', 'SI', 'CL', 'AR',
+        'CA', 'SC', 'TI', 'CR', 'MN', 'FE', 'CO', 'NI', 'CU', 'ZN',
+        'GA', 'GE', 'AS', 'SE', 'BR', 'KR', 'RB', 'SR', 'ZR', 'NB',
+        'MO', 'TC', 'RU', 'RH', 'PD', 'AG', 'CD', 'IN', 'SN', 'SB',
+        'TE', 'XE', 'CS', 'BA', 'LA', 'CE', 'PR', 'ND', 'PM', 'SM',
+        'EU', 'GD', 'TB', 'DY', 'HO', 'ER', 'TM', 'YB', 'LU', 'HF',
+        'TA', 'RE', 'OS', 'IR', 'PT', 'AU', 'HG', 'TL', 'PB', 'BI',
+        'PO', 'AT', 'RN', 'FR', 'RA', 'AC', 'TH', 'PA', 'NP', 'PU',
+        'AM', 'CM'
+    ];
+
+    // First try: Match two-letter elements
+    const twoLetterPattern = new RegExp(`^(${TWO_LETTER_ELEMENTS.join('|')})`);
+    const twoLetterMatch = cleanLabel.match(twoLetterPattern);
+    
+    if (twoLetterMatch) {
+        return formatElementSymbol(twoLetterMatch[1]);
+    }
+    
+    // Second try: Match single-letter elements
+    const oneLetterMatch = cleanLabel.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
+    
+    if (oneLetterMatch) {
+        return formatElementSymbol(oneLetterMatch[1]);
+    }
+    
+    throw new Error(`Could not infer element type from atom label: ${label}`);
+}
+
+/**
+ * Formats element symbol with correct capitalization
+ * @param {string} element - Uppercase element symbol
+ * @returns {string} Properly capitalized element symbol
+ */
+function formatElementSymbol(element) {
+    if (element.length === 1) {
+        return element;
+    }
+    return element[0] + element[1].toLowerCase();
+}
+
+/**
 * Represents a crystal structure with its unit cell, atoms, bonds and symmetry
 */
 export class CrystalStructure {
@@ -56,15 +123,13 @@ export class CrystalStructure {
         }
 
         const hBonds = [];
-        try {
-            const hbondLoop = cifBlock.get('_geom_hbond');
+        const hbondLoop = cifBlock.get('_geom_hbond', false);
+        if (hbondLoop) {
             const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
             for (let i = 0; i < nHBonds; i++) {
                 hBonds.push(HBond.fromCIF(cifBlock, i));
             }
-        } catch {
-            console.warn('No hydrogen bonds found in CIF file');
-        }
+        } 
         
         const symmetry = CellSymmetry.fromCIF(cifBlock);
         return new CrystalStructure(cell, atoms, bonds, hBonds, symmetry);
@@ -385,10 +450,16 @@ export class Atom {
             index,
             '.',
         );
+
+        let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false)
+
+        if (!atomType) {
+            atomType = inferElementFromLabel(label);
+        }
         
         return new Atom(
             label,
-            atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index),
+            atomType,
             position,
             adp, 
             disorderGroup === '.' ? 0 : disorderGroup,

@@ -1,10 +1,93 @@
 import { create, all } from 'mathjs';
 import { 
-    CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition, 
+    CrystalStructure, UnitCell, Atom, Bond, HBond, UIsoADP, UAnisoADP, FractPosition, BasePosition, CartPosition,
+    inferElementFromLabel 
 } from './crystal.js';
 import { CIF } from '../cif/read-cif.js';
 
 const math = create(all);
+describe('inferElementFromLabel', () => {
+    // Test normal atom labels
+    test('handles common crystallographic naming patterns', () => {
+        expect(inferElementFromLabel('MgM1')).toBe('Mg');
+        expect(inferElementFromLabel('SiT')).toBe('Si');
+        expect(inferElementFromLabel('Mn1')).toBe('Mn');
+        expect(inferElementFromLabel('H1')).toBe('H');
+        expect(inferElementFromLabel('MG1')).toBe('Mg');
+        expect(inferElementFromLabel('RH5')).toBe('Rh');
+        expect(inferElementFromLabel('SO4')).toBe('S');
+        expect(inferElementFromLabel('NH4')).toBe('N');
+        expect(inferElementFromLabel('D2O')).toBe('D');
+    });
+
+    // Test pure element symbols with different capitalizations
+    test('handles pure element symbols with various capitalizations', () => {
+        expect(inferElementFromLabel('H')).toBe('H');
+        expect(inferElementFromLabel('h')).toBe('H');
+        expect(inferElementFromLabel('He')).toBe('He');
+        expect(inferElementFromLabel('HE')).toBe('He');
+        expect(inferElementFromLabel('he')).toBe('He');
+    });
+
+    // Test single-letter elements
+    test('correctly identifies single-letter elements', () => {
+        const singleLetterElements = ['H', 'B', 'C', 'N', 'O', 'F', 'P', 'S', 'K', 'V', 'Y', 'I', 'W', 'U', 'D'];
+        singleLetterElements.forEach(element => {
+            expect(inferElementFromLabel(`${element}1`)).toBe(element);
+            expect(inferElementFromLabel(element.toLowerCase())).toBe(element);
+        });
+    });
+
+    // Test two-letter elements
+    test('correctly identifies two-letter elements', () => {
+        const testCases = [
+            ['He', 'He'], ['Li', 'Li'], ['Be', 'Be'], ['Na', 'Na'], ['Mg', 'Mg'],
+            ['Al', 'Al'], ['Si', 'Si'], ['Cl', 'Cl'], ['Fe', 'Fe'], ['Co', 'Co'],
+            ['Ni', 'Ni'], ['Cu', 'Cu'], ['Zn', 'Zn'], ['Ag', 'Ag'], ['Au', 'Au'],
+        ];
+        
+        testCases.forEach(([input, expected]) => {
+            expect(inferElementFromLabel(`${input}1`)).toBe(expected);
+            expect(inferElementFromLabel(input.toUpperCase())).toBe(expected);
+            expect(inferElementFromLabel(input.toLowerCase())).toBe(expected);
+        });
+    });
+
+    // Test ambiguous cases where two-letter match should take precedence
+    test('prioritizes two-letter elements over single-letter ones', () => {
+        expect(inferElementFromLabel('He1')).toBe('He'); // Should not match as 'H'
+        expect(inferElementFromLabel('Na1')).toBe('Na'); // Should not match as 'N'
+        expect(inferElementFromLabel('Cr1')).toBe('Cr'); // Should not match as 'C'
+        expect(inferElementFromLabel('Br1')).toBe('Br'); // Should not match as 'B'
+    });
+
+    // Test invalid inputs
+    test('throws error for invalid inputs', () => {
+        expect(() => inferElementFromLabel('')).toThrow('Invalid atom label');
+        expect(() => inferElementFromLabel(null)).toThrow('Invalid atom label');
+        expect(() => inferElementFromLabel(undefined)).toThrow('Invalid atom label');
+        expect(() => inferElementFromLabel(123)).toThrow('Invalid atom label');
+        expect(() => inferElementFromLabel('Xx1')).toThrow('Could not infer element type');
+        expect(() => inferElementFromLabel('QZ1')).toThrow('Could not infer element type');
+        expect(() => inferElementFromLabel(' ')).toThrow('Could not infer element type');
+    });
+
+    // Test ionic notations
+    test('handles various ionic notations', () => {
+        expect(inferElementFromLabel('H+')).toBe('H');
+        expect(inferElementFromLabel('OH-')).toBe('O');
+        expect(inferElementFromLabel('Na+')).toBe('Na');
+        expect(inferElementFromLabel('K1+')).toBe('K');
+        expect(inferElementFromLabel('O2-')).toBe('O');
+        expect(inferElementFromLabel('Zn2+')).toBe('Zn');
+        expect(inferElementFromLabel('Zn+2')).toBe('Zn');
+        expect(inferElementFromLabel('H+0')).toBe('H');
+        expect(inferElementFromLabel('Fe3+')).toBe('Fe');
+        expect(inferElementFromLabel('Fe+3')).toBe('Fe');
+        expect(inferElementFromLabel('Ti4+')).toBe('Ti');
+        expect(inferElementFromLabel('D+')).toBe('D');
+    });
+});
 
 describe('CrystalStructure', () => {
     test('constructs with minimal parameters', () => {
@@ -213,33 +296,6 @@ C1 C 0 0 0
         expect(structure.bonds).toHaveLength(0);
         consoleSpy.mockRestore();
     });
-
-    test('logs warning when no H-bonds found in CIF', () => {
-        const consoleSpy = jest.spyOn(console, 'warn'); 
-        const cifText = `
-data_test
-_cell_length_a 10
-_cell_length_b 10
-_cell_length_c 10
-_cell_angle_alpha 90
-_cell_angle_beta 90
-_cell_angle_gamma 90
-
-loop_
-_atom_site_label
-_atom_site_type_symbol
-_atom_site_fract_x
-_atom_site_fract_y
-_atom_site_fract_z
-C1 C 0 0 0
-`;
-        const cif = new CIF(cifText);
-        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
-
-        expect(consoleSpy).toHaveBeenCalledWith('No hydrogen bonds found in CIF file');
-        expect(structure.hBonds).toHaveLength(0);
-        consoleSpy.mockRestore();
-    });
   
 });
 
@@ -373,6 +429,26 @@ C1 C 0 0 0 0.05
         const atom = Atom.fromCIF(cif.getBlock(0), 0);
 
         expect(atom.label).toBe('C1');
+        expect(atom.adp).toBeInstanceOf(UIsoADP);
+        expect(atom.adp.uiso).toBe(0.05);
+    });
+
+    test('fromCIF creates atom missing atomType', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+C1 0 0 0 0.05
+    `;
+        const cif = new CIF(cifText);
+        const atom = Atom.fromCIF(cif.getBlock(0), 0);
+
+        expect(atom.label).toBe('C1');
+        expect(atom.atomType).toBe('C');
         expect(atom.adp).toBeInstanceOf(UIsoADP);
         expect(atom.adp.uiso).toBe(0.05);
     });

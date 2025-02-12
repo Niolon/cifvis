@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import defaultSettings from './structure-settings.js';
-import { HBond, Bond, UAnisoADP, UIsoADP } from '../structure/crystal.js';
+import { HBond, Bond, UAnisoADP, UIsoADP, inferElementFromLabel } from '../structure/crystal.js';
 import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
 /**
@@ -153,11 +153,15 @@ export class GeometryMaterialCache {
      * @returns {[THREE.Material, THREE.Material]} Array containing [atomMaterial, ringMaterial]
      */
     getAtomMaterials(atomType) {
-        this.validateElementType(atomType);
+        let elementType = atomType;
+        if (!this.options.elementProperties[elementType]) {
+            elementType = inferElementFromLabel(atomType);
+        }
+        this.validateElementType(elementType);
 
-        const key = `${atomType}_materials`;
+        const key = `${elementType}_materials`;
         if (!this.elementMaterials[key]) {
-            const elementProperty = this.options.elementProperties[atomType];
+            const elementProperty = this.options.elementProperties[elementType];
             
             const atomMaterial = new THREE.MeshStandardMaterial({
                 color: elementProperty.atomColor,

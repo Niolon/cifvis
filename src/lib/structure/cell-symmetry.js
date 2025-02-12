@@ -307,10 +307,10 @@ export class CellSymmetry {
                 '_symmetry_equiv.pos_as_xyz',
                 '_symmetry_equiv_pos_as_xyz',
             ],
-            'InVaLIdValue',
+            false,
         );
 
-        if (symopLoop === 'InVaLIdValue') {
+        if (!symopLoop) {
             console.warn('No symmetry operations found in CIF block, will use P1');
             return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
         }
