@@ -288,6 +288,7 @@ export class CifViewWidget extends HTMLElement {
         }
         
         this.captionElement.innerHTML = caption;
+        this.viewer.controls.handleResize();
     }
 
     disconnectedCallback() {
