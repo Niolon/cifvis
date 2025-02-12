@@ -312,8 +312,6 @@ export class CrystalViewer {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.container.appendChild(this.renderer.domElement);
         
-        this.renderer.domElement.style.width = '100%';
-        this.renderer.domElement.style.height = '100%';
         
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
