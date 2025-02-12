@@ -1,6 +1,6 @@
 import { create, all } from 'mathjs';
 
-import { uCifToUCart, adpToMatrix } from './fract-to-cart';
+import { uCifToUCart, adpToMatrix } from './fract-to-cart.js';
 
 const math = create(all, {});
 

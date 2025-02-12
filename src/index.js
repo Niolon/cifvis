@@ -21,8 +21,8 @@ let CifViewWidget = class {
 if (typeof window !== 'undefined' && typeof HTMLElement !== 'undefined') {
     try {
         // Import DOM-dependent features
-        const viewer = await import('./lib/ortep3d/crystal-viewer.js');
-        const widget = await import('./lib/widget.js');
+        const viewer = import('./lib/ortep3d/crystal-viewer.js');
+        const widget = import('./lib/widget.js');
         
         CrystalViewer = viewer.CrystalViewer;
         CifViewWidget = widget.CifViewWidget;
