@@ -311,21 +311,13 @@ export class CrystalViewer {
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.container.appendChild(this.renderer.domElement);
-        
-        
+             
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
         
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);
-        
-        this.raycaster = new THREE.Raycaster();
-        this.raycaster.params.Line.threshold = 0.5;
-        this.raycaster.params.Points.threshold = 0.5;
-        this.raycaster.params.Mesh.threshold = 0.1;
-        this.raycaster.near = 0.1;
-        this.raycaster.far = 100;
     }
 
     async loadStructure(cifText) {

@@ -17,14 +17,17 @@ export class ViewerControls {
         };
 
         // Cache frequently accessed properties
-        const { container, camera, renderer, moleculeContainer, raycaster, options } = viewer;
+        const { container, camera, renderer, moleculeContainer, options } = viewer;
         this.container = container;
         this.camera = camera;
         this.renderer = renderer;
         this.moleculeContainer = moleculeContainer;
-        this.raycaster = raycaster;
         this.options = options;
         this.doubleClickDelay = 300;
+
+        this.raycaster = new THREE.Raycaster();
+        this.raycaster.near = 0.1;
+        this.raycaster.far = 100;
 
         this.bindEventHandlers();
         this.setupEventListeners();
