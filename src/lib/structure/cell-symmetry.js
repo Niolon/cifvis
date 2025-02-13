@@ -1,5 +1,4 @@
 import { create, all } from 'mathjs';
-//import spacegroup from '@chemistry/space-groups';
 
 import { Atom, FractPosition } from './crystal.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
@@ -343,26 +342,6 @@ export class CellSymmetry {
                 spaceGroupNumber,
                 symmetryOperations,
             );
-            // } else if (spaceGroupNumber !== 0) {
-            //     const lookupGroup = spacegroup.SpaceGroup.getById(spaceGroupNumber);
-            //     return new CellSymmetry(
-            //         lookupGroup.hm,
-            //         spaceGroupNumber,
-            //         lookupGroup.s,
-            //     );
-
-        // } else if (spaceGroupName !== 'Unknown') {
-        //     try {
-        //         const lookupGroup = spacegroup.SpaceGroup.getByHMName(spaceGroupName);
-        //         return new CellSymmetry(
-        //             spaceGroupName,
-        //             lookupGroup.id,
-        //             lookupGroup.s,
-        //         );
-        //     } catch {
-        //         console.warn('No symmetry operations found in CIF block, will use P1');
-        //         return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
-        //     }
         } else {
             console.warn('No symmetry operations found in CIF block, will use P1');
             return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);

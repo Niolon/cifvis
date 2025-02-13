@@ -86,12 +86,20 @@ async function testCIFFile(filePath) {
             }
             
             // Check for symmetry issues
-            if (!structure.symmetry || structure.symmetry.symmetryOperations.length <= 1) {
+            if (!structure.symmetry) {
                 stats.errors.symmetry++;
-                results.errors.push('Symmetry Error: No or incomplete symmetry operations');
+                results.errors.push('Symmetry Error: No symmetry operations');
+                throw new Error('Incomplete symmetry information');
+            }  else if (structure.symmetry.spaceGroupNumber === 0) {
+                stats.errors.symmetry++;
+                results.errors.push('Symmetry Error: No Space Group Number');
+                throw new Error('Incomplete symmetry information');
+            } else if (structure.symmetry.spaceGroupName === 'Unknown') {
+                stats.errors.symmetry++;
+                results.errors.push('Symmetry Error: No Space Group Name');
                 throw new Error('Incomplete symmetry information');
             }
-            
+
             results.success.structure = true;
             stats.successfulStructure++;
 

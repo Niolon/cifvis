@@ -21,7 +21,6 @@
   "author": "",
   "license": "MPL-2.0",
   "dependencies": {
-    "@chemistry/space-groups": "^2.9.0",
     "mathjs": "^14.1.0",
     "three": "^0.172.0"
   },
