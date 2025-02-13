@@ -371,6 +371,26 @@ export class CifLoop {
     * @private
     */
     findCommonStart() {
+        const standardNames = [
+            '_atom_site_aniso',
+            '_atom_site',
+            '_space_group_symop',
+            '_symmetry_equiv',
+            '_geom_bond',
+            '_geom_hbond',
+            '_geom_angle',
+            '_geom_torsion',
+            '_diffrn_refln',
+            '_refln',
+        ];
+    
+        // Check for standard loop names first
+        for (const baseName of standardNames) {
+            if (this.headerLines.some(header => header.startsWith(baseName))) {
+                return baseName;
+            }
+        }
+
         if (this.headerLines.length === 1) {
             return this.headerLines[0].trim(); 
         }

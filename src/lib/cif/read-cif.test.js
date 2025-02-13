@@ -389,6 +389,65 @@ data 1 2`);
         expect(loop.getName()).toBe('_site');
    
     });
+
+    test('prioritizes correct symmetry loop name', () => {
+        const symmetryData = `test
+loop_
+_space_group_symop_site_id
+_space_group_symop_operation_xyz
+1 x,y,z
+2 -x,-y,z`;
+        
+        const block = new CifBlock(symmetryData);
+        expect(block.get('_space_group_symop').getName()).toBe('_space_group_symop');
+
+        const mixedSymmetryData = `test
+loop_
+_space_group_symop_site_id
+_symmetry_equiv_pos_as_xyz
+1 x,y,z
+2 -x,-y,z`;
+        
+        const block2 = new CifBlock(mixedSymmetryData);
+        expect(block2.get('_space_group_symop').getName()).toBe('_space_group_symop');
+    });
+
+    test('handles single header differently from standard names', () => {
+        const singleHeaderData = `data_test
+loop_
+_custom_measurement_value
+1.0 2.0 3.0`;
+        const cif = new CIF(singleHeaderData);
+        const block = cif.getBlock();
+        expect(block.get('_custom_measurement_value').getName())
+            .toBe('_custom_measurement_value');
+
+        const singleStandardData = `data_test
+loop_
+_atom_site_label
+C1 O1 N1`;
+        const cifStandard = new CIF(singleStandardData);
+        const blockStandard = cifStandard.getBlock();
+        expect(blockStandard.get('_atom_site').getName())
+            .toBe('_atom_site');
+    });
+
+    test('handles atom_site_aniso case correctly', () => {
+        const atomSiteAnisoData = `data_test
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+C1 0.01 0.02
+O1 0.02 0.03`;
+        
+        const cif = new CIF(atomSiteAnisoData);
+        const block = cif.getBlock();
+        expect(block.get('_atom_site_aniso').getName())
+            .toBe('_atom_site_aniso');
+    });
+
+
     test('parses loop with splitSU=false', () => {
         const block = new CifBlock(`test
 loop_
