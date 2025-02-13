@@ -698,11 +698,17 @@ export class BondGenerator extends BaseFilter {
         atoms.forEach(atom => {
             const cartPos = atom.position.toCartesian(cell);
             atomPositions.set(atom.label, [cartPos.x, cartPos.y, cartPos.z]);
-            if (!elementMap.has(atom.atomType)) {
-                elementMap.set(atom.atomType, inferElementFromLabel(atom.atomType));
+            if (Object.prototype.hasOwnProperty.call(elementProperties, atom.atomType) 
+                && !elementMap.has(atom.atomType)) {
+                elementMap.set(atom.atomType, atom.atomType);
+            } else if (!elementMap.has(atom.atomType)) {
+                try {
+                    elementMap.set(atom.atomType, inferElementFromLabel(atom.atomType));
+                } catch {
+                    throw new Error(`Missing radius for element ${atom.atomType}`);
+                }
             }
         });
-
 
         // Check distances between all atom pairs
         for (let i = 0; i < atoms.length; i++) {

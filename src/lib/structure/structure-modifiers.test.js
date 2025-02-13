@@ -1125,6 +1125,22 @@ describe('BondGenerator', () => {
             expect(result.bonds.length).toBeGreaterThan(0);
         });
 
+        test('Bond creation uses custom user radii', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'X-', 0, 0, 0)
+                .addAtom('O1', 'O+', 0.1, 0, 0)
+                .build();
+
+            generator.elementProperties['O+'] = {radius: 0.66};
+            generator.elementProperties['X-'] = {radius: 0.66};
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
+            expect(result.bonds.length).toBeGreaterThan(0);
+        });
+
         test('IGNORE maintains empty bonds array', () => {
             const structure = new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0)
