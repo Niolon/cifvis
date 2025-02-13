@@ -1,4 +1,4 @@
-import { CrystalStructure, HBond, Bond, Atom } from './crystal.js';
+import { CrystalStructure, HBond, Bond, Atom, inferElementFromLabel } from './crystal.js';
 import { create, all } from 'mathjs';
 const math = create(all);
 
@@ -693,10 +693,16 @@ export class BondGenerator extends BaseFilter {
 
         // Create a map of atom positions for faster lookup
         const atomPositions = new Map();
+        const elementMap = new Map();
+
         atoms.forEach(atom => {
             const cartPos = atom.position.toCartesian(cell);
             atomPositions.set(atom.label, [cartPos.x, cartPos.y, cartPos.z]);
+            if (!elementMap.has(atom.atomType)) {
+                elementMap.set(atom.atomType, inferElementFromLabel(atom.atomType));
+            }
         });
+
 
         // Check distances between all atom pairs
         for (let i = 0; i < atoms.length; i++) {
@@ -719,8 +725,8 @@ export class BondGenerator extends BaseFilter {
                 const diff = math.subtract(pos1, pos2);
                 const distance = math.norm(diff);
                 const maxDistance = this.getMaxBondDistance(
-                    atom1.atomType,
-                    atom2.atomType,
+                    elementMap.get(atom1.atomType),
+                    elementMap.get(atom2.atomType),
                     elementProperties,
                 );
 

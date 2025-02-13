@@ -1154,6 +1154,20 @@ describe('BondGenerator', () => {
             expect(result.bonds[0].atom2Label).toBe('O1');
         });
 
+        test('can handle ion atom types', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C1+', 0, 0, 0)
+                .addAtom('O1', 'O-2', 0.1, 0, 0)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds.length).toBe(1);
+            expect(result.bonds[0].atom1Label).toBe('C1');
+            expect(result.bonds[0].atom2Label).toBe('O1');
+        });
+
         test('skips atoms that are too far apart', () => {
             const structure = new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0)
