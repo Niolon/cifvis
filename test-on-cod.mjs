@@ -2,7 +2,7 @@ import { readFileSync, appendFileSync, writeFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from './src/index.js';
+import { CIF, CrystalStructure, ORTEP3JsStructure } from './src/index.nobrowser.js';
 
 // Configuration
 const config = {
