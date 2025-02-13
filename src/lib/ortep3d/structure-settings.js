@@ -50,6 +50,8 @@ export default {
     'disorderMode': 'all',
     'symmetryMode': 'bonds-no-hbonds-no',
 
+    'bondGrowToleranceFactor': 1.2,
+
     // atom visualisation Settings
     'atomDetail': 3,
     'atomColorRoughness': 0.3,
@@ -58,7 +60,7 @@ export default {
     'atomADPRingHeight': 0.06,
     'atomADPRingSections': 18,
     'atomADPInnerSections': 7,
-    'atomConstantRadiusMultiplier': 0.3,
+    'atomConstantRadiusMultiplier': 0.25,
 
     // Bond visualisation settings
     'bondRadius': 0.05,

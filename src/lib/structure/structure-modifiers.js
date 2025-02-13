@@ -656,8 +656,9 @@ export class BondGenerator extends BaseFilter {
      * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
      * @param {BondGenerator.MODES} [mode=BondGenerator.MODES.KEEP] - Initial filter mode
      */
-    constructor(toleranceFactor = 1.3, mode = BondGenerator.MODES.KEEP) {
+    constructor(elementProperties, toleranceFactor, mode=BondGenerator.MODES.KEEP) {
         super(BondGenerator.MODES, mode, 'BondGenerator', BondGenerator.PREFERRED_FALLBACK_ORDER);
+        this.elementProperties = elementProperties;
         this.toleranceFactor = toleranceFactor;
     }
 
@@ -747,10 +748,6 @@ export class BondGenerator extends BaseFilter {
         // First check if current mode is applicable
         this.ensureValidMode(structure);
 
-        if (!this.options?.elementProperties) {
-            throw new Error('Element properties must be provided in options');
-        }
-
         let finalBonds;
 
         switch (this.mode) {
@@ -759,17 +756,17 @@ export class BondGenerator extends BaseFilter {
 
         case BondGenerator.MODES.ADD:
         { 
-            const newBonds = this.generateBonds(structure, this.options.elementProperties);
+            const newBonds = this.generateBonds(structure, this.elementProperties);
             finalBonds = [...structure.bonds, ...newBonds];
             break; 
         }
 
         case BondGenerator.MODES.REPLACE:
-            finalBonds = [...this.generateBonds(structure, this.options.elementProperties)];
+            finalBonds = [...this.generateBonds(structure, this.elementProperties)];
             break;
 
         case BondGenerator.MODES.CREATE:
-            finalBonds = [...this.generateBonds(structure, this.options.elementProperties)];
+            finalBonds = [...this.generateBonds(structure, this.elementProperties)];
             break;
 
         case BondGenerator.MODES.IGNORE:

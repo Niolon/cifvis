@@ -929,46 +929,43 @@ describe('AtomLabelFilter', () => {
 
 describe('BondGenerator', () => {
     let generator;
-    let mockOptions;
+    let elementProperties;
 
     beforeEach(() => {
-        mockOptions = {
-            elementProperties: {
-                'C': { radius: 0.76 },
-                'O': { radius: 0.66 },
-                'N': { radius: 0.71 },
-                'H': { radius: 0.31 },
-            },
+        elementProperties = {
+            'C': { radius: 0.76 },
+            'O': { radius: 0.66 },
+            'N': { radius: 0.71 },
+            'H': { radius: 0.31 },
         };
 
-        generator = new BondGenerator(1.3, BondGenerator.MODES.KEEP);
-        generator.options = mockOptions;
+        const toleranceFactor = 1.3;
+
+        generator = new BondGenerator(elementProperties, toleranceFactor);
     });
 
     describe('getMaxBondDistance', () => {
         test('calculates correct distance for element pair', () => {
-            const distance = generator.getMaxBondDistance('C', 'O', mockOptions.elementProperties);
+            const distance = generator.getMaxBondDistance('C', 'O', elementProperties);
             expect(distance).toBeCloseTo((0.76 + 0.66) * 1.3);
         });
 
         test('throws error for unknown elements', () => {
             expect(() => {
-                generator.getMaxBondDistance('C', 'Xx', mockOptions.elementProperties);
+                generator.getMaxBondDistance('C', 'Xx', elementProperties);
             }).toThrow('Missing radius for element Xx');
         });
 
         test('handles different tolerance factors', () => {
-            const strictGenerator = new BondGenerator(1.1);
-            strictGenerator.options = mockOptions;
+            const strictGenerator = new BondGenerator(elementProperties, 1.1);
 
-            const looseGenerator = new BondGenerator(1.5);
-            looseGenerator.options = mockOptions;
+            const looseGenerator = new BondGenerator(elementProperties, 1.5);
 
             const strictDistance = strictGenerator.getMaxBondDistance(
-                'C', 'O', mockOptions.elementProperties,
+                'C', 'O', elementProperties,
             );
             const looseDistance = looseGenerator.getMaxBondDistance(
-                'C', 'O', mockOptions.elementProperties,
+                'C', 'O', elementProperties,
             );
 
             expect(looseDistance).toBeGreaterThan(strictDistance);
@@ -1246,13 +1243,6 @@ describe('BondGenerator', () => {
     });
 
     describe('error handling', () => {
-        test('throws error when element properties not provided', () => {
-            const structure = new MockStructure().build();
-            generator.options = null;
-
-            expect(() => generator.apply(structure)).toThrow('Element properties must be provided');
-        });
-
         test('handles missing atomic radii', () => {
             const structure = new MockStructure()
                 .addAtom('X1', 'X', 0, 0, 0)  // Unknown element

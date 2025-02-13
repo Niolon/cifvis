@@ -5,7 +5,7 @@ import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
-import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
+import { BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers.js';
 
 export class SelectionManager {
     constructor(options) {
@@ -265,6 +265,7 @@ export class CrystalViewer {
             bondColor: options.bondColor || defaultSettings.bondColor,
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
+            bondGrowToleranceFactor: options.bondGrowToleranceFactor || defaultSettings.bondGrowToleranceFactor,
             elementProperties: {
                 ...defaultSettings.elementProperties,
                 ...options.elementProperties,
@@ -286,6 +287,10 @@ export class CrystalViewer {
         };
 
         this.modifiers = {
+            missingbonds: new BondGenerator(
+                this.options.elementProperties,
+                this.options.bondGrowToleranceFactor,
+            ),
             hydrogen: new HydrogenFilter(this.options.hydrogenMode),
             disorder: new DisorderFilter(this.options.disorderMode),
             symmetry: new SymmetryGrower(this.options.symmetryMode),
