@@ -1131,8 +1131,8 @@ describe('BondGenerator', () => {
                 .addAtom('O1', 'O+', 0.1, 0, 0)
                 .build();
 
-            generator.elementProperties['O+'] = {radius: 0.66};
-            generator.elementProperties['X-'] = {radius: 0.66};
+            generator.elementProperties['O+'] = { radius: 0.66 };
+            generator.elementProperties['X-'] = { radius: 0.66 };
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
