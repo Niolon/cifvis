@@ -223,6 +223,11 @@ more content
 _chemical_formula_sum
 ;Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07
     Zn0.54
+;
+_exptl_absorpt_process_details
+; Higashi, T. (1995). Program for 
+ Absorption Correction.
+ Rigaku Corporation, Tokyo, Japan.
 ;`);
         
             expect(block.get('_proper_multiline')).toBe('line1\nline2');
@@ -230,6 +235,10 @@ _chemical_formula_sum
             expect(block.get('_chemical_formula_sum')).toBe(
                 'Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07\nZn0.54',
             );
+            expect(block.get('_exptl_absorpt_process_details')).toBe(
+                'Higashi, T. (1995). Program for\nAbsorption Correction.\nRigaku Corporation, Tokyo, Japan.',
+            );
+
         });
 
         test('handles embedded quotes according to spec', () => {
@@ -343,10 +352,12 @@ _value
 loop_
 _value # column header
 1 # first value
-2 # second value`);
+2 # second value
+3#
+`);
    
         const loop = block.get('_value');
-        expect(loop.get('_value')).toEqual([1, 2]);
+        expect(loop.get('_value')).toEqual([1, 2, '3#']);
     });
 
     test('handles loop ending at next loop', () => {

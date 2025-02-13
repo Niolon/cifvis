@@ -173,10 +173,11 @@ export class CifBlock {
 
         this.data = {};
         const lines = this.rawText
-            .replace(/\n;(?=\S)/g, '\n;\n') // Add newline after semicolon if followed by non-whitespace
+            .replace(/\n;(.)/g, '\n;\n$1') // Add newline after semicolon if followed by non-whitespace
             .split('\n')
+            .filter(line => !line.startsWith('#'))
             .map(line => {
-                const regex = /#(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
+                const regex = / #(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
                 return line.split(regex)[0];
             })
             .map(line => line.trim())
