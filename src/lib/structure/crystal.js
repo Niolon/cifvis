@@ -114,8 +114,26 @@ export class CrystalStructure {
         try {
             const bondLoop = cifBlock.get('_geom_bond');
             const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
+            const atomLabels = new Set(atoms.map(atom => atom.label));
+            
             for (let i = 0; i < nBonds; i++) {
-                bonds.push(Bond.fromCIF(cifBlock, i));
+                const atom1Label = bondLoop.getIndex(
+                    ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
+                    i,
+                );
+                const atom2Label = bondLoop.getIndex(
+                    ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
+                    i,
+                );
+                
+                // Only filter out centroids (Cg or Cnt)
+                const atom1IsCentroid = /^(Cg|Cnt)/.test(atom1Label);
+                const atom2IsCentroid = /^(Cg|Cnt)/.test(atom2Label);
+                
+                if ((!atom1IsCentroid || atomLabels.has(atom1Label)) && 
+                    (!atom2IsCentroid || atomLabels.has(atom2Label))) {
+                    bonds.push(Bond.fromCIF(cifBlock, i));
+                }
             }
         } catch {
             console.warn('No bonds found in CIF file');
@@ -142,7 +160,7 @@ export class CrystalStructure {
     */
     getAtomByLabel(atomLabel) {
         for (const atom of this.atoms) {
-            if (atom.label.toUpperCase() === atomLabel.toUpperCase()) {
+            if (atom.label.toUpperCase() === String(atomLabel).toUpperCase()) {
                 return atom;
             }
         }

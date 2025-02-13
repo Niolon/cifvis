@@ -178,6 +178,52 @@ C4 C 0 0 0 .`;
         expect(structure.atoms.map(a => a.label)).toEqual(['C1', 'C4']);
     });
 
+    test('filters centroid bonds', () => {
+        const cifText = `
+data_test
+_cell_length_a 10
+_cell_length_b 10
+_cell_length_c 10
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1 C 0 0 0
+O1 O 0.1 0.1 0.1
+
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_2
+C1 O1 1.5 .
+C1 Cnt1 2.0 .
+Cg2 O1 2.1 .
+Cnt1 O1 2.2 .
+Cg2 C1 2.3 .
+C1 O1 1.6 2_555
+`;
+    
+        const cif = new CIF(cifText);
+        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+    
+        // Should only have 2 bonds: C1-O1 and C1-O1 2_555
+        expect(structure.bonds).toHaveLength(2);
+        expect(structure.bonds[0].atom1Label).toBe('C1');
+        expect(structure.bonds[0].atom2Label).toBe('O1');
+        expect(structure.bonds[0].bondLength).toBe(1.5);
+        expect(structure.bonds[1].atom1Label).toBe('C1');
+        expect(structure.bonds[1].atom2Label).toBe('O1');
+        expect(structure.bonds[1].bondLength).toBe(1.6);
+        expect(structure.bonds[1].atom2SiteSymmetry).toBe('2_555');
+    });
+
     test('getAtomByLabel returns correct atom', () => {
         const cell = new UnitCell(10, 10, 10, 90, 90, 90);
         const atoms = [
