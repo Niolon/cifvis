@@ -424,12 +424,12 @@ _custom_measurement_value
 
         const singleStandardData = `data_test
 loop_
-_atom_site_label
-C1 O1 N1`;
+_symmetry_equiv_pos_as_xyz
+'x,y,z'`;
         const cifStandard = new CIF(singleStandardData);
         const blockStandard = cifStandard.getBlock();
-        expect(blockStandard.get('_atom_site').getName())
-            .toBe('_atom_site');
+        expect(blockStandard.get('_symmetry_equiv').getName())
+            .toBe('_symmetry_equiv');
     });
 
     test('handles atom_site_aniso case correctly', () => {

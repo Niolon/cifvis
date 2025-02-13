@@ -9,9 +9,34 @@ const config = {
     logFile: 'cif-test-results.log',
     errorLogFile: 'cif-test-errors.log',
     summaryFile: 'cif-test-summary.log',
-    batchSize: 50,  // Process files in batches to manage memory
-    gcThreshold: 1000,  // Force garbage collection every N files
+    batchSize: 25,  // Reduced batch size
+    gcThreshold: 100,  // More frequent GC
 };
+
+// Process batch with better memory management
+async function processBatch(files, startIndex) {
+    const endIndex = Math.min(startIndex + config.batchSize, files.length);
+    const batchFiles = files.slice(startIndex, endIndex);
+    
+    for (const file of batchFiles) {
+        await testCIFFile(file);
+        
+        // Force GC more frequently
+        if (global.gc && stats.totalFiles % config.gcThreshold === 0) {
+            global.gc();
+            // Add small delay to allow GC to complete
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+    }
+    
+    // Force GC after each batch
+    if (global.gc) {
+        global.gc();
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    return endIndex;
+}
 
 // Statistics tracking
 const stats = {
@@ -80,11 +105,19 @@ async function testCIFFile(filePath) {
 
         try {
             // Test CrystalStructure creation
-            structure = CrystalStructure.fromCIF(block);
-            if (!structure || !structure.atoms || structure.atoms.length === 0) {
-                throw new Error('Empty or invalid crystal structure');
+            try {
+                structure = CrystalStructure.fromCIF(block);
+            } catch (error) {
+                if (error.message === 'The cif file contains no valid atoms.') {
+                    const atomSite = block.get('_atom_site', false);
+                    if (atomSite && atomSite.get(['_atom_site.fract_x', '_atom_site_fract_x'])
+                        .every(val => val === '?')) {
+                        return results;
+                    }
+                }
+                throw error;
             }
-            
+
             // Check for symmetry issues
             if (!structure.symmetry) {
                 stats.errors.symmetry++;
@@ -99,10 +132,10 @@ async function testCIFFile(filePath) {
                 results.errors.push('Symmetry Error: No Space Group Name');
                 throw new Error('Incomplete symmetry information');
             }
-
+        
             results.success.structure = true;
             stats.successfulStructure++;
-
+        
             try {
                 // Test ORTEP structure creation
                 ortep = new ORTEP3JsStructure(structure);
@@ -150,25 +183,6 @@ async function testCIFFile(filePath) {
     }
 
     return results;
-}
-
-/**
- * Process a batch of files
- */
-async function processBatch(files, startIndex) {
-    const endIndex = Math.min(startIndex + config.batchSize, files.length);
-    const batchFiles = files.slice(startIndex, endIndex);
-    
-    for (const file of batchFiles) {
-        await testCIFFile(file);
-        
-        // Force garbage collection if available and threshold reached
-        if (global.gc && stats.totalFiles % config.gcThreshold === 0) {
-            global.gc();
-        }
-    }
-    
-    return endIndex;
 }
 
 /**

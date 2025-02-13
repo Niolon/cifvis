@@ -379,7 +379,7 @@ export class UnitCell {
 */
 export class Atom {
     constructor(label, atomType, position, adp=null, disorderGroup=0) {
-        this.label = label;
+        this.label = String(label);
         this.atomType = atomType;
         this.position = position;
         this.adp = adp;

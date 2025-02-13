@@ -372,8 +372,6 @@ export class CifLoop {
     */
     findCommonStart() {
         const standardNames = [
-            '_atom_site_aniso',
-            '_atom_site',
             '_space_group_symop',
             '_symmetry_equiv',
             '_geom_bond',
