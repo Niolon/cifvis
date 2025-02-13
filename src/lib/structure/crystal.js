@@ -95,9 +95,21 @@ export class CrystalStructure {
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
         
-        const atoms = Array.from({ length: labels.length }, (_, i) => Atom.fromCIF(cifBlock, i))
-            .filter(atom => atom.label !== '.' || atom.atomType !== '.'); // filter dummys
+        const atoms = Array.from({ length: labels.length }, (_, i) => {
+            try {
+                return Atom.fromCIF(cifBlock, i);
+            } catch (e) {
+                if (e.message.includes('Dummy atom')) {
+                    return null;
+                }
+                throw e;
+            }
+        }).filter(atom => atom !== null);
 
+        if (atoms.length === 0) {
+            throw new Error('The cif file contains no valid atoms.')
+        }
+        
         const bonds = [];
         try {
             const bondLoop = cifBlock.get('_geom_bond');
@@ -130,7 +142,7 @@ export class CrystalStructure {
     */
     getAtomByLabel(atomLabel) {
         for (const atom of this.atoms) {
-            if (atom.label === atomLabel) {
+            if (atom.label.toUpperCase() === atomLabel.toUpperCase()) {
                 return atom;
             }
         }
@@ -395,20 +407,43 @@ export class Atom {
         }
         
         const label = labels[index];
+        
+        // Check if dummy atom
+        const invalidValues = ['.', '?'];
+        if (invalidValues.includes(label)) {
+            throw new Error('Dummy atom: Invalid label');
+        }
+
+        // Check calc flag
+        const calcFlag = atomSite.getIndex(
+            ['_atom_site.calc_flag', '_atom_site_calc_flag'],
+            index,
+            ''
+        ).toLowerCase();
+        if (calcFlag === 'dum') {
+            throw new Error('Dummy atom: calc_flag is dum');
+        }
 
         let atomType = atomSite.getIndex(['_atom_site.type_symbol', '_atom_site_type_symbol'], index, false);
         if (!atomType) {
             atomType = inferElementFromLabel(label);
         }
+        if (invalidValues.includes(atomType)) {
+            throw new Error('Dummy atom: Invalid atom type');
+        }
 
-        const position = new FractPosition(
-            atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index),
-            atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index),
-            atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index),
-        );
+        const x = atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index);
+        const y = atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index);
+        const z = atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index);
+
+        if (invalidValues.includes(x) || invalidValues.includes(y) || invalidValues.includes(z)) {
+            throw new Error('Dummy atom: Invalid position');
+        }
+
+        const position = new FractPosition(x, y, z);
         
         const adp = ADPFactory.createADP(cifBlock, index);
-    
+
         const disorderGroup = atomSite.getIndex(
             ['_atom_site.disorder_group', '_atom_site_disorder_group'],
             index,
@@ -420,9 +455,9 @@ export class Atom {
             atomType,
             position,
             adp, 
-            disorderGroup === '.' ? 0 : disorderGroup,
+            disorderGroup === '.' ? 0 : disorderGroup
         );
-    }
+    }   
 }
 
 /**

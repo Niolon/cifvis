@@ -151,6 +151,33 @@ data_test
         expect(structure.hBonds[0].donorAtomLabel).toBe('O1');
     });
 
+    test('fromCIF filters out dummy atoms', () => {
+        const cifText = `
+data_test
+ _cell_length_a 10
+ _cell_length_b 10
+ _cell_length_c 10
+ _cell_angle_alpha 90
+ _cell_angle_beta 90
+ _cell_angle_gamma 90
+
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_calc_flag
+C1 C 0 0 0 .
+C2 C 0 0 0 dum
+C3 C . 0 0 .
+C4 C 0 0 0 .`;
+        const cif = new CIF(cifText);
+        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+        expect(structure.atoms.length).toBe(2);
+        expect(structure.atoms.map(a => a.label)).toEqual(['C1', 'C4']);
+    });
+
     test('getAtomByLabel returns correct atom', () => {
         const cell = new UnitCell(10, 10, 10, 90, 90, 90);
         const atoms = [
@@ -413,6 +440,77 @@ describe('Atom', () => {
         expect(atom.label).toBe('C1');
         expect(atom.atomType).toBe('C');
         expect(atom.disorderGroup).toBe(0);
+    });
+
+    test('rejects dummy atoms with invalid labels', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+. C 0 0 0
+? C 0 0 0`;
+        const cif = new CIF(cifText);
+        const block = cif.getBlock(0);
+        expect(() => Atom.fromCIF(block, 0)).toThrow('Dummy atom: Invalid label');
+        expect(() => Atom.fromCIF(block, 1)).toThrow('Dummy atom: Invalid label');
+    });
+
+    test('rejects dummy atoms with calc flag', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_calc_flag
+C1 C 0 0 0 dum
+C2 C 0 0 0 DUM`;
+        const cif = new CIF(cifText);
+        const block = cif.getBlock(0);
+        expect(() => Atom.fromCIF(block, 0)).toThrow('Dummy atom: calc_flag is dum');
+        expect(() => Atom.fromCIF(block, 1)).toThrow('Dummy atom: calc_flag is dum');
+    });
+
+    test('rejects dummy atoms with invalid positions', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1 C . 0 0
+C2 C 0 ? 0
+C3 C 0 0 ?`;
+        const cif = new CIF(cifText);
+        const block = cif.getBlock(0);
+        expect(() => Atom.fromCIF(block, 0)).toThrow('Dummy atom: Invalid position');
+        expect(() => Atom.fromCIF(block, 1)).toThrow('Dummy atom: Invalid position');
+        expect(() => Atom.fromCIF(block, 2)).toThrow('Dummy atom: Invalid position');
+    });
+
+    test('rejects dummy atoms with invalid type', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1 . 0 0 0
+C2 ? 0 0 0`;
+        const cif = new CIF(cifText);
+        const block = cif.getBlock(0);
+        expect(() => Atom.fromCIF(block, 0)).toThrow('Dummy atom: Invalid atom type');
+        expect(() => Atom.fromCIF(block, 1)).toThrow('Dummy atom: Invalid atom type');
     });
 
     test('fromCIF creates atom with isotropic ADP', () => {
