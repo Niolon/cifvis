@@ -371,5 +371,23 @@ C1 0.01 ? 0.03 0 0 0
             
             expect(adp).toBeNull();
         });
+
+        test('returns null if adp_type not known', () => {
+            const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_adp_type
+C1 C 0 0 0 custom
+` 
+            const cif = new CIF(cifText);
+            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            
+            expect(adp).toBeNull();
+        });
     });
 });
