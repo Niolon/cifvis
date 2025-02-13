@@ -1,11 +1,26 @@
-import { BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower, AtomLabelFilter } from './structure-modifiers.js';
+import { 
+    BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower, AtomLabelFilter, BondGenerator,
+} from './structure-modifiers.js';
 import { CrystalStructure, UnitCell, Atom, Bond, HBond, FractPosition } from './crystal.js';
 import { UAnisoADP } from './adp.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 
 class MockStructure {
-    constructor(baseStructure) {
-        this.structure = baseStructure;
+    constructor(baseStructure=null) {
+        if (baseStructure) {
+            this.structure = baseStructure;
+        } else {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetryOps = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,y+1/2,-z'),  
+                new SymmetryOperation('-x+1/2,y,-z+1/2'),
+                new SymmetryOperation('x+1/2,-y+1/2,z'),
+            ];
+            const symmetry = new CellSymmetry('Test', 1, symmetryOps);
+        
+            this.structure = new CrystalStructure(cell, [], [], [], symmetry);
+        }
     }
 
     static createDefault({ 
@@ -14,18 +29,7 @@ class MockStructure {
         disorderGroups = [], 
         hasMultipleSymmetry = false,
     } = {}) {
-        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
-        const symmetryOps = [
-            new SymmetryOperation('x,y,z'),
-            new SymmetryOperation('-x,y+1/2,-z'),  
-            new SymmetryOperation('-x+1/2,y,-z+1/2'),
-            new SymmetryOperation('x+1/2,-y+1/2,z'),
-        ];
-        const symmetry = new CellSymmetry('Test', 1, symmetryOps);
-        
-        const baseStructure = new CrystalStructure(cell, [], [], [], symmetry);
-
-        const structure = new MockStructure(baseStructure)
+        const structure = new MockStructure()
             .addAtom('C1', 'C', 0.1, 0.1, 0.1)
             .addAtom('C2', 'C', 0.2, 0.2, 0.2)
             .addAtom('O1', 'O', 0.3, 0.3, 0.3)
@@ -920,5 +924,343 @@ describe('AtomLabelFilter', () => {
             AtomLabelFilter.MODES.ON,
             AtomLabelFilter.MODES.OFF,
         ]);
+    });
+});
+
+describe('BondGenerator', () => {
+    let generator;
+    let mockOptions;
+
+    beforeEach(() => {
+        mockOptions = {
+            elementProperties: {
+                'C': { radius: 0.76 },
+                'O': { radius: 0.66 },
+                'N': { radius: 0.71 },
+                'H': { radius: 0.31 },
+            },
+        };
+
+        generator = new BondGenerator(1.3, BondGenerator.MODES.KEEP);
+        generator.options = mockOptions;
+    });
+
+    describe('getMaxBondDistance', () => {
+        test('calculates correct distance for element pair', () => {
+            const distance = generator.getMaxBondDistance('C', 'O', mockOptions.elementProperties);
+            expect(distance).toBeCloseTo((0.76 + 0.66) * 1.3);
+        });
+
+        test('throws error for unknown elements', () => {
+            expect(() => {
+                generator.getMaxBondDistance('C', 'Xx', mockOptions.elementProperties);
+            }).toThrow('Missing radius for element Xx');
+        });
+
+        test('handles different tolerance factors', () => {
+            const strictGenerator = new BondGenerator(1.1);
+            strictGenerator.options = mockOptions;
+
+            const looseGenerator = new BondGenerator(1.5);
+            looseGenerator.options = mockOptions;
+
+            const strictDistance = strictGenerator.getMaxBondDistance(
+                'C', 'O', mockOptions.elementProperties,
+            );
+            const looseDistance = looseGenerator.getMaxBondDistance(
+                'C', 'O', mockOptions.elementProperties,
+            );
+
+            expect(looseDistance).toBeGreaterThan(strictDistance);
+        });
+    });
+
+    describe('modes with existing bonds', () => {
+        test('KEEP preserves existing bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1', '.', 1.5, 0.01)
+                .build();
+
+            generator.mode = BondGenerator.MODES.KEEP;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.KEEP);
+            expect(result.bonds).toEqual(structure.bonds);
+        });
+
+        test('ADD preserves existing bonds and adds new ones', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addAtom('N1', 'N', 0.1, 0.1, 0)
+                .addBond('C1', 'O1')
+                .build();
+
+            generator.mode = BondGenerator.MODES.ADD;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.ADD);
+            expect(result.bonds.length).toBeGreaterThan(structure.bonds.length);
+            expect(result.bonds).toContainEqual(structure.bonds[0]);
+        });
+
+        test('REPLACE generates new bonds replacing existing ones', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1', '.', 1.5, 0.01)  // Bond with custom parameters
+                .build();
+
+            generator.mode = BondGenerator.MODES.REPLACE;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.REPLACE);
+            expect(result.bonds.length).toBe(1);
+            expect(result.bonds[0]).not.toEqual(structure.bonds[0]);
+        });
+
+        test('CREATE switches to KEEP when bonds exist', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1')
+                .build();
+
+            const consoleSpy = jest.spyOn(console, 'warn');
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+            
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('BondGenerator mode create was not applicable'),
+            );
+            expect(generator.mode).toBe(BondGenerator.MODES.KEEP);
+            expect(result.bonds).toEqual(structure.bonds);
+            consoleSpy.mockRestore();
+        });
+
+        test('IGNORE switches to KEEP when bonds exist', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1')
+                .build();
+
+            const consoleSpy = jest.spyOn(console, 'warn');
+            generator.mode = BondGenerator.MODES.IGNORE;
+            const result = generator.apply(structure);
+            
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('BondGenerator mode ignore was not applicable'),
+            );
+            expect(generator.mode).toBe(BondGenerator.MODES.KEEP);
+            expect(result.bonds).toEqual(structure.bonds);
+            consoleSpy.mockRestore();
+        });
+    });
+
+    describe('modes without existing bonds', () => {
+        test('KEEP switches to CREATE for structure without bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            const consoleSpy = jest.spyOn(console, 'warn');
+            generator.mode = BondGenerator.MODES.KEEP;
+            const result = generator.apply(structure);
+            
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('BondGenerator mode keep was not applicable'),
+            );
+            expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
+            expect(result.bonds.length).toBeGreaterThan(0);
+            consoleSpy.mockRestore();
+        });
+
+        test('ADD switches to CREATE for structure without bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            const consoleSpy = jest.spyOn(console, 'warn');
+            generator.mode = BondGenerator.MODES.ADD;
+            const result = generator.apply(structure);
+            
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('BondGenerator mode add was not applicable'),
+            );
+            expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
+            expect(result.bonds.length).toBeGreaterThan(0);
+            consoleSpy.mockRestore();
+        });
+
+        test('REPLACE switches to CREATE for structure without bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            const consoleSpy = jest.spyOn(console, 'warn');
+            generator.mode = BondGenerator.MODES.REPLACE;
+            const result = generator.apply(structure);
+            
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('BondGenerator mode replace was not applicable'),
+            );
+            expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
+            expect(result.bonds.length).toBeGreaterThan(0);
+            consoleSpy.mockRestore();
+        });
+
+        test('CREATE generates bonds for structure without bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
+            expect(result.bonds.length).toBeGreaterThan(0);
+        });
+
+        test('IGNORE maintains empty bonds array', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            generator.mode = BondGenerator.MODES.IGNORE;
+            const result = generator.apply(structure);
+            
+            expect(generator.mode).toBe(BondGenerator.MODES.IGNORE);
+            expect(result.bonds).toEqual([]);
+        });
+    });
+
+    describe('bond generation behavior', () => {
+        test('generates bonds between nearby atoms', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)  // Close enough for bond
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds.length).toBe(1);
+            expect(result.bonds[0].atom1Label).toBe('C1');
+            expect(result.bonds[0].atom2Label).toBe('O1');
+        });
+
+        test('skips atoms that are too far apart', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.5, 0.5, 0.5)  // Too far for bond
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+            
+            expect(result.bonds.length).toBe(0);
+        });
+
+        test('handles hydrogens with existing bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('H1', 'H', 0.1, 0, 0)
+                .addAtom('O1', 'O', 0.2, 0, 0)
+                .addBond('C1', 'H1')  // Existing H bond
+                .build();
+
+            generator.mode = BondGenerator.MODES.ADD;
+            const result = generator.apply(structure);
+
+            const hBonds = result.bonds.filter(b => 
+                b.atom1Label === 'H1' || b.atom2Label === 'H1',
+            );
+            expect(hBonds.length).toBe(1);  // Should not create additional H bonds
+        });
+
+        test('calculates actual distances for generated bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)  // In a 10Å cell this is 1Å
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+            
+            expect(result.bonds[0].bondLength).toBeCloseTo(1.0, 5);
+        });
+
+        test('preserves symmetry operations in existing bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1', '2_555')  // Bond with symmetry operation
+                .build();
+
+            generator.mode = BondGenerator.MODES.ADD;
+            const result = generator.apply(structure);
+
+            const symBond = result.bonds.find(b => 
+                b.atom1Label === 'C1' && b.atom2Label === 'O1' && b.atom2SiteSymmetry === '2_555',
+            );
+            expect(symBond).toBeTruthy();
+        });
+    });
+
+    describe('getApplicableModes', () => {
+        test('returns correct modes for structure with bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .addBond('C1', 'O1')
+                .build();
+
+            const modes = generator.getApplicableModes(structure);
+            expect(modes).toEqual([
+                BondGenerator.MODES.KEEP,
+                BondGenerator.MODES.ADD,
+                BondGenerator.MODES.REPLACE,
+            ]);
+        });
+
+        test('returns correct modes for structure without bonds', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            const modes = generator.getApplicableModes(structure);
+            expect(modes).toEqual([
+                BondGenerator.MODES.CREATE,
+                BondGenerator.MODES.IGNORE,
+            ]);
+        });
+    });
+
+    describe('error handling', () => {
+        test('throws error when element properties not provided', () => {
+            const structure = new MockStructure().build();
+            generator.options = null;
+
+            expect(() => generator.apply(structure)).toThrow('Element properties must be provided');
+        });
+
+        test('handles missing atomic radii', () => {
+            const structure = new MockStructure()
+                .addAtom('X1', 'X', 0, 0, 0)  // Unknown element
+                .addAtom('O1', 'O', 0.1, 0, 0)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            expect(() => generator.apply(structure)).toThrow('Missing radius for element X');
+        });
     });
 });
