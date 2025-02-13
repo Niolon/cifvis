@@ -172,7 +172,8 @@ export class CifBlock {
         }
 
         this.data = {};
-        const lines = this.rawText.replace(/\n;([^\n^\s])/, '\n;\n$1') // Make multiline strings clean
+        const lines = this.rawText
+            .replace(/\n;(?=\S)/g, '\n;\n') // Add newline after semicolon if followed by non-whitespace
             .split('\n')
             .map(line => {
                 const regex = /#(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;

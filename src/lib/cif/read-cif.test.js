@@ -209,6 +209,29 @@ entry
             expect(block.get('_another_multiline_entry')).toBe('more sloppy\nentry');
         });
 
+        test('handles both multiline string formats', () => {
+            const block = new CifBlock(`test
+_proper_multiline
+;
+line1
+line2
+;
+_compact_multiline
+;text content
+more content
+;
+_chemical_formula_sum
+;Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07
+    Zn0.54
+;`);
+        
+            expect(block.get('_proper_multiline')).toBe('line1\nline2');
+            expect(block.get('_compact_multiline')).toBe('text content\nmore content');
+            expect(block.get('_chemical_formula_sum')).toBe(
+                'Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07\nZn0.54',
+            );
+        });
+
         test('handles embedded quotes according to spec', () => {
             const block = new CifBlock(`test
 _text1 'a dog's life'
