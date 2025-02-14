@@ -309,11 +309,11 @@ describe('CellSymmetry', () => {
             expect(results[1].position.z).toBeCloseTo(1.4);
         });
 
-        test('throws error for invalid symmetry operation number', () => {
+        test('throws error for invalid symmetry operation ID', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
             expect(() => sym.applySymmetry('2_555', {}))
-                .toThrow('Invalid symmetry operation number: 2');
+                .toThrow('Invalid symmetry operation ID: 2');
         });
 
         test('transforms anisotropic displacement parameters', () => {
@@ -367,10 +367,10 @@ _symmetry_Int_Tables_number 14
 loop_
  _symmetry_equiv_id
  _symmetry_equiv_pos_as_xyz
- 1 x,y,z
- 2 -x,y+1/2,-z+1/2
- 3 -x,-y,-z
- 4 x,-y+1/2,z+1/2
+ a x,y,z
+ b -x,y+1/2,-z+1/2
+ c -x,-y,-z
+ d x,-y+1/2,z+1/2
 `,
             ];
             for (const cifText of cifTexts) {
@@ -398,6 +398,81 @@ loop_
                 [0, 1, 0],
                 [0, 0, 1],
             ]);
+        });
+    });
+
+    describe('CellSymmetry ID handling', () => {
+        let mockAtom;
+        
+        beforeEach(() => {
+            mockAtom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.5, 0.5, 0.5),
+            );
+        });
+    
+        test('handles custom operation IDs from CIF', () => {
+            const cifText = `
+data_test
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+a1 x,y,z
+b2 -x,-y,z`;
+    
+            const cif = new CIF(cifText);
+            const block = cif.getBlock(0);
+            const symmetry = CellSymmetry.fromCIF(block);
+    
+            // Check ID mapping
+            expect(symmetry.operationIds.get('a1')).toBe(0);
+            expect(symmetry.operationIds.get('b2')).toBe(1);
+    
+            // Test applying operation with translation
+            const transformed = symmetry.applySymmetry('b2_456', mockAtom);
+            expect(transformed.position.x).toBeCloseTo(-1.5);
+            expect(transformed.position.y).toBeCloseTo(-0.5);
+            expect(transformed.position.z).toBeCloseTo(1.5);  // 0.5 + 1
+        });
+    
+        test('falls back to sequential IDs when none provided', () => {
+            const cifText = `
+data_test
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z
+-x,-y,z`;
+    
+            const cif = new CIF(cifText);
+            const block = cif.getBlock(0);
+            const symmetry = CellSymmetry.fromCIF(block);
+    
+            // Test sequential ID mapping
+            expect(symmetry.operationIds.get('1')).toBe(0);
+            expect(symmetry.operationIds.get('2')).toBe(1);
+    
+            // Test legacy numeric code still works
+            const transformed = symmetry.applySymmetry('2', mockAtom);
+            expect(transformed.position.x).toBeCloseTo(-0.5);
+            expect(transformed.position.y).toBeCloseTo(-0.5);
+            expect(transformed.position.z).toBeCloseTo(0.5);
+        });
+    
+        test('throws error for invalid operation ID', () => {
+            const cifText = `
+data_test
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+a1 x,y,z`;
+    
+            const cif = new CIF(cifText);
+            const block = cif.getBlock(0);
+            const symmetry = CellSymmetry.fromCIF(block);
+    
+            expect(() => symmetry.applySymmetry('invalid_555', mockAtom))
+                .toThrow('Invalid symmetry operation ID: invalid');
         });
     });
 });

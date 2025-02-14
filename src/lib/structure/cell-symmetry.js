@@ -203,59 +203,40 @@ export class SymmetryOperation {
  * Represents the complete symmetry information of a crystal structure
  */
 export class CellSymmetry {
-    /**
-     * Creates a new cell symmetry instance
-     * @param {string} spaceGroupName - Hermann-Mauguin symbol of the space group
-     * @param {number} spaceGroupNumber - International Tables space group number
-     * @param {SymmetryOperation[]} symmetryOperations - List of symmetry operations
-     */
-    constructor(spaceGroupName, spaceGroupNumber, symmetryOperations) {
+    constructor(spaceGroupName, spaceGroupNumber, symmetryOperations, operationIds = null) {
         this.spaceGroupName = spaceGroupName;
         this.spaceGroupNumber = spaceGroupNumber;
         this.symmetryOperations = symmetryOperations;
+        // If no IDs provided, create sequential mapping
+        this.operationIds = operationIds || new Map(
+            symmetryOperations.map((_, index) => [(index + 1).toString(), index]),
+        );
     }
 
-    /**
-     * Generates all symmetry-equivalent positions for a given point
-     * @param {number[]} point - Point in fractional coordinates [x, y, z]
-     * @returns {number[][]} Array of equivalent positions in fractional coordinates
-     */
     generateEquivalentPositions(point) {
         return this.symmetryOperations.map(op => op.applyToPoint(point));
     }
 
-    /**
-     * Applies a symmetry operation with translation to atom(s)
-     * @param {string} positionCode - Code specifying symmetry operation and translation (e.g. "2_555")
-     * @param {(Object|Object[])} atoms - Single atom object or array of atom objects
-     * @param {string} atoms.label - Atom label
-     * @param {string} atoms.atomType - Chemical element symbol
-     * @param {FractPosition} atoms.position - Fractional coordinates
-
-     * @param {(UAnisoADP|UIsoADP)} [atoms.adp] - Anisotropic or isotropic displacement parameters
-     * @param {number} [atoms.disorderGroup] - Disorder group identifier
-     * @returns {(Atom|Atom[])} New atom instance(s) with transformed coordinates and ADPs
-     * @throws {Error} If symmetry operation number is invalid
-     */
     applySymmetry(positionCode, atoms) {
-        let transVector, symOpIndex;
+        let transVector, opId;
         try {
-            const [symOpNum, translations] = positionCode.split('_');
-            symOpIndex = parseInt(symOpNum) - 1;
+            // Split code into operation ID and translation
+            const [symOpId, translations] = positionCode.split('_');
+            opId = symOpId;
             transVector = translations.split('').map(t => parseInt(t) - 5);
         } catch {
-            symOpIndex = positionCode - 1;
+            // Handle legacy case where positionCode is just a number
+            opId = positionCode.toString();
             transVector = [0, 0, 0];
-        } 
-            
-        if (symOpIndex < 0 || symOpIndex >= this.symmetryOperations.length) {
-            throw new Error(`Invalid symmetry operation number: ${symOpIndex + 1}`);
+        }
+
+        // Look up symmetry operation index using ID map
+        const symOpIndex = this.operationIds.get(opId);
+        if (symOpIndex === undefined) {
+            throw new Error(`Invalid symmetry operation ID: ${opId}`);
         }
 
         const symOp = this.symmetryOperations[symOpIndex];
-        
-        //const combinedOp = symOp.copy();
-        //combinedOp.transVector = math.add(symOp.transVector, transVector);
 
         if (Array.isArray(atoms)) {
             const newAtoms = symOp.applyToAtoms(atoms);
@@ -272,14 +253,8 @@ export class CellSymmetry {
         newAtom.position.y += transVector[1];
         newAtom.position.z += transVector[2];
         return newAtom;
-
     }
-    /**
-     * Creates a cell symmetry instance from a CIF data block
-     * @param {CifBlock} cifBlock - CIF data block containing symmetry information
-     * @returns {CellSymmetry} New cell symmetry instance
-     * @throws {Error} If no symmetry operation xyz strings found in CIF block
-     */
+
     static fromCIF(cifBlock) {
         const spaceGroupName = cifBlock.get(
             [
@@ -315,7 +290,7 @@ export class CellSymmetry {
         );
 
         if (symopLoop && !(symopLoop instanceof CifLoop)) {
-            // it is a string?
+            // Single symmetry operation as string
             return new CellSymmetry(
                 spaceGroupName,
                 spaceGroupNumber,
@@ -328,19 +303,35 @@ export class CellSymmetry {
         }
 
         if (symopLoop) {
+            // Get operation strings
             const operations = symopLoop.get([
                 '_space_group_symop.operation_xyz',
                 '_space_group_symop_operation_xyz',
                 '_symmetry_equiv.pos_as_xyz',
                 '_symmetry_equiv_pos_as_xyz',
             ]);
-    
+
+            // Try to get operation IDs if they exist
+            let operationIds = null;
+            try {
+                const ids = symopLoop.get([
+                    '_space_group_symop.id',
+                    '_space_group_symop_id',
+                    '_symmetry_equiv.id',
+                    '_symmetry_equiv_pos_site_id',
+                ]);
+                operationIds = new Map(ids.map((id, index) => [id.toString(), index]));
+            } catch {
+                // No IDs found, will use default sequential numbering
+            }
+
             const symmetryOperations = operations.map(op => new SymmetryOperation(op));
     
             return new CellSymmetry(
                 spaceGroupName,
                 spaceGroupNumber,
                 symmetryOperations,
+                operationIds,
             );
         } else {
             console.warn('No symmetry operations found in CIF block, will use P1');
