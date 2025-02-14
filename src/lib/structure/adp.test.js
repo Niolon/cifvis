@@ -383,7 +383,7 @@ _atom_site_fract_y
 _atom_site_fract_z
 _atom_site_adp_type
 C1 C 0 0 0 custom
-` 
+`; 
             const cif = new CIF(cifText);
             const adp = ADPFactory.createADP(cif.getBlock(0), 0);
             

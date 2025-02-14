@@ -107,7 +107,7 @@ export class CrystalStructure {
         }).filter(atom => atom !== null);
 
         if (atoms.length === 0) {
-            throw new Error('The cif file contains no valid atoms.')
+            throw new Error('The cif file contains no valid atoms.');
         }
         
         const bonds = [];
@@ -436,7 +436,7 @@ export class Atom {
         const calcFlag = atomSite.getIndex(
             ['_atom_site.calc_flag', '_atom_site_calc_flag'],
             index,
-            ''
+            '',
         ).toLowerCase();
         if (calcFlag === 'dum') {
             throw new Error('Dummy atom: calc_flag is dum');
@@ -473,7 +473,7 @@ export class Atom {
             atomType,
             position,
             adp, 
-            disorderGroup === '.' ? 0 : disorderGroup
+            disorderGroup === '.' ? 0 : disorderGroup,
         );
     }   
 }

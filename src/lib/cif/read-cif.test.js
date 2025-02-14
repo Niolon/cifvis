@@ -447,7 +447,6 @@ O1 0.02 0.03`;
             .toBe('_atom_site_aniso');
     });
 
-
     test('parses loop with splitSU=false', () => {
         const block = new CifBlock(`test
 loop_
