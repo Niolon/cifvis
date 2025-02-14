@@ -254,7 +254,6 @@ async function main() {
         const files = await findCIFFiles(resolvedPath);
         console.log(`Found ${files.length} CIF files`);
         logMessage(`Found ${files.length} CIF files`);
-
         
         // Process files in batches with progress indicator
         let processedIndex = 0;
