@@ -1,14 +1,18 @@
 import { readFileSync, appendFileSync, writeFileSync } from 'fs';
 import { readdir } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from './src/index.nobrowser.js';
+import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+
+const logsDir = join(scriptDir, 'logs');
 
 // Configuration
 const config = {
-    logFile: 'cif-test-results.log',
-    errorLogFile: 'cif-test-errors.log',
-    summaryFile: 'cif-test-summary.log',
+    logFile: join(logsDir, 'ortep-test-results.log'),
+    errorLogFile: join(logsDir, 'ortep-test-errors.log'),
+    summaryFile: join(logsDir, 'ortep-test-summary.log'),
     batchSize: 25,  // Reduced batch size
     gcThreshold: 100,  // More frequent GC
 };
@@ -172,9 +176,7 @@ async function testCIFFile(filePath) {
     }
 
     // Log results
-    if (results.success.ORTEP) {
-        logMessage(`✓ Success: ${filePath}`);
-    } else {
+    if (!results.success.ORTEP) {
         let errorLog = `Failed: ${filePath}\n${results.errors.join('\n')}`;
         if (suppressedWarnings.length > 0) {
             errorLog += '\nWarnings:\n' + suppressedWarnings.join('\n');
@@ -251,12 +253,15 @@ async function main() {
         // Find all CIF files
         const files = await findCIFFiles(resolvedPath);
         console.log(`Found ${files.length} CIF files`);
+        logMessage(`Found ${files.length} CIF files`);
+
         
         // Process files in batches with progress indicator
         let processedIndex = 0;
         while (processedIndex < files.length) {
             processedIndex = await processBatch(files, processedIndex);
             console.log(`Processed ${processedIndex}/${files.length} files...`);
+            logMessage(`Processed ${processedIndex}/${files.length} files...`);
             
             // Optional: Add a small delay between batches to allow other processes
             await new Promise(resolve => setTimeout(resolve, 100));

@@ -8,8 +8,9 @@ dist/
 build/
 out/
 
-# COD testing directory
+# integration testing directory
 cod/
+integration-tests/logs/
 
 # Development environment
 .env

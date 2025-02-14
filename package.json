@@ -3,6 +3,7 @@
   "version": "0.9.0",
   "description": "",
   "main": "./src/index.js",
+  "type": "module",
   "exports": {
     ".": "./src/index.js",
     "./nobrowser": "./src/index.nobrowser.js"
@@ -12,7 +13,8 @@
     "build": "vite build",
     "build:demo": "vite build --config vite.demo.config.mjs",
     "test": "jest",
-    "test:cod": "node --max-old-space-size=8192 --expose-gc test-on-cod.mjs ./cod",
+    "test:modifiers-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs ./cod",
+    "test:ortep-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs ./cod",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
