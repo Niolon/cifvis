@@ -149,7 +149,7 @@ _atom_site_aniso_U_23
 C1 0.01 0.02 0.03 0 0 0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UAnisoADP);
             expect(adp.u11).toBe(0.01);
@@ -169,7 +169,7 @@ _atom_site_U_iso_or_equiv
 C1 C 0 0 0 Uani 0.02
 `;
             const cif = new CIF(cifText);
-            expect(() => ADPFactory.createADP(cif.getBlock(0), 0)).toThrow(
+            expect(() => ADPFactory.fromCIF(cif.getBlock(0), 0)).toThrow(
                 'Atom C1 had ADP type UAni, but no atom_site_aniso loop was found',
             );
         });
@@ -187,7 +187,7 @@ _atom_site_U_iso_or_equiv
 C1 C 0 0 0 0.02
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UIsoADP);
             expect(adp.uiso).toBe(0.02);
@@ -223,7 +223,7 @@ _atom_site_aniso_B_23
 C1 0.01 0.02 0.03 0 0 0 1 1 1 0 0 0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UAnisoADP);
             expect(adp.u11).toBe(0.01);
@@ -252,7 +252,7 @@ _atom_site_aniso_B_23
 C1 0.01 1 1 1 0 0 0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UAnisoADP);
             const expectedU = 1 / (8 * Math.PI * Math.PI);
@@ -277,7 +277,7 @@ _atom_site_aniso_U_11
 C2 0.01
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UIsoADP);
             expect(adp.uiso).toBe(0.02);
@@ -299,7 +299,7 @@ _atom_site_B_iso_or_equiv
 C1 C 0 0 0 0.02 1.0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UIsoADP);
             expect(adp.uiso).toBe(0.02);
@@ -318,7 +318,7 @@ _atom_site_B_iso_or_equiv
 C1 C 0 0 0 1.0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeInstanceOf(UIsoADP);
             const expectedU = 1.0 / (8 * Math.PI * Math.PI);
@@ -340,7 +340,7 @@ _atom_site_U_iso_or_equiv
 C1 C 0 0 0 ?
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeNull();
         });
@@ -367,7 +367,7 @@ _atom_site_aniso_U_23
 C1 0.01 ? 0.03 0 0 0
 `;
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeNull();
         });
@@ -385,7 +385,7 @@ _atom_site_adp_type
 C1 C 0 0 0 custom
 `; 
             const cif = new CIF(cifText);
-            const adp = ADPFactory.createADP(cif.getBlock(0), 0);
+            const adp = ADPFactory.fromCIF(cif.getBlock(0), 0);
             
             expect(adp).toBeNull();
         });

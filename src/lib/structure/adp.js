@@ -113,7 +113,7 @@ export class ADPFactory {
      * @param {number} atomIndex - Index in atom_site loop
      * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if no valid data
      */
-    static createADP(cifBlock, atomIndex) {
+    static fromCIF(cifBlock, atomIndex) {
         const atomSite = cifBlock.get('_atom_site');
         const label = atomSite.getIndex(['_atom_site.label', '_atom_site_label'], atomIndex);
 
