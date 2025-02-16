@@ -3,8 +3,7 @@ import { create, all } from 'mathjs';
 import { calculateFractToCartMatrix } from './fract-to-cart.js';
 import { CellSymmetry } from './cell-symmetry.js';
 import { ADPFactory } from './adp.js';
-
-const math = create(all, {});
+import { PositionFactory } from './position.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -160,7 +159,7 @@ export class CrystalStructure {
     */
     getAtomByLabel(atomLabel) {
         for (const atom of this.atoms) {
-            if (atom.label.toUpperCase() === String(atomLabel).toUpperCase()) {
+            if (atom.label === atomLabel) {
                 return atom;
             }
         }
@@ -450,17 +449,9 @@ export class Atom {
             throw new Error('Dummy atom: Invalid atom type');
         }
 
-        const x = atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index);
-        const y = atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index);
-        const z = atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index);
-
-        if (invalidValues.includes(x) || invalidValues.includes(y) || invalidValues.includes(z)) {
-            throw new Error('Dummy atom: Invalid position');
-        }
-
-        const position = new FractPosition(x, y, z);
+        const position = PositionFactory.fromCIF(cifBlock, index);
         
-        const adp = ADPFactory.createADP(cifBlock, index);
+        const adp = ADPFactory.fromCIF(cifBlock, index);
 
         const disorderGroup = atomSite.getIndex(
             ['_atom_site.disorder_group', '_atom_site_disorder_group'],
@@ -476,129 +467,6 @@ export class Atom {
             disorderGroup === '.' ? 0 : disorderGroup,
         );
     }   
-}
-
-/**
- * Abstract base class for representing positions in 3D space
- * @abstract
- * @implements {Iterable<number>}
- */
-export class BasePosition {
-    #coords;
-
-    /**
-     * Creates a new position
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate 
-     * @param {number} z - Z coordinate
-     * @throws {TypeError} If instantiated directly
-     */
-    constructor(x, y, z) {
-        if (new.target === BasePosition) {
-            throw new TypeError(
-                'BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition',
-            );
-        }
-        this.#coords = [x, y, z];
-        Object.defineProperties(this, {
-            0: { get: () => this.#coords[0] },
-            1: { get: () => this.#coords[1] },
-            2: { get: () => this.#coords[2] },
-            length: { value: 3 },
-            [Symbol.iterator]: { 
-                value: function* () {
-                    yield this.#coords[0];
-                    yield this.#coords[1];
-                    yield this.#coords[2];
-                },
-            },
-        });
-    }
-
-    get x() {
-        return this.#coords[0]; 
-    }
-    get y() {
-        return this.#coords[1]; 
-    }
-    get z() {
-        return this.#coords[2]; 
-    }
-
-    set x(value) {
-        this.#coords[0] = value; 
-    }
-    set y(value) {
-        this.#coords[1] = value; 
-    }
-    set z(value) {
-        this.#coords[2] = value; 
-    }
-
-    /**
-     * Converts from given coordinate system to Cartesian coordinates
-     * @abstract
-     * @param {UnitCell} _unitCell - Unit cell for conversion
-     * @returns {CartPosition} Position in Cartesian coordinates
-     * @throws {Error} If not implemented by subclass
-     */
-    toCartesian(_unitCell) {
-        throw new Error('toCartesian must be implemented by subclass');
-    }
-}
-
-/**
- * Represents a position in fractional coordinates
- * @extends BasePosition
- */
-export class FractPosition extends BasePosition {
-    /**
-     * Creates a new fractional position
-     * @param {number} x - X coordinate in fractional units
-     * @param {number} y - Y coordinate in fractional units 
-     * @param {number} z - Z coordinate in fractional units
-     */
-    constructor(x, y, z) {
-        super(x, y, z);
-    }
-
-    /**
-     * Converts to Cartesian coordinates using unit cell parameters
-     * @param {UnitCell} unitCell - Unit cell for conversion
-     * @returns {CartPosition} Position in Cartesian coordinates
-     */
-    toCartesian(unitCell) {
-        const cartCoords = math.multiply(
-            unitCell.fractToCartMatrix, 
-            math.matrix([this.x, this.y, this.z]),
-        );
-        return new CartPosition(...cartCoords.toArray());
-    }
-}
-
-/**
- * Represents a position in Cartesian coordinates
- * @extends BasePosition
- */
-export class CartPosition extends BasePosition {
-    /**
-     * Creates a new Cartesian position
-     * @param {number} x - X coordinate in Angstroms
-     * @param {number} y - Y coordinate in Angstroms
-     * @param {number} z - Z coordinate in Angstroms
-     */
-    constructor(x, y, z) {
-        super(x, y, z);
-    }
-
-    /**
-     * Returns self since already in Cartesian coordinates
-     * @param {*} _ - Unused unit cell
-     * @returns {CartPosition} This position instance
-     */
-    toCartesian(_unitCell) {
-        return this;
-    }
 }
 
 /**

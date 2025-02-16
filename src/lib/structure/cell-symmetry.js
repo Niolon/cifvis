@@ -1,6 +1,7 @@
 import { create, all } from 'mathjs';
 
-import { Atom, FractPosition } from './crystal.js';
+import { Atom } from './crystal.js';
+import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../cif/read-cif.js';
 

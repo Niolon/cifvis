@@ -1,9 +1,9 @@
 import { create, all } from 'mathjs';
 
 import { 
-    CrystalStructure, UnitCell, Atom, Bond, HBond, FractPosition, BasePosition, CartPosition,
-    inferElementFromLabel, 
+    CrystalStructure, UnitCell, Atom, Bond, HBond, inferElementFromLabel, 
 } from './crystal.js';
+import { FractPosition } from './position.js';
 import { UIsoADP, UAnisoADP } from './adp.js';
 import { CIF } from '../cif/read-cif.js';
 
@@ -780,60 +780,6 @@ C1 C 0 0 0 1
         const atom = Atom.fromCIF(cif.getBlock(0), 0);
 
         expect(atom.disorderGroup).toBe(1);
-    });
-});
-
-describe('Position Classes', () => {
-    const unitCell = new UnitCell(10, 10, 10, 90, 90, 90);
-
-    test('Position base class cannot be instantiated directly', () => {
-        expect(() => new BasePosition(1, 2, 3))
-            .toThrow('Position is an abstract class and cannot be instantiated directly');
-    });
-
-    test('Position provides array-like access', () => {
-        const pos = new FractPosition(1, 2, 3);
-        expect(pos[0]).toBe(1);
-        expect(pos[1]).toBe(2);
-        expect(pos[2]).toBe(3);
-        expect([...pos]).toEqual([1, 2, 3]);
-    });
-
-    test('Position getters/setters work correctly', () => {
-        const pos = new FractPosition(1, 2, 3);
-      
-        pos.x = 4;
-        pos.y = 5;
-        pos.z = 6;
-
-        expect(pos.x).toBe(4);
-        expect(pos.y).toBe(5);
-        expect(pos.z).toBe(6);
-        expect([...pos]).toEqual([4, 5, 6]);
-    });
-
-    test('FractPosition converts to CartPosition correctly', () => {
-        const fPos = new FractPosition(0.5, 0.5, 0.5);
-        const cPos = fPos.toCartesian(unitCell);
-      
-        expect(cPos).toBeInstanceOf(CartPosition);
-        expect(cPos.x).toBeCloseTo(5.0);
-        expect(cPos.y).toBeCloseTo(5.0);
-        expect(cPos.z).toBeCloseTo(5.0);
-    });
-
-    test('CartPosition toCartesian returns self', () => {
-        const cPos = new CartPosition(5, 5, 5);
-        const result = cPos.toCartesian(unitCell);
-      
-        expect(result).toBe(cPos);
-    });
-
-    test('toCartesian throws error if not implemented', () => {
-        class TestPosition extends BasePosition {}
-
-        const testPosition = new TestPosition(0.0, 0.0, 0.0);
-        expect(() => testPosition.toCartesian()).toThrow('toCartesian must be implemented by subclass');
     });
 });
 

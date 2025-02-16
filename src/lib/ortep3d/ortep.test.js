@@ -5,8 +5,9 @@ import {
     ORTEPBond,
 } from './ortep.js';
 import { 
-    Atom, Bond, HBond, FractPosition, CrystalStructure, UnitCell, 
+    Atom, Bond, HBond, CrystalStructure, UnitCell, 
 } from '../structure/crystal.js';
+import { FractPosition } from '../structure/position.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
 import { create, all } from 'mathjs';
