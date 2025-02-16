@@ -13,8 +13,8 @@
     "build": "vite build",
     "build:demo": "vite build --config vite.demo.config.mjs",
     "test": "jest",
-    "test:modifiers-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs ./cod",
-    "test:ortep-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs ./cod",
+    "test:modifiers-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs ../cod",
+    "test:ortep-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs ../cod",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
