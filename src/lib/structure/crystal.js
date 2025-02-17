@@ -273,14 +273,30 @@ export class UnitCell {
     * @returns {UnitCell} New unit cell instance
     */
     static fromCIF(cifBlock) {
-        return new UnitCell(
-            cifBlock.get(['_cell.length_a', '_cell_length_a']),
-            cifBlock.get(['_cell.length_b', '_cell_length_b']),
-            cifBlock.get(['_cell.length_c', '_cell_length_c']),
-            cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha']),
-            cifBlock.get(['_cell.angle_beta', '_cell_angle_beta']),
-            cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma']),
-        );
+        const cellParameters = [
+            cifBlock.get(['_cell.length_a', '_cell_length_a'], -9999.9),
+            cifBlock.get(['_cell.length_b', '_cell_length_b'], -9999.9),
+            cifBlock.get(['_cell.length_c', '_cell_length_c'], -9999.9),
+            cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha'], -9999.9),
+            cifBlock.get(['_cell.angle_beta', '_cell_angle_beta'], -9999.),
+            cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'], -9999.9),
+        ]
+
+        if (cellParameters.some(val => val < 0.0)) {
+            const names = ['a', 'b', 'c', 'alpha', 'beta', 'gamma'];
+            const missing = [];
+            cellParameters.forEach((val, i) => {
+                if (val < 0.0) {
+                    missing.push(names[i]);
+                }
+            });
+            const missingStr = missing.join(', ');
+            throw new Error(
+                `Unit cell parameter entries missing in CIF or negative for cell parameters: ${missingStr}`,
+            );
+        }
+
+        return new UnitCell(...cellParameters);
     }
  
     get a() {

@@ -218,7 +218,7 @@ export class CellSymmetry {
         return this.symmetryOperations.map(op => op.applyToPoint(point));
     }
 
-    applySymmetry(positionCode, atoms) {
+    parsePositionCode(positionCode) {
         let transVector, opId;
         try {
             // Split code into operation ID and translation
@@ -234,10 +234,18 @@ export class CellSymmetry {
         // Look up symmetry operation index using ID map
         const symOpIndex = this.operationIds.get(opId);
         if (symOpIndex === undefined) {
-            throw new Error(`Invalid symmetry operation ID: ${opId}`);
+            throw new Error(
+                `Invalid symmetry operation ID in string ${positionCode}: ${opId},`
+                + ' expecting string format "<symOpId>_abc". ID entry in symOp loop present?',
+            );
         }
 
         const symOp = this.symmetryOperations[symOpIndex];
+        return { symOp, transVector };
+    }
+
+    applySymmetry(positionCode, atoms) {
+        const { symOp, transVector } = this.parsePositionCode(positionCode);
 
         if (Array.isArray(atoms)) {
             const newAtoms = symOp.applyToAtoms(atoms);

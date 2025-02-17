@@ -353,6 +353,23 @@ _cell_angle_gamma 90
         expect(cell.b).toBe(15);
         expect(cell.c).toBe(20);
     });
+
+    test('fromCIF throws informative error for missing parameters', () => {
+        const cifText = `
+data_test
+_cell_length_a 10
+_cell_length_c 20
+_cell_angle_beta 90
+_cell_angle_gamma 90
+`;
+        const cif = new CIF(cifText);
+        expect(() => {
+            UnitCell.fromCIF(cif.getBlock(0))
+        }).toThrow(
+            'Unit cell parameter entries missing in CIF or negative for cell parameters: b, alpha',
+        );
+
+    });
     
     describe('parameter validation', () => {
         let cell;

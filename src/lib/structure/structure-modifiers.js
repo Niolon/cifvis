@@ -68,7 +68,7 @@ export class BaseFilter {
         if (!validModes.includes(this.mode)) {
             const oldMode = this.mode;
             this.mode = this.PREFERRED_FALLBACK_ORDER.find( mode => validModes.includes(mode)) || validModes[0];
-            console.warn(`${this.filterName} mode ${oldMode} was not applicable, chaged to ${this.mode}`);
+            console.warn(`${this.filterName} mode ${oldMode} was not applicable, changed to ${this.mode}`);
         }
     }
 

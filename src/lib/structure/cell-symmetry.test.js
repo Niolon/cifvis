@@ -314,7 +314,7 @@ describe('CellSymmetry', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
             expect(() => sym.applySymmetry('2_555', {}))
-                .toThrow('Invalid symmetry operation ID: 2');
+                .toThrow('Invalid symmetry operation ID in string 2_555: 2');
         });
 
         test('transforms anisotropic displacement parameters', () => {
@@ -473,7 +473,7 @@ a1 x,y,z`;
             const symmetry = CellSymmetry.fromCIF(block);
     
             expect(() => symmetry.applySymmetry('invalid_555', mockAtom))
-                .toThrow('Invalid symmetry operation ID: invalid');
+                .toThrow('Invalid symmetry operation ID in string invalid_555: invalid');
         });
     });
 });
