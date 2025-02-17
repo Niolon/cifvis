@@ -131,7 +131,7 @@ C1 dum 0.5 0.5 0.5
             .toThrow('Dummy atom: calc_flag is dum');
     });
 
-    test('detects dummy atom from invalid coordinates', () => {
+    test('detects dummy atom from invalid fractional coordinates', () => {
         const cifText = `
 data_test
 loop_
@@ -139,6 +139,21 @@ _atom_site_label
 _atom_site_fract_x
 _atom_site_fract_y
 _atom_site_fract_z
+C1 0.5 . 0.5
+`;
+        const cif = new CIF(cifText);
+        expect(() => PositionFactory.fromCIF(cif.getBlock(), 0))
+            .toThrow('Dummy atom: Invalid position');
+    });
+
+    test('detects dummy atom from invalid cartesian coordinates', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_Cartn_x
+_atom_site_Cartn_y
+_atom_site_Cartn_z
 C1 0.5 . 0.5
 `;
         const cif = new CIF(cifText);
