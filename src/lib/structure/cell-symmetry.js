@@ -236,7 +236,7 @@ export class CellSymmetry {
         if (symOpIndex === undefined) {
             throw new Error(
                 `Invalid symmetry operation ID in string ${positionCode}: ${opId},`
-                + ' expecting string format "<symOpId>_abc". ID entry in symOp loop present?',
+                + ' expecting string format "<symOpId>_abc". ID entry in present symOp loop?',
             );
         }
 
