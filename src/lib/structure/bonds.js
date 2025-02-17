@@ -184,6 +184,15 @@ export class BondsFactory {
     }
 
     /**
+     * Checks for an atom label whether it is valid (exclude centroids)
+     * @param {string} atomLabel - An atom Label
+     * @returns {boolean} Whether the label is valid
+     */
+    static isValidLabel(atomLabel) {
+        return /^(Cg|Cnt|CG|CNT)/.test(atomLabel);
+    }
+
+    /**
      * Checks if bond atom pair is valid (not centroids unless in atom list)
      * @private
      * @param {string} atom1Label - First atom label
@@ -192,8 +201,8 @@ export class BondsFactory {
      * @returns {boolean} Whether bond pair is valid
      */
     static isValidBondPair(atom1Label, atom2Label, atomLabels) {
-        const atom1IsCentroid = /^(Cg|Cnt)/.test(atom1Label);
-        const atom2IsCentroid = /^(Cg|Cnt)/.test(atom2Label);
+        const atom1IsCentroid = BondsFactory.isValidLabel(atom1Label);
+        const atom2IsCentroid = BondsFactory.isValidLabel(atom2Label);
 
         return (!atom1IsCentroid || atomLabels.has(atom1Label)) && 
                (!atom2IsCentroid || atomLabels.has(atom2Label));
@@ -209,9 +218,9 @@ export class BondsFactory {
      * @returns {boolean} Whether H-bond triplet is valid
      */
     static isValidHBondTriplet(donorLabel, hydrogenLabel, acceptorLabel, atomLabels) {
-        const donorIsCentroid = /^(Cg|Cnt)/.test(donorLabel);
-        const hydrogenIsCentroid = /^(Cg|Cnt)/.test(hydrogenLabel);
-        const acceptorIsCentroid = /^(Cg|Cnt)/.test(acceptorLabel);
+        const donorIsCentroid = BondsFactory.isValidLabel(donorLabel);
+        const hydrogenIsCentroid = BondsFactory.isValidLabel(hydrogenLabel);
+        const acceptorIsCentroid = BondsFactory.isValidLabel(acceptorLabel);
 
         return (!donorIsCentroid || atomLabels.has(donorLabel)) &&
                (!hydrogenIsCentroid || atomLabels.has(hydrogenLabel)) &&
