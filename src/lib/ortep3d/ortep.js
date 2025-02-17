@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import defaultSettings from './structure-settings.js';
-import { HBond, Bond, inferElementFromLabel } from '../structure/crystal.js';
+import { inferElementFromLabel } from '../structure/crystal.js';
+import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { SymmetryGrower } from '../structure/structure-modifiers.js';
 

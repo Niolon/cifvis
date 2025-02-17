@@ -1,9 +1,8 @@
-import { create, all } from 'mathjs';
-
 import { calculateFractToCartMatrix } from './fract-to-cart.js';
 import { CellSymmetry } from './cell-symmetry.js';
 import { ADPFactory } from './adp.js';
 import { PositionFactory } from './position.js';
+import { BondsFactory } from './bonds.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -108,46 +107,12 @@ export class CrystalStructure {
         if (atoms.length === 0) {
             throw new Error('The cif file contains no valid atoms.');
         }
-        
-        const bonds = [];
-        try {
-            const bondLoop = cifBlock.get('_geom_bond');
-            const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
-            const atomLabels = new Set(atoms.map(atom => atom.label));
-            
-            for (let i = 0; i < nBonds; i++) {
-                const atom1Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
-                    i,
-                );
-                const atom2Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
-                    i,
-                );
-                
-                // Only filter out centroids (Cg or Cnt)
-                const atom1IsCentroid = /^(Cg|Cnt)/.test(atom1Label);
-                const atom2IsCentroid = /^(Cg|Cnt)/.test(atom2Label);
-                
-                if ((!atom1IsCentroid || atomLabels.has(atom1Label)) && 
-                    (!atom2IsCentroid || atomLabels.has(atom2Label))) {
-                    bonds.push(Bond.fromCIF(cifBlock, i));
-                }
-            }
-        } catch {
-            console.warn('No bonds found in CIF file');
-        }
 
-        const hBonds = [];
-        const hbondLoop = cifBlock.get('_geom_hbond', false);
-        if (hbondLoop) {
-            const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
-            for (let i = 0; i < nHBonds; i++) {
-                hBonds.push(HBond.fromCIF(cifBlock, i));
-            }
-        } 
-        
+        const atomLabels = new Set(atoms.map(atom => atom.label));
+        const bonds = BondsFactory.createBonds(cifBlock, atomLabels);
+        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);
         const symmetry = CellSymmetry.fromCIF(cifBlock);
+
         return new CrystalStructure(cell, atoms, bonds, hBonds, symmetry);
     }
 
@@ -469,114 +434,3 @@ export class Atom {
     }   
 }
 
-/**
-* Represents a covalent bond between atoms
-*/
-export class Bond {
-    /**
-    * Creates a new bond
-    * @param {string} atom1Label - Label of first atom
-    * @param {string} atom2Label - Label of second atom
-    * @param {number} [bondLength=null] - Bond length in Å
-    * @param {number} [bondLengthSU=null] - Standard uncertainty in bond length
-    * @param {string} [atom2SiteSymmetry=null] - Symmetry operation for second atom
-    */
-    constructor(atom1Label, atom2Label, bondLength=null, bondLengthSU=null, atom2SiteSymmetry=null) {
-        this.atom1Label = atom1Label;
-        this.atom2Label = atom2Label;
-        this.bondLength = bondLength;
-        this.bondLengthSU = bondLengthSU;
-        this.atom2SiteSymmetry = atom2SiteSymmetry;
-    }
-
-    /**
-    * Creates a Bond from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @param {number} bondIndex - Index in _geom_bond loop
-    * @returns {Bond} New bond instance
-    */
-    static fromCIF(cifBlock, bondIndex) {
-        const bondLoop = cifBlock.get('_geom_bond');
- 
-        return new Bond(
-            bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
-            bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
-            bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
-            bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
-            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.'),
-        );
-    }
-}
-
-/**
-* Represents a hydrogen bond between atoms
-*/
-export class HBond {
-    /**
-    * Creates a new hydrogen bond
-    * @param {string} donorAtomLabel - Label of donor atom
-    * @param {string} hydrogenAtomLabel - Label of hydrogen atom
-    * @param {string} acceptorAtomLabel - Label of acceptor atom
-    * @param {number} donorHydrogenDistance - D-H distance in Å
-    * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
-    * @param {number} acceptorHydrogenDistance - H···A distance in Å
-    * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
-    * @param {number} donorAcceptorDistance - D···A distance in Å
-    * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
-    * @param {number} hBondAngle - D-H···A angle in degrees
-    * @param {number} hBondAngleSU - Standard uncertainty in angle
-    * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
-    */
-    constructor(
-        donorAtomLabel,
-        hydrogenAtomLabel,
-        acceptorAtomLabel,
-        donorHydrogenDistance,
-        donorHydrogenDistanceSU,
-        acceptorHydrogenDistance,
-        acceptorHydrogenDistanceSU,
-        donorAcceptorDistance,
-        donorAcceptorDistanceSU,
-        hBondAngle,
-        hBondAngleSU,
-        acceptorAtomSymmetry,
-    ) {
-        this.donorAtomLabel = donorAtomLabel;
-        this.hydrogenAtomLabel = hydrogenAtomLabel;
-        this.acceptorAtomLabel = acceptorAtomLabel;
-        this.donorHydrogenDistance = donorHydrogenDistance;
-        this.donorHydrogenDistanceSU = donorHydrogenDistanceSU;
-        this.acceptorHydrogenDistance = acceptorHydrogenDistance;
-        this.acceptorHydrogenDistanceSU = acceptorHydrogenDistanceSU;
-        this.donorAcceptorDistance = donorAcceptorDistance;
-        this.donorAcceptorDistanceSU = donorAcceptorDistanceSU;
-        this.hBondAngle = hBondAngle;
-        this.hBondAngleSU = hBondAngleSU;
-        this.acceptorAtomSymmetry = acceptorAtomSymmetry;    
-    }
-    
-    /**
-    * Creates a HBond from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block  
-    * @param {number} hBondIndex - Index in _geom_hbond loop
-    * @returns {HBond} New hydrogen bond instance
-    */
-    static fromCIF(cifBlock, hBondIndex) {
-        const hBondLoop = cifBlock.get('_geom_hbond');
-
-        return new HBond(
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.distance_dh', '_geom_hbond_distance_DH'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.distance_dh_su', '_geom_hbond_distance_DH_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.distance_ha', '_geom_hbond_distance_HA'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.distance_ha_su', '_geom_hbond_distance_HA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.distance_da', '_geom_hbond_distance_DA'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.'),
-        );
-    }
-}

@@ -1,4 +1,5 @@
-import { CrystalStructure, HBond, Bond, Atom, inferElementFromLabel } from './crystal.js';
+import { CrystalStructure, Atom, inferElementFromLabel } from './crystal.js';
+import { HBond, Bond } from './bonds.js';
 import { create, all } from 'mathjs';
 const math = create(all);
 

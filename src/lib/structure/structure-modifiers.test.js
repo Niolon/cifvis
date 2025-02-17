@@ -1,7 +1,8 @@
 import { 
     BaseFilter, HydrogenFilter, DisorderFilter, SymmetryGrower, AtomLabelFilter, BondGenerator,
 } from './structure-modifiers.js';
-import { CrystalStructure, UnitCell, Atom, Bond, HBond } from './crystal.js';
+import { CrystalStructure, UnitCell, Atom } from './crystal.js';
+import { Bond, HBond } from './bonds.js';
 import { UAnisoADP } from './adp.js';
 import { FractPosition } from './position.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';

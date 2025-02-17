@@ -1,8 +1,9 @@
 import { create, all } from 'mathjs';
 
 import { 
-    CrystalStructure, UnitCell, Atom, Bond, HBond, inferElementFromLabel, 
+    CrystalStructure, UnitCell, Atom, inferElementFromLabel, 
 } from './crystal.js';
+import { Bond, HBond } from './bonds.js';
 import { FractPosition } from './position.js';
 import { UIsoADP, UAnisoADP } from './adp.js';
 import { CIF } from '../cif/read-cif.js';
@@ -176,52 +177,6 @@ C4 C 0 0 0 .`;
         const structure = CrystalStructure.fromCIF(cif.getBlock(0));
         expect(structure.atoms.length).toBe(2);
         expect(structure.atoms.map(a => a.label)).toEqual(['C1', 'C4']);
-    });
-
-    test('filters centroid bonds', () => {
-        const cifText = `
-data_test
-_cell_length_a 10
-_cell_length_b 10
-_cell_length_c 10
-_cell_angle_alpha 90
-_cell_angle_beta 90
-_cell_angle_gamma 90
-
-loop_
-_atom_site_label
-_atom_site_type_symbol
-_atom_site_fract_x
-_atom_site_fract_y
-_atom_site_fract_z
-C1 C 0 0 0
-O1 O 0.1 0.1 0.1
-
-loop_
-_geom_bond_atom_site_label_1
-_geom_bond_atom_site_label_2
-_geom_bond_distance
-_geom_bond_site_symmetry_2
-C1 O1 1.5 .
-C1 Cnt1 2.0 .
-Cg2 O1 2.1 .
-Cnt1 O1 2.2 .
-Cg2 C1 2.3 .
-C1 O1 1.6 2_555
-`;
-    
-        const cif = new CIF(cifText);
-        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
-    
-        // Should only have 2 bonds: C1-O1 and C1-O1 2_555
-        expect(structure.bonds).toHaveLength(2);
-        expect(structure.bonds[0].atom1Label).toBe('C1');
-        expect(structure.bonds[0].atom2Label).toBe('O1');
-        expect(structure.bonds[0].bondLength).toBe(1.5);
-        expect(structure.bonds[1].atom1Label).toBe('C1');
-        expect(structure.bonds[1].atom2Label).toBe('O1');
-        expect(structure.bonds[1].bondLength).toBe(1.6);
-        expect(structure.bonds[1].atom2SiteSymmetry).toBe('2_555');
     });
 
     test('getAtomByLabel returns correct atom', () => {
@@ -780,69 +735,5 @@ C1 C 0 0 0 1
         const atom = Atom.fromCIF(cif.getBlock(0), 0);
 
         expect(atom.disorderGroup).toBe(1);
-    });
-});
-
-describe('Bond', () => {
-    test('constructs with minimal parameters', () => {
-        const bond = new Bond('C1', 'O1');
-        expect(bond.atom1Label).toBe('C1');
-        expect(bond.atom2Label).toBe('O1');
-        expect(bond.bondLength).toBeNull();
-    });
-
-    test('fromCIF creates complete bond', () => {
-        const cifText = `
-data_test
-loop_
-_geom_bond_atom_site_label_1
-_geom_bond_atom_site_label_2
-_geom_bond_distance
-_geom_bond_site_symmetry_2
-C1 O1 1.5 2_665
-    `;
-        const cif = new CIF(cifText);
-        const bond = Bond.fromCIF(cif.getBlock(0), 0);
-
-        expect(bond.atom1Label).toBe('C1');
-        expect(bond.atom2Label).toBe('O1');
-        expect(bond.bondLength).toBe(1.5);
-        expect(bond.atom2SiteSymmetry).toBe('2_665');
-    });
-});
-
-describe('HBond', () => {
-    test('constructs with all parameters', () => {
-        const hBond = new HBond(
-            'O1', 'H1', 'O2',
-            1.0, 0.01, 2.0, 0.02,
-            2.8, 0.03, 175, 1, '1_555',
-        );
-        expect(hBond.donorAtomLabel).toBe('O1');
-        expect(hBond.hydrogenAtomLabel).toBe('H1');
-        expect(hBond.acceptorAtomLabel).toBe('O2');
-        expect(hBond.acceptorAtomSymmetry).toBe('1_555');
-    });
-
-    test('fromCIF creates complete hydrogen bond', () => {
-        const cifText = `
-data_test
-loop_
-_geom_hbond_atom_site_label_D
-_geom_hbond_atom_site_label_H
-_geom_hbond_atom_site_label_A
-_geom_hbond_distance_DH
-_geom_hbond_distance_HA
-_geom_hbond_distance_DA
-_geom_hbond_angle_DHA
-_geom_hbond_site_symmetry_A
-O1 H1 O2 1.0 2.0 2.8 175 1_555
-`;
-        const cif = new CIF(cifText);
-        const hBond = HBond.fromCIF(cif.getBlock(0), 0);
-
-        expect(hBond.donorAtomLabel).toBe('O1');
-        expect(hBond.hydrogenAtomLabel).toBe('H1');
-        expect(hBond.acceptorAtomSymmetry).toBe('1_555');
     });
 });
