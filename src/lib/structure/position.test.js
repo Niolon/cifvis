@@ -158,24 +158,4 @@ C1 C
         expect(() => PositionFactory.fromCIF(cif.getBlock(), 0))
             .toThrow('Invalid position: No valid fractional or Cartesian coordinates found');
     });
-
-    test('checkCoordinates detects available coordinate types', () => {
-        const cifText = `
-data_test
-loop_
-_atom_site_label
-_atom_site_fract_x
-_atom_site_fract_y
-_atom_site_fract_z
-_atom_site_Cartn_x
-_atom_site_Cartn_y
-_atom_site_Cartn_z
-C1 0.5 0.5 0.5 5.0 5.0 5.0
-`;
-        const cif = new CIF(cifText);
-        const result = PositionFactory.checkCoordinates(cif.getBlock(), 0);
-        
-        expect(result.hasFractional).toBe(true);
-        expect(result.hasCartesian).toBe(true);
-    });
 });

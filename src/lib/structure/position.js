@@ -185,41 +185,4 @@ export class PositionFactory {
 
         throw new Error('Invalid position: No valid fractional or Cartesian coordinates found');
     }
-
-    /**
-     * Checks whether a CIF block contains valid position data
-     * @param {CifBlock} cifBlock - CIF data block to check
-     * @param {number} index - Index in the loop
-     * @returns {Object} Object indicating type of coordinates available
-     */
-    static checkCoordinates(cifBlock, index) {
-        const atomSite = cifBlock.get('_atom_site');
-        const invalidValues = ['.', '?'];
-
-        let hasFract = false;
-        let hasCart = false;
-
-        try {
-            const x = atomSite.getIndex(['_atom_site.fract_x', '_atom_site_fract_x'], index);
-            const y = atomSite.getIndex(['_atom_site.fract_y', '_atom_site_fract_y'], index);
-            const z = atomSite.getIndex(['_atom_site.fract_z', '_atom_site_fract_z'], index);
-            hasFract = !invalidValues.includes(x) && !invalidValues.includes(y) && !invalidValues.includes(z);
-        } catch {
-            hasFract = false;
-        }
-
-        try {
-            const x = atomSite.getIndex(['_atom_site.Cartn_x', '_atom_site_Cartn_x'], index);
-            const y = atomSite.getIndex(['_atom_site.Cartn_y', '_atom_site_Cartn_y'], index);
-            const z = atomSite.getIndex(['_atom_site.Cartn_z', '_atom_site_Cartn_z'], index);
-            hasCart = !invalidValues.includes(x) && !invalidValues.includes(y) && !invalidValues.includes(z);
-        } catch {
-            hasCart = false;
-        }
-
-        return {
-            hasFractional: hasFract,
-            hasCartesian: hasCart,
-        };
-    }
 }
