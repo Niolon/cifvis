@@ -165,7 +165,7 @@ async function testCIFFile(filePath) {
         if (ortep) {
             try {
                 ortep.dispose();
-            } catch (e) {
+            } catch {
                 // Ignore cleanup errors
             }
         }

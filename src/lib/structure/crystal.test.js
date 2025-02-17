@@ -364,7 +364,7 @@ _cell_angle_gamma 90
 `;
         const cif = new CIF(cifText);
         expect(() => {
-            UnitCell.fromCIF(cif.getBlock(0))
+            UnitCell.fromCIF(cif.getBlock(0));
         }).toThrow(
             'Unit cell parameter entries missing in CIF or negative for cell parameters: b, alpha',
         );

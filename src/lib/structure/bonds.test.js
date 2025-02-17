@@ -1,5 +1,8 @@
 
 import { Bond, HBond, BondsFactory } from './bonds.js';
+import { Atom } from './crystal.js';
+import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
+import { FractPosition } from './position.js';
 import { CIF } from '../cif/read-cif.js';
 
 describe('Bond', () => {
@@ -235,6 +238,109 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
             expect(BondsFactory.isValidHBondTriplet('Cg1', 'H1', 'N1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidHBondTriplet('O1', 'Cg1', 'N1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidHBondTriplet('O1', 'H1', 'Cg2', validAtoms)).toBe(true);
+        });
+    });
+});
+
+describe('Bond Validation', () => {
+    let atoms;
+    let symmetryOps;
+    let symmetry;
+
+    beforeEach(() => {
+        symmetryOps = [new SymmetryOperation('x,y,z')];
+        symmetry = new CellSymmetry('P1', 1, symmetryOps);
+        
+        atoms = [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+            new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),
+            new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1)),
+        ];
+    });
+
+    describe('validateBonds', () => {
+        test('accepts valid bonds', () => {
+            const bonds = [
+                new Bond('C1', 'O1', 1.5),
+                new Bond('O1', 'H1', 1.0),
+            ];
+            const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
+            expect(result.isValid()).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+
+        test('detects missing atoms in bonds', () => {
+            const bonds = [
+                new Bond('C1', 'X1', 1.5),
+                new Bond('Y1', 'O1', 1.0),
+            ];
+            const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
+            expect(result.isValid()).toBe(false);
+            expect(result.errors).toHaveLength(2);
+            expect(result.errors[0]).toContain('Non-existent atoms in bond: C1 - X1');
+            expect(result.errors[0]).toContain('non-existent atom(s): X1');
+            expect(result.errors[1]).toContain('Non-existent atoms in bond: Y1 - O1');
+            expect(result.errors[1]).toContain('non-existent atom(s): Y1');
+        });
+
+        test('detects invalid symmetry operations in bonds', () => {
+            const bonds = [
+                new Bond('C1', 'O1', 1.5, 0.01, '9_555'),
+            ];
+            const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
+            expect(result.isValid()).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0]).toContain('Invalid symmetry in bond: C1 - O1');
+            expect(result.errors[0]).toContain('invalid symmetry operation: 9_555');
+        });
+
+        test('accepts valid symmetry operations', () => {
+            const bonds = [
+                new Bond('C1', 'O1', 1.5, 0.01, '1_555'),
+            ];
+            const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
+            expect(result.isValid()).toBe(true);
+        });
+    });
+
+    describe('validateHBonds', () => {
+        test('accepts valid h-bonds', () => {
+            const hBonds = [
+                new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+            ];
+            const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
+            expect(result.isValid()).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+
+        test('detects missing atoms in h-bonds', () => {
+            const hBonds = [
+                new HBond('O1', 'X1', 'Y1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+            ];
+            const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
+            expect(result.isValid()).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0]).toContain('Non-existent atoms in H-bond: O1 - X1 - Y1');
+            expect(result.errors[0]).toContain('non-existent atom(s): X1, Y1');
+        });
+
+        test('detects invalid symmetry operations in h-bonds', () => {
+            const hBonds = [
+                new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '9_555'),
+            ];
+            const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
+            expect(result.isValid()).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0]).toContain('Invalid symmetry in H-bond: O1 - H1 - C1');
+            expect(result.errors[0]).toContain('invalid symmetry operation: 9_555');
+        });
+
+        test('accepts valid symmetry operations in h-bonds', () => {
+            const hBonds = [
+                new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '1_555'),
+            ];
+            const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
+            expect(result.isValid()).toBe(true);
         });
     });
 });

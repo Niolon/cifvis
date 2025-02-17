@@ -113,6 +113,19 @@ export class CrystalStructure {
         const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);
         const symmetry = CellSymmetry.fromCIF(cifBlock);
 
+        const bondValidationResult = BondsFactory.validateBonds(bonds, atoms, symmetry);
+        const hBondValidationResult = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
+
+        if (!bondValidationResult.isValid() || !hBondValidationResult.isValid()) {
+            const header = 'There were errors in the bond or H-bond creation\n';
+            const bondReport = bondValidationResult.report(atoms, symmetry);
+            const hBondReport = hBondValidationResult.report(atoms, symmetry);
+            if (bondReport.length !== 0 && hBondReport.length !== 0) {
+                throw new Error(header + bondReport + '\n' + hBondReport);
+            }
+            throw new Error(header + bondReport + hBondReport);
+        }
+
         return new CrystalStructure(cell, atoms, bonds, hBonds, symmetry);
     }
 
@@ -280,7 +293,7 @@ export class UnitCell {
             cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha'], -9999.9),
             cifBlock.get(['_cell.angle_beta', '_cell_angle_beta'], -9999.),
             cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'], -9999.9),
-        ]
+        ];
 
         if (cellParameters.some(val => val < 0.0)) {
             const names = ['a', 'b', 'c', 'alpha', 'beta', 'gamma'];

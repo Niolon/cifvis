@@ -111,14 +111,142 @@ export class HBond {
         );
     }
 }
+/**
+ * Result of bond validation containing any error messages
+ */
+export class ValidationResult {
+    constructor() {
+        this.atomLabelErrors = [];
+        this.symmetryErrors = [];
+    }
+
+    /**
+     * Add an error message to the validation results
+     * @param {string} error - Error message to add
+     */
+    addAtomLabelError(error) {
+        this.atomLabelErrors.push(error);
+    }
+
+    addSymmetryError(error) {
+        this.symmetryErrors.push(error);
+    }
+
+    /**
+     * Check if validation found any errors
+     * @returns {boolean} True if validation passed with no errors
+     */
+    isValid() {
+        return (this.atomLabelErrors.length + this.symmetryErrors.length) === 0;
+    }
+
+    report(atoms, symmetry) {
+        let reportString = '';
+        if (this.atomLabelErrors.length !== 0) {
+            reportString += 'Unknown atom label(s). Known labels are \n';
+            reportString += atoms.map(atom => atom.label).join(', ');
+            reportString += '\n';
+            reportString += this.atomLabelErrors.join('\n');
+        }
+
+        if (this.symmetryErrors.length !== 0) {
+            if (reportString.length !== 0) {
+                reportString += '\n';
+            }
+            reportString += 'Unknown symmetry ID(s) or String format. Expected format is <id>_abc. ';
+            reportString += 'Known IDs are:\n';
+            reportString += Array.from(symmetry.operationIds.keys()).join(', ');
+            reportString += '\n';
+            reportString += this.symmetryErrors.join('\n');
+        }
+
+        return reportString;
+    }
+}
 
 export class BondsFactory {
+    
     /**
-     * Creates bonds from CIF data
-     * @param {CifBlock} cifBlock - CIF data block to parse
-     * @param {Set<string>} atomLabels - Set of valid atom labels
-     * @returns {Bond[]} Array of created bonds
+     * Validates bonds against crystal structure
+     * @param {CrystalStructure} structure - Structure to validate against
+     * @returns {ValidationResult} Validation results
      */
+    static validateBonds(bonds, atoms, symmetry) {
+        const result = new ValidationResult();
+        const atomLabels = new Set(atoms.map(atom => atom.label));
+
+        for (const bond of bonds) {
+            const missingAtoms = [];
+            if (!atomLabels.has(bond.atom1Label)) {
+                missingAtoms.push(bond.atom1Label);
+            }
+            if (!atomLabels.has(bond.atom2Label)) {
+                missingAtoms.push(bond.atom2Label);
+            }
+            if (missingAtoms.length > 0) {
+                result.addAtomLabelError(
+                    `Non-existent atoms in bond: ${bond.atom1Label} - ${bond.atom2Label}, ` +
+                    `non-existent atom(s): ${missingAtoms.join(', ')}`,
+                );
+            }
+
+            if (bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.') {
+                try {
+                    symmetry.parsePositionCode(bond.atom2SiteSymmetry);
+                } catch {
+                    result.addSymmetryError(
+                        `Invalid symmetry in bond: ${bond.atom1Label} - ${bond.atom2Label}, ` +
+                        `invalid symmetry operation: ${bond.atom2SiteSymmetry}`,
+                    );
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Validates h-bonds against crystal structure
+     * @param {CrystalStructure} structure - Structure to validate against
+     * @returns {ValidationResult} Validation results
+     */
+    static validateHBonds(hBonds, atoms, symmetry) {
+        const result = new ValidationResult();
+        const atomsLabels = new Set(atoms.map(atom => atom.label));
+        
+        for (const hbond of hBonds) {
+            const missingAtoms = [];
+            if (!atomsLabels.has(hbond.donorAtomLabel)) {
+                missingAtoms.push(hbond.donorAtomLabel);
+            }
+            if (!atomsLabels.has(hbond.hydrogenAtomLabel)) {
+                missingAtoms.push(hbond.hydrogenAtomLabel);
+            }
+            if (!atomsLabels.has(hbond.acceptorAtomLabel)) {
+                missingAtoms.push(hbond.acceptorAtomLabel);
+            }
+            if (missingAtoms.length > 0) {
+                result.addAtomLabelError(
+                    `Non-existent atoms in H-bond: ${hbond.donorAtomLabel} - ` +
+                    `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
+                    `non-existent atom(s): ${missingAtoms.join(', ')}`,
+                );
+            }
+
+            if (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') {
+                try {
+                    symmetry.parsePositionCode(hbond.acceptorAtomSymmetry);
+                } catch {
+                    result.addSymmetryError(
+                        `Invalid symmetry in H-bond: ${hbond.donorAtomLabel} - ` +
+                        `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
+                        `invalid symmetry operation: ${hbond.acceptorAtomSymmetry}`,
+                    );
+                }
+            }
+        }
+        return result;
+    }
+
     static createBonds(cifBlock, atomLabels) {
         try {
             const bondLoop = cifBlock.get('_geom_bond');
@@ -204,6 +332,10 @@ export class BondsFactory {
         const atom1IsCentroid = BondsFactory.isValidLabel(atom1Label);
         const atom2IsCentroid = BondsFactory.isValidLabel(atom2Label);
 
+        if (atom1Label === '?' && atom2Label === '?') {
+            return false;
+        }
+
         return (!atom1IsCentroid || atomLabels.has(atom1Label)) && 
                (!atom2IsCentroid || atomLabels.has(atom2Label));
     }
@@ -221,6 +353,10 @@ export class BondsFactory {
         const donorIsCentroid = BondsFactory.isValidLabel(donorLabel);
         const hydrogenIsCentroid = BondsFactory.isValidLabel(hydrogenLabel);
         const acceptorIsCentroid = BondsFactory.isValidLabel(acceptorLabel);
+
+        if (donorLabel === '?' && hydrogenLabel === '?' && acceptorLabel === '?') {
+            return false;
+        }
 
         return (!donorIsCentroid || atomLabels.has(donorLabel)) &&
                (!hydrogenIsCentroid || atomLabels.has(hydrogenLabel)) &&
