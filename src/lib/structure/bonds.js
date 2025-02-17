@@ -34,7 +34,7 @@ export class Bond {
             bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
-            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.')
+            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.'),
         );
     }
 }
@@ -70,7 +70,7 @@ export class HBond {
         donorAcceptorDistanceSU,
         hBondAngle,
         hBondAngleSU,
-        acceptorAtomSymmetry
+        acceptorAtomSymmetry,
     ) {
         this.donorAtomLabel = donorAtomLabel;
         this.hydrogenAtomLabel = hydrogenAtomLabel;
@@ -107,7 +107,7 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex),
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.')
+            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.'),
         );
     }
 }

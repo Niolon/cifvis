@@ -1,5 +1,5 @@
-import { FractPosition, CartPosition, BasePosition, PositionFactory } from "./position.js";
-import { UnitCell } from "./crystal.js";
+import { FractPosition, CartPosition, BasePosition, PositionFactory } from './position.js';
+import { UnitCell } from './crystal.js';
 import { CIF } from '../cif/read-cif.js';
 
 describe('Position Classes', () => {

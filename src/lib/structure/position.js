@@ -1,4 +1,4 @@
-import { create, all, e } from 'mathjs';
+import { create, all } from 'mathjs';
 
 const math = create(all);
 
