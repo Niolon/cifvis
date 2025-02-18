@@ -232,7 +232,12 @@ export class ADPFactory {
      * @private
      */
     static createBani(cifBlock, label) {
-        const anisoSite = cifBlock.get('_atom_site_aniso');
+        let anisoSite;
+        try {
+            anisoSite = cifBlock.get('_atom_site_aniso');
+        } catch {
+            throw new Error(`Atom ${label} had ADP type BAni, but no atom_site_aniso loop was found`);
+        }
         const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
         const anisoIndex = anisoLabels.indexOf(label);
 
