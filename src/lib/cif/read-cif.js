@@ -50,16 +50,26 @@ export function parseValue(entryString, splitSU = true) {
  * @returns {Object} Object with parsed value and end index
  */
 export function parseMultiLineString(lines, startIndex) {
-    let result = '';
+    const result = [];
     let i = startIndex + 1;
     
-    while (i < lines.length && lines[i].trim() !== ';') {
-        result += lines[i].replace(/\\([^\\])/g, '$1') + '\n';
+    while (i < lines.length && lines[i].trimEnd() !== ';') {
+        // Handle both empty lines and regular lines
+        const line = lines[i] === '' ? '' : lines[i].replace(/\\([^\\])/g, '$1');
+        result.push(line);
         i++;
     }
     
+    // Remove only leading and trailing empty lines
+    while (result.length > 0 && result[0] === '') {
+        result.shift();
+    }
+    while (result.length > 0 && result[result.length - 1] === '') {
+        result.pop();
+    }
+
     return {
-        value: result.trim(),
+        value: result.join('\n'),
         endIndex: i,
     };
 }
@@ -179,7 +189,7 @@ export class CifBlock {
         const lines = this.rawText
             .replace(/\n;(.)/g, '\n;\n$1')
             .split('\n')
-            .filter(line => !line.startsWith('#'))
+            .filter(line => !line.trim().startsWith('#'))
             .map(line => {
                 const regex = / #(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
                 return line.split(regex)[0];

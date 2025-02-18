@@ -142,7 +142,7 @@ _some_nonsense test
             expect(blocks2).toHaveLength(2);
             expect(blocks2[0].get('_note').get('_note')).toEqual(['first\ndata_test2\nnote\ndata_test3\nmore text']);
             expect(blocks2[1].get('_other')).toBe('value');
-            expect(blocks2[1].get('_second_multiline')).toBe('Direct\ncontinuation after');
+            expect(blocks2[1].get('_second_multiline')).toBe('Direct\ncontinuation after ');
             expect(blocks2[1].get('_third_multiline')).toBe('data_new\n_some_nonsense test');
         });
     });
@@ -248,9 +248,23 @@ _exptl_absorpt_process_details
                 'Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07\n    Zn0.54',
             );
             expect(block.get('_exptl_absorpt_process_details')).toBe(
-                'Higashi, T. (1995). Program for \n Absorption Correction.\n Rigaku Corporation, Tokyo, Japan.',
+                ' Higashi, T. (1995). Program for \n Absorption Correction.\n Rigaku Corporation, Tokyo, Japan.',
             );
 
+        });
+
+        test('handles a " ;" as content of a multiline string', () => {
+            const block = new CifBlock(`test
+_chemical_formula_weight         123.45
+_chemical_name_systematic
+;
+ ;
+;
+_space_group_IT_number           23
+`);
+            expect(block.get('_chemical_formula_weight')).toBe(123.45);
+            expect(block.get('_chemical_name_systematic')).toBe(' ;');
+            expect(block.get('_space_group_IT_number')).toBe(23);
         });
 
         test('handles embedded quotes according to spec', () => {
