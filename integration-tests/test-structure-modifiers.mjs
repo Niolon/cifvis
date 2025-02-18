@@ -69,13 +69,9 @@ function generateSummary(isInterim = false) {
     
     // Calculate percentage of unhandled structure errors
     const totalStructureErrors = stats.errors.CrystalStructure.total;
-    const handledErrors = 
-        stats.errors.CrystalStructure.unitCellParameterMissing +
-        stats.errors.CrystalStructure.noValidAtoms +
-        stats.errors.CrystalStructure.placeholderCoordinates +
-        stats.errors.CrystalStructure.uAniProblems.total +
-        stats.errors.CrystalStructure.bondProblems.total;
-    const unhandledPercentage = ((stats.errors.CrystalStructure.otherAndLogged / totalStructureErrors) * 100).toFixed(1);
+    const unhandledPercentage = (
+        (stats.errors.CrystalStructure.otherAndLogged / totalStructureErrors) * 100
+    ).toFixed(1);
     
     // Validate that our counts add up
     const totalAccountedFor = stats.successfulStructure + stats.errors.CIF + stats.errors.CrystalStructure.total;

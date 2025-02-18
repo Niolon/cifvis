@@ -175,7 +175,7 @@ export class ADPFactory {
         case 'uiso':
             return ADPFactory.createUiso(cifBlock, atomIndex);
         case 'iso':
-                return ADPFactory.createUiso(cifBlock, atomIndex);
+            return ADPFactory.createUiso(cifBlock, atomIndex);
         case 'biso':
             return ADPFactory.createBiso(cifBlock, atomIndex);
         default:

@@ -30,7 +30,7 @@ const stats = {
     errors: {
         structure: 0,
         ORTEP: 0,
-        NaN: 0
+        NaN: 0,
     },
 };
 
@@ -40,7 +40,7 @@ function checkForNaN(object3D) {
         position: 0,
         rotation: 0,
         scale: 0,
-        matrix: 0
+        matrix: 0,
     };
 
     function checkObject(obj) {
