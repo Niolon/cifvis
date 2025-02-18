@@ -23,7 +23,7 @@ export class BasePosition {
                 'BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition',
             );
         }
-        this.#coords = [x, y, z];
+        this.#coords = [Number(x), Number(y), Number(z)];
         Object.defineProperties(this, {
             0: { get: () => this.#coords[0] },
             1: { get: () => this.#coords[1] },
