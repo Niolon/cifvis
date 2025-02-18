@@ -133,12 +133,9 @@ C1 Cnt1 1.4`;
             const cif = new CIF(cifText);
             const validAtoms = new Set(['C1']);
             
-            const consoleSpy = jest.spyOn(console, 'warn');
             const bonds = BondsFactory.createBonds(cif.getBlock(0), validAtoms);
             
             expect(bonds).toHaveLength(0);
-            expect(consoleSpy).toHaveBeenCalledWith('No bonds found in CIF file');
-            consoleSpy.mockRestore();
         });
     });
 
@@ -231,6 +228,11 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
             expect(BondsFactory.isValidBondPair('Cnt1', 'O1', validAtoms)).toBe(false);
         });
 
+        test('isValidBondPair checks for ? entries', () => {
+            expect(BondsFactory.isValidBondPair('?', '?')).toBe(false);
+            expect(BondsFactory.isValidBondPair('?', 'A1')).toBe(false);
+        });
+
         test('isValidHBondTriplet checks centroid atoms', () => {
             const validAtoms = new Set(['O1', 'H1', 'N1', 'Cg2']);
             
@@ -238,6 +240,11 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
             expect(BondsFactory.isValidHBondTriplet('Cg1', 'H1', 'N1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidHBondTriplet('O1', 'Cg1', 'N1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidHBondTriplet('O1', 'H1', 'Cg2', validAtoms)).toBe(true);
+        });
+
+        test('isValidHBondTriplet checks for ? entries', () => {
+            expect(BondsFactory.isValidHBondTriplet('?', '?', '?')).toBe(false);
+            expect(BondsFactory.isValidHBondTriplet('?', '?', 'A1')).toBe(false);
         });
     });
 });
@@ -266,7 +273,9 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
             expect(result.isValid()).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.atomLabelErrors).toHaveLength(0);
+            expect(result.symmetryErrors).toHaveLength(0);
+            expect(result.report()).toBe('');
         });
 
         test('detects missing atoms in bonds', () => {
@@ -276,11 +285,17 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
             expect(result.isValid()).toBe(false);
-            expect(result.errors).toHaveLength(2);
-            expect(result.errors[0]).toContain('Non-existent atoms in bond: C1 - X1');
-            expect(result.errors[0]).toContain('non-existent atom(s): X1');
-            expect(result.errors[1]).toContain('Non-existent atoms in bond: Y1 - O1');
-            expect(result.errors[1]).toContain('non-existent atom(s): Y1');
+            expect(result.atomLabelErrors).toHaveLength(2);
+            expect(result.atomLabelErrors[0]).toContain('Non-existent atoms in bond: C1 - X1');
+            expect(result.atomLabelErrors[0]).toContain('non-existent atom(s): X1');
+            expect(result.atomLabelErrors[1]).toContain('Non-existent atoms in bond: Y1 - O1');
+            expect(result.atomLabelErrors[1]).toContain('non-existent atom(s): Y1');
+            expect(result.symmetryErrors).toHaveLength(0);
+
+            expect(result.report(atoms, symmetry)).toContain('Unknown atom label(s). Known labels are \nC1, O1, H1');
+            expect(result.report(atoms, symmetry)).not.toContain(
+                'Unknown symmetry ID(s) or String format. Expected format is <id>_abc. ',
+            );
         });
 
         test('detects invalid symmetry operations in bonds', () => {
@@ -289,9 +304,16 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
             expect(result.isValid()).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0]).toContain('Invalid symmetry in bond: C1 - O1');
-            expect(result.errors[0]).toContain('invalid symmetry operation: 9_555');
+            expect(result.atomLabelErrors).toHaveLength(0);
+            expect(result.symmetryErrors).toHaveLength(1);
+            expect(result.symmetryErrors[0]).toContain('Invalid symmetry in bond: C1 - O1');
+            expect(result.symmetryErrors[0]).toContain('invalid symmetry operation: 9_555');
+            expect(result.report(atoms, symmetry)).not.toContain(
+                'Unknown atom label(s). Known labels are \nC1, O1, H1',
+            );
+            expect(result.report(atoms, symmetry)).toContain(
+                'Unknown symmetry ID(s) or String format. Expected format is <id>_abc. Known IDs are:\n1',
+            );
         });
 
         test('accepts valid symmetry operations', () => {
@@ -300,6 +322,24 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
             expect(result.isValid()).toBe(true);
+        });
+
+        test('detects invalid atom name and symmetry operation in bond', () => {
+            const bonds = [
+                new Bond('X1', 'O1', 1.5, 0.01, '9_555'),
+            ];
+            const result = BondsFactory.validateBonds(bonds, atoms, symmetry);
+            expect(result.isValid()).toBe(false);
+            expect(result.atomLabelErrors).toHaveLength(1);
+            expect(result.atomLabelErrors[0]).toContain('Non-existent atoms in bond: X1 - O1');
+            expect(result.atomLabelErrors[0]).toContain('non-existent atom(s): X1');
+            expect(result.symmetryErrors).toHaveLength(1);
+            expect(result.symmetryErrors[0]).toContain('Invalid symmetry in bond: X1 - O1');
+            expect(result.symmetryErrors[0]).toContain('invalid symmetry operation: 9_555');
+            expect(result.report(atoms, symmetry)).toContain('Unknown atom label(s). Known labels are \nC1, O1, H1');
+            expect(result.report(atoms, symmetry)).toContain(
+                '\nUnknown symmetry ID(s) or String format. Expected format is <id>_abc. Known IDs are:\n1',
+            );
         });
     });
 
@@ -310,18 +350,25 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
             expect(result.isValid()).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.atomLabelErrors).toHaveLength(0);
+            expect(result.symmetryErrors).toHaveLength(0);
+            expect(result.report()).toBe('');
         });
 
         test('detects missing atoms in h-bonds', () => {
             const hBonds = [
-                new HBond('O1', 'X1', 'Y1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+                new HBond('Z1', 'X1', 'Y1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
             ];
             const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
             expect(result.isValid()).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0]).toContain('Non-existent atoms in H-bond: O1 - X1 - Y1');
-            expect(result.errors[0]).toContain('non-existent atom(s): X1, Y1');
+            expect(result.atomLabelErrors).toHaveLength(1);
+            expect(result.atomLabelErrors[0]).toContain('Non-existent atoms in H-bond: Z1 - X1 - Y1');
+            expect(result.atomLabelErrors[0]).toContain('non-existent atom(s): Z1, X1, Y1');
+            expect(result.symmetryErrors).toHaveLength(0);
+            expect(result.report(atoms, symmetry)).toContain('Unknown atom label(s). Known labels are \nC1, O1, H1');
+            expect(result.report(atoms, symmetry)).not.toContain(
+                'Unknown symmetry ID(s) or String format. Expected format is <id>_abc. ',
+            );
         });
 
         test('detects invalid symmetry operations in h-bonds', () => {
@@ -330,9 +377,16 @@ describe('Bond Validation', () => {
             ];
             const result = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
             expect(result.isValid()).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0]).toContain('Invalid symmetry in H-bond: O1 - H1 - C1');
-            expect(result.errors[0]).toContain('invalid symmetry operation: 9_555');
+            expect(result.atomLabelErrors).toHaveLength(0);
+            expect(result.symmetryErrors).toHaveLength(1);
+            expect(result.symmetryErrors[0]).toContain('Invalid symmetry in H-bond: O1 - H1 - C1');
+            expect(result.symmetryErrors[0]).toContain('invalid symmetry operation: 9_555');
+            expect(result.report(atoms, symmetry)).not.toContain(
+                'Unknown atom label(s). Known labels are \nC1, O1, H1',
+            );
+            expect(result.report(atoms, symmetry)).toContain(
+                'Unknown symmetry ID(s) or String format. Expected format is <id>_abc. Known IDs are:\n1',
+            );
         });
 
         test('accepts valid symmetry operations in h-bonds', () => {

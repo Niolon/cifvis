@@ -269,7 +269,6 @@ export class BondsFactory {
             }
             return bonds;
         } catch {
-            console.warn('No bonds found in CIF file');
             return [];
         }
     }
@@ -332,7 +331,7 @@ export class BondsFactory {
         const atom1IsCentroid = BondsFactory.isValidLabel(atom1Label);
         const atom2IsCentroid = BondsFactory.isValidLabel(atom2Label);
 
-        if (atom1Label === '?' && atom2Label === '?') {
+        if (atom1Label === '?' || atom2Label === '?') {
             return false;
         }
 
@@ -354,7 +353,7 @@ export class BondsFactory {
         const hydrogenIsCentroid = BondsFactory.isValidLabel(hydrogenLabel);
         const acceptorIsCentroid = BondsFactory.isValidLabel(acceptorLabel);
 
-        if (donorLabel === '?' && hydrogenLabel === '?' && acceptorLabel === '?') {
+        if (donorLabel === '?' || hydrogenLabel === '?' || acceptorLabel === '?') {
             return false;
         }
 
