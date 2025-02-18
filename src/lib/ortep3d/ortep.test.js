@@ -1024,10 +1024,10 @@ describe('ORTEPGroupObject', () => {
         
         expect(group.selectionColor).toBe(0xff0000);
         expect(group.marker).toBeTruthy();
-        group.children.forEach(child => {
-            if (child !== group.marker) {
-                expect(child.originalMaterial).toBeTruthy();
-            }
+        
+        const nonMarkerChildren = group.children.filter(child => child !== group.marker);
+        nonMarkerChildren.forEach(child => {
+            expect(child.originalMaterial).toBeTruthy();
         });
     });
 
