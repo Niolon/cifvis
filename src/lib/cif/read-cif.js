@@ -53,7 +53,7 @@ export function parseMultiLineString(lines, startIndex) {
     const result = [];
     let i = startIndex + 1;
     
-    while (i < lines.length && lines[i].trimEnd() !== ';') {
+    while (i < lines.length && !lines[i].startsWith(';')) {
         // Handle both empty lines and regular lines
         const line = lines[i] === '' ? '' : lines[i].replace(/\\([^\\])/g, '$1');
         result.push(line);
