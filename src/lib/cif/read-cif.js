@@ -53,7 +53,7 @@ export function parseMultiLineString(lines, startIndex) {
     let result = '';
     let i = startIndex + 1;
     
-    while (i < lines.length && lines[i] !== ';') {
+    while (i < lines.length && lines[i].trim() !== ';') {
         result += lines[i].replace(/\\([^\\])/g, '$1') + '\n';
         i++;
     }
@@ -94,6 +94,7 @@ export class CIF {
     splitCifBlocks(cifText) {
         const blocks = [];
         const blockTexts = cifText
+            .replaceAll('\r\n', '\n')
             .replace(/\n;(.)/g, '\n;\n$1')
             .split(/\r?\ndata_/).slice(1);
         let i = 0;
@@ -182,9 +183,7 @@ export class CifBlock {
             .map(line => {
                 const regex = / #(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
                 return line.split(regex)[0];
-            })
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
+            });
 
         this.dataBlockName = lines[0];
         let i = 1;
@@ -197,14 +196,20 @@ export class CifBlock {
                 continue;
             }
             
-            if (lines[i].startsWith('loop_')) {
+            if (lines[i].trim().startsWith('loop_')) {
                 const loop = new CifLoop(lines.slice(i), this.splitSU);
                 this.data[loop.getName()] = loop;
                 i += loop.getEndIndex();
                 continue;
             }
 
-            const match = lines[i].match(/^(_\S+)\s+(.*)$/);
+            const line = lines[i].trim();
+            if (line.length === 0) {
+                i++;
+                continue;
+            }
+
+            const match = line.match(/^(_\S+)\s+(.*)$/);
             if (match) {
                 const key = match[1];
                 const parsedValue = parseValue(match[2], this.splitSU);
@@ -212,9 +217,9 @@ export class CifBlock {
                 if (!isNaN(parsedValue.su)) {
                     this.data[key + '_su'] = parsedValue.su;
                 }
-            } else if (lines[i].startsWith('_') && !lines[i+1].startsWith('_')) {
-                const key = lines[i];
-                const parsedValue = parseValue(lines[i + 1], this.splitSU);
+            } else if (line.startsWith('_') && !lines[i+1].startsWith('_')) {
+                const key = line;
+                const parsedValue = parseValue(lines[i + 1].trim(), this.splitSU);
                 this.data[key] = parsedValue.value;
                 if (!isNaN(parsedValue.su)) {
                     this.data[key + '_su'] = parsedValue.su;
@@ -286,15 +291,15 @@ export class CifLoop {
         let i = 1;
         
         // Get header section
-        while (i < lines.length && lines[i].startsWith('_')) {
+        while (i < lines.length && lines[i].trim().startsWith('_')) {
             i++;
         }
-        this.headerLines = lines.slice(1, i);
+        this.headerLines = lines.slice(1, i).map(line => line.trim());
         
         let dataEnd = i;
         // Get data section
-        while (dataEnd < lines.length && !lines[dataEnd].startsWith('_') && 
-               !lines[dataEnd].startsWith('loop_')) {
+        while (dataEnd < lines.length && !lines[dataEnd].trim().startsWith('_') && 
+               !lines[dataEnd].trim().startsWith('loop_')) {
             dataEnd++;
         }
         
@@ -323,7 +328,12 @@ export class CifLoop {
         const dataArray = [];
         let i = 0;
         while (i < this.dataLines.length) {
-            const line = this.dataLines[i];
+            const line = this.dataLines[i].trim();
+
+            if (line.length === 0) {
+                i++;
+                continue;
+            }
         
             if (line === ';') {
                 const mult = parseMultiLineString(this.dataLines, i);
@@ -407,13 +417,13 @@ export class CifLoop {
         // Check for standard loop names first
         for (const baseName of standardNames) {
             const hits = this.headerLines.filter(header => header.toLowerCase().startsWith(baseName.toLowerCase()));
-            if (hits.length > (this.headerLines.length / 2)) {
+            if (hits.length >= (this.headerLines.length / 2)) {
                 return baseName;
             }
         }
 
         if (this.headerLines.length === 1) {
-            return this.headerLines[0].trim(); 
+            return this.headerLines[0]; 
         }
         
         const firstStr = this.headerLines[0];

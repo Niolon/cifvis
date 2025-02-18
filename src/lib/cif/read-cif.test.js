@@ -245,10 +245,10 @@ _exptl_absorpt_process_details
             expect(block.get('_proper_multiline')).toBe('line1\nline2');
             expect(block.get('_compact_multiline')).toBe('text content\nmore content');
             expect(block.get('_chemical_formula_sum')).toBe(
-                'Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07\nZn0.54',
+                'Al1.15 Ba0.04 Cr0.01 Fe0.25 H2 K0.89 Mg1.57 Mn0.4 Na0.1 O12 Si2.92 Ti0.07\n    Zn0.54',
             );
             expect(block.get('_exptl_absorpt_process_details')).toBe(
-                'Higashi, T. (1995). Program for\nAbsorption Correction.\nRigaku Corporation, Tokyo, Japan.',
+                'Higashi, T. (1995). Program for \n Absorption Correction.\n Rigaku Corporation, Tokyo, Japan.',
             );
 
         });
@@ -290,7 +290,7 @@ _valid_entry 123
 
 Something is wrong here
 `);
-            expect(() => block.get('_valid_entry')).toThrow('Could not parse line 2: Something is wrong here');
+            expect(() => block.get('_valid_entry')).toThrow('Could not parse line 3: Something is wrong here');
         });
     });
 });
