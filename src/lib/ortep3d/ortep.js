@@ -654,7 +654,11 @@ export class ORTEPIsoAtom extends ORTEPAtom {
         if (!atom.adp || !('uiso' in atom.adp)) {
             throw new Error('Atom must have isotropic displacement parameters (UIsoADP)');
         }
-        this.scale.multiplyScalar(Math.sqrt(atom.adp.uiso));
+        if (atom.adp.uiso <= 0.0) {
+            this.geometry = new THREE.TetrahedronGeometry(1);
+        } else {
+            this.scale.multiplyScalar(Math.sqrt(atom.adp.uiso));
+        }
     }
 }
 
