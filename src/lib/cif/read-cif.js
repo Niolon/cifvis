@@ -384,11 +384,27 @@ export class CifLoop {
             '_geom_torsion',
             '_diffrn_refln',
             '_refln',
+            '_atom_site_fourier_wave_vector',
+            '_atom_site_moment_fourier_param',
+            '_atom_site_moment_special_func',
+            '_atom_site_moment',
+            '_atom_site_rotation',
+            '_atom_site_displace_Fourier',
+            '_atom_site_displace_special_func',
+            '_atom_site_occ_Fourier',
+            '_atom_site_occ_special_func',
+            '_atom_site_phason',
+            '_atom_site_rot_Fourier_param',
+            '_atom_site_rot_Fourier',
+            '_atom_site_rot_special_func',
+            '_atom_site_U_Fourier',
+            '_atom_site_aniso',
+            '_atom_site',
         ];
     
         // Check for standard loop names first
         for (const baseName of standardNames) {
-            if (this.headerLines.some(header => header.startsWith(baseName))) {
+            if (this.headerLines.some(header => header.toLowerCase().startsWith(baseName.toLowerCase()))) {
                 return baseName;
             }
         }
