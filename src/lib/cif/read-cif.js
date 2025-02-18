@@ -398,13 +398,16 @@ export class CifLoop {
             '_atom_site_rot_Fourier',
             '_atom_site_rot_special_func',
             '_atom_site_U_Fourier',
+            '_atom_site_anharm_gc_c',
+            '_atom_site_anharm_gc_d',
             '_atom_site_aniso',
             '_atom_site',
         ];
     
         // Check for standard loop names first
         for (const baseName of standardNames) {
-            if (this.headerLines.some(header => header.toLowerCase().startsWith(baseName.toLowerCase()))) {
+            const hits = this.headerLines.filter(header => header.toLowerCase().startsWith(baseName.toLowerCase()));
+            if (hits.length > (this.headerLines.length / 2)) {
                 return baseName;
             }
         }
