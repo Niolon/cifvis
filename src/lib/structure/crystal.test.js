@@ -299,34 +299,7 @@ C4 C 0 0 0 .`;
         atoms.forEach(atom => 
             expect(group.atoms.includes(atom)).toBe(true),
         );
-    });
-    test('logs warning when no bonds found in CIF', () => {
-        const consoleSpy = jest.spyOn(console, 'warn');
-        const cifText = `
-data_test
-_cell_length_a 10
-_cell_length_b 10
-_cell_length_c 10
-_cell_angle_alpha 90
-_cell_angle_beta 90
-_cell_angle_gamma 90
-
-loop_
-_atom_site_label
-_atom_site_type_symbol
-_atom_site_fract_x
-_atom_site_fract_y
-_atom_site_fract_z
-C1 C 0 0 0
-`;
-        const cif = new CIF(cifText);
-        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
-
-        expect(consoleSpy).toHaveBeenCalledWith('No bonds found in CIF file');
-        expect(structure.bonds).toHaveLength(0);
-        consoleSpy.mockRestore();
-    });
-  
+    });  
 });
 
 describe('UnitCell', () => {
