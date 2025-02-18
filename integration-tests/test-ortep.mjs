@@ -5,13 +5,19 @@ import { fileURLToPath } from 'url';
 import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const logsDir = join(scriptDir, 'logs');
+const logsDir = join(scriptDir, 'logs', 'ortep-chunked');
+
+function getLogFilenames(startIndex, endIndex) {
+    const rangeStr = `${startIndex}-${endIndex}`;
+    return {
+        logFile: join(logsDir, `ortep-test-results-${rangeStr}.log`),
+        errorLogFile: join(logsDir, `ortep-test-errors-${rangeStr}.log`),
+        summaryFile: join(logsDir, `ortep-test-summary-${rangeStr}.log`),
+    };
+}
 
 // Configuration
 const config = {
-    logFile: join(logsDir, 'ortep-test-results.log'),
-    errorLogFile: join(logsDir, 'ortep-test-errors.log'),
-    summaryFile: join(logsDir, 'ortep-test-summary.log'),
     batchSize: 25,
     gcThreshold: 100,
     summaryInterval: 1000,
@@ -24,7 +30,7 @@ const stats = {
     errors: {
         structure: 0,
         ORTEP: 0,
-        NaN: 0,
+        NaN: 0
     },
 };
 
@@ -34,7 +40,7 @@ function checkForNaN(object3D) {
         position: 0,
         rotation: 0,
         scale: 0,
-        matrix: 0,
+        matrix: 0
     };
 
     function checkObject(obj) {
@@ -68,7 +74,7 @@ function checkForNaN(object3D) {
 /**
  * Test ORTEP generation for a single CIF file
  */
-async function testCIFFile(filePath) {
+async function testCIFFile(filePath, logFiles) {
     stats.totalFiles++;
     const fileContent = readFileSync(filePath, 'utf8');
     let ortep = null;
@@ -112,7 +118,7 @@ async function testCIFFile(filePath) {
         stats.errors.ORTEP++;
         // Log detailed error information
         const errorLog = `Failed ORTEP generation for ${filePath}\nError: ${error.message}`;
-        appendFileSync(config.errorLogFile, `${errorLog}\n\n`);
+        appendFileSync(logFiles.errorLogFile, `${errorLog}\n\n`);
     } finally {
         if (ortep) {
             try {
@@ -125,19 +131,19 @@ async function testCIFFile(filePath) {
 
     // Print summary every 1000 structures
     if (stats.totalFiles % config.summaryInterval === 0) {
-        writeSummary(true);
+        writeSummary(true, logFiles);
     }
 }
 
 /**
  * Process a batch of files
  */
-async function processBatch(files, startIndex) {
+async function processBatch(files, startIndex, logFiles) {
     const endIndex = Math.min(startIndex + config.batchSize, files.length);
     const batchFiles = files.slice(startIndex, endIndex);
     
     for (const file of batchFiles) {
-        await testCIFFile(file);
+        await testCIFFile(file, logFiles);
         
         if (global.gc && stats.totalFiles % config.gcThreshold === 0) {
             global.gc();
@@ -154,7 +160,7 @@ async function processBatch(files, startIndex) {
 }
 
 /**
- * Find all CIF files in directory recursively
+ * Find and sort all CIF files in directory recursively
  */
 async function findCIFFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -167,13 +173,13 @@ async function findCIFFiles(dir) {
         }
         return [];
     }));
-    return files.flat();
+    return files.flat().sort();
 }
 
 /**
  * Write summary statistics
  */
-function writeSummary(isInterim = false) {
+function writeSummary(isInterim = false, logFiles) {
     const summary = `
 ${isInterim ? 'Interim ' : ''}ORTEP Testing Summary
 ${isInterim ? '='.repeat(23) : '='.repeat(15)}
@@ -186,9 +192,9 @@ Errors:
 - Structures with NaN values: ${stats.errors.NaN}
 `;
     
-    //if (!isInterim) {
-    appendFileSync(config.summaryFile, summary);
-    //}
+    if (!isInterim) {
+        appendFileSync(logFiles.summaryFile, summary);
+    }
     console.log(summary);
 }
 
@@ -197,26 +203,39 @@ Errors:
  */
 async function main() {
     const startTime = Date.now();
+    
+    // Parse command line arguments
     const targetDir = process.argv[2] || './cod';
+    const startIndex = parseInt(process.argv[3]) || 0;
+    const endIndex = parseInt(process.argv[4]) || Infinity;
+    
     const resolvedPath = resolve(targetDir);
+    const logFiles = getLogFilenames(startIndex, endIndex);
     
     console.log(`Starting ORTEP testing in directory: ${resolvedPath}`);
+    console.log(`Processing files from index ${startIndex} to ${endIndex}`);
 
     try {
-        ['summaryFile', 'errorLogFile'].forEach(file => {
+        // Clear log files
+        Object.values(logFiles).forEach(file => {
             try {
-                writeFileSync(config[file], '');
+                writeFileSync(file, '');
             } catch (error) {
                 console.error(`Failed to clear ${file}:`, error);
             }
         });
 
-        const files = await findCIFFiles(resolvedPath);
-        console.log(`Found ${files.length} CIF files`);
+        // Find and sort all CIF files
+        let files = await findCIFFiles(resolvedPath);
+        console.log(`Found ${files.length} CIF files total`);
+        
+        // Slice to requested range
+        files = files.slice(startIndex, endIndex);
+        console.log(`Processing ${files.length} files in requested range`);
         
         let processedIndex = 0;
         while (processedIndex < files.length) {
-            processedIndex = await processBatch(files, processedIndex);
+            processedIndex = await processBatch(files, processedIndex, logFiles);
             console.log(`Processed ${processedIndex}/${files.length} files...`);
             await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -224,7 +243,7 @@ async function main() {
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(1);
         console.log(`Testing completed in ${duration} seconds`);
-        writeSummary(false);
+        writeSummary(false, logFiles);
 
     } catch (error) {
         console.error('Fatal error:', error);

@@ -15,6 +15,7 @@
     "test": "jest",
     "test:modifiers-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs ../cod",
     "test:ortep-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs ../cod",
+    "test:ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh ../cod",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

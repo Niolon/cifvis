@@ -16,18 +16,37 @@ const config = {
     errorLogFile: join(logsDir, 'modifier-test-errors.log'),
     modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
     summaryFile: join(logsDir, 'modifier-test-summary.log'),
-    batchSize: 100,
+    batchSize: 1000,
+    interimReportFrequency: 5000, // Report every 1000 structures
 };
 
 const stats = {
     totalFiles: 0,
     successfulCIF: 0,
     successfulStructure: 0,
-    modifierErrors: 0,
     errors: {
         CIF: 0,
-        CrystalStructure: 0,
+        CrystalStructure: {
+            total: 0,
+            unitCellParameterMissing: 0,
+            noValidAtoms: 0,
+            placeholderCoordinates: 0,  // New category for "?" coordinates
+            uAniProblems: {
+                total: 0,
+                uAniTableMissing: 0,
+                uAniAtomMissingInTable: 0,
+            },
+            bondProblems: {
+                total: 0,
+                missingBondAtom: 0,
+                invalidBondSymmetry: 0,
+                missingHBondAtom: 0,
+                invalidHBondSymmetry: 0,
+            },
+            otherAndLogged: 0,
+        },
         symmetry: 0,
+        modifier: 0,
     },
 };
 
@@ -37,6 +56,64 @@ console.warn = (...args) => {
     suppressedWarnings.push(args.join(' '));
 };
 
+function writeSummaryToFile(summaryText, filePath) {
+    try {
+        appendFileSync(filePath, summaryText + '\n');
+    } catch (error) {
+        console.error(`Failed to write summary to ${filePath}:`, error);
+    }
+}
+
+function generateSummary(isInterim = false) {
+    const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
+    
+    // Calculate percentage of unhandled structure errors
+    const totalStructureErrors = stats.errors.CrystalStructure.total;
+    const handledErrors = 
+        stats.errors.CrystalStructure.unitCellParameterMissing +
+        stats.errors.CrystalStructure.noValidAtoms +
+        stats.errors.CrystalStructure.placeholderCoordinates +
+        stats.errors.CrystalStructure.uAniProblems.total +
+        stats.errors.CrystalStructure.bondProblems.total;
+    const unhandledPercentage = ((stats.errors.CrystalStructure.otherAndLogged / totalStructureErrors) * 100).toFixed(1);
+    
+    // Validate that our counts add up
+    const totalAccountedFor = stats.successfulStructure + stats.errors.CIF + stats.errors.CrystalStructure.total;
+    const accountingDiscrepancy = stats.totalFiles - totalAccountedFor;
+    
+    const summaryText = `
+${header}
+${'='.repeat(header.length)}
+Total files processed: ${stats.totalFiles}
+Successful CIF parsing: ${stats.successfulCIF} (${((stats.successfulCIF/stats.totalFiles)*100).toFixed(1)}%)
+Successful structures: ${stats.successfulStructure} (${((stats.successfulStructure/stats.totalFiles)*100).toFixed(1)}%)
+Modifier combination errors: ${stats.errors.modifier}
+
+Accounting Validation:
+Total files processed: ${stats.totalFiles}
+Total accounted for: ${totalAccountedFor}
+Discrepancy: ${accountingDiscrepancy}
+
+Error Breakdown:
+- CIF parsing errors: ${stats.errors.CIF}
+- Structure creation errors: ${stats.errors.CrystalStructure.total}
+  • Missing unit cell parameters: ${stats.errors.CrystalStructure.unitCellParameterMissing}
+  • No valid atoms: ${stats.errors.CrystalStructure.noValidAtoms}
+  • Placeholder coordinates only: ${stats.errors.CrystalStructure.placeholderCoordinates}
+  • Anisotropic displacement problems: ${stats.errors.CrystalStructure.uAniProblems.total}
+    - Missing Uani tables: ${stats.errors.CrystalStructure.uAniProblems.uAniTableMissing}
+    - Missing atoms in Uani tables: ${stats.errors.CrystalStructure.uAniProblems.uAniAtomMissingInTable}
+  • Bond problems: ${stats.errors.CrystalStructure.bondProblems.total}
+    - Missing bond atoms: ${stats.errors.CrystalStructure.bondProblems.missingBondAtom}
+    - Invalid bond symmetry: ${stats.errors.CrystalStructure.bondProblems.invalidBondSymmetry}
+    - Missing H-bond atoms: ${stats.errors.CrystalStructure.bondProblems.missingHBondAtom}
+    - Invalid H-bond symmetry: ${stats.errors.CrystalStructure.bondProblems.invalidHBondSymmetry}
+  • Other errors (logged): ${stats.errors.CrystalStructure.otherAndLogged} (${unhandledPercentage}% of structure errors)
+- Symmetry errors: ${stats.errors.symmetry}`;
+
+    return summaryText;
+}
+
 function logMessage(message, filePath = config.logFile) {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${message}\n`;
@@ -44,6 +121,54 @@ function logMessage(message, filePath = config.logFile) {
         appendFileSync(filePath, logEntry);
     } catch (error) {
         console.error(`Failed to write to log file ${filePath}:`, error);
+    }
+}
+
+function handleStructureError(errorMessage) {
+    let errorHandled = false;
+    if (errorMessage.includes('Unit cell parameter entries missing in CIF')) {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.unitCellParameterMissing++;
+        errorHandled = true;
+    }
+    if (errorMessage === 'The cif file contains no valid atoms.') {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.noValidAtoms++;
+        errorHandled = true;
+    }
+    if (errorMessage.includes(', but no atom_site_aniso loop was found')) {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.uAniProblems.total++;
+        stats.errors.CrystalStructure.uAniProblems.uAniTableMissing++;
+        errorHandled = true;
+    }
+    if (errorMessage.includes('but was not found in atom_site_aniso.label')) {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.uAniProblems.total++;
+        stats.errors.CrystalStructure.uAniProblems.uAniAtomMissingInTable++;
+        errorHandled = true;
+    }
+    if (errorMessage.includes('There were errors in the bond or H-bond creation')) {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.bondProblems.total++;
+        errorHandled = true;
+        if (errorMessage.includes('Non-existent atoms in bond')) {
+            stats.errors.CrystalStructure.bondProblems.missingBondAtom++;
+        }
+        if (errorMessage.includes('Invalid symmetry in bond')) {
+            stats.errors.CrystalStructure.bondProblems.invalidBondSymmetry++;
+        }
+        if (errorMessage.includes('Non-existent atoms in H-bond')) {
+            stats.errors.CrystalStructure.bondProblems.missingHBondAtom++;
+        }
+        if (errorMessage.includes('Invalid symmetry in H-bond')) {
+            stats.errors.CrystalStructure.bondProblems.invalidHBondSymmetry++;
+        }
+    }
+    if (!errorHandled) {
+        stats.errors.CrystalStructure.total++;
+        stats.errors.CrystalStructure.otherAndLogged++;
+        logMessage(errorMessage, config.errorLogFile);
     }
 }
 
@@ -75,15 +200,23 @@ async function testCIFFile(filePath) {
                 baseStructure = CrystalStructure.fromCIF(block);
             } catch (error) {
                 if (error.message === 'The cif file contains no valid atoms.') {
+                    // Check if this is due to placeholder coordinates
                     const atomSite = block.get('_atom_site', false);
                     if (atomSite && atomSite.get(['_atom_site.fract_x', '_atom_site_fract_x'])
                         .every(val => val === '?')) {
+                        stats.errors.CrystalStructure.total++;
+                        stats.errors.CrystalStructure.placeholderCoordinates++;
+                        results.errors.push('Structure has only placeholder coordinates');
                         return results;
                     }
+                    // Otherwise count as no valid atoms error
+                    stats.errors.CrystalStructure.total++;
+                    stats.errors.CrystalStructure.noValidAtoms++;
+                    results.errors.push(`Structure Error: ${error.message}`);
+                    return results;
                 }
-                logMessage(`Structure Error in ${filePath}: ${error.message}`, config.errorLogFile);
+                handleStructureError(`Structure Error in ${filePath}: ${error.message}`);
                 results.errors.push(`Structure Error: ${error.message}`);
-                stats.errors.CrystalStructure++;
                 return results;
             }
 
@@ -119,7 +252,7 @@ async function testCIFFile(filePath) {
                                 +` H=${hydrogenMode}, D=${disorderMode}, S=${symmetryMode}\n`
                                 + `Error: ${error.message}`, config.errorLogFile,
                             );
-                            stats.modifierErrors++;
+                            stats.errors.modifier++;
                             results.modifierErrors.push({
                                 modes: { hydrogenMode, disorderMode, symmetryMode },
                                 error: error.message,
@@ -142,9 +275,10 @@ async function testCIFFile(filePath) {
             }
             logMessage(`CifParsing Error in ${filePath}: ${error.message}`, config.errorLogFile);
             results.errors.push(`Structure Error: ${error.message}`);
-            stats.errors.CrystalStructure++;
+            stats.errors.CrystalStructure.total++;
         }
     } catch (error) {
+        logMessage(`CIF Error in ${filePath}: ${error.message}`, config.errorLogFile);
         results.errors.push(`CIF Error: ${error.message}`);
         stats.errors.CIF++;
     }
@@ -158,8 +292,11 @@ async function testCIFFile(filePath) {
         logMessage(errorLog, config.modifierLogFile);
     }
 
-    if (results.errors.length > 0) {
-        logMessage(`Failed: ${filePath}\n${results.errors.join('\n')}`, config.errorLogFile);
+    // Check if we should generate an interim report
+    if (stats.totalFiles % config.interimReportFrequency === 0) {
+        const interimSummary = generateSummary(true);
+        console.log(interimSummary);
+        ///writeSummaryToFile(interimSummary, config.logFile);
     }
 
     return results;
@@ -188,25 +325,6 @@ async function findCIFFiles(dir) {
         return [];
     }));
     return files.flat();
-}
-
-function writeSummary() {
-    const summary = `
-CIF Testing Summary
-==================
-Total files processed: ${stats.totalFiles}
-Successful CIF parsing: ${stats.successfulCIF} (${((stats.successfulCIF/stats.totalFiles)*100).toFixed(1)}%)
-Successful structures: ${stats.successfulStructure} (${((stats.successfulStructure/stats.totalFiles)*100).toFixed(1)}%)
-Modifier combination errors: ${stats.modifierErrors}
-
-Errors:
-- CIF parsing: ${stats.errors.CIF}
-- Structure creation: ${stats.errors.CrystalStructure}
-- Symmetry issues: ${stats.errors.symmetry}
-`;
-    
-    logMessage(summary, config.summaryFile);
-    console.log(summary);
 }
 
 async function main() {
@@ -246,7 +364,11 @@ async function main() {
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(1);
         logMessage(`Testing completed in ${duration} seconds`);
-        writeSummary();
+        
+        // Write final summary
+        const finalSummary = generateSummary(false);
+        console.log(finalSummary);
+        writeSummaryToFile(finalSummary, config.summaryFile);
 
     } finally {
         console.warn = originalWarn;
