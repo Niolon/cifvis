@@ -307,9 +307,13 @@ export class CifLoop {
         this.headerLines = lines.slice(1, i).map(line => line.trim());
         
         let dataEnd = i;
+        let inMultiline = false;
         // Get data section
-        while (dataEnd < lines.length && !lines[dataEnd].trim().startsWith('_') && 
-               !lines[dataEnd].trim().startsWith('loop_')) {
+        while (dataEnd < lines.length && ((!lines[dataEnd].trim().startsWith('_') && 
+               !lines[dataEnd].trim().startsWith('loop_')) || inMultiline)) {
+            if (lines[dataEnd].startsWith(';')) {
+                inMultiline = !inMultiline;
+            }
             dataEnd++;
         }
         
