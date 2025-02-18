@@ -119,7 +119,17 @@ data_test3
 more text
 ;
 data_test2
-_other value`);
+_other value
+_second_multiline
+;Direct
+continuation after 
+;
+_third_multiline
+;
+data_new
+_some_nonsense test
+;
+`);
             expect(cif.blocks).toEqual([null, null]);
             const blocks = cif.getAllBlocks();
             expect(blocks).toHaveLength(2);
@@ -132,6 +142,8 @@ _other value`);
             expect(blocks2).toHaveLength(2);
             expect(blocks2[0].get('_note').get('_note')).toEqual(['first\ndata_test2\nnote\ndata_test3\nmore text']);
             expect(blocks2[1].get('_other')).toBe('value');
+            expect(blocks2[1].get('_second_multiline')).toBe('Direct\ncontinuation after');
+            expect(blocks2[1].get('_third_multiline')).toBe('data_new\n_some_nonsense test');
         });
     });
 

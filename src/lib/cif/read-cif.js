@@ -93,14 +93,19 @@ export class CIF {
      */
     splitCifBlocks(cifText) {
         const blocks = [];
-        const blockTexts = cifText.split(/\ndata_/).slice(1);
+        const blockTexts = cifText
+            .replace(/\n;(.)/g, '\n;\n$1')
+            .split(/\r?\ndata_/).slice(1);
         let i = 0;
         
         while (i < blockTexts.length) {
+            console.log(blockTexts);
+            console.log(blocks);
             let text = blockTexts[i];
             const multilinePattern = /^\s*;[\s\w]*$/gm;
             const matches = text.match(multilinePattern);
             let count = matches ? matches.length : 0;
+            console.log(count);
             
             while (count % 2 === 1 && i + 1 < blockTexts.length) {
                 i++;
@@ -112,6 +117,7 @@ export class CIF {
             blocks.push(text);
             i++;
         }
+
         return blocks;
     }
  
@@ -124,6 +130,7 @@ export class CIF {
         if (!this.blocks[index]) {
             this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU);
         }
+        console.log(this.blocks)
         return this.blocks[index];
     }
  
@@ -173,7 +180,7 @@ export class CifBlock {
 
         this.data = {};
         const lines = this.rawText
-            .replace(/\n;(.)/g, '\n;\n$1') // Add newline after semicolon if followed by non-whitespace
+            .replace(/\n;(.)/g, '\n;\n$1')
             .split('\n')
             .filter(line => !line.startsWith('#'))
             .map(line => {
@@ -372,6 +379,7 @@ export class CifLoop {
     */
     findCommonStart() {
         const standardNames = [
+            '_space_group_symop_ssg',
             '_space_group_symop',
             '_symmetry_equiv',
             '_geom_bond',
