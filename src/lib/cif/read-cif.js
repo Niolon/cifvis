@@ -99,13 +99,10 @@ export class CIF {
         let i = 0;
         
         while (i < blockTexts.length) {
-            console.log(blockTexts);
-            console.log(blocks);
             let text = blockTexts[i];
             const multilinePattern = /^\s*;[\s\w]*$/gm;
             const matches = text.match(multilinePattern);
             let count = matches ? matches.length : 0;
-            console.log(count);
             
             while (count % 2 === 1 && i + 1 < blockTexts.length) {
                 i++;
@@ -130,7 +127,6 @@ export class CIF {
         if (!this.blocks[index]) {
             this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU);
         }
-        console.log(this.blocks)
         return this.blocks[index];
     }
  
