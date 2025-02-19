@@ -43,7 +43,7 @@ const STANDART_LOOP_NAMES = [
  * parseValue("'text'", true)     // Returns {value: "text", su: NaN}
  */
 export function parseValue(entryString, splitSU = true) {
-    const suPattern = /([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)/;
+    const suPattern = /^([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)/;
     const match = entryString.match(suPattern);
     let value, su;
  
