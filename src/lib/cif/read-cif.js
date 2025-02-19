@@ -392,38 +392,32 @@ export class CifLoop {
         this.headers = [...this.headerLines];
         this.data = {};
     
-        const dataArray = [];
-        let i = 0;
-        while (i < this.dataLines.length) {
-            const line = this.dataLines[i].trim();
-
-            if (line.length === 0) {
-                i++;
-                continue;
+        const dataArray = this.dataLines.reduce((acc, line, i) => {
+            line = line.trim();
+            if (!line.length) {
+                return acc;
             }
         
             if (line.startsWith(';')) {
                 const mult = parseMultiLineString(this.dataLines, i);
-                dataArray.push(parseValue(mult.value, this.splitSU));
-                i = mult.endIndex + 1;
-                continue;
+                acc.push({ value: mult.value, su: NaN });
+                // Skip lines consumed by multiline string
+                for (let j = i; j < mult.endIndex + 1; j++) {
+                    this.dataLines[j] = '';
+                }
+                return acc;
             }
-            const tokenRegex = /'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g;
-            let match;
-    
-            while ((match = tokenRegex.exec(line)) !== null) {
-                // If it was a quoted string, use the captured group (1 or 2), otherwise use full match
-                const value = match[1] || match[2] || match[0];
-                dataArray.push(parseValue(value, this.splitSU));
-            }
-    
-            i++;
-        }
+        
+            const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
+            return acc.concat(matches.map(match => 
+                parseValue(match[1] || match[2] || match[0], this.splitSU),
+            ));
+        }, []);
     
         const nEntries = this.headers.length;
     
         if (dataArray.length % nEntries !== 0) {
-            const dataString = dataArray.map(({value, su}) => {
+            const dataString = dataArray.map(({ value, su }) => {
                 return `{value: ${value}, su: ${su}}`;
             }).join(', ');
             throw new Error(
@@ -484,7 +478,7 @@ export class CifLoop {
         for (let i = 0; i < minSegments; i++) {
             const segment = underscoreSegments[0][i];
             const matchCount = underscoreSegments.filter(segments => 
-                segments[i] === segment
+                segments[i] === segment,
             ).length;
             
             if (this.headerLines.length === 2) {

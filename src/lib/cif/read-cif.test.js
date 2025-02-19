@@ -25,7 +25,7 @@ describe('Parse Value Tests', () => {
     test('handles unquoted strings with a number in a bracket', () => {
         expect(parseValue('H1')).toEqual({ value: 'H1', su: NaN });
         expect(parseValue('H(1)')).toEqual({ value: 'H(1)', su: NaN });
-        expect(parseValue('H1(3)')).toEqual({ value: 'H1(3)', su: NaN});
+        expect(parseValue('H1(3)')).toEqual({ value: 'H1(3)', su: NaN });
     });
  
     test('respects splitSU flag', () => {
@@ -653,7 +653,7 @@ _some_note
                 '_site_atom_x',
                 '_site_cartn_atom_y', 
                 '_different_x',
-                '_another_y'
+                '_another_y',
             ]);
             expect(loop.findCommonStart(false)).toBe('_site');
         });
@@ -807,7 +807,17 @@ oneentry`);
         });
 
         test('parses loop with splitSU=false', () => {
-            // [Existing splitSU test]
+            const block = new CifBlock(`test
+loop_
+_cell_length_a
+_cell_angle_alpha
+5.4309(5) 90.000(12)
+5.4310(8) 90.000(15)`,
+            false);
+                    
+            const loop = block.get('_cell');
+            expect(loop.get('_cell_length_a')).toEqual(['5.4309(5)', '5.4310(8)']);
+            expect(loop.get('_cell_angle_alpha')).toEqual(['90.000(12)', '90.000(15)']);
         });
     });
 });
