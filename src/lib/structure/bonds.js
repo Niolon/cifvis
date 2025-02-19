@@ -28,13 +28,18 @@ export class Bond {
     */
     static fromCIF(cifBlock, bondIndex) {
         const bondLoop = cifBlock.get('_geom_bond');
+        const siteSymmetry2 = bondLoop.getIndex(
+            ['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'],
+            bondIndex,
+            '.',
+        );
 
         return new Bond(
             bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
             bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
-            bondLoop.getIndex(['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'], bondIndex, '.'),
+            siteSymmetry2 !== '?' ? siteSymmetry2: '.',
         );
     }
 }
@@ -94,6 +99,10 @@ export class HBond {
     */
     static fromCIF(cifBlock, hBondIndex) {
         const hBondLoop = cifBlock.get('_geom_hbond');
+        const acceptorAtomSymmetry = hBondLoop.getIndex(
+            ['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex,
+            '.',
+        );
 
         return new HBond(
             hBondLoop.getIndex(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'], hBondIndex),
@@ -107,7 +116,7 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            hBondLoop.getIndex(['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex, '.'),
+            acceptorAtomSymmetry !== '?' ? acceptorAtomSymmetry : '.',
         );
     }
 }

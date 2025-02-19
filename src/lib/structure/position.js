@@ -141,11 +141,11 @@ export class PositionFactory {
         const atomSite = cifBlock.get('_atom_site');
         const invalidValues = ['.', '?'];
 
-        const calcFlag = atomSite.getIndex(
+        const calcFlag = String(atomSite.getIndex(
             ['_atom_site.calc_flag', '_atom_site_calc_flag'],
             index,
             '',
-        ).toLowerCase();
+        )).toLowerCase();
         if (calcFlag === 'dum') {
             throw new Error('Dummy atom: calc_flag is dum');
         }

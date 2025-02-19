@@ -1,3 +1,33 @@
+const STANDART_LOOP_NAMES = [
+    '_space_group_symop_ssg',
+    '_space_group_symop',
+    '_symmetry_equiv',
+    '_geom_bond',
+    '_geom_hbond',
+    '_geom_angle',
+    '_geom_torsion',
+    '_diffrn_refln',
+    '_refln',
+    '_atom_site_fourier_wave_vector',
+    '_atom_site_moment_fourier_param',
+    '_atom_site_moment_special_func',
+    '_atom_site_moment',
+    '_atom_site_rotation',
+    '_atom_site_displace_Fourier',
+    '_atom_site_displace_special_func',
+    '_atom_site_occ_Fourier',
+    '_atom_site_occ_special_func',
+    '_atom_site_phason',
+    '_atom_site_rot_Fourier_param',
+    '_atom_site_rot_Fourier',
+    '_atom_site_rot_special_func',
+    '_atom_site_U_Fourier',
+    '_atom_site_anharm_gc_c',
+    '_atom_site_anharm_gc_d',
+    '_atom_site_aniso',
+    '_atom_site',
+];
+
 /**
  * Parses a CIF value string into its numeric value and standard uncertainty (SU).
  * 
@@ -13,7 +43,7 @@
  * parseValue("'text'", true)     // Returns {value: "text", su: NaN}
  */
 export function parseValue(entryString, splitSU = true) {
-    const suPattern = /([+-]?)(\d+\.?\d*)\((\d+)\)/;
+    const suPattern = /([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)/;
     const match = entryString.match(suPattern);
     let value, su;
  
@@ -50,27 +80,18 @@ export function parseValue(entryString, splitSU = true) {
  * @returns {Object} Object with parsed value and end index
  */
 export function parseMultiLineString(lines, startIndex) {
-    const result = [];
-    let i = startIndex + 1;
+    const line1 = [lines[startIndex].slice(1)];
+
+    const slice1 = lines.slice(startIndex + 1);
+    const sliceEnd = slice1.findIndex(line => line.startsWith(';'));
+    const result = line1.concat(slice1.slice(0, sliceEnd));
     
-    while (i < lines.length && !lines[i].startsWith(';')) {
-        // Handle both empty lines and regular lines
-        const line = lines[i] === '' ? '' : lines[i].replace(/\\([^\\])/g, '$1');
-        result.push(line);
-        i++;
-    }
-    
-    // Remove only leading and trailing empty lines
-    while (result.length > 0 && result[0] === '') {
-        result.shift();
-    }
-    while (result.length > 0 && result[result.length - 1] === '') {
-        result.pop();
-    }
+    const nonEmptySliceStart = result.findIndex(line => line.trim() !== '');
+    const nonEmptySliceEnd = result.findLastIndex(line => line.trim !== '');
 
     return {
-        value: result.join('\n'),
-        endIndex: i,
+        value: result.slice(nonEmptySliceStart, nonEmptySliceEnd + 1).join('\n'),
+        endIndex: startIndex + sliceEnd + 1,
     };
 }
 
@@ -105,21 +126,20 @@ export class CIF {
         const blocks = [];
         const blockTexts = cifText
             .replaceAll('\r\n', '\n')
-            .replace(/\n;(.)/g, '\n;\n$1')
             .split(/\r?\ndata_/).slice(1);
         let i = 0;
         
         while (i < blockTexts.length) {
             let text = blockTexts[i];
-            const multilinePattern = /^\s*;[\s\w]*$/gm;
+            const multilinePattern = /\n;/g;
             const matches = text.match(multilinePattern);
             let count = matches ? matches.length : 0;
             
             while (count % 2 === 1 && i + 1 < blockTexts.length) {
                 i++;
                 text += '\ndata_' + blockTexts[i];
-                const matches = text.match(multilinePattern);
-                count = matches ? matches.length : 0;
+                const innerMatches = text.match(multilinePattern);
+                count = innerMatches ? innerMatches.length : 0;
             }
             
             blocks.push(text);
@@ -156,6 +176,34 @@ export class CIF {
 }
 
 /**
+ * Resolves naming conflicts between two CIF loops by assigning the longer common prefix
+ * to the loop that naturally has it.
+ * 
+ * @param {CifLoop} loop1 - First loop, typically the existing one in the block
+ * @param {CifLoop} loop2 - Second loop, typically the new one being added
+ * @returns {[CifLoop, CifLoop]} Array containing both loops with resolved names
+ * @throws {Error} If both loops have the same shortest common prefix length
+ * 
+ */
+export function resolveConflictingLoops(loop1, loop2) {
+    const originalName = loop1.name;
+
+    const shortest1 = loop1.findCommonStart(false);
+    const shortest2 = loop2.findCommonStart(false);
+
+    if (shortest1.length === shortest2.length) {
+        throw new Error(`Non-resolvable conflict, where ${originalName} seems to be the root name of multiple loops`);
+    }
+
+    if (shortest1.length > shortest2.length) {
+        loop1.name = shortest1;
+    } else {
+        loop2.name = shortest2;
+    }
+    return [loop1, loop2];
+}
+
+/**
  * Represents a single data block within a CIF file.
  * 
  * @property {string} rawText - Raw text content of this block
@@ -187,7 +235,6 @@ export class CifBlock {
 
         this.data = {};
         const lines = this.rawText
-            .replace(/\n;(.)/g, '\n;\n$1')
             .split('\n')
             .filter(line => !line.trim().startsWith('#'))
             .map(line => {
@@ -199,7 +246,7 @@ export class CifBlock {
         let i = 1;
 
         while (i < lines.length) {
-            if (lines[i + 1] === ';') {
+            if ((i + 1) < lines.length && lines[i + 1].startsWith(';')) {
                 const mult = parseMultiLineString(lines, i + 1);
                 this.data[lines[i]] = mult.value;
                 i = mult.endIndex + 1;
@@ -208,7 +255,13 @@ export class CifBlock {
             
             if (lines[i].trim().startsWith('loop_')) {
                 const loop = new CifLoop(lines.slice(i), this.splitSU);
-                this.data[loop.getName()] = loop;
+                if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
+                    this.data[loop.getName()] = loop;
+                } else {
+                    const [loop1, loop2] = resolveConflictingLoops(this.data[loop.getName()], loop);
+                    this.data[loop1.getName()] = loop1;
+                    this.data[loop2.getName()] = loop2;
+                }
                 i += loop.getEndIndex();
                 continue;
             }
@@ -349,7 +402,7 @@ export class CifLoop {
                 continue;
             }
         
-            if (line === ';') {
+            if (line.startsWith(';')) {
                 const mult = parseMultiLineString(this.dataLines, i);
                 dataArray.push(parseValue(mult.value, this.splitSU));
                 i = mult.endIndex + 1;
@@ -397,64 +450,55 @@ export class CifLoop {
     * @returns {string} Common prefix without the trailing underscore
     * @private
     */
-    findCommonStart() {
-        const standardNames = [
-            '_space_group_symop_ssg',
-            '_space_group_symop',
-            '_symmetry_equiv',
-            '_geom_bond',
-            '_geom_hbond',
-            '_geom_angle',
-            '_geom_torsion',
-            '_diffrn_refln',
-            '_refln',
-            '_atom_site_fourier_wave_vector',
-            '_atom_site_moment_fourier_param',
-            '_atom_site_moment_special_func',
-            '_atom_site_moment',
-            '_atom_site_rotation',
-            '_atom_site_displace_Fourier',
-            '_atom_site_displace_special_func',
-            '_atom_site_occ_Fourier',
-            '_atom_site_occ_special_func',
-            '_atom_site_phason',
-            '_atom_site_rot_Fourier_param',
-            '_atom_site_rot_Fourier',
-            '_atom_site_rot_special_func',
-            '_atom_site_U_Fourier',
-            '_atom_site_anharm_gc_c',
-            '_atom_site_anharm_gc_d',
-            '_atom_site_aniso',
-            '_atom_site',
-        ];
-    
+    findCommonStart(checkStandardNames=true) {   
         // Check for standard loop names first
-        for (const baseName of standardNames) {
-            const hits = this.headerLines.filter(header => header.toLowerCase().startsWith(baseName.toLowerCase()));
-            if (hits.length >= (this.headerLines.length / 2)) {
-                return baseName;
+        if (checkStandardNames) {
+            for (const baseName of STANDART_LOOP_NAMES) {
+                const hits = this.headerLines.filter(header => header.toLowerCase().startsWith(baseName.toLowerCase()));
+                if (hits.length >= (this.headerLines.length / 2)) {
+                    return baseName;
+                }
             }
         }
 
-        if (this.headerLines.length === 1) {
-            return this.headerLines[0]; 
+        // Try dot-based splitting first
+        const dotSegments = this.headerLines.map(line => line.split('.'));
+        if (dotSegments[0].length > 1) {
+            const prefix = dotSegments[0][0];
+            const matchCount = this.headerLines.filter(line => 
+                line.split('.')[0] === prefix,
+            ).length;
+            
+            if (matchCount >= this.headerLines.length / 2) {
+                return prefix;
+            }
         }
-        
-        const firstStr = this.headerLines[0];
-        const matchStart = '_' + firstStr.split(/[._]/)[1];
-        const matchingStrings = this.headerLines.filter(str => str.startsWith(matchStart));
-        
+
+        const underscoreSegments = this.headerLines.map(line => line.split(/[_.]/).filter(s => s));
+        const minSegments = Math.min(...underscoreSegments.map(segments => segments.length));
+
         let commonPrefix = '';
-        for (let i = 0; i < firstStr.length; i++) {
-            const char = firstStr[i];
-            if (matchingStrings.every(str => str[i] === char)) {
-                commonPrefix += char;
+        for (let i = 0; i < minSegments; i++) {
+            const segment = underscoreSegments[0][i];
+            const matchCount = underscoreSegments.filter(segments => 
+                segments[i] === segment
+            ).length;
+            
+            if (this.headerLines.length === 2) {
+                // For two headers, we require exact match
+                if (matchCount === 2) {
+                    commonPrefix += '_' + segment;
+                } else {
+                    break;
+                }
+            } else if (matchCount >= this.headerLines.length / 2) {
+                commonPrefix += '_' + segment;
             } else {
                 break;
             }
         }
-        
-        return commonPrefix.slice(0, -1);
+
+        return commonPrefix;
     }
 
     /**

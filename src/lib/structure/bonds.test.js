@@ -20,8 +20,11 @@ loop_
 _geom_bond_atom_site_label_1
 _geom_bond_atom_site_label_2
 _geom_bond_distance
+_geom_bond_distance_su
 _geom_bond_site_symmetry_2
-C1 O1 1.5 2_665
+C1 O1 1.5 0.002 2_665
+C1 O1 1.5 0.002 ?
+
     `;
         const cif = new CIF(cifText);
         const bond = Bond.fromCIF(cif.getBlock(0), 0);
@@ -29,7 +32,12 @@ C1 O1 1.5 2_665
         expect(bond.atom1Label).toBe('C1');
         expect(bond.atom2Label).toBe('O1');
         expect(bond.bondLength).toBe(1.5);
+        expect(bond.bondLengthSU).toBe(0.002);
         expect(bond.atom2SiteSymmetry).toBe('2_665');
+
+        const bond2 = Bond.fromCIF(cif.getBlock(0), 1);
+        expect(bond2.atom2SiteSymmetry).toBe('.');
+
     });
 });
 
@@ -46,7 +54,7 @@ describe('HBond', () => {
         expect(hBond.acceptorAtomSymmetry).toBe('1_555');
     });
 
-    test('fromCIF creates complete hydrogen bond', () => {
+    test('fromCIF creates complete hydrogen bonds', () => {
         const cifText = `
 data_test
 loop_
@@ -59,6 +67,7 @@ _geom_hbond_distance_DA
 _geom_hbond_angle_DHA
 _geom_hbond_site_symmetry_A
 O1 H1 O2 1.0 2.0 2.8 175 1_555
+O1 H2 O2 1.0 2.0 2.8 175 ?
 `;
         const cif = new CIF(cifText);
         const hBond = HBond.fromCIF(cif.getBlock(0), 0);
@@ -66,6 +75,10 @@ O1 H1 O2 1.0 2.0 2.8 175 1_555
         expect(hBond.donorAtomLabel).toBe('O1');
         expect(hBond.hydrogenAtomLabel).toBe('H1');
         expect(hBond.acceptorAtomSymmetry).toBe('1_555');
+
+        const hBond2 = HBond.fromCIF(cif.getBlock(0), 1);
+        expect(hBond2.acceptorAtomSymmetry).toBe('.');
+
     });
 });
 
