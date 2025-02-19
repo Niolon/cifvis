@@ -408,8 +408,7 @@ export class CifLoop {
                 i = mult.endIndex + 1;
                 continue;
             }
-    
-            const tokenRegex = /'([^']*(?:(?<! )'[^']*)*)'|"([^"]*(?:(?<! )"[^"]*)*)"|\S+/g;
+            const tokenRegex = /'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g;
             let match;
     
             while ((match = tokenRegex.exec(line)) !== null) {
@@ -424,8 +423,12 @@ export class CifLoop {
         const nEntries = this.headers.length;
     
         if (dataArray.length % nEntries !== 0) {
+            const dataString = dataArray.map(({value, su}) => {
+                return `{value: ${value}, su: ${su}}`;
+            }).join(', ');
             throw new Error(
-                `Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns`,
+                `Loop ${this.name}: Cannot distribute ${dataArray.length} values evenly into ${nEntries} columns\n`
+                + `entries are: ${dataString}`,
             );
         } else if (dataArray.length === 0) {
             throw new Error(`Loop ${this.name} has no data values.`);

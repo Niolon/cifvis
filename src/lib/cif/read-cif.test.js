@@ -491,6 +491,31 @@ _some_header
 _some_additional_header`);
             expect(() => block.get('_some').get('_some_header')).toThrow('Loop _some has no data values.');
         });
+
+        test('parse more complicated value distribution', () => {
+            const block = new CifBlock(`test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_site_symmetry_D
+_geom_hbond_site_symmetry_H
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+_geom_hbond_publ_flag
+N2 H2 O2 '1 655' '1 655' .92 2.126(3) 3.044(5) 175.61 yes
+O2 H O1 '1 655' '1 655' .892 2.053(5) 2.733(5) 132.14 yes
+`);
+            const hBond = block.get('_geom_hbond');
+            expect(hBond.get('_geom_hbond_atom_site_label_D')).toEqual(['N2', 'O2']);
+            expect(hBond.get('_geom_hbond_site_symmetry_D')).toEqual(['1 655', '1 655']);
+            expect(hBond.get('_geom_hbond_distance_HA')).toEqual([2.126, 2.053]);
+            expect(hBond.get('_geom_hbond_distance_HA_su')).toEqual([0.003, 0.005]);
+            expect(hBond.get('_geom_hbond_angle_DHA')).toEqual([175.61, 132.14]);
+            expect(hBond.get('_geom_hbond_publ_flag')).toEqual(['yes', 'yes']);
+        });
     });
 
     // Data Types and Special Values
