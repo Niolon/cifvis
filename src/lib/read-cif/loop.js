@@ -1,5 +1,35 @@
 import { parseMultiLineString, parseValue } from './helpers.js';
 
+const STANDART_LOOP_NAMES = [
+    '_space_group_symop_ssg',
+    '_space_group_symop',
+    '_symmetry_equiv',
+    '_geom_bond',
+    '_geom_hbond',
+    '_geom_angle',
+    '_geom_torsion',
+    '_diffrn_refln',
+    '_refln',
+    '_atom_site_fourier_wave_vector',
+    '_atom_site_moment_fourier_param',
+    '_atom_site_moment_special_func',
+    '_atom_site_moment',
+    '_atom_site_rotation',
+    '_atom_site_displace_Fourier',
+    '_atom_site_displace_special_func',
+    '_atom_site_occ_Fourier',
+    '_atom_site_occ_special_func',
+    '_atom_site_phason',
+    '_atom_site_rot_Fourier_param',
+    '_atom_site_rot_Fourier',
+    '_atom_site_rot_special_func',
+    '_atom_site_U_Fourier',
+    '_atom_site_anharm_gc_c',
+    '_atom_site_anharm_gc_d',
+    '_atom_site_aniso',
+    '_atom_site',
+];
+
 /**
 * Represents a loop construct within a CIF block.
 *
@@ -244,61 +274,88 @@ export class CifLoop {
         return this.endIndex;
     }
 }
+
 /**
- * Resolves naming conflicts between two CIF loops by assigning the longer common prefix
- * to the loop that naturally has it.
- *
- * @param {CifLoop} loop1 - First loop, typically the existing one in the block
- * @param {CifLoop} loop2 - Second loop, typically the new one being added
- * @returns {[CifLoop, CifLoop]} Array containing both loops with resolved names
- * @throws {Error} If both loops have the same shortest common prefix length
- *
+ * Checks if an entry is a CIF loop
+ * @param {Object} entry - Entry to check
+ * @returns {boolean} True if entry is a loop
  */
+export function isLoop(entry) {
+    return entry && typeof entry.getHeaders === 'function';
+}
 
-export function resolveConflictingLoops(loop1, loop2) {
-    const originalName = loop1.name;
+/**
+ * Splits first header into tokens for comparison
+ * @param {CifLoop} loop - Loop to analyze
+ * @returns {string[]} Array of tokens
+ * @throws {Error} If loop has no headers
+ */
+function tokenizeFirstHeader(loop) {
+    const headers = loop.getHeaders();
+    return headers[0].split('_').filter(token => token.length > 0);
+}
 
+export function resolveNonLoopConflict(entry1, entry2, originalName) {
+    const loop = isLoop(entry1) ? entry1 : entry2;
+    const originalTokens = originalName.split('_').filter(token => token.length > 0);
+    const loopTokens = tokenizeFirstHeader(loop);
+    const loopName = '_' + originalTokens.join('_') + '_' + loopTokens[originalTokens.length];
+    
+    // Return names in same order as original entries
+    return isLoop(entry1) ? 
+        [loopName, originalName] : 
+        [originalName, loopName];
+}
+
+export function resolveByCommonStart(loop1, loop2) {
     const shortest1 = loop1.findCommonStart(false);
     const shortest2 = loop2.findCommonStart(false);
 
-    if (shortest1.length === shortest2.length) {
-        throw new Error(`Non-resolvable conflict, where ${originalName} seems to be the root name of multiple loops`);
+    if (shortest1.length !== shortest2.length) {
+        return [shortest1, shortest2];
     }
-
-    if (shortest1.length > shortest2.length) {
-        loop1.name = shortest1;
-    } else {
-        loop2.name = shortest2;
-    }
-    return [loop1, loop2];
+    return null;
 }
-export const STANDART_LOOP_NAMES = [
-    '_space_group_symop_ssg',
-    '_space_group_symop',
-    '_symmetry_equiv',
-    '_geom_bond',
-    '_geom_hbond',
-    '_geom_angle',
-    '_geom_torsion',
-    '_diffrn_refln',
-    '_refln',
-    '_atom_site_fourier_wave_vector',
-    '_atom_site_moment_fourier_param',
-    '_atom_site_moment_special_func',
-    '_atom_site_moment',
-    '_atom_site_rotation',
-    '_atom_site_displace_Fourier',
-    '_atom_site_displace_special_func',
-    '_atom_site_occ_Fourier',
-    '_atom_site_occ_special_func',
-    '_atom_site_phason',
-    '_atom_site_rot_Fourier_param',
-    '_atom_site_rot_Fourier',
-    '_atom_site_rot_special_func',
-    '_atom_site_U_Fourier',
-    '_atom_site_anharm_gc_c',
-    '_atom_site_anharm_gc_d',
-    '_atom_site_aniso',
-    '_atom_site',
-];
 
+export function resolveByTokenLength(loop1, loop2, originalName) {
+    const originalTokens = originalName.split('_').filter(token => token.length > 0);
+    const header1Tokens = tokenizeFirstHeader(loop1);
+    const header2Tokens = tokenizeFirstHeader(loop2);
+
+    // Get the next tokens after the original name
+    if (header1Tokens.length >= header2Tokens.length) {
+        return [
+            originalName + '_' + header1Tokens[originalTokens.length],
+            originalName,
+        ];
+    } else {
+        return [
+            originalName,
+            originalName + '_' + header2Tokens[originalTokens.length],
+        ];
+    }
+}
+
+export function resolveLoopNamingConflict(entry1, entry2, originalName) {
+    let newNames;
+    
+    // Get new names from appropriate resolution function
+    if (!isLoop(entry1) || !isLoop(entry2)) {
+        newNames = resolveNonLoopConflict(entry1, entry2, originalName);
+    } else {
+        newNames = resolveByCommonStart(entry1, entry2) || resolveByTokenLength(entry1, entry2, originalName);
+    }
+
+    // Update loop names if applicable
+    const entries = [entry1, entry2];
+    entries.forEach((entry, index) => {
+        if (isLoop(entry)) {
+            entry.name = newNames[index];
+        }
+    });
+
+    return {
+        newNames,
+        newEntries: entries,
+    };
+}

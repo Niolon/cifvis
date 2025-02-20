@@ -1,5 +1,5 @@
 import { parseMultiLineString, parseValue } from './helpers.js';
-import { CifLoop, resolveConflictingLoops } from './loop.js';
+import { CifLoop, resolveLoopNamingConflict } from './loop.js';
 
 /**
 * Represents a CIF (Crystallographic Information File) parser.
@@ -136,9 +136,9 @@ export class CifBlock {
                 if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
                     this.data[loop.getName()] = loop;
                 } else {
-                    const [loop1, loop2] = resolveConflictingLoops(this.data[loop.getName()], loop);
-                    this.data[loop1.getName()] = loop1;
-                    this.data[loop2.getName()] = loop2;
+                    const result = resolveLoopNamingConflict(this.data[loop.getName()], loop);
+                    this.data[result.newNames[0]] = result.newEntries[0];
+                    this.data[result.newNames[1]] = result.newEntries[1];
                 }
                 i += loop.getEndIndex();
                 continue;

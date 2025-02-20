@@ -1,108 +1,9 @@
 import { CifBlock, CIF } from './base.js';
-import { CifLoop, resolveConflictingLoops } from './loop.js';
+import {
+    CifLoop, resolveLoopNamingConflict, isLoop, resolveNonLoopConflict,
+    resolveByTokenLength, resolveByCommonStart,
+} from './loop.js';
 
-describe('resolveConflictingLoops', () => {
-    // Helper function to create test loops
-    function createTestLoop(headers) {
-        const loop = new CifLoop([
-            'loop_',
-            ...headers,
-            'dummy_data 1',
-        ], true);
-        return loop;
-    }
-
-    test('resolves conflict between standard and extended loops', () => {
-        const standardLoop = createTestLoop([
-            '_atom_site_label',
-            '_atom_site_type_symbol',
-        ]);
-        const extendedLoop = createTestLoop([
-            '_atom_site_oxford_label',
-            '_atom_site_oxford_type',
-        ]);
-
-        const [resolved1, resolved2] = resolveConflictingLoops(standardLoop, extendedLoop);
-
-        expect(resolved1.getName()).toBe('_atom_site');
-        expect(resolved2.getName()).toBe('_atom_site_oxford');
-    });
-
-    test('handles reversed order of standard and extended loops', () => {
-        const extendedLoop = createTestLoop([
-            '_atom_site_oxford_label',
-            '_atom_site_oxford_type',
-        ]);
-        const standardLoop = createTestLoop([
-            '_atom_site_label',
-            '_atom_site_type_symbol',
-        ]);
-
-        const [resolved1, resolved2] = resolveConflictingLoops(extendedLoop, standardLoop);
-
-        expect(resolved1.getName()).toBe('_atom_site_oxford');
-        expect(resolved2.getName()).toBe('_atom_site');
-    });
-
-    test('resolves conflict between differently prefixed loops', () => {
-        const loop1 = createTestLoop([
-            '_custom_data_value',
-            '_custom_data_error',
-        ]);
-        const loop2 = createTestLoop([
-            '_custom_data_special_value',
-            '_custom_data_special_error',
-        ]);
-
-        const [resolved1, resolved2] = resolveConflictingLoops(loop1, loop2);
-
-        expect(resolved1.getName()).toBe('_custom_data');
-        expect(resolved2.getName()).toBe('_custom_data_special');
-    });
-
-    test('throws error when loops have same prefix length', () => {
-        const loop1 = createTestLoop([
-            '_measurement_temp',
-            '_measurement_pressure',
-        ]);
-        const loop2 = createTestLoop([
-            '_measurement_data',
-            '_measurement_error',
-        ]);
-
-        expect(() => resolveConflictingLoops(loop1, loop2))
-            .toThrow('Non-resolvable conflict, where _measurement seems to be the root name of multiple loops');
-    });
-
-    test('preserves original data after name resolution', () => {
-        const standardLoop = createTestLoop([
-            '_atom_site_label',
-            '_atom_site_type_symbol',
-        ]);
-        const extendedLoop = createTestLoop([
-            '_atom_site_oxford_label',
-            '_atom_site_oxford_type',
-        ]);
-
-        const originalHeaders1 = standardLoop.getHeaders();
-        const originalHeaders2 = extendedLoop.getHeaders();
-
-        const [resolved1, resolved2] = resolveConflictingLoops(standardLoop, extendedLoop);
-
-        expect(resolved1.getHeaders()).toEqual(originalHeaders1);
-        expect(resolved2.getHeaders()).toEqual(originalHeaders2);
-    });
-
-    test('handles single column loops', () => {
-        const loop1 = createTestLoop(['_data_special']);
-        const loop2 = createTestLoop(['_data_special_value']);
-
-        const [resolved1, resolved2] = resolveConflictingLoops(loop1, loop2);
-
-        expect(resolved1.getName()).toBe('_data_special');
-        expect(resolved2.getName()).toBe('_data_special_value');
-    });
-});
 describe('Loop Tests', () => {
     describe('Basic Parsing', () => {
         test('parses basic loop', () => {
@@ -502,3 +403,121 @@ _cell_angle_alpha
 function createTestLoop(headers) {
     return new CifLoop(['loop_', ...headers, 'dummy 1'], true);
 }
+
+describe('Loop Conflict Resolution', () => {
+    // Helper function to create test loops
+    function createTestLoop(headers) {
+        return new CifLoop([
+            'loop_',
+            ...headers,
+            // Create dummy data entries for each header
+            ...headers.map(() => 'dummy_data'),
+        ], true);
+    }
+
+    // Valid non-loop entries are only primitives: numbers or strings
+    const validNonLoopValues = [
+        5,              // integer
+        -10,           // negative integer
+        3.14,          // float
+        -2.718,        // negative float
+        'test',        // string
+        '123.456(7)',  // string with uncertainty
+    ];
+
+    describe('isLoop', () => {
+        test('identifies valid loops', () => {
+            const loop = createTestLoop(['_test_header']);
+            expect(() => loop.get('_test_header')).not.toThrow();
+            expect(isLoop(loop)).toBe(true);
+        });
+
+        test('identifies non-loop entries', () => {
+            validNonLoopValues.forEach(value => {
+                expect(isLoop(value)).toBe(false);
+            });
+        });
+    });
+
+    describe('resolveNonLoopConflict', () => {
+        test('suggests names for loop vs number value conflict', () => {
+            const loop = createTestLoop(['_test_value_data', '_test_value_number']);
+            const value = 5.432;
+            
+            const newNames = resolveNonLoopConflict(loop, value, '_test_value');
+            expect(newNames[0]).toBe('_test_value_data');
+            expect(newNames[1]).toBe('_test_value');
+
+            const newNamesRev = resolveNonLoopConflict(value, loop, '_test_value');
+            expect(newNamesRev[0]).toBe('_test_value');
+            expect(newNamesRev[1]).toBe('_test_value_data');
+        });
+    });
+
+    describe('resolveByCommonStart', () => {
+        test('suggests names for different length prefixes', () => {
+            const loop1 = createTestLoop(['_atom_site_label', '_atom_site_fract_x']);
+            const loop2 = createTestLoop(['_atom_site_custom_loop1', '_atom_site_custom_loop2']);
+            
+            const newNames = resolveByCommonStart(loop1, loop2);
+            expect(newNames[0]).toBe('_atom_site');
+            expect(newNames[1]).toBe('_atom_site_custom');
+        });
+    });
+
+    describe('resolveByTokenLength', () => {
+        test('suggests names based on token length', () => {
+            const loop1 = createTestLoop(['_data_value']);
+            const loop2 = createTestLoop(['_data_special_value']);
+            
+            const newNames = resolveByTokenLength(loop1, loop2, '_data');
+            expect(newNames[0]).toBe('_data');
+            expect(newNames[1]).toBe('_data_special');
+        });
+    });
+
+    describe('resolveLoopNamingConflict integration', () => {
+        test('updates loop names and returns result', () => {
+            const loop1 = createTestLoop(['_atom_site_label']);
+            const loop2 = createTestLoop(['_atom_site_aniso_label']);
+
+            const result = resolveLoopNamingConflict(loop1, loop2, '_atom_site');
+            
+            // Check loop names were updated
+            expect(loop1.name).toBe(result.newNames[0]);
+            expect(loop2.name).toBe(result.newNames[1]);
+            
+            // Check entries array matches
+            expect(result.newEntries).toEqual([loop1, loop2]);
+        });
+
+        test('handles non-loop entry correctly', () => {
+            const loop = createTestLoop(['_test_data']);
+            const value = 5.432;
+
+            const result = resolveLoopNamingConflict(loop, value, '_test');
+                        
+            expect(loop.name).toBe(result.newNames[0]);
+            
+            // Check value wasn't modified
+            expect(result.newEntries[0]).toBe(loop);
+            expect(result.newEntries[1]).toBe(value);
+        });
+
+        test('preserves data after name updates', () => {
+            const loop1 = createTestLoop(['_measurement_temp']);
+            const loop2 = createTestLoop(['_measurement_data']);
+
+            const originalData1 = loop1.get('_measurement_temp');
+            const originalData2 = loop2.get('_measurement_data');
+
+            const _result = resolveLoopNamingConflict(loop1, loop2, '_measurement');
+            
+            // Check that data access still works after name update
+            expect(() => loop1.get('_measurement_temp')).not.toThrow();
+            expect(() => loop2.get('_measurement_data')).not.toThrow();
+            expect(loop1.get('_measurement_temp')).toEqual(originalData1);
+            expect(loop2.get('_measurement_data')).toEqual(originalData2);
+        });
+    });
+});
