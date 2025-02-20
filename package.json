@@ -13,9 +13,10 @@
     "build": "vite build",
     "build:demo": "vite build --config vite.demo.config.mjs",
     "test": "jest",
-    "test:modifiers-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs ../cod",
-    "test:ortep-cod": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs ../cod",
-    "test:ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh ../cod",
+    "test:database-modifiers": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs",
+    "test:database-ortep": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs",
+    "test:database-ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh",
+    "test:database-collect-problem-cifs": "bash ./integration-tests/collect-problem-structures.sh",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
