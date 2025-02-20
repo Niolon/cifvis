@@ -37,7 +37,6 @@ export default [
             // Best Practices
             'curly': ['error', 'all'],
             'default-case': 'warn',
-            'dot-notation': 'error',
             'eqeqeq': 'error',
             'no-caller': 'error',
             'no-eval': 'error',
