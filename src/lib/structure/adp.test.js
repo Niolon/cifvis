@@ -2,7 +2,7 @@ import { create, all } from 'mathjs';
 
 import { UIsoADP, UAnisoADP, ADPFactory } from './adp.js';
 import { UnitCell } from './crystal.js';
-import { CIF } from '../cif/read-cif.js';
+import { CIF } from '../read-cif/base.js';
 
 const math = create(all);
 

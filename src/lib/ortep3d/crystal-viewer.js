@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CIF } from '../cif/read-cif.js';
+import { CIF } from '../read-cif/base.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';

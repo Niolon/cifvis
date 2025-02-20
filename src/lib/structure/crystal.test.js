@@ -6,7 +6,7 @@ import {
 import { Bond, HBond } from './bonds.js';
 import { FractPosition } from './position.js';
 import { UIsoADP, UAnisoADP } from './adp.js';
-import { CIF } from '../cif/read-cif.js';
+import { CIF } from '../read-cif/base.js';
 
 const math = create(all);
 describe('inferElementFromLabel', () => {

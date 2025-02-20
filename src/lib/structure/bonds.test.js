@@ -3,7 +3,7 @@ import { Bond, HBond, BondsFactory } from './bonds.js';
 import { Atom } from './crystal.js';
 import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
 import { FractPosition } from './position.js';
-import { CIF } from '../cif/read-cif.js';
+import { CIF } from '../read-cif/base.js';
 
 describe('Bond', () => {
     test('constructs with minimal parameters', () => {
