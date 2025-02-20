@@ -1,5 +1,5 @@
 // Export only non-DOM functionality
-export { CIF } from './lib/cif/base.js';
+export { CIF } from './lib/read-cif/base.js';
 export { CrystalStructure } from './lib/structure/crystal.js';
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { formatValueEsd } from './lib/formatting.js';

@@ -1,4 +1,4 @@
-import { parseMultiLineString, parseValue } from './helpers';
+import { parseMultiLineString, parseValue } from './helpers.js';
 
 /**
 * Represents a loop construct within a CIF block.
