@@ -136,7 +136,7 @@ export class CifBlock {
                 if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
                     this.data[loop.getName()] = loop;
                 } else {
-                    const result = resolveLoopNamingConflict(this.data[loop.getName()], loop);
+                    const result = resolveLoopNamingConflict(this.data[loop.getName()], loop, loop.getName());
                     this.data[result.newNames[0]] = result.newEntries[0];
                     this.data[result.newNames[1]] = result.newEntries[1];
                 }
