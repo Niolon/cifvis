@@ -17,6 +17,24 @@ describe('Parse Value Tests', () => {
         expect(parseValue('123')).toEqual({ value: 123, su: NaN });
     });
 
+    test('parses scientific notation with uncertainty', () => {
+        expect(parseValue('1.23E4(5)', true)).toEqual({ value: 12300, su: 500 });
+        expect(parseValue('1.23e4(5)', true)).toEqual({ value: 12300, su: 500 });
+        expect(parseValue('1.23E-4(2)', true)).toEqual({ value: 0.000123, su: 0.000002 });
+        expect(parseValue('-1.23e-4(2)', true)).toEqual({ value: -0.000123, su: 0.000002 });
+        expect(parseValue('1E1(5)', true)).toEqual({ value: 10, su: 50 });
+        expect(parseValue('1.0E1(5)', true)).toEqual({ value: 10, su: 5 });
+    });
+
+    test('parses scientific notation without uncertainty', () => {
+        expect(parseValue('1.23E4')).toEqual({ value: 12300, su: NaN });
+        expect(parseValue('1.23e4')).toEqual({ value: 12300, su: NaN });
+        expect(parseValue('1.23E-4')).toEqual({ value: 0.000123, su: NaN });
+        expect(parseValue('-1.23e-4')).toEqual({ value: -0.000123, su: NaN });
+        expect(parseValue('1E1')).toEqual({ value: 10, su: NaN });
+        expect(parseValue('1.0E1')).toEqual({ value: 10, su: NaN });
+    });
+
     test('parses quoted strings', () => {
         expect(parseValue('\'text\'')).toEqual({ value: 'text', su: NaN });
         expect(parseValue('"text"')).toEqual({ value: 'text', su: NaN });
