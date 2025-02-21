@@ -35,7 +35,7 @@ export function parseValue(entryString, splitSU = true) {
         // Calculate SU with same decimal places as the final value
         const suExp = exp - mantissaDecimals;
         const su = Number((parseInt(suString) * Math.pow(10, suExp)));
-        if ((mantissaDecimals - exp) >= 0) {
+        if ((mantissaDecimals - exp) >= 0 && (mantissaDecimals - exp) <= 100) {
             return {
                 value: Number(value.toFixed(mantissaDecimals - exp)),
                 su: Number(su.toFixed(mantissaDecimals - exp)),
@@ -52,9 +52,9 @@ export function parseValue(entryString, splitSU = true) {
         const [, signString, numString, expString] = plainSciMatch;
         const signMult = signString === '-' ? -1 : 1;
         const mantissaDecimals = numString.includes('.') ? numString.split('.')[1].length : 0;
-        const exp = parseInt(expString)
+        const exp = parseInt(expString);
         const value = Number(signMult * parseFloat(numString) * Math.pow(10, exp));
-        if ((mantissaDecimals - exp) >= 0) {
+        if ((mantissaDecimals - exp) >= 0 && (mantissaDecimals - exp) <= 100) {
             return {
                 value: Number(value.toFixed(mantissaDecimals - exp)),
                 su: NaN,
