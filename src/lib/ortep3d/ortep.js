@@ -5,6 +5,55 @@ import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { SymmetryGrower } from '../structure/structure-modifiers.js';
 
+// Check objects for NaN values and count by type
+function checkForNaN(object3D) {
+    const nanCounts = {
+        position: 0,
+        rotation: 0,
+        scale: 0,
+        matrix: 0,
+    };
+
+    function checkObject(obj) {
+        const position = obj.position;
+        const rotation = obj.rotation;
+        const scale = obj.scale;
+        const matrix = obj.matrix.elements;
+
+        if ([position.x, position.y, position.z].some(isNaN)) {
+            console.log('pos');
+            console.log(position);
+            console.log(obj.userData);
+            nanCounts.position++;
+        }
+        if ([rotation.x, rotation.y, rotation.z].some(isNaN)) {
+            nanCounts.rotation++;
+            console.log('rot');
+            console.log(rotation);
+            console.log(obj.userData);
+        }
+        if ([scale.x, scale.y, scale.z].some(isNaN)) {
+            console.log('scale');
+            console.log(scale);
+            console.log(obj.userData);
+            nanCounts.scale++;
+        }
+        if (matrix.some(isNaN)) {
+            nanCounts.matrix++;
+            console.log('matrix');
+            console.log(matrix);
+            console.log(obj.userData);
+        }
+
+        for (const child of obj.children) {
+            checkObject(child);
+        }
+    }
+
+    checkObject(object3D);
+    return nanCounts;
+}
+
 /**
  * Calculate transformation matrix for ellipsoid visualisation.
  * @param {UAnisoADP} uAnisoADPobj - Anisotropic displacement parameters object
@@ -32,6 +81,9 @@ export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
 export function calcBondTransform(position1, position2) {
     const direction = position2.clone().sub(position1);
     const length = direction.length();
+    if (length === 0.0) {
+        throw new Error('Error in ORTEP Bond Creation. Trying to create a zero length bond.');
+    }
     const unit = direction.divideScalar(length);
     const yAxis = new THREE.Vector3(0, 1, 0);
     const rotationAxis = new THREE.Vector3().crossVectors(unit, yAxis);
@@ -362,12 +414,18 @@ export class ORTEP3JsStructure {
             .filter(bond => atomLabels.includes(bond.atom2Label));
 
         for (const bond of drawnBonds) {
-            this.bonds3D.push(new ORTEPBond(
-                bond,
-                this.crystalStructure,
-                this.cache.geometries.bond,
-                this.cache.materials.bond,
-            ));
+            try {
+                this.bonds3D.push(new ORTEPBond(
+                    bond,
+                    this.crystalStructure,
+                    this.cache.geometries.bond,
+                    this.cache.materials.bond,
+                ));
+            } catch (e) {
+                if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
+                    throw e;
+                }
+            }
         }
 
         // Handle hydrogen bonds
@@ -392,14 +450,20 @@ export class ORTEP3JsStructure {
             .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
 
         for (const hbond of drawnHBonds) {
-            this.hBonds3D.push(new ORTEPHBond(
-                hbond,
-                this.crystalStructure,
-                this.cache.geometries.hbond,
-                this.cache.materials.hbond,
-                this.options.hbondDashSegmentLength,
-                this.options.hbondDashFraction,
-            ));
+            try {
+                this.hBonds3D.push(new ORTEPHBond(
+                    hbond,
+                    this.crystalStructure,
+                    this.cache.geometries.hbond,
+                    this.cache.materials.hbond,
+                    this.options.hbondDashSegmentLength,
+                    this.options.hbondDashFraction,
+                ));
+            } catch (e) {
+                if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
+                    throw e;
+                }
+            }
         }
     }
 
@@ -421,6 +485,7 @@ export class ORTEP3JsStructure {
         for (const hBond3D of this.hBonds3D) {
             group.add(hBond3D);
         }
+        checkForNaN(group);
         
         return group;
     }
@@ -589,19 +654,22 @@ export class ORTEPAniAtom extends ORTEPAtom {
      */
     constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing, ADPRingMaterial) {
         super(atom, unitCell, baseAtom, atomMaterial);
-
-        const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
-        if (ellipsoidMatrix.toArray().includes(NaN)) {
-            this.geometry = new THREE.TetrahedronGeometry(1);
-        } else {            
-            for (const matrix of this.adpRingMatrices) {
-                const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
-                ringMesh.applyMatrix4(matrix);
-                ringMesh.userData.selectable = false;
-                this.add(ringMesh);
+        if ([atom.adp.u11, atom.adp.u3, atom.adp.u33].some(val => val <= 0)) {
+            this.geometry = new THREE.TetrahedronGeometry(0.8);
+        } else {
+            const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
+            if (ellipsoidMatrix.toArray().includes(NaN)) {
+                this.geometry = new THREE.TetrahedronGeometry(0.8);
+            } else {            
+                for (const matrix of this.adpRingMatrices) {
+                    const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
+                    ringMesh.applyMatrix4(matrix);
+                    ringMesh.userData.selectable = false;
+                    this.add(ringMesh);
+                }
+    
+                this.applyMatrix4(ellipsoidMatrix);
             }
-
-            this.applyMatrix4(ellipsoidMatrix);
         }
         
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));

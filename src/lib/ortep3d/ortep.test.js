@@ -89,7 +89,9 @@ describe('Transformation Functions', () => {
 
         test('handles zero-length bond gracefully', () => {
             const pos = new THREE.Vector3(1, 1, 1);
-            expect(() => calcBondTransform(pos, pos.clone())).not.toThrow();
+            expect(() => calcBondTransform(pos, pos.clone())).toThrow(
+                'Error in ORTEP Bond Creation. Trying to create a zero length bond.',
+            );
         });
     });
 });

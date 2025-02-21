@@ -737,7 +737,7 @@ export class BondGenerator extends BaseFilter {
                     elementProperties,
                 );
 
-                if (distance <= maxDistance) {
+                if (distance <= maxDistance && distance > 0.0001) {
                     generatedBonds.add(new Bond(
                         atom1.label,
                         atom2.label,

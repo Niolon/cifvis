@@ -88,7 +88,12 @@ export class UAnisoADP {
         const { eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
         const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
 
-        const eigenvalues = math.matrix(eigenvectors_obj.map(entry => entry.value));
+        const eigenvalues = math.matrix(eigenvectors_obj.map(entry => {
+            if (entry.value > 0) {
+                return entry.value;
+            }
+            return NaN;
+        }));
         const det = math.det(eigenvectors);
         const sqrtEigenvalues = math.diag(eigenvalues.map(Math.sqrt));
 
