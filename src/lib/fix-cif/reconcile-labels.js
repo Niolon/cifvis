@@ -1,12 +1,4 @@
 /**
- * Module for reconciling atom labels in CIF files by handling:
- * 1. Capitalization differences
- * 2. Optional brackets around numbers
- * 3. Common special suffixes (^A, ^1, *$1)
- * @module reconcile-atoms
- */
-
-/**
  * Normalizes an atom label for comparison
  * @param {string} label - Atom label to normalize
  * @param {boolean} [removeSuffixes=false] - Whether to remove ^A, ^1, *$n suffixes
@@ -78,7 +70,6 @@ export function createLabelMap(labels, removeSuffixes = false) {
  * @param {CifLoop} loop - CIF loop containing the column to reconcile
  * @param {string} columnToReconcile - Name of column containing labels to reconcile
  * @param {Array<string>} referenceLabels - Array of reference atom labels
- * @param {string} [fallbackColumn=null] - Optional column to use when no match found
  * @param {boolean} [removeSuffixes=false] - Whether to handle special suffixes
  * @returns {CifLoop} New loop with reconciled labels
  */
@@ -88,15 +79,9 @@ export function reconcileAtomLabels(
     referenceLabels, 
     removeSuffixes = false,
 ) {
-    // Create lookup map for reference labels
     const labelMap = createLabelMap(referenceLabels, removeSuffixes);
-    
-    // Get the data for the column we want to reconcile
     const originalValues = loop.get(columnToReconcile);
-    
-    // Get fallback values if column specified
-    
-    // Create new array with reconciled values
+       
     const reconciledValues = originalValues.map(value => {
         try {
             const normalized = normalizeAtomLabel(value, removeSuffixes);
@@ -110,7 +95,7 @@ export function reconcileAtomLabels(
         }
     });
     
-    loop.data[columnToReconcile] = reconciledValues;  // Update reconciled column  
+    loop.data[columnToReconcile] = reconciledValues;  
 }
 
 /**
