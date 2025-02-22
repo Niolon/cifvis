@@ -83,16 +83,11 @@ export function reconcileAtomLabels(
     const originalValues = loop.get(columnToReconcile);
        
     const reconciledValues = originalValues.map(value => {
-        try {
-            const normalized = normalizeAtomLabel(value, removeSuffixes);
-            if (labelMap.has(normalized)) {
-                return labelMap.get(normalized);
-            }
-            return value;
-        } catch (error) {
-            console.warn(`Error processing ${value}: ${error.message}`);
-            return value;
+        const normalized = normalizeAtomLabel(value, removeSuffixes);
+        if (labelMap.has(normalized)) {
+            return labelMap.get(normalized);
         }
+        return value; 
     });
     
     loop.data[columnToReconcile] = reconciledValues;  
