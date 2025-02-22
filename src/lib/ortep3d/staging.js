@@ -162,7 +162,7 @@ export function setupLighting(scene, ortep3DGroup) {
     // Remove all existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
     
-    const lightDistance = calculateCameraDistance(ortep3DGroup) * 1.5;
+    const lightDistance = Math.max(calculateCameraDistance(ortep3DGroup), 6) * 1.5;
     
     // Base ambient light
     const ambientLight = new THREE.AmbientLight(0xffffff, 1);
