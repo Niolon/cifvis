@@ -168,7 +168,7 @@ _geom_bond.atom_site_label_1
             bondLoop,
             '_geom_bond.atom_site_label_1',
             refLabels,
-            '_geom_bond.atom_site_label_1'  // Fallback to original
+            '_geom_bond.atom_site_label_1',  // Fallback to original
         );
         expect(bondLoop.get('_geom_bond.atom_site_label_1')).toEqual(['H3B', 'Fe2']);
     });
@@ -187,7 +187,7 @@ _geom_bond.atom_site_label_1
             bondLoop,
             '_geom_bond.atom_site_label_1',
             refLabels,
-            true
+            true,
         );
         
         // Check loop integrity
