@@ -132,7 +132,7 @@ export class CifBlock {
             }
             
             if (lines[i].trim().startsWith('loop_')) {
-                const loop = new CifLoop(lines.slice(i), this.splitSU);
+                const loop = CifLoop.fromLines(lines.slice(i), this.splitSU);
                 if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
                     this.data[loop.getName()] = loop;
                 } else {

@@ -48,15 +48,33 @@ export class CifLoop {
     * @param {Array<string>} lines - Raw lines of the loop construct
     * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
     */
-    constructor(lines, splitSU) {
+    constructor(headerLines, dataLines, endIndex, splitSU, name=null) {
         this.splitSU = splitSU;
+        this.headerLines = headerLines;
+        this.dataLines = dataLines;
+        this.endIndex = endIndex;
+        
+        this.headers = null;
+        this.data = null;
+        this.name = null;
+
+        // Parse headers early for findCommonStart
+        if (name) {
+            this.name = name;
+        } else {
+            this.name = this.findCommonStart();
+        }
+        
+    }
+
+    static fromLines(lines, splitSU) {
         let i = 1;
 
         // Get header section
         while (i < lines.length && lines[i].trim().startsWith('_')) {
             i++;
         }
-        this.headerLines = lines.slice(1, i).map(line => line.trim());
+        const headerLines = lines.slice(1, i).map(line => line.trim());
 
         let dataEnd = i;
         let inMultiline = false;
@@ -69,14 +87,10 @@ export class CifLoop {
             dataEnd++;
         }
 
-        this.dataLines = lines.slice(i, dataEnd);
-        this.endIndex = dataEnd;
-        this.headers = null;
-        this.data = null;
-        this.name = null;
+        const dataLines = lines.slice(i, dataEnd);
+        const endIndex = dataEnd;
 
-        // Parse headers early for findCommonStart
-        this.name = this.findCommonStart();
+        return new CifLoop(headerLines, dataLines, endIndex, splitSU);
     }
 
     /**
