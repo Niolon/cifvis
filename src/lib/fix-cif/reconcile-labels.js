@@ -5,7 +5,7 @@
  * @returns {string} Normalized label
  * @throws {Error} If label is empty
  */
-export function normalizeAtomLabel(label, removeSuffixes = false) {
+export function normalizeAtomLabel(label, removeSuffixes = true) {
     if (!label || typeof label !== 'string') {
         throw new Error('Empty atom label');
     }
@@ -16,7 +16,8 @@ export function normalizeAtomLabel(label, removeSuffixes = false) {
     // Optional suffix removal
     if (removeSuffixes) {
         normalized = normalized
-            .replace(/\^[A-Z1-9]+$/, '')   // Remove ^A or ^1 style suffixes
+            .replace(/\^[a-zA-Z1-9]+$/, '')   // Remove ^A or ^1 style suffixes
+            .replace(/\_[a-zA-Z1-9]+$/, '')   // Remove _A or _1 style suffixes
             .replace(/_\$\d+$/, '');    // Remove *$1 style suffixes
     }
 
@@ -33,7 +34,7 @@ export function normalizeAtomLabel(label, removeSuffixes = false) {
  * @param {boolean} [removeSuffixes=false] - Whether to handle special suffixes
  * @returns {Map<string, string>} Map of normalized labels to original labels
  */
-export function createLabelMap(labels, removeSuffixes = false) {
+export function createLabelMap(labels, removeSuffixes = true) {
     const normalizedToOriginals = new Map();
     
     // First pass: group all original labels by their normalized form
@@ -77,7 +78,7 @@ export function reconcileAtomLabels(
     loop, 
     columnToReconcile, 
     referenceLabels, 
-    removeSuffixes = false,
+    removeSuffixes = true,
 ) {
     const labelMap = createLabelMap(referenceLabels, removeSuffixes);
     const originalValues = loop.get(columnToReconcile);
@@ -101,6 +102,6 @@ export function reconcileAtomLabels(
  * @returns {boolean} True if labels match after normalization
  * @throws {Error} If either label is empty
  */
-export function atomLabelsMatch(label1, label2, removeSuffixes = false) {
+export function atomLabelsMatch(label1, label2, removeSuffixes = true) {
     return normalizeAtomLabel(label1, removeSuffixes) === normalizeAtomLabel(label2, removeSuffixes);
 }

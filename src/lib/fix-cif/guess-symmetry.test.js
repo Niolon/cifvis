@@ -27,6 +27,11 @@ describe('guessSymmetryOperation', () => {
             expect(guessSymmetryOperation('12-456')).toBe('12_456');
         });
 
+        test('converts dot-separated format with numeric IDs', () => {
+            expect(guessSymmetryOperation('2.555')).toBe('2_555');
+            expect(guessSymmetryOperation('12.456')).toBe('12_456');
+        });
+
         test('handles flexible ID formats', () => {
             expect(guessSymmetryOperation('m1 555')).toBe('m1_555');
             expect(guessSymmetryOperation('4+ 565')).toBe('4+_565');

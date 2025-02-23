@@ -23,6 +23,9 @@ describe('normalizeAtomLabel', () => {
         expect(normalizeAtomLabel('H2A^12', true)).toBe('H2A');
         expect(normalizeAtomLabel('O2^AB', true)).toBe('O2');
         expect(normalizeAtomLabel('C1_$12', true)).toBe('C1');
+        expect(normalizeAtomLabel('B1_b', true)).toBe('B1');
+        expect(normalizeAtomLabel('B1^b', true)).toBe('B1');
+        expect(normalizeAtomLabel('F4B^b', true)).toBe('F4B');
         
         // These should remain unchanged
         expect(normalizeAtomLabel('N3_$A', true)).toBe('N3_$A');
@@ -34,7 +37,6 @@ describe('normalizeAtomLabel', () => {
     });
 
     test('preserves other special characters', () => {
-        expect(normalizeAtomLabel('Fe_2', true)).toBe('FE_2');
         expect(normalizeAtomLabel('C/1', true)).toBe('C/1');
         expect(normalizeAtomLabel('N-1', true)).toBe('N-1');
     });

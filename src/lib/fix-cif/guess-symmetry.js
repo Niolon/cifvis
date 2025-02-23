@@ -21,7 +21,7 @@ export function guessSymmetryOperation(symOpString) {
         return input;
     }
 
-    const separatorMatch = input.match(/^-?([^\s\-_]+)[\s-](\d{3})$/);
+    const separatorMatch = input.match(/^-?([^\s\-_.]+)[\s-.](\d{3})$/);
     if (separatorMatch) {
         const id = separatorMatch[1];
         const translation = separatorMatch[2];
