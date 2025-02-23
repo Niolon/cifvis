@@ -174,7 +174,72 @@ export class ValidationResult {
 }
 
 export class BondsFactory {
-    
+    static createBonds(cifBlock, atomLabels) {
+        try {
+            const bondLoop = cifBlock.get('_geom_bond');
+            const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
+            const bonds = [];
+            
+            for (let i = 0; i < nBonds; i++) {
+                const atom1Label = bondLoop.getIndex(
+                    ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
+                    i,
+                );
+                const atom2Label = bondLoop.getIndex(
+                    ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
+                    i,
+                );
+                
+                if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
+                    bonds.push(Bond.fromCIF(cifBlock, i));
+                }
+            }
+            return bonds;
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Creates hydrogen bonds from CIF data
+     * @param {CifBlock} cifBlock - CIF data block to parse
+     * @param {Set<string>} atomLabels - Set of valid atom labels
+     * @returns {HBond[]} Array of created hydrogen bonds
+     */
+    static createHBonds(cifBlock, atomLabels) {
+        const hbondLoop = cifBlock.get('_geom_hbond', false);
+        if (!hbondLoop) {
+            return [];
+        }
+
+        const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
+        const hBonds = [];
+        
+        for (let i = 0; i < nHBonds; i++) {
+            const donorLabel = hbondLoop.getIndex(
+                ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
+                i,
+                '?',
+            );
+            const hydrogenLabel = hbondLoop.getIndex(
+                ['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'],
+                i,
+                '?',
+            );
+            const acceptorLabel = hbondLoop.getIndex(
+                ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
+                i,
+                '?',
+            );
+
+            if (BondsFactory.isValidHBondTriplet(donorLabel, hydrogenLabel, acceptorLabel, atomLabels)) {
+                hBonds.push(HBond.fromCIF(cifBlock, i));
+            }
+        }
+        
+        return hBonds;
+    }
+
     /**
      * Validates bonds against crystal structure
      * @param {CrystalStructure} structure - Structure to validate against
@@ -254,72 +319,6 @@ export class BondsFactory {
             }
         }
         return result;
-    }
-
-    static createBonds(cifBlock, atomLabels) {
-        try {
-            const bondLoop = cifBlock.get('_geom_bond');
-            const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
-            const bonds = [];
-            
-            for (let i = 0; i < nBonds; i++) {
-                const atom1Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
-                    i,
-                );
-                const atom2Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
-                    i,
-                );
-                
-                if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
-                    bonds.push(Bond.fromCIF(cifBlock, i));
-                }
-            }
-            return bonds;
-        } catch {
-            return [];
-        }
-    }
-
-    /**
-     * Creates hydrogen bonds from CIF data
-     * @param {CifBlock} cifBlock - CIF data block to parse
-     * @param {Set<string>} atomLabels - Set of valid atom labels
-     * @returns {HBond[]} Array of created hydrogen bonds
-     */
-    static createHBonds(cifBlock, atomLabels) {
-        const hbondLoop = cifBlock.get('_geom_hbond', false);
-        if (!hbondLoop) {
-            return [];
-        }
-
-        const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
-        const hBonds = [];
-        
-        for (let i = 0; i < nHBonds; i++) {
-            const donorLabel = hbondLoop.getIndex(
-                ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
-                i,
-                '?',
-            );
-            const hydrogenLabel = hbondLoop.getIndex(
-                ['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'],
-                i,
-                '?',
-            );
-            const acceptorLabel = hbondLoop.getIndex(
-                ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
-                i,
-                '?',
-            );
-
-            if (BondsFactory.isValidHBondTriplet(donorLabel, hydrogenLabel, acceptorLabel, atomLabels)) {
-                hBonds.push(HBond.fromCIF(cifBlock, i));
-            }
-        }
-        
-        return hBonds;
     }
 
     /**
