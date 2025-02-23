@@ -3,7 +3,7 @@ import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { 
-    CIF, CrystalStructure,
+    CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/index.nobrowser.js';
 
@@ -15,6 +15,7 @@ const config = {
     logFile: join(logsDir, 'modifier-test-results.log'),
     errorLogFile: join(logsDir, 'modifier-test-errors.log'),
     modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
+    verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
     summaryFile: join(logsDir, 'modifier-test-summary.log'),
     batchSize: 1000,
     interimReportFrequency: 5000, // Report every 1000 structures
@@ -30,7 +31,24 @@ const stats = {
             total: 0,
             unitCellParameterMissing: 0,
             noValidAtoms: 0,
-            placeholderCoordinates: 0,  // New category for "?" coordinates
+            placeholderCoordinates: 0, 
+            uAniProblems: {
+                total: 0,
+                uAniTableMissing: 0,
+                uAniAtomMissingInTable: 0,
+            },
+            bondProblems: {
+                total: 0,
+                missingBondAtom: 0,
+                invalidBondSymmetry: 0,
+                missingHBondAtom: 0,
+                invalidHBondSymmetry: 0,
+            },
+            otherAndLogged: 0,
+        },
+        CrystalStructureFixed: {
+            total: 0,
+            unitCellParameterMissing: 0,
             uAniProblems: {
                 total: 0,
                 uAniTableMissing: 0,
@@ -105,6 +123,17 @@ Error Breakdown:
     - Missing H-bond atoms: ${stats.errors.CrystalStructure.bondProblems.missingHBondAtom}
     - Invalid H-bond symmetry: ${stats.errors.CrystalStructure.bondProblems.invalidHBondSymmetry}
   • Other errors (logged): ${stats.errors.CrystalStructure.otherAndLogged} (${unhandledPercentage}% of structure errors)
+- Structure creation errors persisting after fix: ${stats.errors.CrystalStructureFixed.total}
+  • Missing unit cell parameters: ${stats.errors.CrystalStructureFixed.unitCellParameterMissing}
+  • Anisotropic displacement problems: ${stats.errors.CrystalStructureFixed.uAniProblems.total}
+    - Missing Uani tables: ${stats.errors.CrystalStructureFixed.uAniProblems.uAniTableMissing}
+    - Missing atoms in Uani tables: ${stats.errors.CrystalStructureFixed.uAniProblems.uAniAtomMissingInTable}
+  • Bond problems: ${stats.errors.CrystalStructureFixed.bondProblems.total}
+    - Missing bond atoms: ${stats.errors.CrystalStructureFixed.bondProblems.missingBondAtom}
+    - Invalid bond symmetry: ${stats.errors.CrystalStructureFixed.bondProblems.invalidBondSymmetry}
+    - Missing H-bond atoms: ${stats.errors.CrystalStructureFixed.bondProblems.missingHBondAtom}
+    - Invalid H-bond symmetry: ${stats.errors.CrystalStructureFixed.bondProblems.invalidHBondSymmetry}
+  • Other errors (logged): ${stats.errors.CrystalStructureFixed.otherAndLogged}
 - Symmetry errors: ${stats.errors.symmetry}`;
 
     return summaryText;
@@ -120,51 +149,59 @@ function logMessage(message, filePath = config.logFile) {
     }
 }
 
-function handleStructureError(errorMessage) {
+function handleStructureError(errorMessage, fixed, verbose=false) {
+    let crystalStructureErrors;
+    if (fixed) {
+        crystalStructureErrors = stats.errors.CrystalStructureFixed;
+    } else {
+        crystalStructureErrors = stats.errors.CrystalStructure;
+    }
     let errorHandled = false;
     if (errorMessage.includes('Unit cell parameter entries missing in CIF')) {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.unitCellParameterMissing++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.unitCellParameterMissing++;
         errorHandled = true;
     }
     if (errorMessage === 'The cif file contains no valid atoms.') {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.noValidAtoms++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.noValidAtoms++;
         errorHandled = true;
     }
     if (errorMessage.includes(', but no atom_site_aniso loop was found')) {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.uAniProblems.total++;
-        stats.errors.CrystalStructure.uAniProblems.uAniTableMissing++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.uAniProblems.total++;
+        crystalStructureErrors.uAniProblems.uAniTableMissing++;
         errorHandled = true;
     }
     if (errorMessage.includes('but was not found in atom_site_aniso.label')) {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.uAniProblems.total++;
-        stats.errors.CrystalStructure.uAniProblems.uAniAtomMissingInTable++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.uAniProblems.total++;
+        crystalStructureErrors.uAniProblems.uAniAtomMissingInTable++;
         errorHandled = true;
     }
     if (errorMessage.includes('There were errors in the bond or H-bond creation')) {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.bondProblems.total++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.bondProblems.total++;
         errorHandled = true;
         if (errorMessage.includes('Non-existent atoms in bond')) {
-            stats.errors.CrystalStructure.bondProblems.missingBondAtom++;
+            crystalStructureErrors.bondProblems.missingBondAtom++;
         }
         if (errorMessage.includes('Invalid symmetry in bond')) {
-            stats.errors.CrystalStructure.bondProblems.invalidBondSymmetry++;
+            crystalStructureErrors.bondProblems.invalidBondSymmetry++;
         }
         if (errorMessage.includes('Non-existent atoms in H-bond')) {
-            stats.errors.CrystalStructure.bondProblems.missingHBondAtom++;
+            crystalStructureErrors.bondProblems.missingHBondAtom++;
         }
         if (errorMessage.includes('Invalid symmetry in H-bond')) {
-            stats.errors.CrystalStructure.bondProblems.invalidHBondSymmetry++;
+            crystalStructureErrors.bondProblems.invalidHBondSymmetry++;
         }
     }
     if (!errorHandled) {
-        stats.errors.CrystalStructure.total++;
-        stats.errors.CrystalStructure.otherAndLogged++;
+        crystalStructureErrors.total++;
+        crystalStructureErrors.otherAndLogged++;
         logMessage(errorMessage, config.errorLogFile);
+    } else if (verbose) {
+        logMessage(errorMessage, config.verboseLogFile);
     }
 }
 
@@ -201,19 +238,28 @@ async function testCIFFile(filePath) {
                     if (atomSite && atomSite.get(['_atom_site.fract_x', '_atom_site_fract_x'])
                         .every(val => val === '?')) {
                         stats.errors.CrystalStructure.total++;
+                        stats.errors.CrystalStructureFixed.total++;
                         stats.errors.CrystalStructure.placeholderCoordinates++;
                         results.errors.push('Structure has only placeholder coordinates');
                         return results;
                     }
                     // Otherwise count as no valid atoms error
                     stats.errors.CrystalStructure.total++;
+                    stats.errors.CrystalStructureFixed.total++;
                     stats.errors.CrystalStructure.noValidAtoms++;
                     results.errors.push(`Structure Error: ${error.message}`);
                     return results;
                 }
-                handleStructureError(`Structure Error in ${filePath}: ${error.message}`);
-                results.errors.push(`Structure Error: ${error.message}`);
-                return results;
+                handleStructureError(`Structure Error in ${filePath}: ${error.message}`, false, false);
+                results.errors.push(`Structure Error in unfixed Structure: ${error.message}`);
+                try {
+                    tryToFixCifBlock(block, true, true, true);
+                    baseStructure = CrystalStructure.fromCIF(block);
+                } catch (error2) {
+                    handleStructureError(`Structure Error in Fixed structure${filePath}: ${error2.message}`, true, true);
+                    results.errors.push(`Structure Error in fixed Structure: ${error2.message}`);
+                    return results;
+                }
             }
 
             // Test all modifier combinations
@@ -337,7 +383,7 @@ async function main() {
 
     try {
         // Clear log files
-        ['logFile', 'errorLogFile', 'summaryFile', 'modifierLogFile'].forEach(file => {
+        ['logFile', 'errorLogFile', 'summaryFile', 'modifierLogFile', 'verboseLogFile'].forEach(file => {
             try {
                 writeFileSync(config[file], '');
             } catch (error) {
