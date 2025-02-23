@@ -1,5 +1,5 @@
 import { calculateFractToCartMatrix } from './fract-to-cart.js';
-import { CellSymmetry } from './cell-symmetry.js';
+import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 import { ADPFactory } from './adp.js';
 import { PositionFactory } from './position.js';
 import { BondsFactory } from './bonds.js';
@@ -79,7 +79,7 @@ export class CrystalStructure {
         this.bonds = bonds;
         this.hBonds = hBonds;
         this.recalculateConnectedGroups();
-        this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, ['x,y,z']);
+        this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, [new SymmetryOperation('x,y,z')]);
     }
 
     /**

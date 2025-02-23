@@ -1,8 +1,37 @@
-import { SymmetryOperation, CellSymmetry } from './cell-symmetry.js';
+import { SymmetryOperation, CellSymmetry, formatTranslationAsFraction } from './cell-symmetry.js';
 import { CIF } from '../read-cif/base.js';
 import { Atom } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
+
+describe('formatTranslationAsFraction', () => {
+    test('simple fractions of 2', () => {
+        expect(formatTranslationAsFraction(0.5)).toBe('1/2');
+        expect(formatTranslationAsFraction(1.5)).toBe('3/2');
+        expect(formatTranslationAsFraction(5.5)).toBe('11/2');
+        expect(formatTranslationAsFraction(-0.5)).toBe('-1/2');
+        expect(formatTranslationAsFraction(-2.5)).toBe('-5/2');
+    });
+
+    test('simple other fractions', () => {
+        expect(formatTranslationAsFraction(1/3)).toBe('1/3');
+        expect(formatTranslationAsFraction(-2/3)).toBe('-2/3');
+        expect(formatTranslationAsFraction(1/4)).toBe('1/4');
+        expect(formatTranslationAsFraction(3/4)).toBe('3/4');
+        expect(formatTranslationAsFraction(1/6)).toBe('1/6');
+        expect(formatTranslationAsFraction(-11/6)).toBe('-11/6');
+    });
+
+    test('low precision', () => {
+        expect(formatTranslationAsFraction(0.333)).toBe('1/3');
+        expect(formatTranslationAsFraction(1.167)).toBe('7/6');
+    });
+
+    test('no deminator', () => {
+        expect(formatTranslationAsFraction(1.0)).toBe('1');
+        expect(formatTranslationAsFraction(-11.0)).toBe('-11');
+    });
+});
 
 describe('SymmetryOperation', () => {
     describe('parseSymmetryInstruction', () => {
@@ -234,6 +263,74 @@ _symmetry_equiv_pos_as_xyz
             expect(op1.transVector[1]).toBe(0.5);
         });
     });
+
+    describe('toSymmetryString', () => {
+        test('generates basic symmetry operations', () => {
+            const identityOp = new SymmetryOperation('x,y,z');
+            expect(identityOp.toSymmetryString()).toBe('x,y,z');
+
+            const inversionOp = new SymmetryOperation('-x,-y,-z');
+            expect(inversionOp.toSymmetryString()).toBe('-x,-y,-z');
+
+            const mirrorOp = new SymmetryOperation('-x,y,-z');
+            expect(mirrorOp.toSymmetryString()).toBe('-x,y,-z');
+        });
+
+        test('handles translations', () => {
+            const op1 = new SymmetryOperation('x+1/2,y,z');
+            expect(op1.toSymmetryString()).toBe('1/2+x,y,z');
+
+            const op2 = new SymmetryOperation('x,y+1/2,z-1/2');
+            expect(op2.toSymmetryString()).toBe('x,1/2+y,-1/2+z');
+
+            const op3 = new SymmetryOperation('x-1,y,z+1');
+            expect(op3.toSymmetryString()).toBe('-1+x,y,1+z');
+        });
+
+        test('handles additional translations', () => {
+            const op = new SymmetryOperation('-x,y,-z');
+            expect(op.toSymmetryString([1, 0.5, -1])).toBe('1-x,1/2+y,-1-z');
+
+            const op2 = new SymmetryOperation('x+1/2,y,z-1/2');
+            expect(op2.toSymmetryString([0.5, 1, 0.5])).toBe('1+x,1+y,z');
+
+            // Test combining positive and negative translations
+            const op3 = new SymmetryOperation('x-1/2,y,z');
+            expect(op3.toSymmetryString([1, 0, 0])).toBe('1/2+x,y,z');
+            expect(op3.toSymmetryString([-1, 0, 0])).toBe('-3/2+x,y,z');
+        });
+
+        test('formats common fractions', () => {
+            const op1 = new SymmetryOperation('x+0.5,y+0.25,z+0.75');
+            expect(op1.toSymmetryString()).toBe('1/2+x,1/4+y,3/4+z');
+
+            const op2 = new SymmetryOperation('x-0.3333333,y-0.6666667,z');
+            expect(op2.toSymmetryString()).toBe('-1/3+x,-2/3+y,z');
+
+            // Non-common fractions remain as decimals
+            const op3 = new SymmetryOperation('x+0.4,y,z');
+            expect(op3.toSymmetryString()).toBe('0.4+x,y,z');
+        });
+
+        test('handles coefficients', () => {
+            const op = new SymmetryOperation('2x,-2y,z');
+            expect(op.toSymmetryString()).toBe('2x,-2y,z');
+
+            const op2 = new SymmetryOperation('1/2x,-1/2y,z');
+            expect(op2.toSymmetryString()).toBe('1/2x,-1/2y,z');
+        });
+
+        test('handles special cases', () => {
+            // Zero expression
+            const zeroOp = new SymmetryOperation('0,y,0');
+            expect(zeroOp.toSymmetryString()).toBe('0,y,0');
+
+            // Very small coefficients (should be treated as zero)
+            const op = new SymmetryOperation('x,y,z');
+            op.rotMatrix[0][0] = 1e-11;  // Almost zero
+            expect(op.toSymmetryString()).toBe('0,y,z');
+        });
+    });
 });
 
 describe('CellSymmetry', () => {
@@ -429,6 +526,8 @@ b2 -x,-y,z`;
             // Check ID mapping
             expect(symmetry.operationIds.get('a1')).toBe(0);
             expect(symmetry.operationIds.get('b2')).toBe(1);
+
+            expect(symmetry.identitySymOpId).toBe('a1');
     
             // Test applying operation with translation
             const transformed = symmetry.applySymmetry('b2_456', mockAtom);

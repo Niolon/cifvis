@@ -8,6 +8,44 @@ import { CifLoop } from '../read-cif/loop.js';
 const math = create(all);
 
 /**
+ * Formats a decimal number as a fraction with specified allowed denominators
+ * @param {number} num - Number to format
+ * @returns {string} Formatted number as fraction or decimal string
+ */
+export function formatTranslationAsFraction(num) {
+    if (Math.abs(num) < 2.1e-3) {
+        return '';
+    }
+    
+    const allowedDenominators = [2, 3, 4, 6];
+    const sign = num < 0 ? '-' : '';
+    const absNum = Math.abs(num);
+
+    // Not actually a fraction
+    if (Math.abs(absNum - Math.round(absNum)) < 2.1e-3) {
+        return sign + Math.round(absNum);
+    }
+    
+    // For each allowed denominator, check if the number can be represented as a fraction
+    for (const denominator of allowedDenominators) {
+        const scaled = absNum * denominator;
+        const roundedScaled = Math.round(scaled);
+        
+        // Check if this is a close match (using epsilon for floating point comparison)
+        if (Math.abs(scaled - roundedScaled) < 2.1e-3) {
+            // If numerator equals denominator, return just the integer
+            if (roundedScaled === denominator) {
+                return sign + '1';
+            }
+            return sign + roundedScaled + '/' + denominator;
+        }
+    }
+    
+    // If no fraction match found, return as decimal
+    return sign + absNum.toString();
+}
+
+/**
  * Represents a crystallographic symmetry operation that can be applied to atomic coordinates 
  * and displacement parameters
  */
@@ -198,6 +236,63 @@ export class SymmetryOperation {
         newOp.transVector = math.clone(this.transVector);
         return newOp;
     }
+
+    /**
+     * Generates a symmetry operation string from the internal matrix and vector
+     * @param {Array<number>} [additionalTranslation] - Optional translation vector to add
+     * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
+     */
+    toSymmetryString(additionalTranslation = null) {
+        const variables = ['x', 'y', 'z'];
+        const components = [];
+
+        // Calculate total translation vector
+        const translation = additionalTranslation ? 
+            math.add(this.transVector, additionalTranslation) :
+            this.transVector;
+
+        for (let i = 0; i < 3; i++) {
+            let expr = '';
+            
+            // Add variable components
+            const terms = [];
+            for (let j = 0; j < 3; j++) {
+                const coeff = this.rotMatrix[i][j];
+                if (Math.abs(coeff) > 1e-10) {
+                    if (Math.abs(Math.abs(coeff) - 1) < 1e-10) {
+                        terms.push(coeff > 0 ? variables[j] : `-${variables[j]}`);
+                    } else {
+                        const coeffStr = formatTranslationAsFraction(Math.abs(coeff));
+                        terms.push(coeff > 0 ? `${coeffStr}${variables[j]}` : `-${coeffStr}${variables[j]}`);
+                    }
+                }
+            }
+            
+            expr = terms.join('+');
+            
+            // Handle special case of zero expression
+            if (expr === '') {
+                expr = '0';
+            }
+            
+            // Add translation to start if non-zero
+            if (Math.abs(translation[i]) > 1e-10) {
+                const translationStr = formatTranslationAsFraction(Math.abs(translation[i]));
+                const translationTerm = translation[i] < 0 ? `-${translationStr}` : translationStr;
+                if (expr === '0') {
+                    expr = translationTerm;
+                } else if (expr.startsWith('-')) {
+                    expr = `${translationTerm}${expr}`;
+                } else {
+                    expr = `${translationTerm}+${expr}`;
+                }
+            }
+            
+            components.push(expr);
+        }
+        
+        return components.join(',');
+    }
 }
 
 /**
@@ -208,10 +303,16 @@ export class CellSymmetry {
         this.spaceGroupName = spaceGroupName;
         this.spaceGroupNumber = spaceGroupNumber;
         this.symmetryOperations = symmetryOperations;
-        // If no IDs provided, create sequential mapping
         this.operationIds = operationIds || new Map(
             symmetryOperations.map((_, index) => [(index + 1).toString(), index]),
         );
+        
+        this.identitySymOpId = Array.from(this.operationIds.entries())
+            .find(([_id, index]) => {
+                const symOp = this.symmetryOperations[index];
+                return math.equal(symOp.rotMatrix, math.identity(3)) && 
+                       math.equal(symOp.transVector, math.zeros(3));
+            })?.[0];
     }
 
     generateEquivalentPositions(point) {
