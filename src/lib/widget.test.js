@@ -22,6 +22,25 @@ jest.mock('virtual:svg-icons', () => ({
     },
 }), { virtual: true });
 
+jest.mock('./ortep3d/structure-settings.js', () => ({
+    camera: {
+        minDistance: 1,
+        maxDistance: 100,
+        initialPosition: [0, 0, 10],
+    },
+    selection: {
+        mode: 'multiple',
+        markerMult: 1.3,
+        highlightEmissive: 0xaaaaaa,
+        markerColors: [0xff0000, 0x00ff00],
+    },
+    elementProperties: {
+        'C': { radius: 0.76, atomColor: '#000000' },
+        'O': { radius: 0.66, atomColor: '#ff0000' },
+        'H': { radius: 0.31, atomColor: '#ffffff' },
+    },
+}));
+
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { formatValueEsd } from './formatting.js';
 import { CifViewWidget } from './widget.js';
@@ -49,7 +68,9 @@ describe('CifViewWidget', () => {
             loadStructure: jest.fn().mockResolvedValue({ success: true }),
             cycleModifierMode: jest.fn().mockResolvedValue({ success: true, mode: 'constant' }),
             numberModifierModes: jest.fn().mockReturnValue(2),
-            state: { baseStructure: {} },
+            updateStructure: jest.fn().mockResolvedValue({ success: true }),
+            setupNewStructure: jest.fn().mockResolvedValue({ success: true }),
+            state: { baseStructure: {}, currentCifContent: 'mockCifContent' },
             selections: {
                 onChange: jest.fn(),
             },
@@ -58,14 +79,11 @@ describe('CifViewWidget', () => {
             },
             dispose: jest.fn(),
             modifiers: {
-                removeatoms: new AtomLabelFilter(),
-                missingbonds: new BondGenerator(
-                    { 'H': { 'radius': 0.8 } },
-                    1.1,
-                ),
+                missingbonds: new BondGenerator(),
                 hydrogen: new HydrogenFilter(),
                 disorder: new DisorderFilter(),
                 symmetry: new SymmetryGrower(),
+                removeatoms: new AtomLabelFilter(),
             },
         };
         CrystalViewer.mockImplementation(() => mockCrystalViewer);
@@ -308,5 +326,207 @@ describe('CifViewWidget', () => {
         widget.setAttribute('data', 'new data');
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('new data');
+    });
+
+    // New tests for added functionality
+
+    test('handles hydrogen-mode attribute changes', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        widget.setAttribute('hydrogen-mode', 'constant');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        expect(mockCrystalViewer.modifiers.hydrogen.mode).toBe('constant');
+        expect(mockCrystalViewer.updateStructure).toHaveBeenCalled();
+    });
+
+    test('handles disorder-mode attribute changes', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        widget.setAttribute('disorder-mode', 'group1');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        expect(mockCrystalViewer.modifiers.disorder.mode).toBe('group1');
+        expect(mockCrystalViewer.updateStructure).toHaveBeenCalled();
+    });
+
+    test('handles symmetry-mode attribute changes', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        widget.setAttribute('symmetry-mode', 'bonds-yes-hbonds-yes');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        expect(mockCrystalViewer.modifiers.symmetry.mode).toBe('bonds-yes-hbonds-yes');
+        expect(mockCrystalViewer.setupNewStructure).toHaveBeenCalled();
+    });
+
+    test('parses options attribute', async () => {
+        const options = {
+            camera: {
+                minDistance: 2,
+                maxDistance: 50,
+            },
+            selection: {
+                mode: 'single',
+            },
+            elementProperties: {
+                'C': { radius: 0.8 },
+                'N': { radius: 0.7 },
+            },
+        };
+        
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('options', JSON.stringify(options));
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        // Check that CrystalViewer was created with merged options
+        expect(CrystalViewer.mock.calls[0][1]).toMatchObject({
+            camera: {
+                minDistance: 2,
+                maxDistance: 50,
+                initialPosition: [0, 0, 10],
+            },
+            selection: {
+                mode: 'single',
+                markerMult: 1.3,
+            },
+            elementProperties: expect.objectContaining({
+                'C': { radius: 0.8, atomColor: '#000000' },
+                'N': { radius: 0.7 },
+                'O': { radius: 0.66, atomColor: '#ff0000' },
+            }),
+        });
+    });
+
+    test('handles option changes by recreating viewer', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        // Initial viewer creation
+        expect(CrystalViewer).toHaveBeenCalledTimes(1);
+        
+        // Change options
+        widget.setAttribute('options', JSON.stringify({ camera: { minDistance: 3 } }));
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        // Should dispose old viewer and create new one
+        expect(mockCrystalViewer.dispose).toHaveBeenCalled();
+        expect(CrystalViewer).toHaveBeenCalledTimes(2);
+        
+        // Should reload structure if one was already loaded
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('mockCifContent');
+    });
+
+    test('handles filtered-atoms attribute', async () => {
+        const filterSpy = jest.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        widget.setAttribute('filtered-atoms', 'C1,O1,N4');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        // Should set filtered atoms and mode
+        expect(mockCrystalViewer.modifiers.removeatoms.setFilteredLabels)
+            .toHaveBeenCalledWith(['C1', 'O1', 'N4']);
+        expect(mockCrystalViewer.modifiers.removeatoms.mode).toBe('on');
+        expect(mockCrystalViewer.setupNewStructure).toHaveBeenCalled();
+        filterSpy.mockRestore();
+    });
+
+    test('turns off atom filtering when filtered-atoms is empty', async () => {
+        const filterSpy = jest.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        // First set some atoms to filter
+        widget.setAttribute('filtered-atoms', 'C1,O1');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        // Then clear the filter
+        widget.setAttribute('filtered-atoms', '');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        // Should set filtered atoms and turn mode off
+        expect(mockCrystalViewer.modifiers.removeatoms.setFilteredLabels)
+            .toHaveBeenCalledWith([]);
+        expect(mockCrystalViewer.modifiers.removeatoms.mode).toBe('off');
+        filterSpy.mockRestore();
+    });
+
+    test('handles initial attribute modes during creation', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('hydrogen-mode', 'constant');
+        widget.setAttribute('disorder-mode', 'group1');
+        widget.setAttribute('symmetry-mode', 'bonds-yes-hbonds-yes');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        // Check that options were passed to CrystalViewer
+        expect(CrystalViewer.mock.calls[0][1]).toMatchObject({
+            hydrogenMode: 'constant',
+            disorderMode: 'group1',
+            symmetryMode: 'bonds-yes-hbonds-yes',
+        });
+    });
+
+    test('updates H-bond selection information in caption', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('caption', 'Test Structure');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+
+        // Simulate selection with H-bond
+        const mockSelections = [
+            {
+                type: 'hbond',
+                data: { 
+                    donorAtomLabel: 'O1', 
+                    hydrogenAtomLabel: 'H1',
+                    acceptorAtomLabel: 'N1'
+                },
+                color: 0xff0000,
+            },
+        ];
+        mockSelectionCallback(mockSelections);
+
+        const caption = widget.querySelector('.crystal-caption');
+        expect(caption.innerHTML).toContain('O1→N1');
+        expect(caption.innerHTML).toContain('color:#ff0000');
+    });
+
+    test('handles invalid options JSON', async () => {
+        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('options', '{invalid:json}');
+        document.body.appendChild(widget);
+        
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to parse options'),
+            expect.any(Error),
+        );
+        
+        consoleSpy.mockRestore();
     });
 });
