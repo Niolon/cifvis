@@ -300,9 +300,9 @@ describe('BaseFilter', () => {
         expect(filter.mode).toBe(TestFilter.MODES.D);
     });
 
-    test('setMode can handle uppercalse mode names', () => {
+    test('set mode can handle uppercalse mode names', () => {
         const filter = new TestFilter(TestFilter.MODES.A);
-        filter.setMode('B');
+        filter.mode = 'B';
         expect(filter.mode).toBe(TestFilter.MODES.B);
     });
 });

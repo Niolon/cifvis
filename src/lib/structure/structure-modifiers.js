@@ -22,7 +22,7 @@ export class BaseFilter {
         this.PREFERRED_FALLBACK_ORDER = Object.freeze(fallBackOrder);
         this.filterName = filterName;
         this._mode = null;
-        this.setMode(defaultMode);
+        this.mode = defaultMode;
     }
 
     get requiresCameraUpdate() {
@@ -43,20 +43,11 @@ export class BaseFilter {
      * @throws {Error} If mode is invalid
      */
     set mode(value) {
-        this.setMode(value);
-    }
-
-    /**
-     * Sets the filter mode with validation
-     * @param {string} mode - Mode to set
-     * @throws {Error} If mode is invalid
-     */
-    setMode(mode) {
-        const usedMode = mode.toLowerCase().replace(/_/g, '-');
+        const usedMode = value.toLowerCase().replace(/_/g, '-');
         const validModes = Object.values(this.MODES);
         if (!validModes.includes(usedMode)) {
             throw new Error(
-                `Invalid ${this.filterName} mode: "${mode}". ` +
+                `Invalid ${this.filterName} mode: "${value}". ` +
                 `Valid modes are: ${validModes.join(', ')}`,
             );
         }
