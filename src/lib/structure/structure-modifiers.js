@@ -570,6 +570,10 @@ export class AtomLabelFilter extends BaseFilter {
         this.filteredLabels = new Set(filteredLabels);
     }
 
+    get requiresCameraUpdate() {
+        return true;
+    }
+
     /**
      * Updates the list of filtered atom labels
      * @param {string[]} labels - New array of atom labels to filter
