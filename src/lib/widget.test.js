@@ -1,44 +1,26 @@
 /**
- * @jest-environment jsdom
+ * @vi-environment jsdom
  */
 
-jest.mock('virtual:svg-icons', () => ({
-    SVG_ICONS: {
-        hydrogen: {
-            none: '<svg>H-none</svg>',
-            constant: '<svg>H-constant</svg>',
-            anisotropic: '<svg>H-aniso</svg>',
+vi.mock('./ortep3d/structure-settings.js', () => ({
+    default : {
+        camera: {
+            minDistance: 1,
+            maxDistance: 100,
+            initialPosition: [0, 0, 10],
         },
-        disorder: {
-            all: '<svg>D-all</svg>',
-            group1: '<svg>D-g1</svg>',
-            group2: '<svg>D-g2</svg>',
+        selection: {
+            mode: 'multiple',
+            markerMult: 1.3,
+            highlightEmissive: 0xaaaaaa,
+            markerColors: [0xff0000, 0x00ff00],
         },
-        symmetry: {
-            'bonds-yes-hbonds-yes': '<svg>S-yy</svg>',
-            'bonds-yes-hbonds-no': '<svg>S-yn</svg>',
-            'bonds-no-hbonds-no': '<svg>S-nn</svg>',
+        elementProperties: {
+            'C': { radius: 0.76, atomColor: '#000000' },
+            'O': { radius: 0.66, atomColor: '#ff0000' },
+            'H': { radius: 0.31, atomColor: '#ffffff' },
         },
-    },
-}), { virtual: true });
-
-jest.mock('./ortep3d/structure-settings.js', () => ({
-    camera: {
-        minDistance: 1,
-        maxDistance: 100,
-        initialPosition: [0, 0, 10],
-    },
-    selection: {
-        mode: 'multiple',
-        markerMult: 1.3,
-        highlightEmissive: 0xaaaaaa,
-        markerColors: [0xff0000, 0x00ff00],
-    },
-    elementProperties: {
-        'C': { radius: 0.76, atomColor: '#000000' },
-        'O': { radius: 0.66, atomColor: '#ff0000' },
-        'H': { radius: 0.31, atomColor: '#ffffff' },
-    },
+    }
 }));
 
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
@@ -49,8 +31,8 @@ import {
 } from './structure/structure-modifiers.js';
 
 // Mock CrystalViewer
-jest.mock('./ortep3d/crystal-viewer.js');
-jest.mock('./formatting.js');
+vi.mock('./ortep3d/crystal-viewer.js');
+vi.mock('./formatting.js');
 
 customElements.define('cifview-widget', CifViewWidget);
 
@@ -61,23 +43,23 @@ describe('CifViewWidget', () => {
 
     beforeEach(() => {
         // Reset mocks
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
-            loadStructure: jest.fn().mockResolvedValue({ success: true }),
-            cycleModifierMode: jest.fn().mockResolvedValue({ success: true, mode: 'constant' }),
-            numberModifierModes: jest.fn().mockReturnValue(2),
-            updateStructure: jest.fn().mockResolvedValue({ success: true }),
-            setupNewStructure: jest.fn().mockResolvedValue({ success: true }),
+            loadStructure: vi.fn().mockResolvedValue({ success: true }),
+            cycleModifierMode: vi.fn().mockResolvedValue({ success: true, mode: 'constant' }),
+            numberModifierModes: vi.fn().mockReturnValue(2),
+            updateStructure: vi.fn().mockResolvedValue({ success: true }),
+            setupNewStructure: vi.fn().mockResolvedValue({ success: true }),
             state: { baseStructure: {}, currentCifContent: 'mockCifContent' },
             selections: {
-                onChange: jest.fn(),
+                onChange: vi.fn(),
             },
             controls: {
-                handleResize: jest.fn(),
+                handleResize: vi.fn(),
             },
-            dispose: jest.fn(),
+            dispose: vi.fn(),
             modifiers: {
                 missingbonds: new BondGenerator(),
                 hydrogen: new HydrogenFilter(),
@@ -95,7 +77,7 @@ describe('CifViewWidget', () => {
         });
 
         // Mock fetch
-        mockFetch = jest.fn().mockResolvedValue({
+        mockFetch = vi.fn().mockResolvedValue({
             text: () => Promise.resolve('mock cif data'),
         });
         global.fetch = mockFetch;
@@ -225,7 +207,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles icon parsing errors: Invalid JSON', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
@@ -243,7 +225,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles icon parsing errors: Invalid Category', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
@@ -261,7 +243,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles icon parsing errors: Invalid Entry in category', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
@@ -279,7 +261,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles structure loading errors', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         mockCrystalViewer.loadStructure.mockRejectedValue(new Error('Load failed'));
 
         const widget = document.createElement('cifview-widget');
@@ -431,7 +413,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles filtered-atoms attribute', async () => {
-        const filterSpy = jest.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
+        const filterSpy = vi.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
         
@@ -449,7 +431,7 @@ describe('CifViewWidget', () => {
     });
 
     test('turns off atom filtering when filtered-atoms is empty', async () => {
-        const filterSpy = jest.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
+        const filterSpy = vi.spyOn(mockCrystalViewer.modifiers.removeatoms, 'setFilteredLabels');
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
         
@@ -514,7 +496,7 @@ describe('CifViewWidget', () => {
     });
 
     test('handles invalid options JSON', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('options', '{invalid:json}');

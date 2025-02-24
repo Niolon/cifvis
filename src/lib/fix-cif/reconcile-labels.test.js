@@ -70,7 +70,7 @@ describe('createLabelMap', () => {
 
     test('skips ambiguous mappings - basic', () => {
         const labels = ['H2A', 'h2a', 'H(2)A'];
-        const consoleSpy = jest.spyOn(console, 'warn');
+        const consoleSpy = vi.spyOn(console, 'warn');
         const map = createLabelMap(labels);
         
         expect(map.has('H2A')).toBe(false);
@@ -82,7 +82,7 @@ describe('createLabelMap', () => {
 
     test('skips ambiguous mappings - with suffixes', () => {
         const labels = ['H2A^1', 'H2A', 'H2A_$1'];
-        const consoleSpy = jest.spyOn(console, 'warn');
+        const consoleSpy = vi.spyOn(console, 'warn');
         const map = createLabelMap(labels, true);
         
         expect(map.has('H2A')).toBe(false);
@@ -94,7 +94,7 @@ describe('createLabelMap', () => {
 
     test('handles invalid labels', () => {
         const labels = ['H2A', '', 'C1', '()'];
-        const consoleSpy = jest.spyOn(console, 'warn');
+        const consoleSpy = vi.spyOn(console, 'warn');
         const map = createLabelMap(labels);
         
         expect(map.has('H2A')).toBe(true);

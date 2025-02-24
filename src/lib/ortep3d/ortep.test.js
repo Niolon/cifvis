@@ -17,7 +17,7 @@ describe('Transformation Functions', () => {
     describe('getThreeEllipsoidMatrix', () => {
         test('correctly converts mathjs matrix to THREE.Matrix4', () => {
             const mockUAnisoADP = {
-                getEllipsoidMatrix: jest.fn().mockReturnValue(math.matrix([
+                getEllipsoidMatrix: vi.fn().mockReturnValue(math.matrix([
                     [0.1, 0.2, 0.3],
                     [0.4, 0.5, 0.6],
                     [0.7, 0.8, 0.9],
@@ -273,7 +273,7 @@ describe('GeometryMaterialCache', () => {
         let disposeSpy;
         
         beforeEach(() => {
-            disposeSpy = jest.spyOn(THREE.BufferGeometry.prototype, 'dispose');
+            disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
         });
 
         afterEach(() => {
@@ -292,7 +292,7 @@ describe('GeometryMaterialCache', () => {
             cache.getAtomMaterials('C');
             cache.getAtomMaterials('O');
             
-            const materialDisposeSpy = jest.spyOn(THREE.Material.prototype, 'dispose');
+            const materialDisposeSpy = vi.spyOn(THREE.Material.prototype, 'dispose');
             
             cache.dispose();
             
@@ -453,8 +453,8 @@ describe('ORTEPObject', () => {
     });
 
     test('properly disposes resources', () => {
-        const geometrySpy = jest.spyOn(object.geometry, 'dispose');
-        const materialSpy = jest.spyOn(object.material, 'dispose');
+        const geometrySpy = vi.spyOn(object.geometry, 'dispose');
+        const materialSpy = vi.spyOn(object.material, 'dispose');
         
         object.dispose();
         
@@ -1072,10 +1072,10 @@ describe('ORTEPGroupObject', () => {
         
         const geometrySpies = group.children
             .filter(child => child instanceof THREE.Mesh)
-            .map(child => jest.spyOn(child.geometry, 'dispose'));
+            .map(child => vi.spyOn(child.geometry, 'dispose'));
         const materialSpies = group.children
             .filter(child => child instanceof THREE.Mesh)
-            .map(child => jest.spyOn(child.material, 'dispose'));
+            .map(child => vi.spyOn(child.material, 'dispose'));
         
         group.dispose();
         
@@ -1085,10 +1085,10 @@ describe('ORTEPGroupObject', () => {
 
     test('properly disposes all resources when not selected', () => {
         const geometrySpies = group.children.map(child => 
-            jest.spyOn(child.geometry, 'dispose'),
+            vi.spyOn(child.geometry, 'dispose'),
         );
         const materialSpies = group.children.map(child => 
-            jest.spyOn(child.material, 'dispose'),
+            vi.spyOn(child.material, 'dispose'),
         );
         
         // Dispose without ever selecting

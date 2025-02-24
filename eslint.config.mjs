@@ -1,5 +1,5 @@
 import js from '@eslint/js';
-import jestPlugin from 'eslint-plugin-jest';
+import vitestPlugin from 'eslint-plugin-vitest';
 import globals from 'globals';
 
 export default [
@@ -12,7 +12,6 @@ export default [
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                ...globals.jest,
             },
         },
         rules: {
@@ -69,14 +68,14 @@ export default [
     {
         files: ['**/*.test.js', '**/*.spec.js'],
         plugins: {
-            jest: jestPlugin,
+            vitest: vitestPlugin,
         },
         rules: {
-            ...jestPlugin.configs.recommended.rules,
-            'jest/valid-expect': 'error',
-            'jest/no-disabled-tests': 'warn',
-            'jest/no-focused-tests': 'error',
-            'jest/prefer-to-be': 'warn',
+            ...vitestPlugin.configs.recommended.rules,
+            'vitest/valid-expect': 'error',
+            'vitest/no-disabled-tests': 'warn',
+            'vitest/no-focused-tests': 'error',
+            'vitest/prefer-to-be': 'warn',
         },
     },
     {
