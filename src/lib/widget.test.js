@@ -3,7 +3,7 @@
  */
 
 vi.mock('./ortep3d/structure-settings.js', () => ({
-    default : {
+    default: {
         camera: {
             minDistance: 1,
             maxDistance: 100,
@@ -20,7 +20,7 @@ vi.mock('./ortep3d/structure-settings.js', () => ({
             'O': { radius: 0.66, atomColor: '#ff0000' },
             'H': { radius: 0.31, atomColor: '#ffffff' },
         },
-    }
+    },
 }));
 
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
