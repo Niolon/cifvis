@@ -764,30 +764,30 @@ export class BondGenerator extends BaseFilter {
         let finalBonds;
 
         switch (this.mode) {
-        case BondGenerator.MODES.KEEP:
-            return structure;  // Keep existing bonds unchanged
+            case BondGenerator.MODES.KEEP:
+                return structure;  // Keep existing bonds unchanged
 
-        case BondGenerator.MODES.ADD:
-        { 
-            const newBonds = this.generateBonds(structure, this.elementProperties);
-            finalBonds = [...structure.bonds, ...newBonds];
-            break; 
-        }
+            case BondGenerator.MODES.ADD:
+            { 
+                const newBonds = this.generateBonds(structure, this.elementProperties);
+                finalBonds = [...structure.bonds, ...newBonds];
+                break; 
+            }
 
-        case BondGenerator.MODES.REPLACE:
-            finalBonds = [...this.generateBonds(structure, this.elementProperties)];
-            break;
+            case BondGenerator.MODES.REPLACE:
+                finalBonds = [...this.generateBonds(structure, this.elementProperties)];
+                break;
 
-        case BondGenerator.MODES.CREATE:
-            finalBonds = [...this.generateBonds(structure, this.elementProperties)];
-            break;
+            case BondGenerator.MODES.CREATE:
+                finalBonds = [...this.generateBonds(structure, this.elementProperties)];
+                break;
 
-        case BondGenerator.MODES.IGNORE:
-            finalBonds = [...structure.bonds];
-            break;
+            case BondGenerator.MODES.IGNORE:
+                finalBonds = [...structure.bonds];
+                break;
 
-        default:
-            return structure;
+            default:
+                return structure;
         }
 
         return new CrystalStructure(

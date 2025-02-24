@@ -27,7 +27,6 @@ import { formatValueEsd } from './formatting.js';
 import { CifViewWidget } from './widget.js';
 import { BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower } from './structure/structure-modifiers.js';
 
-
 // Mock CrystalViewer
 jest.mock('./ortep3d/crystal-viewer.js');
 jest.mock('./formatting.js');
@@ -56,9 +55,9 @@ describe('CifViewWidget', () => {
                 handleResize: jest.fn(),
             },
             dispose: jest.fn(),
-            modifiers : {
+            modifiers: {
                 missingbonds: new BondGenerator(
-                    {'H': {'radius': 0.8}},
+                    { 'H': { 'radius': 0.8 } },
                     1.1,
                 ),
                 hydrogen: new HydrogenFilter(),
@@ -192,7 +191,10 @@ describe('CifViewWidget', () => {
 
     test('parses custom icons', () => {
         const widget = document.createElement('cifview-widget');
-        widget.setAttribute('icons', '{"hydrogen": {"none":"custom1.svg","constant":"custom2.svg","anisotropic":"custom3.svg"}}');
+        widget.setAttribute(
+            'icons',
+            '{"hydrogen": {"none":"custom1.svg","constant":"custom2.svg","anisotropic":"custom3.svg"}}',
+        );
         document.body.appendChild(widget);
 
         const icons = widget.icons;
@@ -213,7 +215,7 @@ describe('CifViewWidget', () => {
     
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Failed to parse custom icons'),
-            expect.any(Error)
+            expect.any(Error),
         );
         
         consoleSpy.mockRestore();
@@ -231,7 +233,7 @@ describe('CifViewWidget', () => {
     
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Failed to parse custom icons'),
-            expect.any(Error)
+            expect.any(Error),
         );
         
         consoleSpy.mockRestore();
@@ -249,7 +251,7 @@ describe('CifViewWidget', () => {
     
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Failed to parse custom icons'),
-            expect.any(Error)
+            expect.any(Error),
         );
         
         consoleSpy.mockRestore();

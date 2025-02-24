@@ -16,7 +16,6 @@ function determineAvailableKey(loop, keys) {
     return null;
 }
 
-
 /**
  * Attempts to fix inconsistencies in a CIF block by reconciling atom labels and symmetry operations
  * across different data categories (ADP, bonds, h-bonds)

@@ -66,26 +66,26 @@ export class SelectionManager {
         }
         
         switch (object.userData.type) {
-        case 'atom':
-            return {
-                type: 'atom',
-                label: object.userData.atomData.label,
-            };
-        case 'bond':
-            return {
-                type: 'bond',
-                atom1: object.userData.bondData.atom1Label,
-                atom2: object.userData.bondData.atom2Label,
-            };
-        case 'hbond':
-            return {
-                type: 'hbond',
-                donor: object.userData.hbondData.donorAtomLabel,
-                hydrogen: object.userData.hbondData.hydrogenAtomLabel,
-                acceptor: object.userData.hbondData.acceptorAtomLabel,
-            };
-        default:
-            return null;
+            case 'atom':
+                return {
+                    type: 'atom',
+                    label: object.userData.atomData.label,
+                };
+            case 'bond':
+                return {
+                    type: 'bond',
+                    atom1: object.userData.bondData.atom1Label,
+                    atom2: object.userData.bondData.atom2Label,
+                };
+            case 'hbond':
+                return {
+                    type: 'hbond',
+                    donor: object.userData.hbondData.donorAtomLabel,
+                    hydrogen: object.userData.hbondData.hydrogenAtomLabel,
+                    acceptor: object.userData.hbondData.acceptorAtomLabel,
+                };
+            default:
+                return null;
         }
     }
 
@@ -139,17 +139,17 @@ export class SelectionManager {
         }
 
         switch (data1.type) {
-        case 'atom':
-            return data1.label === data2.label;
-        case 'bond':
-            return (data1.atom1 === data2.atom1 && data1.atom2 === data2.atom2) ||
+            case 'atom':
+                return data1.label === data2.label;
+            case 'bond':
+                return (data1.atom1 === data2.atom1 && data1.atom2 === data2.atom2) ||
                        (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
-        case 'hbond':
-            return data1.donor === data2.donor &&
+            case 'hbond':
+                return data1.donor === data2.donor &&
                        data1.hydrogen === data2.hydrogen &&
                        data1.acceptor === data2.acceptor;
-        default:
-            return false;
+            default:
+                return false;
         }
     }
 

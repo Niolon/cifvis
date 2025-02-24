@@ -17,7 +17,7 @@ export function normalizeAtomLabel(label, removeSuffixes = true) {
     if (removeSuffixes) {
         normalized = normalized
             .replace(/\^[a-zA-Z1-9]+$/, '')   // Remove ^A or ^1 style suffixes
-            .replace(/\_[a-zA-Z1-9]+$/, '')   // Remove _A or _1 style suffixes
+            .replace(/_[a-zA-Z1-9]+$/, '')   // Remove _A or _1 style suffixes
             .replace(/_\$\d+$/, '');    // Remove *$1 style suffixes
     }
 

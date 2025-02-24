@@ -155,7 +155,7 @@ export class CifViewWidget extends HTMLElement {
             try {
                 iconSource = JSON.parse(this.getAttribute('icons'));
             } catch {
-                throw new Error("Failed to parse custom icon definition. Needs to be valid JSON.");
+                throw new Error('Failed to parse custom icon definition. Needs to be valid JSON.');
             }
             if (!iconSource) {
                 return null;
@@ -187,7 +187,7 @@ export class CifViewWidget extends HTMLElement {
                     } else {
                         customIcons[customName][name] = iconSource[customName][name];
                     }
-                })
+                });
             }
 
             if (invalidIcons.length > 0) {
@@ -229,6 +229,7 @@ export class CifViewWidget extends HTMLElement {
             return; 
         }
 
+        // eslint-disable-next-line default-case
         switch (name) {
             case 'caption':
                 this.baseCaption = newValue;

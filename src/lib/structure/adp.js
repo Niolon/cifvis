@@ -171,20 +171,20 @@ export class ADPFactory {
      */
     static createFromExplicitType(cifBlock, atomIndex, label, type) {
         switch (type.toLowerCase()) {
-        case 'uani':
-            return ADPFactory.createUani(cifBlock, label);
-        case 'aniso':
-            return ADPFactory.createUani(cifBlock, label);
-        case 'bani':
-            return ADPFactory.createBani(cifBlock, label);
-        case 'uiso':
-            return ADPFactory.createUiso(cifBlock, atomIndex);
-        case 'iso':
-            return ADPFactory.createUiso(cifBlock, atomIndex);
-        case 'biso':
-            return ADPFactory.createBiso(cifBlock, atomIndex);
-        default:
-            return null;
+            case 'uani':
+                return ADPFactory.createUani(cifBlock, label);
+            case 'aniso':
+                return ADPFactory.createUani(cifBlock, label);
+            case 'bani':
+                return ADPFactory.createBani(cifBlock, label);
+            case 'uiso':
+                return ADPFactory.createUiso(cifBlock, atomIndex);
+            case 'iso':
+                return ADPFactory.createUiso(cifBlock, atomIndex);
+            case 'biso':
+                return ADPFactory.createBiso(cifBlock, atomIndex);
+            default:
+                return null;
         }
     }
 
