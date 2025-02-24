@@ -381,6 +381,7 @@ export class CrystalViewer {
         this.updateCamera();
         setupLighting(this.scene, this.state.currentStructure);
         this.requestRender();
+        return { success: true };
     }
     
     async updateStructure() {

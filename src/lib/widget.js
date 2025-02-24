@@ -139,13 +139,13 @@ export class CifViewWidget extends HTMLElement {
         this.clearButtons();
         
         if (this.viewer.numberModifierModes('hydrogen') > 1) {
-            this.addButton(this.buttonContainer, 'hydrogen', 'none', 'Toggle Hydrogen Display');
+            this.addButton(this.buttonContainer, 'hydrogen', 'Toggle Hydrogen Display');
         }
         if (this.viewer.numberModifierModes('disorder') > 1) {
-            this.addButton(this.buttonContainer, 'disorder', 'all', 'Toggle Disorder Display');
+            this.addButton(this.buttonContainer, 'disorder', 'Toggle Disorder Display');
         }
         if (this.viewer.numberModifierModes('symmetry') > 1) {
-            this.addButton(this.buttonContainer, 'symmetry', 'bonds-no-hbonds-no', 'Toggle Symmetry Display');
+            this.addButton(this.buttonContainer, 'symmetry', 'Toggle Symmetry Display');
         }
     }
 
@@ -201,9 +201,10 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
-    addButton(container, type, mode, altText) {
+    addButton(container, type, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
+        const mode = this.viewer.modifiers[type].mode;
         button.innerHTML = this.icons[type][mode];
         button.title = altText;
         
