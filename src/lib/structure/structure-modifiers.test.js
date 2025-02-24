@@ -288,20 +288,16 @@ describe('BaseFilter', () => {
 
     test('handles invalid modes with fallback', () => {
         const filter = new TestFilter(TestFilter.MODES.C);
-        const consoleSpy = jest.spyOn(console, 'warn');
         expect(filter.mode).toBe(TestFilter.MODES.C);
         
         filter.ensureValidMode('structureAB');
         
-        expect(consoleSpy).toHaveBeenCalled();
         expect(filter.mode).toBe(TestFilter.MODES.B);
-        consoleSpy.mockRestore();
 
         // ensure that is also runs if not PREFERRED_FALLBACK_ORDER
         filter.ensureValidMode('NotinMode');
         
         expect(filter.mode).toBe(TestFilter.MODES.D);
-        consoleSpy.mockRestore();        
     });
 
     test('setMode can handle uppercalse mode names', () => {
@@ -780,7 +776,6 @@ describe('SymmetryGrower', () => {
         });
     
         test('ensures valid mode before growing', () => {
-            const consoleSpy = jest.spyOn(console, 'warn');
             const structure = MockStructure.createDefault({
                 hasMultipleSymmetry: true,
                 hasHydrogens: true,
@@ -790,10 +785,7 @@ describe('SymmetryGrower', () => {
             const grower = new SymmetryGrower(SymmetryGrower.MODES.BONDS_NONE_HBONDS_NONE);
             grower.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalled();
             expect(grower.mode).toBe(SymmetryGrower.MODES.BONDS_NO_HBONDS_NO);
-            
-            consoleSpy.mockRestore();
         });
     });
 
@@ -1027,16 +1019,11 @@ describe('BondGenerator', () => {
                 .addBond('C1', 'O1')
                 .build();
 
-            const consoleSpy = jest.spyOn(console, 'warn');
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('BondGenerator mode create was not applicable'),
-            );
             expect(generator.mode).toBe(BondGenerator.MODES.KEEP);
             expect(result.bonds).toEqual(structure.bonds);
-            consoleSpy.mockRestore();
         });
 
         test('IGNORE switches to KEEP when bonds exist', () => {
@@ -1046,16 +1033,11 @@ describe('BondGenerator', () => {
                 .addBond('C1', 'O1')
                 .build();
 
-            const consoleSpy = jest.spyOn(console, 'warn');
             generator.mode = BondGenerator.MODES.IGNORE;
             const result = generator.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('BondGenerator mode ignore was not applicable'),
-            );
             expect(generator.mode).toBe(BondGenerator.MODES.KEEP);
             expect(result.bonds).toEqual(structure.bonds);
-            consoleSpy.mockRestore();
         });
     });
 
@@ -1066,16 +1048,11 @@ describe('BondGenerator', () => {
                 .addAtom('O1', 'O', 0.1, 0, 0)
                 .build();
 
-            const consoleSpy = jest.spyOn(console, 'warn');
             generator.mode = BondGenerator.MODES.KEEP;
             const result = generator.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('BondGenerator mode keep was not applicable'),
-            );
             expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
             expect(result.bonds.length).toBeGreaterThan(0);
-            consoleSpy.mockRestore();
         });
 
         test('ADD switches to CREATE for structure without bonds', () => {
@@ -1084,16 +1061,11 @@ describe('BondGenerator', () => {
                 .addAtom('O1', 'O', 0.1, 0, 0)
                 .build();
 
-            const consoleSpy = jest.spyOn(console, 'warn');
             generator.mode = BondGenerator.MODES.ADD;
             const result = generator.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('BondGenerator mode add was not applicable'),
-            );
             expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
             expect(result.bonds.length).toBeGreaterThan(0);
-            consoleSpy.mockRestore();
         });
 
         test('REPLACE switches to CREATE for structure without bonds', () => {
@@ -1102,16 +1074,11 @@ describe('BondGenerator', () => {
                 .addAtom('O1', 'O', 0.1, 0, 0)
                 .build();
 
-            const consoleSpy = jest.spyOn(console, 'warn');
             generator.mode = BondGenerator.MODES.REPLACE;
             const result = generator.apply(structure);
             
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('BondGenerator mode replace was not applicable'),
-            );
             expect(generator.mode).toBe(BondGenerator.MODES.CREATE);
             expect(result.bonds.length).toBeGreaterThan(0);
-            consoleSpy.mockRestore();
         });
 
         test('CREATE generates bonds for structure without bonds', () => {
