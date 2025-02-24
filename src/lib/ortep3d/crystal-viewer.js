@@ -8,7 +8,7 @@ import { ViewerControls } from './viewer-controls.js';
 import { 
     BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower, AtomLabelFilter,
 } from '../structure/structure-modifiers.js';
-import { tryToFixCifBlock } from '../fix-cif/base.js'
+import { tryToFixCifBlock } from '../fix-cif/base.js';
 
 export class SelectionManager {
     constructor(options) {

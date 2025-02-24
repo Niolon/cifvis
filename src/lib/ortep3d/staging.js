@@ -36,7 +36,7 @@ function calculateMeanPlaneNormal(points) {
     // Get normal vector (eigenvector of smallest eigenvalue)
     const minEigenvalue = math.min(eigenvalues);
     if (minEigenvalue <= 0) {
-        console.warn('Could not find a mean plane, expected?')
+        console.warn('Could not find a mean plane, expected?');
         return new THREE.Vector3(0, 1, 0);
     }
     const normalVector = eigenvectors.filter(entry => entry.value === minEigenvalue)[0].vector;

@@ -57,7 +57,6 @@ export class BaseFilter {
     ensureValidMode(structure) {
         const validModes = this.getApplicableModes(structure);
         if (!validModes.includes(this.mode)) {
-            const oldMode = this.mode;
             this.mode = this.PREFERRED_FALLBACK_ORDER.find( mode => validModes.includes(mode)) || validModes[0];
         }
     }

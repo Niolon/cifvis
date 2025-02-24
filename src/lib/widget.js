@@ -138,7 +138,9 @@ export class CifViewWidget extends HTMLElement {
 
     parseOptions() {
         const optionsAttr = this.getAttribute('options');
-        if (!optionsAttr) return;
+        if (!optionsAttr) {
+            return; 
+        }
 
         try {
             const parsedOptions = JSON.parse(optionsAttr);
@@ -319,6 +321,7 @@ export class CifViewWidget extends HTMLElement {
             return; 
         }
 
+        // eslint-disable-next-line default-case
         switch (name) {
             case 'caption':
                 this.baseCaption = newValue;
