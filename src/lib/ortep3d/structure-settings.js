@@ -52,6 +52,8 @@ export default {
 
     'bondGrowToleranceFactor': 1.2,
 
+    'fixCifErrors': false,
+
     // atom visualisation Settings
     'atomDetail': 3,
     'atomColorRoughness': 0.3,

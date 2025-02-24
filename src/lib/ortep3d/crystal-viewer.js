@@ -8,6 +8,7 @@ import { ViewerControls } from './viewer-controls.js';
 import { 
     BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower, AtomLabelFilter,
 } from '../structure/structure-modifiers.js';
+import { tryToFixCifBlock } from '../fix-cif/base.js'
 
 export class SelectionManager {
     constructor(options) {
@@ -276,6 +277,7 @@ export class CrystalViewer {
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
+            fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
         };
   
         this.state = {
@@ -328,10 +330,24 @@ export class CrystalViewer {
         this.camera.lookAt(this.cameraTarget);
     }
 
-    async loadStructure(cifText) {
+    async loadStructure(cifText, cifBlockIndex=0) {
         try {
             const cif = new CIF(cifText);
-            this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(0));
+            try {
+                this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
+            } catch (e) {
+                if (!this.options.fixCifErrors) {
+                    try{ 
+                        const maybeFixedCifBlock = tryToFixCifBlock(cif.getBlock(cifBlockIndex));
+                        this.state.baseStructure = CrystalStructure.fromCIF(maybeFixedCifBlock);
+                    } catch {
+                        // throw original error as it should be more informative
+                        throw e;
+                    }
+                } else {
+                    throw e;
+                }
+            }
             await this.setupNewStructure();            
     
             return { success: true };
