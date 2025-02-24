@@ -28,11 +28,22 @@ export class Bond {
     */
     static fromCIF(cifBlock, bondIndex) {
         const bondLoop = cifBlock.get('_geom_bond');
-        const siteSymmetry2 = bondLoop.getIndex(
+
+        let siteSymmetry2 = bondLoop.getIndex(
             ['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'],
             bondIndex,
             '.',
         );
+
+        const siteSymmetry1 = bondLoop.getIndex(
+            ['_geom_bond.site_symmetry_1', '_geom_bond_site_symmetry_1'],
+            bondIndex,
+            false,
+        );
+
+        if (siteSymmetry1 && siteSymmetry1 === siteSymmetry2) {
+            siteSymmetry2 = '.';
+        }
 
         return new Bond(
             bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
