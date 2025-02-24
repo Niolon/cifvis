@@ -501,7 +501,7 @@ describe('CifViewWidget', () => {
                 data: { 
                     donorAtomLabel: 'O1', 
                     hydrogenAtomLabel: 'H1',
-                    acceptorAtomLabel: 'N1'
+                    acceptorAtomLabel: 'N1',
                 },
                 color: 0xff0000,
             },
