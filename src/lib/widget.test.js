@@ -25,7 +25,9 @@ jest.mock('virtual:svg-icons', () => ({
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { formatValueEsd } from './formatting.js';
 import { CifViewWidget } from './widget.js';
-import { BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower } from './structure/structure-modifiers.js';
+import { 
+    BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower, AtomLabelFilter,
+} from './structure/structure-modifiers.js';
 
 // Mock CrystalViewer
 jest.mock('./ortep3d/crystal-viewer.js');
@@ -56,6 +58,7 @@ describe('CifViewWidget', () => {
             },
             dispose: jest.fn(),
             modifiers: {
+                removeatoms: new AtomLabelFilter(),
                 missingbonds: new BondGenerator(
                     { 'H': { 'radius': 0.8 } },
                     1.1,

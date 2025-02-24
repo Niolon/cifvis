@@ -1,6 +1,7 @@
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { SVG_ICONS } from 'virtual:svg-icons';
 import { formatValueEsd } from './formatting.js';
+import defaultSettings from './ortep3d/structure-settings.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -66,7 +67,10 @@ const defaultStyles = `
 
 export class CifViewWidget extends HTMLElement {
     static get observedAttributes() {
-        return ['caption', 'src', 'data', 'icons'];
+        return [
+            'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
+            'symmetry-mode',
+        ];
     }
 
     constructor() {
@@ -82,6 +86,7 @@ export class CifViewWidget extends HTMLElement {
         this.baseCaption = '';
         this.selections = [];
         this.customIcons = null;
+        this.userOptions = {};
     }
 
     get icons() {
@@ -90,6 +95,10 @@ export class CifViewWidget extends HTMLElement {
 
     async connectedCallback() {
         this.baseCaption = this.getAttribute('caption') || '';
+        
+        // Parse options before creating the viewer
+        this.parseOptions();
+        this.parseInitialModes();
         
         const container = document.createElement('div');
         container.className = 'crystal-container';
@@ -106,12 +115,16 @@ export class CifViewWidget extends HTMLElement {
         this.appendChild(caption);
         this.captionElement = caption;
 
-        this.viewer = new CrystalViewer(container);
+        // Create viewer with merged options
+        this.viewer = new CrystalViewer(container, this.userOptions);
+        
         this.viewer.selections.onChange(selections => {
             this.selections = selections;
             this.updateCaption();
         });
+        
         this.customIcons = this.parseCustomIcons();
+        await this.updateFilteredAtoms();
 
         // Load structure first to determine which buttons to show
         const src = this.getAttribute('src');
@@ -120,6 +133,70 @@ export class CifViewWidget extends HTMLElement {
             await this.loadFromUrl(src); 
         } else if (data) {
             await this.loadFromString(data); 
+        }
+    }
+
+    parseOptions() {
+        const optionsAttr = this.getAttribute('options');
+        if (!optionsAttr) return;
+
+        try {
+            const parsedOptions = JSON.parse(optionsAttr);
+            this.userOptions = this.mergeOptions(parsedOptions);
+        } catch (e) {
+            console.warn('Failed to parse options:', e);
+        }
+    }
+
+    mergeOptions(userOptions) {
+        // Deep merge of user options with default settings
+        const merged = { ...defaultSettings };
+
+        // Handle top-level properties
+        Object.keys(userOptions).forEach(key => {
+            if (key === 'elementProperties') {
+                // Special handling for elementProperties to preserve defaults
+                merged.elementProperties = { ...merged.elementProperties };
+                
+                // Merge element properties
+                Object.keys(userOptions.elementProperties || {}).forEach(element => {
+                    merged.elementProperties[element] = {
+                        ...(merged.elementProperties[element] || {}),
+                        ...userOptions.elementProperties[element],
+                    };
+                });
+            } else if (typeof userOptions[key] === 'object' && userOptions[key] !== null) {
+                // Merge nested objects (like camera, selection, interaction)
+                merged[key] = {
+                    ...(merged[key] || {}),
+                    ...userOptions[key],
+                };
+            } else {
+                // Direct assignment for primitive values
+                merged[key] = userOptions[key];
+            }
+        });
+
+        return merged;
+    }
+
+    parseInitialModes() {
+        // Get initial modes from attributes
+        const hydrogenMode = this.getAttribute('hydrogen-mode');
+        const disorderMode = this.getAttribute('disorder-mode');
+        const symmetryMode = this.getAttribute('symmetry-mode');
+        
+        // Set in options if provided
+        if (hydrogenMode) {
+            this.userOptions.hydrogenMode = hydrogenMode;
+        }
+        
+        if (disorderMode) {
+            this.userOptions.disorderMode = disorderMode;
+        }
+        
+        if (symmetryMode) {
+            this.userOptions.symmetryMode = symmetryMode;
         }
     }
 
@@ -201,6 +278,18 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
+    async updateFilteredAtoms() {
+        const filteredAtomsString = this.getAttribute('filtered-atoms');
+        const filteredAtoms = filteredAtomsString ? filteredAtomsString.split(',') : [];
+        this.viewer.modifiers.removeatoms.setFilteredLabels(filteredAtoms);
+        if (filteredAtoms.length > 0) {
+            this.viewer.modifiers.removeatoms.mode = 'on';
+            await this.viewer.setupNewStructure();
+        } else {
+            this.viewer.modifiers.removeatoms.mode = 'off';
+        }
+    }
+
     addButton(container, type, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
@@ -230,7 +319,6 @@ export class CifViewWidget extends HTMLElement {
             return; 
         }
 
-        // eslint-disable-next-line default-case
         switch (name) {
             case 'caption':
                 this.baseCaption = newValue;
@@ -248,6 +336,49 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'icons':
                 this.customIcons = this.parseCustomIcons();
+                break;
+            case 'filtered-atoms':
+                await this.updateFilteredAtoms();
+                break;
+            case 'options':
+                this.parseOptions();
+                // Recreate viewer with new options
+                if (this.viewer) {
+                    const container = this.querySelector('.crystal-container');
+                    this.viewer.dispose();
+                    this.viewer = new CrystalViewer(container, this.userOptions);
+                    this.viewer.selections.onChange(selections => {
+                        this.selections = selections;
+                        this.updateCaption();
+                    });
+                    
+                    // Reload structure if we already had one
+                    if (this.viewer.state.currentCifContent) {
+                        await this.viewer.loadStructure(this.viewer.state.currentCifContent);
+                        this.setupButtons();
+                    }
+                }
+                break;
+            case 'hydrogen-mode':
+                if (this.viewer.modifiers.hydrogen) {
+                    this.viewer.modifiers.hydrogen.mode = newValue;
+                    await this.viewer.updateStructure();
+                    this.setupButtons();
+                }
+                break;
+            case 'disorder-mode':
+                if (this.viewer.modifiers.disorder) {
+                    this.viewer.modifiers.disorder.mode = newValue;
+                    await this.viewer.updateStructure();
+                    this.setupButtons();
+                }
+                break;
+            case 'symmetry-mode':
+                if (this.viewer.modifiers.symmetry) {
+                    this.viewer.modifiers.symmetry.mode = newValue;
+                    await this.viewer.setupNewStructure();
+                    this.setupButtons();
+                }
                 break;
         }
     }
@@ -289,6 +420,8 @@ export class CifViewWidget extends HTMLElement {
                 } else if (selection.type === 'bond') {
                     const bondLengthString = formatValueEsd(selection.data.bondLength, selection.data.bondLengthSU);
                     info = `${selection.data.atom1Label}-${selection.data.atom2Label}: ${bondLengthString} Å`;
+                } else if (selection.type === 'hbond') {
+                    info = `${selection.data.donorAtomLabel}→${selection.data.acceptorAtomLabel}`;
                 }
                 return `<span style="color:${color}">${info}</span>`;
             }).join(', ');
