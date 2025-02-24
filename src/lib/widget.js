@@ -85,21 +85,11 @@ export class CifViewWidget extends HTMLElement {
     }
 
     get icons() {
-        const defaultIcons = {
-            hydrogen: { none: '', constant: '', anisotropic: '' },
-            disorder: { all: '', group1: '', group2: '' },
-            symmetry: { 
-                'bonds-yes-hbonds-yes': '',
-                'bonds-yes-hbonds-no': '',
-                'bonds-no-hbonds-no': '',
-            },
-        };
-        return { ...defaultIcons, ...SVG_ICONS, ...this.customIcons };
+        return { ...SVG_ICONS, ...this.customIcons };
     }
 
     async connectedCallback() {
         this.baseCaption = this.getAttribute('caption') || '';
-        this.customIcons = this.parseCustomIcons();
         
         const container = document.createElement('div');
         container.className = 'crystal-container';
@@ -121,6 +111,7 @@ export class CifViewWidget extends HTMLElement {
             this.selections = selections;
             this.updateCaption();
         });
+        this.customIcons = this.parseCustomIcons();
 
         // Load structure first to determine which buttons to show
         const src = this.getAttribute('src');
@@ -160,34 +151,50 @@ export class CifViewWidget extends HTMLElement {
 
     parseCustomIcons() {
         try {
-            const iconSources = {
-                hydrogen: {
-                    src: this.getAttribute('hydrogen-icons'),
-                    modes: ['none', 'constant', 'anisotropic'],
-                },
-                disorder: {
-                    src: this.getAttribute('disorder-icons'),
-                    modes: ['all', 'group1', 'group2'],
-                },
-                symmetry: {
-                    src: this.getAttribute('symmetry-icons'),
-                    modes: ['bonds-yes-hbonds-yes', 'bonds-yes-hbonds-no', 'bonds-no-hbonds-no'],
-                },
-            };
-
-            const icons = {};
-            for (const [type, config] of Object.entries(iconSources)) {
-                if (config.src) {
-                    const files = config.src.split(',');
-                    icons[type] = {};
-                    config.modes.forEach((mode, index) => {
-                        if (files[index]) {
-                            icons[type][mode] = files[index].trim();
-                        }
-                    });
-                }
+            let iconSource;
+            try {
+                iconSource = JSON.parse(this.getAttribute('icons'));
+            } catch {
+                throw new Error("Failed to parse custom icon definition. Needs to be valid JSON.");
             }
-            return Object.keys(icons).length ? icons : null;
+            if (!iconSource) {
+                return null;
+            }
+
+            const customNames = Object.getOwnPropertyNames(iconSource);
+
+            const modifierNames = Object.getOwnPropertyNames(this.viewer.modifiers);
+
+            const invalidNames = customNames.filter(name => !modifierNames.includes(name));
+
+            if (invalidNames.length > 0) {
+                throw new Error(
+                    `One or more invalid categories for custom icons: ${invalidNames.join(', ')}.`
+                    + ` Valid categories: ${modifierNames.join(', ')}`,
+                ); 
+            }
+
+            const customIcons = {};
+            const invalidIcons = [];
+
+            for (const customName of customNames) {
+                customIcons[customName] = {};
+                const validNames = Object.values(this.viewer.modifiers[customName].MODES);
+                const newNames = Object.getOwnPropertyNames(iconSource[customNames]);
+                newNames.forEach(name => {
+                    if (!validNames.includes(name)) {
+                        invalidIcons.push([customName, name]);
+                    } else {
+                        customIcons[customName][name] = iconSource[customName][name];
+                    }
+                })
+            }
+
+            if (invalidIcons.length > 0) {
+                const listString = invalidIcons.map(([category, item]) => `${category}: ${item}`).join(' ,');
+                throw new Error(`The following custom icons do not map to a valid mode: ${listString}`);
+            }
+            return customIcons;
         } catch (e) {
             console.warn('Failed to parse custom icons:', e);
             return null;
@@ -223,23 +230,23 @@ export class CifViewWidget extends HTMLElement {
         }
 
         switch (name) {
-        case 'caption':
-            this.baseCaption = newValue;
-            this.updateCaption();
-            break;
-        case 'src':
-            if (newValue) {
-                await this.loadFromUrl(newValue); 
-            }
-            break;
-        case 'data':
-            if (newValue) {
-                await this.loadFromString(newValue); 
-            }
-            break;
-        case 'icons':
-            this.customIcons = this.parseCustomIcons();
-            break;
+            case 'caption':
+                this.baseCaption = newValue;
+                this.updateCaption();
+                break;
+            case 'src':
+                if (newValue) {
+                    await this.loadFromUrl(newValue); 
+                }
+                break;
+            case 'data':
+                if (newValue) {
+                    await this.loadFromString(newValue); 
+                }
+                break;
+            case 'icons':
+                this.customIcons = this.parseCustomIcons();
+                break;
         }
     }
 
