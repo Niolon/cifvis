@@ -256,7 +256,7 @@ async function testCIFFile(filePath) {
                     tryToFixCifBlock(block, true, true, true);
                     baseStructure = CrystalStructure.fromCIF(block);
                 } catch (error2) {
-                    handleStructureError(`Structure Error in Fixed structure${filePath}: ${error2.message}`, true, true);
+                    handleStructureError(`Structure Error in Fixed structure ${filePath}: ${error2.message}`, true, true);
                     results.errors.push(`Structure Error in fixed Structure: ${error2.message}`);
                     return results;
                 }
