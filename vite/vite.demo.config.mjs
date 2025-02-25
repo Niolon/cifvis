@@ -18,7 +18,7 @@ export default defineConfig({
                 // Ensure assets are placed directly in the output directory
                 assetFileNames: 'assets/[name].[hash][extname]',
                 chunkFileNames: 'assets/[name].[hash].js',
-                entryFileNames: 'assets/[name].[hash].js'
+                entryFileNames: 'assets/[name].[hash].js',
             },
         },
         // Specify the output directory
@@ -28,4 +28,4 @@ export default defineConfig({
     root: resolve(__dirname, '../demo'),
     // Specify the public directory path (relative to root)
     publicDir: resolve(__dirname, '../demo/public'),
-})
+});
