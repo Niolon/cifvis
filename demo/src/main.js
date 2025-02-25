@@ -141,11 +141,11 @@ function initializeFileUpload() {
 // Hydrogen mode button
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
-    hydrogenButton.innerHTML = SVG_ICONS['hydrogen']['none']
+    hydrogenButton.innerHTML = SVG_ICONS['hydrogen']['none'];
     hydrogenButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('hydrogen');
         if (result.success) {
-            hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][this.viewer.modifiers.hydrogen.mode]
+            hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][this.viewer.modifiers.hydrogen.mode];
         }
     });
 }

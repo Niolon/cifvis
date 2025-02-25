@@ -51,7 +51,7 @@ export default function svgIconsPlugin() {
                                 icons[type][mode] = cleanSvg(content);
                             }
                         });
-                        console.log('')
+                        console.log('');
                         console.log('Found SVG files:', svgFiles);
                         console.log('Processed icons:', Object.keys(icons));
                     } catch (error) {
