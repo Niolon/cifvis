@@ -200,7 +200,7 @@ initializeUI();
 
 // Load initial structure
 const baseUrl = import.meta.env.BASE_URL;
-fetch(`${baseUrl}disorder1.cif`)
+fetch(`${baseUrl}cif/disorder1.cif`)
     .then(res => res.text())
     .then(text => {
         const result = viewer.loadStructure(text);
