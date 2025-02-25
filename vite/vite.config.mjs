@@ -6,7 +6,7 @@ export default defineConfig({
     plugins: [svgIconsPlugin()],
     build: {
         lib: {
-            entry: resolve(__dirname, 'src/index.js'),
+            entry: resolve(__dirname, '../src/index.js'),
             name: 'CifVis',
             fileName: 'cifvis',
         },
