@@ -8,10 +8,9 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reporter: ['text', 'json', 'html'],
-            exclude: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*', 'integration-tests/*'],
+            exclude: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*', 'integration-tests/*', 'src/demo'],
         },
-        //setupFiles: ['./vitest.setup.js'],
-        include: ['./src/lib/**/*.test.js'],
+        include: ['src/lib/**/*.test.js'],
         exclude: ['node_modules', 'dist', 'cod', 'coverage', 'integration-tests'],
     },
     resolve: {
