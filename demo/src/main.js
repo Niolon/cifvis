@@ -1,4 +1,3 @@
-import { viewportResolution } from 'three/tsl';
 import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { SVG_ICONS } from 'virtual:svg-icons';
