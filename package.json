@@ -25,7 +25,7 @@
     "lint:fix": "eslint . --fix"
   },
   "keywords": [],
-  "author": "",
+  "author": "Paul Niklas Ruth",
   "license": "MPL-2.0",
   "dependencies": {
     "mathjs": "^14.1.0",
