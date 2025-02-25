@@ -1,0 +1,22 @@
+import{C as g,f as c,S as d}from"./index.DUhKBKUR.js";function a(t,n="info"){const e=document.getElementById("status-message");e.textContent=t,e.className=`show ${n}`,n==="success"&&setTimeout(()=>{e.className=e.className.replace("show","")},2e3)}const s=new g(document.body);s.animate();s.selections.onChange(t=>{const n=document.getElementById("selection-container");for(;n.firstChild;)n.firstChild.remove();t.forEach(e=>{const o=document.createElement("div");if(o.className="selection-box",o.style.border=`3px solid #${e.color.toString(16)}`,e.type==="atom")o.innerHTML=`
+                <div class="selection-title">Atom: ${e.data.label}</div>
+                <div class="selection-info">
+                    <span>Type:</span><span>${e.data.atomType}</span>
+                    <span>X:</span><span>${e.data.position.x.toFixed(4)}</span>
+                    <span>Y:</span><span>${e.data.position.y.toFixed(4)}</span>
+                    <span>Z:</span><span>${e.data.position.z.toFixed(4)}</span>
+                </div>
+            `;else if(e.type==="bond"){const r=c(e.data.bondLength,e.data.bondLengthSU);o.innerHTML=`
+                <div class="selection-title">Bond: ${e.data.atom1Label} - ${e.data.atom2Label}</div>
+                <div class="selection-info">
+                    <span>Length:</span><span>${r} Å</span>
+                </div>
+            `}else if(e.type==="hbond"){const r=e.data.hydrogenAtomLabel,i=e.data.hydrogenAtomLabel,u=e.data.acceptorAtomLabel,p=c(e.data.donorHydrogenDistance,e.data.donorHydrogenDistanceSU),y=c(e.data.acceptorHydrogenDistance,e.data.acceptorHydrogenDistanceSU),f=c(e.data.donorAcceptorDistance,e.data.donorAcceptorDistanceSU),m=c(e.data.hBondAngle,e.data.hBondAngleSU);o.innerHTML=`
+                <div class="selection-title">H-Bond: ${r} - ${i} ··· ${u}</div>
+                <div class="selection-info">
+                    <span>D-H:</span><span>${p} Å</span>
+                    <span>H···A:</span><span>${y} Å</span>
+                    <span>D···A:</span><span>${f} Å</span>
+                    <span>D-H···A:</span><span>${m}°</span>
+                </div>
+            `}n.appendChild(o)})});function h(){const t=document.getElementById("upload-button"),n=document.getElementById("cif-upload");t.innerHTML=d.upload,t.addEventListener("click",()=>{n.click()}),n.addEventListener("change",async e=>{const o=e.target.files[0];if(o)try{a("Reading file...","info");const r=await o.text(),i=await s.loadStructure(r);i.success?(a("Structure loaded successfully","success"),l()):a("Error loading structure: "+i.error,"error")}catch(r){console.error("Error reading file:",r),a("Error reading file: "+r.message,"error")}}),document.addEventListener("dragover",e=>{e.preventDefault(),e.stopPropagation()}),document.addEventListener("drop",async e=>{e.preventDefault(),e.stopPropagation();const o=e.dataTransfer.files[0];if(!o||!o.name.endsWith(".cif")){a("Please drop a CIF file","error");return}try{a("Reading file...","info");const r=await o.text(),i=await s.loadStructure(r);i.success?(a("Structure loaded successfully","success"),l()):a("Error loading structure: "+i.error,"error")}catch(r){console.error("Error reading file:",r),a("Error reading file: "+r.message,"error")}})}function L(){const t=document.getElementById("hydrogen-button");t.innerHTML=d.hydrogen.none,t.addEventListener("click",async()=>{(await s.cycleModifierMode("hydrogen")).success&&(t.innerHTML=d.hydrogen[this.viewer.modifiers.hydrogen.mode])})}function E(){const t=document.getElementById("disorder-button");t.addEventListener("click",async()=>{(await s.cycleModifierMode("disorder")).success&&(t.innerHTML=d.disorder[s.modifiers.disorder.mode])})}function v(){const t=document.getElementById("symmetry-button");t.addEventListener("click",async()=>{(await s.cycleModifierMode("symmetry")).success&&(t.innerHTML=d.symmetry[s.modifiers.symmetry.mode])})}function b(){h(),L(),E(),v()}function l(){const t=document.getElementById("disorder-button"),n=s.numberModifierModes("disorder")>1;t.style.display=n?"flex":"none",n&&(t.innerHTML=d.disorder[s.modifiers.disorder.mode]);const e=document.getElementById("symmetry-button"),o=s.numberModifierModes("symmetry")>1;e.style.display=o?"flex":"none",o&&(e.innerHTML=d.symmetry[s.modifiers.symmetry.mode])}b();const B="/cifvis/";fetch(`${B}cif/disorder1.cif`).then(t=>t.text()).then(t=>{const n=s.loadStructure(t);return l(),n}).catch(t=>{console.error("Error loading initial structure:",t),a("Error loading initial structure. Try uploading your own CIF file.","error")});
