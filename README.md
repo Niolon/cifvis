@@ -1,6 +1,6 @@
 # CifVis - Crystal Structure Visualisation
 
-A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif
+A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. A preview of the widgets is available [here](https://niolon.github.io/cifvis/widget.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
 
 ## Features
 
@@ -13,18 +13,6 @@ A JavaScript library and web components for visualizing crystal structures from 
 - Widget for complete packaged solution
 
 ## Usage
-
-### Basic Viewer
-```html
-<div id="viewer"></div>
-<script type="module">
-  import { CrystalViewer } from 'cifvis';
-  
-  const viewer = new CrystalViewer(document.getElementById('viewer'));
-  viewer.loadStructure(cifContent);
-</script>
-```
-
 ### Web Component
 ```html
 <cifview-widget 
@@ -37,6 +25,19 @@ A JavaScript library and web components for visualizing crystal structures from 
   import { CifViewWidget } from 'cifvis';
 </script>
 ```
+
+### Basic Viewer
+```html
+<div id="viewer"></div>
+<script type="module">
+  import { CrystalViewer } from 'cifvis';
+  
+  const viewer = new CrystalViewer(document.getElementById('viewer'));
+  viewer.loadStructure(cifContent);
+</script>
+```
+
+
 
 ### API Reference
 
@@ -58,13 +59,8 @@ import {
 ```javascript
 const viewer = new CrystalViewer(container, {
   camera: {
-    minDistance: 1,
-    maxDistance: 100,
     zoomSpeed: 0.1,
-    initialPosition: [0, 0, 10],
     fov: 45,
-    near: 0.1,
-    far: 1000
   },
   selection: {
     mode: 'multiple', // or 'single'
@@ -86,7 +82,7 @@ const viewer = new CrystalViewer(container, {
 ```html
 <cifview-widget
   src="path/to/structure.cif"  <!-- URL to load CIF from -->
-  data="..."                   <!-- Direct CIF content -->
+  data="..."                   <!-- Direct CIF content, mutually exclusive with src -->
   caption="Structure Title"    <!-- Caption text -->
   hydrogen-mode="none"         <!-- Initial hydrogen display mode -->
   disorder-mode="all"         <!-- Initial disorder display mode -->
@@ -109,6 +105,9 @@ npm test
 
 # Build for production
 npm run build
+
+# build for production including dependencies
+npm run build:alldeps
 ```
 
 ## Browser Support
