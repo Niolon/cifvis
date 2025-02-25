@@ -8,13 +8,13 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: resolve(__dirname, '../index.html'),
-                widget: resolve(__dirname, '../widget.html'),
+                main: resolve(__dirname, '../demo/index.html'),
+                widget: resolve(__dirname, '../demo/widget.html'),
             },
-            output: {
-                inlineDynamicImports: false,
-            },
+            //output: {
+            //    inlineDynamicImports: false,
+            //},
         },
     },
-    publicDir: 'public',
+    publicDir: '../demo/public',
 });

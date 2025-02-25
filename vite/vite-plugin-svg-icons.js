@@ -32,7 +32,7 @@ export default function svgIconsPlugin() {
             if (id === RESOLVED_VIRTUAL_MODULE_ID) {
                 if (!icons) {
                     try {
-                        const svgDir = resolve(process.cwd(), 'public/svg');
+                        const svgDir = resolve(process.cwd(), 'src/svg-icons');
                         icons = {};
             
                         const svgFiles = readdirSync(svgDir).filter(file => file.endsWith('.svg'));
@@ -44,9 +44,14 @@ export default function svgIconsPlugin() {
                             if (!icons[type]) {
                                 icons[type] = {}; 
                             }
-                            icons[type][mode] = cleanSvg(content);
-                        });
 
+                            if (mode === '') {
+                                icons[type] = cleanSvg(content);
+                            } else {
+                                icons[type][mode] = cleanSvg(content);
+                            }
+                        });
+                        console.log('')
                         console.log('Found SVG files:', svgFiles);
                         console.log('Processed icons:', Object.keys(icons));
                     } catch (error) {

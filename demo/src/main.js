@@ -1,5 +1,7 @@
-import { CrystalViewer } from '..';
-import { formatValueEsd } from '..';
+import { viewportResolution } from 'three/tsl';
+import { CrystalViewer } from '../../src';
+import { formatValueEsd } from '../../src';
+import { SVG_ICONS } from 'virtual:svg-icons';
 
 // Status message handling
 function updateStatus(message, type = 'info') {
@@ -75,6 +77,7 @@ viewer.selections.onChange(selections => {
 function initializeFileUpload() {
     const uploadButton = document.getElementById('upload-button');
     const fileInput = document.getElementById('cif-upload');
+    uploadButton.innerHTML = SVG_ICONS['upload'];
 
     uploadButton.addEventListener('click', () => {
         fileInput.click();
@@ -139,11 +142,11 @@ function initializeFileUpload() {
 // Hydrogen mode button
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
+    hydrogenButton.innerHTML = SVG_ICONS['hydrogen']['none']
     hydrogenButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('hydrogen');
         if (result.success) {
-            const hydrogenIcon = hydrogenButton.querySelector('img');
-            hydrogenIcon.src = `svg/hydrogen-${result.mode}.svg`;
+            hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][this.viewer.modifiers.hydrogen.mode]
         }
     });
 }
@@ -155,8 +158,7 @@ function initializeDisorderButton() {
     disorderButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('disorder');
         if (result.success) {
-            const disorderIcon = disorderButton.querySelector('img');
-            disorderIcon.src = `svg/disorder-${result.mode}.svg`;
+            disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
         }
     });
 }
@@ -166,8 +168,7 @@ function initializeSymmetryButton() {
     symmetryButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('symmetry');
         if (result.success) {
-            const symmetryIcon = symmetryButton.querySelector('img');
-            symmetryIcon.src = `svg/symmetry-${result.mode}.svg`;
+            symmetryButton.innerHTML = SVG_ICONS['symmetry'][viewer.modifiers.symmetry.mode];
         }
     });
 }
@@ -185,16 +186,14 @@ function adaptButtons() {
     const hasDisorder = viewer.numberModifierModes('disorder') > 1;
     disorderButton.style.display = hasDisorder ? 'flex' : 'none';
     if (hasDisorder) {
-        const disorderIcon = disorderButton.querySelector('img');
-        disorderIcon.src = `svg/disorder-${viewer.modifiers.disorder.mode}.svg`;
+        disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
     }
 
     const symmetryButton = document.getElementById('symmetry-button');
     const hasSymmetryConnection = viewer.numberModifierModes('symmetry') > 1;
     symmetryButton.style.display = hasSymmetryConnection ? 'flex' : 'none';
     if (hasSymmetryConnection) {
-        const symmetryIcon = symmetryButton.querySelector('img');
-        symmetryIcon.src = `svg/symmetry-${viewer.modifiers.symmetry.mode}.svg`;
+        symmetryButton.innerHTML = SVG_ICONS['symmetry'][viewer.modifiers.symmetry.mode];
     }
 }
 
@@ -202,7 +201,7 @@ initializeUI();
 
 // Load initial structure
 const baseUrl = import.meta.env.BASE_URL;
-fetch(`${baseUrl}cif/disorder1.cif`)
+fetch(`${baseUrl}disorder1.cif`)
     .then(res => res.text())
     .then(text => {
         const result = viewer.loadStructure(text);

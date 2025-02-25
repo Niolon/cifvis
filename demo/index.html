@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>CIF Viewer</title>
+        <link rel="stylesheet" href="./src/style.css">
+    </head>
+    <body>
+        <input type="file" 
+               id="cif-upload" 
+               accept=".cif"
+               style="display: none;">
+        <div class="button-container">
+            <button class="control-button upload-button" id="upload-button"></button>
+            <button class="control-button hydrogen-button" id="hydrogen-button"></button>
+            <button class="control-button disorder-button" id="disorder-button" style="display: none;"></button>
+            <button class="control-button symmetry-button" id="symmetry-button"></button>
+        </div>
+        <div id="status-message"></div>
+        <div id="selection-container" class="selection-container"></div>
+        <script type="module" src="./src/main.js"></script>    </body>
+</html>

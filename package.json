@@ -9,7 +9,7 @@
     "./nobrowser": "./src/index.nobrowser.js"
   },
   "scripts": {
-    "dev": "vite --config vite/vite.config.mjs",
+    "dev": "vite --config vite/vite.config.mjs serve ./demo",
     "build": "vite build --config vite/vite.config.mjs",
     "build:demo": "vite build --config vite/vite.demo.config.mjs",
     "test": "vitest run",
