@@ -407,11 +407,6 @@ export class CrystalViewer {
             const currentRotation = this.moleculeContainer.matrix.clone();
             this.update3DOrtep();
             
-            // Use the same center as initial structure
-            this.state.currentStructure.children.forEach(child => {
-                child.position.sub(this.state.structureCenter);
-            });
-            
             // Restore rotation
             this.moleculeContainer.matrix.copy(currentRotation);
             this.moleculeContainer.matrixAutoUpdate = false;
