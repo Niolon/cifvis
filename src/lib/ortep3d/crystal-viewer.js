@@ -307,6 +307,7 @@ export class CrystalViewer {
         this.controls = new ViewerControls(this);
         this.animate();
         this.needsRender = true;
+
     }
 
     setupScene() {
@@ -377,26 +378,24 @@ export class CrystalViewer {
         this.state.structureCenter.set(0, 0, 0);
         
         this.update3DOrtep();
-
-        // Calculate center from clean structure state
-        const extent = new THREE.Box3().setFromObject(this.state.currentStructure);
-        extent.getCenter(this.state.structureCenter);
-        
-        // Center the structure
-        this.state.currentStructure.children.forEach(child => {
-            child.position.sub(this.state.structureCenter);
-        });
         
         // Calculate initial rotation
         const rotation = structureOrientationMatrix(this.state.currentStructure);
         if (this.container.clientHeight > this.container.clientWidth) {
             rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
         }
+        
         if (rotation) {
             this.moleculeContainer.setRotationFromMatrix(rotation);
             this.moleculeContainer.updateMatrix();
         }
+
+        // Calculate center from rotated structure for proper bounding box
+        const extent = new THREE.Box3().setFromObject(this.moleculeContainer);
+        extent.getCenter(this.state.structureCenter);
         
+        this.moleculeContainer.position.sub(this.state.structureCenter);
+
         this.updateCamera();
         setupLighting(this.scene, this.state.currentStructure);
         this.requestRender();
@@ -440,7 +439,8 @@ export class CrystalViewer {
     }
     
     updateCamera() {
-        const distance = calculateCameraDistance(this.state.currentStructure, this.camera.fov);
+        this.controls.handleResize();
+        const distance = calculateCameraDistance(this.moleculeContainer, this.camera);
         this.camera.position.set(0, 0, distance);
         this.camera.rotation.set(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);

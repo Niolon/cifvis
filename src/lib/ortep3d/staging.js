@@ -59,30 +59,74 @@ function threeMatrixToMathJS(matrix) {
  * Calculate required camera distance to fit structure in view
  * @param {THREE.Object3D} structureGroup - The structure to analyze
  * @param {number} fieldOfView - Camera field of view in degrees
+ * @param {number} aspect - Camera aspect ratio (width/height)
  * @returns {number} Required camera distance
  */
-export function calculateCameraDistance(structureGroup, fieldOfView = 50) {
-    // Extract atom positions
-    const positions = [];
-    const center = new THREE.Vector3();
-    structureGroup.traverse(obj => {
-        if(obj.userData?.type === 'atom') {
-            positions.push(obj.position.clone());
-            center.add(obj.position);
-        }
-    });
+/**
+ * Calculate required camera distance to fit structure in view
+ * @param {THREE.Object3D} structureGroup - The structure to analyze
+ * @param {number} fieldOfView - Camera field of view in degrees
+ * @param {number} aspect - Camera aspect ratio (width/height)
+ * @returns {number} Required camera distance
+ */
+/**
+ * Calculate required camera distance to fit structure in view
+ * @param {THREE.Object3D} structureGroup - The structure to analyze
+ * @param {number} fieldOfView - Camera field of view in degrees
+ * @param {number} aspect - Camera aspect ratio (width/height)
+ * @returns {number} Required camera distance
+ */
+export function calculateCameraDistance2(structureGroup, camera) {
+    // Get the bounding box
+    const boundingBox = new THREE.Box3().setFromObject(structureGroup);
     
-    if(positions.length === 0) {
+    if (boundingBox.isEmpty()) {
         return 10; // Return sensible default if no atoms found
     }
     
-    // Center positions
-    center.divideScalar(positions.length);
-    const centeredPositions = positions.map(p => p.sub(center));
+    // Calculate center and dimensions
+    //const center = new THREE.Vector3();
+    //boundingBox.getCenter(center);
     
-    // Find maximum radius from center
-    const maxRadius = Math.max(...centeredPositions.map(p => p.length()));
-    return maxRadius / Math.sin((fieldOfView / 2) * Math.PI / 180);
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    
+    // Convert FOV from degrees to radians
+    const heightFovRadians = camera.fov * Math.PI / 180;
+    const widthFovRadians = Math.atan(camera.aspect * Math.tan(heightFovRadians / 2) * 2);
+    // Calculate required distances for height and width
+    const distanceForHeight = (size.y / 2) / Math.tan((heightFovRadians / 2));
+    const distanceForWidth = (size.x / 2) / Math.tan((widthFovRadians / 2));
+    
+    // Use the greater of the two distances
+    const distance = Math.max(distanceForHeight, distanceForWidth, size.z / 2);
+    console.log(size);
+    console.log(camera.aspect);
+    console.log(distanceForHeight, distanceForWidth, size.z / 2);
+    console.log(boundingBox.max, boundingBox.min);
+    return distance + size.z / 2;
+}
+
+export function calculateCameraDistance(structureGroup, camera) {
+    // Get the bounding box
+    const boundingBox = new THREE.Box3().setFromObject(structureGroup);
+    
+    if (boundingBox.isEmpty()) {
+        return 10; // Return sensible default if no atoms found
+    }
+    
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    const verticalFovRadians = camera.fov * Math.PI / 180;
+    const horizontalFovRadians = Math.atan(camera.aspect * Math.tan(verticalFovRadians / 2) * 2);
+
+    const structureAspect = size.x / size.y;
+    if (structureAspect <= camera.aspect) {
+        return (size.y / 2 / Math.tan(verticalFovRadians / 2) + size.z / 2);
+    } else {
+        return (size.x / 2 / Math.tan(horizontalFovRadians / 2) + size.z / 2);
+    }
+    
 }
 
 /**
@@ -151,8 +195,8 @@ export function structureOrientationMatrix(structureGroup) {
     rotationMatrix.premultiply(finalRotation);
 
     // Give it a slight angle
-    rotationMatrix.premultiply(new THREE.Matrix4().makeRotationX(Math.PI / 4));
-    rotationMatrix.premultiply(new THREE.Matrix4().makeRotationY(0.2));
+    rotationMatrix.premultiply(new THREE.Matrix4().makeRotationX(Math.PI / 8));
+    rotationMatrix.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 48));
     
     return rotationMatrix;
 }
@@ -165,8 +209,13 @@ export function structureOrientationMatrix(structureGroup) {
 export function setupLighting(scene, ortep3DGroup) {
     // Remove all existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
-    
-    const lightDistance = Math.max(calculateCameraDistance(ortep3DGroup), 6) * 1.5;
+    let maxLength = 6;
+    ortep3DGroup.traverse(obj => {
+        if(obj.userData?.type === 'atom' && obj.position.length() > maxLength) {
+            maxLength = obj.position.length();
+        }
+    });
+    const lightDistance = maxLength * 2;
     
     // Base ambient light
     const ambientLight = new THREE.AmbientLight(0xffffff, 1);

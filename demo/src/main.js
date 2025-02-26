@@ -145,7 +145,7 @@ function initializeHydrogenButton() {
     hydrogenButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('hydrogen');
         if (result.success) {
-            hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][this.viewer.modifiers.hydrogen.mode];
+            hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][viewer.modifiers.hydrogen.mode];
         }
     });
 }
@@ -181,6 +181,13 @@ function initializeUI() {
 }
 
 function adaptButtons() {
+    const hydrogenButton = document.getElementById('hydrogen-button');
+    const hasHydrogen = viewer.numberModifierModes('hydrogen') > 1;
+    hydrogenButton.style.display = hasHydrogen ? 'flex' : 'none';
+    if (hasHydrogen) {
+        hydrogenButton.innerHTML = SVG_ICONS['hydrogen'][viewer.modifiers.hydrogen.mode];
+    }
+
     const disorderButton = document.getElementById('disorder-button');
     const hasDisorder = viewer.numberModifierModes('disorder') > 1;
     disorderButton.style.display = hasDisorder ? 'flex' : 'none';
