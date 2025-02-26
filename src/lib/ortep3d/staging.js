@@ -62,51 +62,6 @@ function threeMatrixToMathJS(matrix) {
  * @param {number} aspect - Camera aspect ratio (width/height)
  * @returns {number} Required camera distance
  */
-/**
- * Calculate required camera distance to fit structure in view
- * @param {THREE.Object3D} structureGroup - The structure to analyze
- * @param {number} fieldOfView - Camera field of view in degrees
- * @param {number} aspect - Camera aspect ratio (width/height)
- * @returns {number} Required camera distance
- */
-/**
- * Calculate required camera distance to fit structure in view
- * @param {THREE.Object3D} structureGroup - The structure to analyze
- * @param {number} fieldOfView - Camera field of view in degrees
- * @param {number} aspect - Camera aspect ratio (width/height)
- * @returns {number} Required camera distance
- */
-export function calculateCameraDistance2(structureGroup, camera) {
-    // Get the bounding box
-    const boundingBox = new THREE.Box3().setFromObject(structureGroup);
-    
-    if (boundingBox.isEmpty()) {
-        return 10; // Return sensible default if no atoms found
-    }
-    
-    // Calculate center and dimensions
-    //const center = new THREE.Vector3();
-    //boundingBox.getCenter(center);
-    
-    const size = new THREE.Vector3();
-    boundingBox.getSize(size);
-    
-    // Convert FOV from degrees to radians
-    const heightFovRadians = camera.fov * Math.PI / 180;
-    const widthFovRadians = Math.atan(camera.aspect * Math.tan(heightFovRadians / 2) * 2);
-    // Calculate required distances for height and width
-    const distanceForHeight = (size.y / 2) / Math.tan((heightFovRadians / 2));
-    const distanceForWidth = (size.x / 2) / Math.tan((widthFovRadians / 2));
-    
-    // Use the greater of the two distances
-    const distance = Math.max(distanceForHeight, distanceForWidth, size.z / 2);
-    console.log(size);
-    console.log(camera.aspect);
-    console.log(distanceForHeight, distanceForWidth, size.z / 2);
-    console.log(boundingBox.max, boundingBox.min);
-    return distance + size.z / 2;
-}
-
 export function calculateCameraDistance(structureGroup, camera) {
     // Get the bounding box
     const boundingBox = new THREE.Box3().setFromObject(structureGroup);
