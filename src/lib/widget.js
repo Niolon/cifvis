@@ -111,7 +111,7 @@ export class CifViewWidget extends HTMLElement {
 
         const caption = document.createElement('div');
         caption.className = 'crystal-caption';
-        caption.textContent = this.baseCaption;
+        caption.innerHTML = this.baseCaption;
         this.appendChild(caption);
         this.captionElement = caption;
 
@@ -282,14 +282,14 @@ export class CifViewWidget extends HTMLElement {
 
     async updateFilteredAtoms() {
         const filteredAtomsString = this.getAttribute('filtered-atoms');
-        const filteredAtoms = filteredAtomsString ? filteredAtomsString.split(',') : [];
+        const filteredAtoms = filteredAtomsString ? filteredAtomsString.split(',').map(val => val.trim()) : [];
         this.viewer.modifiers.removeatoms.setFilteredLabels(filteredAtoms);
         if (filteredAtoms.length > 0) {
             this.viewer.modifiers.removeatoms.mode = 'on';
-            await this.viewer.setupNewStructure();
         } else {
             this.viewer.modifiers.removeatoms.mode = 'off';
         }
+        this.setupButtons();
     }
 
     addButton(container, type, altText) {
@@ -389,11 +389,63 @@ export class CifViewWidget extends HTMLElement {
     async loadFromUrl(url) {
         try {
             const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load CIF file: ${response.status} ${response.statusText}`);
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                throw new Error('Received no or invalid content for src.');
+            }
+            
             const text = await response.text();
-            await this.viewer.loadStructure(text);
-            this.setupButtons();  // Setup buttons after loading
+            
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+                throw new Error('Received no or invalid content for src.');
+            }
+            
+            const result = await this.viewer.loadStructure(text);
+            
+            if (result.success) {
+                this.setupButtons();  // Setup buttons after loading
+            } else {
+                this.baseCaption = `Error loading structure: ${result.error || 'Unknown error'}`;
+                this.updateCaption();
+            }
         } catch (error) {
             console.error('Error loading structure:', error);
+            
+            // Update caption to show error message
+            this.baseCaption = `Error loading structure: ${error.message}`;
+            this.updateCaption();
+            
+            // Optional: Create an error display in the viewer area
+            if (this.viewer) {
+                const container = this.querySelector('.crystal-container');
+                if (container) {
+                    // Clear the container
+                    while (container.firstChild) {
+                        container.firstChild.remove();
+                    }
+                    
+                    // Add error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.display = 'flex';
+                    errorDiv.style.justifyContent = 'center';
+                    errorDiv.style.alignItems = 'center';
+                    errorDiv.style.height = '100%';
+                    errorDiv.style.padding = '20px';
+                    errorDiv.style.textAlign = 'center';
+                    errorDiv.style.color = '#d32f2f';
+                    errorDiv.innerHTML = `<div>
+                        <h3>Error Loading Structure</h3>
+                        <p>${error.message}</p>
+                        <p>Please check that the file exists and is a valid CIF file.</p>
+                    </div>`;
+                    container.appendChild(errorDiv);
+                }
+            }
         }
     }
 
