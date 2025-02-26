@@ -3790,9 +3790,7 @@ class vt {
   async updateStructure() {
     try {
       const t = this.moleculeContainer.matrix.clone();
-      return this.update3DOrtep(), this.state.currentStructure.children.forEach((e) => {
-        e.position.sub(this.state.structureCenter);
-      }), this.moleculeContainer.matrix.copy(t), this.moleculeContainer.matrixAutoUpdate = !1, this.requestRender(), { success: !0 };
+      return this.update3DOrtep(), this.moleculeContainer.matrix.copy(t), this.moleculeContainer.matrixAutoUpdate = !1, this.requestRender(), { success: !0 };
     } catch (t) {
       return console.error("Error updating structure:", t), { success: !1, error: t.message };
     }

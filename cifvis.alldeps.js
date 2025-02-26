@@ -48812,9 +48812,7 @@ class qv {
   async updateStructure() {
     try {
       const e = this.moleculeContainer.matrix.clone();
-      return this.update3DOrtep(), this.state.currentStructure.children.forEach((t) => {
-        t.position.sub(this.state.structureCenter);
-      }), this.moleculeContainer.matrix.copy(e), this.moleculeContainer.matrixAutoUpdate = !1, this.requestRender(), { success: !0 };
+      return this.update3DOrtep(), this.moleculeContainer.matrix.copy(e), this.moleculeContainer.matrixAutoUpdate = !1, this.requestRender(), { success: !0 };
     } catch (e) {
       return console.error("Error updating structure:", e), { success: !1, error: e.message };
     }
