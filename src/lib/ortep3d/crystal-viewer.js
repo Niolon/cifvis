@@ -332,6 +332,10 @@ export class CrystalViewer {
     }
 
     async loadStructure(cifText, cifBlockIndex=0) {
+        if (cifText === undefined) {
+            console.error('Cannot load an empty text as CIF');
+            return { success: false, error: 'Cannot load an empty text as CIF' };
+        }
         try {
             const cif = new CIF(cifText);
             try {
