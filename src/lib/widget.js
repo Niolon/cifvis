@@ -410,51 +410,54 @@ export class CifViewWidget extends HTMLElement {
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
             } else {
-                this.baseCaption = `Error loading structure: ${result.error || 'Unknown error'}`;
-                this.updateCaption();
+                throw new Error(result.error ||'Unknown Error');
             }
         } catch (error) {
-            console.error('Error loading structure:', error);
-            
-            // Update caption to show error message
-            this.baseCaption = `Error loading structure: ${error.message}`;
-            this.updateCaption();
-            
-            // Optional: Create an error display in the viewer area
-            if (this.viewer) {
-                const container = this.querySelector('.crystal-container');
-                if (container) {
-                    // Clear the container
-                    while (container.firstChild) {
-                        container.firstChild.remove();
-                    }
-                    
-                    // Add error message
-                    const errorDiv = document.createElement('div');
-                    errorDiv.style.display = 'flex';
-                    errorDiv.style.justifyContent = 'center';
-                    errorDiv.style.alignItems = 'center';
-                    errorDiv.style.height = '100%';
-                    errorDiv.style.padding = '20px';
-                    errorDiv.style.textAlign = 'center';
-                    errorDiv.style.color = '#d32f2f';
-                    errorDiv.innerHTML = `<div>
-                        <h3>Error Loading Structure</h3>
-                        <p>${error.message}</p>
-                        <p>Please check that the file exists and is a valid CIF file.</p>
-                    </div>`;
-                    container.appendChild(errorDiv);
-                }
-            }
-        }
+            this.createErrorDiv(error);
+        }    
     }
-
+    
     async loadFromString(data) {
         try {
             await this.viewer.loadStructure(data);
             this.setupButtons();  // Setup buttons after loading
         } catch (error) {
-            console.error('Error loading structure:', error);
+            this.createErrorDiv(error);
+        }
+    }
+
+    createErrorDiv(error) {
+        console.error('Error loading structure:', error);
+            
+        // Update caption to show error message
+        this.baseCaption = `Error loading structure: ${error.message}`;
+        this.updateCaption();
+        
+        // Optional: Create an error display in the viewer area
+        if (this.viewer) {
+            const container = this.querySelector('.crystal-container');
+            if (container) {
+                // Clear the container
+                while (container.firstChild) {
+                    container.firstChild.remove();
+                }
+                
+                // Add error message
+                const errorDiv = document.createElement('div');
+                errorDiv.style.display = 'flex';
+                errorDiv.style.justifyContent = 'center';
+                errorDiv.style.alignItems = 'center';
+                errorDiv.style.height = '100%';
+                errorDiv.style.padding = '20px';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.color = '#d32f2f';
+                errorDiv.innerHTML = `<div>
+                    <h3>Error Loading Structure</h3>
+                    <p>${error.message}</p>
+                    <p>Please check that the file exists and is a valid CIF file.</p>
+                </div>`;
+                container.appendChild(errorDiv);
+            }
         }
     }
 
