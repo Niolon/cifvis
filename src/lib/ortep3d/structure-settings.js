@@ -13,7 +13,6 @@ export default {
         'mode': 'multiple',
         'markerMult': 1.3,
         'bondMarkerMult': 1.7,
-        'markerSegments': 32,
         'highlightEmissive': 0xaaaaaa,
         'markerColors': [
             0x1f77b4,
