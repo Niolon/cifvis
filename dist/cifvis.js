@@ -1,9 +1,9 @@
-var Nt = Object.defineProperty;
+var Ot = Object.defineProperty;
 var ft = (l) => {
   throw TypeError(l);
 };
-var Lt = (l, t, e) => t in l ? Nt(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
-var O = (l, t, e) => Lt(l, typeof t != "symbol" ? t + "" : t, e), pt = (l, t, e) => t.has(l) || ft("Cannot " + e);
+var Nt = (l, t, e) => t in l ? Ot(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
+var O = (l, t, e) => Nt(l, typeof t != "symbol" ? t + "" : t, e), pt = (l, t, e) => t.has(l) || ft("Cannot " + e);
 var x = (l, t, e) => (pt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), ut = (l, t, e) => t.has(l) ? ft("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), gt = (l, t, e, o) => (pt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
 import { create as G, all as Y } from "mathjs";
 import * as d from "three";
@@ -45,7 +45,7 @@ function Mt(l, t) {
     endIndex: t + s + 1
   };
 }
-const Tt = [
+const Lt = [
   "_space_group_symop_ssg",
   "_space_group_symop",
   "_symmetry_equiv",
@@ -138,7 +138,7 @@ entries are: ${o}`
   */
   findCommonStart(t = !0) {
     if (t) {
-      for (const i of Tt)
+      for (const i of Lt)
         if (this.headerLines.filter((n) => n.toLowerCase().startsWith(i.toLowerCase())).length >= this.headerLines.length / 2)
           return i;
     }
@@ -238,15 +238,15 @@ function q(l) {
 function ot(l) {
   return l.getHeaders()[0].split("_").filter((e) => e.length > 0);
 }
-function Rt(l, t, e) {
+function Tt(l, t, e) {
   const o = q(l) ? l : t, s = e.split("_").filter((a) => a.length > 0), r = ot(o), i = "_" + s.join("_") + "_" + r[s.length];
   return q(l) ? [i, e] : [e, i];
 }
-function Bt(l, t) {
+function Rt(l, t) {
   const e = l.findCommonStart(!1), o = t.findCommonStart(!1);
   return e.length !== o.length ? [e, o] : null;
 }
-function Pt(l, t, e) {
+function Bt(l, t, e) {
   const o = e.split("_").filter((i) => i.length > 0), s = ot(l), r = ot(t);
   return s.length >= r.length ? [
     e + "_" + s[o.length],
@@ -256,9 +256,9 @@ function Pt(l, t, e) {
     e + "_" + r[o.length]
   ];
 }
-function It(l, t, e) {
+function Pt(l, t, e) {
   let o;
-  !q(l) || !q(t) ? o = Rt(l, t, e) : o = Bt(l, t) || Pt(l, t, e);
+  !q(l) || !q(t) ? o = Tt(l, t, e) : o = Rt(l, t) || Bt(l, t, e);
   const s = [l, t];
   return s.forEach((r, i) => {
     q(r) && (r.name = o[i]);
@@ -267,7 +267,7 @@ function It(l, t, e) {
     newEntries: s
   };
 }
-class zt {
+class It {
   /**
    * Creates a new CIF parser instance.
    * @constructor
@@ -359,7 +359,7 @@ class yt {
         if (!Object.prototype.hasOwnProperty.call(this.data, r.getName()))
           this.data[r.getName()] = r;
         else {
-          const i = It(this.data[r.getName()], r, r.getName());
+          const i = Pt(this.data[r.getName()], r, r.getName());
           this.data[i.newNames[0]] = i.newEntries[0], this.data[i.newNames[1]] = i.newEntries[1];
         }
         e += r.getEndIndex();
@@ -424,7 +424,7 @@ function St(l) {
     [l[4], l[5], l[2]]
   ]);
 }
-function Ft(l) {
+function zt(l) {
   const t = k.matrix(l);
   return [
     t.get([0, 0]),
@@ -441,9 +441,9 @@ function Ft(l) {
     // U23
   ];
 }
-function Ht(l, t) {
+function Ft(l, t) {
   const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = St(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
-  return Ft(a);
+  return zt(a);
 }
 const _t = G(Y);
 var v;
@@ -546,7 +546,7 @@ class Dt extends K {
     return this;
   }
 }
-class $t {
+class Ht {
   /**
    * Creates a Position object from CIF data
    * @param {CifBlock} cifBlock - CIF data block containing position data
@@ -633,7 +633,7 @@ class I {
   * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
   */
   getUCart(t) {
-    return Ht(
+    return Ft(
       t.fractToCartMatrix,
       [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23]
     );
@@ -1654,7 +1654,7 @@ class W {
     let h = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], i, !1);
     if (h || (h = Z(a)), n.includes(h))
       throw new Error("Dummy atom: Invalid atom type");
-    const m = $t.fromCIF(t, i), f = M.fromCIF(t, i), u = s.getIndex(
+    const m = Ht.fromCIF(t, i), f = M.fromCIF(t, i), u = s.getIndex(
       ["_atom_site.disorder_group", "_atom_site_disorder_group"],
       i,
       "."
@@ -2397,7 +2397,7 @@ O(b, "MODES", Object.freeze({
   b.MODES.IGNORE
 ]);
 let at = b;
-function Ut(l) {
+function $t(l) {
   const t = {
     position: 0,
     rotation: 0,
@@ -2412,7 +2412,7 @@ function Ut(l) {
   }
   return e(l), t;
 }
-function Vt(l, t) {
+function Ut(l, t) {
   const o = l.getEllipsoidMatrix(t).toArray();
   return new d.Matrix4(
     o[0][0],
@@ -2445,7 +2445,7 @@ function Et(l, t) {
     l.clone().add(t).multiplyScalar(0.5)
   );
 }
-class Gt {
+class Vt {
   /**
    * Creates a new geometry and material cache.
    * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
@@ -2585,7 +2585,7 @@ class Gt {
     });
   }
 }
-class Yt {
+class Gt {
   /**
    * Creates a new ORTEP structure visualisation.
    * @param {CrystalStructure} crystalStructure - Input crystal structure
@@ -2602,7 +2602,7 @@ class Yt {
       ..._,
       ...o,
       elementProperties: s
-    }, this.crystalStructure = t, this.cache = new Gt(this.options), this.createStructure();
+    }, this.crystalStructure = t, this.cache = new Vt(this.options), this.createStructure();
   }
   /**
    * Creates 3D representations of atoms, bonds and H-bonds.
@@ -2613,19 +2613,19 @@ class Yt {
     const t = this.crystalStructure.atoms.map((s) => s.label);
     for (const s of this.crystalStructure.atoms) {
       const [r, i] = this.cache.getAtomMaterials(s.atomType);
-      s.adp instanceof I ? this.atoms3D.push(new qt(
+      s.adp instanceof I ? this.atoms3D.push(new Yt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
         r,
         this.cache.geometries.adpRing,
         i
-      )) : s.adp instanceof P ? this.atoms3D.push(new jt(
+      )) : s.adp instanceof P ? this.atoms3D.push(new qt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
         r
-      )) : this.atoms3D.push(new Wt(
+      )) : this.atoms3D.push(new jt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
@@ -2642,7 +2642,7 @@ class Yt {
     )).filter((s) => t.includes(s.atom2Label));
     for (const s of e)
       try {
-        this.bonds3D.push(new Kt(
+        this.bonds3D.push(new Wt(
           s,
           this.crystalStructure,
           this.cache.geometries.bond,
@@ -2671,7 +2671,7 @@ class Yt {
     )).filter((s) => t.includes(s.acceptorAtomLabel));
     for (const s of o)
       try {
-        this.hBonds3D.push(new Xt(
+        this.hBonds3D.push(new Kt(
           s,
           this.crystalStructure,
           this.cache.geometries.hbond,
@@ -2696,7 +2696,7 @@ class Yt {
       t.add(e);
     for (const e of this.hBonds3D)
       t.add(e);
-    return Ut(t), t;
+    return $t(t), t;
   }
   /**
    * Cleans up all resources.
@@ -2806,7 +2806,7 @@ class ct extends J {
     return o.scale.multiplyScalar(e.selection.markerMult), o.userData.selectable = !1, o;
   }
 }
-class qt extends ct {
+class Yt extends ct {
   /**
    * Creates a new anisotropic atom visualisation.
    * @param {Atom} atom - Input atom data with anisotropic displacement parameters
@@ -2820,7 +2820,7 @@ class qt extends ct {
     if (super(t, e, o, s), [t.adp.u11, t.adp.u3, t.adp.u33].some((n) => n <= 0))
       this.geometry = new d.TetrahedronGeometry(0.8);
     else {
-      const n = Vt(t.adp, e);
+      const n = Ut(t.adp, e);
       if (n.toArray().includes(NaN))
         this.geometry = new d.TetrahedronGeometry(0.8);
       else {
@@ -2897,7 +2897,7 @@ class qt extends ct {
     ];
   }
 }
-class jt extends ct {
+class qt extends ct {
   /**
    * Creates a new isotropic atom visualisation.
    * @param {Atom} atom - Input atom data with isotropic displacement parameters
@@ -2912,7 +2912,7 @@ class jt extends ct {
     t.adp.uiso <= 0 ? this.geometry = new d.TetrahedronGeometry(1) : this.scale.multiplyScalar(Math.sqrt(t.adp.uiso));
   }
 }
-class Wt extends ct {
+class jt extends ct {
   /**
    * Creates a new constant radius atom visualization.
    * @param {Atom} atom - Input atom data
@@ -2935,7 +2935,7 @@ class Wt extends ct {
     );
   }
 }
-class Kt extends J {
+class Wt extends J {
   /**
    * Creates a new bond visualization.
    * @param {Bond} bond - Bond data
@@ -3063,7 +3063,7 @@ class dt extends d.Group {
     }), this.clear();
   }
 }
-class Xt extends dt {
+class Kt extends dt {
   /**
    * Creates a new hydrogen bond visualization.
    * @param {HBond} hbond - H-bond data
@@ -3119,7 +3119,7 @@ class Xt extends dt {
     }), o;
   }
 }
-function Zt(l, t, e = 4) {
+function Xt(l, t, e = 4) {
   if (!isFinite(1 / t))
     return Q(l, e).toFixed(e);
   let o = Math.floor(Math.log10(t));
@@ -3144,7 +3144,7 @@ function At(l, t = !0) {
     throw new Error(`Label "${l}" normalizes to empty string`);
   return e;
 }
-function Jt(l, t = !0) {
+function Zt(l, t = !0) {
   const e = /* @__PURE__ */ new Map();
   l.forEach((s) => {
     try {
@@ -3162,13 +3162,13 @@ function Jt(l, t = !0) {
   return o;
 }
 function $(l, t, e, o = !0) {
-  const s = Jt(e, o), i = l.get(t).map((a) => {
+  const s = Zt(e, o), i = l.get(t).map((a) => {
     const n = At(a, o);
     return s.has(n) ? s.get(n) : a;
   });
   l.data[t] = i;
 }
-function Qt(l) {
+function Jt(l) {
   if (!l || l === ".")
     return ".";
   const t = String(l).trim();
@@ -3186,7 +3186,7 @@ function Qt(l) {
   return l;
 }
 function tt(l, t) {
-  const o = l.get(t).map((s) => Qt(s));
+  const o = l.get(t).map((s) => Jt(s));
   l.data[t] = o;
 }
 function N(l, t) {
@@ -3195,7 +3195,7 @@ function N(l, t) {
       return e;
   return null;
 }
-function te(l, t = !0, e = !0, o = !0) {
+function Qt(l, t = !0, e = !0, o = !0) {
   let s;
   if ((t || e) && (s = l.get("_atom_site").get(["_atom_site.label", "_atom_site_label"])), t) {
     const r = l.get("_atom_site_aniso", !1);
@@ -3262,20 +3262,20 @@ function te(l, t = !0, e = !0, o = !0) {
   }
 }
 const nt = G(Y, {});
-function ee(l) {
+function te(l) {
   const t = new d.Vector3();
   l.forEach((c) => t.add(c)), t.divideScalar(l.length);
   const e = new d.Matrix3(), o = new d.Vector3();
   l.forEach((c) => {
     o.copy(c).sub(t), e.elements[0] += o.x * o.x, e.elements[1] += o.x * o.y, e.elements[2] += o.x * o.z, e.elements[3] += o.y * o.x, e.elements[4] += o.y * o.y, e.elements[5] += o.y * o.z, e.elements[6] += o.z * o.x, e.elements[7] += o.z * o.y, e.elements[8] += o.z * o.z;
   });
-  const { values: s, eigenvectors: r } = nt.eigs(oe(e)), i = nt.min(s);
+  const { values: s, eigenvectors: r } = nt.eigs(ee(e)), i = nt.min(s);
   if (i <= 0)
     return console.warn("Could not find a mean plane, expected?"), new d.Vector3(0, 1, 0);
   const a = r.filter((c) => c.value === i)[0].vector, n = new d.Vector3(...a.toArray());
   return n.normalize(), n;
 }
-function oe(l) {
+function ee(l) {
   const t = l.elements;
   return nt.matrix([
     [t[0], t[1], t[2]],
@@ -3283,16 +3283,14 @@ function oe(l) {
     [t[6], t[7], t[8]]
   ]);
 }
-function Ot(l, t = 50) {
-  const e = [], o = new d.Vector3();
-  if (l.traverse((i) => {
-    var a;
-    ((a = i.userData) == null ? void 0 : a.type) === "atom" && (e.push(i.position.clone()), o.add(i.position));
-  }), e.length === 0)
+function oe(l, t) {
+  const e = new d.Box3().setFromObject(l);
+  if (e.isEmpty())
     return 10;
-  o.divideScalar(e.length);
-  const s = e.map((i) => i.sub(o));
-  return Math.max(...s.map((i) => i.length())) / Math.sin(t / 2 * Math.PI / 180);
+  const o = new d.Vector3();
+  e.getSize(o);
+  const s = t.fov * Math.PI / 180, r = Math.atan(t.aspect * Math.tan(s / 2) * 2);
+  return o.x / o.y <= t.aspect ? o.y / 2 / Math.tan(s / 2) + o.z / 2 : o.x / 2 / Math.tan(r / 2) + o.z / 2;
 }
 function se(l) {
   const t = [], e = new d.Vector3();
@@ -3302,7 +3300,7 @@ function se(l) {
   }), t.length === 0)
     return null;
   e.divideScalar(t.length);
-  const o = t.map((p) => p.sub(e)), s = ee(o), r = new d.Vector3(0, 0, 1), i = new d.Quaternion();
+  const o = t.map((p) => p.sub(e)), s = te(o), r = new d.Vector3(0, 0, 1), i = new d.Quaternion();
   i.setFromUnitVectors(s, r);
   const a = new d.Matrix4();
   a.makeRotationFromQuaternion(i);
@@ -3318,24 +3316,29 @@ function se(l) {
   );
   m.x < 0 && m.multiplyScalar(-1);
   const f = -Math.atan2(m.y, m.x), u = new d.Matrix4().makeRotationZ(f);
-  return a.premultiply(u), a.premultiply(new d.Matrix4().makeRotationX(Math.PI / 4)), a.premultiply(new d.Matrix4().makeRotationY(0.2)), a;
+  return a.premultiply(u), a.premultiply(new d.Matrix4().makeRotationX(Math.PI / 8)), a.premultiply(new d.Matrix4().makeRotationY(Math.PI / 48)), a;
 }
 function re(l, t) {
-  l.children = l.children.filter((i) => !(i instanceof d.Light));
-  const e = Math.max(Ot(t), 6) * 1.5, o = new d.AmbientLight(16777215, 1);
-  l.add(o);
-  const s = new d.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
-  s.position.set(0, -0.5, e * 2), s.lookAt(new d.Vector3(0, 0, 0)), l.add(s), [
+  l.children = l.children.filter((a) => !(a instanceof d.Light));
+  let e = 6;
+  t.traverse((a) => {
+    var n;
+    ((n = a.userData) == null ? void 0 : n.type) === "atom" && a.position.length() > e && (e = a.position.length());
+  });
+  const o = e * 2, s = new d.AmbientLight(16777215, 1);
+  l.add(s);
+  const r = new d.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
+  r.position.set(0, -0.5, o * 2), r.lookAt(new d.Vector3(0, 0, 0)), l.add(r), [
     { pos: [-1, -0.5, 1], intensity: 0.4 },
     { pos: [1, -0.5, 1], intensity: 0.4 },
     { pos: [0, -0.5, 1], intensity: 0.3 }
-  ].forEach(({ pos: i, intensity: a }) => {
-    const n = new d.DirectionalLight(16777215, a);
-    n.position.set(
-      i[0] * e,
-      i[1] * e,
-      i[2] * e
-    ), n.lookAt(new d.Vector3(0, 0, 0)), l.add(n);
+  ].forEach(({ pos: a, intensity: n }) => {
+    const c = new d.DirectionalLight(16777215, n);
+    c.position.set(
+      a[0] * o,
+      a[1] * o,
+      a[2] * o
+    ), c.lookAt(new d.Vector3(0, 0, 0)), l.add(c);
   });
 }
 class ie {
@@ -3761,14 +3764,14 @@ class vt {
   }
   async loadStructure(t, e = 0) {
     try {
-      const o = new zt(t);
+      const o = new It(t);
       try {
         this.state.baseStructure = L.fromCIF(o.getBlock(e));
       } catch (s) {
         if (this.options.fixCifErrors)
           throw s;
         try {
-          const r = te(o.getBlock(e));
+          const r = Qt(o.getBlock(e));
           this.state.baseStructure = L.fromCIF(r);
         } catch {
           throw s;
@@ -3780,11 +3783,9 @@ class vt {
     }
   }
   async setupNewStructure() {
-    this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep(), new d.Box3().setFromObject(this.state.currentStructure).getCenter(this.state.structureCenter), this.state.currentStructure.children.forEach((o) => {
-      o.position.sub(this.state.structureCenter);
-    });
-    const e = se(this.state.currentStructure);
-    return this.container.clientHeight > this.container.clientWidth && e.premultiply(new d.Matrix4().makeRotationZ(Math.PI / 2)), e && (this.moleculeContainer.setRotationFromMatrix(e), this.moleculeContainer.updateMatrix()), this.updateCamera(), re(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
+    this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
+    const t = se(this.state.currentStructure);
+    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new d.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new d.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), re(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
   }
   async updateStructure() {
     try {
@@ -3801,11 +3802,12 @@ class vt {
     let t = this.state.baseStructure;
     for (const s of Object.values(this.modifiers))
       t = s.apply(t);
-    const o = new Yt(t, this.options).getGroup();
+    const o = new Gt(t, this.options).getGroup();
     this.moleculeContainer.add(o), this.state.currentStructure = o, this.selections.pruneInvalidSelections(this.moleculeContainer);
   }
   updateCamera() {
-    const t = Ot(this.state.currentStructure, this.camera.fov);
+    this.controls.handleResize();
+    const t = oe(this.moleculeContainer, this.camera);
     this.camera.position.set(0, 0, t), this.camera.rotation.set(0, 0, 0), this.camera.lookAt(this.cameraTarget), this.options.camera.minDistance = t * 0.2, this.options.camera.maxDistance = t * 2;
   }
   removeStructure() {
@@ -4101,7 +4103,7 @@ class ce extends HTMLElement {
         if (o.type === "atom")
           r = `${o.data.label} (${o.data.atomType})`;
         else if (o.type === "bond") {
-          const i = Zt(o.data.bondLength, o.data.bondLengthSU);
+          const i = Xt(o.data.bondLength, o.data.bondLengthSU);
           r = `${o.data.atom1Label}-${o.data.atom2Label}: ${i} Å`;
         } else o.type === "hbond" && (r = `${o.data.donorAtomLabel}→${o.data.acceptorAtomLabel}`);
         return `<span style="color:${s}">${r}</span>`;
@@ -4123,14 +4125,14 @@ if (typeof window < "u" && window.customElements)
 export {
   it as AtomLabelFilter,
   at as BondGenerator,
-  zt as CIF,
+  It as CIF,
   ce as CifViewWidget,
   L as CrystalStructure,
   vt as CrystalViewer,
   rt as DisorderFilter,
   st as HydrogenFilter,
-  Yt as ORTEP3JsStructure,
+  Gt as ORTEP3JsStructure,
   j as SymmetryGrower,
-  Zt as formatValueEsd,
-  te as tryToFixCifBlock
+  Xt as formatValueEsd,
+  Qt as tryToFixCifBlock
 };
