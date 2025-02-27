@@ -46,9 +46,17 @@ describe('CifViewWidget', () => {
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
-            loadStructure: vi.fn().mockResolvedValue({ success: true }),
+            loadStructure: vi.fn().mockImplementation((cifData) => {
+                // Simulate CIF validation - mock data from fetch needs to look like valid CIF data
+                if (cifData && cifData.includes('data_')) {
+                    mockCrystalViewer.state.currentCifContent = cifData;
+                    return Promise.resolve({ success: true });
+                } else {
+                    return Promise.reject(new Error('Failed to load CIF file: Invalid CIF format'));
+                }
+            }),
             cycleModifierMode: vi.fn().mockResolvedValue({ success: true, mode: 'constant' }),
-            numberModifierModes: vi.fn().mockReturnValue(2),
+            numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             setupNewStructure: vi.fn().mockResolvedValue({ success: true }),
             state: { baseStructure: {}, currentCifContent: 'mockCifContent' },
@@ -75,9 +83,11 @@ describe('CifViewWidget', () => {
             mockSelectionCallback = callback;
         });
 
-        // Mock fetch
+        // Mock fetch - now returning data that will pass CIF validation
         mockFetch = vi.fn().mockResolvedValue({
-            text: () => Promise.resolve('mock cif data'),
+            ok: true,
+            text: () => Promise.resolve('data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0'),
+            headers: { get: () => 'chemical/x-cif' }, 
         });
         global.fetch = mockFetch;
 
@@ -108,23 +118,27 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 0)); // Let promises resolve
 
         expect(mockFetch).toHaveBeenCalledWith('test.cif');
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('mock cif data');
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+            'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+        );
     });
 
     test('loads structure from data attribute', async () => {
         const widget = document.createElement('cifview-widget');
-        widget.setAttribute('data', 'direct cif data');
+        widget.setAttribute('data', 'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
         document.body.appendChild(widget);
 
         await new Promise(resolve => setTimeout(resolve, 0)); // Let promises resolve
 
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('direct cif data');
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+            'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+        );
     });
 
     test('sets up buttons based on available modes', async () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
-        widget.setAttribute('data', 'direct cif data');
+        widget.setAttribute('data', 'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
 
         await new Promise(resolve => setTimeout(resolve, 0)); // Let promises resolve
 
@@ -138,7 +152,7 @@ describe('CifViewWidget', () => {
     test('cycles modifier modes on button click', async () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
-        widget.setAttribute('data', 'direct cif data');
+        widget.setAttribute('data', 'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
 
         await new Promise(resolve => setTimeout(resolve, 0)); // Let promises resolve
 
@@ -301,12 +315,16 @@ describe('CifViewWidget', () => {
         widget.setAttribute('src', 'new.cif');
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(mockFetch).toHaveBeenCalledWith('new.cif');
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('mock cif data');
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+            'data_new\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+        );
     
         // Set and wait for data change
-        widget.setAttribute('data', 'new data');
+        widget.setAttribute('data', 'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0');
         await new Promise(resolve => setTimeout(resolve, 0));
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith('new data');
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+            'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0',
+        );
     });
 
     // New tests for added functionality
@@ -423,7 +441,7 @@ describe('CifViewWidget', () => {
         
         // Should set filtered atoms and mode
         expect(mockCrystalViewer.modifiers.removeatoms.setFilteredLabels)
-            .toHaveBeenCalledWith(['C1', 'O1', 'N4']);
+            .toHaveBeenCalledWith('C1,O1,N4');
         expect(mockCrystalViewer.modifiers.removeatoms.mode).toBe('on');
         filterSpy.mockRestore();
     });
@@ -445,7 +463,7 @@ describe('CifViewWidget', () => {
         
         // Should set filtered atoms and turn mode off
         expect(mockCrystalViewer.modifiers.removeatoms.setFilteredLabels)
-            .toHaveBeenCalledWith([]);
+            .toHaveBeenCalledWith('');
         expect(mockCrystalViewer.modifiers.removeatoms.mode).toBe('off');
         filterSpy.mockRestore();
     });
