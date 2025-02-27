@@ -3,7 +3,7 @@ import defaultSettings from './structure-settings.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
-import { SymmetryGrower } from '../structure/structure-modifiers.js';
+import { SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 
 // Check objects for NaN values and count by type
 function checkForNaN(object3D) {

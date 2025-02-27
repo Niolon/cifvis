@@ -5,9 +5,8 @@ import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
-import { 
-    BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower, AtomLabelFilter,
-} from '../structure/structure-modifiers.js';
+import { BondGenerator, AtomLabelFilter } from '../structure/structure-modifiers/fixers.js';
+import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 
 export class SelectionManager {

@@ -26,9 +26,8 @@ vi.mock('./ortep3d/structure-settings.js', () => ({
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { formatValueEsd } from './formatting.js';
 import { CifViewWidget } from './widget.js';
-import { 
-    BondGenerator, DisorderFilter, HydrogenFilter, SymmetryGrower, AtomLabelFilter,
-} from './structure/structure-modifiers.js';
+import { BondGenerator, AtomLabelFilter } from './structure/structure-modifiers/fixers.js';
+import { DisorderFilter, HydrogenFilter, SymmetryGrower } from './structure/structure-modifiers/modes.js';
 
 // Mock CrystalViewer
 vi.mock('./ortep3d/crystal-viewer.js');
