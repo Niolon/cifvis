@@ -220,7 +220,7 @@ export class CifViewWidget extends HTMLElement {
         if (this.viewer.numberModifierModes('hydrogen') > 1) {
             this.addButton(this.buttonContainer, 'hydrogen', 'Toggle Hydrogen Display');
         }
-        if (this.viewer.numberModifierModes('disorder') > 1) {
+        if (this.viewer.numberModifierModes('disorder') > 2) {
             this.addButton(this.buttonContainer, 'disorder', 'Toggle Disorder Display');
         }
         if (this.viewer.numberModifierModes('symmetry') > 1) {
@@ -282,9 +282,8 @@ export class CifViewWidget extends HTMLElement {
 
     async updateFilteredAtoms() {
         const filteredAtomsString = this.getAttribute('filtered-atoms');
-        const filteredAtoms = filteredAtomsString ? filteredAtomsString.split(',').map(val => val.trim()) : [];
-        this.viewer.modifiers.removeatoms.setFilteredLabels(filteredAtoms);
-        if (filteredAtoms.length > 0) {
+        this.viewer.modifiers.removeatoms.setFilteredLabels(filteredAtomsString || '');
+        if (filteredAtomsString && filteredAtomsString.trim()) {
             this.viewer.modifiers.removeatoms.mode = 'on';
         } else {
             this.viewer.modifiers.removeatoms.mode = 'off';

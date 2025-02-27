@@ -6,10 +6,10 @@ import { create, all } from 'mathjs';
 const math = create(all);
 
 /**
- * Filter that removes specified atoms and their connected bonds from a structure
+ * Filter that removes specified atoms and their connected bonds from a structure,
+ * supporting both individual labels and ranges with the ">" syntax
  * @extends BaseFilter
  */
-
 export class AtomLabelFilter extends BaseFilter {
     static MODES = Object.freeze({
         ON: 'on',
@@ -18,12 +18,12 @@ export class AtomLabelFilter extends BaseFilter {
 
     /**
      * Creates a new atom label filter
-     * @param {string[]} [filteredLabels=[]] - Array of atom labels to filter
+     * @param {string[]|string} [filteredLabels=[]] - Array of atom labels or comma-separated string to filter
      * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
      */
     constructor(filteredLabels = [], mode = AtomLabelFilter.MODES.OFF) {
         super(AtomLabelFilter.MODES, mode, 'AtomLabelFilter', []);
-        this.filteredLabels = new Set(filteredLabels);
+        this.setFilteredLabels(filteredLabels);
     }
 
     get requiresCameraUpdate() {
@@ -31,11 +31,71 @@ export class AtomLabelFilter extends BaseFilter {
     }
 
     /**
+     * Parses a range expression (e.g., "A1>A10") and returns all labels in the range
+     * @param {string} rangeExpr - Range expression in the format "start>end"
+     * @param {string[]} allLabels - All available atom labels to filter the range against
+     * @returns {string[]} Array of labels in the range
+     * @private
+     */
+    _parseRangeExpression(rangeExpr, allLabels) {
+        const [startLabel, endLabel] = rangeExpr.split('>').map(label => label.trim());
+        
+        if (!startLabel || !endLabel) {
+            console.warn(`Invalid range expression: ${rangeExpr}`);
+            return [];
+        }
+
+        if (!allLabels.includes(startLabel)) {
+            throw new Error(`Range filtering included unknown start label: ${startLabel}`);
+        }
+
+        if (!allLabels.includes(endLabel)) {
+            throw new Error(`Range filtering included unknown end label: ${endLabel}`);
+        }
+             
+        const startIndex = allLabels.indexOf(startLabel);
+        const endIndex = allLabels.indexOf(endLabel);
+        
+        return allLabels.slice(startIndex, endIndex + 1);
+    }
+
+    /**
      * Updates the list of filtered atom labels
-     * @param {string[]} labels - New array of atom labels to filter
+     * @param {string[]|string} labels - New array of atom labels or comma-separated string to filter
      */
     setFilteredLabels(labels) {
-        this.filteredLabels = new Set(labels);
+        let labelArray = [];
+        
+        if (typeof labels === 'string') {
+            labelArray = labels.split(',').map(label => label.trim()).filter(label => label);
+        } else if (Array.isArray(labels)) {
+            labelArray = labels;
+        }
+        
+        this.filteredLabels = new Set(labelArray);
+    }
+
+    /**
+     * Expands any range expressions in the filtered labels using available atom labels
+     * @param {CrystalStructure} structure - Structure to filter
+     * @private
+     */
+    _expandRanges(structure) {
+        const allLabels = structure.atoms.map(atom => atom.label);
+        const expandedLabels = new Set();
+        
+        for (const label of this.filteredLabels) {
+            if (label.includes('>') && !allLabels.includes(label)) {
+                // This is a range expression
+                const rangeLabels = this._parseRangeExpression(label, allLabels);
+                rangeLabels.forEach(l => expandedLabels.add(l));
+            } else {
+                // This is a simple label
+                expandedLabels.add(label);
+            }
+        }
+        
+        return expandedLabels;
     }
 
     /**
@@ -48,16 +108,21 @@ export class AtomLabelFilter extends BaseFilter {
             return structure;
         }
 
-        const filteredAtoms = structure.atoms.filter(atom => !this.filteredLabels.has(atom.label),
+        const expandedLabels = this._expandRanges(structure);
+        
+        const filteredAtoms = structure.atoms.filter(atom => 
+            !expandedLabels.has(atom.label),
         );
 
-        const filteredBonds = structure.bonds.filter(bond => !this.filteredLabels.has(bond.atom1Label) &&
-            !this.filteredLabels.has(bond.atom2Label),
+        const filteredBonds = structure.bonds.filter(bond => 
+            !expandedLabels.has(bond.atom1Label) && 
+            !expandedLabels.has(bond.atom2Label),
         );
 
-        const filteredHBonds = structure.hBonds.filter(hBond => !this.filteredLabels.has(hBond.donorAtomLabel) &&
-            !this.filteredLabels.has(hBond.hydrogenAtomLabel) &&
-            !this.filteredLabels.has(hBond.acceptorAtomLabel),
+        const filteredHBonds = structure.hBonds.filter(hBond => 
+            !expandedLabels.has(hBond.donorAtomLabel) &&
+            !expandedLabels.has(hBond.hydrogenAtomLabel) &&
+            !expandedLabels.has(hBond.acceptorAtomLabel),
         );
 
         return new CrystalStructure(
@@ -77,6 +142,7 @@ export class AtomLabelFilter extends BaseFilter {
         return Object.values(AtomLabelFilter.MODES);
     }
 }
+
 /**
  * Generates bonds between atoms based on their atomic radii and positions
  * @extends BaseFilter
@@ -328,7 +394,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
             structure.atoms,
             [...structure.bonds, ...newBonds],
             structure.hBonds,
-            structure.symmetry
+            structure.symmetry,
         );
     }
 

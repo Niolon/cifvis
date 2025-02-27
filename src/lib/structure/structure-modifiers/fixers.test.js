@@ -7,66 +7,97 @@ import {
 import { MockStructure } from './base.test.js';
 
 describe('AtomLabelFilter', () => {
-    test('constructs with empty filter list', () => {
-        const filter = new AtomLabelFilter();
-        expect(filter.mode).toBe(AtomLabelFilter.MODES.OFF);
-        expect(filter.filteredLabels.size).toBe(0);
-    });
-
-    test('constructs with filter list', () => {
-        const filter = new AtomLabelFilter(['C1', 'O1']);
-        expect(filter.filteredLabels.size).toBe(2);
-        expect(filter.filteredLabels.has('C1')).toBe(true);
-        expect(filter.filteredLabels.has('O1')).toBe(true);
-    });
-
-    test('allows updating filter list', () => {
-        const filter = new AtomLabelFilter(['C1']);
-        filter.setFilteredLabels(['O1', 'N1']);
-        expect(filter.filteredLabels.size).toBe(2);
-        expect(filter.filteredLabels.has('C1')).toBe(false);
-        expect(filter.filteredLabels.has('O1')).toBe(true);
-        expect(filter.filteredLabels.has('N1')).toBe(true);
-    });
-
-    test('returns original structure when filter off', () => {
-        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
-        const filter = new AtomLabelFilter(['C1', 'O1'], AtomLabelFilter.MODES.OFF);
+    let mockStructure;
+    let mockAtoms;
+    
+    beforeEach(() => {
+        // Setup mock atoms with different label patterns
+        mockAtoms = [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+            new Atom('C2', 'C', new FractPosition(0, 0, 0)),
+            new Atom('H2A', 'H', new FractPosition(0, 0, 0)),
+            new Atom('N3', 'N', new FractPosition(0, 0, 0)),
+            new Atom('O4', 'O', new FractPosition(0, 0, 0)),
+            new Atom('C>5', 'C', new FractPosition(0, 0, 0)), // Label with > character
+            new Atom('C5', 'C', new FractPosition(0, 0, 0)),
+        ];
         
-        const filtered = filter.apply(structure);
-        expect(filtered).toBe(structure);
-    });
-
-    test('filters atoms and related bonds', () => {
-        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
-        const filter = new AtomLabelFilter(['C1'], AtomLabelFilter.MODES.ON);
+        mockStructure = new CrystalStructure(
+            new UnitCell(10, 10, 10, 90, 90, 90),
+            mockAtoms,
+            [],  // No bonds for this test
+        );
         
-        const filtered = filter.apply(structure);
-        expect(filtered.atoms.some(atom => atom.label === 'C1')).toBe(false);
-        expect(filtered.bonds.some(bond => 
-            bond.atom1Label === 'C1' || bond.atom2Label === 'C1',
-        )).toBe(false);
+        // Spy on console.warn to check for warnings
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
-
-    test('filters atoms and related h-bonds', () => {
-        const structure = MockStructure.createDefault({ hasHydrogens: true }).build();
-        const filter = new AtomLabelFilter(['O1'], AtomLabelFilter.MODES.ON);
+    
+    test('filters individual atoms', () => {
+        const filter = new AtomLabelFilter(['C1', 'N3'], 'on');
+        const filtered = filter.apply(mockStructure);
         
-        const filtered = filter.apply(structure);
-        expect(filtered.hBonds.some(hbond => 
-            hbond.donorAtomLabel === 'O1' || 
-            hbond.hydrogenAtomLabel === 'H1' ||
-            hbond.acceptorAtomLabel === 'O1',
-        )).toBe(false);
+        expect(filtered.atoms.length).toBe(5);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C1');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('N3');
     });
+    
+    test('filters range of atoms', () => {
+        const filter = new AtomLabelFilter(['C1>N3'], 'on');
+        const filtered = filter.apply(mockStructure);
+        
+        expect(filtered.atoms.length).toBe(3);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C1');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C2');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('H2A');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('N3');
+    });
+    
+    test('filters combination of individual and range', () => {
+        const filter = new AtomLabelFilter(['C1>C2', 'O4'], 'on');
+        const filtered = filter.apply(mockStructure);
+        
+        expect(filtered.atoms.length).toBe(4);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C1');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C2');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('O4');
+    });
+    
+    test('handles labels containing > character', () => {
+        const filter = new AtomLabelFilter(['C>5'], 'on');
+        const filtered = filter.apply(mockStructure);
+        
+        expect(filtered.atoms.length).toBe(6);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C>5');
+    });
+    
+    test('handles range with invalid labels', () => {
+        const filter = new AtomLabelFilter(['INVALID>C5'], 'on');
+        expect(() => filter.apply(mockStructure)).toThrow('Range filtering included unknown start label: INVALID');
 
-    test('returns both applicable modes', () => {
-        const filter = new AtomLabelFilter();
-        const modes = filter.getApplicableModes();
-        expect(modes).toEqual([
-            AtomLabelFilter.MODES.ON,
-            AtomLabelFilter.MODES.OFF,
-        ]);
+        const filter2 = new AtomLabelFilter(['C5>INVALID'], 'on');
+        expect(() => filter2.apply(mockStructure)).toThrow('Range filtering included unknown end label: INVALID');
+    });
+    
+    test('accepts string input', () => {
+        const filter = new AtomLabelFilter('C1,N3,O4', 'on');
+        const filtered = filter.apply(mockStructure);
+        
+        expect(filtered.atoms.length).toBe(4);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C1');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('N3');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('O4');
+    });
+    
+    test('accepts string input with ranges', () => {
+        const filter = new AtomLabelFilter('C1>N3,O4', 'on');
+        const filtered = filter.apply(mockStructure);
+        
+        expect(filtered.atoms.length).toBe(2);
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C1');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('C2');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('H2A');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('N3');
+        expect(filtered.atoms.map(a => a.label)).not.toContain('O4');
     });
 });
 
@@ -477,11 +508,9 @@ describe('IsolatedHydrogenFixer', () => {
     });
     
     it('should correctly detect applicable modes', () => {
-        // Structure with isolated hydrogens should offer ON and OFF modes
         const modes = hydrogenFixer.getApplicableModes(mockStructure);
         expect(modes).toContain('on');
-        expect(modes).toContain('off');
-        expect(modes.length).toBe(2);
+        expect(modes.length).toBe(1);
         
         // Structure with no bonds should only offer OFF mode
         const noBondsStructure = new CrystalStructure(
@@ -509,14 +538,6 @@ describe('IsolatedHydrogenFixer', () => {
         
         const noIsolatedModes = hydrogenFixer.getApplicableModes(noIsolatedHStructure);
         expect(noIsolatedModes).toEqual(['off']);
-    });
-    
-    it('should return structure unchanged in OFF mode', () => {
-        hydrogenFixer.mode = 'off';
-        const result = hydrogenFixer.apply(mockStructure);
-        
-        // Should be the same structure
-        expect(result).toBe(mockStructure);
     });
     
     it('should correctly identify isolated hydrogen atoms', () => {

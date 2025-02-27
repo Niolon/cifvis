@@ -456,7 +456,9 @@ _cell.angle_gamma 90
             <h3>Filtered Atoms</h3>
             <p>
                 You can exclude specific atoms from the visualization using the <code>filtered-atoms</code> attribute.
-                This is particularly useful for removing solvent molecules or counter-ions to focus on the main structure:
+                This is particularly useful for removing solvent molecules or counter-ions to focus on the main structure. 
+                Individual atoms are separated by a comma a range (inclusive) can be indicated by the <code>></code> sign. The used 
+                order is determined by the <code>atom_site</code> table:
             </p>
             
             <div class="grid">
@@ -473,12 +475,7 @@ _cell.angle_gamma 90
                     <cifview-widget 
                         src="cif/fullerene.cif"
                         caption="Structure with solvent molecules removed"
-                        filtered-atoms="C200,C201,C202,C203,C204,C205,
-                                        H200,H201,H202,H203,H204,H205,
-                                        C206,C207,C208,C209,C210,C211,
-                                        H206,H207,H208,H209,H210,H211,
-                                        C212,C213,C214,C215,C217,C218,
-                                        H212,H213,H214,H215,H217,H218">
+                        filtered-atoms="C200,H200,C201>H218">
                     </cifview-widget>
                 </div>
             </div>
@@ -486,7 +483,7 @@ _cell.angle_gamma 90
             <pre><code>&lt;cifview-widget 
     src="structure.cif"
     caption="Structure with solvent removed"
-    filtered-atoms="O1S,O2S,C1S,C2S,O3S,H1S1,H1S2,H2S1,H2S2"&gt;
+    filtered-atoms="C200,H200,C201>H218"&gt;
 &lt;/cifview-widget&gt;</code></pre>
         </section>
 
