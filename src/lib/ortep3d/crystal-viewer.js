@@ -475,8 +475,10 @@ export class CrystalViewer {
         if (!this.state.baseStructure) {
             return false; 
         }
+        const atomfilteredStructure = this.modifiers.removeatoms.apply(this.state.baseStructure);
+
         const selectedModifier = this.modifiers[modifierName];
-        return selectedModifier.getApplicableModes(this.state.baseStructure).length;
+        return selectedModifier.getApplicableModes(atomfilteredStructure).length;
     }
 
     animate() {
