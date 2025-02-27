@@ -116,7 +116,7 @@ function initializeFileUpload() {
         e.stopPropagation();
         
         const file = e.dataTransfer.files[0];
-        if (!file || !file.name.endsWith('.cif')) {
+        if (!file || !file.name.toLowerCase().endsWith('.cif')) {
             updateStatus('Please drop a CIF file', 'error');
             return;
         }

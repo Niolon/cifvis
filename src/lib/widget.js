@@ -342,6 +342,7 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'filtered-atoms':
                 await this.updateFilteredAtoms();
+                await this.viewer.updateStructure();
                 break;
             case 'options':
                 this.parseOptions();

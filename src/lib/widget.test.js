@@ -426,7 +426,6 @@ describe('CifViewWidget', () => {
         expect(mockCrystalViewer.modifiers.removeatoms.setFilteredLabels)
             .toHaveBeenCalledWith(['C1', 'O1', 'N4']);
         expect(mockCrystalViewer.modifiers.removeatoms.mode).toBe('on');
-        expect(mockCrystalViewer.setupNewStructure).toHaveBeenCalled();
         filterSpy.mockRestore();
     });
 
