@@ -1,24 +1,24 @@
-var Ot = Object.defineProperty;
-var ft = (l) => {
+var Lt = Object.defineProperty;
+var gt = (l) => {
   throw TypeError(l);
 };
-var Nt = (l, t, e) => t in l ? Ot(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
-var O = (l, t, e) => Nt(l, typeof t != "symbol" ? t + "" : t, e), pt = (l, t, e) => t.has(l) || ft("Cannot " + e);
-var S = (l, t, e) => (pt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), ut = (l, t, e) => t.has(l) ? ft("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), gt = (l, t, e, o) => (pt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
-import { create as G, all as Y } from "mathjs";
-import * as d from "three";
-function et(l, t = !0) {
+var Tt = (l, t, e) => t in l ? Lt(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
+var E = (l, t, e) => Tt(l, typeof t != "symbol" ? t + "" : t, e), yt = (l, t, e) => t.has(l) || gt("Cannot " + e);
+var x = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
+import { create as G, all as U } from "mathjs";
+import * as h from "three";
+function st(l, t = !0) {
   const e = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)\((\d+)\)$/, o = l.match(e);
   if (t && o) {
-    const [, n, c, h, m] = o, f = n === "-" ? -1 : 1, u = parseFloat(c), p = parseInt(h), g = c.includes(".") ? c.split(".")[1].length : 0, E = Number(f * u * Math.pow(10, p)), H = p - g, mt = Number(parseInt(m) * Math.pow(10, H));
+    const [, n, c, d, m] = o, f = n === "-" ? -1 : 1, u = parseFloat(c), p = parseInt(d), g = c.includes(".") ? c.split(".")[1].length : 0, O = Number(f * u * Math.pow(10, p)), V = p - g, ut = Number(parseInt(m) * Math.pow(10, V));
     return g - p >= 0 && g - p <= 100 ? {
-      value: Number(E.toFixed(g - p)),
-      su: Number(mt.toFixed(g - p))
-    } : { value: E, su: mt };
+      value: Number(O.toFixed(g - p)),
+      su: Number(ut.toFixed(g - p))
+    } : { value: O, su: ut };
   }
   const s = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)$/, r = l.match(s);
   if (r) {
-    const [, n, c, h] = r, m = n === "-" ? -1 : 1, f = c.includes(".") ? c.split(".")[1].length : 0, u = parseInt(h), p = Number(m * parseFloat(c) * Math.pow(10, u));
+    const [, n, c, d] = r, m = n === "-" ? -1 : 1, f = c.includes(".") ? c.split(".")[1].length : 0, u = parseInt(d), p = Number(m * parseFloat(c) * Math.pow(10, u));
     return f - u >= 0 && f - u <= 100 ? {
       value: Number(p.toFixed(f - u)),
       su: NaN
@@ -26,18 +26,18 @@ function et(l, t = !0) {
   }
   const i = /^([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)$/, a = l.match(i);
   if (t && a) {
-    const [, n, c, h] = a, m = n === "-" ? -1 : 1;
+    const [, n, c, d] = a, m = n === "-" ? -1 : 1;
     if (c.includes(".")) {
-      const f = c.split(".")[1].length, u = Number((m * parseFloat(c)).toFixed(f)), p = Number((Math.pow(10, -f) * parseFloat(h)).toFixed(f));
+      const f = c.split(".")[1].length, u = Number((m * parseFloat(c)).toFixed(f)), p = Number((Math.pow(10, -f) * parseFloat(d)).toFixed(f));
       return { value: u, su: p };
     } else {
-      const f = m * parseInt(c), u = parseInt(h);
+      const f = m * parseInt(c), u = parseInt(d);
       return { value: f, su: u };
     }
   }
   return isNaN(l) ? /^".*"$/.test(l) || /^'.*'$/.test(l) ? { value: l.slice(1, -1).replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.includes(".") ? parseFloat(l) : parseInt(l), su: NaN };
 }
-function Mt(l, t) {
+function xt(l, t) {
   const e = [l[t].slice(1)], o = l.slice(t + 1), s = o.findIndex((n) => n.startsWith(";")), r = e.concat(o.slice(0, s)), i = r.findIndex((n) => n.trim() !== ""), a = r.findLastIndex((n) => n.trim !== "");
   return {
     value: r.slice(i, a + 1).join(`
@@ -45,7 +45,7 @@ function Mt(l, t) {
     endIndex: t + s + 1
   };
 }
-const Lt = [
+const Rt = [
   "_space_group_symop_ssg",
   "_space_group_symop",
   "_symmetry_equiv",
@@ -74,7 +74,7 @@ const Lt = [
   "_atom_site_aniso",
   "_atom_site"
 ];
-class X {
+class J {
   /**
   * Creates a new CIF loop instance.
   * @constructor
@@ -93,7 +93,7 @@ class X {
     for (; r < t.length && (!t[r].trim().startsWith("_") && !t[r].trim().startsWith("loop_") || i); )
       t[r].startsWith(";") && (i = !i), r++;
     const a = t.slice(o, r), n = r;
-    return new X(s, a, n, e);
+    return new J(s, a, n, e);
   }
   /**
   * Parses loop content into structured data.
@@ -107,7 +107,7 @@ class X {
       if (s = s.trim(), !s.length)
         return o;
       if (s.startsWith(";")) {
-        const a = Mt(this.dataLines, r);
+        const a = xt(this.dataLines, r);
         o.push({ value: a.value, su: NaN });
         for (let n = r; n < a.endIndex + 1; n++)
           this.dataLines[n] = "";
@@ -115,7 +115,7 @@ class X {
       }
       const i = Array.from(s.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
       return o.concat(i.map(
-        (a) => et(a[1] || a[2] || a[0], this.splitSU)
+        (a) => st(a[1] || a[2] || a[0], this.splitSU)
       ));
     }, []), e = this.headers.length;
     if (t.length % e !== 0) {
@@ -138,7 +138,7 @@ entries are: ${o}`
   */
   findCommonStart(t = !0) {
     if (t) {
-      for (const i of Lt)
+      for (const i of Rt)
         if (this.headerLines.filter((n) => n.toLowerCase().startsWith(i.toLowerCase())).length >= this.headerLines.length / 2)
           return i;
     }
@@ -232,22 +232,22 @@ entries are: ${o}`
     return this.endIndex;
   }
 }
-function q(l) {
+function W(l) {
   return l && typeof l.getHeaders == "function";
 }
-function ot(l) {
+function rt(l) {
   return l.getHeaders()[0].split("_").filter((e) => e.length > 0);
 }
-function Tt(l, t, e) {
-  const o = q(l) ? l : t, s = e.split("_").filter((a) => a.length > 0), r = ot(o), i = "_" + s.join("_") + "_" + r[s.length];
-  return q(l) ? [i, e] : [e, i];
+function Bt(l, t, e) {
+  const o = W(l) ? l : t, s = e.split("_").filter((a) => a.length > 0), r = rt(o), i = "_" + s.join("_") + "_" + r[s.length];
+  return W(l) ? [i, e] : [e, i];
 }
-function Rt(l, t) {
+function Pt(l, t) {
   const e = l.findCommonStart(!1), o = t.findCommonStart(!1);
   return e.length !== o.length ? [e, o] : null;
 }
-function Bt(l, t, e) {
-  const o = e.split("_").filter((i) => i.length > 0), s = ot(l), r = ot(t);
+function It(l, t, e) {
+  const o = e.split("_").filter((i) => i.length > 0), s = rt(l), r = rt(t);
   return s.length >= r.length ? [
     e + "_" + s[o.length],
     e
@@ -256,18 +256,18 @@ function Bt(l, t, e) {
     e + "_" + r[o.length]
   ];
 }
-function Pt(l, t, e) {
+function zt(l, t, e) {
   let o;
-  !q(l) || !q(t) ? o = Tt(l, t, e) : o = Rt(l, t) || Bt(l, t, e);
+  !W(l) || !W(t) ? o = Bt(l, t, e) : o = Pt(l, t) || It(l, t, e);
   const s = [l, t];
   return s.forEach((r, i) => {
-    q(r) && (r.name = o[i]);
+    W(r) && (r.name = o[i]);
   }), {
     newNames: o,
     newEntries: s
   };
 }
-class It {
+class Ft {
   /**
    * Creates a new CIF parser instance.
    * @constructor
@@ -311,7 +311,7 @@ data_` + o[s];
    * @returns {CifBlock} The requested CIF block
    */
   getBlock(t = 0) {
-    return this.blocks[t] || (this.blocks[t] = new yt(this.rawCifBlocks[t], this.splitSU)), this.blocks[t];
+    return this.blocks[t] || (this.blocks[t] = new wt(this.rawCifBlocks[t], this.splitSU)), this.blocks[t];
   }
   /**
    * Gets all parsed CIF blocks.
@@ -319,11 +319,11 @@ data_` + o[s];
    */
   getAllBlocks() {
     for (let t = 0; t < this.blocks.length; t++)
-      this.blocks[t] || (this.blocks[t] = new yt(this.rawCifBlocks[t], this.splitSU));
+      this.blocks[t] || (this.blocks[t] = new wt(this.rawCifBlocks[t], this.splitSU));
     return this.blocks;
   }
 }
-class yt {
+class wt {
   /**
    * Creates a new CIF block instance.
    * @constructor
@@ -350,16 +350,16 @@ class yt {
     let e = 1;
     for (; e < t.length; ) {
       if (e + 1 < t.length && t[e + 1].startsWith(";")) {
-        const r = Mt(t, e + 1);
+        const r = xt(t, e + 1);
         this.data[t[e]] = r.value, e = r.endIndex + 1;
         continue;
       }
       if (t[e].trim().startsWith("loop_")) {
-        const r = X.fromLines(t.slice(e), this.splitSU);
+        const r = J.fromLines(t.slice(e), this.splitSU);
         if (!Object.prototype.hasOwnProperty.call(this.data, r.getName()))
           this.data[r.getName()] = r;
         else {
-          const i = Pt(this.data[r.getName()], r, r.getName());
+          const i = zt(this.data[r.getName()], r, r.getName());
           this.data[i.newNames[0]] = i.newEntries[0], this.data[i.newNames[1]] = i.newEntries[1];
         }
         e += r.getEndIndex();
@@ -372,10 +372,10 @@ class yt {
       }
       const s = o.match(/^(_\S+)\s+(.*)$/);
       if (s) {
-        const r = s[1], i = et(s[2], this.splitSU);
+        const r = s[1], i = st(s[2], this.splitSU);
         this.data[r] = i.value, isNaN(i.su) || (this.data[r + "_su"] = i.su);
       } else if (o.startsWith("_") && !t[e + 1].startsWith("_")) {
-        const r = o, i = et(t[e + 1].trim(), this.splitSU);
+        const r = o, i = st(t[e + 1].trim(), this.splitSU);
         this.data[r] = i.value, isNaN(i.su) || (this.data[r + "_su"] = i.su), e++;
       } else
         throw new Error("Could not parse line " + String(e) + ": " + t[e]);
@@ -408,8 +408,8 @@ class yt {
     throw new Error(`None of the keys [${o.join(", ")}] found in CIF block`);
   }
 }
-const k = G(Y, {});
-function T(l) {
+const k = G(U, {});
+function I(l) {
   const t = k.unit(l.alpha, "deg").toNumber("rad"), e = k.unit(l.beta, "deg").toNumber("rad"), o = k.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), r = Math.cos(e), i = Math.cos(o), a = Math.sin(o), n = Math.sqrt(1 - s * s - r * r - i * i + 2 * s * r * i);
   return k.matrix([
     [l.a, l.b * i, l.c * r],
@@ -417,14 +417,14 @@ function T(l) {
     [0, 0, l.c * n / a]
   ]);
 }
-function xt(l) {
+function Dt(l) {
   return k.matrix([
     [l[0], l[3], l[4]],
     [l[3], l[1], l[5]],
     [l[4], l[5], l[2]]
   ]);
 }
-function zt(l) {
+function Ht(l) {
   const t = k.matrix(l);
   return [
     t.get([0, 0]),
@@ -441,13 +441,13 @@ function zt(l) {
     // U23
   ];
 }
-function Ft(l, t) {
-  const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = xt(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
-  return zt(a);
+function $t(l, t) {
+  const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = Dt(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
+  return Ht(a);
 }
-const _t = G(Y);
+const kt = G(U);
 var v;
-const ht = class ht {
+const pt = class pt {
   /**
    * Creates a new position
    * @param {number} x - X coordinate
@@ -456,40 +456,40 @@ const ht = class ht {
    * @throws {TypeError} If instantiated directly
    */
   constructor(t, e, o) {
-    ut(this, v);
-    if (new.target === ht)
+    _t(this, v);
+    if (new.target === pt)
       throw new TypeError(
         "BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition"
       );
-    gt(this, v, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
-      0: { get: () => S(this, v)[0] },
-      1: { get: () => S(this, v)[1] },
-      2: { get: () => S(this, v)[2] },
+    bt(this, v, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
+      0: { get: () => x(this, v)[0] },
+      1: { get: () => x(this, v)[1] },
+      2: { get: () => x(this, v)[2] },
       length: { value: 3 },
       [Symbol.iterator]: {
         value: function* () {
-          yield S(this, v)[0], yield S(this, v)[1], yield S(this, v)[2];
+          yield x(this, v)[0], yield x(this, v)[1], yield x(this, v)[2];
         }
       }
     });
   }
   get x() {
-    return S(this, v)[0];
+    return x(this, v)[0];
   }
   get y() {
-    return S(this, v)[1];
+    return x(this, v)[1];
   }
   get z() {
-    return S(this, v)[2];
+    return x(this, v)[2];
   }
   set x(t) {
-    S(this, v)[0] = t;
+    x(this, v)[0] = t;
   }
   set y(t) {
-    S(this, v)[1] = t;
+    x(this, v)[1] = t;
   }
   set z(t) {
-    S(this, v)[2] = t;
+    x(this, v)[2] = t;
   }
   /**
    * Converts from given coordinate system to Cartesian coordinates
@@ -503,8 +503,8 @@ const ht = class ht {
   }
 };
 v = new WeakMap();
-let K = ht;
-class St extends K {
+let Z = pt;
+class Et extends Z {
   /**
    * Creates a new fractional position
    * @param {number} x - X coordinate in fractional units
@@ -520,14 +520,14 @@ class St extends K {
    * @returns {CartPosition} Position in Cartesian coordinates
    */
   toCartesian(t) {
-    const e = _t.multiply(
+    const e = kt.multiply(
       t.fractToCartMatrix,
-      _t.matrix([this.x, this.y, this.z])
+      kt.matrix([this.x, this.y, this.z])
     );
-    return new Dt(...e.toArray());
+    return new At(...e.toArray());
   }
 }
-class Dt extends K {
+class At extends Z {
   /**
    * Creates a new Cartesian position
    * @param {number} x - X coordinate in Angstroms
@@ -546,7 +546,7 @@ class Dt extends K {
     return this;
   }
 }
-class Ht {
+class Gt {
   /**
    * Creates a Position object from CIF data
    * @param {CifBlock} cifBlock - CIF data block containing position data
@@ -566,22 +566,22 @@ class Ht {
     try {
       const a = s.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], e), n = s.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], e), c = s.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], e);
       if (!r.includes(a) && !r.includes(n) && !r.includes(c))
-        return new St(a, n, c);
+        return new Et(a, n, c);
       o = !0;
     } catch {
     }
     try {
       const a = s.getIndex(["_atom_site.Cartn_x", "_atom_site.cartn_x", "_atom_site_Cartn_x"], e), n = s.getIndex(["_atom_site.Cartn_y", "_atom_site.cartn_y", "_atom_site_Cartn_y"], e), c = s.getIndex(["_atom_site.Cartn_z", "_atom_site.cartn_z", "_atom_site_Cartn_z"], e);
       if (!r.includes(a) && !r.includes(n) && !r.includes(c))
-        return new Dt(a, n, c);
+        return new At(a, n, c);
       o = !0;
     } catch {
     }
     throw o ? new Error("Dummy atom: Invalid position") : new Error("Invalid position: No valid fractional or Cartesian coordinates found");
   }
 }
-const A = G(Y, {});
-class P {
+const N = G(U, {});
+class H {
   constructor(t) {
     this.uiso = t;
   }
@@ -591,10 +591,10 @@ class P {
    * @returns {UIsoADP} New UIsoADP instance
    */
   static fromBiso(t) {
-    return new P(t / (8 * Math.PI * Math.PI));
+    return new H(t / (8 * Math.PI * Math.PI));
   }
 }
-class I {
+class $ {
   /**
    * @param {number} u11 - U11 component in Å²
    * @param {number} u22 - U22 component in Å²
@@ -618,7 +618,7 @@ class I {
    */
   static fromBani(t, e, o, s, r, i) {
     const a = 1 / (8 * Math.PI * Math.PI);
-    return new I(
+    return new $(
       t * a,
       e * a,
       o * a,
@@ -633,7 +633,7 @@ class I {
   * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
   */
   getUCart(t) {
-    return Ft(
+    return $t(
       t.fractToCartMatrix,
       [this.u11, this.u22, this.u33, this.u12, this.u13, this.u23]
     );
@@ -645,14 +645,14 @@ class I {
   * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
   */
   getEllipsoidMatrix(t) {
-    const e = xt(this.getUCart(t)), { eigenvectors: o } = A.eigs(e), s = A.transpose(A.matrix(o.map((c) => c.vector))), r = A.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), i = A.det(s), a = A.diag(r.map(Math.sqrt));
+    const e = Dt(this.getUCart(t)), { eigenvectors: o } = N.eigs(e), s = N.transpose(N.matrix(o.map((c) => c.vector))), r = N.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), i = N.det(s), a = N.diag(r.map(Math.sqrt));
     let n;
-    if (A.abs(i - 1) > 1e-10) {
-      const c = A.multiply(s, 1 / i);
-      n = A.multiply(c, a);
+    if (N.abs(i - 1) > 1e-10) {
+      const c = N.multiply(s, 1 / i);
+      n = N.multiply(c, a);
     } else
-      n = A.multiply(s, a);
-    return A.matrix(n);
+      n = N.multiply(s, a);
+    return N.matrix(n);
   }
 }
 class M {
@@ -679,9 +679,9 @@ class M {
       const c = M.createUani(t, s);
       if (c !== null)
         return c;
-      const h = M.createBani(t, s);
-      if (h !== null)
-        return h;
+      const d = M.createBani(t, s);
+      if (d !== null)
+        return d;
     }
     const a = M.createUiso(t, e);
     if (a !== null)
@@ -736,8 +736,8 @@ class M {
     const r = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
     if (r === -1)
       throw new Error(`Atom ${e} has ADP type Uani, but was not found in atom_site_aniso.label`);
-    const i = o.getIndex(["_atom_site_aniso.u_11", "_atom_site_aniso_U_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.u_22", "_atom_site_aniso_U_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.u_33", "_atom_site_aniso_U_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.u_12", "_atom_site_aniso_U_12"], r, NaN), h = o.getIndex(["_atom_site_aniso.u_13", "_atom_site_aniso_U_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.u_23", "_atom_site_aniso_U_23"], r, NaN);
-    return [i, a, n, c, h, m].some(isNaN) ? null : new I(i, a, n, c, h, m);
+    const i = o.getIndex(["_atom_site_aniso.u_11", "_atom_site_aniso_U_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.u_22", "_atom_site_aniso_U_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.u_33", "_atom_site_aniso_U_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.u_12", "_atom_site_aniso_U_12"], r, NaN), d = o.getIndex(["_atom_site_aniso.u_13", "_atom_site_aniso_U_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.u_23", "_atom_site_aniso_U_23"], r, NaN);
+    return [i, a, n, c, d, m].some(isNaN) ? null : new $(i, a, n, c, d, m);
   }
   /**
    * Creates anisotropic B-based ADP
@@ -753,8 +753,8 @@ class M {
     const r = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
     if (r === -1)
       throw new Error(`Atom ${e} has ADP type Bani, but was not found in atom_site_aniso.label`);
-    const i = o.getIndex(["_atom_site_aniso.b_11", "_atom_site_aniso_B_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.b_22", "_atom_site_aniso_B_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.b_33", "_atom_site_aniso_B_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.b_12", "_atom_site_aniso_B_12"], r, NaN), h = o.getIndex(["_atom_site_aniso.b_13", "_atom_site_aniso_B_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.b_23", "_atom_site_aniso_B_23"], r, NaN);
-    return [i, a, n, c, h, m].some(isNaN) ? null : I.fromBani(i, a, n, c, h, m);
+    const i = o.getIndex(["_atom_site_aniso.b_11", "_atom_site_aniso_B_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.b_22", "_atom_site_aniso_B_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.b_33", "_atom_site_aniso_B_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.b_12", "_atom_site_aniso_B_12"], r, NaN), d = o.getIndex(["_atom_site_aniso.b_13", "_atom_site_aniso_B_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.b_23", "_atom_site_aniso_B_23"], r, NaN);
+    return [i, a, n, c, d, m].some(isNaN) ? null : $.fromBani(i, a, n, c, d, m);
   }
   /**
    * Creates isotropic U-based ADP
@@ -767,7 +767,7 @@ class M {
         e,
         NaN
       );
-      return isNaN(s) ? null : new P(s);
+      return isNaN(s) ? null : new H(s);
     } catch {
       return null;
     }
@@ -783,14 +783,14 @@ class M {
         e,
         NaN
       );
-      return isNaN(s) ? null : P.fromBiso(s);
+      return isNaN(s) ? null : H.fromBiso(s);
     } catch {
       return null;
     }
   }
 }
-const x = G(Y);
-function bt(l) {
+const S = G(U);
+function Ct(l) {
   if (Math.abs(l) < 21e-4)
     return "";
   const t = [2, 3, 4, 6], e = l < 0 ? "-" : "", o = Math.abs(l);
@@ -803,7 +803,7 @@ function bt(l) {
   }
   return e + o.toString();
 }
-class B {
+class F {
   /**
    * Creates a new symmetry operation from a string instruction
    * @param {string} instruction - Symmetry operation in crystallographic notation (e.g. "x,y,z", "-x+1/2,y,-z")
@@ -842,8 +842,8 @@ class B {
         const u = f === "X" ? 0 : f === "Y" ? 1 : 2;
         e[i][u] = m;
       }
-      const h = r.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, "").match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
-      for (const m of h)
+      const d = r.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, "").match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
+      for (const m of d)
         if (m.includes("/")) {
           const [f, u] = m.split("/");
           o[i] += parseFloat(f) / parseFloat(u);
@@ -874,7 +874,7 @@ class B {
       "_symmetry_equiv.pos_as_xyz",
       "_symmetry_equiv_pos_as_xyz"
     ], e);
-    return new B(s);
+    return new F(s);
   }
   /**
    * Applies the symmetry operation to a point in fractional coordinates
@@ -882,8 +882,8 @@ class B {
    * @returns {number[]} Transformed point in fractional coordinates
    */
   applyToPoint(t) {
-    const e = x.add(
-      x.multiply(this.rotMatrix, t),
+    const e = S.add(
+      S.multiply(this.rotMatrix, t),
       this.transVector
     );
     return Array.isArray(e) ? e : e.toArray();
@@ -899,18 +899,18 @@ class B {
    * @returns {Atom} New atom instance with transformed coordinates and ADPs
    */
   applyToAtom(t) {
-    const e = new St(...x.add(
-      x.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
+    const e = new Et(...S.add(
+      S.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
       this.transVector
     ));
     let o = null;
-    if (t.adp && t.adp instanceof I) {
+    if (t.adp && t.adp instanceof $) {
       const s = [
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
-      ], r = this.rotMatrix, i = x.transpose(r), a = x.multiply(x.multiply(r, s), i);
-      o = new I(
+      ], r = this.rotMatrix, i = S.transpose(r), a = S.multiply(S.multiply(r, s), i);
+      o = new $(
         a[0][0],
         // u11
         a[1][1],
@@ -924,8 +924,8 @@ class B {
         a[1][2]
         // u23
       );
-    } else t.adp && t.adp instanceof P && (o = new P(t.adp.uiso));
-    return new W(
+    } else t.adp && t.adp instanceof H && (o = new H(t.adp.uiso));
+    return new X(
       t.label,
       t.atomType,
       e,
@@ -951,8 +951,8 @@ class B {
    * @returns {SymmetryOperation} New independent symmetry operation with the same parameters
    */
   copy() {
-    const t = new B("x,y,z");
-    return t.rotMatrix = x.clone(this.rotMatrix), t.transVector = x.clone(this.transVector), t;
+    const t = new F("x,y,z");
+    return t.rotMatrix = S.clone(this.rotMatrix), t.transVector = S.clone(this.transVector), t;
   }
   /**
    * Generates a symmetry operation string from the internal matrix and vector
@@ -960,7 +960,7 @@ class B {
    * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
    */
   toSymmetryString(t = null) {
-    const e = ["x", "y", "z"], o = [], s = t ? x.add(this.transVector, t) : this.transVector;
+    const e = ["x", "y", "z"], o = [], s = t ? S.add(this.transVector, t) : this.transVector;
     for (let r = 0; r < 3; r++) {
       let i = "";
       const a = [];
@@ -970,12 +970,12 @@ class B {
           if (Math.abs(Math.abs(c) - 1) < 1e-10)
             a.push(c > 0 ? e[n] : `-${e[n]}`);
           else {
-            const h = bt(Math.abs(c));
-            a.push(c > 0 ? `${h}${e[n]}` : `-${h}${e[n]}`);
+            const d = Ct(Math.abs(c));
+            a.push(c > 0 ? `${d}${e[n]}` : `-${d}${e[n]}`);
           }
       }
       if (i = a.join("+"), i === "" && (i = "0"), Math.abs(s[r]) > 1e-10) {
-        const n = bt(Math.abs(s[r])), c = s[r] < 0 ? `-${n}` : n;
+        const n = Ct(Math.abs(s[r])), c = s[r] < 0 ? `-${n}` : n;
         i === "0" ? i = c : i.startsWith("-") ? i = `${c}${i}` : i = `${c}+${i}`;
       }
       o.push(i);
@@ -983,14 +983,14 @@ class B {
     return o.join(",");
   }
 }
-class U {
+class q {
   constructor(t, e, o, s = null) {
     var r;
     this.spaceGroupName = t, this.spaceGroupNumber = e, this.symmetryOperations = o, this.operationIds = s || new Map(
       o.map((i, a) => [(a + 1).toString(), a])
     ), this.identitySymOpId = (r = Array.from(this.operationIds.entries()).find(([i, a]) => {
       const n = this.symmetryOperations[a];
-      return x.equal(n.rotMatrix, x.identity(3)) && x.equal(n.transVector, x.zeros(3));
+      return S.equal(n.rotMatrix, S.identity(3)) && S.equal(n.transVector, S.zeros(3));
     })) == null ? void 0 : r[0];
   }
   generateEquivalentPositions(t) {
@@ -1051,11 +1051,11 @@ class U {
       ],
       !1
     );
-    if (s && !(s instanceof X))
-      return new U(
+    if (s && !(s instanceof J))
+      return new q(
         e,
         o,
-        [new B(s)]
+        [new F(s)]
       );
     if (s || console.warn(Object.keys(t).filter((r) => r.includes("sym"))), s) {
       const r = s.get([
@@ -1072,21 +1072,21 @@ class U {
           "_symmetry_equiv.id",
           "_symmetry_equiv_pos_site_id"
         ]);
-        i = new Map(n.map((c, h) => [c.toString(), h]));
+        i = new Map(n.map((c, d) => [c.toString(), d]));
       } catch {
       }
-      const a = r.map((n) => new B(n));
-      return new U(
+      const a = r.map((n) => new F(n));
+      return new q(
         e,
         o,
         a,
         i
       );
     } else
-      return console.warn("No symmetry operations found in CIF block, will use P1"), new U("Unknown", 0, [new B("x,y,z")]);
+      return console.warn("No symmetry operations found in CIF block, will use P1"), new q("Unknown", 0, [new F("x,y,z")]);
   }
 }
-class z {
+class L {
   /**
   * Creates a new bond
   * @param {string} atom1Label - Label of first atom
@@ -1116,7 +1116,7 @@ class z {
       e,
       !1
     );
-    return r && r === s && (s = "."), new z(
+    return r && r === s && (s = "."), new L(
       o.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], e),
       o.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], e),
       o.getIndex(["_geom_bond.distance", "_geom_bond_distance"], e),
@@ -1125,7 +1125,7 @@ class z {
     );
   }
 }
-class V {
+class j {
   /**
   * Creates a new hydrogen bond
   * @param {string} donorAtomLabel - Label of donor atom
@@ -1141,8 +1141,8 @@ class V {
   * @param {number} hBondAngleSU - Standard uncertainty in angle
   * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
   */
-  constructor(t, e, o, s, r, i, a, n, c, h, m, f) {
-    this.donorAtomLabel = t, this.hydrogenAtomLabel = e, this.acceptorAtomLabel = o, this.donorHydrogenDistance = s, this.donorHydrogenDistanceSU = r, this.acceptorHydrogenDistance = i, this.acceptorHydrogenDistanceSU = a, this.donorAcceptorDistance = n, this.donorAcceptorDistanceSU = c, this.hBondAngle = h, this.hBondAngleSU = m, this.acceptorAtomSymmetry = f;
+  constructor(t, e, o, s, r, i, a, n, c, d, m, f) {
+    this.donorAtomLabel = t, this.hydrogenAtomLabel = e, this.acceptorAtomLabel = o, this.donorHydrogenDistance = s, this.donorHydrogenDistanceSU = r, this.acceptorHydrogenDistance = i, this.acceptorHydrogenDistanceSU = a, this.donorAcceptorDistance = n, this.donorAcceptorDistanceSU = c, this.hBondAngle = d, this.hBondAngleSU = m, this.acceptorAtomSymmetry = f;
   }
   /**
   * Creates a HBond from CIF data
@@ -1156,7 +1156,7 @@ class V {
       e,
       "."
     );
-    return new V(
+    return new j(
       o.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], e),
       o.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], e),
       o.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], e),
@@ -1172,7 +1172,7 @@ class V {
     );
   }
 }
-class wt {
+class vt {
   constructor() {
     this.atomLabelErrors = [], this.symmetryErrors = [];
   }
@@ -1205,7 +1205,7 @@ class wt {
 `)), o;
   }
 }
-class D {
+class A {
   static createBonds(t, e) {
     try {
       const o = t.get("_geom_bond"), s = o.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, r = [];
@@ -1217,7 +1217,7 @@ class D {
           ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"],
           i
         );
-        D.isValidBondPair(a, n, e) && r.push(z.fromCIF(t, i));
+        A.isValidBondPair(a, n, e) && r.push(L.fromCIF(t, i));
       }
       return r;
     } catch {
@@ -1249,7 +1249,7 @@ class D {
         i,
         "?"
       );
-      D.isValidHBondTriplet(a, n, c, e) && r.push(V.fromCIF(t, i));
+      A.isValidHBondTriplet(a, n, c, e) && r.push(j.fromCIF(t, i));
     }
     return r;
   }
@@ -1259,7 +1259,7 @@ class D {
    * @returns {ValidationResult} Validation results
    */
   static validateBonds(t, e, o) {
-    const s = new wt(), r = new Set(e.map((i) => i.label));
+    const s = new vt(), r = new Set(e.map((i) => i.label));
     for (const i of t) {
       const a = [];
       if (r.has(i.atom1Label) || a.push(i.atom1Label), r.has(i.atom2Label) || a.push(i.atom2Label), a.length > 0 && s.addAtomLabelError(
@@ -1281,7 +1281,7 @@ class D {
    * @returns {ValidationResult} Validation results
    */
   static validateHBonds(t, e, o) {
-    const s = new wt(), r = new Set(e.map((i) => i.label));
+    const s = new vt(), r = new Set(e.map((i) => i.label));
     for (const i of t) {
       const a = [];
       if (r.has(i.donorAtomLabel) || a.push(i.donorAtomLabel), r.has(i.hydrogenAtomLabel) || a.push(i.hydrogenAtomLabel), r.has(i.acceptorAtomLabel) || a.push(i.acceptorAtomLabel), a.length > 0 && s.addAtomLabelError(
@@ -1314,7 +1314,7 @@ class D {
    * @returns {boolean} Whether bond pair is valid
    */
   static isValidBondPair(t, e, o) {
-    const s = D.isValidLabel(t), r = D.isValidLabel(e);
+    const s = A.isValidLabel(t), r = A.isValidLabel(e);
     return t === "?" || e === "?" ? !1 : (!s || o.has(t)) && (!r || o.has(e));
   }
   /**
@@ -1327,11 +1327,11 @@ class D {
    * @returns {boolean} Whether H-bond triplet is valid
    */
   static isValidHBondTriplet(t, e, o, s) {
-    const r = D.isValidLabel(t), i = D.isValidLabel(e), a = D.isValidLabel(o);
+    const r = A.isValidLabel(t), i = A.isValidLabel(e), a = A.isValidLabel(o);
     return t === "?" || e === "?" || o === "?" ? !1 : (!r || s.has(t)) && (!i || s.has(e)) && (!a || s.has(o));
   }
 }
-function Z(l) {
+function Q(l) {
   if (!l || typeof l != "string")
     throw new Error(`Invalid atom label: ${l}`);
   const t = l.toUpperCase(), e = [
@@ -1419,16 +1419,16 @@ function Z(l) {
     "CM"
   ], o = new RegExp(`^(${e.join("|")})`), s = t.match(o);
   if (s)
-    return kt(s[1]);
+    return Mt(s[1]);
   const r = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
   if (r)
-    return kt(r[1]);
+    return Mt(r[1]);
   throw new Error(`Could not infer element type from atom label: ${l}`);
 }
-function kt(l) {
+function Mt(l) {
   return l.length === 1 ? l : l[0] + l[1].toLowerCase();
 }
-class L {
+class T {
   /**
   * Creates a new crystal structure
   * @param {UnitCell} unitCell - Unit cell parameters
@@ -1438,7 +1438,7 @@ class L {
   * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
   */
   constructor(t, e, o = [], s = [], r = null) {
-    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = r || new U("None", 0, [new B("x,y,z")]);
+    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = r || new q("None", 0, [new F("x,y,z")]);
   }
   /**
   * Creates a CrystalStructure from CIF data
@@ -1446,9 +1446,9 @@ class L {
   * @returns {CrystalStructure} New crystal structure instance
   */
   static fromCIF(t) {
-    const e = lt.fromCIF(t), s = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), r = Array.from({ length: s.length }, (f, u) => {
+    const e = ht.fromCIF(t), s = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), r = Array.from({ length: s.length }, (f, u) => {
       try {
-        return W.fromCIF(t, u);
+        return X.fromCIF(t, u);
       } catch (p) {
         if (p.message.includes("Dummy atom"))
           return null;
@@ -1457,14 +1457,14 @@ class L {
     }).filter((f) => f !== null);
     if (r.length === 0)
       throw new Error("The cif file contains no valid atoms.");
-    const i = new Set(r.map((f) => f.label)), a = D.createBonds(t, i), n = D.createHBonds(t, i), c = U.fromCIF(t), h = D.validateBonds(a, r, c), m = D.validateHBonds(n, r, c);
-    if (!h.isValid() || !m.isValid()) {
+    const i = new Set(r.map((f) => f.label)), a = A.createBonds(t, i), n = A.createHBonds(t, i), c = q.fromCIF(t), d = A.validateBonds(a, r, c), m = A.validateHBonds(n, r, c);
+    if (!d.isValid() || !m.isValid()) {
       const f = `There were errors in the bond or H-bond creation
-`, u = h.report(r, c), p = m.report(r, c);
+`, u = d.report(r, c), p = m.report(r, c);
       throw u.length !== 0 && p.length !== 0 ? new Error(f + u + `
 ` + p) : new Error(f + u + p);
     }
-    return new L(e, r, a, n, c);
+    return new T(e, r, a, n, c);
   }
   /**
   * Finds an atom by its label 
@@ -1499,9 +1499,9 @@ class L {
       const i = this.getAtomByLabel(r.atom1Label), a = this.getAtomByLabel(r.atom2Label);
       if (r.atom2SiteSymmetry !== "." && r.atom2SiteSymmetry !== null)
         continue;
-      const n = t.get(i.label), c = t.get(a.label), h = n || c;
-      if (h) {
-        if (h.atoms.add(i), h.atoms.add(a), h.bonds.add(r), t.set(i.label, h), t.set(a.label, h), n && c && n !== c) {
+      const n = t.get(i.label), c = t.get(a.label), d = n || c;
+      if (d) {
+        if (d.atoms.add(i), d.atoms.add(a), d.bonds.add(r), t.set(i.label, d), t.set(a.label, d), n && c && n !== c) {
           for (const m of c.atoms)
             n.atoms.add(m), t.set(m.label, n);
           for (const m of c.bonds)
@@ -1533,7 +1533,7 @@ class L {
     }));
   }
 }
-class lt {
+class ht {
   /**
   * Creates a new unit cell
   * @param {number} a - a axis length in Å 
@@ -1545,7 +1545,7 @@ class lt {
   * @throws {Error} If parameters invalid
   */
   constructor(t, e, o, s, r, i) {
-    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = r, this._gamma = i, this.fractToCartMatrix = T(this);
+    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = r, this._gamma = i, this.fractToCartMatrix = I(this);
   }
   /**
   * Creates a UnitCell from CIF data
@@ -1571,7 +1571,7 @@ class lt {
         `Unit cell parameter entries missing in CIF or negative for cell parameters: ${r}`
       );
     }
-    return new lt(...e);
+    return new ht(...e);
   }
   get a() {
     return this._a;
@@ -1579,7 +1579,7 @@ class lt {
   set a(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'a' must be positive");
-    this._a = t, this.fractToCartMatrix = T(this);
+    this._a = t, this.fractToCartMatrix = I(this);
   }
   get b() {
     return this._b;
@@ -1587,7 +1587,7 @@ class lt {
   set b(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'b' must be positive");
-    this._b = t, this.fractToCartMatrix = T(this);
+    this._b = t, this.fractToCartMatrix = I(this);
   }
   get c() {
     return this._c;
@@ -1595,7 +1595,7 @@ class lt {
   set c(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'c' must be positive");
-    this._c = t, this.fractToCartMatrix = T(this);
+    this._c = t, this.fractToCartMatrix = I(this);
   }
   get alpha() {
     return this._alpha;
@@ -1603,7 +1603,7 @@ class lt {
   set alpha(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle alpha must be between 0 and 180 degrees");
-    this._alpha = t, this.fractToCartMatrix = T(this);
+    this._alpha = t, this.fractToCartMatrix = I(this);
   }
   get beta() {
     return this._beta;
@@ -1611,7 +1611,7 @@ class lt {
   set beta(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle beta must be between 0 and 180 degrees");
-    this._beta = t, this.fractToCartMatrix = T(this);
+    this._beta = t, this.fractToCartMatrix = I(this);
   }
   get gamma() {
     return this._gamma;
@@ -1619,10 +1619,10 @@ class lt {
   set gamma(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle gamma must be between 0 and 180 degrees");
-    this._gamma = t, this.fractToCartMatrix = T(this);
+    this._gamma = t, this.fractToCartMatrix = I(this);
   }
 }
-class W {
+class X {
   constructor(t, e, o, s = null, r = 0) {
     this.label = String(t), this.atomType = e, this.position = o, this.adp = s, this.disorderGroup = r;
   }
@@ -1651,17 +1651,17 @@ class W {
       ""
     )).toLowerCase() === "dum")
       throw new Error("Dummy atom: calc_flag is dum");
-    let h = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], i, !1);
-    if (h || (h = Z(a)), n.includes(h))
+    let d = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], i, !1);
+    if (d || (d = Q(a)), n.includes(d))
       throw new Error("Dummy atom: Invalid atom type");
-    const m = Ht.fromCIF(t, i), f = M.fromCIF(t, i), u = s.getIndex(
+    const m = Gt.fromCIF(t, i), f = M.fromCIF(t, i), u = s.getIndex(
       ["_atom_site.disorder_group", "_atom_site_disorder_group"],
       i,
       "."
     );
-    return new W(
+    return new X(
       a,
-      h,
+      d,
       m,
       f,
       u === "." ? 0 : u
@@ -1843,8 +1843,8 @@ const _ = {
     Bk: { radius: 1.65, atomColor: "#8a4fe3", ringColor: "#ffffff" },
     Cf: { radius: 1.81, atomColor: "#a136d4", ringColor: "#ffffff" }
   }
-}, Ct = G(Y);
-class F {
+};
+class P {
   /**
    * Creates a new filter
    * @param {Object.<string, string>} modes - Dictionary of valid modes
@@ -1852,7 +1852,7 @@ class F {
    * @param {string} filterName - Name of the filter for error messages
    */
   constructor(t, e, o, s = []) {
-    if (new.target === F)
+    if (new.target === P)
       throw new TypeError("Cannot instantiate BaseFilter directly");
     this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(s), this.filterName = o, this._mode = null, this.mode = e;
   }
@@ -1915,7 +1915,8 @@ class F {
     return this._mode = e[(o + 1) % e.length], this._mode;
   }
 }
-const C = class C extends F {
+G(U);
+const C = class C extends P {
   /**
    * Creates a new hydrogen filter
    * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
@@ -1930,7 +1931,7 @@ const C = class C extends F {
    */
   apply(t) {
     this.ensureValidMode(t);
-    const e = t.atoms.filter((r) => r.atomType !== "H" || this.mode !== C.MODES.NONE).map((r) => new W(
+    const e = t.atoms.filter((r) => r.atomType !== "H" || this.mode !== C.MODES.NONE).map((r) => new X(
       r.label,
       r.atomType,
       r.position,
@@ -1943,7 +1944,7 @@ const C = class C extends F {
       }
       return !0;
     }), s = this.mode === C.MODES.NONE ? [] : t.hBonds;
-    return new L(
+    return new T(
       t.cell,
       e,
       o,
@@ -1966,17 +1967,17 @@ const C = class C extends F {
     ) && e.push(C.MODES.ANISOTROPIC)), e;
   }
 };
-O(C, "MODES", Object.freeze({
+E(C, "MODES", Object.freeze({
   NONE: "none",
   CONSTANT: "constant",
   ANISOTROPIC: "anisotropic"
-})), O(C, "PREFERRED_FALLBACK_ORDER", [
+})), E(C, "PREFERRED_FALLBACK_ORDER", [
   C.MODES.ANISOTROPIC,
   C.MODES.CONSTANT,
   C.MODES.NONE
 ]);
-let st = C;
-const w = class w extends F {
+let it = C;
+const w = class w extends P {
   /**
    * Creates a new disorder filter
    * @param {DisorderFilter.MODES} [mode=DisorderFilter.MODES.ALL] - Initial filter mode
@@ -1998,7 +1999,7 @@ const w = class w extends F {
       const i = t.getAtomByLabel(r.donorAtomLabel), a = t.getAtomByLabel(r.hydrogenAtomLabel), n = t.getAtomByLabel(r.acceptorAtomLabel);
       return !(this.mode === w.MODES.GROUP1 && (i.disorderGroup > 1 || a.disorderGroup > 1 || n.disorderGroup > 1) || this.mode === w.MODES.GROUP2 && (i.disorderGroup === 1 || a.disorderGroup === 1 || n.disorderGroup === 1));
     });
-    return new L(
+    return new T(
       t.cell,
       e,
       o,
@@ -2016,20 +2017,20 @@ const w = class w extends F {
     return t.atoms.some((s) => s.disorderGroup > 0) && (t.atoms.some((s) => s.disorderGroup === 1) && e.push(w.MODES.GROUP1), t.atoms.some((s) => s.disorderGroup > 1) && e.push(w.MODES.GROUP2)), e;
   }
 };
-O(w, "MODES", Object.freeze({
+E(w, "MODES", Object.freeze({
   ALL: "all",
   GROUP1: "group1",
   GROUP2: "group2"
-})), O(w, "PREFERRED_FALLBACK_ORDER", [
+})), E(w, "PREFERRED_FALLBACK_ORDER", [
   w.MODES.ALL,
   w.MODES.GROUP1,
   w.MODES.GROUP2
 ]);
-let rt = w;
-const y = class y extends F {
+let at = w;
+const y = class y extends P {
   /**
    * Creates a new symmetry grower
-   * @param {SymmetryGrower.MODES} [mode=SymmetryGrower.MODES.BONDS_NO_HBONDS_NO] - Initial mode for growing symmetry 
+   * @param {SymmetryGrower.MODES} [mode=SymmetryGrower.MODES.BONDS_NO_HBONDS_NO] - Initial mode for growing symmetry
    */
   constructor(t = y.MODES.BONDS_NO_HBONDS_NO) {
     super(y.MODES, t, "SymmetryGrower", y.PREFERRED_FALLBACK_ORDER);
@@ -2064,7 +2065,7 @@ const y = class y extends F {
    * @param {CrystalStructure} structure - Original structure containing atoms to grow
    * @param {Array<[string, string]>} atomsToGrow - Array of [atomLabel, symmetryOperation] pairs
    * @param {GrowthState} growthState - Current state of structure growth
-   * @returns {GrowthState} Updated growth state including new atoms and bonds 
+   * @returns {GrowthState} Updated growth state including new atoms and bonds
    * @throws {Error} If an atom is not found in any connected group
    */
   growAtomArray(t, e, o) {
@@ -2073,7 +2074,7 @@ const y = class y extends F {
       if (o.labels.has(i))
         continue;
       const a = t.connectedGroups.find(
-        (c) => c.atoms.some((h) => h.label === s)
+        (c) => c.atoms.some((d) => d.label === s)
       );
       if (!a)
         throw new Error(
@@ -2082,7 +2083,7 @@ const y = class y extends F {
       t.symmetry.applySymmetry(r, a.atoms).forEach((c) => {
         c.label = y.combineSymOpLabel(c.label, r), o.labels.add(c.label), o.atoms.add(c);
       }), a.bonds.filter(({ atom2SiteSymmetry: c }) => c === ".").forEach((c) => {
-        o.bonds.add(new z(
+        o.bonds.add(new L(
           y.combineSymOpLabel(c.atom1Label, r),
           y.combineSymOpLabel(c.atom2Label, r),
           c.bondLength,
@@ -2090,7 +2091,7 @@ const y = class y extends F {
           "."
         ));
       }), a.hBonds.filter(({ acceptorAtomSymmetry: c }) => c === ".").forEach((c) => {
-        o.hBonds.add(new V(
+        o.hBonds.add(new j(
           y.combineSymOpLabel(c.donorAtomLabel, r),
           y.combineSymOpLabel(c.hydrogenAtomLabel, r),
           y.combineSymOpLabel(c.acceptorAtomLabel, r),
@@ -2109,7 +2110,7 @@ const y = class y extends F {
     return o;
   }
   /**
-   * Grows the structure according to the current mode. Switches mode with a warning if 
+   * Grows the structure according to the current mode. Switches mode with a warning if
    * current mode is not applicable.
    * @param {CrystalStructure} structure - Structure to grow
    * @returns {CrystalStructure} New structure with grown atoms and bonds
@@ -2129,7 +2130,7 @@ const y = class y extends F {
         continue;
       const a = y.combineSymOpLabel(i.atom2Label, i.atom2SiteSymmetry);
       s.some((n) => n.label === a) && o.bonds.add(
-        new z(i.atom1Label, a, i.bondLength, i.bondLengthSU, ".")
+        new L(i.atom1Label, a, i.bondLength, i.bondLengthSU, ".")
       );
     }
     for (const i of t.hBonds) {
@@ -2137,7 +2138,7 @@ const y = class y extends F {
         continue;
       const a = y.combineSymOpLabel(i.acceptorAtomLabel, i.acceptorAtomSymmetry);
       s.some((n) => n.label === a) && o.hBonds.add(
-        new V(
+        new j(
           i.donorAtomLabel,
           i.hydrogenAtomLabel,
           a,
@@ -2154,10 +2155,10 @@ const y = class y extends F {
       );
     }
     const r = Array.from(o.hBonds).filter(({ acceptorAtomLabel: i, hydrogenAtomLabel: a, donorAtomLabel: n }) => {
-      const c = o.labels.has(i), h = o.labels.has(a), m = o.labels.has(n);
-      return c && h && m;
+      const c = o.labels.has(i), d = o.labels.has(a), m = o.labels.has(n);
+      return c && d && m;
     });
-    return new L(
+    return new T(
       t.cell,
       s,
       Array.from(o.bonds),
@@ -2186,7 +2187,7 @@ const y = class y extends F {
     ];
   }
 };
-O(y, "MODES", Object.freeze({
+E(y, "MODES", Object.freeze({
   BONDS_YES_HBONDS_YES: "bonds-yes-hbonds-yes",
   BONDS_YES_HBONDS_NO: "bonds-yes-hbonds-no",
   BONDS_YES_HBONDS_NONE: "bonds-yes-hbonds-none",
@@ -2196,207 +2197,13 @@ O(y, "MODES", Object.freeze({
   BONDS_NONE_HBONDS_YES: "bonds-none-hbonds-yes",
   BONDS_NONE_HBONDS_NO: "bonds-none-hbonds-no",
   BONDS_NONE_HBONDS_NONE: "bonds-none-hbonds-none"
-})), O(y, "PREFERRED_FALLBACK_ORDER", [
+})), E(y, "PREFERRED_FALLBACK_ORDER", [
   y.MODES.BONDS_NO_HBONDS_NO,
   y.MODES.BONDS_NO_HBONDS_NONE,
   y.MODES.BONDS_NONE_HBONDS_NO
 ]);
-let j = y;
-const R = class R extends F {
-  /**
-   * Creates a new atom label filter
-   * @param {string[]} [filteredLabels=[]] - Array of atom labels to filter
-   * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
-   */
-  constructor(t = [], e = R.MODES.OFF) {
-    super(R.MODES, e, "AtomLabelFilter", []), this.filteredLabels = new Set(t);
-  }
-  get requiresCameraUpdate() {
-    return !0;
-  }
-  /**
-   * Updates the list of filtered atom labels
-   * @param {string[]} labels - New array of atom labels to filter
-   */
-  setFilteredLabels(t) {
-    this.filteredLabels = new Set(t);
-  }
-  /**
-   * Applies the filter to a structure, removing specified atoms and their bonds
-   * @param {CrystalStructure} structure - Structure to filter
-   * @returns {CrystalStructure} New structure with atoms removed if filter is on
-   */
-  apply(t) {
-    if (this.mode === R.MODES.OFF)
-      return t;
-    const e = t.atoms.filter(
-      (r) => !this.filteredLabels.has(r.label)
-    ), o = t.bonds.filter(
-      (r) => !this.filteredLabels.has(r.atom1Label) && !this.filteredLabels.has(r.atom2Label)
-    ), s = t.hBonds.filter(
-      (r) => !this.filteredLabels.has(r.donorAtomLabel) && !this.filteredLabels.has(r.hydrogenAtomLabel) && !this.filteredLabels.has(r.acceptorAtomLabel)
-    );
-    return new L(
-      t.cell,
-      e,
-      o,
-      s,
-      t.symmetry
-    );
-  }
-  /**
-   * Gets applicable modes - both modes are always available
-   * @returns {Array<string>} Array containing both ON and OFF modes
-   */
-  getApplicableModes() {
-    return Object.values(R.MODES);
-  }
-};
-O(R, "MODES", Object.freeze({
-  ON: "on",
-  OFF: "off"
-}));
-let it = R;
-const b = class b extends F {
-  /**
-   * Creates a new bond generator
-   * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
-   * @param {BondGenerator.MODES} [mode=BondGenerator.MODES.KEEP] - Initial filter mode
-   */
-  constructor(t, e, o = b.MODES.KEEP) {
-    super(b.MODES, o, "BondGenerator", b.PREFERRED_FALLBACK_ORDER), this.elementProperties = t, this.toleranceFactor = e;
-  }
-  /**
-   * Gets the maximum allowed bond distance between two atoms
-   * @param {string} element1 - First element symbol
-   * @param {string} element2 - Second element symbol
-   * @param {Object} elementProperties - Element property definitions
-   * @returns {number} Maximum allowed bond distance
-   */
-  getMaxBondDistance(t, e, o) {
-    var i, a;
-    const s = (i = o[t]) == null ? void 0 : i.radius, r = (a = o[e]) == null ? void 0 : a.radius;
-    if (!s || !r)
-      throw new Error(`Missing radius for element ${s ? e : t}`);
-    return (s + r) * this.toleranceFactor;
-  }
-  /**
-   * Generates bonds between atoms based on their distances
-   * @private
-   * @param {CrystalStructure} structure - Structure to analyze
-   * @param {Object} elementProperties - Element property definitions
-   * @returns {Set<Bond>} Set of generated bonds
-   */
-  generateBonds(t, e) {
-    const o = /* @__PURE__ */ new Set(), { cell: s, atoms: r } = t, i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map();
-    r.forEach((n) => {
-      const c = n.position.toCartesian(s);
-      if (i.set(n.label, [c.x, c.y, c.z]), Object.prototype.hasOwnProperty.call(e, n.atomType) && !a.has(n.atomType))
-        a.set(n.atomType, n.atomType);
-      else if (!a.has(n.atomType))
-        try {
-          a.set(n.atomType, Z(n.atomType));
-        } catch {
-          throw new Error(`Missing radius for element ${n.atomType}`);
-        }
-    });
-    for (let n = 0; n < r.length; n++) {
-      const c = r[n], h = i.get(c.label);
-      for (let m = n + 1; m < r.length; m++) {
-        const f = r[m], u = i.get(f.label);
-        if ((c.atomType === "H" || f.atomType === "H") && t.bonds.some((H) => H.atom1Label === c.label || H.atom1Label === f.label || H.atom2Label === c.label || H.atom2Label === f.label))
-          continue;
-        const p = Ct.subtract(h, u), g = Ct.norm(p), E = this.getMaxBondDistance(
-          a.get(c.atomType),
-          a.get(f.atomType),
-          e
-        );
-        g <= E && g > 1e-4 && o.add(new z(
-          c.label,
-          f.label,
-          g,
-          null,
-          // No standard uncertainty for generated bonds
-          "."
-          // No symmetry operation
-        ));
-      }
-    }
-    return o;
-  }
-  /**
-   * Applies bond generation to a structure according to current mode
-   * @param {CrystalStructure} structure - Structure to analyze
-   * @returns {CrystalStructure} Structure with modified bonds according to mode
-   */
-  apply(t) {
-    this.ensureValidMode(t);
-    let e;
-    switch (this.mode) {
-      case b.MODES.KEEP:
-        return t;
-      // Keep existing bonds unchanged
-      case b.MODES.ADD: {
-        const o = this.generateBonds(t, this.elementProperties);
-        e = [...t.bonds, ...o];
-        break;
-      }
-      case b.MODES.REPLACE:
-        e = [...this.generateBonds(t, this.elementProperties)];
-        break;
-      case b.MODES.CREATE:
-        e = [...this.generateBonds(t, this.elementProperties)];
-        break;
-      case b.MODES.IGNORE:
-        e = [...t.bonds];
-        break;
-      default:
-        return t;
-    }
-    return new L(
-      t.cell,
-      t.atoms,
-      e,
-      t.hBonds,
-      t.symmetry
-    );
-  }
-  /**
-   * Gets applicable modes based on current structure
-   * @param {CrystalStructure} structure - Structure to analyze
-   * @returns {Array<string>} Array of applicable mode names
-   */
-  getApplicableModes(t) {
-    return t.bonds.length > 0 ? [
-      b.MODES.KEEP,
-      b.MODES.ADD,
-      b.MODES.REPLACE
-    ] : [
-      b.MODES.CREATE,
-      b.MODES.IGNORE
-    ];
-  }
-};
-O(b, "MODES", Object.freeze({
-  KEEP: "keep",
-  // Keep existing bonds only
-  ADD: "add",
-  // Add new bonds while keeping existing ones
-  REPLACE: "replace",
-  // Replace all bonds with generated ones
-  CREATE: "create",
-  // Create bonds only if none exist
-  IGNORE: "ignore"
-  // Don't create bonds if none exist
-})), O(b, "PREFERRED_FALLBACK_ORDER", [
-  b.MODES.KEEP,
-  b.MODES.ADD,
-  b.MODES.REPLACE,
-  b.MODES.CREATE,
-  b.MODES.IGNORE
-]);
-let at = b;
-function $t(l) {
+let K = y;
+function Ut(l) {
   const t = {
     position: 0,
     rotation: 0,
@@ -2411,9 +2218,9 @@ function $t(l) {
   }
   return e(l), t;
 }
-function Ut(l, t) {
+function Vt(l, t) {
   const o = l.getEllipsoidMatrix(t).toArray();
-  return new d.Matrix4(
+  return new h.Matrix4(
     o[0][0],
     o[0][1],
     o[0][2],
@@ -2432,19 +2239,19 @@ function Ut(l, t) {
     1
   );
 }
-function Et(l, t) {
+function Ot(l, t) {
   const e = t.clone().sub(l), o = e.length();
   if (o === 0)
     throw new Error("Error in ORTEP Bond Creation. Trying to create a zero length bond.");
-  const s = e.divideScalar(o), r = new d.Vector3(0, 1, 0), i = new d.Vector3().crossVectors(s, r), a = -Math.acos(s.dot(r));
-  return new d.Matrix4().makeScale(1, o, 1).premultiply(new d.Matrix4().makeRotationAxis(
+  const s = e.divideScalar(o), r = new h.Vector3(0, 1, 0), i = new h.Vector3().crossVectors(s, r), a = -Math.acos(s.dot(r));
+  return new h.Matrix4().makeScale(1, o, 1).premultiply(new h.Matrix4().makeRotationAxis(
     i.normalize(),
     a
   )).setPosition(
     l.clone().add(t).multiplyScalar(0.5)
   );
 }
-class Vt {
+class Yt {
   /**
    * Creates a new geometry and material cache.
    * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
@@ -2465,17 +2272,17 @@ class Vt {
    * @private
    */
   initializeGeometries() {
-    this.geometries.atom = new d.IcosahedronGeometry(
+    this.geometries.atom = new h.IcosahedronGeometry(
       this.scaling,
       this.options.atomDetail
-    ), this.geometries.adpRing = this.createADPHalfTorus(), this.geometries.bond = new d.CylinderGeometry(
+    ), this.geometries.adpRing = this.createADPHalfTorus(), this.geometries.bond = new h.CylinderGeometry(
       this.options.bondRadius,
       this.options.bondRadius,
       0.98,
       this.options.bondSections,
       1,
       !0
-    ), this.geometries.hbond = new d.CylinderGeometry(
+    ), this.geometries.hbond = new h.CylinderGeometry(
       this.options.hbondRadius,
       this.options.hbondRadius,
       0.98,
@@ -2489,11 +2296,11 @@ class Vt {
    * @private
    */
   initializeMaterials() {
-    this.materials.bond = new d.MeshStandardMaterial({
+    this.materials.bond = new h.MeshStandardMaterial({
       color: this.options.bondColor,
       roughness: this.options.bondColorRoughness,
       metalness: this.options.bondColorMetalness
-    }), this.materials.hbond = new d.MeshStandardMaterial({
+    }), this.materials.hbond = new h.MeshStandardMaterial({
       color: this.options.hbondColor,
       roughness: this.options.hbondColorRoughness,
       metalness: this.options.hbondColorMetalness
@@ -2517,14 +2324,14 @@ class Vt {
    */
   getAtomMaterials(t) {
     let e = t;
-    this.options.elementProperties[e] || (e = Z(t)), this.validateElementType(e);
+    this.options.elementProperties[e] || (e = Q(t)), this.validateElementType(e);
     const o = `${e}_materials`;
     if (!this.elementMaterials[o]) {
-      const s = this.options.elementProperties[e], r = new d.MeshStandardMaterial({
+      const s = this.options.elementProperties[e], r = new h.MeshStandardMaterial({
         color: s.atomColor,
         roughness: this.options.atomColorRoughness,
         metalness: this.options.atomColorMetalness
-      }), i = new d.MeshStandardMaterial({
+      }), i = new h.MeshStandardMaterial({
         color: s.ringColor,
         roughness: this.options.atomColorRoughness,
         metalness: this.options.atomColorMetalness
@@ -2541,39 +2348,39 @@ class Vt {
    * @returns {THREE.BufferGeometry} Half torus geometry for ADP visualisation
    */
   createADPHalfTorus() {
-    const t = new d.TorusGeometry(
+    const t = new h.TorusGeometry(
       this.scaling * this.options.atomADPRingWidthFactor,
       this.options.atomADPRingHeight,
       this.options.atomADPInnerSections,
       this.options.atomADPRingSections
     ), e = t.attributes.position.array, o = t.index.array, s = [], r = [], i = /* @__PURE__ */ new Set();
-    for (let h = 0; h < o.length; h += 3) {
-      const m = o[h] * 3, f = o[h + 1] * 3, u = o[h + 2] * 3, p = [m, f, u].map((g) => ({
+    for (let d = 0; d < o.length; d += 3) {
+      const m = o[d] * 3, f = o[d + 1] * 3, u = o[d + 2] * 3, p = [m, f, u].map((g) => ({
         index: g / 3,
         distance: Math.sqrt(
           e[g] * e[g] + e[g + 1] * e[g + 1] + e[g + 2] * e[g + 2]
         )
       }));
-      p.some((g) => g.distance >= this.scaling) && p.forEach((g) => i.add(o[h + g.index % 3]));
+      p.some((g) => g.distance >= this.scaling) && p.forEach((g) => i.add(o[d + g.index % 3]));
     }
     const a = /* @__PURE__ */ new Map();
     let n = 0;
-    i.forEach((h) => {
-      const m = h * 3;
+    i.forEach((d) => {
+      const m = d * 3;
       s.push(
         e[m],
         e[m + 1],
         e[m + 2]
-      ), a.set(h, n++);
+      ), a.set(d, n++);
     });
-    for (let h = 0; h < o.length; h += 3)
-      i.has(o[h]) && i.has(o[h + 1]) && i.has(o[h + 2]) && r.push(
-        a.get(o[h]),
-        a.get(o[h + 1]),
-        a.get(o[h + 2])
+    for (let d = 0; d < o.length; d += 3)
+      i.has(o[d]) && i.has(o[d + 1]) && i.has(o[d + 2]) && r.push(
+        a.get(o[d]),
+        a.get(o[d + 1]),
+        a.get(o[d + 2])
       );
-    const c = new d.BufferGeometry();
-    return c.setAttribute("position", new d.Float32BufferAttribute(s, 3)), c.setIndex(r), c.computeVertexNormals(), c.rotateX(0.5 * Math.PI), t.dispose(), c;
+    const c = new h.BufferGeometry();
+    return c.setAttribute("position", new h.Float32BufferAttribute(s, 3)), c.setIndex(r), c.computeVertexNormals(), c.rotateX(0.5 * Math.PI), t.dispose(), c;
   }
   /**
    * Cleans up all cached resources.
@@ -2584,7 +2391,7 @@ class Vt {
     });
   }
 }
-class Gt {
+class qt {
   /**
    * Creates a new ORTEP structure visualisation.
    * @param {CrystalStructure} crystalStructure - Input crystal structure
@@ -2601,7 +2408,7 @@ class Gt {
       ..._,
       ...o,
       elementProperties: s
-    }, this.crystalStructure = t, this.cache = new Vt(this.options), this.createStructure();
+    }, this.crystalStructure = t, this.cache = new Yt(this.options), this.createStructure();
   }
   /**
    * Creates 3D representations of atoms, bonds and H-bonds.
@@ -2612,19 +2419,19 @@ class Gt {
     const t = this.crystalStructure.atoms.map((s) => s.label);
     for (const s of this.crystalStructure.atoms) {
       const [r, i] = this.cache.getAtomMaterials(s.atomType);
-      s.adp instanceof I ? this.atoms3D.push(new Yt(
+      s.adp instanceof $ ? this.atoms3D.push(new jt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
         r,
         this.cache.geometries.adpRing,
         i
-      )) : s.adp instanceof P ? this.atoms3D.push(new qt(
+      )) : s.adp instanceof H ? this.atoms3D.push(new Wt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
         r
-      )) : this.atoms3D.push(new jt(
+      )) : this.atoms3D.push(new Kt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
@@ -2632,16 +2439,16 @@ class Gt {
         this.options
       ));
     }
-    const e = this.crystalStructure.bonds.map((s) => new z(
+    const e = this.crystalStructure.bonds.map((s) => new L(
       s.atom1Label,
-      j.combineSymOpLabel(s.atom2Label, s.atom2SiteSymmetry),
+      K.combineSymOpLabel(s.atom2Label, s.atom2SiteSymmetry),
       s.bondLength,
       s.bondLengthSU,
       "."
     )).filter((s) => t.includes(s.atom2Label));
     for (const s of e)
       try {
-        this.bonds3D.push(new Wt(
+        this.bonds3D.push(new Xt(
           s,
           this.crystalStructure,
           this.cache.geometries.bond,
@@ -2651,10 +2458,10 @@ class Gt {
         if (r.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.")
           throw r;
       }
-    const o = this.crystalStructure.hBonds.map((s) => new V(
+    const o = this.crystalStructure.hBonds.map((s) => new j(
       s.donorAtomLabel,
       s.hydrogenAtomLabel,
-      j.combineSymOpLabel(
+      K.combineSymOpLabel(
         s.acceptorAtomLabel,
         s.acceptorAtomSymmetry
       ),
@@ -2670,7 +2477,7 @@ class Gt {
     )).filter((s) => t.includes(s.acceptorAtomLabel));
     for (const s of o)
       try {
-        this.hBonds3D.push(new Kt(
+        this.hBonds3D.push(new Zt(
           s,
           this.crystalStructure,
           this.cache.geometries.hbond,
@@ -2688,14 +2495,14 @@ class Gt {
    * @returns {THREE.Group} Group containing all structure objects
    */
   getGroup() {
-    const t = new d.Group();
+    const t = new h.Group();
     for (const e of this.atoms3D)
       t.add(e);
     for (const e of this.bonds3D)
       t.add(e);
     for (const e of this.hBonds3D)
       t.add(e);
-    return $t(t), t;
+    return Ut(t), t;
   }
   /**
    * Cleans up all resources.
@@ -2704,14 +2511,14 @@ class Gt {
     this.cache.dispose();
   }
 }
-class J extends d.Mesh {
+class tt extends h.Mesh {
   /**
    * Creates a new selectable object.
    * @param {THREE.BufferGeometry} geometry - Object geometry
    * @param {THREE.Material} material - Object material
    */
   constructor(t, e) {
-    if (new.target === J)
+    if (new.target === tt)
       throw new TypeError("ORTEPObject is an abstract class and cannot be instantiated directly.");
     super(t, e), this._selectionColor = null, this.marker = null;
   }
@@ -2724,11 +2531,11 @@ class J extends d.Mesh {
    * @returns {THREE.Material} Selection highlight material
    */
   createSelectionMaterial(t) {
-    return new d.MeshBasicMaterial({
+    return new h.MeshBasicMaterial({
       color: t,
       transparent: !0,
       opacity: 0.9,
-      side: d.BackSide
+      side: h.BackSide
     });
   }
   /**
@@ -2775,7 +2582,7 @@ class J extends d.Mesh {
     this.deselect(), (t = this.geometry) == null || t.dispose(), (e = this.material) == null || e.dispose();
   }
 }
-class ct extends J {
+class mt extends tt {
   /**
    * Creates a new atom visualisation.
    * @param {Atom} atom - Input atom data
@@ -2785,7 +2592,7 @@ class ct extends J {
    */
   constructor(t, e, o, s) {
     super(o, s);
-    const r = new d.Vector3(...t.position.toCartesian(e));
+    const r = new h.Vector3(...t.position.toCartesian(e));
     this.position.copy(r), this.userData = {
       type: "atom",
       atomData: t,
@@ -2798,14 +2605,14 @@ class ct extends J {
    * @param {Object} options - Selection options
    */
   createSelectionMarker(t, e) {
-    const o = new d.Mesh(
+    const o = new h.Mesh(
       this.geometry,
       this.createSelectionMaterial(t)
     );
     return o.scale.multiplyScalar(e.selection.markerMult), o.userData.selectable = !1, o;
   }
 }
-class Yt extends ct {
+class jt extends mt {
   /**
    * Creates a new anisotropic atom visualisation.
    * @param {Atom} atom - Input atom data with anisotropic displacement parameters
@@ -2817,20 +2624,20 @@ class Yt extends ct {
    */
   constructor(t, e, o, s, r, i) {
     if (super(t, e, o, s), [t.adp.u11, t.adp.u3, t.adp.u33].some((n) => n <= 0))
-      this.geometry = new d.TetrahedronGeometry(0.8);
+      this.geometry = new h.TetrahedronGeometry(0.8);
     else {
-      const n = Ut(t.adp, e);
+      const n = Vt(t.adp, e);
       if (n.toArray().includes(NaN))
-        this.geometry = new d.TetrahedronGeometry(0.8);
+        this.geometry = new h.TetrahedronGeometry(0.8);
       else {
         for (const c of this.adpRingMatrices) {
-          const h = new d.Mesh(r, i);
-          h.applyMatrix4(c), h.userData.selectable = !1, this.add(h);
+          const d = new h.Mesh(r, i);
+          d.applyMatrix4(c), d.userData.selectable = !1, this.add(d);
         }
         this.applyMatrix4(n);
       }
     }
-    const a = new d.Vector3(...t.position.toCartesian(e));
+    const a = new h.Vector3(...t.position.toCartesian(e));
     this.position.copy(a), this.userData = {
       type: "atom",
       atomData: t,
@@ -2839,7 +2646,7 @@ class Yt extends ct {
   }
   get adpRingMatrices() {
     return [
-      new d.Matrix4().set(
+      new h.Matrix4().set(
         1,
         0,
         0,
@@ -2857,7 +2664,7 @@ class Yt extends ct {
         0,
         1
       ),
-      new d.Matrix4().set(
+      new h.Matrix4().set(
         1,
         0,
         0,
@@ -2875,7 +2682,7 @@ class Yt extends ct {
         0,
         1
       ),
-      new d.Matrix4().set(
+      new h.Matrix4().set(
         0,
         -1,
         0,
@@ -2896,7 +2703,7 @@ class Yt extends ct {
     ];
   }
 }
-class qt extends ct {
+class Wt extends mt {
   /**
    * Creates a new isotropic atom visualisation.
    * @param {Atom} atom - Input atom data with isotropic displacement parameters
@@ -2908,10 +2715,10 @@ class qt extends ct {
   constructor(t, e, o, s) {
     if (super(t, e, o, s), !t.adp || !("uiso" in t.adp))
       throw new Error("Atom must have isotropic displacement parameters (UIsoADP)");
-    t.adp.uiso <= 0 ? this.geometry = new d.TetrahedronGeometry(1) : this.scale.multiplyScalar(Math.sqrt(t.adp.uiso));
+    t.adp.uiso <= 0 ? this.geometry = new h.TetrahedronGeometry(1) : this.scale.multiplyScalar(Math.sqrt(t.adp.uiso));
   }
 }
-class jt extends ct {
+class Kt extends mt {
   /**
    * Creates a new constant radius atom visualization.
    * @param {Atom} atom - Input atom data
@@ -2925,7 +2732,7 @@ class jt extends ct {
     super(t, e, o, s);
     let i = t.atomType;
     try {
-      r.elementProperties[i] || (i = Z(t.atomType));
+      r.elementProperties[i] || (i = Q(t.atomType));
     } catch {
       throw new Error(`Element properties not found for atom type: '${t.atomType}'`);
     }
@@ -2934,7 +2741,7 @@ class jt extends ct {
     );
   }
 }
-class Wt extends J {
+class Xt extends tt {
   /**
    * Creates a new bond visualization.
    * @param {Bond} bond - Bond data
@@ -2944,7 +2751,7 @@ class Wt extends J {
    */
   constructor(t, e, o, s) {
     super(o, s);
-    const r = e.getAtomByLabel(t.atom1Label), i = e.getAtomByLabel(t.atom2Label), a = new d.Vector3(...r.position.toCartesian(e.cell)), n = new d.Vector3(...i.position.toCartesian(e.cell)), c = Et(a, n);
+    const r = e.getAtomByLabel(t.atom1Label), i = e.getAtomByLabel(t.atom2Label), a = new h.Vector3(...r.position.toCartesian(e.cell)), n = new h.Vector3(...i.position.toCartesian(e.cell)), c = Ot(a, n);
     this.applyMatrix4(c), this.userData = {
       type: "bond",
       bondData: t,
@@ -2957,19 +2764,19 @@ class Wt extends J {
    * @param {Object} options - Selection options
    */
   createSelectionMarker(t, e) {
-    const o = new d.Mesh(
+    const o = new h.Mesh(
       this.geometry,
       this.createSelectionMaterial(t)
     );
     return o.scale.x *= e.selection.bondMarkerMult, o.scale.z *= e.selection.bondMarkerMult, o.userData.selectable = !1, o;
   }
 }
-class dt extends d.Group {
+class ft extends h.Group {
   /**
    * Creates a new group object.
    */
   constructor() {
-    if (new.target === dt)
+    if (new.target === ft)
       throw new TypeError("ORTEPGroupObject is an abstract class and cannot be instantiated directly.");
     super(), this._selectionColor = null, this.marker = null;
   }
@@ -2983,7 +2790,7 @@ class dt extends d.Group {
    */
   add(...t) {
     return t.forEach((e) => {
-      if (e instanceof d.Mesh) {
+      if (e instanceof h.Mesh) {
         const o = e.raycast;
         e.raycast = (s, r) => {
           const i = [];
@@ -3009,11 +2816,11 @@ class dt extends d.Group {
    * @returns {THREE.Material} Selection highlight material
    */
   createSelectionMaterial(t) {
-    return new d.MeshBasicMaterial({
+    return new h.MeshBasicMaterial({
       color: t,
       transparent: !0,
       opacity: 0.9,
-      side: d.BackSide
+      side: h.BackSide
     });
   }
   /**
@@ -3024,7 +2831,7 @@ class dt extends d.Group {
   select(t, e) {
     this._selectionColor = t, this.traverse((s) => {
       var r;
-      if (s instanceof d.Mesh) {
+      if (s instanceof h.Mesh) {
         const i = s.material.clone();
         (r = i.emissive) == null || r.setHex(e.selection.highlightEmissive), s.originalMaterial = s.material, s.material = i;
       }
@@ -3038,9 +2845,9 @@ class dt extends d.Group {
   deselect() {
     this._selectionColor = null, this.marker && (this.remove(this.marker), this.marker.traverse((t) => {
       var e, o;
-      t instanceof d.Mesh && ((e = t.geometry) == null || e.dispose(), (o = t.material) == null || o.dispose());
+      t instanceof h.Mesh && ((e = t.geometry) == null || e.dispose(), (o = t.material) == null || o.dispose());
     }), this.marker = null), this.traverse((t) => {
-      t instanceof d.Mesh && t.originalMaterial && (t.material.dispose(), t.material = t.originalMaterial, t.originalMaterial = null);
+      t instanceof h.Mesh && t.originalMaterial && (t.material.dispose(), t.material = t.originalMaterial, t.originalMaterial = null);
     });
   }
   /**
@@ -3058,11 +2865,11 @@ class dt extends d.Group {
   dispose() {
     this.marker && this.deselect(), this.traverse((t) => {
       var e, o;
-      t instanceof d.Mesh && ((e = t.geometry) == null || e.dispose(), (o = t.material) == null || o.dispose());
+      t instanceof h.Mesh && ((e = t.geometry) == null || e.dispose(), (o = t.material) == null || o.dispose());
     }), this.clear();
   }
 }
-class Kt extends dt {
+class Zt extends ft {
   /**
    * Creates a new hydrogen bond visualization.
    * @param {HBond} hbond - H-bond data
@@ -3078,10 +2885,10 @@ class Kt extends dt {
       hbondData: t,
       selectable: !0
     };
-    const a = e.getAtomByLabel(t.hydrogenAtomLabel), n = e.getAtomByLabel(t.acceptorAtomLabel), c = new d.Vector3(...a.position.toCartesian(e.cell)), h = new d.Vector3(...n.position.toCartesian(e.cell));
+    const a = e.getAtomByLabel(t.hydrogenAtomLabel), n = e.getAtomByLabel(t.acceptorAtomLabel), c = new h.Vector3(...a.position.toCartesian(e.cell)), d = new h.Vector3(...n.position.toCartesian(e.cell));
     this.createDashedBondSegments(
       c,
-      h,
+      d,
       o,
       s,
       r,
@@ -3099,10 +2906,10 @@ class Kt extends dt {
    * @param {number} dashFraction - Fraction of segment that is solid
    */
   createDashedBondSegments(t, e, o, s, r, i) {
-    const a = t.distanceTo(e), n = Math.max(1, Math.floor(a / r)), h = a / n * i;
+    const a = t.distanceTo(e), n = Math.max(1, Math.floor(a / r)), d = a / n * i;
     for (let m = 0; m < n; m++) {
-      const f = m / n, u = f + h / a, p = new d.Vector3().lerpVectors(t, e, f), g = new d.Vector3().lerpVectors(t, e, u), E = new d.Mesh(o, s.clone());
-      E.applyMatrix4(Et(p, g)), E.userData = this.userData, this.add(E);
+      const f = m / n, u = f + d / a, p = new h.Vector3().lerpVectors(t, e, f), g = new h.Vector3().lerpVectors(t, e, u), O = new h.Mesh(o, s.clone());
+      O.applyMatrix4(Ot(p, g)), O.userData = this.userData, this.add(O);
     }
   }
   /**
@@ -3111,31 +2918,31 @@ class Kt extends dt {
    * @param {Object} options - Selection options
    */
   createSelectionMarker(t, e) {
-    const o = new d.Group(), s = this.createSelectionMaterial(t);
+    const o = new h.Group(), s = this.createSelectionMaterial(t);
     return this.children.forEach((r) => {
-      const i = new d.Mesh(r.geometry, s);
+      const i = new h.Mesh(r.geometry, s);
       i.applyMatrix4(r.matrix), i.scale.x *= e.selection.bondMarkerMult, i.scale.y *= 0.8 * e.selection.bondMarkerMult, i.scale.z *= e.selection.bondMarkerMult, i.userData.selectable = !1, o.add(i);
     }), o;
   }
 }
-function Xt(l, t, e = 4) {
+function Jt(l, t, e = 4) {
   if (!isFinite(1 / t))
-    return Q(l, e).toFixed(e);
+    return et(l, e).toFixed(e);
   let o = Math.floor(Math.log10(t));
   t * Math.pow(10, -o) < 2 && (o -= 1);
-  const s = Q(l, -o);
+  const s = et(l, -o);
   if (o < 0) {
     const i = Math.round(t / Math.pow(10, o));
     return `${s.toFixed(-o)}(${i})`;
   }
-  const r = Q(t, o);
+  const r = et(t, o);
   return `${s}(${r})`;
 }
-function Q(l, t) {
+function et(l, t) {
   const e = Math.pow(10, t);
   return Math.round(l * e) / e;
 }
-function At(l, t = !0) {
+function Nt(l, t = !0) {
   if (!l || typeof l != "string")
     throw new Error("Empty atom label");
   let e = l.toUpperCase().replace(/[()[\]{}]/g, "");
@@ -3143,11 +2950,11 @@ function At(l, t = !0) {
     throw new Error(`Label "${l}" normalizes to empty string`);
   return e;
 }
-function Zt(l, t = !0) {
+function Qt(l, t = !0) {
   const e = /* @__PURE__ */ new Map();
   l.forEach((s) => {
     try {
-      const r = At(s, t);
+      const r = Nt(s, t);
       e.has(r) || e.set(r, []), e.get(r).push(s);
     } catch (r) {
       console.warn(`Skipping invalid label: ${r.message}`);
@@ -3160,14 +2967,14 @@ function Zt(l, t = !0) {
     );
   return o;
 }
-function $(l, t, e, o = !0) {
-  const s = Zt(e, o), i = l.get(t).map((a) => {
-    const n = At(a, o);
+function Y(l, t, e, o = !0) {
+  const s = Qt(e, o), i = l.get(t).map((a) => {
+    const n = Nt(a, o);
     return s.has(n) ? s.get(n) : a;
   });
   l.data[t] = i;
 }
-function Jt(l) {
+function te(l) {
   if (!l || l === ".")
     return ".";
   const t = String(l).trim();
@@ -3184,178 +2991,497 @@ function Jt(l) {
   }
   return l;
 }
-function tt(l, t) {
-  const o = l.get(t).map((s) => Jt(s));
+function ot(l, t) {
+  const o = l.get(t).map((s) => te(s));
   l.data[t] = o;
 }
-function N(l, t) {
+function R(l, t) {
   for (const e of t)
     if (l.headerLines.includes(e))
       return e;
   return null;
 }
-function Qt(l, t = !0, e = !0, o = !0) {
+function ee(l, t = !0, e = !0, o = !0) {
   let s;
   if ((t || e) && (s = l.get("_atom_site").get(["_atom_site.label", "_atom_site_label"])), t) {
     const r = l.get("_atom_site_aniso", !1);
     if (r) {
-      const i = N(r, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-      i && $(r, i, s);
+      const i = R(r, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+      i && Y(r, i, s);
     }
   }
   if (e || o) {
     const r = l.get("_geom_bond", !1);
     if (r) {
       if (e) {
-        const a = N(
+        const a = R(
           r,
           ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]
         );
-        $(r, a, s);
-        const n = N(
+        Y(r, a, s);
+        const n = R(
           r,
           ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]
         );
-        $(r, n, s);
+        Y(r, n, s);
       }
       if (o) {
-        const a = N(
+        const a = R(
           r,
           ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]
         );
-        a && tt(r, a);
-        const n = N(
+        a && ot(r, a);
+        const n = R(
           r,
           ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]
         );
-        n && tt(r, n);
+        n && ot(r, n);
       }
     }
     const i = l.get("_geom_hbond", !1);
     if (i) {
       if (e) {
-        const a = N(
+        const a = R(
           i,
           ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]
         );
-        $(i, a, s);
-        const n = N(
+        Y(i, a, s);
+        const n = R(
           i,
           ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]
         );
-        n && $(i, n, s);
-        const c = N(
+        n && Y(i, n, s);
+        const c = R(
           i,
           ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]
         );
-        $(i, c, s);
+        Y(i, c, s);
       }
       if (o) {
-        const a = N(
+        const a = R(
           i,
           ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]
         );
-        a && tt(i, a);
+        a && ot(i, a);
       }
     }
   }
 }
-const nt = G(Y, {});
-function te(l) {
-  const t = new d.Vector3();
+const B = G(U), z = class z extends P {
+  /**
+   * Creates a new atom label filter
+   * @param {string[]} [filteredLabels=[]] - Array of atom labels to filter
+   * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
+   */
+  constructor(t = [], e = z.MODES.OFF) {
+    super(z.MODES, e, "AtomLabelFilter", []), this.filteredLabels = new Set(t);
+  }
+  get requiresCameraUpdate() {
+    return !0;
+  }
+  /**
+   * Updates the list of filtered atom labels
+   * @param {string[]} labels - New array of atom labels to filter
+   */
+  setFilteredLabels(t) {
+    this.filteredLabels = new Set(t);
+  }
+  /**
+   * Applies the filter to a structure, removing specified atoms and their bonds
+   * @param {CrystalStructure} structure - Structure to filter
+   * @returns {CrystalStructure} New structure with atoms removed if filter is on
+   */
+  apply(t) {
+    if (this.mode === z.MODES.OFF)
+      return t;
+    const e = t.atoms.filter(
+      (r) => !this.filteredLabels.has(r.label)
+    ), o = t.bonds.filter(
+      (r) => !this.filteredLabels.has(r.atom1Label) && !this.filteredLabels.has(r.atom2Label)
+    ), s = t.hBonds.filter(
+      (r) => !this.filteredLabels.has(r.donorAtomLabel) && !this.filteredLabels.has(r.hydrogenAtomLabel) && !this.filteredLabels.has(r.acceptorAtomLabel)
+    );
+    return new T(
+      t.cell,
+      e,
+      o,
+      s,
+      t.symmetry
+    );
+  }
+  /**
+   * Gets applicable modes - both modes are always available
+   * @returns {Array<string>} Array containing both ON and OFF modes
+   */
+  getApplicableModes() {
+    return Object.values(z.MODES);
+  }
+};
+E(z, "MODES", Object.freeze({
+  ON: "on",
+  OFF: "off"
+}));
+let nt = z;
+const b = class b extends P {
+  /**
+   * Creates a new bond generator
+   * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
+   * @param {BondGenerator.MODES} [mode=BondGenerator.MODES.KEEP] - Initial filter mode
+   */
+  constructor(t, e, o = b.MODES.KEEP) {
+    super(b.MODES, o, "BondGenerator", b.PREFERRED_FALLBACK_ORDER), this.elementProperties = t, this.toleranceFactor = e;
+  }
+  /**
+   * Gets the maximum allowed bond distance between two atoms
+   * @param {string} element1 - First element symbol
+   * @param {string} element2 - Second element symbol
+   * @param {Object} elementProperties - Element property definitions
+   * @returns {number} Maximum allowed bond distance
+   */
+  getMaxBondDistance(t, e, o) {
+    var i, a;
+    const s = (i = o[t]) == null ? void 0 : i.radius, r = (a = o[e]) == null ? void 0 : a.radius;
+    if (!s || !r)
+      throw new Error(`Missing radius for element ${s ? e : t}`);
+    return (s + r) * this.toleranceFactor;
+  }
+  /**
+   * Generates bonds between atoms based on their distances
+   * @private
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @param {Object} elementProperties - Element property definitions
+   * @returns {Set<Bond>} Set of generated bonds
+   */
+  generateBonds(t, e) {
+    const o = /* @__PURE__ */ new Set(), { cell: s, atoms: r } = t, i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map();
+    r.forEach((n) => {
+      const c = n.position.toCartesian(s);
+      if (i.set(n.label, [c.x, c.y, c.z]), Object.prototype.hasOwnProperty.call(e, n.atomType) && !a.has(n.atomType))
+        a.set(n.atomType, n.atomType);
+      else if (!a.has(n.atomType))
+        try {
+          a.set(n.atomType, Q(n.atomType));
+        } catch {
+          throw new Error(`Missing radius for element ${n.atomType}`);
+        }
+    });
+    for (let n = 0; n < r.length; n++) {
+      const c = r[n], d = i.get(c.label);
+      for (let m = n + 1; m < r.length; m++) {
+        const f = r[m], u = i.get(f.label);
+        if ((c.atomType === "H" || f.atomType === "H") && t.bonds.some((V) => V.atom1Label === c.label || V.atom1Label === f.label || V.atom2Label === c.label || V.atom2Label === f.label))
+          continue;
+        const p = B.subtract(d, u), g = B.norm(p), O = this.getMaxBondDistance(
+          a.get(c.atomType),
+          a.get(f.atomType),
+          e
+        );
+        g <= O && g > 1e-4 && o.add(new L(
+          c.label,
+          f.label,
+          g,
+          null,
+          // No standard uncertainty for generated bonds
+          "."
+        ));
+      }
+    }
+    return o;
+  }
+  /**
+   * Applies bond generation to a structure according to current mode
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @returns {CrystalStructure} Structure with modified bonds according to mode
+   */
+  apply(t) {
+    this.ensureValidMode(t);
+    let e;
+    switch (this.mode) {
+      case b.MODES.KEEP:
+        return t;
+      // Keep existing bonds unchanged
+      case b.MODES.ADD: {
+        const o = this.generateBonds(t, this.elementProperties);
+        e = [...t.bonds, ...o];
+        break;
+      }
+      case b.MODES.REPLACE:
+        e = [...this.generateBonds(t, this.elementProperties)];
+        break;
+      case b.MODES.CREATE:
+        e = [...this.generateBonds(t, this.elementProperties)];
+        break;
+      case b.MODES.IGNORE:
+        e = [...t.bonds];
+        break;
+      default:
+        return t;
+    }
+    return new T(
+      t.cell,
+      t.atoms,
+      e,
+      t.hBonds,
+      t.symmetry
+    );
+  }
+  /**
+   * Gets applicable modes based on current structure
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @returns {Array<string>} Array of applicable mode names
+   */
+  getApplicableModes(t) {
+    return t.bonds.length > 0 ? [
+      b.MODES.KEEP,
+      b.MODES.ADD,
+      b.MODES.REPLACE
+    ] : [
+      b.MODES.CREATE,
+      b.MODES.IGNORE
+    ];
+  }
+};
+E(b, "MODES", Object.freeze({
+  KEEP: "keep",
+  // Keep existing bonds only
+  ADD: "add",
+  // Add new bonds while keeping existing ones
+  REPLACE: "replace",
+  // Replace all bonds with generated ones
+  CREATE: "create",
+  // Create bonds only if none exist
+  IGNORE: "ignore"
+  // Don't create bonds if none exist
+})), E(b, "PREFERRED_FALLBACK_ORDER", [
+  b.MODES.KEEP,
+  b.MODES.ADD,
+  b.MODES.REPLACE,
+  b.MODES.CREATE,
+  b.MODES.IGNORE
+]);
+let lt = b;
+const D = class D extends P {
+  /**
+   * Creates a new isolated hydrogen fixer
+   * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
+   * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
+   */
+  constructor(t = D.MODES.OFF, e = 1.1) {
+    super(
+      D.MODES,
+      t,
+      "IsolatedHydrogenFixer",
+      D.PREFERRED_FALLBACK_ORDER
+    ), this.maxBondDistance = e;
+  }
+  /**
+   * Applies the filter to create bonds for isolated hydrogen atoms
+   * @param {CrystalStructure} structure - Structure to filter
+   * @returns {CrystalStructure} Modified structure with additional bonds
+   */
+  apply(t) {
+    if (this.ensureValidMode(t), this.mode === D.MODES.OFF)
+      return t;
+    const e = this.findIsolatedHydrogenAtoms(t);
+    if (e.length === 0)
+      return t;
+    const o = this.createBondsForIsolatedHydrogens(t, e);
+    return new T(
+      t.cell,
+      t.atoms,
+      [...t.bonds, ...o],
+      t.hBonds,
+      t.symmetry
+    );
+  }
+  /**
+   * Finds hydrogen atoms that are in connected groups of size one
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @returns {Array<Object>} Array of isolated hydrogen atoms with their indices
+   */
+  findIsolatedHydrogenAtoms(t) {
+    const e = [];
+    return t.connectedGroups.forEach((o) => {
+      if (o.atoms.length === 1 && o.atoms[0].atomType === "H") {
+        const s = o.atoms[0], r = t.atoms.findIndex((i) => i.label === s.label);
+        e.push({ atom: s, atomIndex: r });
+      }
+    }), e;
+  }
+  /**
+   * Creates bonds for isolated hydrogen atoms to nearby potential bonding partners
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @param {Array<Object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
+   * @returns {Array<Bond>} Array of new bonds
+   */
+  createBondsForIsolatedHydrogens(t, e) {
+    const o = [];
+    return e.forEach(({ atom: s, atomIndex: r }) => {
+      const i = s.position.toCartesian(t.cell), a = [i.x, i.y, i.z];
+      if (r > 0) {
+        const c = t.atoms[r - 1];
+        if (c.atomType !== "H" && (c.disorderGroup === s.disorderGroup || c.disorderGroup === 0 || s.disorderGroup === 0)) {
+          const d = c.position.toCartesian(t.cell), m = [d.x, d.y, d.z], f = B.subtract(a, m), u = B.norm(f);
+          if (u <= this.maxBondDistance) {
+            o.push(new L(
+              c.label,
+              s.label,
+              u,
+              null,
+              "."
+            ));
+            return;
+          }
+        }
+      }
+      let n = !1;
+      for (let c = r - 1; c >= 0 && !n; c--) {
+        const d = t.atoms[c];
+        if (d.atomType === "H" || !(d.disorderGroup === s.disorderGroup || d.disorderGroup === 0 || s.disorderGroup === 0))
+          continue;
+        const m = d.position.toCartesian(t.cell), f = [m.x, m.y, m.z], u = B.subtract(a, f), p = B.norm(u);
+        p <= this.maxBondDistance && (o.push(new L(
+          d.label,
+          s.label,
+          p,
+          null,
+          "."
+        )), n = !0);
+      }
+      if (!n && r < t.atoms.length - 1)
+        for (let c = r + 1; c < t.atoms.length && !n; c++) {
+          const d = t.atoms[c];
+          if (d.atomType === "H" || !(d.disorderGroup === s.disorderGroup || d.disorderGroup === 0 || s.disorderGroup === 0))
+            continue;
+          const m = d.position.toCartesian(t.cell), f = [m.x, m.y, m.z], u = B.subtract(a, f), p = B.norm(u);
+          p <= this.maxBondDistance && (o.push(new L(
+            d.label,
+            s.label,
+            p,
+            null,
+            "."
+          )), n = !0);
+        }
+    }), o;
+  }
+  /**
+   * Gets applicable modes based on whether there are isolated hydrogen atoms
+   * @param {CrystalStructure} structure - Structure to analyze
+   * @returns {Array<string>} Array of applicable mode names
+   */
+  getApplicableModes(t) {
+    return t.bonds.length === 0 ? [D.MODES.OFF] : t.connectedGroups.some(
+      (o) => o.atoms.length === 1 && o.atoms[0].atomType === "H"
+    ) ? [
+      D.MODES.ON
+      //IsolatedHydrogenFixer.MODES.OFF,
+    ] : [D.MODES.OFF];
+  }
+};
+E(D, "MODES", Object.freeze({
+  ON: "on",
+  OFF: "off"
+})), E(D, "PREFERRED_FALLBACK_ORDER", [
+  D.MODES.ON,
+  D.MODES.OFF
+]);
+let ct = D;
+const dt = G(U, {});
+function oe(l) {
+  const t = new h.Vector3();
   l.forEach((c) => t.add(c)), t.divideScalar(l.length);
-  const e = new d.Matrix3(), o = new d.Vector3();
+  const e = new h.Matrix3(), o = new h.Vector3();
   l.forEach((c) => {
     o.copy(c).sub(t), e.elements[0] += o.x * o.x, e.elements[1] += o.x * o.y, e.elements[2] += o.x * o.z, e.elements[3] += o.y * o.x, e.elements[4] += o.y * o.y, e.elements[5] += o.y * o.z, e.elements[6] += o.z * o.x, e.elements[7] += o.z * o.y, e.elements[8] += o.z * o.z;
   });
-  const { values: s, eigenvectors: r } = nt.eigs(ee(e)), i = nt.min(s);
+  const { values: s, eigenvectors: r } = dt.eigs(se(e)), i = dt.min(s);
   if (i <= 0)
-    return console.warn("Could not find a mean plane, expected?"), new d.Vector3(0, 1, 0);
-  const a = r.filter((c) => c.value === i)[0].vector, n = new d.Vector3(...a.toArray());
+    return console.warn("Could not find a mean plane, expected?"), new h.Vector3(0, 1, 0);
+  const a = r.filter((c) => c.value === i)[0].vector, n = new h.Vector3(...a.toArray());
   return n.normalize(), n;
 }
-function ee(l) {
+function se(l) {
   const t = l.elements;
-  return nt.matrix([
+  return dt.matrix([
     [t[0], t[1], t[2]],
     [t[3], t[4], t[5]],
     [t[6], t[7], t[8]]
   ]);
 }
-function oe(l, t) {
-  const e = new d.Box3().setFromObject(l);
+function re(l, t) {
+  const e = new h.Box3().setFromObject(l);
   if (e.isEmpty())
     return 10;
-  const o = new d.Vector3();
+  const o = new h.Vector3();
   e.getSize(o);
   const s = t.fov * Math.PI / 180, r = Math.atan(t.aspect * Math.tan(s / 2) * 2);
   return o.x / o.y <= t.aspect ? o.y / 2 / Math.tan(s / 2) + o.z / 2 : o.x / 2 / Math.tan(r / 2) + o.z / 2;
 }
-function se(l) {
-  const t = [], e = new d.Vector3();
+function ie(l) {
+  const t = [], e = new h.Vector3();
   if (l.traverse((p) => {
     var g;
     ((g = p.userData) == null ? void 0 : g.type) === "atom" && (t.push(p.position.clone()), e.add(p.position));
   }), t.length === 0)
     return null;
   e.divideScalar(t.length);
-  const o = t.map((p) => p.sub(e)), s = te(o), r = new d.Vector3(0, 0, 1), i = new d.Quaternion();
+  const o = t.map((p) => p.sub(e)), s = oe(o), r = new h.Vector3(0, 0, 1), i = new h.Quaternion();
   i.setFromUnitVectors(s, r);
-  const a = new d.Matrix4();
+  const a = new h.Matrix4();
   a.makeRotationFromQuaternion(i);
   const n = o.map((p) => p.clone().applyMatrix4(a));
-  let c = 0, h = 0;
+  let c = 0, d = 0;
   n.forEach((p, g) => {
-    const E = Math.sqrt(p.x * p.x + p.y * p.y);
-    E > c && (c = E, h = g);
+    const O = Math.sqrt(p.x * p.x + p.y * p.y);
+    O > c && (c = O, d = g);
   });
-  const m = new d.Vector2(
-    n[h].x,
-    n[h].y
+  const m = new h.Vector2(
+    n[d].x,
+    n[d].y
   );
   m.x < 0 && m.multiplyScalar(-1);
-  const f = -Math.atan2(m.y, m.x), u = new d.Matrix4().makeRotationZ(f);
-  return a.premultiply(u), a.premultiply(new d.Matrix4().makeRotationX(Math.PI / 8)), a.premultiply(new d.Matrix4().makeRotationY(Math.PI / 48)), a;
+  const f = -Math.atan2(m.y, m.x), u = new h.Matrix4().makeRotationZ(f);
+  return a.premultiply(u), a.premultiply(new h.Matrix4().makeRotationX(Math.PI / 8)), a.premultiply(new h.Matrix4().makeRotationY(Math.PI / 48)), a;
 }
-function re(l, t) {
-  l.children = l.children.filter((a) => !(a instanceof d.Light));
+function ae(l, t) {
+  l.children = l.children.filter((a) => !(a instanceof h.Light));
   let e = 6;
   t.traverse((a) => {
     var n;
     ((n = a.userData) == null ? void 0 : n.type) === "atom" && a.position.length() > e && (e = a.position.length());
   });
-  const o = e * 2, s = new d.AmbientLight(16777215, 1);
+  const o = e * 2, s = new h.AmbientLight(16777215, 1);
   l.add(s);
-  const r = new d.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
-  r.position.set(0, -0.5, o * 2), r.lookAt(new d.Vector3(0, 0, 0)), l.add(r), [
+  const r = new h.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
+  r.position.set(0, -0.5, o * 2), r.lookAt(new h.Vector3(0, 0, 0)), l.add(r), [
     { pos: [-1, -0.5, 1], intensity: 0.4 },
     { pos: [1, -0.5, 1], intensity: 0.4 },
     { pos: [0, -0.5, 1], intensity: 0.3 }
   ].forEach(({ pos: a, intensity: n }) => {
-    const c = new d.DirectionalLight(16777215, n);
+    const c = new h.DirectionalLight(16777215, n);
     c.position.set(
       a[0] * o,
       a[1] * o,
       a[2] * o
-    ), c.lookAt(new d.Vector3(0, 0, 0)), l.add(c);
+    ), c.lookAt(new h.Vector3(0, 0, 0)), l.add(c);
   });
 }
-class ie {
+class ne {
   constructor(t) {
     this.viewer = t, this.state = {
       isDragging: !1,
       isPanning: !1,
-      mouse: new d.Vector2(),
+      mouse: new h.Vector2(),
       lastClickTime: 0,
       clickStartTime: 0,
       pinchStartDistance: 0,
       lastTouchRotation: 0,
       lastRightClickTime: 0,
-      twoFingerStartPos: new d.Vector2(),
+      twoFingerStartPos: new h.Vector2(),
       initialCameraPosition: t.camera.position.clone()
     };
     const { container: e, camera: o, renderer: s, moleculeContainer: r, options: i } = t;
-    this.container = e, this.camera = o, this.renderer = s, this.moleculeContainer = r, this.options = i, this.doubleClickDelay = 300, this.raycaster = new d.Raycaster(), this.raycaster.near = 0.1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
+    this.container = e, this.camera = o, this.renderer = s, this.moleculeContainer = r, this.options = i, this.doubleClickDelay = 300, this.raycaster = new h.Raycaster(), this.raycaster.near = 0.1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
   }
   bindEventHandlers() {
     this.boundHandlers = {
@@ -3381,14 +3507,14 @@ class ie {
       contextMenu: a,
       touchStart: n,
       touchMove: c,
-      touchEnd: h,
+      touchEnd: d,
       resize: m
     } = this.boundHandlers;
-    t.addEventListener("wheel", e, { passive: !1 }), t.addEventListener("mousedown", o), t.addEventListener("mousemove", s), t.addEventListener("mouseup", r), t.addEventListener("mouseleave", r), t.addEventListener("click", i), t.addEventListener("contextmenu", a), t.addEventListener("touchstart", n, { passive: !1 }), t.addEventListener("touchmove", c, { passive: !1 }), t.addEventListener("touchend", h), window.addEventListener("resize", m);
+    t.addEventListener("wheel", e, { passive: !1 }), t.addEventListener("mousedown", o), t.addEventListener("mousemove", s), t.addEventListener("mouseup", r), t.addEventListener("mouseleave", r), t.addEventListener("click", i), t.addEventListener("contextmenu", a), t.addEventListener("touchstart", n, { passive: !1 }), t.addEventListener("touchmove", c, { passive: !1 }), t.addEventListener("touchend", d), window.addEventListener("resize", m);
   }
   clientToMouseCoordinates(t, e) {
     const o = this.container.getBoundingClientRect();
-    return new d.Vector2(
+    return new h.Vector2(
       (t - o.left) / o.width * 2 - 1,
       -((e - o.top) / o.height) * 2 + 1
     );
@@ -3419,15 +3545,15 @@ class ie {
     this.raycaster.params.Line.threshold = o.lineThreshold, this.raycaster.params.Points.threshold = o.pointsThreshold, this.raycaster.params.Mesh.threshold = o.meshThreshold, this.handleSelection(t, e);
   }
   rotateStructure(t) {
-    const e = this.options.interaction.rotationSpeed, o = new d.Vector3(1, 0, 0), s = new d.Vector3(0, 1, 0);
+    const e = this.options.interaction.rotationSpeed, o = new h.Vector3(1, 0, 0), s = new h.Vector3(0, 1, 0);
     this.moleculeContainer.applyMatrix4(
-      new d.Matrix4().makeRotationAxis(s, t.x * e)
+      new h.Matrix4().makeRotationAxis(s, t.x * e)
     ), this.moleculeContainer.applyMatrix4(
-      new d.Matrix4().makeRotationAxis(o, -t.y * e)
+      new h.Matrix4().makeRotationAxis(o, -t.y * e)
     ), this.viewer.requestRender();
   }
   handleZoom(t) {
-    const { minDistance: e, maxDistance: o } = this.options.camera, s = o - e, r = this.camera.position.length(), i = d.MathUtils.clamp(
+    const { minDistance: e, maxDistance: o } = this.options.camera, s = o - e, r = this.camera.position.length(), i = h.MathUtils.clamp(
       r + t * s,
       e,
       o
@@ -3438,8 +3564,8 @@ class ie {
     this.camera.position.x = this.state.initialCameraPosition.x, this.camera.position.y = this.state.initialCameraPosition.y, this.camera.rotation.set(0, 0, 0), this.viewer.requestRender();
   }
   panCamera(t) {
-    const e = this.camera.position.z, o = this.camera.fov * Math.PI / 180, s = Math.tan(o / 2) * e, r = s * this.camera.aspect, i = -t.x * r, a = -t.y * s, n = new d.Vector3(), c = new d.Vector3();
-    this.camera.matrix.extractBasis(n, c, new d.Vector3()), this.camera.position.addScaledVector(n, i), this.camera.position.addScaledVector(c, a), this.viewer.requestRender();
+    const e = this.camera.position.z, o = this.camera.fov * Math.PI / 180, s = Math.tan(o / 2) * e, r = s * this.camera.aspect, i = -t.x * r, a = -t.y * s, n = new h.Vector3(), c = new h.Vector3();
+    this.camera.matrix.extractBasis(n, c, new h.Vector3()), this.camera.position.addScaledVector(n, i), this.camera.position.addScaledVector(c, a), this.viewer.requestRender();
   }
   handleTouchStart(t) {
     t.preventDefault();
@@ -3463,7 +3589,7 @@ class ie {
     t.preventDefault();
     const e = t.touches;
     if (e.length === 1 && this.state.isDragging) {
-      const o = e[0], s = this.clientToMouseCoordinates(o.clientX, o.clientY), r = new d.Vector2(
+      const o = e[0], s = this.clientToMouseCoordinates(o.clientX, o.clientY), r = new h.Vector2(
         s.x - this.state.mouse.x,
         s.y - this.state.mouse.y
       );
@@ -3510,7 +3636,7 @@ class ie {
   handleMouseMove(t) {
     if (!this.state.isDragging && !this.state.isPanning)
       return;
-    const e = this.container.getBoundingClientRect(), o = new d.Vector2(
+    const e = this.container.getBoundingClientRect(), o = new h.Vector2(
       (t.clientX - e.left) / e.width * 2 - 1,
       -((t.clientY - e.top) / e.height) * 2 + 1
     ), s = o.clone().sub(this.state.mouse);
@@ -3544,13 +3670,13 @@ class ie {
       contextMenu: a,
       touchStart: n,
       touchMove: c,
-      touchEnd: h,
+      touchEnd: d,
       resize: m
     } = this.boundHandlers;
-    t.removeEventListener("wheel", e), t.removeEventListener("mousedown", o), t.removeEventListener("mousemove", s), t.removeEventListener("mouseup", r), t.removeEventListener("mouseleave", r), t.removeEventListener("click", i), t.removeEventListener("contextmenu", a), t.removeEventListener("touchstart", n), t.removeEventListener("touchmove", c), t.removeEventListener("touchend", h), window.removeEventListener("resize", m);
+    t.removeEventListener("wheel", e), t.removeEventListener("mousedown", o), t.removeEventListener("mousemove", s), t.removeEventListener("mouseup", r), t.removeEventListener("mouseleave", r), t.removeEventListener("click", i), t.removeEventListener("contextmenu", a), t.removeEventListener("touchstart", n), t.removeEventListener("touchmove", c), t.removeEventListener("touchend", d), window.removeEventListener("resize", m);
   }
 }
-class ae {
+class le {
   constructor(t) {
     this.options = t, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
   }
@@ -3692,7 +3818,7 @@ class ae {
     this.clear(), this.selectionCallbacks.clear();
   }
 }
-class vt {
+class St {
   constructor(t, e = {}) {
     const o = ["constant", "onDemand"];
     if (e.renderMode && !o.includes(e.renderMode))
@@ -3702,7 +3828,7 @@ class vt {
     this.container = t, this.options = {
       camera: {
         ..._.camera,
-        initialPosition: new d.Vector3(..._.camera.initialPosition),
+        initialPosition: new h.Vector3(..._.camera.initialPosition),
         ...e.camera || {}
       },
       selection: {
@@ -3741,39 +3867,40 @@ class vt {
       currentFloor: null,
       baseStructure: null,
       ortepObjects: /* @__PURE__ */ new Map(),
-      structureCenter: new d.Vector3()
+      structureCenter: new h.Vector3()
     }, this.modifiers = {
-      removeatoms: new it(),
-      missingbonds: new at(
+      removeatoms: new nt(),
+      addhydrogen: new ct(),
+      missingbonds: new lt(
         this.options.elementProperties,
         this.options.bondGrowToleranceFactor
       ),
-      hydrogen: new st(this.options.hydrogenMode),
-      disorder: new rt(this.options.disorderMode),
-      symmetry: new j(this.options.symmetryMode)
-    }, this.selections = new ae(this.options), this.setupScene(), this.controls = new ie(this), this.animate(), this.needsRender = !0;
+      hydrogen: new it(this.options.hydrogenMode),
+      disorder: new at(this.options.disorderMode),
+      symmetry: new K(this.options.symmetryMode)
+    }, this.selections = new le(this.options), this.setupScene(), this.controls = new ne(this), this.animate(), this.needsRender = !0;
   }
   setupScene() {
-    this.scene = new d.Scene(), this.camera = new d.PerspectiveCamera(
+    this.scene = new h.Scene(), this.camera = new h.PerspectiveCamera(
       this.options.camera.fov,
       this.container.clientWidth / this.container.clientHeight,
       this.options.camera.near,
       this.options.camera.far
-    ), this.renderer = new d.WebGLRenderer({ antialias: !0, alpha: !0 }), this.renderer.setSize(this.container.clientWidth, this.container.clientHeight), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new d.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new d.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
+    ), this.renderer = new h.WebGLRenderer({ antialias: !0, alpha: !0 }), this.renderer.setSize(this.container.clientWidth, this.container.clientHeight), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new h.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new h.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
   }
   async loadStructure(t, e = 0) {
     if (t === void 0)
       return console.error("Cannot load an empty text as CIF"), { success: !1, error: "Cannot load an empty text as CIF" };
     try {
-      const o = new It(t);
+      const o = new Ft(t);
       try {
-        this.state.baseStructure = L.fromCIF(o.getBlock(e));
+        this.state.baseStructure = T.fromCIF(o.getBlock(e));
       } catch (s) {
         if (this.options.fixCifErrors)
           throw s;
         try {
-          const r = Qt(o.getBlock(e));
-          this.state.baseStructure = L.fromCIF(r);
+          const r = ee(o.getBlock(e));
+          this.state.baseStructure = T.fromCIF(r);
         } catch {
           throw s;
         }
@@ -3785,8 +3912,8 @@ class vt {
   }
   async setupNewStructure() {
     this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-    const t = se(this.state.currentStructure);
-    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new d.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new d.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), re(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
+    const t = ie(this.state.currentStructure);
+    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new h.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new h.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ae(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
   }
   async updateStructure() {
     try {
@@ -3801,12 +3928,12 @@ class vt {
     let t = this.state.baseStructure;
     for (const s of Object.values(this.modifiers))
       t = s.apply(t);
-    const o = new Gt(t, this.options).getGroup();
+    const o = new qt(t, this.options).getGroup();
     this.moleculeContainer.add(o), this.state.currentStructure = o, this.selections.pruneInvalidSelections(this.moleculeContainer);
   }
   updateCamera() {
     this.controls.handleResize();
-    const t = oe(this.moleculeContainer, this.camera);
+    const t = re(this.moleculeContainer, this.camera);
     this.camera.position.set(0, 0, t), this.camera.rotation.set(0, 0, 0), this.camera.lookAt(this.cameraTarget), this.options.camera.minDistance = t * 0.2, this.options.camera.maxDistance = t * 2;
   }
   removeStructure() {
@@ -3837,7 +3964,7 @@ class vt {
     }), this.selections.dispose(), this.renderer.dispose(), this.renderer.domElement.parentNode && this.renderer.domElement.parentNode.removeChild(this.renderer.domElement), this.scene = null, this.camera = null, this.renderer = null, this.state = null, this.options = null;
   }
 }
-const ne = {
+const ce = {
   disorder: {
     all: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="g8" transform="translate(0,-0.09016496)"><g id="g7" transform="translate(0,0.52916667)"><g id="path2-16" transform="rotate(180,28.623599,19.40998)" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.40998)" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-9" cx="-28.593182" cy="-24.863596" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2-3" cx="-33.888008" cy="-14.141389" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7-9" cx="-23.298351" cy="-14.141389" r="2.3135188" transform="scale(-1)" /></g><g id="g6" transform="translate(0,-0.52916663)"><g id="path2" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2" cx="23.35919" cy="24.678572" r="2.3135188" /><g id="path2-1" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1" cx="28.654018" cy="13.956366" r="2.3135188" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7" cx="33.948849" cy="24.678572" r="2.3135188" /></g></g></g></svg>',
     group1: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="path2-16" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-9" cx="-28.593182" cy="-25.302597" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-2-3" cx="-33.888008" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-7-9" cx="-23.298351" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><g id="g6" transform="translate(0,-0.61933159)"><g id="path2" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2" cx="23.35919" cy="24.678572" r="2.3135188" /><g id="path2-1" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1" cx="28.654018" cy="13.956366" r="2.3135188" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7" cx="33.948849" cy="24.678572" r="2.3135188" /></g></g></svg>',
@@ -3859,7 +3986,7 @@ const ne = {
     "bonds-yes-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#000000;fill-opacity:1"><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /></g></svg>'
   },
   upload: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1"><marker style="overflow:visible" id="ArrowWide" refX="0" refY="0" orient="auto-start-reverse" arrow" markerWidth="1" markerHeight="1" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid"><path style="fill:none;stroke:context-stroke;stroke-width:1;stroke-linecap:butt" d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" id="path1" /></marker></defs><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><text xml:space="preserve" style="font-size:7.05556px;fill:#e6e6e6;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none" x="22.242813" y="28.151989" id="text2"><tspan id="tspan2" style="font-size:7.05556px;fill:#1a1a1a;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none" x="22.242813" y="28.151989">CIF</tspan></text><path style="fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 20.714121,18.107197 v 3.07807 h 15.879794 v -3.07807" id="path2" /><path style="fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)" d="M 28.654018,19.170064 V 11.045456" id="path3" /></g></svg>'
-}, le = `
+}, de = `
   cifview-widget {
     display: flex;
     flex-direction: column;
@@ -3920,7 +4047,7 @@ const ne = {
     height: 24px;
   }
 `;
-class ce extends HTMLElement {
+class he extends HTMLElement {
   static get observedAttributes() {
     return [
       "caption",
@@ -3937,12 +4064,12 @@ class ce extends HTMLElement {
   constructor() {
     if (super(), !document.getElementById("cifview-styles")) {
       const t = document.createElement("style");
-      t.id = "cifview-styles", t.textContent = le, document.head.appendChild(t);
+      t.id = "cifview-styles", t.textContent = de, document.head.appendChild(t);
     }
     this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {};
   }
   get icons() {
-    return { ...ne, ...this.customIcons };
+    return { ...ce, ...this.customIcons };
   }
   async connectedCallback() {
     this.baseCaption = this.getAttribute("caption") || "", this.parseOptions(), this.parseInitialModes();
@@ -3951,7 +4078,7 @@ class ce extends HTMLElement {
     const e = document.createElement("div");
     e.className = "button-container", t.appendChild(e), this.buttonContainer = e;
     const o = document.createElement("div");
-    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new vt(t, this.userOptions), this.viewer.selections.onChange((i) => {
+    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new St(t, this.userOptions), this.viewer.selections.onChange((i) => {
       this.selections = i, this.updateCaption();
     }), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
     const s = this.getAttribute("src"), r = this.getAttribute("data");
@@ -4012,8 +4139,8 @@ class ce extends HTMLElement {
       for (const a of e) {
         r[a] = {};
         const n = Object.values(this.viewer.modifiers[a].MODES);
-        Object.getOwnPropertyNames(t[e]).forEach((h) => {
-          n.includes(h) ? r[a][h] = t[a][h] : i.push([a, h]);
+        Object.getOwnPropertyNames(t[e]).forEach((d) => {
+          n.includes(d) ? r[a][d] = t[a][d] : i.push([a, d]);
         });
       }
       if (i.length > 0) {
@@ -4061,7 +4188,7 @@ class ce extends HTMLElement {
         case "options":
           if (this.parseOptions(), this.viewer) {
             const s = this.querySelector(".crystal-container");
-            this.viewer.dispose(), this.viewer = new vt(s, this.userOptions), this.viewer.selections.onChange((r) => {
+            this.viewer.dispose(), this.viewer = new St(s, this.userOptions), this.viewer.selections.onChange((r) => {
               this.selections = r, this.updateCaption();
             }), this.viewer.state.currentCifContent && (await this.viewer.loadStructure(this.viewer.state.currentCifContent), this.setupButtons());
           }
@@ -4129,7 +4256,7 @@ class ce extends HTMLElement {
         if (o.type === "atom")
           r = `${o.data.label} (${o.data.atomType})`;
         else if (o.type === "bond") {
-          const i = Xt(o.data.bondLength, o.data.bondLengthSU);
+          const i = Jt(o.data.bondLength, o.data.bondLengthSU);
           r = `${o.data.atom1Label}-${o.data.atom2Label}: ${i} Å`;
         } else o.type === "hbond" && (r = `${o.data.donorAtomLabel}→${o.data.acceptorAtomLabel}`);
         return `<span style="color:${s}">${r}</span>`;
@@ -4144,21 +4271,21 @@ class ce extends HTMLElement {
 }
 if (typeof window < "u" && window.customElements)
   try {
-    window.customElements.define("cifview-widget", ce);
+    window.customElements.define("cifview-widget", he);
   } catch (l) {
     l.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", l);
   }
 export {
-  it as AtomLabelFilter,
-  at as BondGenerator,
-  It as CIF,
-  ce as CifViewWidget,
-  L as CrystalStructure,
-  vt as CrystalViewer,
-  rt as DisorderFilter,
-  st as HydrogenFilter,
-  Gt as ORTEP3JsStructure,
-  j as SymmetryGrower,
-  Xt as formatValueEsd,
-  Qt as tryToFixCifBlock
+  nt as AtomLabelFilter,
+  lt as BondGenerator,
+  Ft as CIF,
+  he as CifViewWidget,
+  T as CrystalStructure,
+  St as CrystalViewer,
+  at as DisorderFilter,
+  it as HydrogenFilter,
+  qt as ORTEP3JsStructure,
+  K as SymmetryGrower,
+  Jt as formatValueEsd,
+  ee as tryToFixCifBlock
 };
