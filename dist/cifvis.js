@@ -4,7 +4,7 @@ var ft = (l) => {
 };
 var Nt = (l, t, e) => t in l ? Ot(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
 var O = (l, t, e) => Nt(l, typeof t != "symbol" ? t + "" : t, e), pt = (l, t, e) => t.has(l) || ft("Cannot " + e);
-var x = (l, t, e) => (pt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), ut = (l, t, e) => t.has(l) ? ft("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), gt = (l, t, e, o) => (pt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
+var S = (l, t, e) => (pt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), ut = (l, t, e) => t.has(l) ? ft("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), gt = (l, t, e, o) => (pt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
 import { create as G, all as Y } from "mathjs";
 import * as d from "three";
 function et(l, t = !0) {
@@ -417,7 +417,7 @@ function T(l) {
     [0, 0, l.c * n / a]
   ]);
 }
-function St(l) {
+function xt(l) {
   return k.matrix([
     [l[0], l[3], l[4]],
     [l[3], l[1], l[5]],
@@ -442,7 +442,7 @@ function zt(l) {
   ];
 }
 function Ft(l, t) {
-  const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = St(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
+  const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = xt(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
   return zt(a);
 }
 const _t = G(Y);
@@ -462,34 +462,34 @@ const ht = class ht {
         "BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition"
       );
     gt(this, v, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
-      0: { get: () => x(this, v)[0] },
-      1: { get: () => x(this, v)[1] },
-      2: { get: () => x(this, v)[2] },
+      0: { get: () => S(this, v)[0] },
+      1: { get: () => S(this, v)[1] },
+      2: { get: () => S(this, v)[2] },
       length: { value: 3 },
       [Symbol.iterator]: {
         value: function* () {
-          yield x(this, v)[0], yield x(this, v)[1], yield x(this, v)[2];
+          yield S(this, v)[0], yield S(this, v)[1], yield S(this, v)[2];
         }
       }
     });
   }
   get x() {
-    return x(this, v)[0];
+    return S(this, v)[0];
   }
   get y() {
-    return x(this, v)[1];
+    return S(this, v)[1];
   }
   get z() {
-    return x(this, v)[2];
+    return S(this, v)[2];
   }
   set x(t) {
-    x(this, v)[0] = t;
+    S(this, v)[0] = t;
   }
   set y(t) {
-    x(this, v)[1] = t;
+    S(this, v)[1] = t;
   }
   set z(t) {
-    x(this, v)[2] = t;
+    S(this, v)[2] = t;
   }
   /**
    * Converts from given coordinate system to Cartesian coordinates
@@ -504,7 +504,7 @@ const ht = class ht {
 };
 v = new WeakMap();
 let K = ht;
-class xt extends K {
+class St extends K {
   /**
    * Creates a new fractional position
    * @param {number} x - X coordinate in fractional units
@@ -566,7 +566,7 @@ class Ht {
     try {
       const a = s.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], e), n = s.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], e), c = s.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], e);
       if (!r.includes(a) && !r.includes(n) && !r.includes(c))
-        return new xt(a, n, c);
+        return new St(a, n, c);
       o = !0;
     } catch {
     }
@@ -645,7 +645,7 @@ class I {
   * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
   */
   getEllipsoidMatrix(t) {
-    const e = St(this.getUCart(t)), { eigenvectors: o } = A.eigs(e), s = A.transpose(A.matrix(o.map((c) => c.vector))), r = A.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), i = A.det(s), a = A.diag(r.map(Math.sqrt));
+    const e = xt(this.getUCart(t)), { eigenvectors: o } = A.eigs(e), s = A.transpose(A.matrix(o.map((c) => c.vector))), r = A.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), i = A.det(s), a = A.diag(r.map(Math.sqrt));
     let n;
     if (A.abs(i - 1) > 1e-10) {
       const c = A.multiply(s, 1 / i);
@@ -789,7 +789,7 @@ class M {
     }
   }
 }
-const S = G(Y);
+const x = G(Y);
 function bt(l) {
   if (Math.abs(l) < 21e-4)
     return "";
@@ -882,8 +882,8 @@ class B {
    * @returns {number[]} Transformed point in fractional coordinates
    */
   applyToPoint(t) {
-    const e = S.add(
-      S.multiply(this.rotMatrix, t),
+    const e = x.add(
+      x.multiply(this.rotMatrix, t),
       this.transVector
     );
     return Array.isArray(e) ? e : e.toArray();
@@ -899,8 +899,8 @@ class B {
    * @returns {Atom} New atom instance with transformed coordinates and ADPs
    */
   applyToAtom(t) {
-    const e = new xt(...S.add(
-      S.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
+    const e = new St(...x.add(
+      x.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
       this.transVector
     ));
     let o = null;
@@ -909,7 +909,7 @@ class B {
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
-      ], r = this.rotMatrix, i = S.transpose(r), a = S.multiply(S.multiply(r, s), i);
+      ], r = this.rotMatrix, i = x.transpose(r), a = x.multiply(x.multiply(r, s), i);
       o = new I(
         a[0][0],
         // u11
@@ -952,7 +952,7 @@ class B {
    */
   copy() {
     const t = new B("x,y,z");
-    return t.rotMatrix = S.clone(this.rotMatrix), t.transVector = S.clone(this.transVector), t;
+    return t.rotMatrix = x.clone(this.rotMatrix), t.transVector = x.clone(this.transVector), t;
   }
   /**
    * Generates a symmetry operation string from the internal matrix and vector
@@ -960,7 +960,7 @@ class B {
    * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
    */
   toSymmetryString(t = null) {
-    const e = ["x", "y", "z"], o = [], s = t ? S.add(this.transVector, t) : this.transVector;
+    const e = ["x", "y", "z"], o = [], s = t ? x.add(this.transVector, t) : this.transVector;
     for (let r = 0; r < 3; r++) {
       let i = "";
       const a = [];
@@ -990,7 +990,7 @@ class U {
       o.map((i, a) => [(a + 1).toString(), a])
     ), this.identitySymOpId = (r = Array.from(this.operationIds.entries()).find(([i, a]) => {
       const n = this.symmetryOperations[a];
-      return S.equal(n.rotMatrix, S.identity(3)) && S.equal(n.transVector, S.zeros(3));
+      return x.equal(n.rotMatrix, x.identity(3)) && x.equal(n.transVector, x.zeros(3));
     })) == null ? void 0 : r[0];
   }
   generateEquivalentPositions(t) {
@@ -1683,7 +1683,6 @@ const _ = {
     mode: "multiple",
     markerMult: 1.3,
     bondMarkerMult: 1.7,
-    markerSegments: 32,
     highlightEmissive: 11184810,
     markerColors: [
       2062260,
@@ -3763,6 +3762,8 @@ class vt {
     ), this.renderer = new d.WebGLRenderer({ antialias: !0, alpha: !0 }), this.renderer.setSize(this.container.clientWidth, this.container.clientHeight), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new d.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new d.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
   }
   async loadStructure(t, e = 0) {
+    if (t === void 0)
+      return console.error("Cannot load an empty text as CIF"), { success: !1, error: "Cannot load an empty text as CIF" };
     try {
       const o = new It(t);
       try {
@@ -3950,7 +3951,7 @@ class ce extends HTMLElement {
     const e = document.createElement("div");
     e.className = "button-container", t.appendChild(e), this.buttonContainer = e;
     const o = document.createElement("div");
-    o.className = "crystal-caption", o.textContent = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new vt(t, this.userOptions), this.viewer.selections.onChange((i) => {
+    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new vt(t, this.userOptions), this.viewer.selections.onChange((i) => {
       this.selections = i, this.updateCaption();
     }), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
     const s = this.getAttribute("src"), r = this.getAttribute("data");
@@ -4025,8 +4026,8 @@ class ce extends HTMLElement {
     }
   }
   async updateFilteredAtoms() {
-    const t = this.getAttribute("filtered-atoms"), e = t ? t.split(",") : [];
-    this.viewer.modifiers.removeatoms.setFilteredLabels(e), e.length > 0 ? (this.viewer.modifiers.removeatoms.mode = "on", await this.viewer.setupNewStructure()) : this.viewer.modifiers.removeatoms.mode = "off";
+    const t = this.getAttribute("filtered-atoms"), e = t ? t.split(",").map((o) => o.trim()) : [];
+    this.viewer.modifiers.removeatoms.setFilteredLabels(e), e.length > 0 ? this.viewer.modifiers.removeatoms.mode = "on" : this.viewer.modifiers.removeatoms.mode = "off", this.setupButtons();
   }
   addButton(t, e, o) {
     const s = document.createElement("button");
@@ -4055,7 +4056,7 @@ class ce extends HTMLElement {
           this.customIcons = this.parseCustomIcons();
           break;
         case "filtered-atoms":
-          await this.updateFilteredAtoms();
+          await this.updateFilteredAtoms(), await this.viewer.updateStructure();
           break;
         case "options":
           if (this.parseOptions(), this.viewer) {
@@ -4078,17 +4079,44 @@ class ce extends HTMLElement {
   }
   async loadFromUrl(t) {
     try {
-      const o = await (await fetch(t)).text();
-      await this.viewer.loadStructure(o), this.setupButtons();
+      const e = await fetch(t);
+      if (!e.ok)
+        throw new Error(`Failed to load CIF file: ${e.status} ${e.statusText}`);
+      const o = e.headers.get("content-type");
+      if (o && o.includes("text/html"))
+        throw new Error("Received no or invalid content for src.");
+      const s = await e.text();
+      if (s.includes("<!DOCTYPE html>") || s.includes("<html>"))
+        throw new Error("Received no or invalid content for src.");
+      const r = await this.viewer.loadStructure(s);
+      if (r.success)
+        this.setupButtons();
+      else
+        throw new Error(r.error || "Unknown Error");
     } catch (e) {
-      console.error("Error loading structure:", e);
+      this.createErrorDiv(e);
     }
   }
   async loadFromString(t) {
     try {
       await this.viewer.loadStructure(t), this.setupButtons();
     } catch (e) {
-      console.error("Error loading structure:", e);
+      this.createErrorDiv(e);
+    }
+  }
+  createErrorDiv(t) {
+    if (console.error("Error loading structure:", t), this.baseCaption = `Error loading structure: ${t.message}`, this.updateCaption(), this.viewer) {
+      const e = this.querySelector(".crystal-container");
+      if (e) {
+        for (; e.firstChild; )
+          e.firstChild.remove();
+        const o = document.createElement("div");
+        o.style.display = "flex", o.style.justifyContent = "center", o.style.alignItems = "center", o.style.height = "100%", o.style.padding = "20px", o.style.textAlign = "center", o.style.color = "#d32f2f", o.innerHTML = `<div>
+                    <h3>Error Loading Structure</h3>
+                    <p>${t.message}</p>
+                    <p>Please check that the file exists and is a valid CIF file.</p>
+                </div>`, e.appendChild(o);
+      }
     }
   }
   updateCaption() {
