@@ -3,7 +3,7 @@ import { CrystalStructure, inferElementFromLabel } from '../crystal.js';
 import { BaseFilter } from './base.js';
 
 import { create, all } from 'mathjs';
-export const math = create(all);
+const math = create(all);
 
 /**
  * Filter that removes specified atoms and their connected bonds from a structure
@@ -265,5 +265,233 @@ export class BondGenerator extends BaseFilter {
             BondGenerator.MODES.CREATE,
             BondGenerator.MODES.IGNORE,
         ];
+    }
+}
+
+/**
+ * Structure modifier that fixes isolated hydrogen atoms by creating
+ * bonds to nearby potential bonding partners.
+ * @extends BaseFilter
+ */
+export class IsolatedHydrogenFixer extends BaseFilter {
+    static MODES = Object.freeze({
+        ON: 'on',
+        OFF: 'off',
+    });
+
+    static PREFERRED_FALLBACK_ORDER = [
+        IsolatedHydrogenFixer.MODES.ON,
+        IsolatedHydrogenFixer.MODES.OFF,
+    ];
+
+    /**
+     * Creates a new isolated hydrogen fixer
+     * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
+     * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
+     */
+    constructor(mode = IsolatedHydrogenFixer.MODES.OFF, maxBondDistance = 1.1) {
+        super(
+            IsolatedHydrogenFixer.MODES,
+            mode,
+            'IsolatedHydrogenFixer',
+            IsolatedHydrogenFixer.PREFERRED_FALLBACK_ORDER,
+        );
+        this.maxBondDistance = maxBondDistance;
+    }
+
+    /**
+     * Applies the filter to create bonds for isolated hydrogen atoms
+     * @param {CrystalStructure} structure - Structure to filter
+     * @returns {CrystalStructure} Modified structure with additional bonds
+     */
+    apply(structure) {
+        this.ensureValidMode(structure);
+
+        // If mode is OFF, return the structure unchanged
+        if (this.mode === IsolatedHydrogenFixer.MODES.OFF) {
+            return structure;
+        }
+
+        // Find all isolated hydrogen atoms
+        const isolatedHydrogenAtoms = this.findIsolatedHydrogenAtoms(structure);
+        
+        if (isolatedHydrogenAtoms.length === 0) {
+            return structure;
+        }
+
+        // Create new bonds for isolated hydrogen atoms
+        const newBonds = this.createBondsForIsolatedHydrogens(structure, isolatedHydrogenAtoms);
+        
+        // Return structure with additional bonds
+        return new CrystalStructure(
+            structure.cell,
+            structure.atoms,
+            [...structure.bonds, ...newBonds],
+            structure.hBonds,
+            structure.symmetry
+        );
+    }
+
+    /**
+     * Finds hydrogen atoms that are in connected groups of size one
+     * @param {CrystalStructure} structure - Structure to analyze
+     * @returns {Array<Object>} Array of isolated hydrogen atoms with their indices
+     */
+    findIsolatedHydrogenAtoms(structure) {
+        const isolatedHydrogenAtoms = [];
+
+        // Find connected groups with only a single hydrogen atom
+        structure.connectedGroups.forEach(group => {
+            if (group.atoms.length === 1 && group.atoms[0].atomType === 'H') {
+                const atom = group.atoms[0];
+                const atomIndex = structure.atoms.findIndex(a => a.label === atom.label);
+                isolatedHydrogenAtoms.push({ atom, atomIndex });
+            }
+        });
+
+        return isolatedHydrogenAtoms;
+    }
+
+    /**
+     * Creates bonds for isolated hydrogen atoms to nearby potential bonding partners
+     * @param {CrystalStructure} structure - Structure to analyze
+     * @param {Array<Object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
+     * @returns {Array<Bond>} Array of new bonds
+     */
+    createBondsForIsolatedHydrogens(structure, isolatedHydrogenAtoms) {
+        const newBonds = [];
+
+        isolatedHydrogenAtoms.forEach(({ atom, atomIndex }) => {
+            // Convert hydrogen position to Cartesian coordinates
+            const cartPos = atom.position.toCartesian(structure.cell);
+            const hydrogenPosition = [cartPos.x, cartPos.y, cartPos.z];
+            
+            // Try to bond with the previous atom first (common case)
+            if (atomIndex > 0) {
+                const previousAtom = structure.atoms[atomIndex - 1];
+                
+                if (previousAtom.atomType !== 'H' && 
+                    (previousAtom.disorderGroup === atom.disorderGroup || 
+                     previousAtom.disorderGroup === 0 || 
+                     atom.disorderGroup === 0)) {
+                    
+                    const prevPos = previousAtom.position.toCartesian(structure.cell);
+                    const prevPosition = [prevPos.x, prevPos.y, prevPos.z];
+                    
+                    const diff = math.subtract(hydrogenPosition, prevPosition);
+                    const distance = math.norm(diff);
+                    
+                    if (distance <= this.maxBondDistance) {
+                        // Create a bond to the previous atom
+                        newBonds.push(new Bond(
+                            previousAtom.label,
+                            atom.label,
+                            distance,
+                            null,
+                            '.',
+                        ));
+                        // Skip further search
+                        return;
+                    }
+                }
+            }
+            
+            // If no bond with previous atom, check others in reverse order
+            let foundBond = false;
+            
+            // Check atoms before hydrogen (in reverse)
+            for (let i = atomIndex - 1; i >= 0 && !foundBond; i--) {
+                const partner = structure.atoms[i];
+                
+                if (partner.atomType === 'H') {
+                    continue; 
+                }
+                
+                if (!(partner.disorderGroup === atom.disorderGroup || 
+                      partner.disorderGroup === 0 || 
+                      atom.disorderGroup === 0)) {
+                    continue; 
+                }
+                
+                const partnerPos = partner.position.toCartesian(structure.cell);
+                const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
+                
+                const diff = math.subtract(hydrogenPosition, partnerPosition);
+                const distance = math.norm(diff);
+                
+                if (distance <= this.maxBondDistance) {
+                    newBonds.push(new Bond(
+                        partner.label,
+                        atom.label,
+                        distance,
+                        null,
+                        '.',
+                    ));
+                    foundBond = true;
+                }
+            }
+            
+            // Only check atoms after hydrogen if no bond found yet
+            if (!foundBond && atomIndex < structure.atoms.length - 1) {
+                for (let i = atomIndex + 1; i < structure.atoms.length && !foundBond; i++) {
+                    const partner = structure.atoms[i];
+                    
+                    if (partner.atomType === 'H') {
+                        continue; 
+                    }
+                    
+                    if (!(partner.disorderGroup === atom.disorderGroup || 
+                          partner.disorderGroup === 0 || 
+                          atom.disorderGroup === 0)) {
+                        continue; 
+                    }
+                    
+                    const partnerPos = partner.position.toCartesian(structure.cell);
+                    const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
+                    
+                    const diff = math.subtract(hydrogenPosition, partnerPosition);
+                    const distance = math.norm(diff);
+                    
+                    if (distance <= this.maxBondDistance) {
+                        newBonds.push(new Bond(
+                            partner.label,
+                            atom.label,
+                            distance,
+                            null,
+                            '.',
+                        ));
+                        foundBond = true;
+                    }
+                }
+            }
+        });
+        
+        return newBonds;
+    }
+
+    /**
+     * Gets applicable modes based on whether there are isolated hydrogen atoms
+     * @param {CrystalStructure} structure - Structure to analyze
+     * @returns {Array<string>} Array of applicable mode names
+     */
+    getApplicableModes(structure) {
+        // Check if there are any bonds at all
+        if (structure.bonds.length === 0) {
+            return [IsolatedHydrogenFixer.MODES.OFF];
+        }
+        
+        // Check if there are isolated hydrogen atoms
+        const hasIsolatedHydrogens = structure.connectedGroups.some(group => 
+            group.atoms.length === 1 && group.atoms[0].atomType === 'H',
+        );
+        
+        if (hasIsolatedHydrogens) {
+            return [
+                IsolatedHydrogenFixer.MODES.ON,
+                //IsolatedHydrogenFixer.MODES.OFF,
+            ];
+        }
+        
+        return [IsolatedHydrogenFixer.MODES.OFF];
     }
 }

@@ -5,7 +5,7 @@ import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
-import { BondGenerator, AtomLabelFilter } from '../structure/structure-modifiers/fixers.js';
+import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../structure/structure-modifiers/fixers.js';
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 
@@ -291,6 +291,7 @@ export class CrystalViewer {
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
+            addhydrogen: new IsolatedHydrogenFixer(),
             missingbonds: new BondGenerator(
                 this.options.elementProperties,
                 this.options.bondGrowToleranceFactor,
