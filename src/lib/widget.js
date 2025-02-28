@@ -348,6 +348,8 @@ export class CifViewWidget extends HTMLElement {
                 // Recreate viewer with new options
                 if (this.viewer) {
                     const container = this.querySelector('.crystal-container');
+                    const currentCifContent = this.viewer.state.currentCifContent;
+
                     this.viewer.dispose();
                     this.viewer = new CrystalViewer(container, this.userOptions);
                     this.viewer.selections.onChange(selections => {
@@ -356,8 +358,8 @@ export class CifViewWidget extends HTMLElement {
                     });
                     
                     // Reload structure if we already had one
-                    if (this.viewer.state.currentCifContent) {
-                        await this.viewer.loadStructure(this.viewer.state.currentCifContent);
+                    if (currentCifContent) {
+                        await this.viewer.loadStructure(currentCifContent);
                         this.setupButtons();
                     }
                 }
