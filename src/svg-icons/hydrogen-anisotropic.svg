@@ -27,8 +27,8 @@
      inkscape:zoom="12.05051"
      inkscape:cx="33.69152"
      inkscape:cy="33.733012"
-     inkscape:window-width="1920"
-     inkscape:window-height="1009"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
      inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
@@ -52,12 +52,12 @@
          x="84.344688"
          y="50.876183">H</tspan></text>
     <ellipse
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.816;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;fill-opacity:1;stroke:#a4a4a4;stroke-width:1.8975;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1"
        id="path7-4"
-       cx="41.174881"
-       cy="90.830009"
-       rx="4.9952669"
-       ry="9.7379656"
-       transform="rotate(-36.975178)" />
+       cx="37.167099"
+       cy="89.280861"
+       rx="4.8005486"
+       ry="9.1209068"
+       transform="matrix(0.82466981,-0.56561445,0.63703802,0.77083238,0,0)" />
   </g>
 </svg>
