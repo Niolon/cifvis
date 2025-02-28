@@ -388,34 +388,6 @@ describe('SymmetryGrower', () => {
             expect(grown.bonds.some(b => b.atom1Label === 'N1' && b.atom2Label === 'N2@2_545')).toBe(true);
         });
 
-        test('grows only HBond symmetry in BONDS_NO_HBONDS_YES mode', () => {
-            const structure = MockStructure.createDefault({
-                hasMultipleSymmetry: true,
-                hasHydrogens: true,
-            }).build();
-
-            const grower = new SymmetryGrower(SymmetryGrower.MODES.BONDS_NO_HBONDS_YES);
-            const grown = grower.apply(structure);
-
-            const errors = checkSymmetryGrowth(grown, {
-                checkSymmetries: ['3_568'],
-                excludeSymmetries: [
-                    '2_545', '3_565', '4_655', // These come from bonds
-                    '2_555', // S1 is not connected to group
-                ],
-            });
-            expect(errors).toEqual([]);
-
-            expect(grown.atoms.some(a => a.label === 'S1@2_555')).toBe(true);
-            expect(
-                grown.hBonds.some(
-                    hb => hb.donorAtomLabel === 'N2' 
-                    && hb.hydrogenAtomLabel === 'H2' 
-                    && hb.acceptorAtomLabel === 'O1@3_568',
-                )).toBe(true);
-            expect(grown.bonds.some(b => b.atom1Label === 'N1' && b.atom2Label === 'N2@2_545')).toBe(false);
-        });
-
         test('grows both bond and hbond symmetry in BONDS_YES_HBONDS_YES mode', () => {
             const structure = MockStructure.createDefault({
                 hasMultipleSymmetry: true,
@@ -537,7 +509,6 @@ describe('SymmetryGrower', () => {
             expect(modes).toEqual([
                 SymmetryGrower.MODES.BONDS_YES_HBONDS_YES,
                 SymmetryGrower.MODES.BONDS_YES_HBONDS_NO,
-                SymmetryGrower.MODES.BONDS_NO_HBONDS_YES,
                 SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
             ]);
         });

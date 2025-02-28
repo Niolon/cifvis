@@ -223,7 +223,6 @@ export class SymmetryGrower extends BaseFilter {
         BONDS_YES_HBONDS_YES: 'bonds-yes-hbonds-yes',
         BONDS_YES_HBONDS_NO: 'bonds-yes-hbonds-no',
         BONDS_YES_HBONDS_NONE: 'bonds-yes-hbonds-none',
-        BONDS_NO_HBONDS_YES: 'bonds-no-hbonds-yes',
         BONDS_NO_HBONDS_NO: 'bonds-no-hbonds-no',
         BONDS_NO_HBONDS_NONE: 'bonds-no-hbonds-none',
         BONDS_NONE_HBONDS_YES: 'bonds-none-hbonds-yes',
@@ -447,7 +446,6 @@ export class SymmetryGrower extends BaseFilter {
         return [
             SymmetryGrower.MODES.BONDS_YES_HBONDS_YES,
             SymmetryGrower.MODES.BONDS_YES_HBONDS_NO,
-            SymmetryGrower.MODES.BONDS_NO_HBONDS_YES,
             SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
         ];
     }
