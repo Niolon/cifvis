@@ -49242,10 +49242,10 @@ class G7 extends HTMLElement {
           break;
         case "options":
           if (this.parseOptions(), this.viewer) {
-            const i = this.querySelector(".crystal-container");
-            this.viewer.dispose(), this.viewer = new Xv(i, this.userOptions), this.viewer.selections.onChange((a) => {
-              this.selections = a, this.updateCaption();
-            }), this.viewer.state.currentCifContent && (await this.viewer.loadStructure(this.viewer.state.currentCifContent), this.setupButtons());
+            const i = this.querySelector(".crystal-container"), a = this.viewer.state.currentCifContent;
+            this.viewer.dispose(), this.viewer = new Xv(i, this.userOptions), this.viewer.selections.onChange((o) => {
+              this.selections = o, this.updateCaption();
+            }), a && (await this.viewer.loadStructure(a), this.setupButtons());
           }
           break;
         case "hydrogen-mode":

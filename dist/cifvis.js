@@ -4220,10 +4220,10 @@ class he extends HTMLElement {
           break;
         case "options":
           if (this.parseOptions(), this.viewer) {
-            const s = this.querySelector(".crystal-container");
-            this.viewer.dispose(), this.viewer = new xt(s, this.userOptions), this.viewer.selections.onChange((r) => {
-              this.selections = r, this.updateCaption();
-            }), this.viewer.state.currentCifContent && (await this.viewer.loadStructure(this.viewer.state.currentCifContent), this.setupButtons());
+            const s = this.querySelector(".crystal-container"), r = this.viewer.state.currentCifContent;
+            this.viewer.dispose(), this.viewer = new xt(s, this.userOptions), this.viewer.selections.onChange((i) => {
+              this.selections = i, this.updateCaption();
+            }), r && (await this.viewer.loadStructure(r), this.setupButtons());
           }
           break;
         case "hydrogen-mode":
