@@ -4,7 +4,7 @@ var gt = (l) => {
 };
 var Tt = (l, t, e) => t in l ? Lt(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
 var D = (l, t, e) => Tt(l, typeof t != "symbol" ? t + "" : t, e), yt = (l, t, e) => t.has(l) || gt("Cannot " + e);
-var S = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
+var x = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
 import { create as G, all as U } from "mathjs";
 import * as h from "three";
 function st(l, t = !0) {
@@ -37,7 +37,7 @@ function st(l, t = !0) {
   }
   return isNaN(l) ? /^".*"$/.test(l) || /^'.*'$/.test(l) ? { value: l.slice(1, -1).replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.includes(".") ? parseFloat(l) : parseInt(l), su: NaN };
 }
-function St(l, t) {
+function xt(l, t) {
   const e = [l[t].slice(1)], o = l.slice(t + 1), s = o.findIndex((n) => n.startsWith(";")), r = e.concat(o.slice(0, s)), i = r.findIndex((n) => n.trim() !== ""), a = r.findLastIndex((n) => n.trim !== "");
   return {
     value: r.slice(i, a + 1).join(`
@@ -107,7 +107,7 @@ class J {
       if (s = s.trim(), !s.length)
         return o;
       if (s.startsWith(";")) {
-        const a = St(this.dataLines, r);
+        const a = xt(this.dataLines, r);
         o.push({ value: a.value, su: NaN });
         for (let n = r; n < a.endIndex + 1; n++)
           this.dataLines[n] = "";
@@ -350,7 +350,7 @@ class wt {
     let e = 1;
     for (; e < t.length; ) {
       if (e + 1 < t.length && t[e + 1].startsWith(";")) {
-        const r = St(t, e + 1);
+        const r = xt(t, e + 1);
         this.data[t[e]] = r.value, e = r.endIndex + 1;
         continue;
       }
@@ -408,24 +408,24 @@ class wt {
     throw new Error(`None of the keys [${o.join(", ")}] found in CIF block`);
   }
 }
-const k = G(U, {});
+const C = G(U, {});
 function I(l) {
-  const t = k.unit(l.alpha, "deg").toNumber("rad"), e = k.unit(l.beta, "deg").toNumber("rad"), o = k.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), r = Math.cos(e), i = Math.cos(o), a = Math.sin(o), n = Math.sqrt(1 - s * s - r * r - i * i + 2 * s * r * i);
-  return k.matrix([
+  const t = C.unit(l.alpha, "deg").toNumber("rad"), e = C.unit(l.beta, "deg").toNumber("rad"), o = C.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), r = Math.cos(e), i = Math.cos(o), a = Math.sin(o), n = Math.sqrt(1 - s * s - r * r - i * i + 2 * s * r * i);
+  return C.matrix([
     [l.a, l.b * i, l.c * r],
     [0, l.b * a, l.c * (s - r * i) / a],
     [0, 0, l.c * n / a]
   ]);
 }
 function Et(l) {
-  return k.matrix([
+  return C.matrix([
     [l[0], l[3], l[4]],
     [l[3], l[1], l[5]],
     [l[4], l[5], l[2]]
   ]);
 }
 function Ht(l) {
-  const t = k.matrix(l);
+  const t = C.matrix(l);
   return [
     t.get([0, 0]),
     // U11
@@ -442,10 +442,10 @@ function Ht(l) {
   ];
 }
 function $t(l, t) {
-  const e = k.matrix(l), o = k.transpose(k.inv(e)), s = k.diag(k.matrix(k.transpose(o).toArray().map((n) => k.norm(n)))), r = Et(t), i = k.multiply(k.multiply(s, r), k.transpose(s)), a = k.multiply(k.multiply(e, i), k.transpose(e));
+  const e = C.matrix(l), o = C.transpose(C.inv(e)), s = C.diag(C.matrix(C.transpose(o).toArray().map((n) => C.norm(n)))), r = Et(t), i = C.multiply(C.multiply(s, r), C.transpose(s)), a = C.multiply(C.multiply(e, i), C.transpose(e));
   return Ht(a);
 }
-const kt = G(U);
+const Ct = G(U);
 var v;
 const pt = class pt {
   /**
@@ -462,34 +462,34 @@ const pt = class pt {
         "BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition"
       );
     bt(this, v, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
-      0: { get: () => S(this, v)[0] },
-      1: { get: () => S(this, v)[1] },
-      2: { get: () => S(this, v)[2] },
+      0: { get: () => x(this, v)[0] },
+      1: { get: () => x(this, v)[1] },
+      2: { get: () => x(this, v)[2] },
       length: { value: 3 },
       [Symbol.iterator]: {
         value: function* () {
-          yield S(this, v)[0], yield S(this, v)[1], yield S(this, v)[2];
+          yield x(this, v)[0], yield x(this, v)[1], yield x(this, v)[2];
         }
       }
     });
   }
   get x() {
-    return S(this, v)[0];
+    return x(this, v)[0];
   }
   get y() {
-    return S(this, v)[1];
+    return x(this, v)[1];
   }
   get z() {
-    return S(this, v)[2];
+    return x(this, v)[2];
   }
   set x(t) {
-    S(this, v)[0] = t;
+    x(this, v)[0] = t;
   }
   set y(t) {
-    S(this, v)[1] = t;
+    x(this, v)[1] = t;
   }
   set z(t) {
-    S(this, v)[2] = t;
+    x(this, v)[2] = t;
   }
   /**
    * Converts from given coordinate system to Cartesian coordinates
@@ -520,9 +520,9 @@ class Dt extends Z {
    * @returns {CartPosition} Position in Cartesian coordinates
    */
   toCartesian(t) {
-    const e = kt.multiply(
+    const e = Ct.multiply(
       t.fractToCartMatrix,
-      kt.matrix([this.x, this.y, this.z])
+      Ct.matrix([this.x, this.y, this.z])
     );
     return new At(...e.toArray());
   }
@@ -789,8 +789,8 @@ class M {
     }
   }
 }
-const x = G(U);
-function Ct(l) {
+const S = G(U);
+function kt(l) {
   if (Math.abs(l) < 21e-4)
     return "";
   const t = [2, 3, 4, 6], e = l < 0 ? "-" : "", o = Math.abs(l);
@@ -882,8 +882,8 @@ class F {
    * @returns {number[]} Transformed point in fractional coordinates
    */
   applyToPoint(t) {
-    const e = x.add(
-      x.multiply(this.rotMatrix, t),
+    const e = S.add(
+      S.multiply(this.rotMatrix, t),
       this.transVector
     );
     return Array.isArray(e) ? e : e.toArray();
@@ -899,8 +899,8 @@ class F {
    * @returns {Atom} New atom instance with transformed coordinates and ADPs
    */
   applyToAtom(t) {
-    const e = new Dt(...x.add(
-      x.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
+    const e = new Dt(...S.add(
+      S.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
       this.transVector
     ));
     let o = null;
@@ -909,7 +909,7 @@ class F {
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
-      ], r = this.rotMatrix, i = x.transpose(r), a = x.multiply(x.multiply(r, s), i);
+      ], r = this.rotMatrix, i = S.transpose(r), a = S.multiply(S.multiply(r, s), i);
       o = new $(
         a[0][0],
         // u11
@@ -952,7 +952,7 @@ class F {
    */
   copy() {
     const t = new F("x,y,z");
-    return t.rotMatrix = x.clone(this.rotMatrix), t.transVector = x.clone(this.transVector), t;
+    return t.rotMatrix = S.clone(this.rotMatrix), t.transVector = S.clone(this.transVector), t;
   }
   /**
    * Generates a symmetry operation string from the internal matrix and vector
@@ -960,7 +960,7 @@ class F {
    * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
    */
   toSymmetryString(t = null) {
-    const e = ["x", "y", "z"], o = [], s = t ? x.add(this.transVector, t) : this.transVector;
+    const e = ["x", "y", "z"], o = [], s = t ? S.add(this.transVector, t) : this.transVector;
     for (let r = 0; r < 3; r++) {
       let i = "";
       const a = [];
@@ -970,12 +970,12 @@ class F {
           if (Math.abs(Math.abs(c) - 1) < 1e-10)
             a.push(c > 0 ? e[n] : `-${e[n]}`);
           else {
-            const d = Ct(Math.abs(c));
+            const d = kt(Math.abs(c));
             a.push(c > 0 ? `${d}${e[n]}` : `-${d}${e[n]}`);
           }
       }
       if (i = a.join("+"), i === "" && (i = "0"), Math.abs(s[r]) > 1e-10) {
-        const n = Ct(Math.abs(s[r])), c = s[r] < 0 ? `-${n}` : n;
+        const n = kt(Math.abs(s[r])), c = s[r] < 0 ? `-${n}` : n;
         i === "0" ? i = c : i.startsWith("-") ? i = `${c}${i}` : i = `${c}+${i}`;
       }
       o.push(i);
@@ -990,7 +990,7 @@ class q {
       o.map((i, a) => [(a + 1).toString(), a])
     ), this.identitySymOpId = (r = Array.from(this.operationIds.entries()).find(([i, a]) => {
       const n = this.symmetryOperations[a];
-      return x.equal(n.rotMatrix, x.identity(3)) && x.equal(n.transVector, x.zeros(3));
+      return S.equal(n.rotMatrix, S.identity(3)) && S.equal(n.transVector, S.zeros(3));
     })) == null ? void 0 : r[0];
   }
   generateEquivalentPositions(t) {
@@ -1916,13 +1916,13 @@ class P {
   }
 }
 G(U);
-const C = class C extends P {
+const k = class k extends P {
   /**
    * Creates a new hydrogen filter
    * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
    */
-  constructor(t = C.MODES.NONE) {
-    super(C.MODES, t, "HydrogenFilter", C.PREFERRED_FALLBACK_ORDER);
+  constructor(t = k.MODES.NONE) {
+    super(k.MODES, t, "HydrogenFilter", k.PREFERRED_FALLBACK_ORDER);
   }
   /**
    * Applies hydrogen filtering according to current mode
@@ -1931,19 +1931,19 @@ const C = class C extends P {
    */
   apply(t) {
     this.ensureValidMode(t);
-    const e = t.atoms.filter((r) => r.atomType !== "H" || this.mode !== C.MODES.NONE).map((r) => new X(
+    const e = t.atoms.filter((r) => r.atomType !== "H" || this.mode !== k.MODES.NONE).map((r) => new X(
       r.label,
       r.atomType,
       r.position,
-      r.atomType === "H" && this.mode === C.MODES.CONSTANT ? null : r.adp,
+      r.atomType === "H" && this.mode === k.MODES.CONSTANT ? null : r.adp,
       r.disorderGroup
     )), o = t.bonds.filter((r) => {
-      if (this.mode === C.MODES.NONE) {
+      if (this.mode === k.MODES.NONE) {
         const i = t.getAtomByLabel(r.atom1Label), a = t.getAtomByLabel(r.atom2Label);
         return !(i.atomType === "H" || a.atomType === "H");
       }
       return !0;
-    }), s = this.mode === C.MODES.NONE ? [] : t.hBonds;
+    }), s = this.mode === k.MODES.NONE ? [] : t.hBonds;
     return new T(
       t.cell,
       e,
@@ -1958,25 +1958,25 @@ const C = class C extends P {
    * @returns {Array<string>} Array of applicable mode names
    */
   getApplicableModes(t) {
-    const e = [C.MODES.NONE];
-    return t.atoms.some((r) => r.atomType === "H") && (e.push(C.MODES.CONSTANT), t.atoms.some(
+    const e = [k.MODES.NONE];
+    return t.atoms.some((r) => r.atomType === "H") && (e.push(k.MODES.CONSTANT), t.atoms.some(
       (r) => {
         var i;
         return r.atomType === "H" && ((i = r.adp) == null ? void 0 : i.constructor.name) === "UAnisoADP";
       }
-    ) && e.push(C.MODES.ANISOTROPIC)), e;
+    ) && e.push(k.MODES.ANISOTROPIC)), e;
   }
 };
-D(C, "MODES", Object.freeze({
+D(k, "MODES", Object.freeze({
   NONE: "none",
   CONSTANT: "constant",
   ANISOTROPIC: "anisotropic"
-})), D(C, "PREFERRED_FALLBACK_ORDER", [
-  C.MODES.ANISOTROPIC,
-  C.MODES.CONSTANT,
-  C.MODES.NONE
+})), D(k, "PREFERRED_FALLBACK_ORDER", [
+  k.MODES.ANISOTROPIC,
+  k.MODES.CONSTANT,
+  k.MODES.NONE
 ]);
-let it = C;
+let it = k;
 const w = class w extends P {
   /**
    * Creates a new disorder filter
@@ -3848,7 +3848,7 @@ class le {
     this.clear(), this.selectionCallbacks.clear();
   }
 }
-class xt {
+class St {
   constructor(t, e = {}) {
     const o = ["constant", "onDemand"];
     if (e.renderMode && !o.includes(e.renderMode))
@@ -3999,14 +3999,14 @@ class xt {
 }
 const ce = {
   disorder: {
-    all: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="g8" transform="translate(0,-0.09016496)"><g id="g7" transform="translate(0,0.52916667)"><g id="path2-16" transform="rotate(180,28.623599,19.40998)" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.40998)" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-9" cx="-28.593182" cy="-24.863596" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2-3" cx="-33.888008" cy="-14.141389" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7-9" cx="-23.298351" cy="-14.141389" r="2.3135188" transform="scale(-1)" /></g><g id="g6" transform="translate(0,-0.52916663)"><g id="path2" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2" cx="23.35919" cy="24.678572" r="2.3135188" /><g id="path2-1" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1" cx="28.654018" cy="13.956366" r="2.3135188" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7" cx="33.948849" cy="24.678572" r="2.3135188" /></g></g></g></svg>',
+    all: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path4-5" style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z" /><path id="path8-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></svg>',
     group1: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="path2-16" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-9" cx="-28.593182" cy="-25.302597" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-2-3" cx="-33.888008" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-7-9" cx="-23.298351" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><g id="g6" transform="translate(0,-0.61933159)"><g id="path2" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2" cx="23.35919" cy="24.678572" r="2.3135188" /><g id="path2-1" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1" cx="28.654018" cy="13.956366" r="2.3135188" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7" cx="33.948849" cy="24.678572" r="2.3135188" /></g></g></svg>',
-    group2: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="path2-16" transform="rotate(180,28.623599,19.629481)" style="fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.629481)" style="fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.564999;stroke-opacity:1" id="path1-9" cx="-28.593182" cy="-25.302597" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.564999;stroke-opacity:1" id="path1-2-3" cx="-33.888008" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><circle style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.564999;stroke-opacity:1" id="path1-7-9" cx="-23.298351" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><g id="path2" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" transform="translate(0,-0.61933159)"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-2" cx="23.35919" cy="24.05924" r="2.3135188" /><g id="path2-1" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" transform="translate(0,-0.61933159)"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1" cx="28.654018" cy="13.337034" r="2.3135188" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-7" cx="33.948849" cy="24.05924" r="2.3135188" /></g></svg>'
+    group2: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path4-5" style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z" /><path id="path8-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></svg>'
   },
   hydrogen: {
-    anisotropic: '<svg width="17.85038mm" height="17.850386mm" viewBox="0 0 17.85038 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-78.600695,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="84.344688" y="50.876183" id="text3-1-5-9"><tspan id="tspan3-4-4-0" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="84.344688" y="50.876183">H</tspan></text><ellipse style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.816;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path7-4" cx="41.174881" cy="90.830009" rx="4.9952669" ry="9.7379656" transform="rotate(-36.975178)" /></g></svg>',
-    constant: '<svg width="17.850388mm" height="17.850386mm" viewBox="0 0 17.850388 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-58.39314,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="64.137131" y="50.876183" id="text3-1-8"><tspan id="tspan3-4-1" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="64.137131" y="50.876183">H</tspan></text><circle style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.816;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path6-0" cx="67.318336" cy="47.798332" r="6.8755083" /></g></svg>',
-    none: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-37.755639,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="43.499626" y="50.876183" id="text3-6" ><tspan id="tspan3-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="43.499626" y="50.876183">H</tspan></text><path style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.816;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 39.917575,41.035079 13.526512,13.52651" id="path5-9" /><path style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.816;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="M 53.444087,41.035079 39.917575,54.561589" id="path5-1-0" /></g></svg>'
+    anisotropic: '<svg width="17.85038mm" height="17.850386mm" viewBox="0 0 17.85038 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-78.600695,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="84.344688" y="50.876183" id="text3-1-5-9"><tspan id="tspan3-4-4-0" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="84.344688" y="50.876183">H</tspan></text><ellipse style="fill:none;fill-opacity:1;stroke:#a4a4a4;stroke-width:1.8975;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path7-4" cx="37.167099" cy="89.280861" rx="4.8005486" ry="9.1209068" transform="matrix(0.82466981,-0.56561445,0.63703802,0.77083238,0,0)" /></g></svg>',
+    constant: '<svg width="17.850388mm" height="17.850386mm" viewBox="0 0 17.850388 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-58.39314,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="64.137131" y="50.876183" id="text3-1-8"><tspan id="tspan3-4-1" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="64.137131" y="50.876183">H</tspan></text><circle style="fill:none;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path6-0" cx="67.318336" cy="47.798332" r="6.8755083" /></g></svg>',
+    none: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-37.755639,-38.873141)"><path style="fill:#000000;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 39.917575,41.035079 13.526512,13.52651" id="path5-9" /><path style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="M 53.444087,41.035079 39.917575,54.561589" id="path5-1-0" /><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="43.499626" y="50.876183" id="text3-6" ><tspan id="tspan3-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="43.499626" y="50.876183">H</tspan></text></g></svg>'
   },
   symmetry: {
     "bonds-no-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#808080;fill-opacity:1"><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#808080;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
@@ -4111,7 +4111,7 @@ class he extends HTMLElement {
     const e = document.createElement("div");
     e.className = "button-container", t.appendChild(e), this.buttonContainer = e;
     const o = document.createElement("div");
-    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new xt(t, this.userOptions), this.viewer.selections.onChange((i) => {
+    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new St(t, this.userOptions), this.viewer.selections.onChange((i) => {
       this.selections = i, this.updateCaption();
     }), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
     const s = this.getAttribute("src"), r = this.getAttribute("data");
@@ -4221,7 +4221,7 @@ class he extends HTMLElement {
         case "options":
           if (this.parseOptions(), this.viewer) {
             const s = this.querySelector(".crystal-container"), r = this.viewer.state.currentCifContent;
-            this.viewer.dispose(), this.viewer = new xt(s, this.userOptions), this.viewer.selections.onChange((i) => {
+            this.viewer.dispose(), this.viewer = new St(s, this.userOptions), this.viewer.selections.onChange((i) => {
               this.selections = i, this.updateCaption();
             }), r && (await this.viewer.loadStructure(r), this.setupButtons());
           }
@@ -4314,7 +4314,7 @@ export {
   Ft as CIF,
   he as CifViewWidget,
   T as CrystalStructure,
-  xt as CrystalViewer,
+  St as CrystalViewer,
   at as DisorderFilter,
   it as HydrogenFilter,
   qt as ORTEP3JsStructure,
