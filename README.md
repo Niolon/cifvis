@@ -14,6 +14,8 @@ A JavaScript library and web components for visualizing crystal structures from 
 
 ## Usage
 ### Web Component
+For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/widget.html).
+
 ```html
 <cifview-widget 
   src="structure.cif"
@@ -25,6 +27,7 @@ A JavaScript library and web components for visualizing crystal structures from 
   import { CifViewWidget } from 'cifvis';
 </script>
 ```
+
 
 ### Basic Viewer
 ```html
@@ -75,20 +78,6 @@ const viewer = new CrystalViewer(container, {
   disorderMode: 'all',     // 'all', 'group1', 'group2'
   symmetryMode: 'bonds-no-hbonds-no' // See symmetry modes below
 });
-```
-
-#### Web Component Attributes
-
-```html
-<cifview-widget
-  src="path/to/structure.cif"  <!-- URL to load CIF from -->
-  data="..."                   <!-- Direct CIF content, mutually exclusive with src -->
-  caption="Structure Title"    <!-- Caption text -->
-  hydrogen-mode="none"         <!-- Initial hydrogen display mode -->
-  disorder-mode="all"         <!-- Initial disorder display mode -->
-  symmetry-mode="bonds-no-hbonds-no" <!-- Initial symmetry mode -->
->
-</cifview-widget>
 ```
 
 ## Development
