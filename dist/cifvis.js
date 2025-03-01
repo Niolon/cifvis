@@ -4,43 +4,43 @@ var gt = (l) => {
 };
 var Tt = (l, t, e) => t in l ? Lt(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
 var D = (l, t, e) => Tt(l, typeof t != "symbol" ? t + "" : t, e), yt = (l, t, e) => t.has(l) || gt("Cannot " + e);
-var x = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
-import { create as G, all as U } from "mathjs";
+var E = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
+import { create as V, all as G } from "mathjs";
 import * as h from "three";
 function st(l, t = !0) {
   const e = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)\((\d+)\)$/, o = l.match(e);
   if (t && o) {
-    const [, n, c, d, m] = o, f = n === "-" ? -1 : 1, u = parseFloat(c), p = parseInt(d), g = c.includes(".") ? c.split(".")[1].length : 0, O = Number(f * u * Math.pow(10, p)), V = p - g, ut = Number(parseInt(m) * Math.pow(10, V));
-    return g - p >= 0 && g - p <= 100 ? {
-      value: Number(O.toFixed(g - p)),
-      su: Number(ut.toFixed(g - p))
+    const [, a, c, d, m] = o, p = a === "-" ? -1 : 1, u = parseFloat(c), f = parseInt(d), g = c.includes(".") ? c.split(".")[1].length : 0, O = Number(p * u * Math.pow(10, f)), U = f - g, ut = Number(parseInt(m) * Math.pow(10, U));
+    return g - f >= 0 && g - f <= 100 ? {
+      value: Number(O.toFixed(g - f)),
+      su: Number(ut.toFixed(g - f))
     } : { value: O, su: ut };
   }
-  const s = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)$/, r = l.match(s);
-  if (r) {
-    const [, n, c, d] = r, m = n === "-" ? -1 : 1, f = c.includes(".") ? c.split(".")[1].length : 0, u = parseInt(d), p = Number(m * parseFloat(c) * Math.pow(10, u));
-    return f - u >= 0 && f - u <= 100 ? {
-      value: Number(p.toFixed(f - u)),
+  const s = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)$/, i = l.match(s);
+  if (i) {
+    const [, a, c, d] = i, m = a === "-" ? -1 : 1, p = c.includes(".") ? c.split(".")[1].length : 0, u = parseInt(d), f = Number(m * parseFloat(c) * Math.pow(10, u));
+    return p - u >= 0 && p - u <= 100 ? {
+      value: Number(f.toFixed(p - u)),
       su: NaN
-    } : { value: p, su: NaN };
+    } : { value: f, su: NaN };
   }
-  const i = /^([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)$/, a = l.match(i);
-  if (t && a) {
-    const [, n, c, d] = a, m = n === "-" ? -1 : 1;
+  const r = /^([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)$/, n = l.match(r);
+  if (t && n) {
+    const [, a, c, d] = n, m = a === "-" ? -1 : 1;
     if (c.includes(".")) {
-      const f = c.split(".")[1].length, u = Number((m * parseFloat(c)).toFixed(f)), p = Number((Math.pow(10, -f) * parseFloat(d)).toFixed(f));
-      return { value: u, su: p };
+      const p = c.split(".")[1].length, u = Number((m * parseFloat(c)).toFixed(p)), f = Number((Math.pow(10, -p) * parseFloat(d)).toFixed(p));
+      return { value: u, su: f };
     } else {
-      const f = m * parseInt(c), u = parseInt(d);
-      return { value: f, su: u };
+      const p = m * parseInt(c), u = parseInt(d);
+      return { value: p, su: u };
     }
   }
   return isNaN(l) ? /^".*"$/.test(l) || /^'.*'$/.test(l) ? { value: l.slice(1, -1).replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.includes(".") ? parseFloat(l) : parseInt(l), su: NaN };
 }
-function xt(l, t) {
-  const e = [l[t].slice(1)], o = l.slice(t + 1), s = o.findIndex((n) => n.startsWith(";")), r = e.concat(o.slice(0, s)), i = r.findIndex((n) => n.trim() !== ""), a = r.findLastIndex((n) => n.trim !== "");
+function Et(l, t) {
+  const e = [l[t].slice(1)], o = l.slice(t + 1), s = o.findIndex((a) => a.startsWith(";")), i = e.concat(o.slice(0, s)), r = i.findIndex((a) => a.trim() !== ""), n = i.findLastIndex((a) => a.trim !== "");
   return {
-    value: r.slice(i, a + 1).join(`
+    value: i.slice(r, n + 1).join(`
 `),
     endIndex: t + s + 1
   };
@@ -81,19 +81,19 @@ class J {
   * @param {Array<string>} lines - Raw lines of the loop construct
   * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
   */
-  constructor(t, e, o, s, r = null) {
-    this.splitSU = s, this.headerLines = t, this.dataLines = e, this.endIndex = o, this.headers = null, this.data = null, this.name = null, r ? this.name = r : this.name = this.findCommonStart();
+  constructor(t, e, o, s, i = null) {
+    this.splitSU = s, this.headerLines = t, this.dataLines = e, this.endIndex = o, this.headers = null, this.data = null, this.name = null, i ? this.name = i : this.name = this.findCommonStart();
   }
   static fromLines(t, e) {
     let o = 1;
     for (; o < t.length && t[o].trim().startsWith("_"); )
       o++;
     const s = t.slice(1, o).map((c) => c.trim());
-    let r = o, i = !1;
-    for (; r < t.length && (!t[r].trim().startsWith("_") && !t[r].trim().startsWith("loop_") || i); )
-      t[r].startsWith(";") && (i = !i), r++;
-    const a = t.slice(o, r), n = r;
-    return new J(s, a, n, e);
+    let i = o, r = !1;
+    for (; i < t.length && (!t[i].trim().startsWith("_") && !t[i].trim().startsWith("loop_") || r); )
+      t[i].startsWith(";") && (r = !r), i++;
+    const n = t.slice(o, i), a = i;
+    return new J(s, n, a, e);
   }
   /**
   * Parses loop content into structured data.
@@ -103,23 +103,23 @@ class J {
     if (this.data !== null)
       return;
     this.headers = [...this.headerLines], this.data = {};
-    const t = this.dataLines.reduce((o, s, r) => {
+    const t = this.dataLines.reduce((o, s, i) => {
       if (s = s.trim(), !s.length)
         return o;
       if (s.startsWith(";")) {
-        const a = xt(this.dataLines, r);
-        o.push({ value: a.value, su: NaN });
-        for (let n = r; n < a.endIndex + 1; n++)
-          this.dataLines[n] = "";
+        const n = Et(this.dataLines, i);
+        o.push({ value: n.value, su: NaN });
+        for (let a = i; a < n.endIndex + 1; a++)
+          this.dataLines[a] = "";
         return o;
       }
-      const i = Array.from(s.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
-      return o.concat(i.map(
-        (a) => st(a[1] || a[2] || a[0], this.splitSU)
+      const r = Array.from(s.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
+      return o.concat(r.map(
+        (n) => st(n[1] || n[2] || n[0], this.splitSU)
       ));
     }, []), e = this.headers.length;
     if (t.length % e !== 0) {
-      const o = t.map(({ value: s, su: r }) => `{value: ${s}, su: ${r}}`).join(", ");
+      const o = t.map(({ value: s, su: i }) => `{value: ${s}, su: ${i}}`).join(", ");
       throw new Error(
         `Loop ${this.name}: Cannot distribute ${t.length} values evenly into ${e} columns
 entries are: ${o}`
@@ -127,8 +127,8 @@ entries are: ${o}`
     } else if (t.length === 0)
       throw new Error(`Loop ${this.name} has no data values.`);
     for (let o = 0; o < e; o++) {
-      const s = this.headers[o], r = t.slice(o).filter((a, n) => n % e === 0);
-      r.some((a) => !isNaN(a.su)) ? (this.data[s] = r.map((a) => a.value), this.data[s + "_su"] = r.map((a) => a.su), this.headers.push(s + "_su")) : this.data[s] = r.map((a) => a.value);
+      const s = this.headers[o], i = t.slice(o).filter((n, a) => a % e === 0);
+      i.some((n) => !isNaN(n.su)) ? (this.data[s] = i.map((n) => n.value), this.data[s + "_su"] = i.map((n) => n.su), this.headers.push(s + "_su")) : this.data[s] = i.map((n) => n.value);
     }
   }
   /**
@@ -138,35 +138,35 @@ entries are: ${o}`
   */
   findCommonStart(t = !0) {
     if (t) {
-      for (const i of Rt)
-        if (this.headerLines.filter((n) => n.toLowerCase().startsWith(i.toLowerCase())).length >= this.headerLines.length / 2)
-          return i;
+      for (const r of Rt)
+        if (this.headerLines.filter((a) => a.toLowerCase().startsWith(r.toLowerCase())).length >= this.headerLines.length / 2)
+          return r;
     }
-    const e = this.headerLines.map((i) => i.split("."));
+    const e = this.headerLines.map((r) => r.split("."));
     if (e[0].length > 1) {
-      const i = e[0][0];
+      const r = e[0][0];
       if (this.headerLines.filter(
-        (n) => n.split(".")[0] === i
+        (a) => a.split(".")[0] === r
       ).length >= this.headerLines.length / 2)
-        return i;
+        return r;
     }
-    const o = this.headerLines.map((i) => i.split(/[_.]/).filter((a) => a)), s = Math.min(...o.map((i) => i.length));
-    let r = "";
-    for (let i = 0; i < s; i++) {
-      const a = o[0][i], n = o.filter(
-        (c) => c[i] === a
+    const o = this.headerLines.map((r) => r.split(/[_.]/).filter((n) => n)), s = Math.min(...o.map((r) => r.length));
+    let i = "";
+    for (let r = 0; r < s; r++) {
+      const n = o[0][r], a = o.filter(
+        (c) => c[r] === n
       ).length;
       if (this.headerLines.length === 2)
-        if (n === 2)
-          r += "_" + a;
+        if (a === 2)
+          i += "_" + n;
         else
           break;
-      else if (n >= this.headerLines.length / 2)
-        r += "_" + a;
+      else if (a >= this.headerLines.length / 2)
+        i += "_" + n;
       else
         break;
     }
-    return r;
+    return i;
   }
   /**
   * Gets column data for given keys.
@@ -179,9 +179,9 @@ entries are: ${o}`
     this.parse();
     const o = Array.isArray(t) ? t : [t];
     for (const s of o) {
-      const r = this.data[s];
-      if (r !== void 0)
-        return r;
+      const i = this.data[s];
+      if (i !== void 0)
+        return i;
     }
     if (e !== null)
       return e;
@@ -198,16 +198,16 @@ entries are: ${o}`
   getIndex(t, e, o = null) {
     this.parse();
     const s = Array.isArray(t) ? t : [t];
-    if (!s.some((i) => this.headers.includes(i))) {
+    if (!s.some((r) => this.headers.includes(r))) {
       if (o !== null)
         return o;
       throw new Error(`None of the keys [${s.join(", ")}] found in CIF loop ${this.name}`);
     }
-    const r = this.get(s);
-    if (e < r.length)
-      return r[e];
+    const i = this.get(s);
+    if (e < i.length)
+      return i[e];
     throw new Error(
-      `Tried to look up value of index ${e} in ${this.name}, but length is only ${r.length}`
+      `Tried to look up value of index ${e} in ${this.name}, but length is only ${i.length}`
     );
   }
   /**
@@ -235,33 +235,33 @@ entries are: ${o}`
 function W(l) {
   return l && typeof l.getHeaders == "function";
 }
-function rt(l) {
+function it(l) {
   return l.getHeaders()[0].split("_").filter((e) => e.length > 0);
 }
 function Bt(l, t, e) {
-  const o = W(l) ? l : t, s = e.split("_").filter((a) => a.length > 0), r = rt(o), i = "_" + s.join("_") + "_" + r[s.length];
-  return W(l) ? [i, e] : [e, i];
+  const o = W(l) ? l : t, s = e.split("_").filter((n) => n.length > 0), i = it(o), r = "_" + s.join("_") + "_" + i[s.length];
+  return W(l) ? [r, e] : [e, r];
 }
 function Pt(l, t) {
   const e = l.findCommonStart(!1), o = t.findCommonStart(!1);
   return e.length !== o.length ? [e, o] : null;
 }
 function It(l, t, e) {
-  const o = e.split("_").filter((i) => i.length > 0), s = rt(l), r = rt(t);
-  return s.length >= r.length ? [
+  const o = e.split("_").filter((r) => r.length > 0), s = it(l), i = it(t);
+  return s.length >= i.length ? [
     e + "_" + s[o.length],
     e
   ] : [
     e,
-    e + "_" + r[o.length]
+    e + "_" + i[o.length]
   ];
 }
 function zt(l, t, e) {
   let o;
   !W(l) || !W(t) ? o = Bt(l, t, e) : o = Pt(l, t) || It(l, t, e);
   const s = [l, t];
-  return s.forEach((r, i) => {
-    W(r) && (r.name = o[i]);
+  return s.forEach((i, r) => {
+    W(i) && (i.name = o[r]);
   }), {
     newNames: o,
     newEntries: s
@@ -292,16 +292,16 @@ class Ft {
 `).split(/\r?\ndata_/).slice(1);
     let s = 0;
     for (; s < o.length; ) {
-      let r = o[s];
-      const i = /\n;/g, a = r.match(i);
-      let n = a ? a.length : 0;
-      for (; n % 2 === 1 && s + 1 < o.length; ) {
-        s++, r += `
+      let i = o[s];
+      const r = /\n;/g, n = i.match(r);
+      let a = n ? n.length : 0;
+      for (; a % 2 === 1 && s + 1 < o.length; ) {
+        s++, i += `
 data_` + o[s];
-        const c = r.match(i);
-        n = c ? c.length : 0;
+        const c = i.match(r);
+        a = c ? c.length : 0;
       }
-      e.push(r), s++;
+      e.push(i), s++;
     }
     return e;
   }
@@ -350,19 +350,19 @@ class wt {
     let e = 1;
     for (; e < t.length; ) {
       if (e + 1 < t.length && t[e + 1].startsWith(";")) {
-        const r = xt(t, e + 1);
-        this.data[t[e]] = r.value, e = r.endIndex + 1;
+        const i = Et(t, e + 1);
+        this.data[t[e]] = i.value, e = i.endIndex + 1;
         continue;
       }
       if (t[e].trim().startsWith("loop_")) {
-        const r = J.fromLines(t.slice(e), this.splitSU);
-        if (!Object.prototype.hasOwnProperty.call(this.data, r.getName()))
-          this.data[r.getName()] = r;
+        const i = J.fromLines(t.slice(e), this.splitSU);
+        if (!Object.prototype.hasOwnProperty.call(this.data, i.getName()))
+          this.data[i.getName()] = i;
         else {
-          const i = zt(this.data[r.getName()], r, r.getName());
-          this.data[i.newNames[0]] = i.newEntries[0], this.data[i.newNames[1]] = i.newEntries[1];
+          const r = zt(this.data[i.getName()], i, i.getName());
+          this.data[r.newNames[0]] = r.newEntries[0], this.data[r.newNames[1]] = r.newEntries[1];
         }
-        e += r.getEndIndex();
+        e += i.getEndIndex();
         continue;
       }
       const o = t[e].trim();
@@ -372,11 +372,11 @@ class wt {
       }
       const s = o.match(/^(_\S+)\s+(.*)$/);
       if (s) {
-        const r = s[1], i = st(s[2], this.splitSU);
-        this.data[r] = i.value, isNaN(i.su) || (this.data[r + "_su"] = i.su);
+        const i = s[1], r = st(s[2], this.splitSU);
+        this.data[i] = r.value, isNaN(r.su) || (this.data[i + "_su"] = r.su);
       } else if (o.startsWith("_") && !t[e + 1].startsWith("_")) {
-        const r = o, i = st(t[e + 1].trim(), this.splitSU);
-        this.data[r] = i.value, isNaN(i.su) || (this.data[r + "_su"] = i.su), e++;
+        const i = o, r = st(t[e + 1].trim(), this.splitSU);
+        this.data[i] = r.value, isNaN(r.su) || (this.data[i + "_su"] = r.su), e++;
       } else
         throw new Error("Could not parse line " + String(e) + ": " + t[e]);
       e++;
@@ -399,25 +399,25 @@ class wt {
     this.parse();
     const o = Array.isArray(t) ? t : [t];
     for (const s of o) {
-      const r = this.data[s];
-      if (r !== void 0)
-        return r;
+      const i = this.data[s];
+      if (i !== void 0)
+        return i;
     }
     if (e !== null)
       return e;
     throw new Error(`None of the keys [${o.join(", ")}] found in CIF block`);
   }
 }
-const C = G(U, {});
+const C = V(G, {});
 function I(l) {
-  const t = C.unit(l.alpha, "deg").toNumber("rad"), e = C.unit(l.beta, "deg").toNumber("rad"), o = C.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), r = Math.cos(e), i = Math.cos(o), a = Math.sin(o), n = Math.sqrt(1 - s * s - r * r - i * i + 2 * s * r * i);
+  const t = C.unit(l.alpha, "deg").toNumber("rad"), e = C.unit(l.beta, "deg").toNumber("rad"), o = C.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), i = Math.cos(e), r = Math.cos(o), n = Math.sin(o), a = Math.sqrt(1 - s * s - i * i - r * r + 2 * s * i * r);
   return C.matrix([
-    [l.a, l.b * i, l.c * r],
-    [0, l.b * a, l.c * (s - r * i) / a],
-    [0, 0, l.c * n / a]
+    [l.a, l.b * r, l.c * i],
+    [0, l.b * n, l.c * (s - i * r) / n],
+    [0, 0, l.c * a / n]
   ]);
 }
-function Et(l) {
+function xt(l) {
   return C.matrix([
     [l[0], l[3], l[4]],
     [l[3], l[1], l[5]],
@@ -442,12 +442,12 @@ function Ht(l) {
   ];
 }
 function $t(l, t) {
-  const e = C.matrix(l), o = C.transpose(C.inv(e)), s = C.diag(C.matrix(C.transpose(o).toArray().map((n) => C.norm(n)))), r = Et(t), i = C.multiply(C.multiply(s, r), C.transpose(s)), a = C.multiply(C.multiply(e, i), C.transpose(e));
-  return Ht(a);
+  const e = C.matrix(l), o = C.transpose(C.inv(e)), s = C.diag(C.matrix(C.transpose(o).toArray().map((a) => C.norm(a)))), i = xt(t), r = C.multiply(C.multiply(s, i), C.transpose(s)), n = C.multiply(C.multiply(e, r), C.transpose(e));
+  return Ht(n);
 }
-const Ct = G(U);
-var v;
-const pt = class pt {
+const Ct = V(G);
+var M;
+const ft = class ft {
   /**
    * Creates a new position
    * @param {number} x - X coordinate
@@ -456,40 +456,40 @@ const pt = class pt {
    * @throws {TypeError} If instantiated directly
    */
   constructor(t, e, o) {
-    _t(this, v);
-    if (new.target === pt)
+    _t(this, M);
+    if (new.target === ft)
       throw new TypeError(
         "BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition"
       );
-    bt(this, v, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
-      0: { get: () => x(this, v)[0] },
-      1: { get: () => x(this, v)[1] },
-      2: { get: () => x(this, v)[2] },
+    bt(this, M, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
+      0: { get: () => E(this, M)[0] },
+      1: { get: () => E(this, M)[1] },
+      2: { get: () => E(this, M)[2] },
       length: { value: 3 },
       [Symbol.iterator]: {
         value: function* () {
-          yield x(this, v)[0], yield x(this, v)[1], yield x(this, v)[2];
+          yield E(this, M)[0], yield E(this, M)[1], yield E(this, M)[2];
         }
       }
     });
   }
   get x() {
-    return x(this, v)[0];
+    return E(this, M)[0];
   }
   get y() {
-    return x(this, v)[1];
+    return E(this, M)[1];
   }
   get z() {
-    return x(this, v)[2];
+    return E(this, M)[2];
   }
   set x(t) {
-    x(this, v)[0] = t;
+    E(this, M)[0] = t;
   }
   set y(t) {
-    x(this, v)[1] = t;
+    E(this, M)[1] = t;
   }
   set z(t) {
-    x(this, v)[2] = t;
+    E(this, M)[2] = t;
   }
   /**
    * Converts from given coordinate system to Cartesian coordinates
@@ -502,8 +502,8 @@ const pt = class pt {
     throw new Error("toCartesian must be implemented by subclass");
   }
 };
-v = new WeakMap();
-let Z = pt;
+M = new WeakMap();
+let Z = ft;
 class Dt extends Z {
   /**
    * Creates a new fractional position
@@ -546,7 +546,7 @@ class At extends Z {
     return this;
   }
 }
-class Gt {
+class Vt {
   /**
    * Creates a Position object from CIF data
    * @param {CifBlock} cifBlock - CIF data block containing position data
@@ -556,7 +556,7 @@ class Gt {
    */
   static fromCIF(t, e) {
     let o = !1;
-    const s = t.get("_atom_site"), r = [".", "?"];
+    const s = t.get("_atom_site"), i = [".", "?"];
     if (String(s.getIndex(
       ["_atom_site.calc_flag", "_atom_site_calc_flag"],
       e,
@@ -564,23 +564,23 @@ class Gt {
     )).toLowerCase() === "dum")
       throw new Error("Dummy atom: calc_flag is dum");
     try {
-      const a = s.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], e), n = s.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], e), c = s.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], e);
-      if (!r.includes(a) && !r.includes(n) && !r.includes(c))
-        return new Dt(a, n, c);
+      const n = s.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], e), a = s.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], e), c = s.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], e);
+      if (!i.includes(n) && !i.includes(a) && !i.includes(c))
+        return new Dt(n, a, c);
       o = !0;
     } catch {
     }
     try {
-      const a = s.getIndex(["_atom_site.Cartn_x", "_atom_site.cartn_x", "_atom_site_Cartn_x"], e), n = s.getIndex(["_atom_site.Cartn_y", "_atom_site.cartn_y", "_atom_site_Cartn_y"], e), c = s.getIndex(["_atom_site.Cartn_z", "_atom_site.cartn_z", "_atom_site_Cartn_z"], e);
-      if (!r.includes(a) && !r.includes(n) && !r.includes(c))
-        return new At(a, n, c);
+      const n = s.getIndex(["_atom_site.Cartn_x", "_atom_site.cartn_x", "_atom_site_Cartn_x"], e), a = s.getIndex(["_atom_site.Cartn_y", "_atom_site.cartn_y", "_atom_site_Cartn_y"], e), c = s.getIndex(["_atom_site.Cartn_z", "_atom_site.cartn_z", "_atom_site_Cartn_z"], e);
+      if (!i.includes(n) && !i.includes(a) && !i.includes(c))
+        return new At(n, a, c);
       o = !0;
     } catch {
     }
     throw o ? new Error("Dummy atom: Invalid position") : new Error("Invalid position: No valid fractional or Cartesian coordinates found");
   }
 }
-const N = G(U, {});
+const N = V(G, {});
 class H {
   constructor(t) {
     this.uiso = t;
@@ -603,8 +603,8 @@ class $ {
    * @param {number} u13 - U13 component in Å²
    * @param {number} u23 - U23 component in Å² 
    */
-  constructor(t, e, o, s, r, i) {
-    this.u11 = t, this.u22 = e, this.u33 = o, this.u12 = s, this.u13 = r, this.u23 = i;
+  constructor(t, e, o, s, i, r) {
+    this.u11 = t, this.u22 = e, this.u33 = o, this.u12 = s, this.u13 = i, this.u23 = r;
   }
   /**
    * Creates a UAnisoADP instance from B values
@@ -616,15 +616,15 @@ class $ {
    * @param {number} b23 - B23 component in Å²
    * @returns {UAnisoADP} New UAnisoADP instance
    */
-  static fromBani(t, e, o, s, r, i) {
-    const a = 1 / (8 * Math.PI * Math.PI);
+  static fromBani(t, e, o, s, i, r) {
+    const n = 1 / (8 * Math.PI * Math.PI);
     return new $(
-      t * a,
-      e * a,
-      o * a,
-      s * a,
-      r * a,
-      i * a
+      t * n,
+      e * n,
+      o * n,
+      s * n,
+      i * n,
+      r * n
     );
   }
   /**
@@ -645,17 +645,17 @@ class $ {
   * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
   */
   getEllipsoidMatrix(t) {
-    const e = Et(this.getUCart(t)), { eigenvectors: o } = N.eigs(e), s = N.transpose(N.matrix(o.map((c) => c.vector))), r = N.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), i = N.det(s), a = N.diag(r.map(Math.sqrt));
-    let n;
-    if (N.abs(i - 1) > 1e-10) {
-      const c = N.multiply(s, 1 / i);
-      n = N.multiply(c, a);
+    const e = xt(this.getUCart(t)), { eigenvectors: o } = N.eigs(e), s = N.transpose(N.matrix(o.map((c) => c.vector))), i = N.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), r = N.det(s), n = N.diag(i.map(Math.sqrt));
+    let a;
+    if (N.abs(r - 1) > 1e-10) {
+      const c = N.multiply(s, 1 / r);
+      a = N.multiply(c, n);
     } else
-      n = N.multiply(s, a);
-    return N.matrix(n);
+      a = N.multiply(s, n);
+    return N.matrix(a);
   }
 }
-class M {
+class S {
   /**
    * Creates the appropriate ADP object based on available CIF data
    * @param {CifBlock} cifBlock - The CIF data block
@@ -663,7 +663,7 @@ class M {
    * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if no valid data
    */
   static fromCIF(t, e) {
-    const o = t.get("_atom_site"), s = o.getIndex(["_atom_site.label", "_atom_site_label"], e), r = o.getIndex(
+    const o = t.get("_atom_site"), s = o.getIndex(["_atom_site.label", "_atom_site_label"], e), i = o.getIndex(
       [
         "_atom_site.adp_type",
         "_atom_site_adp_type",
@@ -673,21 +673,21 @@ class M {
       e,
       !1
     );
-    if (r)
-      return M.createFromExplicitType(t, e, s, r);
-    if (M.isInAnisoLoop(t, s)) {
-      const c = M.createUani(t, s);
+    if (i)
+      return S.createFromExplicitType(t, e, s, i);
+    if (S.isInAnisoLoop(t, s)) {
+      const c = S.createUani(t, s);
       if (c !== null)
         return c;
-      const d = M.createBani(t, s);
+      const d = S.createBani(t, s);
       if (d !== null)
         return d;
     }
-    const a = M.createUiso(t, e);
-    if (a !== null)
-      return a;
-    const n = M.createBiso(t, e);
-    return n !== null ? n : null;
+    const n = S.createUiso(t, e);
+    if (n !== null)
+      return n;
+    const a = S.createBiso(t, e);
+    return a !== null ? a : null;
   }
   /**
    * Creates ADP from explicitly specified type
@@ -696,17 +696,17 @@ class M {
   static createFromExplicitType(t, e, o, s) {
     switch (s.toLowerCase()) {
       case "uani":
-        return M.createUani(t, o);
+        return S.createUani(t, o);
       case "aniso":
-        return M.createUani(t, o);
+        return S.createUani(t, o);
       case "bani":
-        return M.createBani(t, o);
+        return S.createBani(t, o);
       case "uiso":
-        return M.createUiso(t, e);
+        return S.createUiso(t, e);
       case "iso":
-        return M.createUiso(t, e);
+        return S.createUiso(t, e);
       case "biso":
-        return M.createBiso(t, e);
+        return S.createBiso(t, e);
       default:
         return null;
     }
@@ -733,11 +733,11 @@ class M {
     } catch {
       throw new Error(`Atom ${e} had ADP type UAni, but no atom_site_aniso loop was found`);
     }
-    const r = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
-    if (r === -1)
+    const i = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
+    if (i === -1)
       throw new Error(`Atom ${e} has ADP type Uani, but was not found in atom_site_aniso.label`);
-    const i = o.getIndex(["_atom_site_aniso.u_11", "_atom_site_aniso_U_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.u_22", "_atom_site_aniso_U_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.u_33", "_atom_site_aniso_U_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.u_12", "_atom_site_aniso_U_12"], r, NaN), d = o.getIndex(["_atom_site_aniso.u_13", "_atom_site_aniso_U_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.u_23", "_atom_site_aniso_U_23"], r, NaN);
-    return [i, a, n, c, d, m].some(isNaN) ? null : new $(i, a, n, c, d, m);
+    const r = o.getIndex(["_atom_site_aniso.u_11", "_atom_site_aniso_U_11"], i, NaN), n = o.getIndex(["_atom_site_aniso.u_22", "_atom_site_aniso_U_22"], i, NaN), a = o.getIndex(["_atom_site_aniso.u_33", "_atom_site_aniso_U_33"], i, NaN), c = o.getIndex(["_atom_site_aniso.u_12", "_atom_site_aniso_U_12"], i, NaN), d = o.getIndex(["_atom_site_aniso.u_13", "_atom_site_aniso_U_13"], i, NaN), m = o.getIndex(["_atom_site_aniso.u_23", "_atom_site_aniso_U_23"], i, NaN);
+    return [r, n, a, c, d, m].some(isNaN) ? null : new $(r, n, a, c, d, m);
   }
   /**
    * Creates anisotropic B-based ADP
@@ -750,11 +750,11 @@ class M {
     } catch {
       throw new Error(`Atom ${e} had ADP type BAni, but no atom_site_aniso loop was found`);
     }
-    const r = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
-    if (r === -1)
+    const i = o.get(["_atom_site_aniso.label", "_atom_site_aniso_label"]).indexOf(e);
+    if (i === -1)
       throw new Error(`Atom ${e} has ADP type Bani, but was not found in atom_site_aniso.label`);
-    const i = o.getIndex(["_atom_site_aniso.b_11", "_atom_site_aniso_B_11"], r, NaN), a = o.getIndex(["_atom_site_aniso.b_22", "_atom_site_aniso_B_22"], r, NaN), n = o.getIndex(["_atom_site_aniso.b_33", "_atom_site_aniso_B_33"], r, NaN), c = o.getIndex(["_atom_site_aniso.b_12", "_atom_site_aniso_B_12"], r, NaN), d = o.getIndex(["_atom_site_aniso.b_13", "_atom_site_aniso_B_13"], r, NaN), m = o.getIndex(["_atom_site_aniso.b_23", "_atom_site_aniso_B_23"], r, NaN);
-    return [i, a, n, c, d, m].some(isNaN) ? null : $.fromBani(i, a, n, c, d, m);
+    const r = o.getIndex(["_atom_site_aniso.b_11", "_atom_site_aniso_B_11"], i, NaN), n = o.getIndex(["_atom_site_aniso.b_22", "_atom_site_aniso_B_22"], i, NaN), a = o.getIndex(["_atom_site_aniso.b_33", "_atom_site_aniso_B_33"], i, NaN), c = o.getIndex(["_atom_site_aniso.b_12", "_atom_site_aniso_B_12"], i, NaN), d = o.getIndex(["_atom_site_aniso.b_13", "_atom_site_aniso_B_13"], i, NaN), m = o.getIndex(["_atom_site_aniso.b_23", "_atom_site_aniso_B_23"], i, NaN);
+    return [r, n, a, c, d, m].some(isNaN) ? null : $.fromBani(r, n, a, c, d, m);
   }
   /**
    * Creates isotropic U-based ADP
@@ -789,17 +789,17 @@ class M {
     }
   }
 }
-const S = G(U);
-function kt(l) {
+const k = V(G);
+function vt(l) {
   if (Math.abs(l) < 21e-4)
     return "";
   const t = [2, 3, 4, 6], e = l < 0 ? "-" : "", o = Math.abs(l);
   if (Math.abs(o - Math.round(o)) < 21e-4)
     return e + Math.round(o);
   for (const s of t) {
-    const r = o * s, i = Math.round(r);
-    if (Math.abs(r - i) < 21e-4)
-      return i === s ? e + "1" : e + i + "/" + s;
+    const i = o * s, r = Math.round(i);
+    if (Math.abs(i - r) < 21e-4)
+      return r === s ? e + "1" : e + r + "/" + s;
   }
   return e + o.toString();
 }
@@ -821,34 +821,34 @@ class F {
    * @throws {Error} If instruction does not contain exactly three components
    */
   parseSymmetryInstruction(t) {
-    const e = Array(3).fill().map(() => Array(3).fill(0)), o = Array(3).fill(0), s = t.split(",").map((r) => r.trim().toUpperCase());
+    const e = Array(3).fill().map(() => Array(3).fill(0)), o = Array(3).fill(0), s = t.split(",").map((i) => i.trim().toUpperCase());
     if (s.length !== 3)
       throw new Error("Symmetry operation must have exactly three components");
-    return s.forEach((r, i) => {
-      const a = /([+-]?\d*\.?\d*(?:\/\d+)?)\*?([XYZ])/g;
-      let n;
-      for (; (n = a.exec(r)) !== null; ) {
-        let m = n[1];
-        const f = n[2];
+    return s.forEach((i, r) => {
+      const n = /([+-]?\d*\.?\d*(?:\/\d+)?)\*?([XYZ])/g;
+      let a;
+      for (; (a = n.exec(i)) !== null; ) {
+        let m = a[1];
+        const p = a[2];
         if (!m || m === "+")
           m = "1";
         else if (m === "-")
           m = "-1";
         else if (m.includes("/")) {
-          const [p, g] = m.split("/");
-          m = parseFloat(p) / parseFloat(g);
+          const [f, g] = m.split("/");
+          m = parseFloat(f) / parseFloat(g);
         }
         m = parseFloat(m);
-        const u = f === "X" ? 0 : f === "Y" ? 1 : 2;
-        e[i][u] = m;
+        const u = p === "X" ? 0 : p === "Y" ? 1 : 2;
+        e[r][u] = m;
       }
-      const d = r.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, "").match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
+      const d = i.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, "").match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
       for (const m of d)
         if (m.includes("/")) {
-          const [f, u] = m.split("/");
-          o[i] += parseFloat(f) / parseFloat(u);
+          const [p, u] = m.split("/");
+          o[r] += parseFloat(p) / parseFloat(u);
         } else
-          o[i] += parseFloat(m);
+          o[r] += parseFloat(m);
     }), { matrix: e, vector: o };
   }
   /**
@@ -882,8 +882,8 @@ class F {
    * @returns {number[]} Transformed point in fractional coordinates
    */
   applyToPoint(t) {
-    const e = S.add(
-      S.multiply(this.rotMatrix, t),
+    const e = k.add(
+      k.multiply(this.rotMatrix, t),
       this.transVector
     );
     return Array.isArray(e) ? e : e.toArray();
@@ -899,8 +899,8 @@ class F {
    * @returns {Atom} New atom instance with transformed coordinates and ADPs
    */
   applyToAtom(t) {
-    const e = new Dt(...S.add(
-      S.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
+    const e = new Dt(...k.add(
+      k.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
       this.transVector
     ));
     let o = null;
@@ -909,19 +909,19 @@ class F {
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
-      ], r = this.rotMatrix, i = S.transpose(r), a = S.multiply(S.multiply(r, s), i);
+      ], i = this.rotMatrix, r = k.transpose(i), n = k.multiply(k.multiply(i, s), r);
       o = new $(
-        a[0][0],
+        n[0][0],
         // u11
-        a[1][1],
+        n[1][1],
         // u22
-        a[2][2],
+        n[2][2],
         // u33
-        a[0][1],
+        n[0][1],
         // u12
-        a[0][2],
+        n[0][2],
         // u13
-        a[1][2]
+        n[1][2]
         // u23
       );
     } else t.adp && t.adp instanceof H && (o = new H(t.adp.uiso));
@@ -952,7 +952,7 @@ class F {
    */
   copy() {
     const t = new F("x,y,z");
-    return t.rotMatrix = S.clone(this.rotMatrix), t.transVector = S.clone(this.transVector), t;
+    return t.rotMatrix = k.clone(this.rotMatrix), t.transVector = k.clone(this.transVector), t;
   }
   /**
    * Generates a symmetry operation string from the internal matrix and vector
@@ -960,38 +960,38 @@ class F {
    * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
    */
   toSymmetryString(t = null) {
-    const e = ["x", "y", "z"], o = [], s = t ? S.add(this.transVector, t) : this.transVector;
-    for (let r = 0; r < 3; r++) {
-      let i = "";
-      const a = [];
-      for (let n = 0; n < 3; n++) {
-        const c = this.rotMatrix[r][n];
+    const e = ["x", "y", "z"], o = [], s = t ? k.add(this.transVector, t) : this.transVector;
+    for (let i = 0; i < 3; i++) {
+      let r = "";
+      const n = [];
+      for (let a = 0; a < 3; a++) {
+        const c = this.rotMatrix[i][a];
         if (Math.abs(c) > 1e-10)
           if (Math.abs(Math.abs(c) - 1) < 1e-10)
-            a.push(c > 0 ? e[n] : `-${e[n]}`);
+            n.push(c > 0 ? e[a] : `-${e[a]}`);
           else {
-            const d = kt(Math.abs(c));
-            a.push(c > 0 ? `${d}${e[n]}` : `-${d}${e[n]}`);
+            const d = vt(Math.abs(c));
+            n.push(c > 0 ? `${d}${e[a]}` : `-${d}${e[a]}`);
           }
       }
-      if (i = a.join("+"), i === "" && (i = "0"), Math.abs(s[r]) > 1e-10) {
-        const n = kt(Math.abs(s[r])), c = s[r] < 0 ? `-${n}` : n;
-        i === "0" ? i = c : i.startsWith("-") ? i = `${c}${i}` : i = `${c}+${i}`;
+      if (r = n.join("+"), r === "" && (r = "0"), Math.abs(s[i]) > 1e-10) {
+        const a = vt(Math.abs(s[i])), c = s[i] < 0 ? `-${a}` : a;
+        r === "0" ? r = c : r.startsWith("-") ? r = `${c}${r}` : r = `${c}+${r}`;
       }
-      o.push(i);
+      o.push(r);
     }
     return o.join(",");
   }
 }
-class q {
+class Y {
   constructor(t, e, o, s = null) {
-    var r;
+    var i;
     this.spaceGroupName = t, this.spaceGroupNumber = e, this.symmetryOperations = o, this.operationIds = s || new Map(
-      o.map((i, a) => [(a + 1).toString(), a])
-    ), this.identitySymOpId = (r = Array.from(this.operationIds.entries()).find(([i, a]) => {
-      const n = this.symmetryOperations[a];
-      return S.equal(n.rotMatrix, S.identity(3)) && S.equal(n.transVector, S.zeros(3));
-    })) == null ? void 0 : r[0];
+      o.map((r, n) => [(n + 1).toString(), n])
+    ), this.identitySymOpId = (i = Array.from(this.operationIds.entries()).find(([r, n]) => {
+      const a = this.symmetryOperations[n];
+      return k.equal(a.rotMatrix, k.identity(3)) && k.equal(a.transVector, k.zeros(3));
+    })) == null ? void 0 : i[0];
   }
   generateEquivalentPositions(t) {
     return this.symmetryOperations.map((e) => e.applyToPoint(t));
@@ -999,8 +999,8 @@ class q {
   parsePositionCode(t) {
     let e, o;
     try {
-      const [i, a] = t.split("_");
-      o = i, e = a.split("").map((n) => parseInt(n) - 5);
+      const [r, n] = t.split("_");
+      o = r, e = n.split("").map((a) => parseInt(a) - 5);
     } catch {
       o = t.toString(), e = [0, 0, 0];
     }
@@ -1014,13 +1014,13 @@ class q {
   applySymmetry(t, e) {
     const { symOp: o, transVector: s } = this.parsePositionCode(t);
     if (Array.isArray(e)) {
-      const i = o.applyToAtoms(e);
-      return i.forEach((a) => {
-        a.position.x += s[0], a.position.y += s[1], a.position.z += s[2];
-      }), i;
+      const r = o.applyToAtoms(e);
+      return r.forEach((n) => {
+        n.position.x += s[0], n.position.y += s[1], n.position.z += s[2];
+      }), r;
     }
-    const r = o.applyToAtom(e);
-    return r.position.x += s[0], r.position.y += s[1], r.position.z += s[2], r;
+    const i = o.applyToAtom(e);
+    return i.position.x += s[0], i.position.y += s[1], i.position.z += s[2], i;
   }
   static fromCIF(t) {
     const e = t.get(
@@ -1052,38 +1052,38 @@ class q {
       !1
     );
     if (s && !(s instanceof J))
-      return new q(
+      return new Y(
         e,
         o,
         [new F(s)]
       );
-    if (s || console.warn(Object.keys(t).filter((r) => r.includes("sym"))), s) {
-      const r = s.get([
+    if (s || console.warn(Object.keys(t).filter((i) => i.includes("sym"))), s) {
+      const i = s.get([
         "_space_group_symop.operation_xyz",
         "_space_group_symop_operation_xyz",
         "_symmetry_equiv.pos_as_xyz",
         "_symmetry_equiv_pos_as_xyz"
       ]);
-      let i = null;
+      let r = null;
       try {
-        const n = s.get([
+        const a = s.get([
           "_space_group_symop.id",
           "_space_group_symop_id",
           "_symmetry_equiv.id",
           "_symmetry_equiv_pos_site_id"
         ]);
-        i = new Map(n.map((c, d) => [c.toString(), d]));
+        r = new Map(a.map((c, d) => [c.toString(), d]));
       } catch {
       }
-      const a = r.map((n) => new F(n));
-      return new q(
+      const n = i.map((a) => new F(a));
+      return new Y(
         e,
         o,
-        a,
-        i
+        n,
+        r
       );
     } else
-      return console.warn("No symmetry operations found in CIF block, will use P1"), new q("Unknown", 0, [new F("x,y,z")]);
+      return console.warn("No symmetry operations found in CIF block, will use P1"), new Y("Unknown", 0, [new F("x,y,z")]);
   }
 }
 class L {
@@ -1095,8 +1095,8 @@ class L {
   * @param {number} [bondLengthSU=null] - Standard uncertainty in bond length
   * @param {string} [atom2SiteSymmetry=null] - Symmetry operation for second atom
   */
-  constructor(t, e, o = null, s = null, r = null) {
-    this.atom1Label = t, this.atom2Label = e, this.bondLength = o, this.bondLengthSU = s, this.atom2SiteSymmetry = r;
+  constructor(t, e, o = null, s = null, i = null) {
+    this.atom1Label = t, this.atom2Label = e, this.bondLength = o, this.bondLengthSU = s, this.atom2SiteSymmetry = i;
   }
   /**
   * Creates a Bond from CIF data
@@ -1111,12 +1111,12 @@ class L {
       e,
       "."
     );
-    const r = o.getIndex(
+    const i = o.getIndex(
       ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"],
       e,
       !1
     );
-    return r && r === s && (s = "."), new L(
+    return i && i === s && (s = "."), new L(
       o.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], e),
       o.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], e),
       o.getIndex(["_geom_bond.distance", "_geom_bond_distance"], e),
@@ -1141,8 +1141,8 @@ class j {
   * @param {number} hBondAngleSU - Standard uncertainty in angle
   * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
   */
-  constructor(t, e, o, s, r, i, a, n, c, d, m, f) {
-    this.donorAtomLabel = t, this.hydrogenAtomLabel = e, this.acceptorAtomLabel = o, this.donorHydrogenDistance = s, this.donorHydrogenDistanceSU = r, this.acceptorHydrogenDistance = i, this.acceptorHydrogenDistanceSU = a, this.donorAcceptorDistance = n, this.donorAcceptorDistanceSU = c, this.hBondAngle = d, this.hBondAngleSU = m, this.acceptorAtomSymmetry = f;
+  constructor(t, e, o, s, i, r, n, a, c, d, m, p) {
+    this.donorAtomLabel = t, this.hydrogenAtomLabel = e, this.acceptorAtomLabel = o, this.donorHydrogenDistance = s, this.donorHydrogenDistanceSU = i, this.acceptorHydrogenDistance = r, this.acceptorHydrogenDistanceSU = n, this.donorAcceptorDistance = a, this.donorAcceptorDistanceSU = c, this.hBondAngle = d, this.hBondAngleSU = m, this.acceptorAtomSymmetry = p;
   }
   /**
   * Creates a HBond from CIF data
@@ -1172,7 +1172,7 @@ class j {
     );
   }
 }
-class vt {
+class Mt {
   constructor() {
     this.atomLabelErrors = [], this.symmetryErrors = [];
   }
@@ -1208,18 +1208,18 @@ class vt {
 class A {
   static createBonds(t, e) {
     try {
-      const o = t.get("_geom_bond"), s = o.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, r = [];
-      for (let i = 0; i < s; i++) {
-        const a = o.getIndex(
+      const o = t.get("_geom_bond"), s = o.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, i = [];
+      for (let r = 0; r < s; r++) {
+        const n = o.getIndex(
           ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"],
-          i
-        ), n = o.getIndex(
+          r
+        ), a = o.getIndex(
           ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"],
-          i
+          r
         );
-        A.isValidBondPair(a, n, e) && r.push(L.fromCIF(t, i));
+        A.isValidBondPair(n, a, e) && i.push(L.fromCIF(t, r));
       }
-      return r;
+      return i;
     } catch {
       return [];
     }
@@ -1234,24 +1234,24 @@ class A {
     const o = t.get("_geom_hbond", !1);
     if (!o)
       return [];
-    const s = o.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length, r = [];
-    for (let i = 0; i < s; i++) {
-      const a = o.getIndex(
+    const s = o.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length, i = [];
+    for (let r = 0; r < s; r++) {
+      const n = o.getIndex(
         ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"],
-        i,
+        r,
         "?"
-      ), n = o.getIndex(
+      ), a = o.getIndex(
         ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"],
-        i,
+        r,
         "?"
       ), c = o.getIndex(
         ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"],
-        i,
+        r,
         "?"
       );
-      A.isValidHBondTriplet(a, n, c, e) && r.push(j.fromCIF(t, i));
+      A.isValidHBondTriplet(n, a, c, e) && i.push(j.fromCIF(t, r));
     }
-    return r;
+    return i;
   }
   /**
    * Validates bonds against crystal structure
@@ -1259,17 +1259,17 @@ class A {
    * @returns {ValidationResult} Validation results
    */
   static validateBonds(t, e, o) {
-    const s = new vt(), r = new Set(e.map((i) => i.label));
-    for (const i of t) {
-      const a = [];
-      if (r.has(i.atom1Label) || a.push(i.atom1Label), r.has(i.atom2Label) || a.push(i.atom2Label), a.length > 0 && s.addAtomLabelError(
-        `Non-existent atoms in bond: ${i.atom1Label} - ${i.atom2Label}, non-existent atom(s): ${a.join(", ")}`
-      ), i.atom2SiteSymmetry && i.atom2SiteSymmetry !== ".")
+    const s = new Mt(), i = new Set(e.map((r) => r.label));
+    for (const r of t) {
+      const n = [];
+      if (i.has(r.atom1Label) || n.push(r.atom1Label), i.has(r.atom2Label) || n.push(r.atom2Label), n.length > 0 && s.addAtomLabelError(
+        `Non-existent atoms in bond: ${r.atom1Label} - ${r.atom2Label}, non-existent atom(s): ${n.join(", ")}`
+      ), r.atom2SiteSymmetry && r.atom2SiteSymmetry !== ".")
         try {
-          o.parsePositionCode(i.atom2SiteSymmetry);
+          o.parsePositionCode(r.atom2SiteSymmetry);
         } catch {
           s.addSymmetryError(
-            `Invalid symmetry in bond: ${i.atom1Label} - ${i.atom2Label}, invalid symmetry operation: ${i.atom2SiteSymmetry}`
+            `Invalid symmetry in bond: ${r.atom1Label} - ${r.atom2Label}, invalid symmetry operation: ${r.atom2SiteSymmetry}`
           );
         }
     }
@@ -1281,17 +1281,17 @@ class A {
    * @returns {ValidationResult} Validation results
    */
   static validateHBonds(t, e, o) {
-    const s = new vt(), r = new Set(e.map((i) => i.label));
-    for (const i of t) {
-      const a = [];
-      if (r.has(i.donorAtomLabel) || a.push(i.donorAtomLabel), r.has(i.hydrogenAtomLabel) || a.push(i.hydrogenAtomLabel), r.has(i.acceptorAtomLabel) || a.push(i.acceptorAtomLabel), a.length > 0 && s.addAtomLabelError(
-        `Non-existent atoms in H-bond: ${i.donorAtomLabel} - ${i.hydrogenAtomLabel} - ${i.acceptorAtomLabel}, non-existent atom(s): ${a.join(", ")}`
-      ), i.acceptorAtomSymmetry && i.acceptorAtomSymmetry !== ".")
+    const s = new Mt(), i = new Set(e.map((r) => r.label));
+    for (const r of t) {
+      const n = [];
+      if (i.has(r.donorAtomLabel) || n.push(r.donorAtomLabel), i.has(r.hydrogenAtomLabel) || n.push(r.hydrogenAtomLabel), i.has(r.acceptorAtomLabel) || n.push(r.acceptorAtomLabel), n.length > 0 && s.addAtomLabelError(
+        `Non-existent atoms in H-bond: ${r.donorAtomLabel} - ${r.hydrogenAtomLabel} - ${r.acceptorAtomLabel}, non-existent atom(s): ${n.join(", ")}`
+      ), r.acceptorAtomSymmetry && r.acceptorAtomSymmetry !== ".")
         try {
-          o.parsePositionCode(i.acceptorAtomSymmetry);
+          o.parsePositionCode(r.acceptorAtomSymmetry);
         } catch {
           s.addSymmetryError(
-            `Invalid symmetry in H-bond: ${i.donorAtomLabel} - ${i.hydrogenAtomLabel} - ${i.acceptorAtomLabel}, invalid symmetry operation: ${i.acceptorAtomSymmetry}`
+            `Invalid symmetry in H-bond: ${r.donorAtomLabel} - ${r.hydrogenAtomLabel} - ${r.acceptorAtomLabel}, invalid symmetry operation: ${r.acceptorAtomSymmetry}`
           );
         }
     }
@@ -1314,8 +1314,8 @@ class A {
    * @returns {boolean} Whether bond pair is valid
    */
   static isValidBondPair(t, e, o) {
-    const s = A.isValidLabel(t), r = A.isValidLabel(e);
-    return t === "?" || e === "?" ? !1 : (!s || o.has(t)) && (!r || o.has(e));
+    const s = A.isValidLabel(t), i = A.isValidLabel(e);
+    return t === "?" || e === "?" ? !1 : (!s || o.has(t)) && (!i || o.has(e));
   }
   /**
    * Checks if H-bond atom triplet is valid (not centroids unless in atom list)
@@ -1327,8 +1327,8 @@ class A {
    * @returns {boolean} Whether H-bond triplet is valid
    */
   static isValidHBondTriplet(t, e, o, s) {
-    const r = A.isValidLabel(t), i = A.isValidLabel(e), a = A.isValidLabel(o);
-    return t === "?" || e === "?" || o === "?" ? !1 : (!r || s.has(t)) && (!i || s.has(e)) && (!a || s.has(o));
+    const i = A.isValidLabel(t), r = A.isValidLabel(e), n = A.isValidLabel(o);
+    return t === "?" || e === "?" || o === "?" ? !1 : (!i || s.has(t)) && (!r || s.has(e)) && (!n || s.has(o));
   }
 }
 function Q(l) {
@@ -1419,13 +1419,13 @@ function Q(l) {
     "CM"
   ], o = new RegExp(`^(${e.join("|")})`), s = t.match(o);
   if (s)
-    return Mt(s[1]);
-  const r = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
-  if (r)
-    return Mt(r[1]);
+    return St(s[1]);
+  const i = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
+  if (i)
+    return St(i[1]);
   throw new Error(`Could not infer element type from atom label: ${l}`);
 }
-function Mt(l) {
+function St(l) {
   return l.length === 1 ? l : l[0] + l[1].toLowerCase();
 }
 class T {
@@ -1437,8 +1437,8 @@ class T {
   * @param {HBond[]} [hBonds=[]] - Array of hydrogen bonds
   * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
   */
-  constructor(t, e, o = [], s = [], r = null) {
-    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = r || new q("None", 0, [new F("x,y,z")]);
+  constructor(t, e, o = [], s = [], i = null) {
+    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = i || new Y("None", 0, [new F("x,y,z")]);
   }
   /**
   * Creates a CrystalStructure from CIF data
@@ -1446,25 +1446,25 @@ class T {
   * @returns {CrystalStructure} New crystal structure instance
   */
   static fromCIF(t) {
-    const e = ht.fromCIF(t), s = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), r = Array.from({ length: s.length }, (f, u) => {
+    const e = ht.fromCIF(t), s = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), i = Array.from({ length: s.length }, (p, u) => {
       try {
         return X.fromCIF(t, u);
-      } catch (p) {
-        if (p.message.includes("Dummy atom"))
+      } catch (f) {
+        if (f.message.includes("Dummy atom"))
           return null;
-        throw p;
+        throw f;
       }
-    }).filter((f) => f !== null);
-    if (r.length === 0)
+    }).filter((p) => p !== null);
+    if (i.length === 0)
       throw new Error("The cif file contains no valid atoms.");
-    const i = new Set(r.map((f) => f.label)), a = A.createBonds(t, i), n = A.createHBonds(t, i), c = q.fromCIF(t), d = A.validateBonds(a, r, c), m = A.validateHBonds(n, r, c);
+    const r = new Set(i.map((p) => p.label)), n = A.createBonds(t, r), a = A.createHBonds(t, r), c = Y.fromCIF(t), d = A.validateBonds(n, i, c), m = A.validateHBonds(a, i, c);
     if (!d.isValid() || !m.isValid()) {
-      const f = `There were errors in the bond or H-bond creation
-`, u = d.report(r, c), p = m.report(r, c);
-      throw u.length !== 0 && p.length !== 0 ? new Error(f + u + `
-` + p) : new Error(f + u + p);
+      const p = `There were errors in the bond or H-bond creation
+`, u = d.report(i, c), f = m.report(i, c);
+      throw u.length !== 0 && f.length !== 0 ? new Error(p + u + `
+` + f) : new Error(p + u + f);
     }
-    return new T(e, r, a, n, c);
+    return new T(e, i, n, a, c);
   }
   /**
   * Finds an atom by its label 
@@ -1485,51 +1485,51 @@ class T {
   * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
   */
   recalculateConnectedGroups() {
-    const t = /* @__PURE__ */ new Map(), e = [], o = (r) => {
-      if (t.has(r.label))
-        return t.get(r.label);
-      const i = {
+    const t = /* @__PURE__ */ new Map(), e = [], o = (i) => {
+      if (t.has(i.label))
+        return t.get(i.label);
+      const r = {
         atoms: /* @__PURE__ */ new Set(),
         bonds: /* @__PURE__ */ new Set(),
         hBonds: /* @__PURE__ */ new Set()
       };
-      return e.push(i), i;
+      return e.push(r), r;
     };
-    for (const r of this.bonds) {
-      const i = this.getAtomByLabel(r.atom1Label), a = this.getAtomByLabel(r.atom2Label);
-      if (r.atom2SiteSymmetry !== "." && r.atom2SiteSymmetry !== null)
+    for (const i of this.bonds) {
+      const r = this.getAtomByLabel(i.atom1Label), n = this.getAtomByLabel(i.atom2Label);
+      if (i.atom2SiteSymmetry !== "." && i.atom2SiteSymmetry !== null)
         continue;
-      const n = t.get(i.label), c = t.get(a.label), d = n || c;
+      const a = t.get(r.label), c = t.get(n.label), d = a || c;
       if (d) {
-        if (d.atoms.add(i), d.atoms.add(a), d.bonds.add(r), t.set(i.label, d), t.set(a.label, d), n && c && n !== c) {
+        if (d.atoms.add(r), d.atoms.add(n), d.bonds.add(i), t.set(r.label, d), t.set(n.label, d), a && c && a !== c) {
           for (const m of c.atoms)
-            n.atoms.add(m), t.set(m.label, n);
+            a.atoms.add(m), t.set(m.label, a);
           for (const m of c.bonds)
-            n.bonds.add(m);
+            a.bonds.add(m);
           e.splice(e.indexOf(c), 1);
         }
       } else {
-        const m = o(i);
-        m.atoms.add(i), m.atoms.add(a), m.bonds.add(r), t.set(i.label, m), t.set(a.label, m);
+        const m = o(r);
+        m.atoms.add(r), m.atoms.add(n), m.bonds.add(i), t.set(r.label, m), t.set(n.label, m);
       }
     }
-    for (const r of this.hBonds) {
-      const i = this.getAtomByLabel(r.donorAtomLabel), a = this.getAtomByLabel(r.acceptorAtomLabel);
-      if (r.acceptorAtomSymmetry !== "." && r.acceptorAtomSymmetry !== null)
+    for (const i of this.hBonds) {
+      const r = this.getAtomByLabel(i.donorAtomLabel), n = this.getAtomByLabel(i.acceptorAtomLabel);
+      if (i.acceptorAtomSymmetry !== "." && i.acceptorAtomSymmetry !== null)
         continue;
-      o(i).hBonds.add(r), t.has(a.label) && o(a).hBonds.add(r);
+      o(r).hBonds.add(i), t.has(n.label) && o(n).hBonds.add(i);
     }
-    this.atoms.filter((r) => !e.some((i) => i.atoms.has(r))).forEach((r) => {
-      const i = {
-        atoms: /* @__PURE__ */ new Set([r]),
+    this.atoms.filter((i) => !e.some((r) => r.atoms.has(i))).forEach((i) => {
+      const r = {
+        atoms: /* @__PURE__ */ new Set([i]),
         bonds: /* @__PURE__ */ new Set(),
         hBonds: /* @__PURE__ */ new Set()
       };
-      e.push(i);
-    }), this.connectedGroups = e.map((r) => ({
-      atoms: Array.from(r.atoms),
-      bonds: Array.from(r.bonds),
-      hBonds: Array.from(r.hBonds)
+      e.push(r);
+    }), this.connectedGroups = e.map((i) => ({
+      atoms: Array.from(i.atoms),
+      bonds: Array.from(i.bonds),
+      hBonds: Array.from(i.hBonds)
     }));
   }
 }
@@ -1544,8 +1544,8 @@ class ht {
   * @param {number} gamma - γ angle in degrees
   * @throws {Error} If parameters invalid
   */
-  constructor(t, e, o, s, r, i) {
-    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = r, this._gamma = i, this.fractToCartMatrix = I(this);
+  constructor(t, e, o, s, i, r) {
+    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = i, this._gamma = r, this.fractToCartMatrix = I(this);
   }
   /**
   * Creates a UnitCell from CIF data
@@ -1563,12 +1563,12 @@ class ht {
     ];
     if (e.some((o) => o < 0)) {
       const o = ["a", "b", "c", "alpha", "beta", "gamma"], s = [];
-      e.forEach((i, a) => {
-        i < 0 && s.push(o[a]);
+      e.forEach((r, n) => {
+        r < 0 && s.push(o[n]);
       });
-      const r = s.join(", ");
+      const i = s.join(", ");
       throw new Error(
-        `Unit cell parameter entries missing in CIF or negative for cell parameters: ${r}`
+        `Unit cell parameter entries missing in CIF or negative for cell parameters: ${i}`
       );
     }
     return new ht(...e);
@@ -1623,8 +1623,8 @@ class ht {
   }
 }
 class X {
-  constructor(t, e, o, s = null, r = 0) {
-    this.label = String(t), this.atomType = e, this.position = o, this.adp = s, this.disorderGroup = r;
+  constructor(t, e, o, s = null, i = 0) {
+    this.label = String(t), this.atomType = e, this.position = o, this.adp = s, this.disorderGroup = i;
   }
   /**
    * Creates an Atom from CIF data from either the index or the atom in the 
@@ -1636,34 +1636,34 @@ class X {
    * @throws {Error} If neither index nor label provided
    */
   static fromCIF(t, e = null, o = null) {
-    const s = t.get("_atom_site"), r = s.get(["_atom_site.label", "_atom_site_label"]);
-    let i = e;
+    const s = t.get("_atom_site"), i = s.get(["_atom_site.label", "_atom_site_label"]);
+    let r = e;
     if (e === null && o)
-      i = r.indexOf(o);
+      r = i.indexOf(o);
     else if (e === null)
       throw new Error("either atomIndex or atomLabel need to be provided");
-    const a = r[i], n = [".", "?"];
-    if (n.includes(a))
+    const n = i[r], a = [".", "?"];
+    if (a.includes(n))
       throw new Error("Dummy atom: Invalid label");
     if (String(s.getIndex(
       ["_atom_site.calc_flag", "_atom_site_calc_flag"],
-      i,
+      r,
       ""
     )).toLowerCase() === "dum")
       throw new Error("Dummy atom: calc_flag is dum");
-    let d = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], i, !1);
-    if (d || (d = Q(a)), n.includes(d))
+    let d = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], r, !1);
+    if (d || (d = Q(n)), a.includes(d))
       throw new Error("Dummy atom: Invalid atom type");
-    const m = Gt.fromCIF(t, i), f = M.fromCIF(t, i), u = s.getIndex(
+    const m = Vt.fromCIF(t, r), p = S.fromCIF(t, r), u = s.getIndex(
       ["_atom_site.disorder_group", "_atom_site_disorder_group"],
-      i,
+      r,
       "."
     );
     return new X(
-      a,
+      n,
       d,
       m,
-      f,
+      p,
       u === "." ? 0 : u
     );
   }
@@ -1915,14 +1915,14 @@ class P {
     return this._mode = e[(o + 1) % e.length], this._mode;
   }
 }
-G(U);
-const k = class k extends P {
+V(G);
+const v = class v extends P {
   /**
    * Creates a new hydrogen filter
    * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
    */
-  constructor(t = k.MODES.NONE) {
-    super(k.MODES, t, "HydrogenFilter", k.PREFERRED_FALLBACK_ORDER);
+  constructor(t = v.MODES.NONE) {
+    super(v.MODES, t, "HydrogenFilter", v.PREFERRED_FALLBACK_ORDER);
   }
   /**
    * Applies hydrogen filtering according to current mode
@@ -1931,19 +1931,19 @@ const k = class k extends P {
    */
   apply(t) {
     this.ensureValidMode(t);
-    const e = t.atoms.filter((r) => r.atomType !== "H" || this.mode !== k.MODES.NONE).map((r) => new X(
-      r.label,
-      r.atomType,
-      r.position,
-      r.atomType === "H" && this.mode === k.MODES.CONSTANT ? null : r.adp,
-      r.disorderGroup
-    )), o = t.bonds.filter((r) => {
-      if (this.mode === k.MODES.NONE) {
-        const i = t.getAtomByLabel(r.atom1Label), a = t.getAtomByLabel(r.atom2Label);
-        return !(i.atomType === "H" || a.atomType === "H");
+    const e = t.atoms.filter((i) => i.atomType !== "H" || this.mode !== v.MODES.NONE).map((i) => new X(
+      i.label,
+      i.atomType,
+      i.position,
+      i.atomType === "H" && this.mode === v.MODES.CONSTANT ? null : i.adp,
+      i.disorderGroup
+    )), o = t.bonds.filter((i) => {
+      if (this.mode === v.MODES.NONE) {
+        const r = t.getAtomByLabel(i.atom1Label), n = t.getAtomByLabel(i.atom2Label);
+        return !(r.atomType === "H" || n.atomType === "H");
       }
       return !0;
-    }), s = this.mode === k.MODES.NONE ? [] : t.hBonds;
+    }), s = this.mode === v.MODES.NONE ? [] : t.hBonds;
     return new T(
       t.cell,
       e,
@@ -1958,25 +1958,25 @@ const k = class k extends P {
    * @returns {Array<string>} Array of applicable mode names
    */
   getApplicableModes(t) {
-    const e = [k.MODES.NONE];
-    return t.atoms.some((r) => r.atomType === "H") && (e.push(k.MODES.CONSTANT), t.atoms.some(
-      (r) => {
-        var i;
-        return r.atomType === "H" && ((i = r.adp) == null ? void 0 : i.constructor.name) === "UAnisoADP";
+    const e = [v.MODES.NONE];
+    return t.atoms.some((i) => i.atomType === "H") && (e.push(v.MODES.CONSTANT), t.atoms.some(
+      (i) => {
+        var r;
+        return i.atomType === "H" && ((r = i.adp) == null ? void 0 : r.constructor.name) === "UAnisoADP";
       }
-    ) && e.push(k.MODES.ANISOTROPIC)), e;
+    ) && e.push(v.MODES.ANISOTROPIC)), e;
   }
 };
-D(k, "MODES", Object.freeze({
+D(v, "MODES", Object.freeze({
   NONE: "none",
   CONSTANT: "constant",
   ANISOTROPIC: "anisotropic"
-})), D(k, "PREFERRED_FALLBACK_ORDER", [
-  k.MODES.ANISOTROPIC,
-  k.MODES.CONSTANT,
-  k.MODES.NONE
+})), D(v, "PREFERRED_FALLBACK_ORDER", [
+  v.MODES.ANISOTROPIC,
+  v.MODES.CONSTANT,
+  v.MODES.NONE
 ]);
-let it = k;
+let rt = v;
 const w = class w extends P {
   /**
    * Creates a new disorder filter
@@ -1992,12 +1992,12 @@ const w = class w extends P {
    */
   apply(t) {
     this.ensureValidMode(t);
-    const e = t.atoms.filter((r) => !(this.mode === w.MODES.GROUP1 && r.disorderGroup > 1 || this.mode === w.MODES.GROUP2 && r.disorderGroup === 1)), o = t.bonds.filter((r) => {
-      const i = t.getAtomByLabel(r.atom1Label), a = t.getAtomByLabel(r.atom2Label);
-      return !(this.mode === w.MODES.GROUP1 && (i.disorderGroup > 1 || a.disorderGroup > 1) || this.mode === w.MODES.GROUP2 && (i.disorderGroup === 1 || a.disorderGroup === 1));
-    }), s = t.hBonds.filter((r) => {
-      const i = t.getAtomByLabel(r.donorAtomLabel), a = t.getAtomByLabel(r.hydrogenAtomLabel), n = t.getAtomByLabel(r.acceptorAtomLabel);
-      return !(this.mode === w.MODES.GROUP1 && (i.disorderGroup > 1 || a.disorderGroup > 1 || n.disorderGroup > 1) || this.mode === w.MODES.GROUP2 && (i.disorderGroup === 1 || a.disorderGroup === 1 || n.disorderGroup === 1));
+    const e = t.atoms.filter((i) => !(this.mode === w.MODES.GROUP1 && i.disorderGroup > 1 || this.mode === w.MODES.GROUP2 && i.disorderGroup === 1)), o = t.bonds.filter((i) => {
+      const r = t.getAtomByLabel(i.atom1Label), n = t.getAtomByLabel(i.atom2Label);
+      return !(this.mode === w.MODES.GROUP1 && (r.disorderGroup > 1 || n.disorderGroup > 1) || this.mode === w.MODES.GROUP2 && (r.disorderGroup === 1 || n.disorderGroup === 1));
+    }), s = t.hBonds.filter((i) => {
+      const r = t.getAtomByLabel(i.donorAtomLabel), n = t.getAtomByLabel(i.hydrogenAtomLabel), a = t.getAtomByLabel(i.acceptorAtomLabel);
+      return !(this.mode === w.MODES.GROUP1 && (r.disorderGroup > 1 || n.disorderGroup > 1 || a.disorderGroup > 1) || this.mode === w.MODES.GROUP2 && (r.disorderGroup === 1 || n.disorderGroup === 1 || a.disorderGroup === 1));
     });
     return new T(
       t.cell,
@@ -2026,7 +2026,7 @@ D(w, "MODES", Object.freeze({
   w.MODES.GROUP1,
   w.MODES.GROUP2
 ]);
-let at = w;
+let nt = w;
 const y = class y extends P {
   /**
    * Creates a new symmetry grower
@@ -2053,10 +2053,10 @@ const y = class y extends P {
    * @returns {GrowableAtoms} Atoms that can be grown through bonds and hydrogen bonds
    */
   findGrowableAtoms(t) {
-    const e = t.bonds.filter(({ atom2SiteSymmetry: s }) => s && s !== ".").map(({ atom2Label: s, atom2SiteSymmetry: r }) => [s, r]), o = t.hBonds.filter(
+    const e = t.bonds.filter(({ atom2SiteSymmetry: s }) => s && s !== ".").map(({ atom2Label: s, atom2SiteSymmetry: i }) => [s, i]), o = t.hBonds.filter(
       ({ acceptorAtomSymmetry: s }) => s && s !== "."
     ).map(
-      ({ acceptorAtomLabel: s, acceptorAtomSymmetry: r }) => [s, r]
+      ({ acceptorAtomLabel: s, acceptorAtomSymmetry: i }) => [s, i]
     );
     return { bondAtoms: e, hBondAtoms: o };
   }
@@ -2069,32 +2069,32 @@ const y = class y extends P {
    * @throws {Error} If an atom is not found in any connected group
    */
   growAtomArray(t, e, o) {
-    for (const [s, r] of e) {
-      const i = y.combineSymOpLabel(s, r);
-      if (o.labels.has(i))
+    for (const [s, i] of e) {
+      const r = y.combineSymOpLabel(s, i);
+      if (o.labels.has(r))
         continue;
-      const a = t.connectedGroups.find(
+      const n = t.connectedGroups.find(
         (c) => c.atoms.some((d) => d.label === s)
       );
-      if (!a)
+      if (!n)
         throw new Error(
           `Atom ${s} is not in any group. Typo or structure.recalculateConnectedGroups()?`
         );
-      t.symmetry.applySymmetry(r, a.atoms).forEach((c) => {
-        c.label = y.combineSymOpLabel(c.label, r), o.labels.add(c.label), o.atoms.add(c);
-      }), a.bonds.filter(({ atom2SiteSymmetry: c }) => c === ".").forEach((c) => {
+      t.symmetry.applySymmetry(i, n.atoms).forEach((c) => {
+        c.label = y.combineSymOpLabel(c.label, i), o.labels.add(c.label), o.atoms.add(c);
+      }), n.bonds.filter(({ atom2SiteSymmetry: c }) => c === ".").forEach((c) => {
         o.bonds.add(new L(
-          y.combineSymOpLabel(c.atom1Label, r),
-          y.combineSymOpLabel(c.atom2Label, r),
+          y.combineSymOpLabel(c.atom1Label, i),
+          y.combineSymOpLabel(c.atom2Label, i),
           c.bondLength,
           c.bondLengthSU,
           "."
         ));
-      }), a.hBonds.filter(({ acceptorAtomSymmetry: c }) => c === ".").forEach((c) => {
+      }), n.hBonds.filter(({ acceptorAtomSymmetry: c }) => c === ".").forEach((c) => {
         o.hBonds.add(new j(
-          y.combineSymOpLabel(c.donorAtomLabel, r),
-          y.combineSymOpLabel(c.hydrogenAtomLabel, r),
-          y.combineSymOpLabel(c.acceptorAtomLabel, r),
+          y.combineSymOpLabel(c.donorAtomLabel, i),
+          y.combineSymOpLabel(c.hydrogenAtomLabel, i),
+          y.combineSymOpLabel(c.acceptorAtomLabel, i),
           c.donorHydrogenDistance,
           c.donorHydrogenDistanceSU,
           c.acceptorHydrogenDistance,
@@ -2121,48 +2121,48 @@ const y = class y extends P {
       atoms: new Set(t.atoms),
       bonds: new Set(t.bonds),
       hBonds: new Set(t.hBonds),
-      labels: new Set(t.atoms.map(({ label: i }) => i))
+      labels: new Set(t.atoms.map(({ label: r }) => r))
     };
     this.mode.startsWith("bonds-yes") && this.growAtomArray(t, e.bondAtoms, o), this.mode.includes("hbonds-yes") && this.growAtomArray(t, e.hBondAtoms, o);
     const s = Array.from(o.atoms);
-    for (const i of t.bonds) {
-      if (i.atom2SiteSymmetry === ".")
+    for (const r of t.bonds) {
+      if (r.atom2SiteSymmetry === ".")
         continue;
-      const a = y.combineSymOpLabel(i.atom2Label, i.atom2SiteSymmetry);
-      s.some((n) => n.label === a) && o.bonds.add(
-        new L(i.atom1Label, a, i.bondLength, i.bondLengthSU, ".")
+      const n = y.combineSymOpLabel(r.atom2Label, r.atom2SiteSymmetry);
+      s.some((a) => a.label === n) && o.bonds.add(
+        new L(r.atom1Label, n, r.bondLength, r.bondLengthSU, ".")
       );
     }
-    for (const i of t.hBonds) {
-      if (i.acceptorAtomSymmetry === ".")
+    for (const r of t.hBonds) {
+      if (r.acceptorAtomSymmetry === ".")
         continue;
-      const a = y.combineSymOpLabel(i.acceptorAtomLabel, i.acceptorAtomSymmetry);
-      s.some((n) => n.label === a) && o.hBonds.add(
+      const n = y.combineSymOpLabel(r.acceptorAtomLabel, r.acceptorAtomSymmetry);
+      s.some((a) => a.label === n) && o.hBonds.add(
         new j(
-          i.donorAtomLabel,
-          i.hydrogenAtomLabel,
-          a,
-          i.donorHydrogenDistance,
-          i.donorHydrogenDistanceSU,
-          i.acceptorHydrogenDistance,
-          i.acceptorHydrogenDistanceSU,
-          i.donorAcceptorDistance,
-          i.donorAcceptorDistanceSU,
-          i.hBondAngle,
-          i.hBondAngleSU,
+          r.donorAtomLabel,
+          r.hydrogenAtomLabel,
+          n,
+          r.donorHydrogenDistance,
+          r.donorHydrogenDistanceSU,
+          r.acceptorHydrogenDistance,
+          r.acceptorHydrogenDistanceSU,
+          r.donorAcceptorDistance,
+          r.donorAcceptorDistanceSU,
+          r.hBondAngle,
+          r.hBondAngleSU,
           "."
         )
       );
     }
-    const r = Array.from(o.hBonds).filter(({ acceptorAtomLabel: i, hydrogenAtomLabel: a, donorAtomLabel: n }) => {
-      const c = o.labels.has(i), d = o.labels.has(a), m = o.labels.has(n);
+    const i = Array.from(o.hBonds).filter(({ acceptorAtomLabel: r, hydrogenAtomLabel: n, donorAtomLabel: a }) => {
+      const c = o.labels.has(r), d = o.labels.has(n), m = o.labels.has(a);
       return c && d && m;
     });
     return new T(
       t.cell,
       s,
       Array.from(o.bonds),
-      r,
+      i,
       t.symmetry
     );
   }
@@ -2176,7 +2176,6 @@ const y = class y extends P {
     return !o && !s ? [y.MODES.BONDS_NONE_HBONDS_NONE] : o ? s ? [
       y.MODES.BONDS_YES_HBONDS_YES,
       y.MODES.BONDS_YES_HBONDS_NO,
-      y.MODES.BONDS_NO_HBONDS_YES,
       y.MODES.BONDS_NO_HBONDS_NO
     ] : [
       y.MODES.BONDS_YES_HBONDS_NONE,
@@ -2191,7 +2190,6 @@ D(y, "MODES", Object.freeze({
   BONDS_YES_HBONDS_YES: "bonds-yes-hbonds-yes",
   BONDS_YES_HBONDS_NO: "bonds-yes-hbonds-no",
   BONDS_YES_HBONDS_NONE: "bonds-yes-hbonds-none",
-  BONDS_NO_HBONDS_YES: "bonds-no-hbonds-yes",
   BONDS_NO_HBONDS_NO: "bonds-no-hbonds-no",
   BONDS_NO_HBONDS_NONE: "bonds-no-hbonds-none",
   BONDS_NONE_HBONDS_YES: "bonds-none-hbonds-yes",
@@ -2203,7 +2201,7 @@ D(y, "MODES", Object.freeze({
   y.MODES.BONDS_NONE_HBONDS_NO
 ]);
 let K = y;
-function Ut(l) {
+function Gt(l) {
   const t = {
     position: 0,
     rotation: 0,
@@ -2211,14 +2209,14 @@ function Ut(l) {
     matrix: 0
   };
   function e(o) {
-    const s = o.position, r = o.rotation, i = o.scale, a = o.matrix.elements;
-    [s.x, s.y, s.z].some(isNaN) && (console.log("pos"), console.log(s), console.log(o.userData), t.position++), [r.x, r.y, r.z].some(isNaN) && (t.rotation++, console.log("rot"), console.log(r), console.log(o.userData)), [i.x, i.y, i.z].some(isNaN) && (console.log("scale"), console.log(i), console.log(o.userData), t.scale++), a.some(isNaN) && (t.matrix++, console.log("matrix"), console.log(a), console.log(o.userData));
-    for (const n of o.children)
-      e(n);
+    const s = o.position, i = o.rotation, r = o.scale, n = o.matrix.elements;
+    [s.x, s.y, s.z].some(isNaN) && (console.log("pos"), console.log(s), console.log(o.userData), t.position++), [i.x, i.y, i.z].some(isNaN) && (t.rotation++, console.log("rot"), console.log(i), console.log(o.userData)), [r.x, r.y, r.z].some(isNaN) && (console.log("scale"), console.log(r), console.log(o.userData), t.scale++), n.some(isNaN) && (t.matrix++, console.log("matrix"), console.log(n), console.log(o.userData));
+    for (const a of o.children)
+      e(a);
   }
   return e(l), t;
 }
-function Vt(l, t) {
+function Ut(l, t) {
   const o = l.getEllipsoidMatrix(t).toArray();
   return new h.Matrix4(
     o[0][0],
@@ -2243,15 +2241,15 @@ function Ot(l, t) {
   const e = t.clone().sub(l), o = e.length();
   if (o === 0)
     throw new Error("Error in ORTEP Bond Creation. Trying to create a zero length bond.");
-  const s = e.divideScalar(o), r = new h.Vector3(0, 1, 0), i = new h.Vector3().crossVectors(s, r), a = -Math.acos(s.dot(r));
+  const s = e.divideScalar(o), i = new h.Vector3(0, 1, 0), r = new h.Vector3().crossVectors(s, i), n = -Math.acos(s.dot(i));
   return new h.Matrix4().makeScale(1, o, 1).premultiply(new h.Matrix4().makeRotationAxis(
-    i.normalize(),
-    a
+    r.normalize(),
+    n
   )).setPosition(
     l.clone().add(t).multiplyScalar(0.5)
   );
 }
-class Yt {
+class qt {
   /**
    * Creates a new geometry and material cache.
    * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
@@ -2327,16 +2325,16 @@ class Yt {
     this.options.elementProperties[e] || (e = Q(t)), this.validateElementType(e);
     const o = `${e}_materials`;
     if (!this.elementMaterials[o]) {
-      const s = this.options.elementProperties[e], r = new h.MeshStandardMaterial({
+      const s = this.options.elementProperties[e], i = new h.MeshStandardMaterial({
         color: s.atomColor,
         roughness: this.options.atomColorRoughness,
         metalness: this.options.atomColorMetalness
-      }), i = new h.MeshStandardMaterial({
+      }), r = new h.MeshStandardMaterial({
         color: s.ringColor,
         roughness: this.options.atomColorRoughness,
         metalness: this.options.atomColorMetalness
       });
-      this.elementMaterials[o] = [r, i];
+      this.elementMaterials[o] = [i, r];
     }
     return this.elementMaterials[o];
   }
@@ -2353,34 +2351,34 @@ class Yt {
       this.options.atomADPRingHeight,
       this.options.atomADPInnerSections,
       this.options.atomADPRingSections
-    ), e = t.attributes.position.array, o = t.index.array, s = [], r = [], i = /* @__PURE__ */ new Set();
+    ), e = t.attributes.position.array, o = t.index.array, s = [], i = [], r = /* @__PURE__ */ new Set();
     for (let d = 0; d < o.length; d += 3) {
-      const m = o[d] * 3, f = o[d + 1] * 3, u = o[d + 2] * 3, p = [m, f, u].map((g) => ({
+      const m = o[d] * 3, p = o[d + 1] * 3, u = o[d + 2] * 3, f = [m, p, u].map((g) => ({
         index: g / 3,
         distance: Math.sqrt(
           e[g] * e[g] + e[g + 1] * e[g + 1] + e[g + 2] * e[g + 2]
         )
       }));
-      p.some((g) => g.distance >= this.scaling) && p.forEach((g) => i.add(o[d + g.index % 3]));
+      f.some((g) => g.distance >= this.scaling) && f.forEach((g) => r.add(o[d + g.index % 3]));
     }
-    const a = /* @__PURE__ */ new Map();
-    let n = 0;
-    i.forEach((d) => {
+    const n = /* @__PURE__ */ new Map();
+    let a = 0;
+    r.forEach((d) => {
       const m = d * 3;
       s.push(
         e[m],
         e[m + 1],
         e[m + 2]
-      ), a.set(d, n++);
+      ), n.set(d, a++);
     });
     for (let d = 0; d < o.length; d += 3)
-      i.has(o[d]) && i.has(o[d + 1]) && i.has(o[d + 2]) && r.push(
-        a.get(o[d]),
-        a.get(o[d + 1]),
-        a.get(o[d + 2])
+      r.has(o[d]) && r.has(o[d + 1]) && r.has(o[d + 2]) && i.push(
+        n.get(o[d]),
+        n.get(o[d + 1]),
+        n.get(o[d + 2])
       );
     const c = new h.BufferGeometry();
-    return c.setAttribute("position", new h.Float32BufferAttribute(s, 3)), c.setIndex(r), c.computeVertexNormals(), c.rotateX(0.5 * Math.PI), t.dispose(), c;
+    return c.setAttribute("position", new h.Float32BufferAttribute(s, 3)), c.setIndex(i), c.computeVertexNormals(), c.rotateX(0.5 * Math.PI), t.dispose(), c;
   }
   /**
    * Cleans up all cached resources.
@@ -2391,7 +2389,7 @@ class Yt {
     });
   }
 }
-class qt {
+class Yt {
   /**
    * Creates a new ORTEP structure visualisation.
    * @param {CrystalStructure} crystalStructure - Input crystal structure
@@ -2399,16 +2397,16 @@ class qt {
    */
   constructor(t, e = {}) {
     const o = e || {}, s = { ..._.elementProperties };
-    o.elementProperties && Object.entries(o.elementProperties).forEach(([r, i]) => {
-      s[r] = {
-        ...s[r],
-        ...i
+    o.elementProperties && Object.entries(o.elementProperties).forEach(([i, r]) => {
+      s[i] = {
+        ...s[i],
+        ...r
       };
     }), this.options = {
       ..._,
       ...o,
       elementProperties: s
-    }, this.crystalStructure = t, this.cache = new Yt(this.options), this.createStructure();
+    }, this.crystalStructure = t, this.cache = new qt(this.options), this.createStructure();
   }
   /**
    * Creates 3D representations of atoms, bonds and H-bonds.
@@ -2418,24 +2416,24 @@ class qt {
     this.atoms3D = [], this.bonds3D = [], this.hBonds3D = [];
     const t = this.crystalStructure.atoms.map((s) => s.label);
     for (const s of this.crystalStructure.atoms) {
-      const [r, i] = this.cache.getAtomMaterials(s.atomType);
+      const [i, r] = this.cache.getAtomMaterials(s.atomType);
       s.adp instanceof $ ? this.atoms3D.push(new jt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
-        r,
+        i,
         this.cache.geometries.adpRing,
-        i
+        r
       )) : s.adp instanceof H ? this.atoms3D.push(new Wt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
-        r
+        i
       )) : this.atoms3D.push(new Kt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
-        r,
+        i,
         this.options
       ));
     }
@@ -2454,9 +2452,9 @@ class qt {
           this.cache.geometries.bond,
           this.cache.materials.bond
         ));
-      } catch (r) {
-        if (r.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.")
-          throw r;
+      } catch (i) {
+        if (i.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.")
+          throw i;
       }
     const o = this.crystalStructure.hBonds.map((s) => new j(
       s.donorAtomLabel,
@@ -2485,9 +2483,9 @@ class qt {
           this.options.hbondDashSegmentLength,
           this.options.hbondDashFraction
         ));
-      } catch (r) {
-        if (r.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.")
-          throw r;
+      } catch (i) {
+        if (i.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.")
+          throw i;
       }
   }
   /**
@@ -2502,7 +2500,7 @@ class qt {
       t.add(e);
     for (const e of this.hBonds3D)
       t.add(e);
-    return Ut(t), t;
+    return Gt(t), t;
   }
   /**
    * Cleans up all resources.
@@ -2544,10 +2542,10 @@ class tt extends h.Mesh {
    * @param {Object} options - Selection options
    */
   select(t, e) {
-    var r;
+    var i;
     this._selectionColor = t;
     const o = this.material.clone();
-    (r = o.emissive) == null || r.setHex(e.selection.highlightEmissive), this.originalMaterial = this.material, this.material = o;
+    (i = o.emissive) == null || i.setHex(e.selection.highlightEmissive), this.originalMaterial = this.material, this.material = o;
     const s = this.createSelectionMarker(t, e);
     this.add(s), this.marker = s;
   }
@@ -2592,8 +2590,8 @@ class mt extends tt {
    */
   constructor(t, e, o, s) {
     super(o, s);
-    const r = new h.Vector3(...t.position.toCartesian(e));
-    this.position.copy(r), this.userData = {
+    const i = new h.Vector3(...t.position.toCartesian(e));
+    this.position.copy(i), this.userData = {
       type: "atom",
       atomData: t,
       selectable: !0
@@ -2622,23 +2620,23 @@ class jt extends mt {
    * @param {THREE.BufferGeometry} baseADPRing - ADP ring geometry
    * @param {THREE.Material} ADPRingMaterial - ADP ring material
    */
-  constructor(t, e, o, s, r, i) {
-    if (super(t, e, o, s), [t.adp.u11, t.adp.u3, t.adp.u33].some((n) => n <= 0))
+  constructor(t, e, o, s, i, r) {
+    if (super(t, e, o, s), [t.adp.u11, t.adp.u3, t.adp.u33].some((a) => a <= 0))
       this.geometry = new h.TetrahedronGeometry(0.8);
     else {
-      const n = Vt(t.adp, e);
-      if (n.toArray().includes(NaN))
+      const a = Ut(t.adp, e);
+      if (a.toArray().includes(NaN))
         this.geometry = new h.TetrahedronGeometry(0.8);
       else {
         for (const c of this.adpRingMatrices) {
-          const d = new h.Mesh(r, i);
+          const d = new h.Mesh(i, r);
           d.applyMatrix4(c), d.userData.selectable = !1, this.add(d);
         }
-        this.applyMatrix4(n);
+        this.applyMatrix4(a);
       }
     }
-    const a = new h.Vector3(...t.position.toCartesian(e));
-    this.position.copy(a), this.userData = {
+    const n = new h.Vector3(...t.position.toCartesian(e));
+    this.position.copy(n), this.userData = {
       type: "atom",
       atomData: t,
       selectable: !0
@@ -2728,16 +2726,16 @@ class Kt extends mt {
    * @param {Object} options - Must contain elementProperties for atom type
    * @throws {Error} If element properties not found
    */
-  constructor(t, e, o, s, r) {
+  constructor(t, e, o, s, i) {
     super(t, e, o, s);
-    let i = t.atomType;
+    let r = t.atomType;
     try {
-      r.elementProperties[i] || (i = Q(t.atomType));
+      i.elementProperties[r] || (r = Q(t.atomType));
     } catch {
       throw new Error(`Element properties not found for atom type: '${t.atomType}'`);
     }
     this.scale.multiplyScalar(
-      r.atomConstantRadiusMultiplier * r.elementProperties[i].radius
+      i.atomConstantRadiusMultiplier * i.elementProperties[r].radius
     );
   }
 }
@@ -2751,7 +2749,7 @@ class Xt extends tt {
    */
   constructor(t, e, o, s) {
     super(o, s);
-    const r = e.getAtomByLabel(t.atom1Label), i = e.getAtomByLabel(t.atom2Label), a = new h.Vector3(...r.position.toCartesian(e.cell)), n = new h.Vector3(...i.position.toCartesian(e.cell)), c = Ot(a, n);
+    const i = e.getAtomByLabel(t.atom1Label), r = e.getAtomByLabel(t.atom2Label), n = new h.Vector3(...i.position.toCartesian(e.cell)), a = new h.Vector3(...r.position.toCartesian(e.cell)), c = Ot(n, a);
     this.applyMatrix4(c), this.userData = {
       type: "bond",
       bondData: t,
@@ -2771,12 +2769,12 @@ class Xt extends tt {
     return o.scale.x *= e.selection.bondMarkerMult, o.scale.z *= e.selection.bondMarkerMult, o.userData.selectable = !1, o;
   }
 }
-class ft extends h.Group {
+class pt extends h.Group {
   /**
    * Creates a new group object.
    */
   constructor() {
-    if (new.target === ft)
+    if (new.target === pt)
       throw new TypeError("ORTEPGroupObject is an abstract class and cannot be instantiated directly.");
     super(), this._selectionColor = null, this.marker = null;
   }
@@ -2792,18 +2790,18 @@ class ft extends h.Group {
     return t.forEach((e) => {
       if (e instanceof h.Mesh) {
         const o = e.raycast;
-        e.raycast = (s, r) => {
-          const i = [];
-          if (o.call(e, s, i), i.length > 0) {
-            const a = i[0];
-            r.push({
-              distance: a.distance,
-              point: a.point,
+        e.raycast = (s, i) => {
+          const r = [];
+          if (o.call(e, s, r), r.length > 0) {
+            const n = r[0];
+            i.push({
+              distance: n.distance,
+              point: n.point,
               object: this,
               // Return parent group
-              face: a.face,
-              faceIndex: a.faceIndex,
-              uv: a.uv
+              face: n.face,
+              faceIndex: n.faceIndex,
+              uv: n.uv
             });
           }
         };
@@ -2830,10 +2828,10 @@ class ft extends h.Group {
    */
   select(t, e) {
     this._selectionColor = t, this.traverse((s) => {
-      var r;
+      var i;
       if (s instanceof h.Mesh) {
-        const i = s.material.clone();
-        (r = i.emissive) == null || r.setHex(e.selection.highlightEmissive), s.originalMaterial = s.material, s.material = i;
+        const r = s.material.clone();
+        (i = r.emissive) == null || i.setHex(e.selection.highlightEmissive), s.originalMaterial = s.material, s.material = r;
       }
     });
     const o = this.createSelectionMarker(t, e);
@@ -2869,7 +2867,7 @@ class ft extends h.Group {
     }), this.clear();
   }
 }
-class Zt extends ft {
+class Zt extends pt {
   /**
    * Creates a new hydrogen bond visualization.
    * @param {HBond} hbond - H-bond data
@@ -2879,20 +2877,20 @@ class Zt extends ft {
    * @param {number} targetSegmentLength - Approximate target length for dashed segments
    * @param {number} dashFraction - Fraction of segment that is solid
    */
-  constructor(t, e, o, s, r, i) {
+  constructor(t, e, o, s, i, r) {
     super(), this.userData = {
       type: "hbond",
       hbondData: t,
       selectable: !0
     };
-    const a = e.getAtomByLabel(t.hydrogenAtomLabel), n = e.getAtomByLabel(t.acceptorAtomLabel), c = new h.Vector3(...a.position.toCartesian(e.cell)), d = new h.Vector3(...n.position.toCartesian(e.cell));
+    const n = e.getAtomByLabel(t.hydrogenAtomLabel), a = e.getAtomByLabel(t.acceptorAtomLabel), c = new h.Vector3(...n.position.toCartesian(e.cell)), d = new h.Vector3(...a.position.toCartesian(e.cell));
     this.createDashedBondSegments(
       c,
       d,
       o,
       s,
-      r,
-      i
+      i,
+      r
     );
   }
   /**
@@ -2905,11 +2903,11 @@ class Zt extends ft {
    * @param {number} targetLength - approximate target segment length
    * @param {number} dashFraction - Fraction of segment that is solid
    */
-  createDashedBondSegments(t, e, o, s, r, i) {
-    const a = t.distanceTo(e), n = Math.max(1, Math.floor(a / r)), d = a / n * i;
-    for (let m = 0; m < n; m++) {
-      const f = m / n, u = f + d / a, p = new h.Vector3().lerpVectors(t, e, f), g = new h.Vector3().lerpVectors(t, e, u), O = new h.Mesh(o, s.clone());
-      O.applyMatrix4(Ot(p, g)), O.userData = this.userData, this.add(O);
+  createDashedBondSegments(t, e, o, s, i, r) {
+    const n = t.distanceTo(e), a = Math.max(1, Math.floor(n / i)), d = n / a * r;
+    for (let m = 0; m < a; m++) {
+      const p = m / a, u = p + d / n, f = new h.Vector3().lerpVectors(t, e, p), g = new h.Vector3().lerpVectors(t, e, u), O = new h.Mesh(o, s.clone());
+      O.applyMatrix4(Ot(f, g)), O.userData = this.userData, this.add(O);
     }
   }
   /**
@@ -2919,9 +2917,9 @@ class Zt extends ft {
    */
   createSelectionMarker(t, e) {
     const o = new h.Group(), s = this.createSelectionMaterial(t);
-    return this.children.forEach((r) => {
-      const i = new h.Mesh(r.geometry, s);
-      i.applyMatrix4(r.matrix), i.scale.x *= e.selection.bondMarkerMult, i.scale.y *= 0.8 * e.selection.bondMarkerMult, i.scale.z *= e.selection.bondMarkerMult, i.userData.selectable = !1, o.add(i);
+    return this.children.forEach((i) => {
+      const r = new h.Mesh(i.geometry, s);
+      r.applyMatrix4(i.matrix), r.scale.x *= e.selection.bondMarkerMult, r.scale.y *= 0.8 * e.selection.bondMarkerMult, r.scale.z *= e.selection.bondMarkerMult, r.userData.selectable = !1, o.add(r);
     }), o;
   }
 }
@@ -2932,11 +2930,11 @@ function Jt(l, t, e = 4) {
   t * Math.pow(10, -o) < 2 && (o -= 1);
   const s = et(l, -o);
   if (o < 0) {
-    const i = Math.round(t / Math.pow(10, o));
-    return `${s.toFixed(-o)}(${i})`;
+    const r = Math.round(t / Math.pow(10, o));
+    return `${s.toFixed(-o)}(${r})`;
   }
-  const r = et(t, o);
-  return `${s}(${r})`;
+  const i = et(t, o);
+  return `${s}(${i})`;
 }
 function et(l, t) {
   const e = Math.pow(10, t);
@@ -2954,25 +2952,25 @@ function Qt(l, t = !0) {
   const e = /* @__PURE__ */ new Map();
   l.forEach((s) => {
     try {
-      const r = Nt(s, t);
-      e.has(r) || e.set(r, []), e.get(r).push(s);
-    } catch (r) {
-      console.warn(`Skipping invalid label: ${r.message}`);
+      const i = Nt(s, t);
+      e.has(i) || e.set(i, []), e.get(i).push(s);
+    } catch (i) {
+      console.warn(`Skipping invalid label: ${i.message}`);
     }
   });
   const o = /* @__PURE__ */ new Map();
-  for (const [s, r] of e.entries())
-    r.length === 1 ? o.set(s, r[0]) : console.warn(
-      `Multiple labels map to ${s}: ${r.join(", ")}. Skipping mapping.`
+  for (const [s, i] of e.entries())
+    i.length === 1 ? o.set(s, i[0]) : console.warn(
+      `Multiple labels map to ${s}: ${i.join(", ")}. Skipping mapping.`
     );
   return o;
 }
-function Y(l, t, e, o = !0) {
-  const s = Qt(e, o), i = l.get(t).map((a) => {
-    const n = Nt(a, o);
-    return s.has(n) ? s.get(n) : a;
+function q(l, t, e, o = !0) {
+  const s = Qt(e, o), r = l.get(t).map((n) => {
+    const a = Nt(n, o);
+    return s.has(a) ? s.get(a) : n;
   });
-  l.data[t] = i;
+  l.data[t] = r;
 }
 function te(l) {
   if (!l || l === ".")
@@ -2986,8 +2984,8 @@ function te(l) {
     return e[0].startsWith("-") ? `-${o}_${s}` : `${o}_${s}`;
   }
   if (/^\d{5,6}$/.test(t)) {
-    const o = t.slice(0, 3), s = t.slice(-3), r = Array.from(o).map((a) => Math.abs(parseInt(a) - 5)).reduce((a, n) => a + n, 0), i = Array.from(s).map((a) => Math.abs(parseInt(a) - 5)).reduce((a, n) => a + n, 0);
-    return r < i ? `${parseInt(t.slice(3))}_${o}` : `${parseInt(t.slice(0, -4))}_${s}`;
+    const o = t.slice(0, 3), s = t.slice(-3), i = Array.from(o).map((n) => Math.abs(parseInt(n) - 5)).reduce((n, a) => n + a, 0), r = Array.from(s).map((n) => Math.abs(parseInt(n) - 5)).reduce((n, a) => n + a, 0);
+    return i < r ? `${parseInt(t.slice(3))}_${o}` : `${parseInt(t.slice(0, -4))}_${s}`;
   }
   return l;
 }
@@ -3004,70 +3002,70 @@ function R(l, t) {
 function ee(l, t = !0, e = !0, o = !0) {
   let s;
   if ((t || e) && (s = l.get("_atom_site").get(["_atom_site.label", "_atom_site_label"])), t) {
-    const r = l.get("_atom_site_aniso", !1);
-    if (r) {
-      const i = R(r, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-      i && Y(r, i, s);
+    const i = l.get("_atom_site_aniso", !1);
+    if (i) {
+      const r = R(i, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+      r && q(i, r, s);
     }
   }
   if (e || o) {
-    const r = l.get("_geom_bond", !1);
-    if (r) {
-      if (e) {
-        const a = R(
-          r,
-          ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]
-        );
-        Y(r, a, s);
-        const n = R(
-          r,
-          ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]
-        );
-        Y(r, n, s);
-      }
-      if (o) {
-        const a = R(
-          r,
-          ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]
-        );
-        a && ot(r, a);
-        const n = R(
-          r,
-          ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]
-        );
-        n && ot(r, n);
-      }
-    }
-    const i = l.get("_geom_hbond", !1);
+    const i = l.get("_geom_bond", !1);
     if (i) {
       if (e) {
-        const a = R(
-          i,
-          ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]
-        );
-        Y(i, a, s);
         const n = R(
           i,
-          ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]
+          ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]
         );
-        n && Y(i, n, s);
-        const c = R(
-          i,
-          ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]
-        );
-        Y(i, c, s);
-      }
-      if (o) {
+        q(i, n, s);
         const a = R(
           i,
-          ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]
+          ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]
+        );
+        q(i, a, s);
+      }
+      if (o) {
+        const n = R(
+          i,
+          ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]
+        );
+        n && ot(i, n);
+        const a = R(
+          i,
+          ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]
         );
         a && ot(i, a);
       }
     }
+    const r = l.get("_geom_hbond", !1);
+    if (r) {
+      if (e) {
+        const n = R(
+          r,
+          ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]
+        );
+        q(r, n, s);
+        const a = R(
+          r,
+          ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]
+        );
+        a && q(r, a, s);
+        const c = R(
+          r,
+          ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]
+        );
+        q(r, c, s);
+      }
+      if (o) {
+        const n = R(
+          r,
+          ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]
+        );
+        n && ot(r, n);
+      }
+    }
   }
 }
-const B = G(U), z = class z extends P {
+const B = V(G), z = class z extends P {
   /**
    * Creates a new atom label filter
    * @param {string[]|string} [filteredLabels=[]] - Array of atom labels or comma-separated string to filter
@@ -3087,15 +3085,15 @@ const B = G(U), z = class z extends P {
    * @private
    */
   _parseRangeExpression(t, e) {
-    const [o, s] = t.split(">").map((a) => a.trim());
+    const [o, s] = t.split(">").map((n) => n.trim());
     if (!o || !s)
       return console.warn(`Invalid range expression: ${t}`), [];
     if (!e.includes(o))
       throw new Error(`Range filtering included unknown start label: ${o}`);
     if (!e.includes(s))
       throw new Error(`Range filtering included unknown end label: ${s}`);
-    const r = e.indexOf(o), i = e.indexOf(s);
-    return e.slice(r, i + 1);
+    const i = e.indexOf(o), r = e.indexOf(s);
+    return e.slice(i, r + 1);
   }
   /**
    * Updates the list of filtered atom labels
@@ -3113,7 +3111,7 @@ const B = G(U), z = class z extends P {
   _expandRanges(t) {
     const e = t.atoms.map((s) => s.label), o = /* @__PURE__ */ new Set();
     for (const s of this.filteredLabels)
-      s.includes(">") && !e.includes(s) ? this._parseRangeExpression(s, e).forEach((i) => o.add(i)) : o.add(s);
+      s.includes(">") && !e.includes(s) ? this._parseRangeExpression(s, e).forEach((r) => o.add(r)) : o.add(s);
     return o;
   }
   /**
@@ -3125,17 +3123,17 @@ const B = G(U), z = class z extends P {
     if (this.mode === z.MODES.OFF)
       return t;
     const e = this._expandRanges(t), o = t.atoms.filter(
-      (i) => !e.has(i.label)
+      (r) => !e.has(r.label)
     ), s = t.bonds.filter(
-      (i) => !e.has(i.atom1Label) && !e.has(i.atom2Label)
-    ), r = t.hBonds.filter(
-      (i) => !e.has(i.donorAtomLabel) && !e.has(i.hydrogenAtomLabel) && !e.has(i.acceptorAtomLabel)
+      (r) => !e.has(r.atom1Label) && !e.has(r.atom2Label)
+    ), i = t.hBonds.filter(
+      (r) => !e.has(r.donorAtomLabel) && !e.has(r.hydrogenAtomLabel) && !e.has(r.acceptorAtomLabel)
     );
     return new T(
       t.cell,
       o,
       s,
-      r,
+      i,
       t.symmetry
     );
   }
@@ -3151,7 +3149,7 @@ D(z, "MODES", Object.freeze({
   ON: "on",
   OFF: "off"
 }));
-let nt = z;
+let at = z;
 const b = class b extends P {
   /**
    * Creates a new bond generator
@@ -3169,11 +3167,11 @@ const b = class b extends P {
    * @returns {number} Maximum allowed bond distance
    */
   getMaxBondDistance(t, e, o) {
-    var i, a;
-    const s = (i = o[t]) == null ? void 0 : i.radius, r = (a = o[e]) == null ? void 0 : a.radius;
-    if (!s || !r)
+    var r, n;
+    const s = (r = o[t]) == null ? void 0 : r.radius, i = (n = o[e]) == null ? void 0 : n.radius;
+    if (!s || !i)
       throw new Error(`Missing radius for element ${s ? e : t}`);
-    return (s + r) * this.toleranceFactor;
+    return (s + i) * this.toleranceFactor;
   }
   /**
    * Generates bonds between atoms based on their distances
@@ -3183,32 +3181,32 @@ const b = class b extends P {
    * @returns {Set<Bond>} Set of generated bonds
    */
   generateBonds(t, e) {
-    const o = /* @__PURE__ */ new Set(), { cell: s, atoms: r } = t, i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map();
-    r.forEach((n) => {
-      const c = n.position.toCartesian(s);
-      if (i.set(n.label, [c.x, c.y, c.z]), Object.prototype.hasOwnProperty.call(e, n.atomType) && !a.has(n.atomType))
-        a.set(n.atomType, n.atomType);
-      else if (!a.has(n.atomType))
+    const o = /* @__PURE__ */ new Set(), { cell: s, atoms: i } = t, r = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map();
+    i.forEach((a) => {
+      const c = a.position.toCartesian(s);
+      if (r.set(a.label, [c.x, c.y, c.z]), Object.prototype.hasOwnProperty.call(e, a.atomType) && !n.has(a.atomType))
+        n.set(a.atomType, a.atomType);
+      else if (!n.has(a.atomType))
         try {
-          a.set(n.atomType, Q(n.atomType));
+          n.set(a.atomType, Q(a.atomType));
         } catch {
-          throw new Error(`Missing radius for element ${n.atomType}`);
+          throw new Error(`Missing radius for element ${a.atomType}`);
         }
     });
-    for (let n = 0; n < r.length; n++) {
-      const c = r[n], d = i.get(c.label);
-      for (let m = n + 1; m < r.length; m++) {
-        const f = r[m], u = i.get(f.label);
-        if ((c.atomType === "H" || f.atomType === "H") && t.bonds.some((V) => V.atom1Label === c.label || V.atom1Label === f.label || V.atom2Label === c.label || V.atom2Label === f.label))
+    for (let a = 0; a < i.length; a++) {
+      const c = i[a], d = r.get(c.label);
+      for (let m = a + 1; m < i.length; m++) {
+        const p = i[m], u = r.get(p.label);
+        if ((c.atomType === "H" || p.atomType === "H") && t.bonds.some((U) => U.atom1Label === c.label || U.atom1Label === p.label || U.atom2Label === c.label || U.atom2Label === p.label))
           continue;
-        const p = B.subtract(d, u), g = B.norm(p), O = this.getMaxBondDistance(
-          a.get(c.atomType),
-          a.get(f.atomType),
+        const f = B.subtract(d, u), g = B.norm(f), O = this.getMaxBondDistance(
+          n.get(c.atomType),
+          n.get(p.atomType),
           e
         );
         g <= O && g > 1e-4 && o.add(new L(
           c.label,
-          f.label,
+          p.label,
           g,
           null,
           // No standard uncertainty for generated bonds
@@ -3290,18 +3288,18 @@ D(b, "MODES", Object.freeze({
   b.MODES.IGNORE
 ]);
 let lt = b;
-const E = class E extends P {
+const x = class x extends P {
   /**
    * Creates a new isolated hydrogen fixer
    * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
    * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
    */
-  constructor(t = E.MODES.OFF, e = 1.1) {
+  constructor(t = x.MODES.OFF, e = 1.1) {
     super(
-      E.MODES,
+      x.MODES,
       t,
       "IsolatedHydrogenFixer",
-      E.PREFERRED_FALLBACK_ORDER
+      x.PREFERRED_FALLBACK_ORDER
     ), this.maxBondDistance = e;
   }
   /**
@@ -3310,7 +3308,7 @@ const E = class E extends P {
    * @returns {CrystalStructure} Modified structure with additional bonds
    */
   apply(t) {
-    if (this.ensureValidMode(t), this.mode === E.MODES.OFF)
+    if (this.ensureValidMode(t), this.mode === x.MODES.OFF)
       return t;
     const e = this.findIsolatedHydrogenAtoms(t);
     if (e.length === 0)
@@ -3333,8 +3331,8 @@ const E = class E extends P {
     const e = [];
     return t.connectedGroups.forEach((o) => {
       if (o.atoms.length === 1 && o.atoms[0].atomType === "H") {
-        const s = o.atoms[0], r = t.atoms.findIndex((i) => i.label === s.label);
-        e.push({ atom: s, atomIndex: r });
+        const s = o.atoms[0], i = t.atoms.findIndex((r) => r.label === s.label);
+        e.push({ atom: s, atomIndex: i });
       }
     }), e;
   }
@@ -3346,12 +3344,12 @@ const E = class E extends P {
    */
   createBondsForIsolatedHydrogens(t, e) {
     const o = [];
-    return e.forEach(({ atom: s, atomIndex: r }) => {
-      const i = s.position.toCartesian(t.cell), a = [i.x, i.y, i.z];
-      if (r > 0) {
-        const c = t.atoms[r - 1];
+    return e.forEach(({ atom: s, atomIndex: i }) => {
+      const r = s.position.toCartesian(t.cell), n = [r.x, r.y, r.z];
+      if (i > 0) {
+        const c = t.atoms[i - 1];
         if (c.atomType !== "H" && (c.disorderGroup === s.disorderGroup || c.disorderGroup === 0 || s.disorderGroup === 0)) {
-          const d = c.position.toCartesian(t.cell), m = [d.x, d.y, d.z], f = B.subtract(a, m), u = B.norm(f);
+          const d = c.position.toCartesian(t.cell), m = [d.x, d.y, d.z], p = B.subtract(n, m), u = B.norm(p);
           if (u <= this.maxBondDistance) {
             o.push(new L(
               c.label,
@@ -3364,33 +3362,33 @@ const E = class E extends P {
           }
         }
       }
-      let n = !1;
-      for (let c = r - 1; c >= 0 && !n; c--) {
+      let a = !1;
+      for (let c = i - 1; c >= 0 && !a; c--) {
         const d = t.atoms[c];
         if (d.atomType === "H" || !(d.disorderGroup === s.disorderGroup || d.disorderGroup === 0 || s.disorderGroup === 0))
           continue;
-        const m = d.position.toCartesian(t.cell), f = [m.x, m.y, m.z], u = B.subtract(a, f), p = B.norm(u);
-        p <= this.maxBondDistance && (o.push(new L(
+        const m = d.position.toCartesian(t.cell), p = [m.x, m.y, m.z], u = B.subtract(n, p), f = B.norm(u);
+        f <= this.maxBondDistance && (o.push(new L(
           d.label,
           s.label,
-          p,
+          f,
           null,
           "."
-        )), n = !0);
+        )), a = !0);
       }
-      if (!n && r < t.atoms.length - 1)
-        for (let c = r + 1; c < t.atoms.length && !n; c++) {
+      if (!a && i < t.atoms.length - 1)
+        for (let c = i + 1; c < t.atoms.length && !a; c++) {
           const d = t.atoms[c];
           if (d.atomType === "H" || !(d.disorderGroup === s.disorderGroup || d.disorderGroup === 0 || s.disorderGroup === 0))
             continue;
-          const m = d.position.toCartesian(t.cell), f = [m.x, m.y, m.z], u = B.subtract(a, f), p = B.norm(u);
-          p <= this.maxBondDistance && (o.push(new L(
+          const m = d.position.toCartesian(t.cell), p = [m.x, m.y, m.z], u = B.subtract(n, p), f = B.norm(u);
+          f <= this.maxBondDistance && (o.push(new L(
             d.label,
             s.label,
-            p,
+            f,
             null,
             "."
-          )), n = !0);
+          )), a = !0);
         }
     }), o;
   }
@@ -3400,23 +3398,23 @@ const E = class E extends P {
    * @returns {Array<string>} Array of applicable mode names
    */
   getApplicableModes(t) {
-    return t.bonds.length === 0 ? [E.MODES.OFF] : t.connectedGroups.some(
+    return t.bonds.length === 0 ? [x.MODES.OFF] : t.connectedGroups.some(
       (o) => o.atoms.length === 1 && o.atoms[0].atomType === "H"
     ) ? [
-      E.MODES.ON
+      x.MODES.ON
       //IsolatedHydrogenFixer.MODES.OFF,
-    ] : [E.MODES.OFF];
+    ] : [x.MODES.OFF];
   }
 };
-D(E, "MODES", Object.freeze({
+D(x, "MODES", Object.freeze({
   ON: "on",
   OFF: "off"
-})), D(E, "PREFERRED_FALLBACK_ORDER", [
-  E.MODES.ON,
-  E.MODES.OFF
+})), D(x, "PREFERRED_FALLBACK_ORDER", [
+  x.MODES.ON,
+  x.MODES.OFF
 ]);
-let ct = E;
-const dt = G(U, {});
+let ct = x;
+const dt = V(G, {});
 function oe(l) {
   const t = new h.Vector3();
   l.forEach((c) => t.add(c)), t.divideScalar(l.length);
@@ -3424,11 +3422,11 @@ function oe(l) {
   l.forEach((c) => {
     o.copy(c).sub(t), e.elements[0] += o.x * o.x, e.elements[1] += o.x * o.y, e.elements[2] += o.x * o.z, e.elements[3] += o.y * o.x, e.elements[4] += o.y * o.y, e.elements[5] += o.y * o.z, e.elements[6] += o.z * o.x, e.elements[7] += o.z * o.y, e.elements[8] += o.z * o.z;
   });
-  const { values: s, eigenvectors: r } = dt.eigs(se(e)), i = dt.min(s);
-  if (i <= 0)
+  const { values: s, eigenvectors: i } = dt.eigs(se(e)), r = dt.min(s);
+  if (r <= 0)
     return console.warn("Could not find a mean plane, expected?"), new h.Vector3(0, 1, 0);
-  const a = r.filter((c) => c.value === i)[0].vector, n = new h.Vector3(...a.toArray());
-  return n.normalize(), n;
+  const n = i.filter((c) => c.value === r)[0].vector, a = new h.Vector3(...n.toArray());
+  return a.normalize(), a;
 }
 function se(l) {
   const t = l.elements;
@@ -3438,65 +3436,65 @@ function se(l) {
     [t[6], t[7], t[8]]
   ]);
 }
-function re(l, t) {
+function ie(l, t) {
   const e = new h.Box3().setFromObject(l);
   if (e.isEmpty())
     return 10;
   const o = new h.Vector3();
   e.getSize(o);
-  const s = t.fov * Math.PI / 180, r = Math.atan(t.aspect * Math.tan(s / 2) * 2);
-  return o.x / o.y <= t.aspect ? o.y / 2 / Math.tan(s / 2) + o.z / 2 : o.x / 2 / Math.tan(r / 2) + o.z / 2;
+  const s = t.fov * Math.PI / 180, i = Math.atan(t.aspect * Math.tan(s / 2) * 2);
+  return o.x / o.y <= t.aspect ? o.y / 2 / Math.tan(s / 2) + o.z / 2 : o.x / 2 / Math.tan(i / 2) + o.z / 2;
 }
-function ie(l) {
+function re(l) {
   const t = [], e = new h.Vector3();
-  if (l.traverse((p) => {
+  if (l.traverse((f) => {
     var g;
-    ((g = p.userData) == null ? void 0 : g.type) === "atom" && (t.push(p.position.clone()), e.add(p.position));
+    ((g = f.userData) == null ? void 0 : g.type) === "atom" && (t.push(f.position.clone()), e.add(f.position));
   }), t.length === 0)
     return null;
   e.divideScalar(t.length);
-  const o = t.map((p) => p.sub(e)), s = oe(o), r = new h.Vector3(0, 0, 1), i = new h.Quaternion();
-  i.setFromUnitVectors(s, r);
-  const a = new h.Matrix4();
-  a.makeRotationFromQuaternion(i);
-  const n = o.map((p) => p.clone().applyMatrix4(a));
+  const o = t.map((f) => f.sub(e)), s = oe(o), i = new h.Vector3(0, 0, 1), r = new h.Quaternion();
+  r.setFromUnitVectors(s, i);
+  const n = new h.Matrix4();
+  n.makeRotationFromQuaternion(r);
+  const a = o.map((f) => f.clone().applyMatrix4(n));
   let c = 0, d = 0;
-  n.forEach((p, g) => {
-    const O = Math.sqrt(p.x * p.x + p.y * p.y);
+  a.forEach((f, g) => {
+    const O = Math.sqrt(f.x * f.x + f.y * f.y);
     O > c && (c = O, d = g);
   });
   const m = new h.Vector2(
-    n[d].x,
-    n[d].y
+    a[d].x,
+    a[d].y
   );
   m.x < 0 && m.multiplyScalar(-1);
-  const f = -Math.atan2(m.y, m.x), u = new h.Matrix4().makeRotationZ(f);
-  return a.premultiply(u), a.premultiply(new h.Matrix4().makeRotationX(Math.PI / 8)), a.premultiply(new h.Matrix4().makeRotationY(Math.PI / 48)), a;
+  const p = -Math.atan2(m.y, m.x), u = new h.Matrix4().makeRotationZ(p);
+  return n.premultiply(u), n.premultiply(new h.Matrix4().makeRotationX(Math.PI / 8)), n.premultiply(new h.Matrix4().makeRotationY(Math.PI / 48)), n;
 }
-function ae(l, t) {
-  l.children = l.children.filter((a) => !(a instanceof h.Light));
+function ne(l, t) {
+  l.children = l.children.filter((n) => !(n instanceof h.Light));
   let e = 6;
-  t.traverse((a) => {
-    var n;
-    ((n = a.userData) == null ? void 0 : n.type) === "atom" && a.position.length() > e && (e = a.position.length());
+  t.traverse((n) => {
+    var a;
+    ((a = n.userData) == null ? void 0 : a.type) === "atom" && n.position.length() > e && (e = n.position.length());
   });
   const o = e * 2, s = new h.AmbientLight(16777215, 1);
   l.add(s);
-  const r = new h.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
-  r.position.set(0, -0.5, o * 2), r.lookAt(new h.Vector3(0, 0, 0)), l.add(r), [
+  const i = new h.SpotLight(16777215, 1e3, 0, Math.PI * 0.27, 0.6);
+  i.position.set(0, -0.5, o * 2), i.lookAt(new h.Vector3(0, 0, 0)), l.add(i), [
     { pos: [-1, -0.5, 1], intensity: 0.4 },
     { pos: [1, -0.5, 1], intensity: 0.4 },
     { pos: [0, -0.5, 1], intensity: 0.3 }
-  ].forEach(({ pos: a, intensity: n }) => {
-    const c = new h.DirectionalLight(16777215, n);
+  ].forEach(({ pos: n, intensity: a }) => {
+    const c = new h.DirectionalLight(16777215, a);
     c.position.set(
-      a[0] * o,
-      a[1] * o,
-      a[2] * o
+      n[0] * o,
+      n[1] * o,
+      n[2] * o
     ), c.lookAt(new h.Vector3(0, 0, 0)), l.add(c);
   });
 }
-class ne {
+class ae {
   constructor(t) {
     this.viewer = t, this.state = {
       isDragging: !1,
@@ -3510,8 +3508,8 @@ class ne {
       twoFingerStartPos: new h.Vector2(),
       initialCameraPosition: t.camera.position.clone()
     };
-    const { container: e, camera: o, renderer: s, moleculeContainer: r, options: i } = t;
-    this.container = e, this.camera = o, this.renderer = s, this.moleculeContainer = r, this.options = i, this.doubleClickDelay = 300, this.raycaster = new h.Raycaster(), this.raycaster.near = 0.1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
+    const { container: e, camera: o, renderer: s, moleculeContainer: i, options: r } = t;
+    this.container = e, this.camera = o, this.renderer = s, this.moleculeContainer = i, this.options = r, this.doubleClickDelay = 300, this.raycaster = new h.Raycaster(), this.raycaster.near = 0.1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
   }
   bindEventHandlers() {
     this.boundHandlers = {
@@ -3532,15 +3530,15 @@ class ne {
       wheel: e,
       mouseDown: o,
       mouseMove: s,
-      mouseUp: r,
-      click: i,
-      contextMenu: a,
-      touchStart: n,
+      mouseUp: i,
+      click: r,
+      contextMenu: n,
+      touchStart: a,
       touchMove: c,
       touchEnd: d,
       resize: m
     } = this.boundHandlers;
-    t.addEventListener("wheel", e, { passive: !1 }), t.addEventListener("mousedown", o), t.addEventListener("mousemove", s), t.addEventListener("mouseup", r), t.addEventListener("mouseleave", r), t.addEventListener("click", i), t.addEventListener("contextmenu", a), t.addEventListener("touchstart", n, { passive: !1 }), t.addEventListener("touchmove", c, { passive: !1 }), t.addEventListener("touchend", d), window.addEventListener("resize", m);
+    t.addEventListener("wheel", e, { passive: !1 }), t.addEventListener("mousedown", o), t.addEventListener("mousemove", s), t.addEventListener("mouseup", i), t.addEventListener("mouseleave", i), t.addEventListener("click", r), t.addEventListener("contextmenu", n), t.addEventListener("touchstart", a, { passive: !1 }), t.addEventListener("touchmove", c, { passive: !1 }), t.addEventListener("touchend", d), window.addEventListener("resize", m);
   }
   clientToMouseCoordinates(t, e) {
     const o = this.container.getBoundingClientRect();
@@ -3556,13 +3554,13 @@ class ne {
   handleSelection(t, e) {
     this.updateMouseCoordinates(t.clientX, t.clientY), this.raycaster.setFromCamera(this.state.mouse, this.camera);
     const o = [];
-    this.moleculeContainer.traverse((r) => {
-      var i;
-      (i = r.userData) != null && i.selectable && o.push(r);
+    this.moleculeContainer.traverse((i) => {
+      var r;
+      (r = i.userData) != null && r.selectable && o.push(i);
     });
-    const s = this.raycaster.intersectObjects(o).filter((r) => {
-      var i;
-      return (i = r.object.userData) == null ? void 0 : i.selectable;
+    const s = this.raycaster.intersectObjects(o).filter((i) => {
+      var r;
+      return (r = i.object.userData) == null ? void 0 : r.selectable;
     });
     s.length > 0 ? this.viewer.selections.handle(s[0].object) : e < this.doubleClickDelay && this.viewer.selections.clear(), this.viewer.requestRender();
   }
@@ -3583,19 +3581,19 @@ class ne {
     ), this.viewer.requestRender();
   }
   handleZoom(t) {
-    const { minDistance: e, maxDistance: o } = this.options.camera, s = o - e, r = this.camera.position.length(), i = h.MathUtils.clamp(
-      r + t * s,
+    const { minDistance: e, maxDistance: o } = this.options.camera, s = o - e, i = this.camera.position.length(), r = h.MathUtils.clamp(
+      i + t * s,
       e,
       o
-    ), a = this.camera.position.clone().normalize();
-    this.camera.position.copy(a.multiplyScalar(i)), this.viewer.requestRender();
+    ), n = this.camera.position.clone().normalize();
+    this.camera.position.copy(n.multiplyScalar(r)), this.viewer.requestRender();
   }
   resetCameraPosition() {
     this.camera.position.x = this.state.initialCameraPosition.x, this.camera.position.y = this.state.initialCameraPosition.y, this.camera.rotation.set(0, 0, 0), this.viewer.requestRender();
   }
   panCamera(t) {
-    const e = this.camera.position.z, o = this.camera.fov * Math.PI / 180, s = Math.tan(o / 2) * e, r = s * this.camera.aspect, i = -t.x * r, a = -t.y * s, n = new h.Vector3(), c = new h.Vector3();
-    this.camera.matrix.extractBasis(n, c, new h.Vector3()), this.camera.position.addScaledVector(n, i), this.camera.position.addScaledVector(c, a), this.viewer.requestRender();
+    const e = this.camera.position.z, o = this.camera.fov * Math.PI / 180, s = Math.tan(o / 2) * e, i = s * this.camera.aspect, r = -t.x * i, n = -t.y * s, a = new h.Vector3(), c = new h.Vector3();
+    this.camera.matrix.extractBasis(a, c, new h.Vector3()), this.camera.position.addScaledVector(a, r), this.camera.position.addScaledVector(c, n), this.viewer.requestRender();
   }
   handleTouchStart(t) {
     t.preventDefault();
@@ -3606,11 +3604,11 @@ class ne {
       if (!this.state.isDragging) {
         const o = e[0].clientX - e[1].clientX, s = e[0].clientY - e[1].clientY;
         this.state.pinchStartDistance = Math.hypot(o, s);
-        const r = this.clientToMouseCoordinates(
+        const i = this.clientToMouseCoordinates(
           (e[0].clientX + e[1].clientX) / 2,
           (e[0].clientY + e[1].clientY) / 2
         );
-        this.state.twoFingerStartPos.copy(r);
+        this.state.twoFingerStartPos.copy(i);
       }
       this.state.isDragging = !1;
     }
@@ -3619,38 +3617,38 @@ class ne {
     t.preventDefault();
     const e = t.touches;
     if (e.length === 1 && this.state.isDragging) {
-      const o = e[0], s = this.clientToMouseCoordinates(o.clientX, o.clientY), r = new h.Vector2(
+      const o = e[0], s = this.clientToMouseCoordinates(o.clientX, o.clientY), i = new h.Vector2(
         s.x - this.state.mouse.x,
         s.y - this.state.mouse.y
       );
-      this.rotateStructure(r), this.state.mouse.set(s.x, s.y);
+      this.rotateStructure(i), this.state.mouse.set(s.x, s.y);
     } else if (e.length === 2) {
-      const o = e[0].clientX - e[1].clientX, s = e[0].clientY - e[1].clientY, r = Math.hypot(o, s);
+      const o = e[0].clientX - e[1].clientX, s = e[0].clientY - e[1].clientY, i = Math.hypot(o, s);
       if (!this.state.pinchStartDistance) {
-        this.state.pinchStartDistance = r;
-        const n = this.clientToMouseCoordinates(
+        this.state.pinchStartDistance = i;
+        const a = this.clientToMouseCoordinates(
           (e[0].clientX + e[1].clientX) / 2,
           (e[0].clientY + e[1].clientY) / 2
         );
-        this.state.twoFingerStartPos.copy(n);
+        this.state.twoFingerStartPos.copy(a);
         return;
       }
-      this.handleZoom((this.state.pinchStartDistance - r) * this.options.camera.pinchZoomSpeed), this.state.pinchStartDistance = r;
-      const i = this.clientToMouseCoordinates(
+      this.handleZoom((this.state.pinchStartDistance - i) * this.options.camera.pinchZoomSpeed), this.state.pinchStartDistance = i;
+      const r = this.clientToMouseCoordinates(
         (e[0].clientX + e[1].clientX) / 2,
         (e[0].clientY + e[1].clientY) / 2
-      ), a = i.clone().sub(this.state.twoFingerStartPos);
-      this.panCamera(a), this.state.twoFingerStartPos.copy(i);
+      ), n = r.clone().sub(this.state.twoFingerStartPos);
+      this.panCamera(n), this.state.twoFingerStartPos.copy(r);
     }
   }
   handleTouchEnd(t) {
     if (t.cancelable && t.preventDefault(), t.touches.length === 0 && t.changedTouches.length > 0) {
       if (Date.now() - this.state.clickStartTime < this.options.interaction.clickThreshold) {
-        const o = t.changedTouches[0], s = Date.now(), r = {
+        const o = t.changedTouches[0], s = Date.now(), i = {
           clientX: o.clientX,
           clientY: o.clientY
         };
-        this.handleTouchSelect(r, s - this.state.lastClickTime), this.state.lastClickTime = s;
+        this.handleTouchSelect(i, s - this.state.lastClickTime), this.state.lastClickTime = s;
       }
       this.state.isDragging = !1, this.state.pinchStartDistance = 0;
     }
@@ -3695,15 +3693,15 @@ class ne {
       wheel: e,
       mouseDown: o,
       mouseMove: s,
-      mouseUp: r,
-      click: i,
-      contextMenu: a,
-      touchStart: n,
+      mouseUp: i,
+      click: r,
+      contextMenu: n,
+      touchStart: a,
       touchMove: c,
       touchEnd: d,
       resize: m
     } = this.boundHandlers;
-    t.removeEventListener("wheel", e), t.removeEventListener("mousedown", o), t.removeEventListener("mousemove", s), t.removeEventListener("mouseup", r), t.removeEventListener("mouseleave", r), t.removeEventListener("click", i), t.removeEventListener("contextmenu", a), t.removeEventListener("touchstart", n), t.removeEventListener("touchmove", c), t.removeEventListener("touchend", d), window.removeEventListener("resize", m);
+    t.removeEventListener("wheel", e), t.removeEventListener("mousedown", o), t.removeEventListener("mousemove", s), t.removeEventListener("mouseup", i), t.removeEventListener("mouseleave", i), t.removeEventListener("click", r), t.removeEventListener("contextmenu", n), t.removeEventListener("touchstart", a), t.removeEventListener("touchmove", c), t.removeEventListener("touchend", d), window.removeEventListener("resize", m);
   }
 }
 class le {
@@ -3716,8 +3714,8 @@ class le {
     t.traverse((o) => {
       var s;
       if ((s = o.userData) != null && s.selectable) {
-        const r = this.getObjectData(o);
-        r && e.add(JSON.stringify(r));
+        const i = this.getObjectData(o);
+        i && e.add(JSON.stringify(i));
       }
     }), this.selectedData = new Set(
       Array.from(this.selectedData).filter(
@@ -3729,10 +3727,10 @@ class le {
     ), t.traverse((o) => {
       var s;
       if ((s = o.userData) != null && s.selectable) {
-        const r = this.getObjectData(o);
-        if (this.hasMatchingData(r)) {
-          const i = this.getColorForData(r);
-          o.select(i, this.options), this.selectedObjects.add(o);
+        const i = this.getObjectData(o);
+        if (this.hasMatchingData(i)) {
+          const r = this.getColorForData(i);
+          o.select(r, this.options), this.selectedObjects.add(o);
         }
       }
     }), this.notifyCallbacks();
@@ -3848,7 +3846,7 @@ class le {
     this.clear(), this.selectionCallbacks.clear();
   }
 }
-class St {
+class kt {
   constructor(t, e = {}) {
     const o = ["constant", "onDemand"];
     if (e.renderMode && !o.includes(e.renderMode))
@@ -3899,16 +3897,16 @@ class St {
       ortepObjects: /* @__PURE__ */ new Map(),
       structureCenter: new h.Vector3()
     }, this.modifiers = {
-      removeatoms: new nt(),
+      removeatoms: new at(),
       addhydrogen: new ct(),
       missingbonds: new lt(
         this.options.elementProperties,
         this.options.bondGrowToleranceFactor
       ),
-      hydrogen: new it(this.options.hydrogenMode),
-      disorder: new at(this.options.disorderMode),
+      hydrogen: new rt(this.options.hydrogenMode),
+      disorder: new nt(this.options.disorderMode),
       symmetry: new K(this.options.symmetryMode)
-    }, this.selections = new le(this.options), this.setupScene(), this.controls = new ne(this), this.animate(), this.needsRender = !0;
+    }, this.selections = new le(this.options), this.setupScene(), this.controls = new ae(this), this.animate(), this.needsRender = !0;
   }
   setupScene() {
     this.scene = new h.Scene(), this.camera = new h.PerspectiveCamera(
@@ -3929,8 +3927,8 @@ class St {
         if (this.options.fixCifErrors)
           throw s;
         try {
-          const r = ee(o.getBlock(e));
-          this.state.baseStructure = T.fromCIF(r);
+          const i = ee(o.getBlock(e));
+          this.state.baseStructure = T.fromCIF(i);
         } catch {
           throw s;
         }
@@ -3942,8 +3940,8 @@ class St {
   }
   async setupNewStructure() {
     this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-    const t = ie(this.state.currentStructure);
-    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new h.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new h.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ae(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
+    const t = re(this.state.currentStructure);
+    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new h.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new h.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ne(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
   }
   async updateStructure() {
     try {
@@ -3958,12 +3956,12 @@ class St {
     let t = this.state.baseStructure;
     for (const s of Object.values(this.modifiers))
       t = s.apply(t);
-    const o = new qt(t, this.options).getGroup();
+    const o = new Yt(t, this.options).getGroup();
     this.moleculeContainer.add(o), this.state.currentStructure = o, this.selections.pruneInvalidSelections(this.moleculeContainer);
   }
   updateCamera() {
     this.controls.handleResize();
-    const t = re(this.moleculeContainer, this.camera);
+    const t = ie(this.moleculeContainer, this.camera);
     this.camera.position.set(0, 0, t), this.camera.rotation.set(0, 0, 0), this.camera.lookAt(this.cameraTarget), this.options.camera.minDistance = t * 0.2, this.options.camera.maxDistance = t * 2;
   }
   removeStructure() {
@@ -4000,23 +3998,23 @@ class St {
 const ce = {
   disorder: {
     all: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path4-5" style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z" /><path id="path8-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></svg>',
-    group1: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="path2-16" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3-6" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4-1" /></g><g id="path2-1-2" transform="rotate(180,28.623599,19.629481)" style="fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5-7" /><path style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6-5" /></g><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-9" cx="-28.593182" cy="-25.302597" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-2-3" cx="-33.888008" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><circle style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:0.564999;stroke-opacity:1" id="path1-7-9" cx="-23.298351" cy="-14.580391" r="2.3135188" transform="scale(-1)" /><g id="g6" transform="translate(0,-0.61933159)"><g id="path2" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.707504,13.775784 -5.401798,11.08337" id="path3" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.257812,13.556641 -5.402343,11.083984 0.90039,0.4375 5.400391,-11.083984 z" id="path4" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-2" cx="23.35919" cy="24.678572" r="2.3135188" /><g id="path2-1" style="stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.600535,13.775784 5.401798,11.08337" id="path5" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.050781,13.556641 -0.90039,0.4375 5.402343,11.083984 0.898438,-0.4375 z" id="path6" /></g><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1" cx="28.654018" cy="13.956366" r="2.3135188" /><circle style="fill:#000000;stroke:#000000;stroke-width:0.564999" id="path1-7" cx="33.948849" cy="24.678572" r="2.3135188" /></g></g></svg>',
-    group2: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path4-5" style="color:#000000;fill:#a4a4a4;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z" /><path id="path8-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></svg>'
+    group1: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="g1" transform="translate(-0.54705812,0.13474933)"><path id="path4-5" style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z" /><path id="path8-7" style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></g></svg>',
+    group2: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path4-5" style="color:#000000;fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1" d="m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z" /><path id="path8-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path8-0-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z" /><path id="path9-8" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496" d="m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z" /></g></svg>'
   },
   hydrogen: {
-    anisotropic: '<svg width="17.85038mm" height="17.850386mm" viewBox="0 0 17.85038 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-78.600695,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="84.344688" y="50.876183" id="text3-1-5-9"><tspan id="tspan3-4-4-0" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="84.344688" y="50.876183">H</tspan></text><ellipse style="fill:none;fill-opacity:1;stroke:#a4a4a4;stroke-width:1.8975;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path7-4" cx="37.167099" cy="89.280861" rx="4.8005486" ry="9.1209068" transform="matrix(0.82466981,-0.56561445,0.63703802,0.77083238,0,0)" /></g></svg>',
-    constant: '<svg width="17.850388mm" height="17.850386mm" viewBox="0 0 17.850388 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-58.39314,-38.873141)"><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="64.137131" y="50.876183" id="text3-1-8"><tspan id="tspan3-4-1" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="64.137131" y="50.876183">H</tspan></text><circle style="fill:none;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path6-0" cx="67.318336" cy="47.798332" r="6.8755083" /></g></svg>',
-    none: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-37.755639,-38.873141)"><path style="fill:#000000;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 39.917575,41.035079 13.526512,13.52651" id="path5-9" /><path style="fill:#a4a4a4;fill-opacity:1;stroke:#a4a4a4;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="M 53.444087,41.035079 39.917575,54.561589" id="path5-1-0" /><text xml:space="preserve" style="font-size:8.46667px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.677999;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" x="43.499626" y="50.876183" id="text3-6" ><tspan id="tspan3-5" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.678;stroke-opacity:1" x="43.499626" y="50.876183">H</tspan></text></g></svg>'
+    anisotropic: '<svg width="17.85038mm" height="17.850386mm" viewBox="0 0 17.85038 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-78.600695,-38.873141)"><ellipse style="fill:none;fill-opacity:1;stroke:#8f8f8f;stroke-width:1.8975;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path7-4" cx="37.167099" cy="89.280861" rx="4.8005486" ry="9.1209068" transform="matrix(0.82466981,-0.56561445,0.63703802,0.77083238,0,0)" /><path id="path17-7-9" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.26484;-inkscape-stroke:none" d="m 85.424476,44.723369 v 6.149929 h 1.191773 v -2.479079 h 1.819274 v 2.479079 h 1.191771 v -6.149929 h -1.191771 v 2.479077 h -1.819274 v -2.479077 z" /></g></svg>',
+    constant: '<svg width="17.850388mm" height="17.850386mm" viewBox="0 0 17.850388 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-58.39314,-38.873141)"><circle style="fill:none;fill-opacity:1;stroke:#8f8f8f;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" id="path6-0" cx="67.318336" cy="47.798332" r="6.8755083" /><path id="path17-7-9" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.26484;-inkscape-stroke:none" d="m 65.216925,44.723369 v 6.149929 h 1.191773 v -2.479079 h 1.819274 v 2.479079 h 1.191771 v -6.149929 h -1.191771 v 2.479077 h -1.819274 v -2.479077 z" /></g></svg>',
+    none: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-37.755639,-38.873141)"><g id="g2"><path style="fill:#000000;fill-opacity:1;stroke:#8f8f8f;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 39.917575,41.035079 13.526512,13.52651" id="path5-9" /><g id="g1" style="stroke:#8f8f8f;stroke-opacity:1"><path style="fill:#a4a4a4;fill-opacity:1;stroke:#8f8f8f;stroke-width:2;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="M 53.444087,41.035079 39.917575,54.561589" id="path5-1-0" /></g></g><path id="path17-7-9" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.26484;-inkscape-stroke:none" d="m 44.579422,44.723369 v 6.149929 h 1.191773 v -2.479079 h 1.819274 v 2.479079 h 1.191771 v -6.149929 h -1.191771 v 2.479077 h -1.819274 v -2.479077 z" /></g></svg>'
   },
   symmetry: {
-    "bonds-no-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#808080;fill-opacity:1"><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#808080;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
-    "bonds-no-hbonds-none": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="path8" style="fill:#808080;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" transform="translate(0,5.0717688)"><path style="color:#000000;fill:#808080;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#808080;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="19.319817" r="2.3135188" /><circle style="fill:#808080;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7" cx="33.972233" cy="19.319817" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
-    "bonds-no-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><rect style="fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#808080;fill-opacity:1"><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#808080;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108;fill-opacity:1" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
-    "bonds-none-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="18.752567" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,19.319816 h 10" id="path25" /><path style="color:#000000;fill:#808080;fill-opacity:1;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1" d="m 23.625124,18.720207 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#808080;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53" cx="33.972233" cy="19.319817" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="19.319817" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
-    "bonds-none-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="18.752567" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,19.319816 h 10" id="path25" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1" d="m 23.625124,18.720207 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53" cx="33.972233" cy="19.319817" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="19.319817" r="2.3135188" /></g></svg>',
-    "bonds-yes-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#808080;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#808080;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#000000;fill-opacity:1"><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /></g></svg>',
-    "bonds-yes-hbonds-none": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /><g id="path8" style="fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" transform="translate(0,5.0717688)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.4;stroke-dasharray:none;stroke-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="19.319817" r="2.3135188" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7" cx="33.972233" cy="19.319817" r="2.3135188" /></g></svg>',
-    "bonds-yes-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /><g id="path8" style="stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill:#000000;fill-opacity:1"><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654019,14.248425 h 10" id="path23" /><path style="color:#000000;fill:#000000;stroke-width:0.4;stroke-dasharray:none;stroke:#ffffff;stroke-opacity:1;fill-opacity:1" d="m 23.654297,13.648438 v 1.199218 h 10 v -1.199218 z" id="path22" /></g><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><rect style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.355503;stroke-dasharray:none;stroke-dashoffset:0.0831496;stroke-opacity:1" id="rect25" width="1.3572845" height="1.1344972" x="27.961069" y="23.823376" /><path style="color:#000000;fill:#000000;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.108" d="m 23.654019,24.391204 h 10" id="path25" /><path style="color:#000000;fill:#000000;stroke:#ffffff;stroke-width:0.3;stroke-dasharray:none;stroke-dashoffset:0.022;stroke-opacity:1;fill-opacity:1" d="m 23.625124,23.791016 v 1.199218 h 1.091797 v -1.199218 z m 1.691406,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800781,0 v 1.199218 h 1.199219 v -1.199218 z m 1.828001,0 v 1.199218 h 1.201172 v -1.199218 z m 1.800782,0 v 1.199218 h 1.199218 v -1.199218 z m 1.800781,0 v 1.199218 h 1.107422 v -1.199218 z" id="path24" /><circle style="fill:#000000;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-5" cx="23.335806" cy="24.391207" r="2.3135188" /></g></svg>'
+    "bonds-no-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path19-3" style="color:#000000;fill:#8f8f8f;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none;fill-opacity:1" d="m 25.466978,23.914458 v 0.898 h 0.90006 v -0.898 z m 1.80013,0 v 0.898 h 0.89852 v -0.898 z m 1.82804,0 v 0.898 h 0.90006 v -0.898 z m 1.80065,0 v 0.898 h 0.898 v -0.898 z m 1.80013,0 v 0.898 h 0.80655 v -0.898 z" /><circle style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53-4" cx="33.972233" cy="24.363457" r="2.3135188" /><path id="path17-0" style="color:#000000;fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.421606;-inkscape-stroke:none" d="m 23.896828,13.771675 v 0.898 h 9.51437 v -0.898 z" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-1" cx="23.335804" cy="14.220675" r="2.3135188" /><circle style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7-8" cx="33.972233" cy="14.220675" r="2.3135188" /><g id="path7-73" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.99998067,-2.3e-6,-0.02721318)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-6" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-4" /></g><path id="path17-7-4" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.755798,22.051454 v 4.624007 h 0.89607 v -1.863969 h 1.36787 v 1.863969 h 0.89607 v -4.624007 h -0.89607 v 1.863968 h -1.36787 v -1.863968 z" /></g></svg>',
+    "bonds-no-hbonds-none": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path17-0" style="color:#000000;fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.421606;-inkscape-stroke:none" d="m 23.896827,18.870815 v 0.898 h 9.51437 v -0.898 z" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-1" cx="23.335804" cy="19.319817" r="2.3135188" /><circle style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7-8" cx="33.972233" cy="19.319817" r="2.3135188" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
+    "bonds-none-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path19" style="color:#000000;fill:#8f8f8f;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none;fill-opacity:1" d="m 25.466979,18.872141 v 0.898 h 0.900067 v -0.898 z m 1.800134,0 v 0.898 h 0.898517 v -0.898 z m 1.828036,0 v 0.898 h 0.900067 v -0.898 z m 1.800651,0 v 0.898 h 0.898 v -0.898 z m 1.800134,0 v 0.898 h 0.806547 v -0.898 z" /><circle style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53-2" cx="33.972233" cy="19.321142" r="2.3135188" /><path id="path17-7" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.7558,17.009137 v 4.624007 h 0.89607 v -1.863969 h 1.367875 v 1.863969 h 0.896069 v -4.624007 h -0.896069 v 1.863968 H 22.65187 v -1.863968 z" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
+    "bonds-none-hbonds-none": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path style="fill:#000000;fill-opacity:1;stroke:#8f8f8f;stroke-width:0.895002;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 20.701184,16.686517 5.269247,5.269247" id="path5-9" /><path style="fill:none;fill-opacity:1;stroke:#8f8f8f;stroke-width:0.895002;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 25.970431,16.686517 -5.269247,5.269247" id="path5-1-0" /><path id="path19" style="color:#000000;fill:#8f8f8f;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none;fill-opacity:1" d="m 25.466979,18.872141 v 0.898 h 0.900067 v -0.898 z m 1.800134,0 v 0.898 h 0.898517 v -0.898 z m 1.828036,0 v 0.898 h 0.900067 v -0.898 z m 1.800651,0 v 0.898 h 0.898 v -0.898 z m 1.800134,0 v 0.898 h 0.806547 v -0.898 z" /><circle style="fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53-2" cx="33.972233" cy="19.321142" r="2.3135188" /><path id="path17-7" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.7558,17.009137 v 4.624007 h 0.89607 v -1.863969 h 1.367875 v 1.863969 h 0.896069 v -4.624007 h -0.896069 v 1.863968 H 22.65187 v -1.863968 z" /><path style="fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none" d="M 28.654019,10.932651 V 27.762155" id="path7" /></g></svg>',
+    "bonds-none-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path19" style="color:#000000;fill:#000000;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none;fill-opacity:1" d="m 25.466978,18.844554 v 0.898 h 0.900067 v -0.898 z m 1.800134,0 v 0.898 h 0.898517 v -0.898 z m 1.828036,0 v 0.898 h 0.900067 v -0.898 z m 1.800651,0 v 0.898 h 0.898 v -0.898 z m 1.800134,0 v 0.898 h 0.806547 v -0.898 z" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53-2" cx="33.972233" cy="19.293554" r="2.3135188" /><path id="path17-7" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.755799,16.98155 v 4.624007 h 0.89607 v -1.863969 h 1.367875 v 1.863969 h 0.896069 V 16.98155 h -0.896069 v 1.863968 H 22.651869 V 16.98155 Z" /><path style="fill:#000000;stroke:#000000;stroke-width:0.600002;stroke-dasharray:none" d="m 28.654019,20.03939 v 7.695178" id="path7-6" /><path style="fill:#000000;stroke:#000000;stroke-width:0.600002;stroke-dasharray:none" d="m 28.654018,10.905064 v 7.643502" id="path7-6-2" /></g></svg>',
+    "bonds-yes-hbonds-no": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path19" style="color:#000000;fill:#8f8f8f;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none;fill-opacity:1" d="m 25.466978,23.942207 v 0.898 h 0.900067 v -0.898 z m 1.800134,0 v 0.898 h 0.898517 v -0.898 z m 1.828036,0 v 0.898 h 0.900067 v -0.898 z m 1.800651,0 v 0.898 h 0.898 v -0.898 z m 1.800134,0 v 0.898 h 0.806547 v -0.898 z" /><circle style="fill:#8f8f8f;stroke:none;stroke-width:0.564999;fill-opacity:1" id="path1-7-53" cx="33.972233" cy="24.391207" r="2.3135188" /><path id="path17" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.421606;-inkscape-stroke:none" d="m 23.896835,13.799425 v 0.898 h 9.514368 v -0.898 z" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7" cx="23.335806" cy="14.248425" r="2.3135188" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7" cx="33.972233" cy="14.248425" r="2.3135188" /><g id="path7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.75508504,0,6.799367)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15" /></g><g id="path7-2" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.15009676,0,9.2916955)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-3" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-3" /></g><path id="path17-7" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.755799,22.079203 v 4.624007 h 0.89607 v -1.863969 h 1.367875 v 1.863969 h 0.896069 v -4.624007 h -0.896069 v 1.863968 h -1.367875 v -1.863968 z" /></g></svg>',
+    "bonds-yes-hbonds-none": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><g id="g1" transform="translate(20.608042,9.8427536)"><path id="path17-4" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.4;-inkscape-stroke:none" d="m 3.245596,9.0762805 v 0.800985 h 9.601481 v -0.800985 z" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-8" cx="2.7277639" cy="9.4770622" r="2.3135188" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7-2" cx="13.364189" cy="9.4770622" r="2.3135188" /></g><g id="g2" transform="translate(-1.2072753e-7,-0.02758705)"><g id="path7-7-3" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.45417979,6.985e-4,15.153145)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-9-2" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-6-5" /></g><g id="path7-7-3-7" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.45140061,6.985e-4,5.9976457)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-9-2-1" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-6-5-6" /></g></g></g></svg>',
+    "bonds-yes-hbonds-yes": '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1" /><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><path id="path19" style="color:#000000;fill:#000000;fill-opacity:1;stroke-width:0.999849;stroke-dashoffset:0.022;-inkscape-stroke:none" d="m 25.466978,23.91462 v 0.898 h 0.900067 v -0.898 z m 1.800134,0 v 0.898 h 0.898517 v -0.898 z m 1.828036,0 v 0.898 h 0.900067 v -0.898 z m 1.800651,0 v 0.898 h 0.898 v -0.898 z m 1.800134,0 v 0.898 h 0.806547 v -0.898 z" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-53-8" cx="33.972233" cy="24.363619" r="2.3135188" /><path id="path17" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.421606;-inkscape-stroke:none" d="m 23.896835,13.771838 v 0.898 h 9.514368 v -0.898 z" /><circle style="fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none" id="path1-7-59" cx="23.335806" cy="14.220837" r="2.3135188" /><circle style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.564999" id="path1-7-7-5" cx="33.972233" cy="14.220837" r="2.3135188" /><g id="path7-2" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.15009676,0,9.2641086)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-3" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-3" /></g><path id="path17-7" style="color:#000000;fill:#000000;stroke:none;stroke-width:0.199128;-inkscape-stroke:none" d="m 21.755799,22.051616 v 4.624007 h 0.89607 v -1.863969 h 1.367875 v 1.863969 h 0.896069 v -4.624007 h -0.896069 v 1.863968 h -1.367875 v -1.863968 z" /><g id="path7-9" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.51054368,0,9.4452649)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15" /></g><g id="path7-9-3" style="fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1" transform="matrix(1,0,0,0.15604158,0,23.402517)"><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="M 28.654019,10.932651 V 27.762155" id="path11-7" /><path style="color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;-inkscape-stroke:none" d="m 28.353516,10.933594 v 16.828125 h 0.599609 V 10.933594 Z" id="path15-9" /></g></g></svg>'
   },
   upload: '<svg width="17.850384mm" height="17.850386mm" viewBox="0 0 17.850384 17.850386" version="1.1" id="svg1" (0e150ed6c4, 2023-07-21)"xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" showguides="false" /><defs id="defs1"><marker style="overflow:visible" id="ArrowWide" refX="0" refY="0" orient="auto-start-reverse" arrow" markerWidth="1" markerHeight="1" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid"><path style="fill:none;stroke:context-stroke;stroke-width:1;stroke-linecap:butt" d="M 3,-3 0,0 3,3" transform="rotate(180,0.125,0)" id="path1" /></marker></defs><g 1" id="layer1" transform="translate(-19.728827,-10.394623)"><text xml:space="preserve" style="font-size:7.05556px;fill:#e6e6e6;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none" x="22.242813" y="28.151989" id="text2"><tspan id="tspan2" style="font-size:7.05556px;fill:#1a1a1a;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none" x="22.242813" y="28.151989">CIF</tspan></text><path style="fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1" d="m 20.714121,18.107197 v 3.07807 h 15.879794 v -3.07807" id="path2" /><path style="fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)" d="M 28.654018,19.170064 V 11.045456" id="path3" /></g></svg>'
 }, de = `
@@ -4111,11 +4109,11 @@ class he extends HTMLElement {
     const e = document.createElement("div");
     e.className = "button-container", t.appendChild(e), this.buttonContainer = e;
     const o = document.createElement("div");
-    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new St(t, this.userOptions), this.viewer.selections.onChange((i) => {
-      this.selections = i, this.updateCaption();
+    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new kt(t, this.userOptions), this.viewer.selections.onChange((r) => {
+      this.selections = r, this.updateCaption();
     }), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
-    const s = this.getAttribute("src"), r = this.getAttribute("data");
-    s ? await this.loadFromUrl(s) : r && await this.loadFromString(r);
+    const s = this.getAttribute("src"), i = this.getAttribute("data");
+    s ? await this.loadFromUrl(s) : i && await this.loadFromString(i);
   }
   parseOptions() {
     const t = this.getAttribute("options");
@@ -4163,24 +4161,24 @@ class he extends HTMLElement {
       }
       if (!t)
         return null;
-      const e = Object.getOwnPropertyNames(t), o = Object.getOwnPropertyNames(this.viewer.modifiers), s = e.filter((a) => !o.includes(a));
+      const e = Object.getOwnPropertyNames(t), o = Object.getOwnPropertyNames(this.viewer.modifiers), s = e.filter((n) => !o.includes(n));
       if (s.length > 0)
         throw new Error(
           `One or more invalid categories for custom icons: ${s.join(", ")}. Valid categories: ${o.join(", ")}`
         );
-      const r = {}, i = [];
-      for (const a of e) {
-        r[a] = {};
-        const n = Object.values(this.viewer.modifiers[a].MODES);
+      const i = {}, r = [];
+      for (const n of e) {
+        i[n] = {};
+        const a = Object.values(this.viewer.modifiers[n].MODES);
         Object.getOwnPropertyNames(t[e]).forEach((d) => {
-          n.includes(d) ? r[a][d] = t[a][d] : i.push([a, d]);
+          a.includes(d) ? i[n][d] = t[n][d] : r.push([n, d]);
         });
       }
-      if (i.length > 0) {
-        const a = i.map(([n, c]) => `${n}: ${c}`).join(" ,");
-        throw new Error(`The following custom icons do not map to a valid mode: ${a}`);
+      if (r.length > 0) {
+        const n = r.map(([a, c]) => `${a}: ${c}`).join(" ,");
+        throw new Error(`The following custom icons do not map to a valid mode: ${n}`);
       }
-      return r;
+      return i;
     } catch (t) {
       return console.warn("Failed to parse custom icons:", t), null;
     }
@@ -4192,12 +4190,12 @@ class he extends HTMLElement {
   addButton(t, e, o) {
     const s = document.createElement("button");
     s.className = `control-button ${e}-button`;
-    const r = this.viewer.modifiers[e].mode;
-    s.innerHTML = this.icons[e][r], s.title = o;
-    const i = s.querySelector("svg");
-    i && (i.setAttribute("alt", o), i.setAttribute("role", "img"), i.setAttribute("aria-label", o)), t.appendChild(s), s.addEventListener("click", async () => {
-      const a = await this.viewer.cycleModifierMode(e);
-      a.success && (s.innerHTML = this.icons[e][a.mode]);
+    const i = this.viewer.modifiers[e].mode;
+    s.innerHTML = this.icons[e][i], s.title = o;
+    const r = s.querySelector("svg");
+    r && (r.setAttribute("alt", o), r.setAttribute("role", "img"), r.setAttribute("aria-label", o)), t.appendChild(s), s.addEventListener("click", async () => {
+      const n = await this.viewer.cycleModifierMode(e);
+      n.success && (s.innerHTML = this.icons[e][n.mode]);
     });
   }
   async attributeChangedCallback(t, e, o) {
@@ -4220,10 +4218,10 @@ class he extends HTMLElement {
           break;
         case "options":
           if (this.parseOptions(), this.viewer) {
-            const s = this.querySelector(".crystal-container"), r = this.viewer.state.currentCifContent;
-            this.viewer.dispose(), this.viewer = new St(s, this.userOptions), this.viewer.selections.onChange((i) => {
-              this.selections = i, this.updateCaption();
-            }), r && (await this.viewer.loadStructure(r), this.setupButtons());
+            const s = this.querySelector(".crystal-container"), i = this.viewer.state.currentCifContent;
+            this.viewer.dispose(), this.viewer = new kt(s, this.userOptions), this.viewer.selections.onChange((r) => {
+              this.selections = r, this.updateCaption();
+            }), i && (await this.viewer.loadStructure(i), this.setupButtons());
           }
           break;
         case "hydrogen-mode":
@@ -4248,11 +4246,11 @@ class he extends HTMLElement {
       const s = await e.text();
       if (s.includes("<!DOCTYPE html>") || s.includes("<html>"))
         throw new Error("Received no or invalid content for src.");
-      const r = await this.viewer.loadStructure(s);
-      if (r.success)
+      const i = await this.viewer.loadStructure(s);
+      if (i.success)
         this.setupButtons();
       else
-        throw new Error(r.error || "Unknown Error");
+        throw new Error(i.error || "Unknown Error");
     } catch (e) {
       this.createErrorDiv(e);
     }
@@ -4285,14 +4283,14 @@ class he extends HTMLElement {
       t.endsWith(".") || (t += "."), t += " Selected Atoms and Bonds: ";
       const e = this.selections.map((o) => {
         const s = "#" + o.color.toString(16).padStart(6, "0");
-        let r = "";
+        let i = "";
         if (o.type === "atom")
-          r = `${o.data.label} (${o.data.atomType})`;
+          i = `${o.data.label} (${o.data.atomType})`;
         else if (o.type === "bond") {
-          const i = Jt(o.data.bondLength, o.data.bondLengthSU);
-          r = `${o.data.atom1Label}-${o.data.atom2Label}: ${i} Å`;
-        } else o.type === "hbond" && (r = `${o.data.donorAtomLabel}→${o.data.acceptorAtomLabel}`);
-        return `<span style="color:${s}">${r}</span>`;
+          const r = Jt(o.data.bondLength, o.data.bondLengthSU);
+          i = `${o.data.atom1Label}-${o.data.atom2Label}: ${r} Å`;
+        } else o.type === "hbond" && (i = `${o.data.donorAtomLabel}→${o.data.acceptorAtomLabel}`);
+        return `<span style="color:${s}">${i}</span>`;
       }).join(", ");
       t += e + ".";
     }
@@ -4309,15 +4307,15 @@ if (typeof window < "u" && window.customElements)
     l.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", l);
   }
 export {
-  nt as AtomLabelFilter,
+  at as AtomLabelFilter,
   lt as BondGenerator,
   Ft as CIF,
   he as CifViewWidget,
   T as CrystalStructure,
-  St as CrystalViewer,
-  at as DisorderFilter,
-  it as HydrogenFilter,
-  qt as ORTEP3JsStructure,
+  kt as CrystalViewer,
+  nt as DisorderFilter,
+  rt as HydrogenFilter,
+  Yt as ORTEP3JsStructure,
   K as SymmetryGrower,
   Jt as formatValueEsd,
   ee as tryToFixCifBlock
