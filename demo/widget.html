@@ -3,37 +3,1118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crystal Viewer Widget Demo</title>
+    <title>CifVis Widget Demo</title>
+    <script type="module">
+        import { CifViewWidget } from '../src';
+    </script>
     <style>
+        :root {
+            --primary-color: #3066BE;
+            --secondary-color: #119DA4;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --border-color: #ddd;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            margin: 30px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        h3 {
+            margin: 24px 0 10px;
+        }
+        
+        p {
+            margin-bottom: 16px;
+        }
+        
+        pre {
+            background-color: var(--light-bg);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--light-bg);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 20px;
-            padding: 20px;
+            margin: 20px 0;
         }
+        
         cifview-widget {
             width: 100%;
             aspect-ratio: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .widget-container {
+            margin-bottom: 30px;
+        }
+        
+        .example-label {
             display: block;
-            border: 1px solid #ccc;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--secondary-color);
+        }
+        
+        .feature-list {
+            list-style-position: inside;
+            margin-bottom: 20px;
+        }
+        
+        .feature-list li {
+            margin-bottom: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table, th, td {
+            border: 1px solid var(--border-color);
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: var(--light-bg);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-top: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        /* New styling for the configuration documentation */
+        .option-category {
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .option-table {
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .option-table th:nth-child(1) {
+            width: 25%;
+        }
+
+        .option-table th:nth-child(2) {
+            width: 15%;
+        }
+
+        .option-table th:nth-child(3) {
+            width: 60%;
+        }
+
+        .option-code {
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .example-json {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .default-value {
+            color: #555;
+            font-style: italic;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        #optionSearch {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .collapsible {
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .collapsible:hover {
+            background-color: #e8e8e8;
+        }
+
+        .collapsible:after {
+            content: '\002B';
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+        }
+
+        .active-collapsible:after {
+            content: "\2212";
+        }
+
+        .content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            margin-bottom: 10px;
+        }
+
+        .inner-content {
+            padding: 10px 0;
+        }
+        
+        @media screen and (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            pre {
+                font-size: 0.85em;
+            }
+            
+            body {
+                padding: 0 10px;
+            }
+            
+            header {
+                padding: 20px 0;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            .tab {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+            
+            cifview-widget {
+                aspect-ratio: 1;
+                min-height: 300px;
+            }
+            
+            .option-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .option-table th:nth-child(1),
+            .option-table td:nth-child(1) {
+                min-width: 160px;
+            }
+            
+            .collapsible {
+                padding: 12px;
+                font-size: 14px;
+            }
+            
+            .inner-content {
+                padding: 10px 5px;
+            }
+            
+            .example-json {
+                max-height: 250px;
+                font-size: 0.8rem;
+            }
+            
+            .option-code {
+                word-break: break-word;
+            }
+        }
+        
+        /* Additional styling for very small screens */
+        @media screen and (max-width: 480px) {
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            h2 {
+                font-size: 1.3rem;
+            }
+            
+            h3 {
+                font-size: 1.1rem;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                margin-bottom: 5px;
+            }
+            
+            pre {
+                font-size: 0.75em;
+            }
+            
+            .collapsible {
+                font-size: 13px;
+            }
+            
+            td, th {
+                padding: 8px 5px;
+                font-size: 0.9rem;
+            }
+            
+            cifview-widget {
+                min-height: 250px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="grid">
-        <cifview-widget
-            caption="Structure with disorder" 
-            src="./cif/disorder.cif"
-            hydrogen-mode="constant">
-        </cifview-widget>
-        <cifview-widget
-            caption="Larger Structure with bonds to symmetry equivalent atoms" 
-            src="./cif/new.cif"
-            hydrogen-mode="none">
-        </cifview-widget>
-    </div>
-    <script type="module">
-        import { CifViewWidget } from '../src';
+    <header>
+        <h1>CifVis Widget Demo</h1>
+        <p>A comprehensive guide to utilizing the CifVis widget for crystal structure visualization</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Introduction</h2>
+            <p>
+                CifVis is a JavaScript library that allows you to visualize crystallographic information files (CIF) directly in a web browser.
+                The library provides a convenient web component (<code>&lt;cifview-widget&gt;</code>) that makes it easy to display
+                interactive 3D models of crystal structures in your web pages.
+            </p>
+
+            <p>
+                Adding a crystal structure visualization to your webpage is as simple as including the CifVis library
+                and adding the <code>&lt;cifview-widget&gt;</code> element:
+            </p>
+            <pre><code>&lt;script type="module" src="https://niolon.github.io/cifvis/dist/cifvis.alldeps.js"&gt;&lt;/script&gt;
+
+&lt;cifview-widget 
+    src="path/to/structure.cif"
+    caption="Crystal Structure"&gt;
+&lt;/cifview-widget&gt;</code></pre>
+
+            <p>
+                Although you might consider uploading the library to your own webserver if you are after something persistent.
+            </p>
+            <p>
+                This demo page showcases various features of the CifVis widget and provides code examples for implementation.
+            </p>
+        </section>
+
+        <section>
+            <h2>Basic Usage</h2>
+
+<p>The CifVis widget provides several interactive features:</p>
+            
+            <ul class="feature-list">
+                <li>Rotation: Click and drag to rotate the structure</li>
+                <li>Zoom: Use the mouse wheel to zoom in/out</li>
+                <li>Selection: Click on atoms or bonds to select and view details, double click on the background to deselect all selections.</li>
+                <li>Toggle display: Use buttons at the top right to toggle hydrogens, disorder, and symmetry</li>
+                <li>Reset view: Double right-click to reset the camera position</li>
+            </ul>
+            
+            <div class="widget-container">
+                <span class="example-label">Interactive Example (try selecting atoms and bonds):</span>
+                <cifview-widget 
+                    src="cif/sucrose.cif"
+                    caption="Try clicking on atoms and bonds to select them. The caption updates with selection information.">
+                </cifview-widget>
+            </div>
+        </section>
+
+        <section>
+            <h2>Loading CIF Data</h2>
+            <p>You can load CIF data in two ways:</p>
+            
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab(event, 'tab1')">From URL</div>
+                    <div class="tab" onclick="switchTab(event, 'tab2')">From String</div>
+                </div>
+                
+                <div id="tab1" class="tab-content active">
+                    <p>Load a CIF file from a URL:</p>
+                    <pre><code>&lt;cifview-widget 
+    src="https://example.com/path/to/structure.cif"
+    caption="Structure from URL"&gt;
+&lt;/cifview-widget&gt;</code></pre>
+                </div>
+                
+                <div id="tab2" class="tab-content">
+                    <p>Load CIF data directly from a string:</p>
+                    <pre><code>&lt;cifview-widget 
+    data="data_
+_cell.length_a 10.5
+_cell.length_b 12.3
+_cell.length_c 15.2
+_cell.angle_alpha 90
+_cell.angle_beta 90
+_cell.angle_gamma 90
+# ... rest of CIF data ...
+"
+    caption="Structure from data string"&gt;
+&lt;/cifview-widget&gt;</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Display Options</h2>
+            <p>The CifVis widget provides several display options that can be controlled via attributes:</p>
+            
+            <div class="grid">
+                <div class="widget-container">
+                    <span class="example-label">Hydrogen atoms hidden:</span>
+                    <cifview-widget 
+                        src="cif/sucrose.cif"
+                        caption="Structure with hydrogens hidden"
+                        hydrogen-mode="none">
+                    </cifview-widget>
+                </div>
+                
+                <div class="widget-container">
+                    <span class="example-label">Hydrogen atoms displayed:</span>
+                    <cifview-widget 
+                        src="cif/sucrose.cif"
+                        caption="Structure with hydrogens displayed (constant radius)"
+                        hydrogen-mode="constant">
+                    </cifview-widget>
+                </div>
+                
+                <div class="widget-container">
+                    <span class="example-label">Anisotropic hydrogens:</span>
+                    <cifview-widget 
+                        src="cif/hani.cif"
+                        caption="Structure with anisotropic hydrogens"
+                        hydrogen-mode="anisotropic">
+                    </cifview-widget>
+                </div>
+                
+                <div class="widget-container">
+                    <span class="example-label">Disorder - all groups shown:</span>
+                    <cifview-widget 
+                        src="cif/disorder.cif"
+                        caption="Structure with all disorder groups visible"
+                        disorder-mode="all">
+                    </cifview-widget>
+                </div>
+
+            </div>
+            <h3>Growing symmetry</h3>
+            <p>
+                You can grow the symmetry one additional sphere using bonds or hydrogen bonds contained in the cif tables:
+            </p>
+            
+            <div class="grid">
+                <div class="widget-container">
+                    <span class="example-label">Assymetric Unit:</span>
+                    <cifview-widget 
+                        src="cif/urea.cif"
+                        caption="Structure B with symmetry expansion"
+                        hydrogen-mode="constant"
+                        symmetry-mode="bonds-no-hbonds-no">
+                    </cifview-widget>
+                </div>
+                
+                <div class="widget-container">
+                    <span class="example-label">Grow with both bond types:</span>
+                    <cifview-widget 
+                        src="cif/urea.cif"
+                        caption="Structure B with symmetry expansion"
+                        hydrogen-mode="constant"
+                        symmetry-mode="bonds-yes-hbonds-yes">
+                    </cifview-widget>
+                </div>
+            </div>
+
+            <h3>Setting Display Options</h3>
+            <p>Set initial display options using the following attributes, if a display mode is incompatible with the given structure (say there are no anisotropic hydrogens, even though <code>hydrogen-mode="anisotropic"</code> was selected as start mode), the widget will automatically fall back to a valid option:</p>
+            <pre><code>&lt;cifview-widget 
+    src="structure.cif"
+    caption="My Structure"
+    hydrogen-mode="constant"
+    disorder-mode="all"
+    symmetry-mode="bonds-yes-hbonds-no"&gt;
+&lt;/cifview-widget&gt;</code></pre>
+
+            <table>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Values</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>hydrogen-mode</code></td>
+                    <td><code>none</code>, <code>constant</code>, <code>anisotropic</code></td>
+                    <td>Controls the display of hydrogen atoms</td>
+                </tr>
+                <tr>
+                    <td><code>disorder-mode</code></td>
+                    <td><code>all</code>, <code>group1</code>, <code>group2</code></td>
+                    <td>
+                        Controls which disorder groups are displayed. <br>
+                        <code>group1</code> displays disorder group 1 and non-disorder atoms, <br>
+                        <code>group2</code> displays all but disorder groups 1 atoms.
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>symmetry-mode</code></td>
+                    <td><code>bonds-yes-hbonds-yes</code>, <code>bonds-yes-hbonds-none</code>, <code>bonds-none-hbonds-no</code>, etc.</td>
+                    <td>
+                        Controls symmetry-generated atoms and bonds,<br>
+                        <code>yes</code>/<code>no</code>switches growing on of off,<br>
+                        <code>none</code> means there are no bonds/H-bonds to grow.<br>
+                        Only one additional sphere is grown.
+                    </td>
+                </tr>
+            </table>
+        </section>
+
+        <section>
+            <h2>Filtered Atoms</h3>
+            <p>
+                You can exclude specific atoms from the visualization using the <code>filtered-atoms</code> attribute.
+                This is particularly useful for removing solvent molecules or counter-ions to focus on the main structure. 
+                Individual atoms are separated by a comma a range (inclusive) can be indicated by the <code>></code> sign. The used 
+                order is determined by the <code>atom_site</code> table:
+            </p>
+            
+            <div class="grid">
+                <div class="widget-container">
+                    <span class="example-label">Complete structure with solvent:</span>
+                    <cifview-widget 
+                        src="cif/fullerene.cif"
+                        caption="Complete structure including solvent molecules">
+                    </cifview-widget>
+                </div>
+                
+                <div class="widget-container">
+                    <span class="example-label">Structure with solvent removed:</span>
+                    <cifview-widget 
+                        src="cif/fullerene.cif"
+                        caption="Structure with solvent molecules removed"
+                        filtered-atoms="C200,H200,C201>H218">
+                    </cifview-widget>
+                </div>
+            </div>
+            
+            <pre><code>&lt;cifview-widget 
+    src="structure.cif"
+    caption="Structure with solvent removed"
+    filtered-atoms="C200,H200,C201>H218"&gt;
+&lt;/cifview-widget&gt;</code></pre>
+        </section>
+
+        <section>
+            <h2>Configuration Options</h2>
+            <p>
+                CifVis provides extensive configuration options through the <code>options</code> attribute.
+                This attribute accepts a JSON string with various settings that control the appearance and behavior
+                of the visualization.
+            </p>
+
+            <div class="search-container">
+                <input type="text" id="optionSearch" placeholder="Search for configuration options...">
+            </div>
+
+            <!-- Camera Options -->
+            <button type="button" class="collapsible">Camera Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control the camera behavior and settings for the 3D viewer.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera min distance zoom">
+                            <td><span class="option-code">camera.minDistance</span></td>
+                            <td>Number</td>
+                            <td>Minimum camera distance when zooming. <span class="default-value">Default: 1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera max distance zoom">
+                            <td><span class="option-code">camera.maxDistance</span></td>
+                            <td>Number</td>
+                            <td>Maximum camera distance when zooming. <span class="default-value">Default: 100</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera zoom speed mouse wheel">
+                            <td><span class="option-code">camera.wheelZoomSpeed</span></td>
+                            <td>Number</td>
+                            <td>Speed of zooming when using the mouse wheel. <span class="default-value">Default: 0.0008</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera zoom speed pinch touch">
+                            <td><span class="option-code">camera.pinchZoomSpeed</span></td>
+                            <td>Number</td>
+                            <td>Speed of zooming when using pinch gestures on touch devices. <span class="default-value">Default: 0.001</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera initial position">
+                            <td><span class="option-code">camera.initialPosition</span></td>
+                            <td>Array</td>
+                            <td>Initial camera position as [x, y, z] coordinates. <span class="default-value">Default: [0, 0, 10]</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera field of view fov">
+                            <td><span class="option-code">camera.fov</span></td>
+                            <td>Number</td>
+                            <td>Field of view in degrees. <span class="default-value">Default: 45</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera near clipping plane">
+                            <td><span class="option-code">camera.near</span></td>
+                            <td>Number</td>
+                            <td>Near clipping plane distance. <span class="default-value">Default: 0.1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera far clipping plane">
+                            <td><span class="option-code">camera.far</span></td>
+                            <td>Number</td>
+                            <td>Far clipping plane distance. <span class="default-value">Default: 1000</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Selection Options -->
+            <button type="button" class="collapsible">Selection Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control the behavior and appearance of atom and bond selections.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="selection mode single multiple">
+                            <td><span class="option-code">selection.mode</span></td>
+                            <td>String</td>
+                            <td>Selection mode, either "single" or "multiple". <span class="default-value">Default: "multiple"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="selection marker size multiplier atoms">
+                            <td><span class="option-code">selection.markerMult</span></td>
+                            <td>Number</td>
+                            <td>Size multiplier for atom selection markers. <span class="default-value">Default: 1.3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="selection marker size multiplier bonds">
+                            <td><span class="option-code">selection.bondMarkerMult</span></td>
+                            <td>Number</td>
+                            <td>Size multiplier for bond selection markers. <span class="default-value">Default: 1.7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="selection highlight emissive glow">
+                            <td><span class="option-code">selection.highlightEmissive</span></td>
+                            <td>Number (hex)</td>
+                            <td>Emissive color value for highlighted selections. <span class="default-value">Default: 0xaaaaaa</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="selection marker colors palette">
+                            <td><span class="option-code">selection.markerColors</span></td>
+                            <td>Array</td>
+                            <td>Array of colors (hex values) used for selection markers. <span class="default-value">Default: cycle of 10 different colors</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Interaction Options -->
+            <button type="button" class="collapsible">Interaction Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control how users interact with the 3D structure.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction rotation speed">
+                            <td><span class="option-code">interaction.rotationSpeed</span></td>
+                            <td>Number</td>
+                            <td>Speed of rotation when dragging. <span class="default-value">Default: 5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction click threshold time">
+                            <td><span class="option-code">interaction.clickThreshold</span></td>
+                            <td>Number</td>
+                            <td>Maximum time in milliseconds for an interaction to be considered a click. <span class="default-value">Default: 200</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction mouse raycast line threshold">
+                            <td><span class="option-code">interaction.mouseRaycast.lineThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for line selection with mouse. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction mouse raycast points threshold">
+                            <td><span class="option-code">interaction.mouseRaycast.pointsThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for point selection with mouse. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction mouse raycast mesh threshold">
+                            <td><span class="option-code">interaction.mouseRaycast.meshThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for mesh selection with mouse. <span class="default-value">Default: 0.1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction touch raycast line threshold">
+                            <td><span class="option-code">interaction.touchRaycast.lineThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for line selection with touch. <span class="default-value">Default: 2.0</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction touch raycast points threshold">
+                            <td><span class="option-code">interaction.touchRaycast.pointsThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for point selection with touch. <span class="default-value">Default: 2.0</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="interaction touch raycast mesh threshold">
+                            <td><span class="option-code">interaction.touchRaycast.meshThreshold</span></td>
+                            <td>Number</td>
+                            <td>Threshold for mesh selection with touch. <span class="default-value">Default: 0.2</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Rendering Options -->
+            <button type="button" class="collapsible">Rendering Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control how the 3D structure is rendered.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="render mode constant ondemand">
+                            <td><span class="option-code">renderMode</span></td>
+                            <td>String</td>
+                            <td>Rendering mode, either "constant" (render continuously) or "onDemand" (render only when needed). <span class="default-value">Default: "onDemand"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="fix cif errors">
+                            <td><span class="option-code">fixCifErrors</span></td>
+                            <td>Boolean</td>
+                            <td>Whether to attempt to fix common errors in CIF files. <span class="default-value">Default: false</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Atom Visualization Options -->
+            <button type="button" class="collapsible">Atom Visualization Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control the appearance of atoms in the 3D structure.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom detail level of detail lod geometry">
+                            <td><span class="option-code">atomDetail</span></td>
+                            <td>Number</td>
+                            <td>Level of detail for atom geometry (1-5). <span class="default-value">Default: 3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom color roughness material">
+                            <td><span class="option-code">atomColorRoughness</span></td>
+                            <td>Number</td>
+                            <td>Roughness of atom material (0-1). <span class="default-value">Default: 0.3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom color metalness material">
+                            <td><span class="option-code">atomColorMetalness</span></td>
+                            <td>Number</td>
+                            <td>Metalness of atom material (0-1). <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom adp ring width factor">
+                            <td><span class="option-code">atomADPRingWidthFactor</span></td>
+                            <td>Number</td>
+                            <td>Width factor for ADP (Anisotropic Displacement Parameter) rings. <span class="default-value">Default: 1.0</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom adp ring height">
+                            <td><span class="option-code">atomADPRingHeight</span></td>
+                            <td>Number</td>
+                            <td>Height of ADP rings. <span class="default-value">Default: 0.06</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom adp ring sections">
+                            <td><span class="option-code">atomADPRingSections</span></td>
+                            <td>Number</td>
+                            <td>Number of sections in ADP rings. <span class="default-value">Default: 18</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom adp inner sections">
+                            <td><span class="option-code">atomADPInnerSections</span></td>
+                            <td>Number</td>
+                            <td>Number of inner sections in ADP rings. <span class="default-value">Default: 7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom constant radius multiplier">
+                            <td><span class="option-code">atomConstantRadiusMultiplier</span></td>
+                            <td>Number</td>
+                            <td>Multiplier for atom radius when using constant mode. <span class="default-value">Default: 0.25</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bond Visualization Options -->
+            <button type="button" class="collapsible">Bond Visualization Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control the appearance of bonds in the 3D structure.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond radius thickness">
+                            <td><span class="option-code">bondRadius</span></td>
+                            <td>Number</td>
+                            <td>Radius of bond cylinders. <span class="default-value">Default: 0.05</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond sections detail">
+                            <td><span class="option-code">bondSections</span></td>
+                            <td>Number</td>
+                            <td>Number of sections in bond cylinders. <span class="default-value">Default: 15</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond color">
+                            <td><span class="option-code">bondColor</span></td>
+                            <td>String</td>
+                            <td>Default color for bonds. <span class="default-value">Default: "#666666"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond color roughness">
+                            <td><span class="option-code">bondColorRoughness</span></td>
+                            <td>Number</td>
+                            <td>Roughness of bond material (0-1). <span class="default-value">Default: 0.3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond color metalness">
+                            <td><span class="option-code">bondColorMetalness</span></td>
+                            <td>Number</td>
+                            <td>Metalness of bond material (0-1). <span class="default-value">Default: 0.1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond grow tolerance factor generation">
+                            <td><span class="option-code">bondGrowToleranceFactor</span></td>
+                            <td>Number</td>
+                            <td>Tolerance factor for bond growing/generation. <span class="default-value">Default: 1.2</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hydrogen Bond Visualization Options -->
+            <button type="button" class="collapsible">Hydrogen Bond Visualization Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options control the appearance of hydrogen bonds in the 3D structure.</p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Option</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond radius thickness">
+                            <td><span class="option-code">hbondRadius</span></td>
+                            <td>Number</td>
+                            <td>Radius of hydrogen bond cylinders. <span class="default-value">Default: 0.04</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond color">
+                            <td><span class="option-code">hbondColor</span></td>
+                            <td>String</td>
+                            <td>Default color for hydrogen bonds. <span class="default-value">Default: "#AAAAAA"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond color roughness">
+                            <td><span class="option-code">hbondColorRoughness</span></td>
+                            <td>Number</td>
+                            <td>Roughness of hydrogen bond material (0-1). <span class="default-value">Default: 0.3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond color metalness">
+                            <td><span class="option-code">hbondColorMetalness</span></td>
+                            <td>Number</td>
+                            <td>Metalness of hydrogen bond material (0-1). <span class="default-value">Default: 0.1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond dash segment length">
+                            <td><span class="option-code">hbondDashSegmentLength</span></td>
+                            <td>Number</td>
+                            <td>Target length for each dash+gap segment. <span class="default-value">Default: 0.3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="hbond dash fraction">
+                            <td><span class="option-code">hbondDashFraction</span></td>
+                            <td>Number</td>
+                            <td>Fraction of segment that is solid (vs gap). <span class="default-value">Default: 0.6</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Element Properties -->
+            <button type="button" class="collapsible">Element Properties Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>
+                        The <code>elementProperties</code> option allows you to customize the appearance of specific elements.
+                        It contains a mapping of element symbols to their properties.
+                    </p>
+                    <table class="option-table">
+                        <tr>
+                            <th>Element Property</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="element radius size">
+                            <td><span class="option-code">elementProperties.X.radius</span></td>
+                            <td>Number</td>
+                            <td>Radius of the element X in Å. Used for bond distance calculation and visualization.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="element atom color">
+                            <td><span class="option-code">elementProperties.X.atomColor</span></td>
+                            <td>String</td>
+                            <td>Color of the element X. Can be any valid CSS color.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="element ring color">
+                            <td><span class="option-code">elementProperties.X.ringColor</span></td>
+                            <td>String</td>
+                            <td>Color of anisotropic displacement parameter rings for element X.</td>
+                        </tr>
+                    </table>
+                    <p>Example of customizing element properties:</p>
+                    <pre class="example-json"><code>{
+  "elementProperties": {
+    "Fe": {
+      "radius": 1.4,
+      "atomColor": "#FF5733",
+      "ringColor": "#ffffff"
+    },
+    "O": {
+      "atomColor": "#0088ff",
+      "radius": 0.7
+    }
+  }
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Complete Example -->
+            <h3>Complete Configuration Example</h3>
+            <p>
+                Here's a comprehensive example showing how to use the <code>options</code> attribute to customize
+                various aspects of the CifVis widget:
+            </p>
+            <pre class="example-json"><code>&lt;cifview-widget 
+    src="structure.cif"
+    caption="Customized Crystal Structure"
+    options='{
+        "camera": {
+            "fov": 50,
+            "initialPosition": [0, 0, 15],
+            "wheelZoomSpeed": 0.001
+        },
+        "selection": {
+            "mode": "multiple",
+            "markerMult": 1.5,
+            "bondMarkerMult": 2.0
+        },
+        "atomDetail": 4,
+        "atomColorRoughness": 0.5,
+        "atomColorMetalness": 0.3,
+        "bondRadius": 0.08,
+        "bondColor": "#555555",
+        "elementProperties": {
+            "Fe": {
+                "atomColor": "#FF5733",
+                "radius": 1.4,
+                "ringColor": "#ffffff"
+            },
+            "O": {
+                "atomColor": "#0088ff",
+                "radius": 0.7
+            }
+        }
+    }'&gt;
+&lt;/cifview-widget&gt;</code></pre>
+        </section>
+
+    <footer>
+        <p>CifVis v0.9.1 &bull; <a href="https://github.com/niolon/cifvis" target="_blank">GitHub</a> &bull; Released under <a href="https://www.mozilla.org/en-US/MPL/2.0/" target="_blank">Mozilla Public License 2.0</a></p>
+    </footer>
+
+    <script>
+        function switchTab(event, tabId) {
+            // Hide all tab contents
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            // Remove active class from all tabs
+            const tabs = document.getElementsByClassName('tab');
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            // Show the selected tab content and mark the clicked tab as active
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // Collapsible functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            var coll = document.getElementsByClassName("collapsible");
+            for (var i = 0; i < coll.length; i++) {
+                coll[i].addEventListener("click", function() {
+                    this.classList.toggle("active-collapsible");
+                    var content = this.nextElementSibling;
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            }
+
+            // Option search functionality
+            document.getElementById('optionSearch').addEventListener('input', function() {
+                var search = this.value.toLowerCase();
+                var rows = document.getElementsByClassName('option-row');
+                var categories = document.getElementsByClassName('collapsible');
+                
+                if (search.length > 0) {
+                    // Expand all categories when searching
+                    for (var i = 0; i < categories.length; i++) {
+                        var content = categories[i].nextElementSibling;
+                        categories[i].classList.add("active-collapsible");
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                }
+                
+                for (var i = 0; i < rows.length; i++) {
+                    var keywords = rows[i].getAttribute('data-keywords') || '';
+                    var text = rows[i].textContent.toLowerCase();
+                    if (text.includes(search) || keywords.includes(search)) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>
