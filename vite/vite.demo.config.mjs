@@ -10,7 +10,6 @@ export default defineConfig({
             input: {
                 main: resolve(__dirname, '../demo/index.html'),
                 widget: resolve(__dirname, '../demo/widget.html'),
-                widgettutorial: resolve(__dirname, '../demo/widget-tutorial.html'),
             },
             output: {
                 inlineDynamicImports: false,
