@@ -1,6 +1,7 @@
 import { Bond, HBond } from '../bonds.js';
 import { Atom, CrystalStructure } from '../crystal.js';
 import { BaseFilter } from './base.js';
+import { UAnisoADP } from '../adp.js';
 
 import { create, all } from 'mathjs';
 export const math = create(all);
@@ -89,7 +90,7 @@ export class HydrogenFilter extends BaseFilter {
         modes.push(HydrogenFilter.MODES.CONSTANT);
 
         const hasAnisoHydrogens = structure.atoms.some(
-            atom => atom.atomType === 'H' && atom.adp?.constructor.name === 'UAnisoADP',
+            atom => atom.atomType === 'H' && atom.adp instanceof UAnisoADP,
         );
 
         if (hasAnisoHydrogens) {
