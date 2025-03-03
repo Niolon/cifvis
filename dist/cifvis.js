@@ -409,7 +409,7 @@ class wt {
   }
 }
 const C = V(G, {});
-function I(l) {
+function z(l) {
   const t = C.unit(l.alpha, "deg").toNumber("rad"), e = C.unit(l.beta, "deg").toNumber("rad"), o = C.unit(l.gamma, "deg").toNumber("rad"), s = Math.cos(t), i = Math.cos(e), r = Math.cos(o), n = Math.sin(o), a = Math.sqrt(1 - s * s - i * i - r * r + 2 * s * i * r);
   return C.matrix([
     [l.a, l.b * r, l.c * i],
@@ -581,7 +581,7 @@ class Vt {
   }
 }
 const N = V(G, {});
-class H {
+class $ {
   constructor(t) {
     this.uiso = t;
   }
@@ -591,10 +591,10 @@ class H {
    * @returns {UIsoADP} New UIsoADP instance
    */
   static fromBiso(t) {
-    return new H(t / (8 * Math.PI * Math.PI));
+    return new $(t / (8 * Math.PI * Math.PI));
   }
 }
-class $ {
+class P {
   /**
    * @param {number} u11 - U11 component in Å²
    * @param {number} u22 - U22 component in Å²
@@ -618,7 +618,7 @@ class $ {
    */
   static fromBani(t, e, o, s, i, r) {
     const n = 1 / (8 * Math.PI * Math.PI);
-    return new $(
+    return new P(
       t * n,
       e * n,
       o * n,
@@ -737,7 +737,7 @@ class S {
     if (i === -1)
       throw new Error(`Atom ${e} has ADP type Uani, but was not found in atom_site_aniso.label`);
     const r = o.getIndex(["_atom_site_aniso.u_11", "_atom_site_aniso_U_11"], i, NaN), n = o.getIndex(["_atom_site_aniso.u_22", "_atom_site_aniso_U_22"], i, NaN), a = o.getIndex(["_atom_site_aniso.u_33", "_atom_site_aniso_U_33"], i, NaN), c = o.getIndex(["_atom_site_aniso.u_12", "_atom_site_aniso_U_12"], i, NaN), d = o.getIndex(["_atom_site_aniso.u_13", "_atom_site_aniso_U_13"], i, NaN), m = o.getIndex(["_atom_site_aniso.u_23", "_atom_site_aniso_U_23"], i, NaN);
-    return [r, n, a, c, d, m].some(isNaN) ? null : new $(r, n, a, c, d, m);
+    return [r, n, a, c, d, m].some(isNaN) ? null : new P(r, n, a, c, d, m);
   }
   /**
    * Creates anisotropic B-based ADP
@@ -754,7 +754,7 @@ class S {
     if (i === -1)
       throw new Error(`Atom ${e} has ADP type Bani, but was not found in atom_site_aniso.label`);
     const r = o.getIndex(["_atom_site_aniso.b_11", "_atom_site_aniso_B_11"], i, NaN), n = o.getIndex(["_atom_site_aniso.b_22", "_atom_site_aniso_B_22"], i, NaN), a = o.getIndex(["_atom_site_aniso.b_33", "_atom_site_aniso_B_33"], i, NaN), c = o.getIndex(["_atom_site_aniso.b_12", "_atom_site_aniso_B_12"], i, NaN), d = o.getIndex(["_atom_site_aniso.b_13", "_atom_site_aniso_B_13"], i, NaN), m = o.getIndex(["_atom_site_aniso.b_23", "_atom_site_aniso_B_23"], i, NaN);
-    return [r, n, a, c, d, m].some(isNaN) ? null : $.fromBani(r, n, a, c, d, m);
+    return [r, n, a, c, d, m].some(isNaN) ? null : P.fromBani(r, n, a, c, d, m);
   }
   /**
    * Creates isotropic U-based ADP
@@ -767,7 +767,7 @@ class S {
         e,
         NaN
       );
-      return isNaN(s) ? null : new H(s);
+      return isNaN(s) ? null : new $(s);
     } catch {
       return null;
     }
@@ -783,7 +783,7 @@ class S {
         e,
         NaN
       );
-      return isNaN(s) ? null : H.fromBiso(s);
+      return isNaN(s) ? null : $.fromBiso(s);
     } catch {
       return null;
     }
@@ -803,7 +803,7 @@ function vt(l) {
   }
   return e + o.toString();
 }
-class F {
+class H {
   /**
    * Creates a new symmetry operation from a string instruction
    * @param {string} instruction - Symmetry operation in crystallographic notation (e.g. "x,y,z", "-x+1/2,y,-z")
@@ -874,7 +874,7 @@ class F {
       "_symmetry_equiv.pos_as_xyz",
       "_symmetry_equiv_pos_as_xyz"
     ], e);
-    return new F(s);
+    return new H(s);
   }
   /**
    * Applies the symmetry operation to a point in fractional coordinates
@@ -904,13 +904,13 @@ class F {
       this.transVector
     ));
     let o = null;
-    if (t.adp && t.adp instanceof $) {
+    if (t.adp && t.adp instanceof P) {
       const s = [
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
       ], i = this.rotMatrix, r = k.transpose(i), n = k.multiply(k.multiply(i, s), r);
-      o = new $(
+      o = new P(
         n[0][0],
         // u11
         n[1][1],
@@ -924,7 +924,7 @@ class F {
         n[1][2]
         // u23
       );
-    } else t.adp && t.adp instanceof H && (o = new H(t.adp.uiso));
+    } else t.adp && t.adp instanceof $ && (o = new $(t.adp.uiso));
     return new X(
       t.label,
       t.atomType,
@@ -951,7 +951,7 @@ class F {
    * @returns {SymmetryOperation} New independent symmetry operation with the same parameters
    */
   copy() {
-    const t = new F("x,y,z");
+    const t = new H("x,y,z");
     return t.rotMatrix = k.clone(this.rotMatrix), t.transVector = k.clone(this.transVector), t;
   }
   /**
@@ -1055,7 +1055,7 @@ class Y {
       return new Y(
         e,
         o,
-        [new F(s)]
+        [new H(s)]
       );
     if (s || console.warn(Object.keys(t).filter((i) => i.includes("sym"))), s) {
       const i = s.get([
@@ -1075,7 +1075,7 @@ class Y {
         r = new Map(a.map((c, d) => [c.toString(), d]));
       } catch {
       }
-      const n = i.map((a) => new F(a));
+      const n = i.map((a) => new H(a));
       return new Y(
         e,
         o,
@@ -1083,7 +1083,7 @@ class Y {
         r
       );
     } else
-      return console.warn("No symmetry operations found in CIF block, will use P1"), new Y("Unknown", 0, [new F("x,y,z")]);
+      return console.warn("No symmetry operations found in CIF block, will use P1"), new Y("Unknown", 0, [new H("x,y,z")]);
   }
 }
 class L {
@@ -1438,7 +1438,7 @@ class T {
   * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
   */
   constructor(t, e, o = [], s = [], i = null) {
-    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = i || new Y("None", 0, [new F("x,y,z")]);
+    this.cell = t, this.atoms = e, this.bonds = o, this.hBonds = s, this.recalculateConnectedGroups(), this.symmetry = i || new Y("None", 0, [new H("x,y,z")]);
   }
   /**
   * Creates a CrystalStructure from CIF data
@@ -1545,7 +1545,7 @@ class ht {
   * @throws {Error} If parameters invalid
   */
   constructor(t, e, o, s, i, r) {
-    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = i, this._gamma = r, this.fractToCartMatrix = I(this);
+    this._a = t, this._b = e, this._c = o, this._alpha = s, this._beta = i, this._gamma = r, this.fractToCartMatrix = z(this);
   }
   /**
   * Creates a UnitCell from CIF data
@@ -1579,7 +1579,7 @@ class ht {
   set a(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'a' must be positive");
-    this._a = t, this.fractToCartMatrix = I(this);
+    this._a = t, this.fractToCartMatrix = z(this);
   }
   get b() {
     return this._b;
@@ -1587,7 +1587,7 @@ class ht {
   set b(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'b' must be positive");
-    this._b = t, this.fractToCartMatrix = I(this);
+    this._b = t, this.fractToCartMatrix = z(this);
   }
   get c() {
     return this._c;
@@ -1595,7 +1595,7 @@ class ht {
   set c(t) {
     if (t <= 0)
       throw new Error("Cell parameter 'c' must be positive");
-    this._c = t, this.fractToCartMatrix = I(this);
+    this._c = t, this.fractToCartMatrix = z(this);
   }
   get alpha() {
     return this._alpha;
@@ -1603,7 +1603,7 @@ class ht {
   set alpha(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle alpha must be between 0 and 180 degrees");
-    this._alpha = t, this.fractToCartMatrix = I(this);
+    this._alpha = t, this.fractToCartMatrix = z(this);
   }
   get beta() {
     return this._beta;
@@ -1611,7 +1611,7 @@ class ht {
   set beta(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle beta must be between 0 and 180 degrees");
-    this._beta = t, this.fractToCartMatrix = I(this);
+    this._beta = t, this.fractToCartMatrix = z(this);
   }
   get gamma() {
     return this._gamma;
@@ -1619,7 +1619,7 @@ class ht {
   set gamma(t) {
     if (t <= 0 || t >= 180)
       throw new Error("Angle gamma must be between 0 and 180 degrees");
-    this._gamma = t, this.fractToCartMatrix = I(this);
+    this._gamma = t, this.fractToCartMatrix = z(this);
   }
 }
 class X {
@@ -1844,7 +1844,7 @@ const _ = {
     Cf: { radius: 1.81, atomColor: "#a136d4", ringColor: "#ffffff" }
   }
 };
-class P {
+class I {
   /**
    * Creates a new filter
    * @param {Object.<string, string>} modes - Dictionary of valid modes
@@ -1852,7 +1852,7 @@ class P {
    * @param {string} filterName - Name of the filter for error messages
    */
   constructor(t, e, o, s = []) {
-    if (new.target === P)
+    if (new.target === I)
       throw new TypeError("Cannot instantiate BaseFilter directly");
     this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(s), this.filterName = o, this._mode = null, this.mode = e;
   }
@@ -1916,7 +1916,7 @@ class P {
   }
 }
 V(G);
-const v = class v extends P {
+const v = class v extends I {
   /**
    * Creates a new hydrogen filter
    * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
@@ -1960,10 +1960,7 @@ const v = class v extends P {
   getApplicableModes(t) {
     const e = [v.MODES.NONE];
     return t.atoms.some((i) => i.atomType === "H") && (e.push(v.MODES.CONSTANT), t.atoms.some(
-      (i) => {
-        var r;
-        return i.atomType === "H" && ((r = i.adp) == null ? void 0 : r.constructor.name) === "UAnisoADP";
-      }
+      (i) => i.atomType === "H" && i.adp instanceof P
     ) && e.push(v.MODES.ANISOTROPIC)), e;
   }
 };
@@ -1977,7 +1974,7 @@ D(v, "MODES", Object.freeze({
   v.MODES.NONE
 ]);
 let rt = v;
-const w = class w extends P {
+const w = class w extends I {
   /**
    * Creates a new disorder filter
    * @param {DisorderFilter.MODES} [mode=DisorderFilter.MODES.ALL] - Initial filter mode
@@ -2027,7 +2024,7 @@ D(w, "MODES", Object.freeze({
   w.MODES.GROUP2
 ]);
 let nt = w;
-const y = class y extends P {
+const y = class y extends I {
   /**
    * Creates a new symmetry grower
    * @param {SymmetryGrower.MODES} [mode=SymmetryGrower.MODES.BONDS_NO_HBONDS_NO] - Initial mode for growing symmetry
@@ -2417,14 +2414,14 @@ class Yt {
     const t = this.crystalStructure.atoms.map((s) => s.label);
     for (const s of this.crystalStructure.atoms) {
       const [i, r] = this.cache.getAtomMaterials(s.atomType);
-      s.adp instanceof $ ? this.atoms3D.push(new jt(
+      s.adp instanceof P ? this.atoms3D.push(new jt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
         i,
         this.cache.geometries.adpRing,
         r
-      )) : s.adp instanceof H ? this.atoms3D.push(new Wt(
+      )) : s.adp instanceof $ ? this.atoms3D.push(new Wt(
         s,
         this.crystalStructure.cell,
         this.cache.geometries.atom,
@@ -3065,14 +3062,14 @@ function ee(l, t = !0, e = !0, o = !0) {
     }
   }
 }
-const B = V(G), z = class z extends P {
+const B = V(G), F = class F extends I {
   /**
    * Creates a new atom label filter
    * @param {string[]|string} [filteredLabels=[]] - Array of atom labels or comma-separated string to filter
    * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
    */
-  constructor(t = [], e = z.MODES.OFF) {
-    super(z.MODES, e, "AtomLabelFilter", []), this.setFilteredLabels(t);
+  constructor(t = [], e = F.MODES.OFF) {
+    super(F.MODES, e, "AtomLabelFilter", []), this.setFilteredLabels(t);
   }
   get requiresCameraUpdate() {
     return !0;
@@ -3120,7 +3117,7 @@ const B = V(G), z = class z extends P {
    * @returns {CrystalStructure} New structure with atoms removed if filter is on
    */
   apply(t) {
-    if (this.mode === z.MODES.OFF)
+    if (this.mode === F.MODES.OFF)
       return t;
     const e = this._expandRanges(t), o = t.atoms.filter(
       (r) => !e.has(r.label)
@@ -3142,15 +3139,15 @@ const B = V(G), z = class z extends P {
    * @returns {Array<string>} Array containing both ON and OFF modes
    */
   getApplicableModes() {
-    return Object.values(z.MODES);
+    return Object.values(F.MODES);
   }
 };
-D(z, "MODES", Object.freeze({
+D(F, "MODES", Object.freeze({
   ON: "on",
   OFF: "off"
 }));
-let at = z;
-const b = class b extends P {
+let at = F;
+const b = class b extends I {
   /**
    * Creates a new bond generator
    * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
@@ -3288,7 +3285,7 @@ D(b, "MODES", Object.freeze({
   b.MODES.IGNORE
 ]);
 let lt = b;
-const x = class x extends P {
+const x = class x extends I {
   /**
    * Creates a new isolated hydrogen fixer
    * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
