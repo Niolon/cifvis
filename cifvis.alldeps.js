@@ -49184,13 +49184,13 @@ class Vz extends HTMLElement {
       const e = document.createElement("style");
       e.id = "cifview-styles", e.textContent = $z, document.head.appendChild(e);
     }
-    this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {};
+    this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
   }
   get icons() {
     return { ...Gz, ...this.customIcons };
   }
   async connectedCallback() {
-    this.baseCaption = this.getAttribute("caption") || "", this.parseOptions(), this.parseInitialModes();
+    this.baseCaption = this.getAttribute("caption") || this.defaultCaption, this.parseOptions(), this.parseInitialModes();
     const e = document.createElement("div");
     e.className = "crystal-container", this.appendChild(e);
     const t = document.createElement("div");
@@ -49289,7 +49289,7 @@ class Vz extends HTMLElement {
     if (this.viewer)
       switch (e) {
         case "caption":
-          this.baseCaption = n, this.updateCaption();
+          this.baseCaption = n && n === "" ? this.defaultCaption : n, this.updateCaption();
           break;
         case "src":
           n && await this.loadFromUrl(n);

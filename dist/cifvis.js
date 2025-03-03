@@ -4097,13 +4097,13 @@ class he extends HTMLElement {
       const t = document.createElement("style");
       t.id = "cifview-styles", t.textContent = de, document.head.appendChild(t);
     }
-    this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {};
+    this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
   }
   get icons() {
     return { ...ce, ...this.customIcons };
   }
   async connectedCallback() {
-    this.baseCaption = this.getAttribute("caption") || "", this.parseOptions(), this.parseInitialModes();
+    this.baseCaption = this.getAttribute("caption") || this.defaultCaption, this.parseOptions(), this.parseInitialModes();
     const t = document.createElement("div");
     t.className = "crystal-container", this.appendChild(t);
     const e = document.createElement("div");
@@ -4202,7 +4202,7 @@ class he extends HTMLElement {
     if (this.viewer)
       switch (t) {
         case "caption":
-          this.baseCaption = o, this.updateCaption();
+          this.baseCaption = o && o === "" ? this.defaultCaption : o, this.updateCaption();
           break;
         case "src":
           o && await this.loadFromUrl(o);
