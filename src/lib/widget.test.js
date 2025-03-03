@@ -109,7 +109,7 @@ describe('CifViewWidget', () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
 
-        expect(widget.baseCaption).toBe('');
+        expect(widget.baseCaption).toBe('Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.');
         expect(widget.selections).toEqual([]);
         expect(widget.customIcons).toBeNull();
         expect(CrystalViewer).toHaveBeenCalled();

@@ -87,6 +87,7 @@ export class CifViewWidget extends HTMLElement {
         this.selections = [];
         this.customIcons = null;
         this.userOptions = {};
+        this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
     }
 
     get icons() {
@@ -94,7 +95,7 @@ export class CifViewWidget extends HTMLElement {
     }
 
     async connectedCallback() {
-        this.baseCaption = this.getAttribute('caption') || '';
+        this.baseCaption = this.getAttribute('caption') || this.defaultCaption;
         
         // Parse options before creating the viewer
         this.parseOptions();
@@ -323,7 +324,7 @@ export class CifViewWidget extends HTMLElement {
         // eslint-disable-next-line default-case
         switch (name) {
             case 'caption':
-                this.baseCaption = newValue;
+                this.baseCaption = (newValue && newValue === '') ? this.defaultCaption : newValue;
                 this.updateCaption();
                 break;
             case 'src':
