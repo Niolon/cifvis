@@ -370,8 +370,8 @@ export class ViewerControls {
             this.camera.fov = targetFov;
         }
 
+        this.viewer.resizeRendererToDisplaySize();
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(rect.width, rect.height);
         this.viewer.requestRender();
     }
 

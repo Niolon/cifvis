@@ -320,7 +320,7 @@ export class CrystalViewer {
         );
         
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.resizeRendererToDisplaySize();;
         this.container.appendChild(this.renderer.domElement);
              
         this.moleculeContainer = new THREE.Group();
@@ -493,6 +493,27 @@ export class CrystalViewer {
         if (this.options.renderMode === 'onDemand') {
             this.needsRender = true;
         }
+    }
+
+    resizeRendererToDisplaySize() {
+        const canvas = this.renderer.domElement;
+        const pixelRatio = window.devicePixelRatio || 1;
+        const width = Math.floor(this.container.clientWidth * pixelRatio);
+        const height = Math.floor(this.container.clientHeight * pixelRatio);
+        
+        const needResize = canvas.width !== width || canvas.height !== height;
+        if (needResize) {
+            // Set the internal pixel dimensions (renderer buffer size)
+            this.renderer.setSize(width, height, false);
+            
+            // Explicitly set the CSS dimensions to match the container
+            canvas.style.width = `${this.container.clientWidth}px`;
+            canvas.style.height = `${this.container.clientHeight}px`;
+            
+            // Update the renderer's viewport
+            this.renderer.setViewport(0, 0, width, height);
+        }
+        return needResize;
     }
 
     selectAtoms(atomLabels) {
