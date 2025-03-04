@@ -19,6 +19,7 @@ export class CIF {
         this.splitSU = splitSU;
         this.rawCifBlocks = this.splitCifBlocks('\n\n' + cifString);
         this.blocks = Array(this.rawCifBlocks.length).fill(null);
+        this._blockNameMap = null;
     }
  
     /**
@@ -45,7 +46,7 @@ export class CIF {
                 i++;
                 text += '\ndata_' + blockTexts[i];
                 const innerMatches = text.match(multilinePattern);
-                count = innerMatches ? innerMatches.length : 0;
+                count = innerMatches.length;
             }
             
             blocks.push(text);
@@ -78,6 +79,48 @@ export class CIF {
             }
         }
         return this.blocks;
+    }
+
+    _extractBlockNames() {
+        if (this._blockNameMap !== null) {
+            return this._blockNameMap;
+        }
+        
+        this._blockNameMap = new Map();
+        
+        // RegEx pattern to match the block name at the start of each block
+        // Since the 'data_' prefix is already removed in splitCifBlocks
+        const blockNameRegex = /^(\w+[\w.-]*)/;
+        
+        this.rawCifBlocks.forEach((blockText, index) => {
+            const match = blockNameRegex.exec(blockText.trim());
+            if (match && match[1]) {
+                // Need to add 'data_' prefix back for the map key since that's how users will query
+                this._blockNameMap.set(match[1], index);
+            }
+        });
+        
+        return this._blockNameMap;
+    }
+
+    // Get available block names
+    getBlockNames() {
+        return Array.from(this._extractBlockNames().keys());
+    }
+
+    // Get a block by name
+    getBlockByName(name) {
+        const blockNameMap = this._extractBlockNames();
+        
+        const index = blockNameMap.get(name);
+        
+        if (index === undefined) {
+            throw new Error(
+                `Block with name '${name}' not found. Available blocks: ${this.getBlockNames().join(', ')}`,
+            );
+        }
+        
+        return this.getBlock(index);
     }
 }
 

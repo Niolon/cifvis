@@ -1,3 +1,4 @@
+import { expect, test } from 'vitest';
 import { CIF, CifBlock } from './base.js';
 
 describe('CIF Parser', () => {
@@ -86,6 +87,97 @@ Some test
             expect(blocks2[1].get('_third_multiline')).toBe('data_new\n_some_nonsense test');
             expect(blocks2[1].get('_fourth_multiline')).toBe(';\nSome test');
 
+        });
+
+        test('gets block names correctly', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 3.2468(3)`);
+            
+            const blockNames = cif.getBlockNames();
+            expect(blockNames).toEqual(['block1', 'block2']);
+        });
+        
+        test('gets block by name without data_ prefix', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 3.2468(3)`);
+            
+            const block1 = cif.getBlockByName('block1');
+            expect(block1.dataBlockName).toBe('block1');
+            expect(block1.get('_cell_length_a')).toBe(5.4309);
+            
+            const block2 = cif.getBlockByName('block2');
+            expect(block2.dataBlockName).toBe('block2');
+            expect(block2.get('_cell_length_a')).toBe(3.2468);
+        });
+        
+        test('gets block by name with data_ prefix', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 3.2468(3)`);
+            
+            const block = cif.getBlockByName('block1');
+            expect(block.dataBlockName).toBe('block1');
+            expect(block.get('_cell_length_a')).toBe(5.4309);
+        });
+        
+        test('throws error for non-existent block name', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)`);
+            
+            expect(() => cif.getBlockByName('nonexistent')).toThrow(
+                "Block with name 'nonexistent' not found. Available blocks: block1"
+            );
+        });
+        
+        test('handles complex block names with dots and hyphens', () => {
+            const cif = new CIF(`data_complex-name.123
+_cell_length_a 5.4309(5)
+
+data_complex.name-456
+_cell_length_a 3.2468(3)`);
+            
+            const blockNames = cif.getBlockNames();
+            expect(blockNames).toContain('complex-name.123');
+            expect(blockNames).toContain('complex.name-456');
+            
+            const block1 = cif.getBlockByName('complex-name.123');
+            expect(block1.dataBlockName).toBe('complex-name.123');
+            expect(block1.get('_cell_length_a')).toBe(5.4309);
+        });
+        
+        test('extracts block names lazily', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 3.2468(3)`);
+            
+            // Add a spy to detect if the method is called
+            const spy = vi.spyOn(cif, '_extractBlockNames');
+            
+            // First access should call _extractBlockNames
+            const names = cif.getBlockNames();
+            expect(spy).toHaveBeenCalledTimes(1);
+            expect(names).toEqual(['block1', 'block2']);
+            
+            // Second access should use cached result
+            const names2 = cif.getBlockNames();
+            expect(spy).toHaveBeenCalledTimes(2); // Still only called once
+            expect(names2).toEqual(['block1', 'block2']);
+            
+            // getBlockByName should use the same cache
+            cif.getBlockByName('block1');
+            expect(spy).toHaveBeenCalledTimes(3); // Still only called once
+            
+            spy.mockRestore();
         });
     });
 
@@ -234,12 +326,14 @@ _text7 O'Brian's`);
             // eslint-disable-next-line quotes
             expect(block.get('_text7')).toBe("O'Brian's");
         });
+
         test('parses block with splitSU=false', () => {
             const cif = new CIF(`data_test
 _cell_length_a 123.456(7)`, false);
             const block = cif.getBlock(0);
             expect(block.get('_cell_length_a')).toBe('123.456(7)');
         });
+
         test('throw error with invalid line', () => {
             const block = new CifBlock(`blockname
 _valid_entry 123
@@ -247,6 +341,16 @@ _valid_entry 123
 Something is wrong here
 `);
             expect(() => block.get('_valid_entry')).toThrow('Could not parse line 3: Something is wrong here');
+        });
+
+        test('correct use of the defaultValue parameter', () => {
+            const block = new CifBlock(`blockname
+_valid_key 123
+`);
+            expect(block.get('_valid_key', 456)).toBe(123);
+            expect(block.get(['_invalid_key', '_valid_key'], 456)).toBe(123);
+            expect(block.get('_invalid_key', 456)).toBe(456);
+            expect(() => block.get('_invalid_key')).toThrow('None of the keys [_invalid_key] found in CIF block');
         });
     });
 });
