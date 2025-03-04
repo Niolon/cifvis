@@ -48770,7 +48770,7 @@ class kz {
     const e = this.container.getBoundingClientRect(), t = e.width / e.height;
     this.camera.aspect = t;
     const n = this.options.camera.fov;
-    e.width < e.height ? this.camera.fov = 2 * Math.atan(Math.tan(n * Math.PI / 360) / t) * 180 / Math.PI : this.camera.fov = n, this.camera.updateProjectionMatrix(), this.renderer.setSize(e.width, e.height), this.viewer.requestRender();
+    e.width < e.height ? this.camera.fov = 2 * Math.atan(Math.tan(n * Math.PI / 360) / t) * 180 / Math.PI : this.camera.fov = n, this.viewer.resizeRendererToDisplaySize(), this.camera.updateProjectionMatrix(), this.viewer.requestRender();
   }
   dispose() {
     const e = this.renderer.domElement, {
@@ -48998,7 +48998,7 @@ class Xv {
       this.container.clientWidth / this.container.clientHeight,
       this.options.camera.near,
       this.options.camera.far
-    ), this.renderer = new bz({ antialias: !0, alpha: !0 }), this.renderer.setSize(this.container.clientWidth, this.container.clientHeight), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new ui(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new pe(0, 0, 0), this.camera.lookAt(this.cameraTarget);
+    ), this.renderer = new bz({ antialias: !0, alpha: !0 }), this.resizeRendererToDisplaySize(), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new ui(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new pe(0, 0, 0), this.camera.lookAt(this.cameraTarget);
   }
   async loadStructure(e, t = 0) {
     if (e === void 0)
@@ -49069,6 +49069,10 @@ class Xv {
   }
   requestRender() {
     this.options.renderMode === "onDemand" && (this.needsRender = !0);
+  }
+  resizeRendererToDisplaySize() {
+    const e = this.renderer.domElement, t = window.devicePixelRatio || 1, n = Math.floor(this.container.clientWidth * t), i = Math.floor(this.container.clientHeight * t), a = e.width !== n || e.height !== i;
+    return a && (this.renderer.setSize(n, i, !1), e.style.width = `${this.container.clientWidth}px`, e.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, n, i)), a;
   }
   selectAtoms(e) {
     this.selections.selectAtoms(e, this.moleculeContainer);

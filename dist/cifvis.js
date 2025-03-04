@@ -4,7 +4,7 @@ var gt = (l) => {
 };
 var Tt = (l, t, e) => t in l ? Lt(l, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : l[t] = e;
 var D = (l, t, e) => Tt(l, typeof t != "symbol" ? t + "" : t, e), yt = (l, t, e) => t.has(l) || gt("Cannot " + e);
-var E = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
+var x = (l, t, e) => (yt(l, t, "read from private field"), e ? e.call(l) : t.get(l)), _t = (l, t, e) => t.has(l) ? gt("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(l) : t.set(l, e), bt = (l, t, e, o) => (yt(l, t, "write to private field"), o ? o.call(l, e) : t.set(l, e), e);
 import { create as V, all as G } from "mathjs";
 import * as h from "three";
 function st(l, t = !0) {
@@ -37,7 +37,7 @@ function st(l, t = !0) {
   }
   return isNaN(l) ? /^".*"$/.test(l) || /^'.*'$/.test(l) ? { value: l.slice(1, -1).replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.replace(/\\([^\\])/g, "$1"), su: NaN } : { value: l.includes(".") ? parseFloat(l) : parseInt(l), su: NaN };
 }
-function Et(l, t) {
+function xt(l, t) {
   const e = [l[t].slice(1)], o = l.slice(t + 1), s = o.findIndex((a) => a.startsWith(";")), i = e.concat(o.slice(0, s)), r = i.findIndex((a) => a.trim() !== ""), n = i.findLastIndex((a) => a.trim !== "");
   return {
     value: i.slice(r, n + 1).join(`
@@ -107,7 +107,7 @@ class J {
       if (s = s.trim(), !s.length)
         return o;
       if (s.startsWith(";")) {
-        const n = Et(this.dataLines, i);
+        const n = xt(this.dataLines, i);
         o.push({ value: n.value, su: NaN });
         for (let a = i; a < n.endIndex + 1; a++)
           this.dataLines[a] = "";
@@ -350,7 +350,7 @@ class wt {
     let e = 1;
     for (; e < t.length; ) {
       if (e + 1 < t.length && t[e + 1].startsWith(";")) {
-        const i = Et(t, e + 1);
+        const i = xt(t, e + 1);
         this.data[t[e]] = i.value, e = i.endIndex + 1;
         continue;
       }
@@ -417,7 +417,7 @@ function z(l) {
     [0, 0, l.c * a / n]
   ]);
 }
-function xt(l) {
+function Et(l) {
   return C.matrix([
     [l[0], l[3], l[4]],
     [l[3], l[1], l[5]],
@@ -442,7 +442,7 @@ function Ht(l) {
   ];
 }
 function $t(l, t) {
-  const e = C.matrix(l), o = C.transpose(C.inv(e)), s = C.diag(C.matrix(C.transpose(o).toArray().map((a) => C.norm(a)))), i = xt(t), r = C.multiply(C.multiply(s, i), C.transpose(s)), n = C.multiply(C.multiply(e, r), C.transpose(e));
+  const e = C.matrix(l), o = C.transpose(C.inv(e)), s = C.diag(C.matrix(C.transpose(o).toArray().map((a) => C.norm(a)))), i = Et(t), r = C.multiply(C.multiply(s, i), C.transpose(s)), n = C.multiply(C.multiply(e, r), C.transpose(e));
   return Ht(n);
 }
 const Ct = V(G);
@@ -462,34 +462,34 @@ const ft = class ft {
         "BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition"
       );
     bt(this, M, [Number(t), Number(e), Number(o)]), Object.defineProperties(this, {
-      0: { get: () => E(this, M)[0] },
-      1: { get: () => E(this, M)[1] },
-      2: { get: () => E(this, M)[2] },
+      0: { get: () => x(this, M)[0] },
+      1: { get: () => x(this, M)[1] },
+      2: { get: () => x(this, M)[2] },
       length: { value: 3 },
       [Symbol.iterator]: {
         value: function* () {
-          yield E(this, M)[0], yield E(this, M)[1], yield E(this, M)[2];
+          yield x(this, M)[0], yield x(this, M)[1], yield x(this, M)[2];
         }
       }
     });
   }
   get x() {
-    return E(this, M)[0];
+    return x(this, M)[0];
   }
   get y() {
-    return E(this, M)[1];
+    return x(this, M)[1];
   }
   get z() {
-    return E(this, M)[2];
+    return x(this, M)[2];
   }
   set x(t) {
-    E(this, M)[0] = t;
+    x(this, M)[0] = t;
   }
   set y(t) {
-    E(this, M)[1] = t;
+    x(this, M)[1] = t;
   }
   set z(t) {
-    E(this, M)[2] = t;
+    x(this, M)[2] = t;
   }
   /**
    * Converts from given coordinate system to Cartesian coordinates
@@ -645,7 +645,7 @@ class P {
   * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
   */
   getEllipsoidMatrix(t) {
-    const e = xt(this.getUCart(t)), { eigenvectors: o } = N.eigs(e), s = N.transpose(N.matrix(o.map((c) => c.vector))), i = N.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), r = N.det(s), n = N.diag(i.map(Math.sqrt));
+    const e = Et(this.getUCart(t)), { eigenvectors: o } = N.eigs(e), s = N.transpose(N.matrix(o.map((c) => c.vector))), i = N.matrix(o.map((c) => c.value > 0 ? c.value : NaN)), r = N.det(s), n = N.diag(i.map(Math.sqrt));
     let a;
     if (N.abs(r - 1) > 1e-10) {
       const c = N.multiply(s, 1 / r);
@@ -3285,18 +3285,18 @@ D(b, "MODES", Object.freeze({
   b.MODES.IGNORE
 ]);
 let lt = b;
-const x = class x extends I {
+const E = class E extends I {
   /**
    * Creates a new isolated hydrogen fixer
    * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
    * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
    */
-  constructor(t = x.MODES.OFF, e = 1.1) {
+  constructor(t = E.MODES.OFF, e = 1.1) {
     super(
-      x.MODES,
+      E.MODES,
       t,
       "IsolatedHydrogenFixer",
-      x.PREFERRED_FALLBACK_ORDER
+      E.PREFERRED_FALLBACK_ORDER
     ), this.maxBondDistance = e;
   }
   /**
@@ -3305,7 +3305,7 @@ const x = class x extends I {
    * @returns {CrystalStructure} Modified structure with additional bonds
    */
   apply(t) {
-    if (this.ensureValidMode(t), this.mode === x.MODES.OFF)
+    if (this.ensureValidMode(t), this.mode === E.MODES.OFF)
       return t;
     const e = this.findIsolatedHydrogenAtoms(t);
     if (e.length === 0)
@@ -3395,22 +3395,22 @@ const x = class x extends I {
    * @returns {Array<string>} Array of applicable mode names
    */
   getApplicableModes(t) {
-    return t.bonds.length === 0 ? [x.MODES.OFF] : t.connectedGroups.some(
+    return t.bonds.length === 0 ? [E.MODES.OFF] : t.connectedGroups.some(
       (o) => o.atoms.length === 1 && o.atoms[0].atomType === "H"
     ) ? [
-      x.MODES.ON
+      E.MODES.ON
       //IsolatedHydrogenFixer.MODES.OFF,
-    ] : [x.MODES.OFF];
+    ] : [E.MODES.OFF];
   }
 };
-D(x, "MODES", Object.freeze({
+D(E, "MODES", Object.freeze({
   ON: "on",
   OFF: "off"
-})), D(x, "PREFERRED_FALLBACK_ORDER", [
-  x.MODES.ON,
-  x.MODES.OFF
+})), D(E, "PREFERRED_FALLBACK_ORDER", [
+  E.MODES.ON,
+  E.MODES.OFF
 ]);
-let ct = x;
+let ct = E;
 const dt = V(G, {});
 function oe(l) {
   const t = new h.Vector3();
@@ -3683,7 +3683,7 @@ class ae {
     const t = this.container.getBoundingClientRect(), e = t.width / t.height;
     this.camera.aspect = e;
     const o = this.options.camera.fov;
-    t.width < t.height ? this.camera.fov = 2 * Math.atan(Math.tan(o * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = o, this.camera.updateProjectionMatrix(), this.renderer.setSize(t.width, t.height), this.viewer.requestRender();
+    t.width < t.height ? this.camera.fov = 2 * Math.atan(Math.tan(o * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = o, this.viewer.resizeRendererToDisplaySize(), this.camera.updateProjectionMatrix(), this.viewer.requestRender();
   }
   dispose() {
     const t = this.renderer.domElement, {
@@ -3911,7 +3911,7 @@ class kt {
       this.container.clientWidth / this.container.clientHeight,
       this.options.camera.near,
       this.options.camera.far
-    ), this.renderer = new h.WebGLRenderer({ antialias: !0, alpha: !0 }), this.renderer.setSize(this.container.clientWidth, this.container.clientHeight), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new h.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new h.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
+    ), this.renderer = new h.WebGLRenderer({ antialias: !0, alpha: !0 }), this.resizeRendererToDisplaySize(), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new h.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new h.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
   }
   async loadStructure(t, e = 0) {
     if (t === void 0)
@@ -3982,6 +3982,10 @@ class kt {
   }
   requestRender() {
     this.options.renderMode === "onDemand" && (this.needsRender = !0);
+  }
+  resizeRendererToDisplaySize() {
+    const t = this.renderer.domElement, e = window.devicePixelRatio || 1, o = Math.floor(this.container.clientWidth * e), s = Math.floor(this.container.clientHeight * e), i = t.width !== o || t.height !== s;
+    return i && (this.renderer.setSize(o, s, !1), t.style.width = `${this.container.clientWidth}px`, t.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, o, s)), i;
   }
   selectAtoms(t) {
     this.selections.selectAtoms(t, this.moleculeContainer);
