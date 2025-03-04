@@ -277,7 +277,7 @@ class Ft {
   constructor(t, e = !0) {
     this.splitSU = e, this.rawCifBlocks = this.splitCifBlocks(`
 
-` + t), this.blocks = Array(this.rawCifBlocks.length).fill(null);
+` + t), this.blocks = Array(this.rawCifBlocks.length).fill(null), this._blockNameMap = null;
   }
   /**
    * Splits CIF content into blocks, while accounting for the fact that
@@ -295,12 +295,9 @@ class Ft {
       let i = o[s];
       const r = /\n;/g, n = i.match(r);
       let a = n ? n.length : 0;
-      for (; a % 2 === 1 && s + 1 < o.length; ) {
+      for (; a % 2 === 1 && s + 1 < o.length; )
         s++, i += `
-data_` + o[s];
-        const c = i.match(r);
-        a = c ? c.length : 0;
-      }
+data_` + o[s], a = i.match(r).length;
       e.push(i), s++;
     }
     return e;
@@ -321,6 +318,29 @@ data_` + o[s];
     for (let t = 0; t < this.blocks.length; t++)
       this.blocks[t] || (this.blocks[t] = new wt(this.rawCifBlocks[t], this.splitSU));
     return this.blocks;
+  }
+  _extractBlockNames() {
+    if (this._blockNameMap !== null)
+      return this._blockNameMap;
+    this._blockNameMap = /* @__PURE__ */ new Map();
+    const t = /^(\w+[\w.-]*)/;
+    return this.rawCifBlocks.forEach((e, o) => {
+      const s = t.exec(e.trim());
+      s && s[1] && this._blockNameMap.set(s[1], o);
+    }), this._blockNameMap;
+  }
+  // Get available block names
+  getBlockNames() {
+    return Array.from(this._extractBlockNames().keys());
+  }
+  // Get a block by name
+  getBlockByName(t) {
+    const o = this._extractBlockNames().get(t);
+    if (o === void 0)
+      throw new Error(
+        `Block with name '${t}' not found. Available blocks: ${this.getBlockNames().join(", ")}`
+      );
+    return this.getBlock(o);
   }
 }
 class wt {
@@ -655,7 +675,7 @@ class P {
     return N.matrix(a);
   }
 }
-class S {
+class k {
   /**
    * Creates the appropriate ADP object based on available CIF data
    * @param {CifBlock} cifBlock - The CIF data block
@@ -674,19 +694,19 @@ class S {
       !1
     );
     if (i)
-      return S.createFromExplicitType(t, e, s, i);
-    if (S.isInAnisoLoop(t, s)) {
-      const c = S.createUani(t, s);
+      return k.createFromExplicitType(t, e, s, i);
+    if (k.isInAnisoLoop(t, s)) {
+      const c = k.createUani(t, s);
       if (c !== null)
         return c;
-      const d = S.createBani(t, s);
+      const d = k.createBani(t, s);
       if (d !== null)
         return d;
     }
-    const n = S.createUiso(t, e);
+    const n = k.createUiso(t, e);
     if (n !== null)
       return n;
-    const a = S.createBiso(t, e);
+    const a = k.createBiso(t, e);
     return a !== null ? a : null;
   }
   /**
@@ -696,17 +716,17 @@ class S {
   static createFromExplicitType(t, e, o, s) {
     switch (s.toLowerCase()) {
       case "uani":
-        return S.createUani(t, o);
+        return k.createUani(t, o);
       case "aniso":
-        return S.createUani(t, o);
+        return k.createUani(t, o);
       case "bani":
-        return S.createBani(t, o);
+        return k.createBani(t, o);
       case "uiso":
-        return S.createUiso(t, e);
+        return k.createUiso(t, e);
       case "iso":
-        return S.createUiso(t, e);
+        return k.createUiso(t, e);
       case "biso":
-        return S.createBiso(t, e);
+        return k.createBiso(t, e);
       default:
         return null;
     }
@@ -789,7 +809,7 @@ class S {
     }
   }
 }
-const k = V(G);
+const S = V(G);
 function vt(l) {
   if (Math.abs(l) < 21e-4)
     return "";
@@ -882,8 +902,8 @@ class H {
    * @returns {number[]} Transformed point in fractional coordinates
    */
   applyToPoint(t) {
-    const e = k.add(
-      k.multiply(this.rotMatrix, t),
+    const e = S.add(
+      S.multiply(this.rotMatrix, t),
       this.transVector
     );
     return Array.isArray(e) ? e : e.toArray();
@@ -899,8 +919,8 @@ class H {
    * @returns {Atom} New atom instance with transformed coordinates and ADPs
    */
   applyToAtom(t) {
-    const e = new Dt(...k.add(
-      k.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
+    const e = new Dt(...S.add(
+      S.multiply(this.rotMatrix, [t.position.x, t.position.y, t.position.z]),
       this.transVector
     ));
     let o = null;
@@ -909,7 +929,7 @@ class H {
         [t.adp.u11, t.adp.u12, t.adp.u13],
         [t.adp.u12, t.adp.u22, t.adp.u23],
         [t.adp.u13, t.adp.u23, t.adp.u33]
-      ], i = this.rotMatrix, r = k.transpose(i), n = k.multiply(k.multiply(i, s), r);
+      ], i = this.rotMatrix, r = S.transpose(i), n = S.multiply(S.multiply(i, s), r);
       o = new P(
         n[0][0],
         // u11
@@ -952,7 +972,7 @@ class H {
    */
   copy() {
     const t = new H("x,y,z");
-    return t.rotMatrix = k.clone(this.rotMatrix), t.transVector = k.clone(this.transVector), t;
+    return t.rotMatrix = S.clone(this.rotMatrix), t.transVector = S.clone(this.transVector), t;
   }
   /**
    * Generates a symmetry operation string from the internal matrix and vector
@@ -960,7 +980,7 @@ class H {
    * @returns {string} Symmetry operation in crystallographic notation (e.g. "-x,y,-z" or "1-x,1+y,-z")
    */
   toSymmetryString(t = null) {
-    const e = ["x", "y", "z"], o = [], s = t ? k.add(this.transVector, t) : this.transVector;
+    const e = ["x", "y", "z"], o = [], s = t ? S.add(this.transVector, t) : this.transVector;
     for (let i = 0; i < 3; i++) {
       let r = "";
       const n = [];
@@ -990,7 +1010,7 @@ class Y {
       o.map((r, n) => [(n + 1).toString(), n])
     ), this.identitySymOpId = (i = Array.from(this.operationIds.entries()).find(([r, n]) => {
       const a = this.symmetryOperations[n];
-      return k.equal(a.rotMatrix, k.identity(3)) && k.equal(a.transVector, k.zeros(3));
+      return S.equal(a.rotMatrix, S.identity(3)) && S.equal(a.transVector, S.zeros(3));
     })) == null ? void 0 : i[0];
   }
   generateEquivalentPositions(t) {
@@ -1419,13 +1439,13 @@ function Q(l) {
     "CM"
   ], o = new RegExp(`^(${e.join("|")})`), s = t.match(o);
   if (s)
-    return St(s[1]);
+    return kt(s[1]);
   const i = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
   if (i)
-    return St(i[1]);
+    return kt(i[1]);
   throw new Error(`Could not infer element type from atom label: ${l}`);
 }
-function St(l) {
+function kt(l) {
   return l.length === 1 ? l : l[0] + l[1].toLowerCase();
 }
 class T {
@@ -1654,7 +1674,7 @@ class X {
     let d = s.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], r, !1);
     if (d || (d = Q(n)), a.includes(d))
       throw new Error("Dummy atom: Invalid atom type");
-    const m = Vt.fromCIF(t, r), p = S.fromCIF(t, r), u = s.getIndex(
+    const m = Vt.fromCIF(t, r), p = k.fromCIF(t, r), u = s.getIndex(
       ["_atom_site.disorder_group", "_atom_site_disorder_group"],
       r,
       "."
@@ -3843,7 +3863,7 @@ class le {
     this.clear(), this.selectionCallbacks.clear();
   }
 }
-class kt {
+class St {
   constructor(t, e = {}) {
     const o = ["constant", "onDemand"];
     if (e.renderMode && !o.includes(e.renderMode))
@@ -4110,7 +4130,7 @@ class he extends HTMLElement {
     const e = document.createElement("div");
     e.className = "button-container", t.appendChild(e), this.buttonContainer = e;
     const o = document.createElement("div");
-    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new kt(t, this.userOptions), this.viewer.selections.onChange((r) => {
+    o.className = "crystal-caption", o.innerHTML = this.baseCaption, this.appendChild(o), this.captionElement = o, this.viewer = new St(t, this.userOptions), this.viewer.selections.onChange((r) => {
       this.selections = r, this.updateCaption();
     }), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
     const s = this.getAttribute("src"), i = this.getAttribute("data");
@@ -4220,7 +4240,7 @@ class he extends HTMLElement {
         case "options":
           if (this.parseOptions(), this.viewer) {
             const s = this.querySelector(".crystal-container"), i = this.viewer.state.currentCifContent;
-            this.viewer.dispose(), this.viewer = new kt(s, this.userOptions), this.viewer.selections.onChange((r) => {
+            this.viewer.dispose(), this.viewer = new St(s, this.userOptions), this.viewer.selections.onChange((r) => {
               this.selections = r, this.updateCaption();
             }), i && (await this.viewer.loadStructure(i), this.setupButtons());
           }
@@ -4313,7 +4333,7 @@ export {
   Ft as CIF,
   he as CifViewWidget,
   T as CrystalStructure,
-  kt as CrystalViewer,
+  St as CrystalViewer,
   nt as DisorderFilter,
   rt as HydrogenFilter,
   Yt as ORTEP3JsStructure,
