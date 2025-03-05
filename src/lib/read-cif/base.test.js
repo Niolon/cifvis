@@ -133,7 +133,7 @@ _cell_length_a 3.2468(3)`);
 _cell_length_a 5.4309(5)`);
             
             expect(() => cif.getBlockByName('nonexistent')).toThrow(
-                "Block with name 'nonexistent' not found. Available blocks: block1"
+                'Block with name \'nonexistent\' not found. Available blocks: block1',
             );
         });
         
