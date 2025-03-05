@@ -144,6 +144,13 @@ export class MockStructure {
         return this.structure;
     }
 }
+/**
+ *
+ * @param grown
+ * @param root0
+ * @param root0.checkSymmetries
+ * @param root0.excludeSymmetries
+ */
 export function checkSymmetryGrowth(grown, {
     checkSymmetries = [], // Symmetry operations to verify growth with
     excludeSymmetries = [], // Symmetry operations to verify NO growth with

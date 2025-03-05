@@ -3,6 +3,11 @@ import { formatValueEsd } from '../../src';
 import { SVG_ICONS } from 'virtual:svg-icons';
 
 // Status message handling
+/**
+ *
+ * @param message
+ * @param type
+ */
 function updateStatus(message, type = 'info') {
     const statusElement = document.getElementById('status-message');
     statusElement.textContent = message;
@@ -73,6 +78,9 @@ viewer.selections.onChange(selections => {
     });
 });
 // File upload handling
+/**
+ *
+ */
 function initializeFileUpload() {
     const uploadButton = document.getElementById('upload-button');
     const fileInput = document.getElementById('cif-upload');
@@ -139,6 +147,9 @@ function initializeFileUpload() {
 }
 
 // Hydrogen mode button
+/**
+ *
+ */
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
     hydrogenButton.innerHTML = SVG_ICONS['hydrogen']['none'];
@@ -151,6 +162,9 @@ function initializeHydrogenButton() {
 }
 
 // Disorder mode button
+/**
+ *
+ */
 function initializeDisorderButton() {
     const disorderButton = document.getElementById('disorder-button');
         
@@ -162,6 +176,9 @@ function initializeDisorderButton() {
     });
 }
 
+/**
+ *
+ */
 function initializeSymmetryButton() {
     const symmetryButton = document.getElementById('symmetry-button');
     symmetryButton.addEventListener('click', async () => {
@@ -173,6 +190,9 @@ function initializeSymmetryButton() {
 }
 
 // Add to initializeUI():
+/**
+ *
+ */
 function initializeUI() {
     initializeFileUpload();
     initializeHydrogenButton();
@@ -180,6 +200,9 @@ function initializeUI() {
     initializeSymmetryButton();
 }
 
+/**
+ *
+ */
 function adaptButtons() {
     const hydrogenButton = document.getElementById('hydrogen-button');
     const hasHydrogen = viewer.numberModifierModes('hydrogen') > 1;

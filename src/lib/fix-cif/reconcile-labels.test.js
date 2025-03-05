@@ -106,6 +106,11 @@ describe('createLabelMap', () => {
 });
 
 describe('reconcileAtomLabels', () => {
+    /**
+     *
+     * @param bondLabels
+     * @param atomLabels
+     */
     function createTestCif(bondLabels, atomLabels) {
         const cifText = `
 data_test

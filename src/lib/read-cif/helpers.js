@@ -1,13 +1,11 @@
 
 /**
  * Parses a CIF value string into its numeric value and standard uncertainty (SU).
- *
  * @param {string} entryString - The CIF value string to parse.
  * @param {boolean} splitSU - Whether to split standard uncertainty values into value and SU.
- * @returns {Object} Object containing:
+ * @returns {object} Object containing:
  *   - value {number|string}: The parsed value (number for numeric values, string for text)
  *   - su {number|NaN}: The standard uncertainty if present and splitSU=true, NaN otherwise
- *
  * @example
  * parseValue("123.456(7)", true)     // Returns {value: 123.456, su: 0.007}
  * parseValue("-123(7)", true)        // Returns {value: -123, su: 7}
@@ -99,9 +97,14 @@ export function parseValue(entryString, splitSU = true) {
  * Parses a multiline string starting with semicolon.
  * @param {Array<string>} lines - Array of lines
  * @param {number} startIndex - Starting index of multiline value
- * @returns {Object} Object with parsed value and end index
+ * @returns {object} Object with parsed value and end index
  */
 
+/**
+ *
+ * @param lines
+ * @param startIndex
+ */
 export function parseMultiLineString(lines, startIndex) {
     const line1 = [lines[startIndex].slice(1)];
 

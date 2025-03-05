@@ -62,17 +62,17 @@ function formatElementSymbol(element) {
 }
 
 /**
-* Represents a crystal structure with its unit cell, atoms, bonds and symmetry
-*/
+ * Represents a crystal structure with its unit cell, atoms, bonds and symmetry
+ */
 export class CrystalStructure {
     /**
-    * Creates a new crystal structure
-    * @param {UnitCell} unitCell - Unit cell parameters
-    * @param {Atom[]} atoms - Array of atoms in the structure
-    * @param {Bond[]} [bonds=[]] - Array of bonds between atoms
-    * @param {HBond[]} [hBonds=[]] - Array of hydrogen bonds
-    * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
-    */
+     * Creates a new crystal structure
+     * @param {UnitCell} unitCell - Unit cell parameters
+     * @param {Atom[]} atoms - Array of atoms in the structure
+     * @param {Bond[]} [bonds] - Array of bonds between atoms
+     * @param {HBond[]} [hBonds] - Array of hydrogen bonds
+     * @param {CellSymmetry} [symmetry] - Crystal symmetry information
+     */
     constructor(unitCell, atoms, bonds=[], hBonds=[], symmetry=null) {
         this.cell = unitCell;
         this.atoms = atoms;
@@ -83,10 +83,10 @@ export class CrystalStructure {
     }
 
     /**
-    * Creates a CrystalStructure from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @returns {CrystalStructure} New crystal structure instance
-    */
+     * Creates a CrystalStructure from CIF data
+     * @param {CifBlock} cifBlock - Parsed CIF data block
+     * @returns {CrystalStructure} New crystal structure instance
+     */
     static fromCIF(cifBlock) {
         const cell = UnitCell.fromCIF(cifBlock);
         
@@ -130,11 +130,11 @@ export class CrystalStructure {
     }
 
     /**
-    * Finds an atom by its label 
-    * @param {string} atomLabel - Unique atom identifier
-    * @returns {Atom} Found atom
-    * @throws {Error} If atom with label not found
-    */
+     * Finds an atom by its label 
+     * @param {string} atomLabel - Unique atom identifier
+     * @returns {Atom} Found atom
+     * @throws {Error} If atom with label not found
+     */
     getAtomByLabel(atomLabel) {
         for (const atom of this.atoms) {
             if (atom.label === atomLabel) {
@@ -146,10 +146,10 @@ export class CrystalStructure {
     }
 
     /**
-    * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
-    * from the provided atoms and bonds
-    * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
-    */
+     * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
+     * from the provided atoms and bonds
+     * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
+     */
     recalculateConnectedGroups() {
         // Map to track which atoms have been assigned to a group
         const atomGroupMap = new Map();
@@ -256,19 +256,19 @@ export class CrystalStructure {
 }
 
 /**
-* Represents the unit cell parameters of a crystal structure
-*/
+ * Represents the unit cell parameters of a crystal structure
+ */
 export class UnitCell {
     /**
-    * Creates a new unit cell
-    * @param {number} a - a axis length in Å 
-    * @param {number} b - b axis length in Å
-    * @param {number} c - c axis length in Å 
-    * @param {number} alpha - α angle in degrees
-    * @param {number} beta - β angle in degrees
-    * @param {number} gamma - γ angle in degrees
-    * @throws {Error} If parameters invalid
-    */
+     * Creates a new unit cell
+     * @param {number} a - a axis length in Å 
+     * @param {number} b - b axis length in Å
+     * @param {number} c - c axis length in Å 
+     * @param {number} alpha - α angle in degrees
+     * @param {number} beta - β angle in degrees
+     * @param {number} gamma - γ angle in degrees
+     * @throws {Error} If parameters invalid
+     */
     constructor(a, b, c, alpha, beta, gamma) {
         this._a = a;
         this._b = b;
@@ -281,10 +281,10 @@ export class UnitCell {
     }
 
     /**
-    * Creates a UnitCell from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @returns {UnitCell} New unit cell instance
-    */
+     * Creates a UnitCell from CIF data
+     * @param {CifBlock} cifBlock - Parsed CIF data block
+     * @returns {UnitCell} New unit cell instance
+     */
     static fromCIF(cifBlock) {
         const cellParameters = [
             cifBlock.get(['_cell.length_a', '_cell_length_a'], -9999.9),
@@ -386,8 +386,8 @@ export class UnitCell {
 }
 
 /**
-* Represents an atom in a crystal structure
-*/
+ * Represents an atom in a crystal structure
+ */
 export class Atom {
     constructor(label, atomType, position, adp=null, disorderGroup=0) {
         this.label = String(label);
@@ -401,8 +401,8 @@ export class Atom {
      * Creates an Atom from CIF data from either the index or the atom in the 
      * _atom_site_loop
      * @param {CifBlock} cifBlock - Parsed CIF data block
-     * @param {number} [atomIndex=null] - Index in _atom_site loop
-     * @param {string} [atomLabel=null] - Label to find atom by
+     * @param {number} [atomIndex] - Index in _atom_site loop
+     * @param {string} [atomLabel] - Label to find atom by
      * @returns {Atom} New atom instance
      * @throws {Error} If neither index nor label provided
      */

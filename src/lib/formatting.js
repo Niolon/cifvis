@@ -1,7 +1,6 @@
 
 /**
  * Format a single value with its estimated standard deviation
- * 
  * @param {number} value - The value to format
  * @param {number} esd - The estimated standard deviation
  * @param {number} noEsdDecimals - the number of decimals to round to if no esd present
@@ -28,7 +27,6 @@ export function formatValueEsd(value, esd, noEsdDecimals=4) {
 
 /**
  * Round a number to a specified number of decimal places
- * 
  * @param {number} value - Number to round
  * @param {number} decimals - Number of decimal places
  * @returns {number} Rounded number

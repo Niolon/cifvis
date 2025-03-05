@@ -8,7 +8,7 @@ const math = create(all);
 /**
  * Filter that removes specified atoms and their connected bonds from a structure,
  * supporting both individual labels and ranges with the ">" syntax
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 export class AtomLabelFilter extends BaseFilter {
     static MODES = Object.freeze({
@@ -18,8 +18,8 @@ export class AtomLabelFilter extends BaseFilter {
 
     /**
      * Creates a new atom label filter
-     * @param {string[]|string} [filteredLabels=[]] - Array of atom labels or comma-separated string to filter
-     * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
+     * @param {string[]|string} [filteredLabels] - Array of atom labels or comma-separated string to filter
+     * @param {AtomLabelFilter.MODES} [mode] - Initial filter mode
      */
     constructor(filteredLabels = [], mode = AtomLabelFilter.MODES.OFF) {
         super(AtomLabelFilter.MODES, mode, 'AtomLabelFilter', []);
@@ -145,7 +145,7 @@ export class AtomLabelFilter extends BaseFilter {
 
 /**
  * Generates bonds between atoms based on their atomic radii and positions
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 
 export class BondGenerator extends BaseFilter {
@@ -167,8 +167,9 @@ export class BondGenerator extends BaseFilter {
 
     /**
      * Creates a new bond generator
-     * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
-     * @param {BondGenerator.MODES} [mode=BondGenerator.MODES.KEEP] - Initial filter mode
+     * @param elementProperties
+     * @param {number} [toleranceFactor] - How much longer than the sum of atomic radii a bond can be
+     * @param {BondGenerator.MODES} [mode] - Initial filter mode
      */
     constructor(elementProperties, toleranceFactor, mode = BondGenerator.MODES.KEEP) {
         super(BondGenerator.MODES, mode, 'BondGenerator', BondGenerator.PREFERRED_FALLBACK_ORDER);
@@ -180,7 +181,7 @@ export class BondGenerator extends BaseFilter {
      * Gets the maximum allowed bond distance between two atoms
      * @param {string} element1 - First element symbol
      * @param {string} element2 - Second element symbol
-     * @param {Object} elementProperties - Element property definitions
+     * @param {object} elementProperties - Element property definitions
      * @returns {number} Maximum allowed bond distance
      */
     getMaxBondDistance(element1, element2, elementProperties) {
@@ -198,7 +199,7 @@ export class BondGenerator extends BaseFilter {
      * Generates bonds between atoms based on their distances
      * @private
      * @param {CrystalStructure} structure - Structure to analyze
-     * @param {Object} elementProperties - Element property definitions
+     * @param {object} elementProperties - Element property definitions
      * @returns {Set<Bond>} Set of generated bonds
      */
     generateBonds(structure, elementProperties) {
@@ -337,7 +338,7 @@ export class BondGenerator extends BaseFilter {
 /**
  * Structure modifier that fixes isolated hydrogen atoms by creating
  * bonds to nearby potential bonding partners.
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 export class IsolatedHydrogenFixer extends BaseFilter {
     static MODES = Object.freeze({
@@ -352,8 +353,8 @@ export class IsolatedHydrogenFixer extends BaseFilter {
 
     /**
      * Creates a new isolated hydrogen fixer
-     * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
-     * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
+     * @param {IsolatedHydrogenFixer.MODES} [mode] - Initial filter mode
+     * @param {number} [maxBondDistance] - Maximum distance in Angstroms to consider for hydrogen bonds
      */
     constructor(mode = IsolatedHydrogenFixer.MODES.OFF, maxBondDistance = 1.1) {
         super(
@@ -401,7 +402,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
     /**
      * Finds hydrogen atoms that are in connected groups of size one
      * @param {CrystalStructure} structure - Structure to analyze
-     * @returns {Array<Object>} Array of isolated hydrogen atoms with their indices
+     * @returns {Array<object>} Array of isolated hydrogen atoms with their indices
      */
     findIsolatedHydrogenAtoms(structure) {
         const isolatedHydrogenAtoms = [];
@@ -421,7 +422,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
     /**
      * Creates bonds for isolated hydrogen atoms to nearby potential bonding partners
      * @param {CrystalStructure} structure - Structure to analyze
-     * @param {Array<Object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
+     * @param {Array<object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
      * @returns {Array<Bond>} Array of new bonds
      */
     createBondsForIsolatedHydrogens(structure, isolatedHydrogenAtoms) {

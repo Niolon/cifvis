@@ -94,6 +94,10 @@ describe('guessSymmetryOperation', () => {
 });
 
 describe('reconcileSymmetryOperations', () => {
+    /**
+     *
+     * @param operations
+     */
     function createTestLoop(operations) {
         const cifText = `
 data_test

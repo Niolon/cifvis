@@ -8,8 +8,7 @@ const math = create(all, {});
  * - a axis is along x
  * - b axis is in the xy plane
  * - c axis has components in all directions as needed
- * 
- * @param {Object} cellParams - Unit cell parameters
+ * @param {object} cellParams - Unit cell parameters
  * @param {number} cellParams.a - a axis length in Ångstroms
  * @param {number} cellParams.b - b axis length in Ångstroms
  * @param {number} cellParams.c - c axis length in Ångstroms

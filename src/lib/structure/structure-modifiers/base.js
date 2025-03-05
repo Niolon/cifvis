@@ -9,6 +9,7 @@ export class BaseFilter {
      * @param {Object.<string, string>} modes - Dictionary of valid modes
      * @param {string} defaultMode - Initial mode to use
      * @param {string} filterName - Name of the filter for error messages
+     * @param fallBackOrder
      */
     constructor(modes, defaultMode, filterName, fallBackOrder = []) {
         if (new.target === BaseFilter) {
@@ -61,6 +62,7 @@ export class BaseFilter {
     /**
      * Abstract method: Applies the filter to a structure
      * @abstract
+     * @param _structure
      * @param {CrystalStructure} structure - Structure to filter
      * @returns {CrystalStructure} Filtered structure
      * @throws {Error} If not implemented by subclass
@@ -72,6 +74,7 @@ export class BaseFilter {
     /**
      * Abstract method: Gets modes applicable to the given structure
      * @abstract
+     * @param _structure
      * @param {CrystalStructure} structure - Structure to analyze
      * @returns {string[]} Array of applicable mode names
      * @throws {Error} If not implemented by subclass

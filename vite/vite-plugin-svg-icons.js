@@ -4,6 +4,10 @@ import { resolve, join } from 'path';
 const VIRTUAL_MODULE_ID = 'virtual:svg-icons';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
+/**
+ *
+ * @param content
+ */
 function cleanSvg(content) {
     return content
         .replace(/<\?xml[^>]*\?>\s*/g, '') // Remove XML declaration
@@ -17,6 +21,9 @@ function cleanSvg(content) {
         .trim();
 }
 
+/**
+ *
+ */
 export default function svgIconsPlugin() {
     let icons = null;
 

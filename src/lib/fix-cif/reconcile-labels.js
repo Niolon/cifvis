@@ -1,7 +1,7 @@
 /**
  * Normalizes an atom label for comparison
  * @param {string} label - Atom label to normalize
- * @param {boolean} [removeSuffixes=false] - Whether to remove ^A, ^1, *$n suffixes
+ * @param {boolean} [removeSuffixes] - Whether to remove ^A, ^1, *$n suffixes
  * @returns {string} Normalized label
  * @throws {Error} If label is empty
  */
@@ -31,7 +31,7 @@ export function normalizeAtomLabel(label, removeSuffixes = true) {
 /**
  * Creates a lookup map for atom labels with their original forms.
  * @param {Array<string>} labels - Array of atom labels
- * @param {boolean} [removeSuffixes=false] - Whether to handle special suffixes
+ * @param {boolean} [removeSuffixes] - Whether to handle special suffixes
  * @returns {Map<string, string>} Map of normalized labels to original labels
  */
 export function createLabelMap(labels, removeSuffixes = true) {
@@ -71,8 +71,7 @@ export function createLabelMap(labels, removeSuffixes = true) {
  * @param {CifLoop} loop - CIF loop containing the column to reconcile
  * @param {string} columnToReconcile - Name of column containing labels to reconcile
  * @param {Array<string>} referenceLabels - Array of reference atom labels
- * @param {boolean} [removeSuffixes=false] - Whether to handle special suffixes
- * @returns {CifLoop} New loop with reconciled labels
+ * @param {boolean} [removeSuffixes] - Whether to handle special suffixes
  */
 export function reconcileAtomLabels(
     loop, 
@@ -98,7 +97,7 @@ export function reconcileAtomLabels(
  * Test if two atom labels match after normalization
  * @param {string} label1 - First atom label
  * @param {string} label2 - Second atom label
- * @param {boolean} [removeSuffixes=false] - Whether to handle special suffixes
+ * @param {boolean} [removeSuffixes] - Whether to handle special suffixes
  * @returns {boolean} True if labels match after normalization
  * @throws {Error} If either label is empty
  */

@@ -2,18 +2,17 @@ import { parseMultiLineString, parseValue } from './helpers.js';
 import { CifLoop, resolveLoopNamingConflict } from './loop.js';
 
 /**
-* Represents a CIF (Crystallographic Information File) parser.
-* 
-* @property {string} rawCifBlocks - Raw CIF blocks after initial multiline merging
-* @property {boolean} splitSU - Whether to split standard uncertainties into value and SU
-* @property {Array<CifBlock>|null} blocks - Parsed CIF blocks, created lazily when accessed
-*/
+ * Represents a CIF (Crystallographic Information File) parser.
+ * @property {string} rawCifBlocks - Raw CIF blocks after initial multiline merging
+ * @property {boolean} splitSU - Whether to split standard uncertainties into value and SU
+ * @property {Array<CifBlock>|null} blocks - Parsed CIF blocks, created lazily when accessed
+ */
 export class CIF {
     /**
      * Creates a new CIF parser instance.
-     * @constructor
+     * @class
      * @param {string} cifString - Raw CIF file content
-     * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
+     * @param {boolean} [splitSU] - Whether to split standard uncertainties
      */
     constructor(cifString, splitSU = true) {
         this.splitSU = splitSU;
@@ -126,18 +125,17 @@ export class CIF {
 
 /**
  * Represents a single data block within a CIF file.
- * 
  * @property {string} rawText - Raw text content of this block
  * @property {boolean} splitSU - Whether to split standard uncertainties
- * @property {Object|null} data - Parsed key-value pairs and loops, null until parse() is called
+ * @property {object | null} data - Parsed key-value pairs and loops, null until parse() is called
  * @property {string|null} dataBlockName - Name of the data block (e.g., "data_crystal1")
  */
 export class CifBlock {
     /**
      * Creates a new CIF block instance.
-     * @constructor
+     * @class
      * @param {string} blockText - Raw text of the CIF block
-     * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
+     * @param {boolean} [splitSU] - Whether to split standard uncertainties
      */
     constructor(blockText, splitSU = true) {
         this.rawText = blockText;
@@ -230,7 +228,7 @@ export class CifBlock {
     /**
      * Gets a value from the CIF block, trying multiple possible keys.
      * @param {(string|Array<string>)} keys - Key or array of keys to try
-     * @param {*} [defaultValue=null] - Value to return if keys not found
+     * @param {*} [defaultValue] - Value to return if keys not found
      * @returns {*} Found value or default value
      * @throws {Error} If no keys found and no default provided
      */

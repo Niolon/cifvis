@@ -1,17 +1,17 @@
 
 /**
-* Represents a covalent bond between atoms
-*/
+ * Represents a covalent bond between atoms
+ */
 
 export class Bond {
     /**
-    * Creates a new bond
-    * @param {string} atom1Label - Label of first atom
-    * @param {string} atom2Label - Label of second atom
-    * @param {number} [bondLength=null] - Bond length in Å
-    * @param {number} [bondLengthSU=null] - Standard uncertainty in bond length
-    * @param {string} [atom2SiteSymmetry=null] - Symmetry operation for second atom
-    */
+     * Creates a new bond
+     * @param {string} atom1Label - Label of first atom
+     * @param {string} atom2Label - Label of second atom
+     * @param {number} [bondLength] - Bond length in Å
+     * @param {number} [bondLengthSU] - Standard uncertainty in bond length
+     * @param {string} [atom2SiteSymmetry] - Symmetry operation for second atom
+     */
     constructor(atom1Label, atom2Label, bondLength = null, bondLengthSU = null, atom2SiteSymmetry = null) {
         this.atom1Label = atom1Label;
         this.atom2Label = atom2Label;
@@ -21,11 +21,11 @@ export class Bond {
     }
 
     /**
-    * Creates a Bond from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @param {number} bondIndex - Index in _geom_bond loop
-    * @returns {Bond} New bond instance
-    */
+     * Creates a Bond from CIF data
+     * @param {CifBlock} cifBlock - Parsed CIF data block
+     * @param {number} bondIndex - Index in _geom_bond loop
+     * @returns {Bond} New bond instance
+     */
     static fromCIF(cifBlock, bondIndex) {
         const bondLoop = cifBlock.get('_geom_bond');
 
@@ -55,25 +55,25 @@ export class Bond {
     }
 }
 /**
-* Represents a hydrogen bond between atoms
-*/
+ * Represents a hydrogen bond between atoms
+ */
 
 export class HBond {
     /**
-    * Creates a new hydrogen bond
-    * @param {string} donorAtomLabel - Label of donor atom
-    * @param {string} hydrogenAtomLabel - Label of hydrogen atom
-    * @param {string} acceptorAtomLabel - Label of acceptor atom
-    * @param {number} donorHydrogenDistance - D-H distance in Å
-    * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
-    * @param {number} acceptorHydrogenDistance - H···A distance in Å
-    * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
-    * @param {number} donorAcceptorDistance - D···A distance in Å
-    * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
-    * @param {number} hBondAngle - D-H···A angle in degrees
-    * @param {number} hBondAngleSU - Standard uncertainty in angle
-    * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
-    */
+     * Creates a new hydrogen bond
+     * @param {string} donorAtomLabel - Label of donor atom
+     * @param {string} hydrogenAtomLabel - Label of hydrogen atom
+     * @param {string} acceptorAtomLabel - Label of acceptor atom
+     * @param {number} donorHydrogenDistance - D-H distance in Å
+     * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
+     * @param {number} acceptorHydrogenDistance - H···A distance in Å
+     * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
+     * @param {number} donorAcceptorDistance - D···A distance in Å
+     * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
+     * @param {number} hBondAngle - D-H···A angle in degrees
+     * @param {number} hBondAngleSU - Standard uncertainty in angle
+     * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
+     */
     constructor(
         donorAtomLabel,
         hydrogenAtomLabel,
@@ -103,11 +103,11 @@ export class HBond {
     }
 
     /**
-    * Creates a HBond from CIF data
-    * @param {CifBlock} cifBlock - Parsed CIF data block
-    * @param {number} hBondIndex - Index in _geom_hbond loop
-    * @returns {HBond} New hydrogen bond instance
-    */
+     * Creates a HBond from CIF data
+     * @param {CifBlock} cifBlock - Parsed CIF data block
+     * @param {number} hBondIndex - Index in _geom_hbond loop
+     * @returns {HBond} New hydrogen bond instance
+     */
     static fromCIF(cifBlock, hBondIndex) {
         const hBondLoop = cifBlock.get('_geom_hbond');
         const acceptorAtomSymmetry = hBondLoop.getIndex(
@@ -254,6 +254,9 @@ export class BondsFactory {
     /**
      * Validates bonds against crystal structure
      * @param {CrystalStructure} structure - Structure to validate against
+     * @param bonds
+     * @param atoms
+     * @param symmetry
      * @returns {ValidationResult} Validation results
      */
     static validateBonds(bonds, atoms, symmetry) {
@@ -292,6 +295,9 @@ export class BondsFactory {
     /**
      * Validates h-bonds against crystal structure
      * @param {CrystalStructure} structure - Structure to validate against
+     * @param hBonds
+     * @param atoms
+     * @param symmetry
      * @returns {ValidationResult} Validation results
      */
     static validateHBonds(hBonds, atoms, symmetry) {

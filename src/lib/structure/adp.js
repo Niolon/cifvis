@@ -5,8 +5,8 @@ import { uCifToUCart, adpToMatrix } from './fract-to-cart.js';
 const math = create(all, {});
 
 /**
-* Represents isotropic atomic displacement parameters
-*/
+ * Represents isotropic atomic displacement parameters
+ */
 export class UIsoADP {
     constructor(uiso) {
         this.uiso = uiso;
@@ -23,8 +23,8 @@ export class UIsoADP {
 }
 
 /**
-* Represents anisotropic atomic displacement parameters
-*/
+ * Represents anisotropic atomic displacement parameters
+ */
 export class UAnisoADP {
     /**
      * @param {number} u11 - U11 component in Å²
@@ -66,10 +66,10 @@ export class UAnisoADP {
     }
 
     /**
-    * Converts ADPs to Cartesian coordinate system
-    * @param {UnitCell} unitCell - Cell parameters for transformation
-    * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
-    */
+     * Converts ADPs to Cartesian coordinate system
+     * @param {UnitCell} unitCell - Cell parameters for transformation
+     * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
+     */
     getUCart(unitCell) {
         return uCifToUCart(
             unitCell.fractToCartMatrix,
@@ -78,11 +78,11 @@ export class UAnisoADP {
     }
 
     /**
-    * Generates the transformation matrix to transform a sphere already scaled for probability
-    * to an ORTEP ellipsoid
-    * @param {UnitCell} unitCell - unitCell object for the unit cell information
-    * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
-    */
+     * Generates the transformation matrix to transform a sphere already scaled for probability
+     * to an ORTEP ellipsoid
+     * @param {UnitCell} unitCell - unitCell object for the unit cell information
+     * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
+     */
     getEllipsoidMatrix(unitCell) {
         const uijMatrix = adpToMatrix(this.getUCart(unitCell));
         const { eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
@@ -109,8 +109,8 @@ export class UAnisoADP {
         return math.matrix(transformationMatrix);
     }
 }/**
- * Factory class for creating appropriate ADP objects from CIF data
- */
+  * Factory class for creating appropriate ADP objects from CIF data
+  */
 export class ADPFactory {
     /**
      * Creates the appropriate ADP object based on available CIF data
@@ -167,6 +167,10 @@ export class ADPFactory {
 
     /**
      * Creates ADP from explicitly specified type
+     * @param cifBlock
+     * @param atomIndex
+     * @param label
+     * @param type
      * @private
      */
     static createFromExplicitType(cifBlock, atomIndex, label, type) {
@@ -190,6 +194,8 @@ export class ADPFactory {
 
     /**
      * Checks if an atom is present in the anisotropic data loop
+     * @param cifBlock
+     * @param label
      * @private
      */
     static isInAnisoLoop(cifBlock, label) {
@@ -204,6 +210,8 @@ export class ADPFactory {
 
     /**
      * Creates anisotropic U-based ADP
+     * @param cifBlock
+     * @param label
      * @private
      */
     static createUani(cifBlock, label) {
@@ -238,6 +246,8 @@ export class ADPFactory {
 
     /**
      * Creates anisotropic B-based ADP
+     * @param cifBlock
+     * @param label
      * @private
      */
     static createBani(cifBlock, label) {
@@ -272,6 +282,8 @@ export class ADPFactory {
 
     /**
      * Creates isotropic U-based ADP
+     * @param cifBlock
+     * @param atomIndex
      * @private
      */
     static createUiso(cifBlock, atomIndex) {
@@ -295,6 +307,8 @@ export class ADPFactory {
 
     /**
      * Creates isotropic B-based ADP
+     * @param cifBlock
+     * @param atomIndex
      * @private
      */
     static createBiso(cifBlock, atomIndex) {

@@ -31,23 +31,26 @@ const STANDART_LOOP_NAMES = [
 ];
 
 /**
-* Represents a loop construct within a CIF block.
-*
-* @property {Array<string>} rawLines - Raw lines of the loop
-* @property {boolean} splitSU - Whether to split standard uncertainties
-* @property {Array<string>|null} headers - Column headers, null until parsed
-* @property {Object|null} data - Parsed loop data, null until parsed
-* @property {number|null} endIndex - Index of loop end, null until parsed
-* @property {string|null} name - Common prefix of headers, null until parsed
-*/
+ * Represents a loop construct within a CIF block.
+ * @property {Array<string>} rawLines - Raw lines of the loop
+ * @property {boolean} splitSU - Whether to split standard uncertainties
+ * @property {Array<string>|null} headers - Column headers, null until parsed
+ * @property {object | null} data - Parsed loop data, null until parsed
+ * @property {number|null} endIndex - Index of loop end, null until parsed
+ * @property {string|null} name - Common prefix of headers, null until parsed
+ */
 
 export class CifLoop {
     /**
-    * Creates a new CIF loop instance.
-    * @constructor
-    * @param {Array<string>} lines - Raw lines of the loop construct
-    * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
-    */
+     * Creates a new CIF loop instance.
+     * @class
+     * @param {Array<string>} lines - Raw lines of the loop construct
+     * @param headerLines
+     * @param dataLines
+     * @param endIndex
+     * @param name
+     * @param {boolean} [splitSU] - Whether to split standard uncertainties
+     */
     constructor(headerLines, dataLines, endIndex, splitSU, name=null) {
         this.splitSU = splitSU;
         this.headerLines = headerLines;
@@ -94,9 +97,9 @@ export class CifLoop {
     }
 
     /**
-    * Parses loop content into structured data.
-    * Processes headers and values, handling standard uncertainties if enabled.
-    */
+     * Parses loop content into structured data.
+     * Processes headers and values, handling standard uncertainties if enabled.
+     */
     parse() {
         if (this.data !== null) {
             return;
@@ -155,10 +158,11 @@ export class CifLoop {
     }
 
     /**
-    * Gets the common name prefix shared by all headers.
-    * @returns {string} Common prefix without the trailing underscore
-    * @private
-    */
+     * Gets the common name prefix shared by all headers.
+     * @param checkStandardNames
+     * @returns {string} Common prefix without the trailing underscore
+     * @private
+     */
     findCommonStart(checkStandardNames = true) {
         // Check for standard loop names first
         if (checkStandardNames) {
@@ -209,12 +213,12 @@ export class CifLoop {
     }
 
     /**
-    * Gets column data for given keys.
-    * @param {(string|string[])} keys - Key or array of keys to try
-    * @param {*} [defaultValue=null] - Value to return if keys not found
-    * @returns {Array} Column data
-    * @throws {Error} If no keys found and no default provided
-    */
+     * Gets column data for given keys.
+     * @param {(string|string[])} keys - Key or array of keys to try
+     * @param {*} [defaultValue] - Value to return if keys not found
+     * @returns {Array} Column data
+     * @throws {Error} If no keys found and no default provided
+     */
     get(keys, defaultValue = null) {
         this.parse();
         const keyArray = Array.isArray(keys) ? keys : [keys];
@@ -237,7 +241,7 @@ export class CifLoop {
      * Gets value at specific index for one of given keys.
      * @param {(string|string[])} keys - Key or array of keys to try
      * @param {number} index - Row index
-     * @param {*} [defaultValue=null] - Value to return if keys not found
+     * @param {*} [defaultValue] - Value to return if keys not found
      * @returns {*} Value at index
      * @throws {Error} If index out of bounds or keys not found
      */
@@ -262,9 +266,9 @@ export class CifLoop {
     }
 
     /**
-    * Gets all column headers.
-    * @returns {Array<string>} Array of header names
-    */
+     * Gets all column headers.
+     * @returns {Array<string>} Array of header names
+     */
     getHeaders() {
         if (!this.headers) {
             this.parse();
@@ -273,17 +277,17 @@ export class CifLoop {
     }
 
     /**
-    * Gets the common name prefix shared by all headers.
-    * @returns {string} Common prefix without the trailing underscore
-    */
+     * Gets the common name prefix shared by all headers.
+     * @returns {string} Common prefix without the trailing underscore
+     */
     getName() {
         return this.name;
     }
 
     /**
-    * Gets the line index where this loop ends.
-    * @returns {number} Index of the last line of the loop
-    */
+     * Gets the line index where this loop ends.
+     * @returns {number} Index of the last line of the loop
+     */
     getEndIndex() {
         return this.endIndex;
     }
@@ -291,7 +295,7 @@ export class CifLoop {
 
 /**
  * Checks if an entry is a CIF loop
- * @param {Object} entry - Entry to check
+ * @param {object} entry - Entry to check
  * @returns {boolean} True if entry is a loop
  */
 export function isLoop(entry) {
@@ -309,6 +313,12 @@ function tokenizeFirstHeader(loop) {
     return headers[0].split('_').filter(token => token.length > 0);
 }
 
+/**
+ *
+ * @param entry1
+ * @param entry2
+ * @param originalName
+ */
 export function resolveNonLoopConflict(entry1, entry2, originalName) {
     const loop = isLoop(entry1) ? entry1 : entry2;
     const originalTokens = originalName.split('_').filter(token => token.length > 0);
@@ -321,6 +331,11 @@ export function resolveNonLoopConflict(entry1, entry2, originalName) {
         [originalName, loopName];
 }
 
+/**
+ *
+ * @param loop1
+ * @param loop2
+ */
 export function resolveByCommonStart(loop1, loop2) {
     const shortest1 = loop1.findCommonStart(false);
     const shortest2 = loop2.findCommonStart(false);
@@ -331,6 +346,12 @@ export function resolveByCommonStart(loop1, loop2) {
     return null;
 }
 
+/**
+ *
+ * @param loop1
+ * @param loop2
+ * @param originalName
+ */
 export function resolveByTokenLength(loop1, loop2, originalName) {
     const originalTokens = originalName.split('_').filter(token => token.length > 0);
     const header1Tokens = tokenizeFirstHeader(loop1);
@@ -350,6 +371,12 @@ export function resolveByTokenLength(loop1, loop2, originalName) {
     }
 }
 
+/**
+ *
+ * @param entry1
+ * @param entry2
+ * @param originalName
+ */
 export function resolveLoopNamingConflict(entry1, entry2, originalName) {
     let newNames;
     

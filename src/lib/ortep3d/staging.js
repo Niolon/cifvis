@@ -46,6 +46,10 @@ function calculateMeanPlaneNormal(points) {
 }
 
 // Helper to convert between THREE.js and mathjs matrices
+/**
+ *
+ * @param matrix
+ */
 function threeMatrixToMathJS(matrix) {
     const m = matrix.elements;
     return math.matrix([
@@ -60,6 +64,7 @@ function threeMatrixToMathJS(matrix) {
  * @param {THREE.Object3D} structureGroup - The structure to analyze
  * @param {number} fieldOfView - Camera field of view in degrees
  * @param {number} aspect - Camera aspect ratio (width/height)
+ * @param camera
  * @returns {number} Required camera distance
  */
 export function calculateCameraDistance(structureGroup, camera) {
@@ -159,7 +164,8 @@ export function structureOrientationMatrix(structureGroup) {
 /**
  * Sets up scene lighting based on structure dimensions
  * @param {THREE.Scene} scene - The scene to light
- * @param {Object} structureBounds - Bounds information from calculateStructureBounds
+ * @param {object} structureBounds - Bounds information from calculateStructureBounds
+ * @param ortep3DGroup
  */
 export function setupLighting(scene, ortep3DGroup) {
     // Remove all existing lights

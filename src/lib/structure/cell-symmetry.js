@@ -165,7 +165,7 @@ export class SymmetryOperation {
 
     /**
      * Applies the symmetry operation to an atom, including its displacement parameters if present
-     * @param {Object} atom - Atom object with fractional coordinates
+     * @param {object} atom - Atom object with fractional coordinates
      * @param {string} atom.label - Atom label
      * @param {string} atom.atomType - Chemical element symbol
      * @param {FractPosition} atom.position - Fractional position element
@@ -214,7 +214,7 @@ export class SymmetryOperation {
 
     /**
      * Applies the symmetry operation to multiple atoms
-     * @param {Object[]} atoms - Array of atom objects
+     * @param {object[]} atoms - Array of atom objects
      * @param {string} atoms[].label - Atom label
      * @param {string} atoms[].atomType - Chemical element symbol
      * @param {FractPosition} atoms[].position - Fractional position object

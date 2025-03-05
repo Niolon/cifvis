@@ -7,6 +7,11 @@ import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const logsDir = join(scriptDir, 'logs', 'ortep-chunked');
 
+/**
+ *
+ * @param startIndex
+ * @param endIndex
+ */
 function getLogFilenames(startIndex, endIndex) {
     const rangeStr = `${startIndex}-${endIndex}`;
     return {
@@ -35,6 +40,10 @@ const stats = {
 };
 
 // Check objects for NaN values and count by type
+/**
+ *
+ * @param object3D
+ */
 function checkForNaN(object3D) {
     const nanCounts = {
         position: 0,
@@ -43,6 +52,10 @@ function checkForNaN(object3D) {
         matrix: 0,
     };
 
+    /**
+     *
+     * @param obj
+     */
     function checkObject(obj) {
         const position = obj.position;
         const rotation = obj.rotation;
@@ -73,6 +86,8 @@ function checkForNaN(object3D) {
 
 /**
  * Test ORTEP generation for a single CIF file
+ * @param filePath
+ * @param logFiles
  */
 async function testCIFFile(filePath, logFiles) {
     stats.totalFiles++;
@@ -137,6 +152,9 @@ async function testCIFFile(filePath, logFiles) {
 
 /**
  * Process a batch of files
+ * @param files
+ * @param startIndex
+ * @param logFiles
  */
 async function processBatch(files, startIndex, logFiles) {
     const endIndex = Math.min(startIndex + config.batchSize, files.length);
@@ -161,6 +179,7 @@ async function processBatch(files, startIndex, logFiles) {
 
 /**
  * Find and sort all CIF files in directory recursively
+ * @param dir
  */
 async function findCIFFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -178,6 +197,8 @@ async function findCIFFiles(dir) {
 
 /**
  * Write summary statistics
+ * @param isInterim
+ * @param logFiles
  */
 function writeSummary(isInterim = false, logFiles) {
     const summary = `

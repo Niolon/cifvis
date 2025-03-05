@@ -401,12 +401,20 @@ _cell_angle_alpha
     });
 });
 
+/**
+ *
+ * @param headers
+ */
 function createTestLoop(headers) {
     return CifLoop.fromLines(['loop_', ...headers, 'dummy 1'], true);
 }
 
 describe('Loop Conflict Resolution', () => {
     // Helper function to create test loops
+    /**
+     *
+     * @param headers
+     */
     function createTestLoop(headers) {
         return CifLoop.fromLines([
             'loop_',

@@ -1,5 +1,7 @@
 import { reconcileAtomLabels } from './reconcile-labels.js';
 import { reconcileSymmetryOperations } from './guess-symmetry.js';
+import { CifLoop } from '../read-cif/loop.js';
+import { CifBlock } from '../read-cif/base.js';
 
 /**
  * Finds the first available key from a list of possible keys in a loop's data
@@ -19,11 +21,10 @@ function determineAvailableKey(loop, keys) {
 /**
  * Attempts to fix inconsistencies in a CIF block by reconciling atom labels and symmetry operations
  * across different data categories (ADP, bonds, h-bonds)
- * 
  * @param {CifBlock} block - CIF block to fix
- * @param {boolean} [fixADPLabels=true] - Whether to fix atom labels in anisotropic displacement parameter data
- * @param {boolean} [fixBondLabels=true] - Whether to fix atom labels in bond data
- * @param {boolean} [fixBondSymmetry=true] - Whether to fix symmetry operation formats in bond data
+ * @param {boolean} [fixADPLabels] - Whether to fix atom labels in anisotropic displacement parameter data
+ * @param {boolean} [fixBondLabels] - Whether to fix atom labels in bond data
+ * @param {boolean} [fixBondSymmetry] - Whether to fix symmetry operation formats in bond data
  */
 export function tryToFixCifBlock(block, fixADPLabels=true, fixBondLabels=true, fixBondSymmetry=true) {
     let atomSiteLabels;

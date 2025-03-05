@@ -6,6 +6,10 @@ import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 
 // Check objects for NaN values and count by type
+/**
+ *
+ * @param object3D
+ */
 function checkForNaN(object3D) {
     const nanCounts = {
         position: 0,
@@ -14,6 +18,10 @@ function checkForNaN(object3D) {
         matrix: 0,
     };
 
+    /**
+     *
+     * @param obj
+     */
     function checkObject(obj) {
         const position = obj.position;
         const rotation = obj.rotation;
@@ -108,7 +116,7 @@ export function calcBondTransform(position1, position2) {
 export class GeometryMaterialCache {
     /**
      * Creates a new geometry and material cache.
-     * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
+     * @param {object} [options] - Visualisation options with defaults from structure-settings.js
      */
     constructor(options = {}) {
         const safeOptions = options || {};
@@ -333,7 +341,7 @@ export class ORTEP3JsStructure {
     /**
      * Creates a new ORTEP structure visualisation.
      * @param {CrystalStructure} crystalStructure - Input crystal structure
-     * @param {Object} [options] - Visualisation options
+     * @param {object} [options] - Visualisation options
      */
     constructor(crystalStructure, options = {}) {
         const safeOptions = options || {};
@@ -538,7 +546,7 @@ export class ORTEPObject extends THREE.Mesh {
     /**
      * Handles object selection.
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param {object} options - Selection options
      */
     select(color, options) {
         this._selectionColor = color;
@@ -565,7 +573,9 @@ export class ORTEPObject extends THREE.Mesh {
      * Creates visual marker for selection.
      * @abstract
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param _color
+     * @param _options
+     * @param {object} options - Selection options
      */
     createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
@@ -626,7 +636,7 @@ export class ORTEPAtom extends ORTEPObject {
     /**
      * Creates visual marker for selection of atoms.
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param {object} options - Selection options
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
@@ -740,7 +750,7 @@ export class ORTEPConstantAtom extends ORTEPAtom {
      * @param {UnitCell} unitCell - Unit cell parameters
      * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
      * @param {THREE.Material} atomMaterial - Atom material
-     * @param {Object} options - Must contain elementProperties for atom type
+     * @param {object} options - Must contain elementProperties for atom type
      * @throws {Error} If element properties not found
      */
     constructor(atom, unitCell, baseAtom, atomMaterial, options) {
@@ -789,7 +799,7 @@ export class ORTEPBond extends ORTEPObject {
     /**
      * Creates visual marker for selection of bonds.
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param {object} options - Selection options
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
@@ -875,7 +885,7 @@ export class ORTEPGroupObject extends THREE.Group {
     /**
      * Handles group selection.
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param {object} options - Selection options
      */
     select(color, options) {
         this._selectionColor = color;
@@ -928,7 +938,9 @@ export class ORTEPGroupObject extends THREE.Group {
      * Creates visual marker for selection.
      * @abstract
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param _color
+     * @param _options
+     * @param {object} options - Selection options
      */
     createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
@@ -1020,7 +1032,7 @@ export class ORTEPHBond extends ORTEPGroupObject {
     /**
      * Creates visual marker for selection of hydrogen bond.
      * @param {number} color - Selection color in hex format
-     * @param {Object} options - Selection options
+     * @param {object} options - Selection options
      */
     createSelectionMarker(color, options) {
         const markerGroup = new THREE.Group();

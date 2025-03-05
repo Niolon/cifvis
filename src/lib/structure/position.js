@@ -73,7 +73,7 @@ export class BasePosition {
 
 /**
  * Represents a position in fractional coordinates
- * @extends BasePosition
+ * @augments BasePosition
  */
 export class FractPosition extends BasePosition {
     /**
@@ -102,7 +102,7 @@ export class FractPosition extends BasePosition {
 
 /**
  * Represents a position in Cartesian coordinates
- * @extends BasePosition
+ * @augments BasePosition
  */
 export class CartPosition extends BasePosition {
     /**
@@ -118,6 +118,7 @@ export class CartPosition extends BasePosition {
     /**
      * Returns self since already in Cartesian coordinates
      * @param {*} _ - Unused unit cell
+     * @param _unitCell
      * @returns {CartPosition} This position instance
      */
     toCartesian(_unitCell) {

@@ -9,7 +9,7 @@ export const math = create(all);
 /**
  * Filters atoms, bonds, and H-bonds involving hydrogen atoms from a structure.
  * Supports displaying no hydrogens, hydrogens without ADPs, or hydrogens with anisotropic ADPs.
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 
 export class HydrogenFilter extends BaseFilter {
@@ -27,7 +27,7 @@ export class HydrogenFilter extends BaseFilter {
 
     /**
      * Creates a new hydrogen filter
-     * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
+     * @param {HydrogenFilter.MODES} [mode] - Initial filter mode
      */
     constructor(mode = HydrogenFilter.MODES.NONE) {
         super(HydrogenFilter.MODES, mode, 'HydrogenFilter', HydrogenFilter.PREFERRED_FALLBACK_ORDER);
@@ -102,7 +102,7 @@ export class HydrogenFilter extends BaseFilter {
 /**
  * Filters atoms, bonds, and h-bonds based on their disorder groups.
  * Can show all atoms, only disorder group 1, or only disorder groups > 1.
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 
 export class DisorderFilter extends BaseFilter {
@@ -120,7 +120,7 @@ export class DisorderFilter extends BaseFilter {
 
     /**
      * Creates a new disorder filter
-     * @param {DisorderFilter.MODES} [mode=DisorderFilter.MODES.ALL] - Initial filter mode
+     * @param {DisorderFilter.MODES} [mode] - Initial filter mode
      */
     constructor(mode = DisorderFilter.MODES.ALL) {
         super(DisorderFilter.MODES, mode, 'DisorderFilter', DisorderFilter.PREFERRED_FALLBACK_ORDER);
@@ -216,7 +216,7 @@ export class DisorderFilter extends BaseFilter {
 /**
  * Grows a crystal structure by applying symmetry operations to create symmetry-equivalent atoms and bonds.
  * Can selectively grow based on regular bonds and/or hydrogen bonds.
- * @extends BaseFilter
+ * @augments BaseFilter
  */
 
 export class SymmetryGrower extends BaseFilter {
@@ -239,7 +239,7 @@ export class SymmetryGrower extends BaseFilter {
 
     /**
      * Creates a new symmetry grower
-     * @param {SymmetryGrower.MODES} [mode=SymmetryGrower.MODES.BONDS_NO_HBONDS_NO] - Initial mode for growing symmetry
+     * @param {SymmetryGrower.MODES} [mode] - Initial mode for growing symmetry
      */
     constructor(mode = SymmetryGrower.MODES.BONDS_NO_HBONDS_NO) {
         super(SymmetryGrower.MODES, mode, 'SymmetryGrower', SymmetryGrower.PREFERRED_FALLBACK_ORDER);

@@ -74,6 +74,11 @@ console.warn = (...args) => {
     suppressedWarnings.push(args.join(' '));
 };
 
+/**
+ *
+ * @param summaryText
+ * @param filePath
+ */
 function writeSummaryToFile(summaryText, filePath) {
     try {
         appendFileSync(filePath, summaryText + '\n');
@@ -82,6 +87,10 @@ function writeSummaryToFile(summaryText, filePath) {
     }
 }
 
+/**
+ *
+ * @param isInterim
+ */
 function generateSummary(isInterim = false) {
     const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
     
@@ -139,6 +148,11 @@ Error Breakdown:
     return summaryText;
 }
 
+/**
+ *
+ * @param message
+ * @param filePath
+ */
 function logMessage(message, filePath = config.logFile) {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${message}\n`;
@@ -149,6 +163,12 @@ function logMessage(message, filePath = config.logFile) {
     }
 }
 
+/**
+ *
+ * @param errorMessage
+ * @param fixed
+ * @param verbose
+ */
 function handleStructureError(errorMessage, fixed, verbose=false) {
     let crystalStructureErrors;
     if (fixed) {
@@ -205,6 +225,10 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
     }
 }
 
+/**
+ *
+ * @param filePath
+ */
 async function testCIFFile(filePath) {
     stats.totalFiles++;
     const fileContent = readFileSync(filePath, 'utf8');
@@ -348,6 +372,11 @@ async function testCIFFile(filePath) {
     return results;
 }
 
+/**
+ *
+ * @param files
+ * @param startIndex
+ */
 async function processBatch(files, startIndex) {
     const endIndex = Math.min(startIndex + config.batchSize, files.length);
     const batchFiles = files.slice(startIndex, endIndex);
@@ -359,6 +388,10 @@ async function processBatch(files, startIndex) {
     return endIndex;
 }
 
+/**
+ *
+ * @param dir
+ */
 async function findCIFFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
     const files = await Promise.all(entries.map(async (entry) => {
@@ -373,6 +406,9 @@ async function findCIFFiles(dir) {
     return files.flat();
 }
 
+/**
+ *
+ */
 async function main() {
     if (!existsSync(logsDir)) {
         mkdirSync(logsDir);
