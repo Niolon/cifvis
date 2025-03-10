@@ -15,7 +15,7 @@ const math = create(all, {});
  * @param {number} cellParams.alpha - α angle in degrees
  * @param {number} cellParams.beta - β angle in degrees
  * @param {number} cellParams.gamma - γ angle in degrees
- * @returns {Matrix} 3x3 transformation matrix
+ * @returns {math.Matrix} 3x3 transformation matrix
  */
 export function calculateFractToCartMatrix(cellParams) {
     // Convert angles to radians
@@ -46,7 +46,7 @@ export function calculateFractToCartMatrix(cellParams) {
 /**
  * Converts anisotropic displacement parameters array to a symmetric 3x3 matrix
  * @param {Array<number>} adp - ADPs [U11, U22, U33, U12, U13, U23]
- * @returns {Matrix} 3x3 symmetric matrix
+ * @returns {math.Matrix} 3x3 symmetric matrix
  * @throws {Error} If input array length !== 6
  */
 export function adpToMatrix(adp) {
@@ -59,7 +59,7 @@ export function adpToMatrix(adp) {
 
 /**
  * Converts symmetric 3x3 ADP matrix to six-parameter array
- * @param {Matrix|Array<Array<number>>} uij_matrix - 3x3 symmetric matrix
+ * @param {math.Matrix|Array<Array<number>>} uij_matrix - 3x3 symmetric matrix
  * @returns {Array<number>} ADPs [U11, U22, U33, U12, U13, U23]
  * @throws {Error} If input not 3x3 matrix
  */
@@ -77,7 +77,7 @@ export function matrixToAdp(uij_matrix) {
 
 /**
  * Converts ADPs from CIF (fractional) to Cartesian convention
- * @param {Matrix|Array<Array<number>>} fractToCartMatrix - 3x3 transformation matrix
+ * @param {math.Matrix|Array<Array<number>>} fractToCartMatrix - 3x3 transformation matrix
  * @param {Array<number>} adp - ADPs [U11, U22, U33, U12, U13, U23]
  * @returns {Array<number>} Cartesian ADPs [U11, U22, U33, U12, U13, U23]
  * @throws {Error} If matrix not 3x3 or ADP array length !== 6

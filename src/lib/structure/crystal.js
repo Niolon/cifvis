@@ -2,7 +2,8 @@ import { calculateFractToCartMatrix } from './fract-to-cart.js';
 import { CellSymmetry, SymmetryOperation } from './cell-symmetry.js';
 import { ADPFactory } from './adp.js';
 import { PositionFactory } from './position.js';
-import { BondsFactory } from './bonds.js';
+import { BondsFactory, Bond, HBond } from './bonds.js';
+import { CifBlock } from '../read-cif/base.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -148,7 +149,6 @@ export class CrystalStructure {
     /**
      * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
      * from the provided atoms and bonds
-     * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
      */
     recalculateConnectedGroups() {
         // Map to track which atoms have been assigned to a group

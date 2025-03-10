@@ -1,5 +1,6 @@
 import { guessSymmetryOperation, reconcileSymmetryOperations } from './guess-symmetry.js';
 import { CIF } from '../read-cif/base.js';
+import { CifLoop } from '../read-cif/loop.js';
 
 describe('guessSymmetryOperation', () => {
     describe('handles standard cases', () => {
@@ -95,8 +96,9 @@ describe('guessSymmetryOperation', () => {
 
 describe('reconcileSymmetryOperations', () => {
     /**
-     *
-     * @param operations
+     * Creates a test symmetry loop for testing
+     * @param {Array<string>} operations list of operations to be put into the geom_bond_site_symmetry field
+     * @returns {CifLoop} a loop component containing the specified entries
      */
     function createTestLoop(operations) {
         const cifText = `

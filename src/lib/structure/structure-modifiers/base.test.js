@@ -1,4 +1,4 @@
-import { UAnisoADP } from '../adp.js';
+import { UAnisoADP, UIsoADP } from '../adp.js';
 import { Bond, HBond } from '../bonds.js';
 import { SymmetryOperation, CellSymmetry } from '../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../crystal.js';
@@ -7,7 +7,16 @@ import {
     BaseFilter,
 } from './base.js';
 
+/**
+ * Mock structure class for testing crystal structure modifications
+ * Creates a simple crystal structure with configurable properties
+ */
 export class MockStructure {
+
+    /**
+     * Creates a new mock crystal structure
+     * @param {CrystalStructure} [baseStructure] - Optional existing structure to use as base
+     */
     constructor(baseStructure = null) {
         if (baseStructure) {
             this.structure = baseStructure;
@@ -25,6 +34,15 @@ export class MockStructure {
         }
     }
 
+    /**
+     * Creates a default mock structure with predefined atoms and bonds
+     * @param {object} [options] - Configuration options
+     * @param {boolean} [options.hasHydrogens] - Whether to include hydrogen atoms
+     * @param {boolean} [options.hasAnisoHydrogens] - Whether to include anisotropic hydrogen atoms
+     * @param {number[]} [options.disorderGroups] - Array of disorder group IDs to create
+     * @param {boolean} [options.hasMultipleSymmetry] - Whether to add symmetry-related bonds
+     * @returns {MockStructure} - Configured mock structure
+     */
     static createDefault({
         hasHydrogens = false, hasAnisoHydrogens = false, disorderGroups = [], hasMultipleSymmetry = false,
     } = {}) {
@@ -81,11 +99,31 @@ export class MockStructure {
         return structure;
     }
 
+    /**
+     * Adds an atom to the mock structure
+     * @param {string} label - Atom label
+     * @param {string} type - Atom type/element
+     * @param {number} [x] - Fractional x coordinate
+     * @param {number} [y] - Fractional y coordinate
+     * @param {number} [z] - Fractional z coordinate
+     * @param {number} [disorderGroup] - Disorder group ID (0 = no disorder)
+     * @param {UAnisoADP|UIsoADP|null} [adp] - Atomic displacement parameters
+     * @returns {MockStructure} - This structure instance for chaining
+     */
     addAtom(label, type, x = 0, y = 0, z = 0, disorderGroup = 0, adp = null) {
         this.structure.atoms.push(new Atom(label, type, new FractPosition(x, y, z), adp, disorderGroup));
         return this;
     }
 
+    /**
+     * Adds a bond to the mock structure
+     * @param {string} atom1Label - Label of first atom
+     * @param {string} atom2Label - Label of second atom
+     * @param {string} [symmetry] - Symmetry operation code for second atom
+     * @param {number} [length] - Bond length in Å
+     * @param {number} [su] - Standard uncertainty of bond length
+     * @returns {MockStructure} - This structure instance for chaining
+     */
     addBond(atom1Label, atom2Label, symmetry = '.', length = 1.5, su = 0.01) {
         this.structure.bonds.push(
             new Bond(atom1Label, atom2Label, length, su, symmetry),
@@ -93,6 +131,23 @@ export class MockStructure {
         return this;
     }
 
+    /**
+     * Adds a hydrogen bond to the mock structure
+     * @param {string} donor - Label of donor atom
+     * @param {string} hydrogen - Label of hydrogen atom
+     * @param {string} acceptor - Label of acceptor atom
+     * @param {string} [symmetry] - Symmetry operation code for acceptor atom
+     * @param {object} [options] - Hydrogen bond parameters
+     * @param {number} [options.dhDist] - Donor-hydrogen distance in Å
+     * @param {number} [options.dhDistSU] - Standard uncertainty of donor-hydrogen distance
+     * @param {number} [options.haDist] - Hydrogen-acceptor distance in Å
+     * @param {number} [options.haDistSU] - Standard uncertainty of hydrogen-acceptor distance
+     * @param {number} [options.daDist] - Donor-acceptor distance in Å
+     * @param {number} [options.daDistSU] - Standard uncertainty of donor-acceptor distance
+     * @param {number} [options.angle] - Donor-hydrogen-acceptor angle in degrees
+     * @param {number} [options.angleSU] - Standard uncertainty of angle
+     * @returns {MockStructure} - This structure instance for chaining
+     */
     addHBond(donor, hydrogen, acceptor, symmetry = '.', {
         dhDist = 1.0, dhDistSU = 0.01, haDist = 2.0, haDistSU = 0.02, 
         daDist = 2.8, daDistSU = 0.03, angle = 175, angleSU = 1,
@@ -116,6 +171,12 @@ export class MockStructure {
         return this;
     }
 
+    /**
+     * Finalizes and validates the mock structure
+     * Verifies that all references to atoms exist and recalculates connected groups
+     * @returns {CrystalStructure} - The completed crystal structure
+     * @throws {Error} If referenced atoms don't exist
+     */
     build() {
         const atomLabels = new Set(this.structure.atoms.map(atom => atom.label));
 
@@ -144,12 +205,15 @@ export class MockStructure {
         return this.structure;
     }
 }
+
 /**
- *
- * @param grown
- * @param root0
- * @param root0.checkSymmetries
- * @param root0.excludeSymmetries
+ * Validates symmetry growth of a crystal structure
+ * Checks that atoms, bonds, and hydrogen bonds have been correctly grown using symmetry operations
+ * @param {CrystalStructure} grown - The symmetry-grown structure to check
+ * @param {object} [options] - Validation options
+ * @param {string[]} [options.checkSymmetries] - Symmetry operations to verify growth with
+ * @param {string[]} [options.excludeSymmetries] - Symmetry operations to verify NO growth with
+ * @returns {string[]} - Array of validation error messages (empty if valid)
  */
 export function checkSymmetryGrowth(grown, {
     checkSymmetries = [], // Symmetry operations to verify growth with

@@ -4,6 +4,20 @@ import {
     resolveByTokenLength, resolveByCommonStart,
 } from './loop.js';
 
+/**
+ * Create a loop with specified headers and dummy data
+ * @param {Array<string>} headers - column headers of dummy columns to be created
+ * @returns {CifLoop} - the cif Loop for testing
+ */
+function createTestLoop(headers) {
+    return CifLoop.fromLines([
+        'loop_',
+        ...headers,
+        // Create dummy data entries for each header
+        ...headers.map(() => 'dummy_data'),
+    ], true);
+}
+
 describe('Loop Tests', () => {
     describe('Basic Parsing', () => {
         test('parses basic loop', () => {
@@ -401,29 +415,7 @@ _cell_angle_alpha
     });
 });
 
-/**
- *
- * @param headers
- */
-function createTestLoop(headers) {
-    return CifLoop.fromLines(['loop_', ...headers, 'dummy 1'], true);
-}
-
 describe('Loop Conflict Resolution', () => {
-    // Helper function to create test loops
-    /**
-     *
-     * @param headers
-     */
-    function createTestLoop(headers) {
-        return CifLoop.fromLines([
-            'loop_',
-            ...headers,
-            // Create dummy data entries for each header
-            ...headers.map(() => 'dummy_data'),
-        ], true);
-    }
-
     // Valid non-loop entries are only primitives: numbers or strings
     const validNonLoopValues = [
         5,              // integer

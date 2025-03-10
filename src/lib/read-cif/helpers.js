@@ -99,12 +99,6 @@ export function parseValue(entryString, splitSU = true) {
  * @param {number} startIndex - Starting index of multiline value
  * @returns {object} Object with parsed value and end index
  */
-
-/**
- *
- * @param lines
- * @param startIndex
- */
 export function parseMultiLineString(lines, startIndex) {
     const line1 = [lines[startIndex].slice(1)];
 

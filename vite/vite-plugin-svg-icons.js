@@ -5,8 +5,9 @@ const VIRTUAL_MODULE_ID = 'virtual:svg-icons';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
 /**
- *
- * @param content
+ * Cleans SVG content by removing unnecessary elements and whitespace.
+ * @param {string} content - The raw SVG file content
+ * @returns {string} Cleaned SVG content
  */
 function cleanSvg(content) {
     return content
@@ -22,7 +23,42 @@ function cleanSvg(content) {
 }
 
 /**
- *
+ * Creates a Vite plugin that imports SVG icons from a directory and makes them available
+ * as a virtual module. The plugin assumes SVG files are named according to the pattern:
+ * `type-mode.svg` or just `type.svg`.
+ * 
+ * The plugin automatically cleans the SVG files by removing Inkscape-specific XML entries,
+ * comments, unnecessary attributes, and whitespace to significantly reduce the file size
+ * and improve performance.
+ * 
+ * When imported in code as `import { SVG_ICONS } from 'virtual:svg-icons'`, the icons
+ * will be available in a nested object structure:
+ * ```
+ * {
+ *   type1: {
+ *     mode1: "<svg>...</svg>",
+ *     mode2: "<svg>...</svg>"
+ *   },
+ *   type2: "<svg>...</svg>"
+ * }
+ * ```
+ * @returns {import('vite').Plugin} A Vite plugin object
+ * @example
+ * // vite.config.js
+ * import { defineConfig } from 'vite';
+ * import svgIconsPlugin from './plugins/svg-icons-plugin';
+ * 
+ * export default defineConfig({
+ *   plugins: [
+ *     svgIconsPlugin()
+ *   ]
+ * });
+ * 
+ * // In your code
+ * import { SVG_ICONS } from 'virtual:svg-icons';
+ * 
+ * // Use the SVG content
+ * element.innerHTML = SVG_ICONS.hydrogen.anisotropic;
  */
 export default function svgIconsPlugin() {
     let icons = null;

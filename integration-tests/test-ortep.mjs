@@ -8,9 +8,10 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const logsDir = join(scriptDir, 'logs', 'ortep-chunked');
 
 /**
- *
- * @param startIndex
- * @param endIndex
+ * Generates the log filenames for a specific range of processed files
+ * @param {number} startIndex - The starting index of the file range
+ * @param {number} endIndex - The ending index of the file range
+ * @returns {object} Object containing paths to the log, error log, and summary files
  */
 function getLogFilenames(startIndex, endIndex) {
     const rangeStr = `${startIndex}-${endIndex}`;
@@ -39,10 +40,10 @@ const stats = {
     },
 };
 
-// Check objects for NaN values and count by type
 /**
- *
- * @param object3D
+ * Checks a THREE.js object and its children for NaN values in transformations 
+ * @param {object} object3D - The THREE.js object to check
+ * @returns {object} Counts of NaN values by property type (position, rotation, scale, matrix)
  */
 function checkForNaN(object3D) {
     const nanCounts = {
@@ -53,8 +54,8 @@ function checkForNaN(object3D) {
     };
 
     /**
-     *
-     * @param obj
+     * Recursively checks an object and its children for NaN values
+     * @param {object} obj - The object to check
      */
     function checkObject(obj) {
         const position = obj.position;
@@ -85,9 +86,10 @@ function checkForNaN(object3D) {
 }
 
 /**
- * Test ORTEP generation for a single CIF file
- * @param filePath
- * @param logFiles
+ * Tests ORTEP visualization generation for a single CIF file
+ * @param {string} filePath - Path to the CIF file to test
+ * @param {object} logFiles - Object containing paths to log files
+ * @returns {Promise<void>}
  */
 async function testCIFFile(filePath, logFiles) {
     stats.totalFiles++;
@@ -151,10 +153,11 @@ async function testCIFFile(filePath, logFiles) {
 }
 
 /**
- * Process a batch of files
- * @param files
- * @param startIndex
- * @param logFiles
+ * Processes a batch of CIF files for ORTEP testing 
+ * @param {string[]} files - Array of file paths to process
+ * @param {number} startIndex - Starting index in the files array
+ * @param {object} logFiles - Object containing paths to log files
+ * @returns {Promise<number>} The next index after the processed batch
  */
 async function processBatch(files, startIndex, logFiles) {
     const endIndex = Math.min(startIndex + config.batchSize, files.length);
@@ -178,8 +181,9 @@ async function processBatch(files, startIndex, logFiles) {
 }
 
 /**
- * Find and sort all CIF files in directory recursively
- * @param dir
+ * Recursively finds all CIF files in a directory and its subdirectories
+ * @param {string} dir - Directory to search for CIF files
+ * @returns {Promise<string[]>} Array of paths to CIF files
  */
 async function findCIFFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -196,9 +200,9 @@ async function findCIFFiles(dir) {
 }
 
 /**
- * Write summary statistics
- * @param isInterim
- * @param logFiles
+ * Writes a summary of the test results to the summary log file
+ * @param {boolean} isInterim - Whether this is an interim summary (true) or final summary (false)
+ * @param {object} logFiles - Object containing paths to log files
  */
 function writeSummary(isInterim = false, logFiles) {
     const summary = `
@@ -220,7 +224,8 @@ Errors:
 }
 
 /**
- * Main execution function
+ * Main execution function that orchestrates the ORTEP testing process
+ * @returns {Promise<void>}
  */
 async function main() {
     const startTime = Date.now();

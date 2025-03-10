@@ -262,7 +262,7 @@ export class SymmetryGrower extends BaseFilter {
     /**
      * Finds atoms that can be grown through symmetry operations
      * @param {CrystalStructure} structure - Structure to analyze
-     * @returns {GrowableAtoms} Atoms that can be grown through bonds and hydrogen bonds
+     * @returns {object} Atoms that can be grown through bonds and hydrogen bonds
      */
     findGrowableAtoms(structure) {
         const bondAtoms = structure.bonds
@@ -282,8 +282,8 @@ export class SymmetryGrower extends BaseFilter {
      * Grows a set of atoms and their connected groups using symmetry operations
      * @param {CrystalStructure} structure - Original structure containing atoms to grow
      * @param {Array<[string, string]>} atomsToGrow - Array of [atomLabel, symmetryOperation] pairs
-     * @param {GrowthState} growthState - Current state of structure growth
-     * @returns {GrowthState} Updated growth state including new atoms and bonds
+     * @param {object} growthState - Current state of structure growth
+     * @returns {object} Updated growth state including new atoms and bonds
      * @throws {Error} If an atom is not found in any connected group
      */
     growAtomArray(structure, atomsToGrow, growthState) {

@@ -4,6 +4,7 @@ import { Atom } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
+import { CifBlock } from '../read-cif/base.js';
 
 const math = create(all);
 

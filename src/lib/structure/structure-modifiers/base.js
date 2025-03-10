@@ -1,15 +1,16 @@
 
+import { CrystalStructure } from '../crystal.js';
+
 /**
  * Base class for structure filters that implement mode-based behavior
  */
-
 export class BaseFilter {
     /**
      * Creates a new filter
-     * @param {Object.<string, string>} modes - Dictionary of valid modes
+     * @param {[key: string]} modes - Dictionary of valid modes
      * @param {string} defaultMode - Initial mode to use
      * @param {string} filterName - Name of the filter for error messages
-     * @param fallBackOrder
+     * @param {Array<string>} fallBackOrder - Ordering of modes that are tried out if the current one is invalid
      */
     constructor(modes, defaultMode, filterName, fallBackOrder = []) {
         if (new.target === BaseFilter) {
@@ -62,8 +63,7 @@ export class BaseFilter {
     /**
      * Abstract method: Applies the filter to a structure
      * @abstract
-     * @param _structure
-     * @param {CrystalStructure} structure - Structure to filter
+     * @param {CrystalStructure} _structure - Structure to filter
      * @returns {CrystalStructure} Filtered structure
      * @throws {Error} If not implemented by subclass
      */
@@ -74,8 +74,7 @@ export class BaseFilter {
     /**
      * Abstract method: Gets modes applicable to the given structure
      * @abstract
-     * @param _structure
-     * @param {CrystalStructure} structure - Structure to analyze
+     * @param {CrystalStructure} _structure - Structure to analyze
      * @returns {string[]} Array of applicable mode names
      * @throws {Error} If not implemented by subclass
      */

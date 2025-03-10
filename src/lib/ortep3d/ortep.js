@@ -4,11 +4,12 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { SymmetryGrower } from '../structure/structure-modifiers/modes.js';
+import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
 
-// Check objects for NaN values and count by type
 /**
- *
- * @param object3D
+ * Examines a THREE.Object3D and its children for NaN values in position, rotation, scale, and matrix properties.
+ * @param {THREE.Object3D} object3D - The 3D object to check for NaN values
+ * @returns {object} Count of NaN values found by property type (position, rotation, scale, matrix)
  */
 function checkForNaN(object3D) {
     const nanCounts = {
@@ -19,8 +20,8 @@ function checkForNaN(object3D) {
     };
 
     /**
-     *
-     * @param obj
+     * Inner function to travel through objects children iteratively
+     * @param {THREE.Object3D} obj - The 3D object to check for NaN values
      */
     function checkObject(obj) {
         const position = obj.position;
@@ -63,10 +64,10 @@ function checkForNaN(object3D) {
 }
 
 /**
- * Calculate transformation matrix for ellipsoid visualisation.
+ * Calculates the transformation matrix for ellipsoid visualization from anisotropic displacement parameters.
  * @param {UAnisoADP} uAnisoADPobj - Anisotropic displacement parameters object
- * @param {UnitCell} unitCell - Unit cell object
- * @returns {THREE.Matrix4} Transformation matrix for ellipsoid visualisation
+ * @param {UnitCell} unitCell - Unit cell object containing crystallographic parameters
+ * @returns {THREE.Matrix4} Transformation matrix for ellipsoid visualization
  */
 export function getThreeEllipsoidMatrix(uAnisoADPobj, unitCell) {
     const transformationMatrix = uAnisoADPobj.getEllipsoidMatrix(unitCell);
@@ -335,13 +336,14 @@ export class GeometryMaterialCache {
 }
 
 /**
- * Main class for creating 3D molecular structure visualisations.
+ * Main class for creating 3D molecular structure visualizations using the ORTEP approach.
+ * Creates atoms with correct displacement parameters and connects them with bonds.
  */
 export class ORTEP3JsStructure {
     /**
-     * Creates a new ORTEP structure visualisation.
-     * @param {CrystalStructure} crystalStructure - Input crystal structure
-     * @param {object} [options] - Visualisation options
+     * Creates a new ORTEP structure visualization.
+     * @param {CrystalStructure} crystalStructure - Input crystal structure with atoms, bonds, and unit cell
+     * @param {object} [options] - Visualization options, extends defaults from structure-settings.js
      */
     constructor(crystalStructure, options = {}) {
         const safeOptions = options || {};
@@ -476,8 +478,8 @@ export class ORTEP3JsStructure {
     }
 
     /**
-     * Returns a THREE.Group containing all visualisation objects.
-     * @returns {THREE.Group} Group containing all structure objects
+     * Returns a THREE.Group containing all visualization objects (atoms, bonds, H-bonds).
+     * @returns {THREE.Group} Group containing all structure objects ready for rendering
      */
     getGroup() {
         const group = new THREE.Group();
@@ -507,14 +509,16 @@ export class ORTEP3JsStructure {
 }
 
 /**
- * Base class for selectable THREE.js mesh objects that handle selection visualisation
+ * Base class for selectable THREE.js mesh objects with selection visualization capabilities.
  * @abstract
+ * @augments THREE.Mesh
  */
 export class ORTEPObject extends THREE.Mesh {
     /**
      * Creates a new selectable object.
      * @param {THREE.BufferGeometry} geometry - Object geometry
      * @param {THREE.Material} material - Object material
+     * @throws {TypeError} If instantiated directly (abstract class)
      */
     constructor(geometry, material) {
         if (new.target === ORTEPObject) {
@@ -544,7 +548,7 @@ export class ORTEPObject extends THREE.Mesh {
     }
 
     /**
-     * Handles object selection.
+     * Handles object selection, applying highlighting and creating selection markers.
      * @param {number} color - Selection color in hex format
      * @param {object} options - Selection options
      */
@@ -562,7 +566,7 @@ export class ORTEPObject extends THREE.Mesh {
     }
 
     /**
-     * Handles object deselection.
+     * Handles object deselection, removing highlighting and markers.
      */
     deselect() {
         this._selectionColor = null;
@@ -572,10 +576,8 @@ export class ORTEPObject extends THREE.Mesh {
     /**
      * Creates visual marker for selection.
      * @abstract
-     * @param {number} color - Selection color in hex format
-     * @param _color
-     * @param _options
-     * @param {object} options - Selection options
+     * @param {number} _color - Selection color in hex format
+     * @param {object} _options - Selection options
      */
     createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
@@ -611,7 +613,8 @@ export class ORTEPObject extends THREE.Mesh {
 }
 
 /**
- * Base class for atom visualisations.
+ * Base class for atom visualizations.
+ * @augments ORTEPObject
  */
 export class ORTEPAtom extends ORTEPObject {
     /**
@@ -636,7 +639,8 @@ export class ORTEPAtom extends ORTEPObject {
     /**
      * Creates visual marker for selection of atoms.
      * @param {number} color - Selection color in hex format
-     * @param {object} options - Selection options
+     * @param {object} options - Selection options containing visualization parameters
+     * @returns {THREE.Mesh} Selection marker mesh
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
@@ -650,7 +654,9 @@ export class ORTEPAtom extends ORTEPObject {
 }
 
 /**
- * Class for atoms with anisotropic displacement parameters.
+ * Class for atoms with anisotropic displacement parameters (ADPs).
+ * Shows ellipsoidal representation with additional ADP rings.
+ * @augments ORTEPAtom
  */
 export class ORTEPAniAtom extends ORTEPAtom {
     /**
@@ -691,6 +697,10 @@ export class ORTEPAniAtom extends ORTEPAtom {
         };
     }
 
+    /**
+     * Provides transformation matrices for positioning ADP rings in the three principal planes.
+     * @returns {THREE.Matrix4[]} Array of matrices for the three orthogonal planes
+     */
     get adpRingMatrices() {
         return [
             new THREE.Matrix4().set(
@@ -717,6 +727,8 @@ export class ORTEPAniAtom extends ORTEPAtom {
 
 /**
  * Class for atoms with isotropic displacement parameters.
+ * Shows spherical representation scaled by the isotropic displacement parameter.
+ * @augments ORTEPAtom
  */
 export class ORTEPIsoAtom extends ORTEPAtom {
     /**
@@ -741,7 +753,8 @@ export class ORTEPIsoAtom extends ORTEPAtom {
 }
 
 /**
- * Class for atoms with visualised with constant radius.
+ * Class for atoms visualized with constant radius based on element type.
+ * @augments ORTEPAtom
  */
 export class ORTEPConstantAtom extends ORTEPAtom {
     /**
@@ -771,12 +784,14 @@ export class ORTEPConstantAtom extends ORTEPAtom {
 
 /**
  * Class for chemical bond visualization.
+ * Represents covalent bonds as cylinders between atoms.
+ * @augments ORTEPObject
  */
 export class ORTEPBond extends ORTEPObject {
     /**
      * Creates a new bond visualization.
-     * @param {Bond} bond - Bond data
-     * @param {CrystalStructure} crystalStructure - Parent structure
+     * @param {Bond} bond - Bond data containing connected atoms
+     * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
      * @param {THREE.BufferGeometry} baseBond - Bond geometry
      * @param {THREE.Material} baseBondMaterial - Bond material
      */
@@ -799,7 +814,8 @@ export class ORTEPBond extends ORTEPObject {
     /**
      * Creates visual marker for selection of bonds.
      * @param {number} color - Selection color in hex format
-     * @param {object} options - Selection options
+     * @param {object} options - Selection options containing visualization parameters
+     * @returns {THREE.Mesh} Selection marker mesh
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
@@ -814,12 +830,15 @@ export class ORTEPBond extends ORTEPObject {
 }
 
 /**
- * Abstract base class for grouped objects like dashed Bonds.
+ * Abstract base class for grouped objects like dashed hydrogen bonds.
+ * Provides selection handling for compound objects composed of multiple meshes.
  * @abstract
+ * @augments THREE.Group
  */
 export class ORTEPGroupObject extends THREE.Group {
     /**
      * Creates a new group object.
+     * @throws {TypeError} If instantiated directly (abstract class)
      */
     constructor() {
         if (new.target === ORTEPGroupObject) {
@@ -835,9 +854,9 @@ export class ORTEPGroupObject extends THREE.Group {
     }
 
     /**
-     * Adds objects with raycasting redirection.
-     * @param {...THREE.Object3D} objects - Objects to add
-     * @returns {this}
+     * Adds objects with raycasting redirection to ensure proper selection handling.
+     * @param {...THREE.Object3D} objects - Objects to add to the group
+     * @returns {this} This group object for chaining
      */
     add(...objects) {
         objects.forEach(object => {
@@ -870,8 +889,8 @@ export class ORTEPGroupObject extends THREE.Group {
 
     /**
      * Creates material for selection highlighting.
-     * @param {number} color - Color in hex format
-     * @returns {THREE.Material} Selection highlight material
+     * @param {number} color - Color in hex format (e.g., 0xFF0000 for red)
+     * @returns {THREE.Material} Selection highlight material with transparency
      */
     createSelectionMaterial(color) {
         return new THREE.MeshBasicMaterial({
@@ -883,9 +902,9 @@ export class ORTEPGroupObject extends THREE.Group {
     }
 
     /**
-     * Handles group selection.
+     * Handles group selection, applying highlighting to all children and creating selection markers.
      * @param {number} color - Selection color in hex format
-     * @param {object} options - Selection options
+     * @param {object} options - Selection options containing visualization parameters
      */
     select(color, options) {
         this._selectionColor = color;
@@ -907,7 +926,7 @@ export class ORTEPGroupObject extends THREE.Group {
     }
 
     /**
-     * Handles group deselection.
+     * Handles group deselection, removing highlighting and markers.
      */
     deselect() {
         this._selectionColor = null;
@@ -937,17 +956,16 @@ export class ORTEPGroupObject extends THREE.Group {
     /**
      * Creates visual marker for selection.
      * @abstract
-     * @param {number} color - Selection color in hex format
-     * @param _color
-     * @param _options
-     * @param {object} options - Selection options
+     * @param {number} _color - Selection color in hex format
+     * @param {object} _options - Selection options containing visualization parameters
+     * @throws {Error} If not implemented by subclass
      */
     createSelectionMarker(_color, _options) {
         throw new Error('createSelectionMarker needs to be implemented in a subclass');
     }
 
     /**
-     * Cleans up resources.
+     * Cleans up resources to prevent memory leaks.
      */
     dispose() {
         // Clean up selection-related resources
@@ -968,6 +986,8 @@ export class ORTEPGroupObject extends THREE.Group {
 
 /**
  * Class for hydrogen bond visualization.
+ * Represents hydrogen bonds as dashed lines between donor and acceptor atoms.
+ * @augments ORTEPGroupObject
  */
 export class ORTEPHBond extends ORTEPGroupObject {
     /**
@@ -1032,7 +1052,8 @@ export class ORTEPHBond extends ORTEPGroupObject {
     /**
      * Creates visual marker for selection of hydrogen bond.
      * @param {number} color - Selection color in hex format
-     * @param {object} options - Selection options
+     * @param {object} options - Selection options containing visualization parameters
+     * @returns {THREE.Group} Group containing selection marker meshes
      */
     createSelectionMarker(color, options) {
         const markerGroup = new THREE.Group();

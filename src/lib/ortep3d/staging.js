@@ -4,9 +4,10 @@ import { create, all } from 'mathjs';
 const math = create(all, {});
 
 /**
- * Calculates the mean plane of a set of points and returns the normal vector
- * @param {Array<THREE.Vector3>} points - Array of 3D points
- * @returns {THREE.Vector3} Normal vector to the mean plane
+ * Calculates the normal vector to the best-fit (mean) plane through a set of 3D points
+ * using principal component analysis (eigenvalue decomposition of the covariance matrix).
+ * @param {THREE.Vector3[]} points - Array of 3D points
+ * @returns {THREE.Vector3} Unit normal vector to the mean plane
  */
 function calculateMeanPlaneNormal(points) {
     // Calculate centroid
@@ -45,10 +46,10 @@ function calculateMeanPlaneNormal(points) {
     return normal;
 }
 
-// Helper to convert between THREE.js and mathjs matrices
 /**
- *
- * @param matrix
+ * Converts a THREE.js Matrix3 to a mathjs matrix for advanced matrix operations
+ * @param {THREE.Matrix3} matrix - THREE.js Matrix3 to convert
+ * @returns {math.Matrix} Equivalent mathjs matrix representation
  */
 function threeMatrixToMathJS(matrix) {
     const m = matrix.elements;
@@ -60,12 +61,11 @@ function threeMatrixToMathJS(matrix) {
 }
 
 /**
- * Calculate required camera distance to fit structure in view
+ * Calculates the optimal camera distance to fit a structure entirely in the viewport
+ * based on its bounding box and camera properties.
  * @param {THREE.Object3D} structureGroup - The structure to analyze
- * @param {number} fieldOfView - Camera field of view in degrees
- * @param {number} aspect - Camera aspect ratio (width/height)
- * @param camera
- * @returns {number} Required camera distance
+ * @param {THREE.PerspectiveCamera} camera - The camera that will view the structure
+ * @returns {number} Required camera distance in scene units
  */
 export function calculateCameraDistance(structureGroup, camera) {
     // Get the bounding box
@@ -90,9 +90,11 @@ export function calculateCameraDistance(structureGroup, camera) {
 }
 
 /**
- * Finds optimal rotation to view structure perpendicular to mean plane
- * @param {THREE.Object3D} structureGroup - The structure to analyze
- * @returns {THREE.Matrix4} Rotation matrix to orient structure
+ * Finds optimal rotation to view a molecular structure in a standard orientation:
+ * perpendicular to its mean plane, with the longest axis aligned horizontally, and
+ * with a slight tilt for better 3D perception.
+ * @param {THREE.Object3D} structureGroup - The structure to analyze (containing atom objects)
+ * @returns {THREE.Matrix4|null} Rotation matrix to orient structure, or null if no atoms found
  */
 export function structureOrientationMatrix(structureGroup) {
     // Extract atom positions
@@ -162,10 +164,10 @@ export function structureOrientationMatrix(structureGroup) {
 }
 
 /**
- * Sets up scene lighting based on structure dimensions
- * @param {THREE.Scene} scene - The scene to light
- * @param {object} structureBounds - Bounds information from calculateStructureBounds
- * @param ortep3DGroup
+ * Sets up scene lighting optimized for molecular visualization based on structure dimensions.
+ * Creates a combination of ambient light, main directional light, and fill lights.
+ * @param {THREE.Scene} scene - The scene to add lights to
+ * @param {THREE.Object3D} ortep3DGroup - The molecular structure object to light
  */
 export function setupLighting(scene, ortep3DGroup) {
     // Remove all existing lights

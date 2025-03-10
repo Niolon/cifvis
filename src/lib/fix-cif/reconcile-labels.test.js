@@ -4,7 +4,7 @@ import {
     reconcileAtomLabels, 
     atomLabelsMatch,
 } from './reconcile-labels.js';
-import { CIF } from '../read-cif/base.js';
+import { CIF, CifBlock } from '../read-cif/base.js';
 
 describe('normalizeAtomLabel', () => {
     test('basic normalization (without suffixes)', () => {
@@ -107,9 +107,10 @@ describe('createLabelMap', () => {
 
 describe('reconcileAtomLabels', () => {
     /**
-     *
-     * @param bondLabels
-     * @param atomLabels
+     * Creates a test cif file.
+     * @param {Array<string>} bondLabels Atom labels present in bonds for testing
+     * @param {Array<string>} atomLabels Atom labels present in atomsite loop for testing
+     * @returns {CifBlock} A cif block with the necessary loops
      */
     function createTestCif(bondLabels, atomLabels) {
         const cifText = `

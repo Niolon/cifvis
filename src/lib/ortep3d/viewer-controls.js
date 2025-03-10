@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 
-export class ViewerControls {    
+/**
+ * Controls user interaction with the 3D crystal structure viewer.
+ * Handles mouse, touch, and wheel events for rotation, zoom, panning, and selection.
+ */
+export class ViewerControls {  
+    /**
+     * Creates a new viewer controls instance.
+     * @param {object} viewer - The crystal viewer instance to control
+     */  
     constructor(viewer) {
         this.viewer = viewer;
         this.state = {
@@ -33,6 +41,10 @@ export class ViewerControls {
         this.setupEventListeners();
     }
 
+    /**
+     * Binds all event handlers to maintain proper 'this' context.
+     * @private
+     */
     bindEventHandlers() {
         this.boundHandlers = {
             wheel: this.handleWheel.bind(this),
@@ -48,6 +60,10 @@ export class ViewerControls {
         };
     }
 
+    /**
+     * Attaches all event listeners to the canvas and window.
+     * @private
+     */
     setupEventListeners() {
         const canvas = this.renderer.domElement;
         const { 
@@ -68,6 +84,12 @@ export class ViewerControls {
         window.addEventListener('resize', resize);
     }
 
+    /**
+     * Converts client (screen) coordinates to normalized device coordinates (-1 to 1).
+     * @param {number} clientX - X coordinate in client space
+     * @param {number} clientY - Y coordinate in client space
+     * @returns {THREE.Vector2} Normalized device coordinates
+     */
     clientToMouseCoordinates(clientX, clientY) {
         const rect = this.container.getBoundingClientRect();
         return new THREE.Vector2(
@@ -76,12 +98,35 @@ export class ViewerControls {
         );
     }
 
+    /**
+     * Updates the internal mouse state with new client coordinates.
+     * @param {number} clientX - X coordinate in client space
+     * @param {number} clientY - Y coordinate in client space
+     * @private
+     */
     updateMouseCoordinates(clientX, clientY) {
         const mCoord = this.clientToMouseCoordinates(clientX, clientY);
         this.state.mouse.x = mCoord.x;
         this.state.mouse.y = mCoord.y;
     }
 
+    /**
+     * Resets camera to initial position and orientation.
+     * @private
+     */
+    resetCameraPosition() {
+        this.camera.position.x = this.state.initialCameraPosition.x;
+        this.camera.position.y = this.state.initialCameraPosition.y;
+        this.camera.rotation.set(0, 0, 0);
+        this.viewer.requestRender();
+    }
+
+    /**
+     * Handles selection logic using raycasting to identify objects under pointer.
+     * @param {object} point - Event with clientX and clientY properties
+     * @param {number} timeSinceLastInteraction - Time in ms since last click/touch
+     * @private
+     */
     handleSelection(point, timeSinceLastInteraction) {
         this.updateMouseCoordinates(point.clientX, point.clientY);
         
@@ -104,26 +149,11 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
-    handleMouseClick(point, timeSinceLastInteraction) {
-        // Set mouse raycaster thresholds
-        const mouseThresholds = this.options.interaction.mouseRaycast;
-        this.raycaster.params.Line.threshold = mouseThresholds.lineThreshold;
-        this.raycaster.params.Points.threshold = mouseThresholds.pointsThreshold;
-        this.raycaster.params.Mesh.threshold = mouseThresholds.meshThreshold;
-
-        this.handleSelection(point, timeSinceLastInteraction);
-    }
-
-    handleTouchSelect(point, timeSinceLastInteraction) {
-        // Set touch raycaster thresholds
-        const touchThresholds = this.options.interaction.touchRaycast;
-        this.raycaster.params.Line.threshold = touchThresholds.lineThreshold;
-        this.raycaster.params.Points.threshold = touchThresholds.pointsThreshold;
-        this.raycaster.params.Mesh.threshold = touchThresholds.meshThreshold;
-
-        this.handleSelection(point, timeSinceLastInteraction);
-    }
-
+    /**
+     * Rotates the molecular structure based on delta movement.
+     * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+     * @private
+     */
     rotateStructure(delta) {
         const rotationSpeed = this.options.interaction.rotationSpeed;
         const xAxis = new THREE.Vector3(1, 0, 0);
@@ -138,28 +168,11 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
-    handleZoom(zoomDelta) {
-        const { minDistance, maxDistance } = this.options.camera;
-        const maxTravel = maxDistance - minDistance;
-        const currentDistance = this.camera.position.length();
-        const newDistance = THREE.MathUtils.clamp(
-            currentDistance + zoomDelta * maxTravel,
-            minDistance,
-            maxDistance,
-        );
-        
-        const direction = this.camera.position.clone().normalize();
-        this.camera.position.copy(direction.multiplyScalar(newDistance));
-        this.viewer.requestRender();
-    }
-
-    resetCameraPosition() {
-        this.camera.position.x = this.state.initialCameraPosition.x;
-        this.camera.position.y = this.state.initialCameraPosition.y;
-        this.camera.rotation.set(0, 0, 0);
-        this.viewer.requestRender();
-    }
-
+    /**
+     * Moves camera in the view plane based on delta movement.
+     * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+     * @private
+     */
     panCamera(delta) {
         const distance = this.camera.position.z;
         
@@ -185,6 +198,47 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
+    /**
+     * Sets raycast thresholds for touch interaction and handles selection.
+     * @param {object} point - Event with clientX and clientY properties
+     * @param {number} timeSinceLastInteraction - Time in ms since last touch
+     * @private
+     */
+    handleTouchSelect(point, timeSinceLastInteraction) {
+        // Set touch raycaster thresholds
+        const touchThresholds = this.options.interaction.touchRaycast;
+        this.raycaster.params.Line.threshold = touchThresholds.lineThreshold;
+        this.raycaster.params.Points.threshold = touchThresholds.pointsThreshold;
+        this.raycaster.params.Mesh.threshold = touchThresholds.meshThreshold;
+
+        this.handleSelection(point, timeSinceLastInteraction);
+    }
+
+    /**
+     * Adjusts camera distance to zoom in/out of the structure.
+     * @param {number} zoomDelta - Zoom amount (positive for zoom out, negative for zoom in)
+     * @private
+     */
+    handleZoom(zoomDelta) {
+        const { minDistance, maxDistance } = this.options.camera;
+        const maxTravel = maxDistance - minDistance;
+        const currentDistance = this.camera.position.length();
+        const newDistance = THREE.MathUtils.clamp(
+            currentDistance + zoomDelta * maxTravel,
+            minDistance,
+            maxDistance,
+        );
+        
+        const direction = this.camera.position.clone().normalize();
+        this.camera.position.copy(direction.multiplyScalar(newDistance));
+        this.viewer.requestRender();
+    }
+
+    /**
+     * Handles touch start events for both single-touch (rotation) and multi-touch (zoom/pan) gestures.
+     * @param {TouchEvent} event - Touch start event
+     * @private
+     */
     handleTouchStart(event) {
         event.preventDefault();
         const touches = event.touches;
@@ -212,6 +266,11 @@ export class ViewerControls {
         }
     }
 
+    /**
+     * Handles touch move events for rotation, pinch-zoom, and panning.
+     * @param {TouchEvent} event - Touch move event
+     * @private
+     */
     handleTouchMove(event) {
         event.preventDefault();
         const touches = event.touches;
@@ -258,6 +317,11 @@ export class ViewerControls {
         }
     }
 
+    /**
+     * Handles touch end events, including tap selection.
+     * @param {TouchEvent} event - Touch end event
+     * @private
+     */
     handleTouchEnd(event) {
         if (event.cancelable) {
             event.preventDefault();
@@ -285,6 +349,11 @@ export class ViewerControls {
         }
     }
 
+    /**
+     * Handles context menu events (right-click), including double-right-click for camera reset.
+     * @param {MouseEvent} event - Context menu event
+     * @private
+     */
     handleContextMenu(event) {
         event.preventDefault();
         const currentTime = Date.now();
@@ -297,6 +366,11 @@ export class ViewerControls {
         this.state.lastRightClickTime = currentTime;
     }
 
+    /**
+     * Handles mouse down events to initiate dragging or panning.
+     * @param {MouseEvent} event - Mouse down event
+     * @private
+     */
     handleMouseDown(event) {
         if (event.button === 2) {
             this.state.isPanning = true;
@@ -307,6 +381,11 @@ export class ViewerControls {
         this.updateMouseCoordinates(event.clientX, event.clientY);
     }
 
+    /**
+     * Handles mouse move events for rotation and panning.
+     * @param {MouseEvent} event - Mouse move event
+     * @private
+     */
     handleMouseMove(event) {
         if (!this.state.isDragging && !this.state.isPanning) {
             return;
@@ -329,11 +408,20 @@ export class ViewerControls {
         this.state.mouse.copy(newMouse);
     }
 
+    /**
+     * Handles mouse up events to end dragging or panning.
+     * @private
+     */
     handleMouseUp() {
         this.state.isDragging = false;
         this.state.isPanning = false;
     }
 
+    /**
+     * Handles click events for atom/bond selection.
+     * @param {MouseEvent} event - Click event
+     * @private
+     */
     handleClick(event) {
         if (event.button !== 0) {
             return; 
@@ -345,15 +433,29 @@ export class ViewerControls {
         }
 
         const currentTime = Date.now();
-        this.handleMouseClick(event, currentTime - this.state.lastClickTime);
+        const mouseThresholds = this.options.interaction.mouseRaycast;
+        this.raycaster.params.Line.threshold = mouseThresholds.lineThreshold;
+        this.raycaster.params.Points.threshold = mouseThresholds.pointsThreshold;
+        this.raycaster.params.Mesh.threshold = mouseThresholds.meshThreshold;
+
+        this.handleSelection(event, currentTime - this.state.lastClickTime);
         this.state.lastClickTime = currentTime;
     }
 
+    /**
+     * Handles wheel events for zooming.
+     * @param {WheelEvent} event - Wheel event
+     * @private
+     */
     handleWheel(event) {
         event.preventDefault();
         this.handleZoom(event.deltaY * this.options.camera.wheelZoomSpeed);
     }
 
+    /**
+     * Handles window resize events by adjusting camera aspect ratio and field of view.
+     * @private
+     */
     handleResize() {
         const rect = this.container.getBoundingClientRect();
         const aspect = rect.width / rect.height;
@@ -375,6 +477,9 @@ export class ViewerControls {
         this.viewer.requestRender();
     }
 
+    /**
+     * Removes all event listeners to prevent memory leaks.
+     */
     dispose() {
         const canvas = this.renderer.domElement;
         const {

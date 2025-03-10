@@ -1,8 +1,8 @@
+import { CifBlock } from '../read-cif/base.js';
 
 /**
- * Represents a covalent bond between atoms
+ * Represents a covalent bond between atoms in a crystal structure
  */
-
 export class Bond {
     /**
      * Creates a new bond
@@ -54,16 +54,16 @@ export class Bond {
         );
     }
 }
-/**
- * Represents a hydrogen bond between atoms
- */
 
+/**
+ * Represents a hydrogen bond between atoms in a crystal structure
+ */
 export class HBond {
     /**
      * Creates a new hydrogen bond
-     * @param {string} donorAtomLabel - Label of donor atom
-     * @param {string} hydrogenAtomLabel - Label of hydrogen atom
-     * @param {string} acceptorAtomLabel - Label of acceptor atom
+     * @param {string} donorAtomLabel - Label of donor atom (D)
+     * @param {string} hydrogenAtomLabel - Label of hydrogen atom (H)
+     * @param {string} acceptorAtomLabel - Label of acceptor atom (A)
      * @param {number} donorHydrogenDistance - D-H distance in Å
      * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
      * @param {number} acceptorHydrogenDistance - H···A distance in Å
@@ -131,8 +131,9 @@ export class HBond {
         );
     }
 }
+
 /**
- * Result of bond validation containing any error messages
+ * Result of bond validation containing error messages categorized by type
  */
 export class ValidationResult {
     constructor() {
@@ -141,13 +142,17 @@ export class ValidationResult {
     }
 
     /**
-     * Add an error message to the validation results
+     * Add an atom label error message to the validation results
      * @param {string} error - Error message to add
      */
     addAtomLabelError(error) {
         this.atomLabelErrors.push(error);
     }
 
+    /**
+     * Add a symmetry error message to the validation results
+     * @param {string} error - Error message to add
+     */
     addSymmetryError(error) {
         this.symmetryErrors.push(error);
     }
@@ -160,6 +165,12 @@ export class ValidationResult {
         return (this.atomLabelErrors.length + this.symmetryErrors.length) === 0;
     }
 
+    /**
+     * Generates a formatted report of all validation errors
+     * @param {Array<object>} atoms - Array of atom objects with label property
+     * @param {object} symmetry - Symmetry object with operationIds Map
+     * @returns {string} Formatted error report
+     */
     report(atoms, symmetry) {
         let reportString = '';
         if (this.atomLabelErrors.length !== 0) {
@@ -184,7 +195,16 @@ export class ValidationResult {
     }
 }
 
+/**
+ * Factory for creating and validating bonds and hydrogen bonds from CIF data
+ */
 export class BondsFactory {
+    /**
+     * Creates bonds from CIF data
+     * @param {object} cifBlock - CIF data block to parse
+     * @param {Set<string>} atomLabels - Set of valid atom labels
+     * @returns {Array<Bond>} Array of created bonds
+     */
     static createBonds(cifBlock, atomLabels) {
         try {
             const bondLoop = cifBlock.get('_geom_bond');
@@ -252,11 +272,10 @@ export class BondsFactory {
     }
 
     /**
-     * Validates bonds against crystal structure
-     * @param {CrystalStructure} structure - Structure to validate against
-     * @param bonds
-     * @param atoms
-     * @param symmetry
+     * Validates bonds against a set of atoms and symmetry operations
+     * @param {Array<Bond>} bonds - Bonds to validate
+     * @param {Array<object>} atoms - Atoms to validate against
+     * @param {object} symmetry - Symmetry operations to validate against
      * @returns {ValidationResult} Validation results
      */
     static validateBonds(bonds, atoms, symmetry) {
@@ -293,11 +312,10 @@ export class BondsFactory {
     }
 
     /**
-     * Validates h-bonds against crystal structure
-     * @param {CrystalStructure} structure - Structure to validate against
-     * @param hBonds
-     * @param atoms
-     * @param symmetry
+     * Validates hydrogen bonds against a set of atoms and symmetry operations
+     * @param {Array<HBond>} hBonds - Hydrogen bonds to validate
+     * @param {Array<object>} atoms - Atoms to validate against
+     * @param {object} symmetry - Symmetry operations to validate against
      * @returns {ValidationResult} Validation results
      */
     static validateHBonds(hBonds, atoms, symmetry) {

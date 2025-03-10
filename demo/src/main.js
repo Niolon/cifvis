@@ -2,11 +2,10 @@ import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { SVG_ICONS } from 'virtual:svg-icons';
 
-// Status message handling
 /**
- *
- * @param message
- * @param type
+ * Updates the status message displayed to the user
+ * @param {string} message - The message to display
+ * @param {string} [type] - The type of message: 'info', 'success', or 'error'
  */
 function updateStatus(message, type = 'info') {
     const statusElement = document.getElementById('status-message');
@@ -77,9 +76,10 @@ viewer.selections.onChange(selections => {
         container.appendChild(box);
     });
 });
-// File upload handling
+
 /**
- *
+ * Initializes the file upload button and drag-and-drop functionality
+ * Handles reading and loading CIF files into the viewer
  */
 function initializeFileUpload() {
     const uploadButton = document.getElementById('upload-button');
@@ -146,9 +146,9 @@ function initializeFileUpload() {
     });
 }
 
-// Hydrogen mode button
 /**
- *
+ * Initializes the hydrogen display toggle button
+ * Sets up event listeners to cycle through different hydrogen display modes
  */
 function initializeHydrogenButton() {
     const hydrogenButton = document.getElementById('hydrogen-button');
@@ -161,9 +161,9 @@ function initializeHydrogenButton() {
     });
 }
 
-// Disorder mode button
 /**
- *
+ * Initializes the disorder display toggle button
+ * Sets up event listeners to cycle through different disorder display modes
  */
 function initializeDisorderButton() {
     const disorderButton = document.getElementById('disorder-button');
@@ -177,7 +177,8 @@ function initializeDisorderButton() {
 }
 
 /**
- *
+ * Initializes the symmetry display toggle button
+ * Sets up event listeners to cycle through different symmetry display modes
  */
 function initializeSymmetryButton() {
     const symmetryButton = document.getElementById('symmetry-button');
@@ -189,9 +190,8 @@ function initializeSymmetryButton() {
     });
 }
 
-// Add to initializeUI():
 /**
- *
+ * Initializes all UI components and their event handlers
  */
 function initializeUI() {
     initializeFileUpload();
@@ -201,7 +201,8 @@ function initializeUI() {
 }
 
 /**
- *
+ * Updates the display state of UI buttons based on available structure modification options
+ * Shows or hides buttons based on whether their corresponding modifiers can be applied
  */
 function adaptButtons() {
     const hydrogenButton = document.getElementById('hydrogen-button');

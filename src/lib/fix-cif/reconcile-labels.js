@@ -1,3 +1,5 @@
+import { CifLoop } from '../read-cif/loop.js';
+
 /**
  * Normalizes an atom label for comparison
  * @param {string} label - Atom label to normalize

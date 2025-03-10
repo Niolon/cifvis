@@ -78,6 +78,7 @@ export class AtomLabelFilter extends BaseFilter {
     /**
      * Expands any range expressions in the filtered labels using available atom labels
      * @param {CrystalStructure} structure - Structure to filter
+     * @returns {Set<string>} - set of expanded labels for the range
      * @private
      */
     _expandRanges(structure) {
@@ -166,10 +167,11 @@ export class BondGenerator extends BaseFilter {
     ];
 
     /**
-     * Creates a new bond generator
-     * @param elementProperties
-     * @param {number} [toleranceFactor] - How much longer than the sum of atomic radii a bond can be
-     * @param {BondGenerator.MODES} [mode] - Initial filter mode
+     * Creates a new bond generator to generate bonds between atoms based on their atomic radii
+     * @class
+     * @param {object} elementProperties - Element properties containing atomic radii from structure-settings.js
+     * @param {number} toleranceFactor - How much longer than the sum of atomic radii a bond can be
+     * @param {BondGenerator.MODES} [mode] - Initial operation mode
      */
     constructor(elementProperties, toleranceFactor, mode = BondGenerator.MODES.KEEP) {
         super(BondGenerator.MODES, mode, 'BondGenerator', BondGenerator.PREFERRED_FALLBACK_ORDER);

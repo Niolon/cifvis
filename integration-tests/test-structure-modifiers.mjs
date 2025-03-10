@@ -75,9 +75,9 @@ console.warn = (...args) => {
 };
 
 /**
- *
- * @param summaryText
- * @param filePath
+ * Writes a summary text to the specified file.
+ * @param {string} summaryText - The summary text to be written to the file.
+ * @param {string} filePath - The path to the file where the summary will be written.
  */
 function writeSummaryToFile(summaryText, filePath) {
     try {
@@ -88,8 +88,9 @@ function writeSummaryToFile(summaryText, filePath) {
 }
 
 /**
- *
- * @param isInterim
+ * Generates a summary of the testing process with statistics.
+ * @param {boolean} [isInterim] - Whether this is an interim or final summary.
+ * @returns {string} The formatted summary text with statistics.
  */
 function generateSummary(isInterim = false) {
     const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
@@ -149,9 +150,9 @@ Error Breakdown:
 }
 
 /**
- *
- * @param message
- * @param filePath
+ * Logs a message with timestamp to the specified log file.
+ * @param {string} message - The message to be logged.
+ * @param {string} [filePath] - The path to the log file.
  */
 function logMessage(message, filePath = config.logFile) {
     const timestamp = new Date().toISOString();
@@ -164,10 +165,10 @@ function logMessage(message, filePath = config.logFile) {
 }
 
 /**
- *
- * @param errorMessage
- * @param fixed
- * @param verbose
+ * Categorizes and records a structure error into appropriate statistics.
+ * @param {string} errorMessage - The error message from the structure creation.
+ * @param {boolean} fixed - Whether this error occurred in the fixed structure.
+ * @param {boolean} [verbose] - Whether to log this error to the verbose log.
  */
 function handleStructureError(errorMessage, fixed, verbose=false) {
     let crystalStructureErrors;
@@ -226,8 +227,9 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
 }
 
 /**
- *
- * @param filePath
+ * Tests a CIF file by parsing it and applying various structure modifiers.
+ * @param {string} filePath - The path to the CIF file to test.
+ * @returns {object} Results object containing success flags, error information, and modifier errors.
  */
 async function testCIFFile(filePath) {
     stats.totalFiles++;
@@ -373,9 +375,10 @@ async function testCIFFile(filePath) {
 }
 
 /**
- *
- * @param files
- * @param startIndex
+ * Processes a batch of CIF files from the given array.
+ * @param {Array<string>} files - Array of file paths to process.
+ * @param {number} startIndex - The starting index in the array.
+ * @returns {number} The index after the last processed file.
  */
 async function processBatch(files, startIndex) {
     const endIndex = Math.min(startIndex + config.batchSize, files.length);
@@ -389,8 +392,9 @@ async function processBatch(files, startIndex) {
 }
 
 /**
- *
- * @param dir
+ * Recursively finds all CIF files in a directory and its subdirectories.
+ * @param {string} dir - The directory to search in.
+ * @returns {Promise<Array<string>>} Promise resolving to an array of CIF file paths.
  */
 async function findCIFFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -407,7 +411,9 @@ async function findCIFFiles(dir) {
 }
 
 /**
- *
+ * Main function that executes the testing process.
+ * Finds all CIF files in the specified directory, processes them in batches,
+ * and generates summary statistics.
  */
 async function main() {
     if (!existsSync(logsDir)) {

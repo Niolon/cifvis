@@ -65,6 +65,9 @@ export default [
                 'named': 'never',
                 'asyncArrow': 'always',
             }],
+            'jsdoc/check-tag-names': ['warn', {
+                'definedTags': ['vi-environment'],
+            }],
         },
     },
     {

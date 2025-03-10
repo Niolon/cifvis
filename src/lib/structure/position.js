@@ -1,11 +1,14 @@
+
+import { UnitCell } from './crystal.js';
+import { CifBlock } from '../read-cif/base.js';
 import { create, all } from 'mathjs';
 
 const math = create(all);
 
 /**
  * Abstract base class for representing positions in 3D space
+ * Instances are iterable and yield their x, y, z coordinates in sequence.
  * @abstract
- * @implements {Iterable<number>}
  */
 export class BasePosition {
     #coords;
@@ -117,8 +120,7 @@ export class CartPosition extends BasePosition {
 
     /**
      * Returns self since already in Cartesian coordinates
-     * @param {*} _ - Unused unit cell
-     * @param _unitCell
+     * @param {UnitCell} _unitCell - Unused unit cell
      * @returns {CartPosition} This position instance
      */
     toCartesian(_unitCell) {

@@ -9,7 +9,26 @@ import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../struct
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 
+/**
+ * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
+ * Tracks selected objects, their data, and handles selection state changes.
+ * Selection changes trigger registered callbacks with detailed information about
+ * selected items. Callbacks receive an array of selection objects containing:
+ * - type: 'atom', 'bond', or 'hbond'
+ * - data: Complete data for the selected item (atomData, bondData, or hbondData)
+ * - color: Hex color code used for the selection visualization
+ * This notification system allows the application to update UI elements, display 
+ * property information, or synchronize with other components when selections change.
+ * The underlying data objects (Atom, Bond, HBond) are defined in the structure folder:
+ * - Atom: lib/structure/crystal.js
+ * - Bond & HBond: lib/structure/bonds.js
+ * These classes provide additional methods and properties for working with the selected items.
+ */
 export class SelectionManager {
+    /**
+     * Creates a selection manager with the given configuration.
+     * @param {object} options - Selection configuration options
+     */
     constructor(options) {
         this.options = options;
         this.selectedObjects = new Set();
@@ -17,6 +36,10 @@ export class SelectionManager {
         this.selectedData = new Set();
     }
 
+    /**
+     * Removes invalid selections and restores valid ones after structure changes.
+     * @param {THREE.Object3D} container - Container with selectable objects
+     */
     pruneInvalidSelections(container) {
         // Clear old visual selections since the objects no longer exist
         this.selectedObjects.clear();
@@ -25,7 +48,7 @@ export class SelectionManager {
         const availableData = new Set();
         container.traverse((object) => {
             if (object.userData?.selectable) {
-                const data = this.getObjectData(object);
+                const data = this.getObjectDescriptorData(object);
                 if (data) {
                     availableData.add(JSON.stringify(data));
                 }
@@ -45,7 +68,7 @@ export class SelectionManager {
         // Find and select visual objects that match our remaining stored data
         container.traverse((object) => {
             if (object.userData?.selectable) {
-                const data = this.getObjectData(object);
+                const data = this.getObjectDescriptorData(object);
                 if (this.hasMatchingData(data)) {
                     const color = this.getColorForData(data);
                     object.select(color, this.options);
@@ -57,12 +80,23 @@ export class SelectionManager {
         this.notifyCallbacks();
     }
 
+    /**
+     * Returns a copy of the data without the color property.
+     * @param {object} data - Data object containing selection information
+     * @returns {object} Data without color information
+     */
     getDataWithoutColor(data) {
         const { color, ...rest } = data;
         return rest;
     }
 
-    getObjectData(object) {
+    /**
+     * Extracts data from an object's to create a combination of uniquely identifyable
+     * properties.
+     * @param {THREE.Object3D} object - Object to extract data from
+     * @returns {object|null} Extracted data or null if unavailable
+     */
+    getObjectDescriptorData(object) {
         if (!object.userData) {
             return null; 
         }
@@ -91,6 +125,11 @@ export class SelectionManager {
         }
     }
 
+    /**
+     * Checks if there is stored data matching the given object data.
+     * @param {object} data - Data to check against stored selections
+     * @returns {boolean} True if matching data exists
+     */
     hasMatchingData(data) {
         if (!data) {
             return false; 
@@ -99,11 +138,42 @@ export class SelectionManager {
         return Array.from(this.selectedData).some(stored => this.matchData(stored, data));
     }
 
+    /**
+     * Gets the color for a given data object, reuse the color if the data object has one 
+     * assigned, otherwise get a new color.
+     * @param {object} data - Data to get color for
+     * @returns {number} Hex color code for the data
+     */
     getColorForData(data) {
         const stored = Array.from(this.selectedData).find(stored => this.matchData(stored, data));
         return stored ? stored.color : this.getNextColor();
     }
 
+    /**
+     * Gets the next available color for a new selection.
+     * @returns {number} Hex color code for the new selection
+     */
+    getNextColor() {
+        const colorCounts = new Map();
+        this.selectedData.forEach(data => {
+            colorCounts.set(data.color, (colorCounts.get(data.color) || 0) + 1);
+        });
+        
+        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
+        if (!color) {
+            const minCount = Math.min(...colorCounts.values());
+            color = this.options.selection.markerColors.find(c => 
+                colorCounts.get(c) === minCount,
+            );
+        }
+        return color;
+    }
+
+    /**
+     * Processes selection/deselection of an object and manages selection state.
+     * @param {THREE.Object3D} object - Object to handle selection for
+     * @returns {number|null} The selection color or null if selection failed
+     */
     handle(object) {
         if (this.options.mode === 'single') {
             this.selectedObjects.forEach(selected => {
@@ -113,7 +183,7 @@ export class SelectionManager {
             this.selectedData.clear();
         }
 
-        const data = this.getObjectData(object);
+        const data = this.getObjectDescriptorData(object);
         if (!data) {
             return null; 
         }
@@ -135,6 +205,12 @@ export class SelectionManager {
         return color;
     }
 
+    /**
+     * Compares two data objects to determine if they represent the same entity.
+     * @param {object} data1 - First data object
+     * @param {object} data2 - Second data object
+     * @returns {boolean} True if data objects match
+     */
     matchData(data1, data2) {
         if (data1.type !== data2.type) {
             return false; 
@@ -155,16 +231,28 @@ export class SelectionManager {
         }
     }
 
+    /**
+     * Adds an object to the selection set.
+     * @param {THREE.Object3D} object - Object to add to selection
+     * @param {number} [color] - Color to use for selection visualization
+     */
     add(object, color) {
         object.select(color || this.getNextColor(), this.options);
         this.selectedObjects.add(object);
     }
 
+    /**
+     * Removes an object from the selection set.
+     * @param {THREE.Object3D} object - Object to remove from selection
+     */
     remove(object) {
         this.selectedObjects.delete(object);
         object.deselect();
     }
 
+    /**
+     * Clears all current selections.
+     */
     clear() {
         this.selectedObjects.forEach(object => {
             this.remove(object);
@@ -174,26 +262,18 @@ export class SelectionManager {
         this.notifyCallbacks();
     }
 
-    getNextColor() {
-        const colorCounts = new Map();
-        this.selectedData.forEach(data => {
-            colorCounts.set(data.color, (colorCounts.get(data.color) || 0) + 1);
-        });
-        
-        let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
-        if (!color) {
-            const minCount = Math.min(...colorCounts.values());
-            color = this.options.selection.markerColors.find(c => 
-                colorCounts.get(c) === minCount,
-            );
-        }
-        return color;
-    }
-
+    /**
+     * Registers a callback to be notified when selection changes.
+     * @param {Function} callback - Function called with updated selections
+     */
     onChange(callback) {
         this.selectionCallbacks.add(callback);
     }
 
+    /**
+     * Notifies all registered callbacks about selection changes.
+     * See the class JSDoc documentation for more information.
+     */
     notifyCallbacks() {
         const selections = Array.from(this.selectedObjects).map(object => ({
             type: object.userData.type,
@@ -205,6 +285,11 @@ export class SelectionManager {
         this.selectionCallbacks.forEach(callback => callback(selections));
     }
 
+    /**
+     * Sets the selection mode (single or multiple).
+     * @param {string} mode - 'single' or 'multiple'
+     * @throws {Error} If mode value is invalid
+     */
     setMode(mode) {
         if (mode !== 'single' && mode !== 'multiple') {
             throw new Error('Selection mode must be either "single" or "multiple"');
@@ -215,7 +300,7 @@ export class SelectionManager {
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
             const lastSelected = selectedObjects[selectedObjects.length - 1];
-            const lastData = this.getObjectData(lastSelected);
+            const lastData = this.getObjectDescriptorData(lastSelected);
             
             this.clear();
             if (lastData) {
@@ -226,13 +311,55 @@ export class SelectionManager {
         }
     }
 
+    /**
+     * Releases resources used by the selection manager.
+     */
     dispose() {
         this.clear();
         this.selectionCallbacks.clear();
     }
 }
 
-export class CrystalViewer {    
+/**
+ * Main viewer class for 3D crystal structure visualization.
+ * Handles structure loading, display, and user interaction.
+ * Provides an interactive 3D visualization of crystallographic information:
+ * - Loads structures from CIF (Crystallographic Information File) format
+ * - Displays atoms with proper elemental colors and sizes
+ * - Renders bonds between atoms and hydrogen bonds as defined in the CIF file
+ * - Supports anisotropic displacement parameters (ADPs) visualization
+ * - Allows interactive rotation, zooming, and selection of structure elements
+ * - Provides structure modification capabilities through Structure Modifiers
+ *
+ * The viewer manages several key components:
+ * - selections: SelectionManager for handling atom/bond selections
+ * - modifiers: Structure modifiers that control display options:
+ * - removeatoms: Filter specific atoms from the display
+ * - addhydrogen: Fix isolated hydrogen atoms
+ * - missingbonds: Generate bonds based on atomic distances
+ * - hydrogen: Control hydrogen display (none/constant/anisotropic)
+ * - disorder: Filter atoms based on disorder groups
+ * - symmetry: Generate symmetry-equivalent atoms and bonds
+ * @see SelectionManager for selection handling details
+ * @see ../structure/structure-modifiers/modes.js and fixers.js for structure modifiers
+ */
+export class CrystalViewer {
+    /**
+     * Creates a new crystal structure viewer with the given configuration.
+     * @param {HTMLElement} container - DOM element to contain the viewer
+     * @param {object} [options] - Viewer configuration options including:
+     * - camera: Camera settings (fov, position, distance limits, etc.)
+     * - selection: Selection behavior configuration
+     * - interaction: User interaction parameters (rotation speed, click thresholds)
+     * - atomDetail/atomColorRoughness/etc.: Appearance settings for atoms
+     * - bondRadius/bondColor/etc.: Appearance settings for bonds
+     * - elementProperties: Per-element appearance settings (colors, radii)
+     * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
+     * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
+     * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
+     * see ./structure-settings.js for the default values
+     * @throws {Error} If an invalid render mode is provided
+     */
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
         if (options.renderMode && !validRenderModes.includes(options.renderMode)) {
@@ -310,6 +437,10 @@ export class CrystalViewer {
 
     }
 
+    /**
+     * Sets up the Three.js scene, camera, and renderer.
+     * @private
+     */
     setupScene() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
@@ -331,6 +462,25 @@ export class CrystalViewer {
         this.camera.lookAt(this.cameraTarget);
     }
 
+    /**
+     * Loads a crystal structure from CIF text.
+     * This is the main entry point for displaying a new structure.
+     * @param {string} cifText - CIF format text content
+     * @param {number} [cifBlockIndex] - Index of the CIF block to load (for multi-block CIFs)
+     * @returns {Promise<object>} Result object with:
+     * - success: Boolean indicating if loading succeeded
+     * - error: Error message if loading failed
+     * 
+     * Example:
+     * ```
+     * const result = await viewer.loadStructure(cifContent);
+     * if (result.success) {
+     *   console.log('Structure loaded successfully');
+     * } else {
+     *   console.error('Failed to load structure:', result.error);
+     * }
+     * ```
+     */
     async loadStructure(cifText, cifBlockIndex=0) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
@@ -362,6 +512,12 @@ export class CrystalViewer {
         }
     }
 
+    /**
+     * Initializes a new structure in the viewer with proper orientation.
+     * Called automatically after loadStructure() succeeds.
+     * @returns {Promise<object>} Object indicating success
+     * @private
+     */
     async setupNewStructure() {
         this.selections.clear();
         
@@ -405,7 +561,13 @@ export class CrystalViewer {
         this.requestRender();
         return { success: true };
     }
-    
+
+    /**
+     * Updates the current structure while preserving rotation.
+     * Used internally when structure modifiers change.
+     * @returns {Promise<object>} Object indicating success or failure
+     * @private
+     */
     async updateStructure() {
         try {
             const currentRotation = this.moleculeContainer.matrix.clone();
@@ -422,7 +584,11 @@ export class CrystalViewer {
             return { success: false, error: error.message };
         }
     }
-    
+
+    /**
+     * Updates the 3D visualization by applying structure modifiers and creating visual elements.
+     * @private
+     */
     update3DOrtep() {
         this.removeStructure();
         let structure = this.state.baseStructure;
@@ -436,7 +602,11 @@ export class CrystalViewer {
         this.state.currentStructure = ortep3DGroup;
         this.selections.pruneInvalidSelections(this.moleculeContainer);
     }
-    
+
+    /**
+     * Updates camera position and parameters based on structure size.
+     * @private
+     */
     updateCamera() {
         this.controls.handleResize();
         const distance = calculateCameraDistance(this.moleculeContainer, this.camera);
@@ -447,6 +617,10 @@ export class CrystalViewer {
         this.options.camera.maxDistance = distance * 2;
     }
 
+    /**
+     * Removes the current structure and frees associated resources.
+     * @private
+     */
     removeStructure() {
         this.moleculeContainer.traverse((object) => {
             if (object.geometry) {
@@ -459,6 +633,25 @@ export class CrystalViewer {
         this.moleculeContainer.clear();
     }
 
+    /**
+     * Cycles through available modes for a structure modifier.
+     * This method allows switching between different visualization options for:
+     * - hydrogen: Control how hydrogen atoms are displayed
+     * - disorder: Control which disorder groups are shown
+     * - symmetry: Control how symmetry-equivalent atoms are generated
+     * - removeatoms: Toggle atom filtering on/off
+     * @param {string} modifierName - Name of the modifier to cycle ('hydrogen', 'disorder', 'symmetry', etc.)
+     * @returns {Promise<object>} Result object with:
+     * - success: Boolean indicating if mode change succeeded
+     * - mode: The new active mode after cycling
+     * - error: Error message if change failed
+     * 
+     * Example:
+     * ```
+     * const result = await viewer.cycleModifierMode('hydrogen');
+     * console.log(`New hydrogen display mode: ${result.mode}`);
+     * ```
+     */
     async cycleModifierMode(modifierName) {
         const selectedModifier = this.modifiers[modifierName];
         const mode = selectedModifier.cycleMode(this.state.baseStructure);
@@ -471,6 +664,21 @@ export class CrystalViewer {
         return { ...result, mode };
     }
 
+    /**
+     * Gets the number of available modes for a structure modifier.
+     * Useful for determining if a modifier has options for the current structure.
+     * @param {string} modifierName - Name of the modifier to check ('hydrogen', 'disorder', 'symmetry', etc.)
+     * @returns {number|boolean} Number of available modes or false if no structure loaded
+     * 
+     * Example:
+     * ```
+     * // Check if hydrogen display options are available
+     * const hydrogenModes = viewer.numberModifierModes('hydrogen');
+     * if (hydrogenModes > 1) {
+     *   // Enable hydrogen toggle button
+     * }
+     * ```
+     */
     numberModifierModes(modifierName) {
         if (!this.state.baseStructure) {
             return false; 
@@ -481,6 +689,11 @@ export class CrystalViewer {
         return selectedModifier.getApplicableModes(atomfilteredStructure).length;
     }
 
+    /**
+     * Animation loop that renders the scene when needed.
+     * Called automatically; users don't need to invoke this directly.
+     * @private
+     */
     animate() {
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.renderer.render(this.scene, this.camera);
@@ -489,12 +702,22 @@ export class CrystalViewer {
         requestAnimationFrame(this.animate.bind(this));
     }
 
+    /**
+     * Requests a render update for the on-demand rendering mode (on by default).
+     * Call this after making changes that should be reflected in the display.
+     */
     requestRender() {
         if (this.options.renderMode === 'onDemand') {
             this.needsRender = true;
         }
     }
 
+    /**
+     * Resizes the renderer to match the container's display size.
+     * Called automatically on window resize.
+     * @returns {boolean} True if resize was needed
+     * @private
+     */
     resizeRendererToDisplaySize() {
         const canvas = this.renderer.domElement;
         const pixelRatio = window.devicePixelRatio || 1;
@@ -516,10 +739,32 @@ export class CrystalViewer {
         return needResize;
     }
 
+    /**
+     * Selects specific atoms by their labels.
+     * Allows programmatic selection of atoms without user interaction.
+     * @param {string[]} atomLabels - Array of atom labels to select
+     * 
+     * Example:
+     * ```
+     * // Select specific atoms of interest
+     * viewer.selectAtoms(['C1', 'O1', 'N2']);
+     * ```
+     */
     selectAtoms(atomLabels) {
         this.selections.selectAtoms(atomLabels, this.moleculeContainer);
     }
 
+    /**
+     * Releases all resources used by the viewer.
+     * Call this when the viewer is no longer needed to prevent memory leaks.
+     * 
+     * Example:
+     * ```
+     * // When removing the viewer from the application
+     * viewer.dispose();
+     * viewer = null;
+     * ```
+     */
     dispose() {
         this.controls.dispose();
         

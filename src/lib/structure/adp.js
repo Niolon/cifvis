@@ -1,6 +1,8 @@
 import { create, all } from 'mathjs';
 
 import { uCifToUCart, adpToMatrix } from './fract-to-cart.js';
+import { UnitCell } from './crystal.js';
+import { CifBlock } from '../read-cif/base.js';
 
 const math = create(all, {});
 
@@ -8,6 +10,10 @@ const math = create(all, {});
  * Represents isotropic atomic displacement parameters
  */
 export class UIsoADP {
+    /**
+     * Creates an isotropic atomic displacement parameter instance.
+     * @param {number} uiso - Isotropic U value in Å²
+     */
     constructor(uiso) {
         this.uiso = uiso;
     }
@@ -108,14 +114,18 @@ export class UAnisoADP {
 
         return math.matrix(transformationMatrix);
     }
-}/**
-  * Factory class for creating appropriate ADP objects from CIF data
-  */
+}
+
+/**
+ * Factory class for creating appropriate ADP objects from CIF data.
+ * Handles both isotropic and anisotropic displacement parameters in various formats.
+ */
 export class ADPFactory {
     /**
-     * Creates the appropriate ADP object based on available CIF data
-     * @param {CifBlock} cifBlock - The CIF data block
-     * @param {number} atomIndex - Index in atom_site loop
+     * Creates the appropriate ADP object based on available CIF data.
+     * Tries multiple possible sources for displacement parameters in order of preference.
+     * @param {CifBlock} cifBlock - The CIF data block containing atomic parameters
+     * @param {number} atomIndex - Index of the atom in the atom_site loop
      * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if no valid data
      */
     static fromCIF(cifBlock, atomIndex) {
@@ -166,11 +176,12 @@ export class ADPFactory {
     }
 
     /**
-     * Creates ADP from explicitly specified type
-     * @param cifBlock
-     * @param atomIndex
-     * @param label
-     * @param type
+     * Creates ADP from explicitly specified type in the CIF file.
+     * @param {CifBlock} cifBlock - The CIF data block containing atomic parameters
+     * @param {number} atomIndex - Index of the atom in the atom_site loop
+     * @param {string} label - Atom label for identifying the atom in anisotropic data
+     * @param {string} type - Explicit ADP type specified in the CIF (e.g., 'Uani', 'Biso')
+     * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if creation fails
      * @private
      */
     static createFromExplicitType(cifBlock, atomIndex, label, type) {
@@ -193,9 +204,10 @@ export class ADPFactory {
     }
 
     /**
-     * Checks if an atom is present in the anisotropic data loop
-     * @param cifBlock
-     * @param label
+     * Checks if an atom is present in the anisotropic displacement parameter loop.
+     * @param {CifBlock} cifBlock - The CIF data block to check
+     * @param {string} label - Atom label to search for
+     * @returns {boolean} True if the atom has anisotropic data, false otherwise
      * @private
      */
     static isInAnisoLoop(cifBlock, label) {
@@ -209,9 +221,11 @@ export class ADPFactory {
     }
 
     /**
-     * Creates anisotropic U-based ADP
-     * @param cifBlock
-     * @param label
+     * Creates anisotropic ADP from U(cif) convention data in the atom_site_aniso loop.
+     * @param {CifBlock} cifBlock - The CIF data block containing anisotropic data
+     * @param {string} label - Atom label to find in the anisotropic data
+     * @returns {UAnisoADP|null} New UAnisoADP instance or null if data is invalid
+     * @throws {Error} If the atom has a Uani type but no anisotropic data is found
      * @private
      */
     static createUani(cifBlock, label) {
@@ -223,7 +237,6 @@ export class ADPFactory {
         }
         const anisoLabels = anisoSite.get(['_atom_site_aniso.label', '_atom_site_aniso_label']);
         const anisoIndex = anisoLabels.indexOf(label);
-        0;
         if (anisoIndex === -1) {
             throw new Error(`Atom ${label} has ADP type Uani, but was not found in atom_site_aniso.label`);
         }
@@ -245,9 +258,11 @@ export class ADPFactory {
     }
 
     /**
-     * Creates anisotropic B-based ADP
-     * @param cifBlock
-     * @param label
+     * Creates anisotropic ADP from B conventation data in the atom_site_aniso loop.
+     * @param {CifBlock} cifBlock - The CIF data block containing anisotropic data
+     * @param {string} label - Atom label to find in the anisotropic data
+     * @returns {UAnisoADP|null} New UAnisoADP instance or null if data is invalid
+     * @throws {Error} If the atom has a Bani type but no anisotropic data is found
      * @private
      */
     static createBani(cifBlock, label) {
@@ -281,9 +296,10 @@ export class ADPFactory {
     }
 
     /**
-     * Creates isotropic U-based ADP
-     * @param cifBlock
-     * @param atomIndex
+     * Creates isotropic ADP from Uiso data in the atom_site loop.
+     * @param {CifBlock} cifBlock - The CIF data block containing atom data
+     * @param {number} atomIndex - Index of the atom in the atom_site loop
+     * @returns {UIsoADP|null} New UIsoADP instance or null if data is invalid
      * @private
      */
     static createUiso(cifBlock, atomIndex) {
@@ -306,9 +322,10 @@ export class ADPFactory {
     }
 
     /**
-     * Creates isotropic B-based ADP
-     * @param cifBlock
-     * @param atomIndex
+     * Creates isotropic ADP from B conventation data in the atom_site loop.
+     * @param {CifBlock} cifBlock - The CIF data block containing atom data
+     * @param {number} atomIndex - Index of the atom in the atom_site loop
+     * @returns {UIsoADP|null} New UIsoADP instance or null if data is invalid
      * @private
      */
     static createBiso(cifBlock, atomIndex) {
