@@ -74,14 +74,24 @@ const Jy = [
 ];
 class Cu {
   /**
-  * Creates a new CIF loop instance.
-  * @constructor
-  * @param {Array<string>} lines - Raw lines of the loop construct
-  * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
-  */
+   * Creates a new CIF loop instance.
+   * @class
+   * @param {Array<string>} headerLines - Column header lines from the CIF
+   * @param {Array<string>} dataLines - Data value lines from the CIF
+   * @param {number} endIndex - Index where the loop ends in the original CIF
+   * @param {boolean} splitSU - Whether to split standard uncertainties into value and uncertainty
+   * @param {string} [name] - Loop name, will be auto-detected if omitted
+   */
   constructor(e, t, n, i, a = null) {
     this.splitSU = i, this.headerLines = e, this.dataLines = t, this.endIndex = n, this.headers = null, this.data = null, this.name = null, a ? this.name = a : this.name = this.findCommonStart();
   }
+  /**
+   * Creates a CifLoop instance from raw CIF lines starting with 'loop_'.
+   * @static
+   * @param {Array<string>} lines - Raw CIF lines starting with 'loop_'
+   * @param {boolean} splitSU - Whether to split standard uncertainties
+   * @returns {CifLoop} New CifLoop instance with extracted headers and data
+   */
   static fromLines(e, t) {
     let n = 1;
     for (; n < e.length && e[n].trim().startsWith("_"); )
@@ -94,9 +104,13 @@ class Cu {
     return new Cu(i, o, l, t);
   }
   /**
-  * Parses loop content into structured data.
-  * Processes headers and values, handling standard uncertainties if enabled.
-  */
+   * Parses loop content into structured data.
+   * Processes headers and values, handling standard uncertainties if enabled.
+   * Extracts multi-line strings and populates the data property with column values.
+   * @returns {void}
+   * @throws {Error} If the data values cannot be evenly distributed into columns
+   * @throws {Error} If the loop contains no data values
+   */
   parse() {
     if (this.data !== null)
       return;
@@ -130,10 +144,12 @@ entries are: ${n}`
     }
   }
   /**
-  * Gets the common name prefix shared by all headers.
-  * @returns {string} Common prefix without the trailing underscore
-  * @private
-  */
+   * Gets the common name prefix shared by all headers to identify the loop type.
+   * First checks against standard loop names, then tries dot-based splitting,
+   * and finally analyzes underscore segments to find common parts.
+   * @param {boolean} [checkStandardNames] - Whether to check against known standard loop names
+   * @returns {string} Common prefix without the trailing underscore
+   */
   findCommonStart(e = !0) {
     if (e) {
       for (const s of Jy)
@@ -167,12 +183,12 @@ entries are: ${n}`
     return a;
   }
   /**
-  * Gets column data for given keys.
-  * @param {(string|string[])} keys - Key or array of keys to try
-  * @param {*} [defaultValue=null] - Value to return if keys not found
-  * @returns {Array} Column data
-  * @throws {Error} If no keys found and no default provided
-  */
+   * Gets column data for given keys, trying each key in turn.
+   * @param {string|Array<string>} keys - Key or array of keys to try
+   * @param {*} [defaultValue] - Value to return if none of the keys are found
+   * @returns {Array} Column data for the first matching key
+   * @throws {Error} If no keys found and no default value provided
+   */
   get(e, t = null) {
     this.parse();
     const n = Array.isArray(e) ? e : [e];
@@ -186,12 +202,13 @@ entries are: ${n}`
     throw new Error(`None of the keys [${n.join(", ")}] found in CIF loop ${this.name}`);
   }
   /**
-   * Gets value at specific index for one of given keys.
-   * @param {(string|string[])} keys - Key or array of keys to try
-   * @param {number} index - Row index
-   * @param {*} [defaultValue=null] - Value to return if keys not found
-   * @returns {*} Value at index
-   * @throws {Error} If index out of bounds or keys not found
+   * Gets value at specific row index for one of the given keys.
+   * @param {string|Array<string>} keys - Key or array of keys to try
+   * @param {number} index - Row index (0-based)
+   * @param {*} [defaultValue] - Value to return if keys not found
+   * @returns {*} Value at the specified index
+   * @throws {Error} If index is out of bounds
+   * @throws {Error} If none of the keys are found and no default value provided
    */
   getIndex(e, t, n = null) {
     this.parse();
@@ -209,23 +226,23 @@ entries are: ${n}`
     );
   }
   /**
-  * Gets all column headers.
-  * @returns {Array<string>} Array of header names
-  */
+   * Gets all column headers, parsing the loop first if needed.
+   * @returns {Array<string>} Array of all header names
+   */
   getHeaders() {
     return this.headers || this.parse(), this.headers;
   }
   /**
-  * Gets the common name prefix shared by all headers.
-  * @returns {string} Common prefix without the trailing underscore
-  */
+   * Gets the common name prefix shared by all headers.
+   * @returns {string} Common prefix identifying the loop type
+   */
   getName() {
     return this.name;
   }
   /**
-  * Gets the line index where this loop ends.
-  * @returns {number} Index of the last line of the loop
-  */
+   * Gets the line index where this loop ends in the original CIF.
+   * @returns {number} Index of the last line of the loop
+   */
   getEndIndex() {
     return this.endIndex;
   }
@@ -268,9 +285,9 @@ function tx(r, e, t) {
 class rx {
   /**
    * Creates a new CIF parser instance.
-   * @constructor
+   * @class
    * @param {string} cifString - Raw CIF file content
-   * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
+   * @param {boolean} [splitSU] - Whether to split standard uncertainties
    */
   constructor(e, t = !0) {
     this.splitSU = t, this.rawCifBlocks = this.splitCifBlocks(`
@@ -344,9 +361,9 @@ data_` + n[i], l = a.match(s).length;
 class rd {
   /**
    * Creates a new CIF block instance.
-   * @constructor
+   * @class
    * @param {string} blockText - Raw text of the CIF block
-   * @param {boolean} [splitSU=true] - Whether to split standard uncertainties
+   * @param {boolean} [splitSU] - Whether to split standard uncertainties
    */
   constructor(e, t = !0) {
     this.rawText = e, this.splitSU = t, this.data = null, this.dataBlockName = null;
@@ -409,7 +426,7 @@ class rd {
   /**
    * Gets a value from the CIF block, trying multiple possible keys.
    * @param {(string|Array<string>)} keys - Key or array of keys to try
-   * @param {*} [defaultValue=null] - Value to return if keys not found
+   * @param {*} [defaultValue] - Value to return if keys not found
    * @returns {*} Found value or default value
    * @throws {Error} If no keys found and no default provided
    */
@@ -31024,7 +31041,7 @@ class hy extends Su {
   }
   /**
    * Returns self since already in Cartesian coordinates
-   * @param {*} _ - Unused unit cell
+   * @param {UnitCell} _unitCell - Unused unit cell
    * @returns {CartPosition} This position instance
    */
   toCartesian(e) {
@@ -31067,6 +31084,10 @@ class K8 {
 }
 const nn = Si(ea, {});
 class Yi {
+  /**
+   * Creates an isotropic atomic displacement parameter instance.
+   * @param {number} uiso - Isotropic U value in Å²
+   */
   constructor(e) {
     this.uiso = e;
   }
@@ -31113,10 +31134,10 @@ class vi {
     );
   }
   /**
-  * Converts ADPs to Cartesian coordinate system
-  * @param {UnitCell} unitCell - Cell parameters for transformation
-  * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
-  */
+   * Converts ADPs to Cartesian coordinate system
+   * @param {UnitCell} unitCell - Cell parameters for transformation
+   * @returns {number[]} ADPs in Cartesian coordinates [U11, U22, U33, U12, U13, U23]
+   */
   getUCart(e) {
     return Z8(
       e.fractToCartMatrix,
@@ -31124,11 +31145,11 @@ class vi {
     );
   }
   /**
-  * Generates the transformation matrix to transform a sphere already scaled for probability
-  * to an ORTEP ellipsoid
-  * @param {UnitCell} unitCell - unitCell object for the unit cell information
-  * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
-  */
+   * Generates the transformation matrix to transform a sphere already scaled for probability
+   * to an ORTEP ellipsoid
+   * @param {UnitCell} unitCell - unitCell object for the unit cell information
+   * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
+   */
   getEllipsoidMatrix(e) {
     const t = fy(this.getUCart(e)), { eigenvectors: n } = nn.eigs(t), i = nn.transpose(nn.matrix(n.map((u) => u.vector))), a = nn.matrix(n.map((u) => u.value > 0 ? u.value : NaN)), s = nn.det(i), o = nn.diag(a.map(Math.sqrt));
     let l;
@@ -31142,9 +31163,10 @@ class vi {
 }
 class Ar {
   /**
-   * Creates the appropriate ADP object based on available CIF data
-   * @param {CifBlock} cifBlock - The CIF data block
-   * @param {number} atomIndex - Index in atom_site loop
+   * Creates the appropriate ADP object based on available CIF data.
+   * Tries multiple possible sources for displacement parameters in order of preference.
+   * @param {CifBlock} cifBlock - The CIF data block containing atomic parameters
+   * @param {number} atomIndex - Index of the atom in the atom_site loop
    * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if no valid data
    */
   static fromCIF(e, t) {
@@ -31175,7 +31197,12 @@ class Ar {
     return l !== null ? l : null;
   }
   /**
-   * Creates ADP from explicitly specified type
+   * Creates ADP from explicitly specified type in the CIF file.
+   * @param {CifBlock} cifBlock - The CIF data block containing atomic parameters
+   * @param {number} atomIndex - Index of the atom in the atom_site loop
+   * @param {string} label - Atom label for identifying the atom in anisotropic data
+   * @param {string} type - Explicit ADP type specified in the CIF (e.g., 'Uani', 'Biso')
+   * @returns {(UIsoADP|UAnisoADP|null)} The appropriate ADP object or null if creation fails
    * @private
    */
   static createFromExplicitType(e, t, n, i) {
@@ -31197,7 +31224,10 @@ class Ar {
     }
   }
   /**
-   * Checks if an atom is present in the anisotropic data loop
+   * Checks if an atom is present in the anisotropic displacement parameter loop.
+   * @param {CifBlock} cifBlock - The CIF data block to check
+   * @param {string} label - Atom label to search for
+   * @returns {boolean} True if the atom has anisotropic data, false otherwise
    * @private
    */
   static isInAnisoLoop(e, t) {
@@ -31208,7 +31238,11 @@ class Ar {
     }
   }
   /**
-   * Creates anisotropic U-based ADP
+   * Creates anisotropic ADP from U(cif) convention data in the atom_site_aniso loop.
+   * @param {CifBlock} cifBlock - The CIF data block containing anisotropic data
+   * @param {string} label - Atom label to find in the anisotropic data
+   * @returns {UAnisoADP|null} New UAnisoADP instance or null if data is invalid
+   * @throws {Error} If the atom has a Uani type but no anisotropic data is found
    * @private
    */
   static createUani(e, t) {
@@ -31225,7 +31259,11 @@ class Ar {
     return [s, o, l, u, c, f].some(isNaN) ? null : new vi(s, o, l, u, c, f);
   }
   /**
-   * Creates anisotropic B-based ADP
+   * Creates anisotropic ADP from B conventation data in the atom_site_aniso loop.
+   * @param {CifBlock} cifBlock - The CIF data block containing anisotropic data
+   * @param {string} label - Atom label to find in the anisotropic data
+   * @returns {UAnisoADP|null} New UAnisoADP instance or null if data is invalid
+   * @throws {Error} If the atom has a Bani type but no anisotropic data is found
    * @private
    */
   static createBani(e, t) {
@@ -31242,7 +31280,10 @@ class Ar {
     return [s, o, l, u, c, f].some(isNaN) ? null : vi.fromBani(s, o, l, u, c, f);
   }
   /**
-   * Creates isotropic U-based ADP
+   * Creates isotropic ADP from Uiso data in the atom_site loop.
+   * @param {CifBlock} cifBlock - The CIF data block containing atom data
+   * @param {number} atomIndex - Index of the atom in the atom_site loop
+   * @returns {UIsoADP|null} New UIsoADP instance or null if data is invalid
    * @private
    */
   static createUiso(e, t) {
@@ -31258,7 +31299,10 @@ class Ar {
     }
   }
   /**
-   * Creates isotropic B-based ADP
+   * Creates isotropic ADP from B conventation data in the atom_site loop.
+   * @param {CifBlock} cifBlock - The CIF data block containing atom data
+   * @param {number} atomIndex - Index of the atom in the atom_site loop
+   * @returns {UIsoADP|null} New UIsoADP instance or null if data is invalid
    * @private
    */
   static createBiso(e, t) {
@@ -31375,7 +31419,7 @@ class Wi {
   }
   /**
    * Applies the symmetry operation to an atom, including its displacement parameters if present
-   * @param {Object} atom - Atom object with fractional coordinates
+   * @param {object} atom - Atom object with fractional coordinates
    * @param {string} atom.label - Atom label
    * @param {string} atom.atomType - Chemical element symbol
    * @param {FractPosition} atom.position - Fractional position element
@@ -31420,7 +31464,7 @@ class Wi {
   }
   /**
    * Applies the symmetry operation to multiple atoms
-   * @param {Object[]} atoms - Array of atom objects
+   * @param {object[]} atoms - Array of atom objects
    * @param {string} atoms[].label - Atom label
    * @param {string} atoms[].atomType - Chemical element symbol
    * @param {FractPosition} atoms[].position - Fractional position object
@@ -31573,22 +31617,22 @@ class Pa {
 }
 class bn {
   /**
-  * Creates a new bond
-  * @param {string} atom1Label - Label of first atom
-  * @param {string} atom2Label - Label of second atom
-  * @param {number} [bondLength=null] - Bond length in Å
-  * @param {number} [bondLengthSU=null] - Standard uncertainty in bond length
-  * @param {string} [atom2SiteSymmetry=null] - Symmetry operation for second atom
-  */
+   * Creates a new bond
+   * @param {string} atom1Label - Label of first atom
+   * @param {string} atom2Label - Label of second atom
+   * @param {number} [bondLength] - Bond length in Å
+   * @param {number} [bondLengthSU] - Standard uncertainty in bond length
+   * @param {string} [atom2SiteSymmetry] - Symmetry operation for second atom
+   */
   constructor(e, t, n = null, i = null, a = null) {
     this.atom1Label = e, this.atom2Label = t, this.bondLength = n, this.bondLengthSU = i, this.atom2SiteSymmetry = a;
   }
   /**
-  * Creates a Bond from CIF data
-  * @param {CifBlock} cifBlock - Parsed CIF data block
-  * @param {number} bondIndex - Index in _geom_bond loop
-  * @returns {Bond} New bond instance
-  */
+   * Creates a Bond from CIF data
+   * @param {CifBlock} cifBlock - Parsed CIF data block
+   * @param {number} bondIndex - Index in _geom_bond loop
+   * @returns {Bond} New bond instance
+   */
   static fromCIF(e, t) {
     const n = e.get("_geom_bond");
     let i = n.getIndex(
@@ -31612,29 +31656,29 @@ class bn {
 }
 class Va {
   /**
-  * Creates a new hydrogen bond
-  * @param {string} donorAtomLabel - Label of donor atom
-  * @param {string} hydrogenAtomLabel - Label of hydrogen atom
-  * @param {string} acceptorAtomLabel - Label of acceptor atom
-  * @param {number} donorHydrogenDistance - D-H distance in Å
-  * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
-  * @param {number} acceptorHydrogenDistance - H···A distance in Å
-  * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
-  * @param {number} donorAcceptorDistance - D···A distance in Å
-  * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
-  * @param {number} hBondAngle - D-H···A angle in degrees
-  * @param {number} hBondAngleSU - Standard uncertainty in angle
-  * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
-  */
+   * Creates a new hydrogen bond
+   * @param {string} donorAtomLabel - Label of donor atom (D)
+   * @param {string} hydrogenAtomLabel - Label of hydrogen atom (H)
+   * @param {string} acceptorAtomLabel - Label of acceptor atom (A)
+   * @param {number} donorHydrogenDistance - D-H distance in Å
+   * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
+   * @param {number} acceptorHydrogenDistance - H···A distance in Å
+   * @param {number} acceptorHydrogenDistanceSU - Standard uncertainty in H···A distance
+   * @param {number} donorAcceptorDistance - D···A distance in Å
+   * @param {number} donorAcceptorDistanceSU - Standard uncertainty in D···A distance
+   * @param {number} hBondAngle - D-H···A angle in degrees
+   * @param {number} hBondAngleSU - Standard uncertainty in angle
+   * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
+   */
   constructor(e, t, n, i, a, s, o, l, u, c, f, d) {
     this.donorAtomLabel = e, this.hydrogenAtomLabel = t, this.acceptorAtomLabel = n, this.donorHydrogenDistance = i, this.donorHydrogenDistanceSU = a, this.acceptorHydrogenDistance = s, this.acceptorHydrogenDistanceSU = o, this.donorAcceptorDistance = l, this.donorAcceptorDistanceSU = u, this.hBondAngle = c, this.hBondAngleSU = f, this.acceptorAtomSymmetry = d;
   }
   /**
-  * Creates a HBond from CIF data
-  * @param {CifBlock} cifBlock - Parsed CIF data block
-  * @param {number} hBondIndex - Index in _geom_hbond loop
-  * @returns {HBond} New hydrogen bond instance
-  */
+   * Creates a HBond from CIF data
+   * @param {CifBlock} cifBlock - Parsed CIF data block
+   * @param {number} hBondIndex - Index in _geom_hbond loop
+   * @returns {HBond} New hydrogen bond instance
+   */
   static fromCIF(e, t) {
     const n = e.get("_geom_hbond"), i = n.getIndex(
       ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"],
@@ -31662,12 +31706,16 @@ class q0 {
     this.atomLabelErrors = [], this.symmetryErrors = [];
   }
   /**
-   * Add an error message to the validation results
+   * Add an atom label error message to the validation results
    * @param {string} error - Error message to add
    */
   addAtomLabelError(e) {
     this.atomLabelErrors.push(e);
   }
+  /**
+   * Add a symmetry error message to the validation results
+   * @param {string} error - Error message to add
+   */
   addSymmetryError(e) {
     this.symmetryErrors.push(e);
   }
@@ -31678,6 +31726,12 @@ class q0 {
   isValid() {
     return this.atomLabelErrors.length + this.symmetryErrors.length === 0;
   }
+  /**
+   * Generates a formatted report of all validation errors
+   * @param {Array<object>} atoms - Array of atom objects with label property
+   * @param {object} symmetry - Symmetry object with operationIds Map
+   * @returns {string} Formatted error report
+   */
   report(e, t) {
     let n = "";
     return this.atomLabelErrors.length !== 0 && (n += `Unknown atom label(s). Known labels are 
@@ -31691,6 +31745,12 @@ class q0 {
   }
 }
 class Zr {
+  /**
+   * Creates bonds from CIF data
+   * @param {object} cifBlock - CIF data block to parse
+   * @param {Set<string>} atomLabels - Set of valid atom labels
+   * @returns {Array<Bond>} Array of created bonds
+   */
   static createBonds(e, t) {
     try {
       const n = e.get("_geom_bond"), i = n.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, a = [];
@@ -31739,8 +31799,10 @@ class Zr {
     return a;
   }
   /**
-   * Validates bonds against crystal structure
-   * @param {CrystalStructure} structure - Structure to validate against
+   * Validates bonds against a set of atoms and symmetry operations
+   * @param {Array<Bond>} bonds - Bonds to validate
+   * @param {Array<object>} atoms - Atoms to validate against
+   * @param {object} symmetry - Symmetry operations to validate against
    * @returns {ValidationResult} Validation results
    */
   static validateBonds(e, t, n) {
@@ -31761,8 +31823,10 @@ class Zr {
     return i;
   }
   /**
-   * Validates h-bonds against crystal structure
-   * @param {CrystalStructure} structure - Structure to validate against
+   * Validates hydrogen bonds against a set of atoms and symmetry operations
+   * @param {Array<HBond>} hBonds - Hydrogen bonds to validate
+   * @param {Array<object>} atoms - Atoms to validate against
+   * @param {object} symmetry - Symmetry operations to validate against
    * @returns {ValidationResult} Validation results
    */
   static validateHBonds(e, t, n) {
@@ -31915,21 +31979,21 @@ function W0(r) {
 }
 class Mn {
   /**
-  * Creates a new crystal structure
-  * @param {UnitCell} unitCell - Unit cell parameters
-  * @param {Atom[]} atoms - Array of atoms in the structure
-  * @param {Bond[]} [bonds=[]] - Array of bonds between atoms
-  * @param {HBond[]} [hBonds=[]] - Array of hydrogen bonds
-  * @param {CellSymmetry} [symmetry=null] - Crystal symmetry information
-  */
+   * Creates a new crystal structure
+   * @param {UnitCell} unitCell - Unit cell parameters
+   * @param {Atom[]} atoms - Array of atoms in the structure
+   * @param {Bond[]} [bonds] - Array of bonds between atoms
+   * @param {HBond[]} [hBonds] - Array of hydrogen bonds
+   * @param {CellSymmetry} [symmetry] - Crystal symmetry information
+   */
   constructor(e, t, n = [], i = [], a = null) {
     this.cell = e, this.atoms = t, this.bonds = n, this.hBonds = i, this.recalculateConnectedGroups(), this.symmetry = a || new Pa("None", 0, [new Wi("x,y,z")]);
   }
   /**
-  * Creates a CrystalStructure from CIF data
-  * @param {CifBlock} cifBlock - Parsed CIF data block
-  * @returns {CrystalStructure} New crystal structure instance
-  */
+   * Creates a CrystalStructure from CIF data
+   * @param {CifBlock} cifBlock - Parsed CIF data block
+   * @returns {CrystalStructure} New crystal structure instance
+   */
   static fromCIF(e) {
     const t = Pf.fromCIF(e), i = e.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), a = Array.from({ length: i.length }, (d, h) => {
       try {
@@ -31952,11 +32016,11 @@ class Mn {
     return new Mn(t, a, o, l, u);
   }
   /**
-  * Finds an atom by its label 
-  * @param {string} atomLabel - Unique atom identifier
-  * @returns {Atom} Found atom
-  * @throws {Error} If atom with label not found
-  */
+   * Finds an atom by its label 
+   * @param {string} atomLabel - Unique atom identifier
+   * @returns {Atom} Found atom
+   * @throws {Error} If atom with label not found
+   */
   getAtomByLabel(e) {
     for (const n of this.atoms)
       if (n.label === e)
@@ -31965,10 +32029,9 @@ class Mn {
     throw new Error(`Could not find atom with label: ${e}, available are: ${t}`);
   }
   /**
-  * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
-  * from the provided atoms and bonds
-  * @returns {Array<{atoms: Atom[], bonds: Bond[], hBonds: HBond[]}>} Array of connected groups
-  */
+   * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
+   * from the provided atoms and bonds
+   */
   recalculateConnectedGroups() {
     const e = /* @__PURE__ */ new Map(), t = [], n = (a) => {
       if (e.has(a.label))
@@ -32020,23 +32083,23 @@ class Mn {
 }
 class Pf {
   /**
-  * Creates a new unit cell
-  * @param {number} a - a axis length in Å 
-  * @param {number} b - b axis length in Å
-  * @param {number} c - c axis length in Å 
-  * @param {number} alpha - α angle in degrees
-  * @param {number} beta - β angle in degrees
-  * @param {number} gamma - γ angle in degrees
-  * @throws {Error} If parameters invalid
-  */
+   * Creates a new unit cell
+   * @param {number} a - a axis length in Å 
+   * @param {number} b - b axis length in Å
+   * @param {number} c - c axis length in Å 
+   * @param {number} alpha - α angle in degrees
+   * @param {number} beta - β angle in degrees
+   * @param {number} gamma - γ angle in degrees
+   * @throws {Error} If parameters invalid
+   */
   constructor(e, t, n, i, a, s) {
     this._a = e, this._b = t, this._c = n, this._alpha = i, this._beta = a, this._gamma = s, this.fractToCartMatrix = Ai(this);
   }
   /**
-  * Creates a UnitCell from CIF data
-  * @param {CifBlock} cifBlock - Parsed CIF data block
-  * @returns {UnitCell} New unit cell instance
-  */
+   * Creates a UnitCell from CIF data
+   * @param {CifBlock} cifBlock - Parsed CIF data block
+   * @returns {UnitCell} New unit cell instance
+   */
   static fromCIF(e) {
     const t = [
       e.get(["_cell.length_a", "_cell_length_a"], -9999.9),
@@ -32115,8 +32178,8 @@ class ks {
    * Creates an Atom from CIF data from either the index or the atom in the 
    * _atom_site_loop
    * @param {CifBlock} cifBlock - Parsed CIF data block
-   * @param {number} [atomIndex=null] - Index in _atom_site loop
-   * @param {string} [atomLabel=null] - Label to find atom by
+   * @param {number} [atomIndex] - Index in _atom_site loop
+   * @param {string} [atomLabel] - Label to find atom by
    * @returns {Atom} New atom instance
    * @throws {Error} If neither index nor label provided
    */
@@ -46954,9 +47017,10 @@ const Ft = {
 class Ei {
   /**
    * Creates a new filter
-   * @param {Object.<string, string>} modes - Dictionary of valid modes
+   * @param {[key: string]} modes - Dictionary of valid modes
    * @param {string} defaultMode - Initial mode to use
    * @param {string} filterName - Name of the filter for error messages
+   * @param {Array<string>} fallBackOrder - Ordering of modes that are tried out if the current one is invalid
    */
   constructor(e, t, n, i = []) {
     if (new.target === Ei)
@@ -46993,7 +47057,7 @@ class Ei {
   /**
    * Abstract method: Applies the filter to a structure
    * @abstract
-   * @param {CrystalStructure} structure - Structure to filter
+   * @param {CrystalStructure} _structure - Structure to filter
    * @returns {CrystalStructure} Filtered structure
    * @throws {Error} If not implemented by subclass
    */
@@ -47003,7 +47067,7 @@ class Ei {
   /**
    * Abstract method: Gets modes applicable to the given structure
    * @abstract
-   * @param {CrystalStructure} structure - Structure to analyze
+   * @param {CrystalStructure} _structure - Structure to analyze
    * @returns {string[]} Array of applicable mode names
    * @throws {Error} If not implemented by subclass
    */
@@ -47026,7 +47090,7 @@ Si(ea);
 const ir = class ir extends Ei {
   /**
    * Creates a new hydrogen filter
-   * @param {HydrogenFilter.MODES} [mode=HydrogenFilter.MODES.NONE] - Initial filter mode
+   * @param {HydrogenFilter.MODES} [mode] - Initial filter mode
    */
   constructor(e = ir.MODES.NONE) {
     super(ir.MODES, e, "HydrogenFilter", ir.PREFERRED_FALLBACK_ORDER);
@@ -47084,7 +47148,7 @@ let sf = ir;
 const qt = class qt extends Ei {
   /**
    * Creates a new disorder filter
-   * @param {DisorderFilter.MODES} [mode=DisorderFilter.MODES.ALL] - Initial filter mode
+   * @param {DisorderFilter.MODES} [mode] - Initial filter mode
    */
   constructor(e = qt.MODES.ALL) {
     super(qt.MODES, e, "DisorderFilter", qt.PREFERRED_FALLBACK_ORDER);
@@ -47134,7 +47198,7 @@ let of = qt;
 const Rt = class Rt extends Ei {
   /**
    * Creates a new symmetry grower
-   * @param {SymmetryGrower.MODES} [mode=SymmetryGrower.MODES.BONDS_NO_HBONDS_NO] - Initial mode for growing symmetry
+   * @param {SymmetryGrower.MODES} [mode] - Initial mode for growing symmetry
    */
   constructor(e = Rt.MODES.BONDS_NO_HBONDS_NO) {
     super(Rt.MODES, e, "SymmetryGrower", Rt.PREFERRED_FALLBACK_ORDER);
@@ -47154,7 +47218,7 @@ const Rt = class Rt extends Ei {
   /**
    * Finds atoms that can be grown through symmetry operations
    * @param {CrystalStructure} structure - Structure to analyze
-   * @returns {GrowableAtoms} Atoms that can be grown through bonds and hydrogen bonds
+   * @returns {object} Atoms that can be grown through bonds and hydrogen bonds
    */
   findGrowableAtoms(e) {
     const t = e.bonds.filter(({ atom2SiteSymmetry: i }) => i && i !== ".").map(({ atom2Label: i, atom2SiteSymmetry: a }) => [i, a]), n = e.hBonds.filter(
@@ -47168,8 +47232,8 @@ const Rt = class Rt extends Ei {
    * Grows a set of atoms and their connected groups using symmetry operations
    * @param {CrystalStructure} structure - Original structure containing atoms to grow
    * @param {Array<[string, string]>} atomsToGrow - Array of [atomLabel, symmetryOperation] pairs
-   * @param {GrowthState} growthState - Current state of structure growth
-   * @returns {GrowthState} Updated growth state including new atoms and bonds
+   * @param {object} growthState - Current state of structure growth
+   * @returns {object} Updated growth state including new atoms and bonds
    * @throws {Error} If an atom is not found in any connected group
    */
   growAtomArray(e, t, n) {
@@ -47356,7 +47420,7 @@ function Xy(r, e) {
 class Ez {
   /**
    * Creates a new geometry and material cache.
-   * @param {Object} [options] - Visualisation options with defaults from structure-settings.js
+   * @param {object} [options] - Visualisation options with defaults from structure-settings.js
    */
   constructor(e = {}) {
     const t = e || {};
@@ -47495,9 +47559,9 @@ class Ez {
 }
 class Mz {
   /**
-   * Creates a new ORTEP structure visualisation.
-   * @param {CrystalStructure} crystalStructure - Input crystal structure
-   * @param {Object} [options] - Visualisation options
+   * Creates a new ORTEP structure visualization.
+   * @param {CrystalStructure} crystalStructure - Input crystal structure with atoms, bonds, and unit cell
+   * @param {object} [options] - Visualization options, extends defaults from structure-settings.js
    */
   constructor(e, t = {}) {
     const n = t || {}, i = { ...Ft.elementProperties };
@@ -47593,8 +47657,8 @@ class Mz {
       }
   }
   /**
-   * Returns a THREE.Group containing all visualisation objects.
-   * @returns {THREE.Group} Group containing all structure objects
+   * Returns a THREE.Group containing all visualization objects (atoms, bonds, H-bonds).
+   * @returns {THREE.Group} Group containing all structure objects ready for rendering
    */
   getGroup() {
     const e = new ui();
@@ -47618,6 +47682,7 @@ class Zu extends $t {
    * Creates a new selectable object.
    * @param {THREE.BufferGeometry} geometry - Object geometry
    * @param {THREE.Material} material - Object material
+   * @throws {TypeError} If instantiated directly (abstract class)
    */
   constructor(e, t) {
     if (new.target === Zu)
@@ -47641,9 +47706,9 @@ class Zu extends $t {
     });
   }
   /**
-   * Handles object selection.
+   * Handles object selection, applying highlighting and creating selection markers.
    * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {object} options - Selection options
    */
   select(e, t) {
     var a;
@@ -47654,7 +47719,7 @@ class Zu extends $t {
     this.add(i), this.marker = i;
   }
   /**
-   * Handles object deselection.
+   * Handles object deselection, removing highlighting and markers.
    */
   deselect() {
     this._selectionColor = null, this.removeSelectionMarker();
@@ -47662,8 +47727,8 @@ class Zu extends $t {
   /**
    * Creates visual marker for selection.
    * @abstract
-   * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {number} _color - Selection color in hex format
+   * @param {object} _options - Selection options
    */
   createSelectionMarker(e, t) {
     throw new Error("createSelectionMarker needs to be implemented in a subclass");
@@ -47704,7 +47769,8 @@ class Zf extends Zu {
   /**
    * Creates visual marker for selection of atoms.
    * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {object} options - Selection options containing visualization parameters
+   * @returns {THREE.Mesh} Selection marker mesh
    */
   createSelectionMarker(e, t) {
     const n = new $t(
@@ -47746,6 +47812,10 @@ class Az extends Zf {
       selectable: !0
     };
   }
+  /**
+   * Provides transformation matrices for positioning ADP rings in the three principal planes.
+   * @returns {THREE.Matrix4[]} Array of matrices for the three orthogonal planes
+   */
   get adpRingMatrices() {
     return [
       new pt().set(
@@ -47827,7 +47897,7 @@ class Cz extends Zf {
    * @param {UnitCell} unitCell - Unit cell parameters
    * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
    * @param {THREE.Material} atomMaterial - Atom material
-   * @param {Object} options - Must contain elementProperties for atom type
+   * @param {object} options - Must contain elementProperties for atom type
    * @throws {Error} If element properties not found
    */
   constructor(e, t, n, i, a) {
@@ -47846,8 +47916,8 @@ class Cz extends Zf {
 class Nz extends Zu {
   /**
    * Creates a new bond visualization.
-   * @param {Bond} bond - Bond data
-   * @param {CrystalStructure} crystalStructure - Parent structure
+   * @param {Bond} bond - Bond data containing connected atoms
+   * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
    * @param {THREE.BufferGeometry} baseBond - Bond geometry
    * @param {THREE.Material} baseBondMaterial - Bond material
    */
@@ -47863,7 +47933,8 @@ class Nz extends Zu {
   /**
    * Creates visual marker for selection of bonds.
    * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {object} options - Selection options containing visualization parameters
+   * @returns {THREE.Mesh} Selection marker mesh
    */
   createSelectionMarker(e, t) {
     const n = new $t(
@@ -47876,6 +47947,7 @@ class Nz extends Zu {
 class Kf extends ui {
   /**
    * Creates a new group object.
+   * @throws {TypeError} If instantiated directly (abstract class)
    */
   constructor() {
     if (new.target === Kf)
@@ -47886,9 +47958,9 @@ class Kf extends ui {
     return this._selectionColor;
   }
   /**
-   * Adds objects with raycasting redirection.
-   * @param {...THREE.Object3D} objects - Objects to add
-   * @returns {this}
+   * Adds objects with raycasting redirection to ensure proper selection handling.
+   * @param {...THREE.Object3D} objects - Objects to add to the group
+   * @returns {this} This group object for chaining
    */
   add(...e) {
     return e.forEach((t) => {
@@ -47914,8 +47986,8 @@ class Kf extends ui {
   }
   /**
    * Creates material for selection highlighting.
-   * @param {number} color - Color in hex format
-   * @returns {THREE.Material} Selection highlight material
+   * @param {number} color - Color in hex format (e.g., 0xFF0000 for red)
+   * @returns {THREE.Material} Selection highlight material with transparency
    */
   createSelectionMaterial(e) {
     return new Vu({
@@ -47926,9 +47998,9 @@ class Kf extends ui {
     });
   }
   /**
-   * Handles group selection.
+   * Handles group selection, applying highlighting to all children and creating selection markers.
    * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {object} options - Selection options containing visualization parameters
    */
   select(e, t) {
     this._selectionColor = e, this.traverse((i) => {
@@ -47942,7 +48014,7 @@ class Kf extends ui {
     this.add(n), this.marker = n;
   }
   /**
-   * Handles group deselection.
+   * Handles group deselection, removing highlighting and markers.
    */
   deselect() {
     this._selectionColor = null, this.marker && (this.remove(this.marker), this.marker.traverse((e) => {
@@ -47955,14 +48027,15 @@ class Kf extends ui {
   /**
    * Creates visual marker for selection.
    * @abstract
-   * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {number} _color - Selection color in hex format
+   * @param {object} _options - Selection options containing visualization parameters
+   * @throws {Error} If not implemented by subclass
    */
   createSelectionMarker(e, t) {
     throw new Error("createSelectionMarker needs to be implemented in a subclass");
   }
   /**
-   * Cleans up resources.
+   * Cleans up resources to prevent memory leaks.
    */
   dispose() {
     this.marker && this.deselect(), this.traverse((e) => {
@@ -48017,7 +48090,8 @@ class Tz extends Kf {
   /**
    * Creates visual marker for selection of hydrogen bond.
    * @param {number} color - Selection color in hex format
-   * @param {Object} options - Selection options
+   * @param {object} options - Selection options containing visualization parameters
+   * @returns {THREE.Group} Group containing selection marker meshes
    */
   createSelectionMarker(e, t) {
     const n = new ui(), i = this.createSelectionMaterial(e);
@@ -48172,8 +48246,8 @@ function Pz(r, e = !0, t = !0, n = !0) {
 const ni = Si(ea), ki = class ki extends Ei {
   /**
    * Creates a new atom label filter
-   * @param {string[]|string} [filteredLabels=[]] - Array of atom labels or comma-separated string to filter
-   * @param {AtomLabelFilter.MODES} [mode=AtomLabelFilter.MODES.OFF] - Initial filter mode
+   * @param {string[]|string} [filteredLabels] - Array of atom labels or comma-separated string to filter
+   * @param {AtomLabelFilter.MODES} [mode] - Initial filter mode
    */
   constructor(e = [], t = ki.MODES.OFF) {
     super(ki.MODES, t, "AtomLabelFilter", []), this.setFilteredLabels(e);
@@ -48210,6 +48284,7 @@ const ni = Si(ea), ki = class ki extends Ei {
   /**
    * Expands any range expressions in the filtered labels using available atom labels
    * @param {CrystalStructure} structure - Structure to filter
+   * @returns {Set<string>} - set of expanded labels for the range
    * @private
    */
   _expandRanges(e) {
@@ -48256,9 +48331,11 @@ Vr(ki, "MODES", Object.freeze({
 let uf = ki;
 const Ut = class Ut extends Ei {
   /**
-   * Creates a new bond generator
-   * @param {number} [toleranceFactor=1.3] - How much longer than the sum of atomic radii a bond can be
-   * @param {BondGenerator.MODES} [mode=BondGenerator.MODES.KEEP] - Initial filter mode
+   * Creates a new bond generator to generate bonds between atoms based on their atomic radii
+   * @class
+   * @param {object} elementProperties - Element properties containing atomic radii from structure-settings.js
+   * @param {number} toleranceFactor - How much longer than the sum of atomic radii a bond can be
+   * @param {BondGenerator.MODES} [mode] - Initial operation mode
    */
   constructor(e, t, n = Ut.MODES.KEEP) {
     super(Ut.MODES, n, "BondGenerator", Ut.PREFERRED_FALLBACK_ORDER), this.elementProperties = e, this.toleranceFactor = t;
@@ -48267,7 +48344,7 @@ const Ut = class Ut extends Ei {
    * Gets the maximum allowed bond distance between two atoms
    * @param {string} element1 - First element symbol
    * @param {string} element2 - Second element symbol
-   * @param {Object} elementProperties - Element property definitions
+   * @param {object} elementProperties - Element property definitions
    * @returns {number} Maximum allowed bond distance
    */
   getMaxBondDistance(e, t, n) {
@@ -48281,7 +48358,7 @@ const Ut = class Ut extends Ei {
    * Generates bonds between atoms based on their distances
    * @private
    * @param {CrystalStructure} structure - Structure to analyze
-   * @param {Object} elementProperties - Element property definitions
+   * @param {object} elementProperties - Element property definitions
    * @returns {Set<Bond>} Set of generated bonds
    */
   generateBonds(e, t) {
@@ -48395,8 +48472,8 @@ let lf = Ut;
 const Lr = class Lr extends Ei {
   /**
    * Creates a new isolated hydrogen fixer
-   * @param {IsolatedHydrogenFixer.MODES} [mode=IsolatedHydrogenFixer.MODES.OFF] - Initial filter mode
-   * @param {number} [maxBondDistance=1.1] - Maximum distance in Angstroms to consider for hydrogen bonds
+   * @param {IsolatedHydrogenFixer.MODES} [mode] - Initial filter mode
+   * @param {number} [maxBondDistance] - Maximum distance in Angstroms to consider for hydrogen bonds
    */
   constructor(e = Lr.MODES.OFF, t = 1.1) {
     super(
@@ -48429,7 +48506,7 @@ const Lr = class Lr extends Ei {
   /**
    * Finds hydrogen atoms that are in connected groups of size one
    * @param {CrystalStructure} structure - Structure to analyze
-   * @returns {Array<Object>} Array of isolated hydrogen atoms with their indices
+   * @returns {Array<object>} Array of isolated hydrogen atoms with their indices
    */
   findIsolatedHydrogenAtoms(e) {
     const t = [];
@@ -48443,7 +48520,7 @@ const Lr = class Lr extends Ei {
   /**
    * Creates bonds for isolated hydrogen atoms to nearby potential bonding partners
    * @param {CrystalStructure} structure - Structure to analyze
-   * @param {Array<Object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
+   * @param {Array<object>} isolatedHydrogenAtoms - Array of isolated hydrogen atoms with their indices
    * @returns {Array<Bond>} Array of new bonds
    */
   createBondsForIsolatedHydrogens(e, t) {
@@ -48599,6 +48676,10 @@ function zz(r, e) {
   });
 }
 class kz {
+  /**
+   * Creates a new viewer controls instance.
+   * @param {object} viewer - The crystal viewer instance to control
+   */
   constructor(e) {
     this.viewer = e, this.state = {
       isDragging: !1,
@@ -48615,6 +48696,10 @@ class kz {
     const { container: t, camera: n, renderer: i, moleculeContainer: a, options: s } = e;
     this.container = t, this.camera = n, this.renderer = i, this.moleculeContainer = a, this.options = s, this.doubleClickDelay = 300, this.raycaster = new UL(), this.raycaster.near = 0.1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
   }
+  /**
+   * Binds all event handlers to maintain proper 'this' context.
+   * @private
+   */
   bindEventHandlers() {
     this.boundHandlers = {
       wheel: this.handleWheel.bind(this),
@@ -48629,6 +48714,10 @@ class kz {
       resize: this.handleResize.bind(this)
     };
   }
+  /**
+   * Attaches all event listeners to the canvas and window.
+   * @private
+   */
   setupEventListeners() {
     const e = this.renderer.domElement, {
       wheel: t,
@@ -48644,6 +48733,12 @@ class kz {
     } = this.boundHandlers;
     e.addEventListener("wheel", t, { passive: !1 }), e.addEventListener("mousedown", n), e.addEventListener("mousemove", i), e.addEventListener("mouseup", a), e.addEventListener("mouseleave", a), e.addEventListener("click", s), e.addEventListener("contextmenu", o), e.addEventListener("touchstart", l, { passive: !1 }), e.addEventListener("touchmove", u, { passive: !1 }), e.addEventListener("touchend", c), window.addEventListener("resize", f);
   }
+  /**
+   * Converts client (screen) coordinates to normalized device coordinates (-1 to 1).
+   * @param {number} clientX - X coordinate in client space
+   * @param {number} clientY - Y coordinate in client space
+   * @returns {THREE.Vector2} Normalized device coordinates
+   */
   clientToMouseCoordinates(e, t) {
     const n = this.container.getBoundingClientRect();
     return new ft(
@@ -48651,10 +48746,29 @@ class kz {
       -((t - n.top) / n.height) * 2 + 1
     );
   }
+  /**
+   * Updates the internal mouse state with new client coordinates.
+   * @param {number} clientX - X coordinate in client space
+   * @param {number} clientY - Y coordinate in client space
+   * @private
+   */
   updateMouseCoordinates(e, t) {
     const n = this.clientToMouseCoordinates(e, t);
     this.state.mouse.x = n.x, this.state.mouse.y = n.y;
   }
+  /**
+   * Resets camera to initial position and orientation.
+   * @private
+   */
+  resetCameraPosition() {
+    this.camera.position.x = this.state.initialCameraPosition.x, this.camera.position.y = this.state.initialCameraPosition.y, this.camera.rotation.set(0, 0, 0), this.viewer.requestRender();
+  }
+  /**
+   * Handles selection logic using raycasting to identify objects under pointer.
+   * @param {object} point - Event with clientX and clientY properties
+   * @param {number} timeSinceLastInteraction - Time in ms since last click/touch
+   * @private
+   */
   handleSelection(e, t) {
     this.updateMouseCoordinates(e.clientX, e.clientY), this.raycaster.setFromCamera(this.state.mouse, this.camera);
     const n = [];
@@ -48668,14 +48782,11 @@ class kz {
     });
     i.length > 0 ? this.viewer.selections.handle(i[0].object) : t < this.doubleClickDelay && this.viewer.selections.clear(), this.viewer.requestRender();
   }
-  handleMouseClick(e, t) {
-    const n = this.options.interaction.mouseRaycast;
-    this.raycaster.params.Line.threshold = n.lineThreshold, this.raycaster.params.Points.threshold = n.pointsThreshold, this.raycaster.params.Mesh.threshold = n.meshThreshold, this.handleSelection(e, t);
-  }
-  handleTouchSelect(e, t) {
-    const n = this.options.interaction.touchRaycast;
-    this.raycaster.params.Line.threshold = n.lineThreshold, this.raycaster.params.Points.threshold = n.pointsThreshold, this.raycaster.params.Mesh.threshold = n.meshThreshold, this.handleSelection(e, t);
-  }
+  /**
+   * Rotates the molecular structure based on delta movement.
+   * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+   * @private
+   */
   rotateStructure(e) {
     const t = this.options.interaction.rotationSpeed, n = new pe(1, 0, 0), i = new pe(0, 1, 0);
     this.moleculeContainer.applyMatrix4(
@@ -48684,6 +48795,30 @@ class kz {
       new pt().makeRotationAxis(n, -e.y * t)
     ), this.viewer.requestRender();
   }
+  /**
+   * Moves camera in the view plane based on delta movement.
+   * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+   * @private
+   */
+  panCamera(e) {
+    const t = this.camera.position.z, n = this.camera.fov * Math.PI / 180, i = Math.tan(n / 2) * t, a = i * this.camera.aspect, s = -e.x * a, o = -e.y * i, l = new pe(), u = new pe();
+    this.camera.matrix.extractBasis(l, u, new pe()), this.camera.position.addScaledVector(l, s), this.camera.position.addScaledVector(u, o), this.viewer.requestRender();
+  }
+  /**
+   * Sets raycast thresholds for touch interaction and handles selection.
+   * @param {object} point - Event with clientX and clientY properties
+   * @param {number} timeSinceLastInteraction - Time in ms since last touch
+   * @private
+   */
+  handleTouchSelect(e, t) {
+    const n = this.options.interaction.touchRaycast;
+    this.raycaster.params.Line.threshold = n.lineThreshold, this.raycaster.params.Points.threshold = n.pointsThreshold, this.raycaster.params.Mesh.threshold = n.meshThreshold, this.handleSelection(e, t);
+  }
+  /**
+   * Adjusts camera distance to zoom in/out of the structure.
+   * @param {number} zoomDelta - Zoom amount (positive for zoom out, negative for zoom in)
+   * @private
+   */
   handleZoom(e) {
     const { minDistance: t, maxDistance: n } = this.options.camera, i = n - t, a = this.camera.position.length(), s = eL.clamp(
       a + e * i,
@@ -48692,13 +48827,11 @@ class kz {
     ), o = this.camera.position.clone().normalize();
     this.camera.position.copy(o.multiplyScalar(s)), this.viewer.requestRender();
   }
-  resetCameraPosition() {
-    this.camera.position.x = this.state.initialCameraPosition.x, this.camera.position.y = this.state.initialCameraPosition.y, this.camera.rotation.set(0, 0, 0), this.viewer.requestRender();
-  }
-  panCamera(e) {
-    const t = this.camera.position.z, n = this.camera.fov * Math.PI / 180, i = Math.tan(n / 2) * t, a = i * this.camera.aspect, s = -e.x * a, o = -e.y * i, l = new pe(), u = new pe();
-    this.camera.matrix.extractBasis(l, u, new pe()), this.camera.position.addScaledVector(l, s), this.camera.position.addScaledVector(u, o), this.viewer.requestRender();
-  }
+  /**
+   * Handles touch start events for both single-touch (rotation) and multi-touch (zoom/pan) gestures.
+   * @param {TouchEvent} event - Touch start event
+   * @private
+   */
   handleTouchStart(e) {
     e.preventDefault();
     const t = e.touches;
@@ -48717,6 +48850,11 @@ class kz {
       this.state.isDragging = !1;
     }
   }
+  /**
+   * Handles touch move events for rotation, pinch-zoom, and panning.
+   * @param {TouchEvent} event - Touch move event
+   * @private
+   */
   handleTouchMove(e) {
     e.preventDefault();
     const t = e.touches;
@@ -48745,6 +48883,11 @@ class kz {
       this.panCamera(o), this.state.twoFingerStartPos.copy(s);
     }
   }
+  /**
+   * Handles touch end events, including tap selection.
+   * @param {TouchEvent} event - Touch end event
+   * @private
+   */
   handleTouchEnd(e) {
     if (e.cancelable && e.preventDefault(), e.touches.length === 0 && e.changedTouches.length > 0) {
       if (Date.now() - this.state.clickStartTime < this.options.interaction.clickThreshold) {
@@ -48757,14 +48900,29 @@ class kz {
       this.state.isDragging = !1, this.state.pinchStartDistance = 0;
     }
   }
+  /**
+   * Handles context menu events (right-click), including double-right-click for camera reset.
+   * @param {MouseEvent} event - Context menu event
+   * @private
+   */
   handleContextMenu(e) {
     e.preventDefault();
     const t = Date.now();
     t - this.state.lastRightClickTime < this.doubleClickDelay && this.resetCameraPosition(), this.state.lastRightClickTime = t;
   }
+  /**
+   * Handles mouse down events to initiate dragging or panning.
+   * @param {MouseEvent} event - Mouse down event
+   * @private
+   */
   handleMouseDown(e) {
     e.button === 2 ? this.state.isPanning = !0 : this.state.isDragging = !0, this.state.clickStartTime = Date.now(), this.updateMouseCoordinates(e.clientX, e.clientY);
   }
+  /**
+   * Handles mouse move events for rotation and panning.
+   * @param {MouseEvent} event - Mouse move event
+   * @private
+   */
   handleMouseMove(e) {
     if (!this.state.isDragging && !this.state.isPanning)
       return;
@@ -48774,24 +48932,45 @@ class kz {
     ), i = n.clone().sub(this.state.mouse);
     this.state.isPanning ? this.panCamera(i) : this.rotateStructure(i), this.state.mouse.copy(n);
   }
+  /**
+   * Handles mouse up events to end dragging or panning.
+   * @private
+   */
   handleMouseUp() {
     this.state.isDragging = !1, this.state.isPanning = !1;
   }
+  /**
+   * Handles click events for atom/bond selection.
+   * @param {MouseEvent} event - Click event
+   * @private
+   */
   handleClick(e) {
     if (e.button !== 0 || Date.now() - this.state.clickStartTime > this.options.interaction.clickThreshold || this.state.isDragging)
       return;
-    const n = Date.now();
-    this.handleMouseClick(e, n - this.state.lastClickTime), this.state.lastClickTime = n;
+    const n = Date.now(), i = this.options.interaction.mouseRaycast;
+    this.raycaster.params.Line.threshold = i.lineThreshold, this.raycaster.params.Points.threshold = i.pointsThreshold, this.raycaster.params.Mesh.threshold = i.meshThreshold, this.handleSelection(e, n - this.state.lastClickTime), this.state.lastClickTime = n;
   }
+  /**
+   * Handles wheel events for zooming.
+   * @param {WheelEvent} event - Wheel event
+   * @private
+   */
   handleWheel(e) {
     e.preventDefault(), this.handleZoom(e.deltaY * this.options.camera.wheelZoomSpeed);
   }
+  /**
+   * Handles window resize events by adjusting camera aspect ratio and field of view.
+   * @private
+   */
   handleResize() {
     const e = this.container.getBoundingClientRect(), t = e.width / e.height;
     this.camera.aspect = t;
     const n = this.options.camera.fov;
     e.width < e.height ? this.camera.fov = 2 * Math.atan(Math.tan(n * Math.PI / 360) / t) * 180 / Math.PI : this.camera.fov = n, this.viewer.resizeRendererToDisplaySize(), this.camera.updateProjectionMatrix(), this.viewer.requestRender();
   }
+  /**
+   * Removes all event listeners to prevent memory leaks.
+   */
   dispose() {
     const e = this.renderer.domElement, {
       wheel: t,
@@ -48809,16 +48988,24 @@ class kz {
   }
 }
 class Hz {
+  /**
+   * Creates a selection manager with the given configuration.
+   * @param {object} options - Selection configuration options
+   */
   constructor(e) {
     this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
   }
+  /**
+   * Removes invalid selections and restores valid ones after structure changes.
+   * @param {THREE.Object3D} container - Container with selectable objects
+   */
   pruneInvalidSelections(e) {
     this.selectedObjects.clear();
     const t = /* @__PURE__ */ new Set();
     e.traverse((n) => {
       var i;
       if ((i = n.userData) != null && i.selectable) {
-        const a = this.getObjectData(n);
+        const a = this.getObjectDescriptorData(n);
         a && t.add(JSON.stringify(a));
       }
     }), this.selectedData = new Set(
@@ -48831,7 +49018,7 @@ class Hz {
     ), e.traverse((n) => {
       var i;
       if ((i = n.userData) != null && i.selectable) {
-        const a = this.getObjectData(n);
+        const a = this.getObjectDescriptorData(n);
         if (this.hasMatchingData(a)) {
           const s = this.getColorForData(a);
           n.select(s, this.options), this.selectedObjects.add(n);
@@ -48839,11 +49026,22 @@ class Hz {
       }
     }), this.notifyCallbacks();
   }
+  /**
+   * Returns a copy of the data without the color property.
+   * @param {object} data - Data object containing selection information
+   * @returns {object} Data without color information
+   */
   getDataWithoutColor(e) {
     const { color: t, ...n } = e;
     return n;
   }
-  getObjectData(e) {
+  /**
+   * Extracts data from an object's to create a combination of uniquely identifyable
+   * properties.
+   * @param {THREE.Object3D} object - Object to extract data from
+   * @returns {object|null} Extracted data or null if unavailable
+   */
+  getObjectDescriptorData(e) {
     if (!e.userData)
       return null;
     switch (e.userData.type) {
@@ -48869,50 +49067,28 @@ class Hz {
         return null;
     }
   }
+  /**
+   * Checks if there is stored data matching the given object data.
+   * @param {object} data - Data to check against stored selections
+   * @returns {boolean} True if matching data exists
+   */
   hasMatchingData(e) {
     return e ? Array.from(this.selectedData).some((t) => this.matchData(t, e)) : !1;
   }
+  /**
+   * Gets the color for a given data object, reuse the color if the data object has one 
+   * assigned, otherwise get a new color.
+   * @param {object} data - Data to get color for
+   * @returns {number} Hex color code for the data
+   */
   getColorForData(e) {
     const t = Array.from(this.selectedData).find((n) => this.matchData(n, e));
     return t ? t.color : this.getNextColor();
   }
-  handle(e) {
-    this.options.mode === "single" && (this.selectedObjects.forEach((i) => {
-      this.remove(i);
-    }), this.selectedObjects.clear(), this.selectedData.clear());
-    const t = this.getObjectData(e);
-    if (!t)
-      return null;
-    let n;
-    return this.hasMatchingData(t) ? (n = e.selectionColor, this.remove(e), this.selectedData = new Set(
-      Array.from(this.selectedData).filter((i) => !this.matchData(i, t))
-    )) : (n = this.getNextColor(), this.add(e, n), this.selectedData.add({ ...t, color: n })), this.notifyCallbacks(), n;
-  }
-  matchData(e, t) {
-    if (e.type !== t.type)
-      return !1;
-    switch (e.type) {
-      case "atom":
-        return e.label === t.label;
-      case "bond":
-        return e.atom1 === t.atom1 && e.atom2 === t.atom2 || e.atom1 === t.atom2 && e.atom2 === t.atom1;
-      case "hbond":
-        return e.donor === t.donor && e.hydrogen === t.hydrogen && e.acceptor === t.acceptor;
-      default:
-        return !1;
-    }
-  }
-  add(e, t) {
-    e.select(t || this.getNextColor(), this.options), this.selectedObjects.add(e);
-  }
-  remove(e) {
-    this.selectedObjects.delete(e), e.deselect();
-  }
-  clear() {
-    this.selectedObjects.forEach((e) => {
-      this.remove(e);
-    }), this.selectedObjects.clear(), this.selectedData.clear(), this.notifyCallbacks();
-  }
+  /**
+   * Gets the next available color for a new selection.
+   * @returns {number} Hex color code for the new selection
+   */
   getNextColor() {
     const e = /* @__PURE__ */ new Map();
     this.selectedData.forEach((n) => {
@@ -48927,9 +49103,77 @@ class Hz {
     }
     return t;
   }
+  /**
+   * Processes selection/deselection of an object and manages selection state.
+   * @param {THREE.Object3D} object - Object to handle selection for
+   * @returns {number|null} The selection color or null if selection failed
+   */
+  handle(e) {
+    this.options.mode === "single" && (this.selectedObjects.forEach((i) => {
+      this.remove(i);
+    }), this.selectedObjects.clear(), this.selectedData.clear());
+    const t = this.getObjectDescriptorData(e);
+    if (!t)
+      return null;
+    let n;
+    return this.hasMatchingData(t) ? (n = e.selectionColor, this.remove(e), this.selectedData = new Set(
+      Array.from(this.selectedData).filter((i) => !this.matchData(i, t))
+    )) : (n = this.getNextColor(), this.add(e, n), this.selectedData.add({ ...t, color: n })), this.notifyCallbacks(), n;
+  }
+  /**
+   * Compares two data objects to determine if they represent the same entity.
+   * @param {object} data1 - First data object
+   * @param {object} data2 - Second data object
+   * @returns {boolean} True if data objects match
+   */
+  matchData(e, t) {
+    if (e.type !== t.type)
+      return !1;
+    switch (e.type) {
+      case "atom":
+        return e.label === t.label;
+      case "bond":
+        return e.atom1 === t.atom1 && e.atom2 === t.atom2 || e.atom1 === t.atom2 && e.atom2 === t.atom1;
+      case "hbond":
+        return e.donor === t.donor && e.hydrogen === t.hydrogen && e.acceptor === t.acceptor;
+      default:
+        return !1;
+    }
+  }
+  /**
+   * Adds an object to the selection set.
+   * @param {THREE.Object3D} object - Object to add to selection
+   * @param {number} [color] - Color to use for selection visualization
+   */
+  add(e, t) {
+    e.select(t || this.getNextColor(), this.options), this.selectedObjects.add(e);
+  }
+  /**
+   * Removes an object from the selection set.
+   * @param {THREE.Object3D} object - Object to remove from selection
+   */
+  remove(e) {
+    this.selectedObjects.delete(e), e.deselect();
+  }
+  /**
+   * Clears all current selections.
+   */
+  clear() {
+    this.selectedObjects.forEach((e) => {
+      this.remove(e);
+    }), this.selectedObjects.clear(), this.selectedData.clear(), this.notifyCallbacks();
+  }
+  /**
+   * Registers a callback to be notified when selection changes.
+   * @param {Function} callback - Function called with updated selections
+   */
   onChange(e) {
     this.selectionCallbacks.add(e);
   }
+  /**
+   * Notifies all registered callbacks about selection changes.
+   * See the class JSDoc documentation for more information.
+   */
   notifyCallbacks() {
     const e = Array.from(this.selectedObjects).map((t) => ({
       type: t.userData.type,
@@ -48938,19 +49182,43 @@ class Hz {
     }));
     this.selectionCallbacks.forEach((t) => t(e));
   }
+  /**
+   * Sets the selection mode (single or multiple).
+   * @param {string} mode - 'single' or 'multiple'
+   * @throws {Error} If mode value is invalid
+   */
   setMode(e) {
     if (e !== "single" && e !== "multiple")
       throw new Error('Selection mode must be either "single" or "multiple"');
     if (this.options.mode = e, e === "single" && this.selectedObjects.size > 1) {
-      const t = Array.from(this.selectedObjects), n = t[t.length - 1], i = this.getObjectData(n);
+      const t = Array.from(this.selectedObjects), n = t[t.length - 1], i = this.getObjectDescriptorData(n);
       this.clear(), i && (this.add(n), this.selectedData.add({ ...i, color: n.selectionColor })), this.notifyCallbacks();
     }
   }
+  /**
+   * Releases resources used by the selection manager.
+   */
   dispose() {
     this.clear(), this.selectionCallbacks.clear();
   }
 }
 class Xv {
+  /**
+   * Creates a new crystal structure viewer with the given configuration.
+   * @param {HTMLElement} container - DOM element to contain the viewer
+   * @param {object} [options] - Viewer configuration options including:
+   * - camera: Camera settings (fov, position, distance limits, etc.)
+   * - selection: Selection behavior configuration
+   * - interaction: User interaction parameters (rotation speed, click thresholds)
+   * - atomDetail/atomColorRoughness/etc.: Appearance settings for atoms
+   * - bondRadius/bondColor/etc.: Appearance settings for bonds
+   * - elementProperties: Per-element appearance settings (colors, radii)
+   * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
+   * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
+   * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
+   * see ./structure-settings.js for the default values
+   * @throws {Error} If an invalid render mode is provided
+   */
   constructor(e, t = {}) {
     const n = ["constant", "onDemand"];
     if (t.renderMode && !n.includes(t.renderMode))
@@ -49012,6 +49280,10 @@ class Xv {
       symmetry: new Ps(this.options.symmetryMode)
     }, this.selections = new Hz(this.options), this.setupScene(), this.controls = new kz(this), this.animate(), this.needsRender = !0;
   }
+  /**
+   * Sets up the Three.js scene, camera, and renderer.
+   * @private
+   */
   setupScene() {
     this.scene = new DL(), this.camera = new zr(
       this.options.camera.fov,
@@ -49020,6 +49292,25 @@ class Xv {
       this.options.camera.far
     ), this.renderer = new bz({ antialias: !0, alpha: !0 }), this.resizeRendererToDisplaySize(), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new ui(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new pe(0, 0, 0), this.camera.lookAt(this.cameraTarget);
   }
+  /**
+   * Loads a crystal structure from CIF text.
+   * This is the main entry point for displaying a new structure.
+   * @param {string} cifText - CIF format text content
+   * @param {number} [cifBlockIndex] - Index of the CIF block to load (for multi-block CIFs)
+   * @returns {Promise<object>} Result object with:
+   * - success: Boolean indicating if loading succeeded
+   * - error: Error message if loading failed
+   * 
+   * Example:
+   * ```
+   * const result = await viewer.loadStructure(cifContent);
+   * if (result.success) {
+   *   console.log('Structure loaded successfully');
+   * } else {
+   *   console.error('Failed to load structure:', result.error);
+   * }
+   * ```
+   */
   async loadStructure(e, t = 0) {
     if (e === void 0)
       return console.error("Cannot load an empty text as CIF"), { success: !1, error: "Cannot load an empty text as CIF" };
@@ -49042,11 +49333,23 @@ class Xv {
       return console.error("Error loading structure:", n), { success: !1, error: n.message };
     }
   }
+  /**
+   * Initializes a new structure in the viewer with proper orientation.
+   * Called automatically after loadStructure() succeeds.
+   * @returns {Promise<object>} Object indicating success
+   * @private
+   */
   async setupNewStructure() {
     this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
     const e = Uz(this.state.currentStructure);
     return this.container.clientHeight > this.container.clientWidth && e.premultiply(new pt().makeRotationZ(Math.PI / 2)), e && (this.moleculeContainer.setRotationFromMatrix(e), this.moleculeContainer.updateMatrix()), new ta().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), zz(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
   }
+  /**
+   * Updates the current structure while preserving rotation.
+   * Used internally when structure modifiers change.
+   * @returns {Promise<object>} Object indicating success or failure
+   * @private
+   */
   async updateStructure() {
     try {
       const e = this.moleculeContainer.matrix.clone();
@@ -49055,6 +49358,10 @@ class Xv {
       return console.error("Error updating structure:", e), { success: !1, error: e.message };
     }
   }
+  /**
+   * Updates the 3D visualization by applying structure modifiers and creating visual elements.
+   * @private
+   */
   update3DOrtep() {
     this.removeStructure();
     let e = this.state.baseStructure;
@@ -49063,40 +49370,119 @@ class Xv {
     const n = new Mz(e, this.options).getGroup();
     this.moleculeContainer.add(n), this.state.currentStructure = n, this.selections.pruneInvalidSelections(this.moleculeContainer);
   }
+  /**
+   * Updates camera position and parameters based on structure size.
+   * @private
+   */
   updateCamera() {
     this.controls.handleResize();
     const e = Lz(this.moleculeContainer, this.camera);
     this.camera.position.set(0, 0, e), this.camera.rotation.set(0, 0, 0), this.camera.lookAt(this.cameraTarget), this.options.camera.minDistance = e * 0.2, this.options.camera.maxDistance = e * 2;
   }
+  /**
+   * Removes the current structure and frees associated resources.
+   * @private
+   */
   removeStructure() {
     this.moleculeContainer.traverse((e) => {
       e.geometry && e.geometry.dispose(), e.material && e.material.dispose();
     }), this.moleculeContainer.clear();
   }
+  /**
+   * Cycles through available modes for a structure modifier.
+   * This method allows switching between different visualization options for:
+   * - hydrogen: Control how hydrogen atoms are displayed
+   * - disorder: Control which disorder groups are shown
+   * - symmetry: Control how symmetry-equivalent atoms are generated
+   * - removeatoms: Toggle atom filtering on/off
+   * @param {string} modifierName - Name of the modifier to cycle ('hydrogen', 'disorder', 'symmetry', etc.)
+   * @returns {Promise<object>} Result object with:
+   * - success: Boolean indicating if mode change succeeded
+   * - mode: The new active mode after cycling
+   * - error: Error message if change failed
+   * 
+   * Example:
+   * ```
+   * const result = await viewer.cycleModifierMode('hydrogen');
+   * console.log(`New hydrogen display mode: ${result.mode}`);
+   * ```
+   */
   async cycleModifierMode(e) {
     const t = this.modifiers[e], n = t.cycleMode(this.state.baseStructure);
     let i;
     return t.requiresCameraUpdate ? i = await this.setupNewStructure() : i = await this.updateStructure(), { ...i, mode: n };
   }
+  /**
+   * Gets the number of available modes for a structure modifier.
+   * Useful for determining if a modifier has options for the current structure.
+   * @param {string} modifierName - Name of the modifier to check ('hydrogen', 'disorder', 'symmetry', etc.)
+   * @returns {number|boolean} Number of available modes or false if no structure loaded
+   * 
+   * Example:
+   * ```
+   * // Check if hydrogen display options are available
+   * const hydrogenModes = viewer.numberModifierModes('hydrogen');
+   * if (hydrogenModes > 1) {
+   *   // Enable hydrogen toggle button
+   * }
+   * ```
+   */
   numberModifierModes(e) {
     if (!this.state.baseStructure)
       return !1;
     const t = this.modifiers.removeatoms.apply(this.state.baseStructure);
     return this.modifiers[e].getApplicableModes(t).length;
   }
+  /**
+   * Animation loop that renders the scene when needed.
+   * Called automatically; users don't need to invoke this directly.
+   * @private
+   */
   animate() {
     (this.options.renderMode === "constant" || this.needsRender) && (this.renderer.render(this.scene, this.camera), this.needsRender = !1), requestAnimationFrame(this.animate.bind(this));
   }
+  /**
+   * Requests a render update for the on-demand rendering mode (on by default).
+   * Call this after making changes that should be reflected in the display.
+   */
   requestRender() {
     this.options.renderMode === "onDemand" && (this.needsRender = !0);
   }
+  /**
+   * Resizes the renderer to match the container's display size.
+   * Called automatically on window resize.
+   * @returns {boolean} True if resize was needed
+   * @private
+   */
   resizeRendererToDisplaySize() {
     const e = this.renderer.domElement, t = window.devicePixelRatio || 1, n = Math.floor(this.container.clientWidth * t), i = Math.floor(this.container.clientHeight * t), a = e.width !== n || e.height !== i;
     return a && (this.renderer.setSize(n, i, !1), e.style.width = `${this.container.clientWidth}px`, e.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, n, i)), a;
   }
+  /**
+   * Selects specific atoms by their labels.
+   * Allows programmatic selection of atoms without user interaction.
+   * @param {string[]} atomLabels - Array of atom labels to select
+   * 
+   * Example:
+   * ```
+   * // Select specific atoms of interest
+   * viewer.selectAtoms(['C1', 'O1', 'N2']);
+   * ```
+   */
   selectAtoms(e) {
     this.selections.selectAtoms(e, this.moleculeContainer);
   }
+  /**
+   * Releases all resources used by the viewer.
+   * Call this when the viewer is no longer needed to prevent memory leaks.
+   * 
+   * Example:
+   * ```
+   * // When removing the viewer from the application
+   * viewer.dispose();
+   * viewer = null;
+   * ```
+   */
   dispose() {
     this.controls.dispose(), this.scene.traverse((e) => {
       e.geometry && e.geometry.dispose(), e.material && (Array.isArray(e.material) ? e.material.forEach((t) => t.dispose()) : e.material.dispose());
