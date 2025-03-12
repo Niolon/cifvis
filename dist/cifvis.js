@@ -4188,9 +4188,9 @@ class St {
         this.options.elementProperties,
         this.options.bondGrowToleranceFactor
       ),
-      hydrogen: new rt(this.options.hydrogenMode),
       disorder: new nt(this.options.disorderMode),
-      symmetry: new K(this.options.symmetryMode)
+      symmetry: new K(this.options.symmetryMode),
+      hydrogen: new rt(this.options.hydrogenMode)
     }, this.selections = new le(this.options), this.setupScene(), this.controls = new ae(this), this.animate(), this.needsRender = !0;
   }
   /**

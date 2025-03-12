@@ -49275,9 +49275,9 @@ class Xv {
         this.options.elementProperties,
         this.options.bondGrowToleranceFactor
       ),
-      hydrogen: new sf(this.options.hydrogenMode),
       disorder: new of(this.options.disorderMode),
-      symmetry: new Ps(this.options.symmetryMode)
+      symmetry: new Ps(this.options.symmetryMode),
+      hydrogen: new sf(this.options.hydrogenMode)
     }, this.selections = new Hz(this.options), this.setupScene(), this.controls = new kz(this), this.animate(), this.needsRender = !0;
   }
   /**
