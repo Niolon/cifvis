@@ -55,7 +55,7 @@ export default {
 
     // atom visualisation Settings
     'atomDetail': 3,
-    'atomColorRoughness': 0.3,
+    'atomColorRoughness': 0.4,
     'atomColorMetalness': 0.5,
     'atomADPRingWidthFactor': 1.0,
     'atomADPRingHeight': 0.06,
