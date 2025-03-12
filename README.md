@@ -1,6 +1,6 @@
 # CifVis - Crystal Structure Visualisation
 
-A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. A preview of the widgets is available [here](https://niolon.github.io/cifvis/widget.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/widget.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
 
 ## Features
 
@@ -89,8 +89,11 @@ npm install
 # Start development server
 npm run dev
 
-# Run tests
+# Run unit tests
 npm test
+
+# Run test on a database folder (will create a logs subfolder in integration-tests)
+npm run test:database-modifiers -- /folder/of/database && npm run test:database-ortep -- /folder/of/database
 
 # Build for production
 npm run build
