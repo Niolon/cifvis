@@ -423,9 +423,9 @@ export class CrystalViewer {
                 this.options.elementProperties,
                 this.options.bondGrowToleranceFactor,
             ),
-            hydrogen: new HydrogenFilter(this.options.hydrogenMode),
             disorder: new DisorderFilter(this.options.disorderMode),
             symmetry: new SymmetryGrower(this.options.symmetryMode),
+            hydrogen: new HydrogenFilter(this.options.hydrogenMode),
         };
 
         this.selections = new SelectionManager(this.options);
