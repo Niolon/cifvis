@@ -10,6 +10,7 @@ describe('normalizeAtomLabel', () => {
     test('basic normalization (without suffixes)', () => {
         expect(normalizeAtomLabel('h2a')).toBe('H2A');
         expect(normalizeAtomLabel('H(2)A')).toBe('H2A');
+        expect(normalizeAtomLabel('H(2A)')).toBe('H2A');
         expect(normalizeAtomLabel('C[12]')).toBe('C12');
         expect(normalizeAtomLabel('O{1}')).toBe('O1');
     });
