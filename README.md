@@ -13,6 +13,13 @@ A JavaScript library and web components for visualizing crystal structures from 
 - Widget for complete packaged solution
 
 ## Usage
+### Node library
+CifVis is available on npm and installing it into a project is as simple as executing:
+
+```bash
+npm install cifvis
+```
+
 ### Web Component
 For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/widget.html).
 
