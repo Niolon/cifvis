@@ -432,8 +432,11 @@ export class CifViewWidget extends HTMLElement {
     createErrorDiv(error) {
         console.error('Error loading structure:', error);
             
-        // Update caption to show error message
-        this.baseCaption = `Error loading structure: ${error.message.replace(/<\/?[^>]+(>|$)/g, '')}`;
+        // Sanitize error message
+        const sanitizedMessage = this.sanitizeHTML(error.message);
+        
+        // Update caption to show sanitized error message
+        this.baseCaption = `Error loading structure: ${sanitizedMessage}`;
         this.updateCaption();
         
         // Optional: Create an error display in the viewer area
@@ -454,14 +457,43 @@ export class CifViewWidget extends HTMLElement {
                 errorDiv.style.padding = '20px';
                 errorDiv.style.textAlign = 'center';
                 errorDiv.style.color = '#d32f2f';
-                errorDiv.innerHTML = `<div>
-                    <h3>Error Loading Structure</h3>
-                    <p>${error.message}</p>
-                    <p>Please check that the file exists and is a valid CIF file.</p>
-                </div>`;
+                
+                // Create elements programmatically instead of using innerHTML
+                const contentDiv = document.createElement('div');
+                
+                const heading = document.createElement('h3');
+                heading.textContent = 'Error Loading Structure';
+                contentDiv.appendChild(heading);
+                
+                const messagePara = document.createElement('p');
+                messagePara.textContent = sanitizedMessage;
+                contentDiv.appendChild(messagePara);
+                
+                const helpPara = document.createElement('p');
+                helpPara.textContent = 'Please check that the file exists and is a valid CIF file.';
+                contentDiv.appendChild(helpPara);
+                
+                errorDiv.appendChild(contentDiv);
                 container.appendChild(errorDiv);
             }
         }
+    }
+    
+    /**
+     * Sanitizes HTML strings to prevent XSS attacks
+     * @param {string} html - The potentially unsafe HTML string
+     * @returns {string} - Sanitized string with HTML entities escaped
+     */
+    sanitizeHTML(html) {
+        if (!html) {
+            return '';
+        };
+        return String(html)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     updateCaption() {
