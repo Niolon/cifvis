@@ -4670,7 +4670,7 @@ class he extends HTMLElement {
     }
   }
   createErrorDiv(t) {
-    if (console.error("Error loading structure:", t), this.baseCaption = `Error loading structure: ${t.message}`, this.updateCaption(), this.viewer) {
+    if (console.error("Error loading structure:", t), this.baseCaption = `Error loading structure: ${t.message.replace(/<\/?[^>]+(>|$)/g, "")}`, this.updateCaption(), this.viewer) {
       const e = this.querySelector(".crystal-container");
       if (e) {
         for (; e.firstChild; )

@@ -49760,7 +49760,7 @@ class Vz extends HTMLElement {
     }
   }
   createErrorDiv(e) {
-    if (console.error("Error loading structure:", e), this.baseCaption = `Error loading structure: ${e.message}`, this.updateCaption(), this.viewer) {
+    if (console.error("Error loading structure:", e), this.baseCaption = `Error loading structure: ${e.message.replace(/<\/?[^>]+(>|$)/g, "")}`, this.updateCaption(), this.viewer) {
       const t = this.querySelector(".crystal-container");
       if (t) {
         for (; t.firstChild; )
