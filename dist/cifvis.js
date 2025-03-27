@@ -4670,19 +4670,31 @@ class he extends HTMLElement {
     }
   }
   createErrorDiv(t) {
-    if (console.error("Error loading structure:", t), this.baseCaption = `Error loading structure: ${t.message.replace(/<\/?[^>]+(>|$)/g, "")}`, this.updateCaption(), this.viewer) {
-      const e = this.querySelector(".crystal-container");
-      if (e) {
-        for (; e.firstChild; )
-          e.firstChild.remove();
-        const o = document.createElement("div");
-        o.style.display = "flex", o.style.justifyContent = "center", o.style.alignItems = "center", o.style.height = "100%", o.style.padding = "20px", o.style.textAlign = "center", o.style.color = "#d32f2f", o.innerHTML = `<div>
-                    <h3>Error Loading Structure</h3>
-                    <p>${t.message}</p>
-                    <p>Please check that the file exists and is a valid CIF file.</p>
-                </div>`, e.appendChild(o);
+    console.error("Error loading structure:", t);
+    const e = this.sanitizeHTML(t.message);
+    if (this.baseCaption = `Error loading structure: ${e}`, this.updateCaption(), this.viewer) {
+      const o = this.querySelector(".crystal-container");
+      if (o) {
+        for (; o.firstChild; )
+          o.firstChild.remove();
+        const s = document.createElement("div");
+        s.style.display = "flex", s.style.justifyContent = "center", s.style.alignItems = "center", s.style.height = "100%", s.style.padding = "20px", s.style.textAlign = "center", s.style.color = "#d32f2f";
+        const i = document.createElement("div"), r = document.createElement("h3");
+        r.textContent = "Error Loading Structure", i.appendChild(r);
+        const n = document.createElement("p");
+        n.textContent = e, i.appendChild(n);
+        const a = document.createElement("p");
+        a.textContent = "Please check that the file exists and is a valid CIF file.", i.appendChild(a), s.appendChild(i), o.appendChild(s);
       }
     }
+  }
+  /**
+   * Sanitizes HTML strings to prevent XSS attacks
+   * @param {string} html - The potentially unsafe HTML string
+   * @returns {string} - Sanitized string with HTML entities escaped
+   */
+  sanitizeHTML(t) {
+    return t ? String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
   }
   updateCaption() {
     let t = this.baseCaption;
