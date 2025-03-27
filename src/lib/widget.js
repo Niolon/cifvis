@@ -433,7 +433,7 @@ export class CifViewWidget extends HTMLElement {
         console.error('Error loading structure:', error);
             
         // Update caption to show error message
-        this.baseCaption = `Error loading structure: ${error.message}`;
+        this.baseCaption = `Error loading structure: ${error.message.replace(/<\/?[^>]+(>|$)/g, '')}`;
         this.updateCaption();
         
         // Optional: Create an error display in the viewer area
