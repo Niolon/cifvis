@@ -1,6 +1,6 @@
 import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
-import { SVG_ICONS } from 'virtual:svg-icons';
+import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 
 /**
  * Updates the status message displayed to the user

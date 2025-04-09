@@ -1,6 +1,6 @@
 {
   "name": "cifvis",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "",
   "main": "./src/index.js",
   "type": "module",
@@ -8,11 +8,20 @@
     ".": "./src/index.js",
     "./nobrowser": "./src/index.nobrowser.js"
   },
+  "files": [
+    "dist",
+    "src/lib/generated",
+    "src", 
+    "LICENSE.md"
+  ],
   "scripts": {
+    "generate-svg-icons": "node scripts/generate-svg-icons.js",
+    "prebuild": "npm run generate-svg-icons",
     "dev": "vite --config vite/vite.config.mjs serve ./demo",
     "build": "vite build --config vite/vite.config.mjs",
     "build:alldeps": "vite build --config vite/vite.alldeps.config.mjs",
     "build:demo": "vite build --config vite/vite.demo.config.mjs",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

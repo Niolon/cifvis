@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import svgIconsPlugin from './vite-plugin-svg-icons';
+import generateSvgIconsPlugin from './vite-plugin-generate-svg-icons';
 
 export default defineConfig({
-    plugins: [svgIconsPlugin()],
+    plugins: [generateSvgIconsPlugin()],
     build: {
         lib: {
             entry: resolve(__dirname, '../src/index.js'),

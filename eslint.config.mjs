@@ -85,6 +85,6 @@ export default [
         },
     },
     {
-        ignores: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*'],
+        ignores: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*', 'src/lib/generated/*'],
     },
 ];

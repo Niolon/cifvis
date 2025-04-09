@@ -1,5 +1,5 @@
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
-import { SVG_ICONS } from 'virtual:svg-icons';
+import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
 

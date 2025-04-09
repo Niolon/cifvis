@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import svgIconsPlugin from './vite-plugin-svg-icons';
+import generateSvgIconsPlugin from './vite-plugin-generate-svg-icons';
 
 export default defineConfig({
-    plugins: [svgIconsPlugin()],
+    plugins: [generateSvgIconsPlugin()],
     base: '/cifvis/',
     build: {
         rollupOptions: {
@@ -28,4 +28,5 @@ export default defineConfig({
     root: resolve(__dirname, '../demo'),
     // Specify the public directory path (relative to root)
     publicDir: resolve(__dirname, '../demo/public'),
+    watch: true,
 });
