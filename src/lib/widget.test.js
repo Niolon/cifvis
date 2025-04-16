@@ -46,7 +46,7 @@ describe('CifViewWidget', () => {
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
-            loadStructure: vi.fn().mockImplementation((cifData) => {
+            loadCIF: vi.fn().mockImplementation((cifData) => {
                 // Simulate CIF validation - mock data from fetch needs to look like valid CIF data
                 if (cifData && cifData.includes('data_')) {
                     mockCrystalViewer.state.currentCifContent = cifData;
@@ -58,7 +58,7 @@ describe('CifViewWidget', () => {
             cycleModifierMode: vi.fn().mockResolvedValue({ success: true, mode: 'constant' }),
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
-            setupNewStructure: vi.fn().mockResolvedValue({ success: true }),
+            loadStructure: vi.fn().mockResolvedValue({ success: true }),
             state: { 
                 baseStructure: {}, 
                 currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0', 
@@ -120,11 +120,11 @@ describe('CifViewWidget', () => {
         widget.setAttribute('src', 'test.cif');
         document.body.appendChild(widget);
 
-        // We need to wait longer for the fetch and loadStructure to complete
+        // We need to wait longer for the fetch and loadCIF to complete
         await new Promise(resolve => setTimeout(resolve, 20));
 
         expect(mockFetch).toHaveBeenCalledWith('test.cif');
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalled();
     });
 
     test('loads structure from data attribute', async () => {
@@ -134,7 +134,7 @@ describe('CifViewWidget', () => {
 
         await new Promise(resolve => setTimeout(resolve, 10)); // Let promises resolve
 
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
         );
     });
@@ -279,7 +279,7 @@ describe('CifViewWidget', () => {
 
     test('handles structure loading errors', async () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        mockCrystalViewer.loadStructure.mockRejectedValue(new Error('Load failed'));
+        mockCrystalViewer.loadCIF.mockRejectedValue(new Error('Load failed'));
 
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('src', 'test.cif');
@@ -319,13 +319,13 @@ describe('CifViewWidget', () => {
         widget.setAttribute('src', 'new.cif');
         await new Promise(resolve => setTimeout(resolve, 10));
         expect(mockFetch).toHaveBeenCalledWith('new.cif');
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalled();
     
         // Set and wait for data change
-        mockCrystalViewer.loadStructure.mockClear(); // Reset the mock
+        mockCrystalViewer.loadCIF.mockClear(); // Reset the mock
         widget.setAttribute('data', 'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0');
         await new Promise(resolve => setTimeout(resolve, 10));
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalledWith(
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0',
         );
     });
@@ -368,7 +368,7 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
         
         expect(mockCrystalViewer.modifiers.symmetry.mode).toBe('bonds-yes-hbonds-yes');
-        expect(mockCrystalViewer.setupNewStructure).toHaveBeenCalled();
+        expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
     });
 
     test('parses options attribute', async () => {
@@ -436,7 +436,7 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         
         // Should reload structure if one was already loaded
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalled();
     });
 
     test('handles filtered-atoms attribute', async () => {

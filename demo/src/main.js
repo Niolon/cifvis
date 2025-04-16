@@ -99,7 +99,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            const result = await viewer.loadStructure(text);
+            const result = await viewer.loadCIF(text);
             if (result.success) {
                 updateStatus('Structure loaded successfully', 'success');
                 adaptButtons();
@@ -132,7 +132,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            const result = await viewer.loadStructure(text);
+            const result = await viewer.loadCIF(text);
             if (result.success) {
                 updateStatus('Structure loaded successfully', 'success');
                 adaptButtons();
@@ -234,7 +234,7 @@ const baseUrl = import.meta.env.BASE_URL;
 fetch(`${baseUrl}cif/disorder.cif`)
     .then(res => res.text())
     .then(text => {
-        const result = viewer.loadStructure(text);
+        const result = viewer.loadCIF(text);
         adaptButtons();
         return result;
     })

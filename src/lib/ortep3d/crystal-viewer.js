@@ -481,20 +481,21 @@ export class CrystalViewer {
      * }
      * ```
      */
-    async loadStructure(cifText, cifBlockIndex=0) {
+    async loadCIF(cifText, cifBlockIndex=0) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
         }
         try {
             const cif = new CIF(cifText);
+            let structure;
             try {
-                this.state.baseStructure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
+                structure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
             } catch (e) {
                 if (!this.options.fixCifErrors) {
                     try{ 
                         const maybeFixedCifBlock = tryToFixCifBlock(cif.getBlock(cifBlockIndex));
-                        this.state.baseStructure = CrystalStructure.fromCIF(maybeFixedCifBlock);
+                        structure = CrystalStructure.fromCIF(maybeFixedCifBlock);
                     } catch {
                         // throw original error as it should be more informative
                         throw e;
@@ -503,7 +504,7 @@ export class CrystalViewer {
                     throw e;
                 }
             }
-            await this.setupNewStructure();            
+            await this.loadStructure(structure);            
     
             return { success: true };
         } catch (error) {
@@ -514,11 +515,12 @@ export class CrystalViewer {
 
     /**
      * Initializes a new structure in the viewer with proper orientation.
-     * Called automatically after loadStructure() succeeds.
+     * @param {CrystalStructure} structure - crystal structure to load
      * @returns {Promise<object>} Object indicating success
      * @private
      */
-    async setupNewStructure() {
+    async loadStructure(structure) {
+        this.state.baseStructure = structure;
         this.selections.clear();
         
         // Complete reset of molecule container
@@ -657,7 +659,7 @@ export class CrystalViewer {
         const mode = selectedModifier.cycleMode(this.state.baseStructure);
         let result;
         if (selectedModifier.requiresCameraUpdate) {
-            result = await this.setupNewStructure();
+            result = await this.loadStructure();
         } else {
             result = await this.updateStructure();
         }

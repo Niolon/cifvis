@@ -360,7 +360,7 @@ export class CifViewWidget extends HTMLElement {
                     
                     // Reload structure if we already had one
                     if (currentCifContent) {
-                        await this.viewer.loadStructure(currentCifContent);
+                        await this.viewer.loadCIF(currentCifContent);
                         this.setupButtons();
                     }
                 }
@@ -382,7 +382,7 @@ export class CifViewWidget extends HTMLElement {
             case 'symmetry-mode':
                 if (this.viewer.modifiers.symmetry) {
                     this.viewer.modifiers.symmetry.mode = newValue;
-                    await this.viewer.setupNewStructure();
+                    await this.viewer.loadStructure();
                     this.setupButtons();
                 }
                 break;
@@ -408,7 +408,7 @@ export class CifViewWidget extends HTMLElement {
                 throw new Error('Received no or invalid content for src.');
             }
             
-            const result = await this.viewer.loadStructure(text);
+            const result = await this.viewer.loadCIF(text);
             
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
@@ -422,7 +422,7 @@ export class CifViewWidget extends HTMLElement {
     
     async loadFromString(data) {
         try {
-            await this.viewer.loadStructure(data);
+            await this.viewer.loadCIF(data);
             this.setupButtons();  // Setup buttons after loading
         } catch (error) {
             this.createErrorDiv(error);
