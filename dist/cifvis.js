@@ -4224,38 +4224,39 @@ class St {
    * }
    * ```
    */
-  async loadStructure(t, e = 0) {
+  async loadCIF(t, e = 0) {
     if (t === void 0)
       return console.error("Cannot load an empty text as CIF"), { success: !1, error: "Cannot load an empty text as CIF" };
     try {
       const o = new Ft(t);
+      let s;
       try {
-        this.state.baseStructure = T.fromCIF(o.getBlock(e));
-      } catch (s) {
+        s = T.fromCIF(o.getBlock(e));
+      } catch (i) {
         if (this.options.fixCifErrors)
-          throw s;
+          throw i;
         try {
-          const i = ee(o.getBlock(e));
-          this.state.baseStructure = T.fromCIF(i);
+          const r = ee(o.getBlock(e));
+          s = T.fromCIF(r);
         } catch {
-          throw s;
+          throw i;
         }
       }
-      return await this.setupNewStructure(), { success: !0 };
+      return await this.loadStructure(s), { success: !0 };
     } catch (o) {
       return console.error("Error loading structure:", o), { success: !1, error: o.message };
     }
   }
   /**
    * Initializes a new structure in the viewer with proper orientation.
-   * Called automatically after loadStructure() succeeds.
+   * @param {CrystalStructure} structure - crystal structure to load
    * @returns {Promise<object>} Object indicating success
    * @private
    */
-  async setupNewStructure() {
-    this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-    const t = re(this.state.currentStructure);
-    return this.container.clientHeight > this.container.clientWidth && t.premultiply(new h.Matrix4().makeRotationZ(Math.PI / 2)), t && (this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), new h.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ne(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
+  async loadStructure(t) {
+    this.state.baseStructure = t, this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
+    const e = re(this.state.currentStructure);
+    return this.container.clientHeight > this.container.clientWidth && e.premultiply(new h.Matrix4().makeRotationZ(Math.PI / 2)), e && (this.moleculeContainer.setRotationFromMatrix(e), this.moleculeContainer.updateMatrix()), new h.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ne(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
   }
   /**
    * Updates the current structure while preserving rotation.
@@ -4323,7 +4324,7 @@ class St {
   async cycleModifierMode(t) {
     const e = this.modifiers[t], o = e.cycleMode(this.state.baseStructure);
     let s;
-    return e.requiresCameraUpdate ? s = await this.setupNewStructure() : s = await this.updateStructure(), { ...s, mode: o };
+    return e.requiresCameraUpdate ? s = await this.loadStructure() : s = await this.updateStructure(), { ...s, mode: o };
   }
   /**
    * Gets the number of available modes for a structure modifier.
@@ -4628,7 +4629,7 @@ class he extends HTMLElement {
             const s = this.querySelector(".crystal-container"), i = this.viewer.state.currentCifContent;
             this.viewer.dispose(), this.viewer = new St(s, this.userOptions), this.viewer.selections.onChange((r) => {
               this.selections = r, this.updateCaption();
-            }), i && (await this.viewer.loadStructure(i), this.setupButtons());
+            }), i && (await this.viewer.loadCIF(i), this.setupButtons());
           }
           break;
         case "hydrogen-mode":
@@ -4638,7 +4639,7 @@ class he extends HTMLElement {
           this.viewer.modifiers.disorder && (this.viewer.modifiers.disorder.mode = o, await this.viewer.updateStructure(), this.setupButtons());
           break;
         case "symmetry-mode":
-          this.viewer.modifiers.symmetry && (this.viewer.modifiers.symmetry.mode = o, await this.viewer.setupNewStructure(), this.setupButtons());
+          this.viewer.modifiers.symmetry && (this.viewer.modifiers.symmetry.mode = o, await this.viewer.loadStructure(), this.setupButtons());
           break;
       }
   }
@@ -4653,7 +4654,7 @@ class he extends HTMLElement {
       const s = await e.text();
       if (s.includes("<!DOCTYPE html>") || s.includes("<html>"))
         throw new Error("Received no or invalid content for src.");
-      const i = await this.viewer.loadStructure(s);
+      const i = await this.viewer.loadCIF(s);
       if (i.success)
         this.setupButtons();
       else
@@ -4664,7 +4665,7 @@ class he extends HTMLElement {
   }
   async loadFromString(t) {
     try {
-      await this.viewer.loadStructure(t), this.setupButtons();
+      await this.viewer.loadCIF(t), this.setupButtons();
     } catch (e) {
       this.createErrorDiv(e);
     }
