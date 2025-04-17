@@ -473,7 +473,7 @@ export class CrystalViewer {
      * 
      * Example:
      * ```
-     * const result = await viewer.loadStructure(cifContent);
+     * const result = await viewer.loadCIF(cifContent);
      * if (result.success) {
      *   console.log('Structure loaded successfully');
      * } else {
@@ -659,7 +659,7 @@ export class CrystalViewer {
         const mode = selectedModifier.cycleMode(this.state.baseStructure);
         let result;
         if (selectedModifier.requiresCameraUpdate) {
-            result = await this.loadStructure();
+            result = await this.loadStructure(this.state.baseStructure);
         } else {
             result = await this.updateStructure();
         }
