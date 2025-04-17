@@ -4216,7 +4216,7 @@ class St {
    * 
    * Example:
    * ```
-   * const result = await viewer.loadStructure(cifContent);
+   * const result = await viewer.loadCIF(cifContent);
    * if (result.success) {
    *   console.log('Structure loaded successfully');
    * } else {
@@ -4324,7 +4324,7 @@ class St {
   async cycleModifierMode(t) {
     const e = this.modifiers[t], o = e.cycleMode(this.state.baseStructure);
     let s;
-    return e.requiresCameraUpdate ? s = await this.loadStructure() : s = await this.updateStructure(), { ...s, mode: o };
+    return e.requiresCameraUpdate ? s = await this.loadStructure(this.state.baseStructure) : s = await this.updateStructure(), { ...s, mode: o };
   }
   /**
    * Gets the number of available modes for a structure modifier.

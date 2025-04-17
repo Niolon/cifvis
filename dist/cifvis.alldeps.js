@@ -49369,7 +49369,7 @@ class Yv {
    * 
    * Example:
    * ```
-   * const result = await viewer.loadStructure(cifContent);
+   * const result = await viewer.loadCIF(cifContent);
    * if (result.success) {
    *   console.log('Structure loaded successfully');
    * } else {
@@ -49477,7 +49477,7 @@ class Yv {
   async cycleModifierMode(e) {
     const t = this.modifiers[e], n = t.cycleMode(this.state.baseStructure);
     let i;
-    return t.requiresCameraUpdate ? i = await this.loadStructure() : i = await this.updateStructure(), { ...i, mode: n };
+    return t.requiresCameraUpdate ? i = await this.loadStructure(this.state.baseStructure) : i = await this.updateStructure(), { ...i, mode: n };
   }
   /**
    * Gets the number of available modes for a structure modifier.
