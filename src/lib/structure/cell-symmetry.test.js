@@ -397,7 +397,7 @@ describe('CellSymmetry', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
                 new SymmetryOperation('-x,-y,-z'),
-                new SymmetryOperation('-x,y,-z')
+                new SymmetryOperation('-x,y,-z'),
             ];
             const operationIds = new Map([['1', 0], ['2', 1], ['3', 2]]);
             const sym = new CellSymmetry('P2/m', 10, ops, operationIds);
@@ -427,7 +427,7 @@ describe('CellSymmetry', () => {
                 new SymmetryOperation('x,y,z'),
                 new SymmetryOperation('-x,y+1/2,-z'),
                 new SymmetryOperation('-x,-y,-z'),
-                new SymmetryOperation('x,-y+1/2,z')
+                new SymmetryOperation('x,-y+1/2,z'),
             ];
             const operationIds = new Map([['1', 0], ['2', 1], ['3', 2], ['4', 3]]);
             const sym = new CellSymmetry('P21/m', 11, ops, operationIds);

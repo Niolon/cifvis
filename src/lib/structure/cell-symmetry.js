@@ -381,7 +381,6 @@ export class CellSymmetry {
                     }
                 }
                 
-                
                 const roundedDiff = remainderVector.toArray().map(val => Math.round(val) + 5);
                 const translationCode = roundedDiff.join('');
                 
