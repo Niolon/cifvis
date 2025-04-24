@@ -346,6 +346,52 @@ export class CellSymmetry {
         return { symOp, transVector };
     }
 
+    /**
+     * Combines two position codes to create a new position code
+     * @param {string} positionCodeOuter - Outer position code (applied second)
+     * @param {string} positionCodeInner - Inner position code (applied first)
+     * @returns {string} Combined position code
+     * @throws {Error} If no matching symmetry operation is found
+     */
+    combinePositionCodes(positionCodeOuter, positionCodeInner) {
+        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(positionCodeOuter);
+        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(positionCodeInner);
+        const transVecOuter = math.add(math.matrix(transVecOuterArray), math.matrix(symOpOuter.transVector));
+        const transVecInner = math.add(math.matrix(transVecInnerArray), math.matrix(symOpInner.transVector));
+        const combinedTransVector = math.add(math.multiply(symOpOuter.rotMatrix, transVecInner), transVecOuter);
+        const combinedRotMatrix = math.multiply(symOpOuter.rotMatrix, symOpInner.rotMatrix);
+
+        for (let i = 0; i < this.symmetryOperations.length; i++) {
+            const possibleSymOp = this.symmetryOperations[i];
+            if (!math.deepEqual(combinedRotMatrix, possibleSymOp.rotMatrix)) {
+                continue;
+            };
+            const remainderVector = math.subtract(combinedTransVector, math.matrix(possibleSymOp.transVector));
+            const isIntegerTranslation = remainderVector.toArray().every(val => 
+                Math.abs(val - Math.round(val)) < 1e-10,
+            );
+
+            if (isIntegerTranslation) {
+                // Find the ID for this symmetry operation
+                let symOpId = null;
+                for (const [id, index] of this.operationIds.entries()) {
+                    if (index === i) {
+                        symOpId = id;
+                        break;
+                    }
+                }
+                
+                
+                const roundedDiff = remainderVector.toArray().map(val => Math.round(val) + 5);
+                const translationCode = roundedDiff.join('');
+                
+                return `${symOpId}_${translationCode}`;
+            }
+        }
+
+        throw new Error('No matching symmetry operation found for combined position codes');
+    }
+
     applySymmetry(positionCode, atoms) {
         const { symOp, transVector } = this.parsePositionCode(positionCode);
 

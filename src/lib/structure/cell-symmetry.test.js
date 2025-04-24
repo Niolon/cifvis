@@ -370,6 +370,76 @@ describe('CellSymmetry', () => {
         });
     });
 
+    describe('combinePositionCodes', () => {
+        test('combines identity operations', () => {
+            const ops = [new SymmetryOperation('x,y,z')];
+            const sym = new CellSymmetry('P1', 1, ops);
+            expect(sym.combinePositionCodes('1_555', '1_555')).toBe('1_555');
+        });
+    
+        test('combines integer translations', () => {
+            const ops = [new SymmetryOperation('x,y,z')];
+            const sym = new CellSymmetry('P1', 1, ops);
+            expect(sym.combinePositionCodes('1_655', '1_565')).toBe('1_665');
+        });
+    
+        test('combines operations with rotations', () => {
+            const ops = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ];
+            const operationIds = new Map([['1', 0], ['2', 1]]);
+            const sym = new CellSymmetry('P-1', 2, ops, operationIds);
+            expect(sym.combinePositionCodes('2_555', '2_555')).toBe('1_555');
+        });
+    
+        test('combines rotation with translation', () => {
+            const ops = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('-x,y,-z')
+            ];
+            const operationIds = new Map([['1', 0], ['2', 1], ['3', 2]]);
+            const sym = new CellSymmetry('P2/m', 10, ops, operationIds);
+            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+        });
+    
+        test('throws error when no matching operation found', () => {
+            // Create a case where the resulting symmetry operation doesn't exist
+            const ops = [new SymmetryOperation('x,y,z')];
+            const sym = new CellSymmetry('P1', 1, ops);
+            // Mock the parsePositionCode to return operations that would combine to something not in our list
+            sym.parsePositionCode = vi.fn()
+                .mockReturnValueOnce({
+                    symOp: { rotMatrix: [[0, 1, 0], [1, 0, 0], [0, 0, 1]], transVector: [0, 0, 0] },
+                    transVector: [0, 0, 0],
+                })
+                .mockReturnValueOnce({
+                    symOp: { rotMatrix: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], transVector: [0, 0, 0] },
+                    transVector: [0, 0, 0],
+                });
+                
+            expect(() => sym.combinePositionCodes('1_555', '1_555')).toThrow('No matching symmetry operation found');
+        });
+    
+        test('handles complex space group operations', () => {
+            const ops = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,y+1/2,-z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('x,-y+1/2,z')
+            ];
+            const operationIds = new Map([['1', 0], ['2', 1], ['3', 2], ['4', 3]]);
+            const sym = new CellSymmetry('P21/m', 11, ops, operationIds);
+            
+            // Combine a 2-fold rotation (2) with a translation
+            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+            
+            // Combine inversion (3) with a glide plane (2)
+            expect(sym.combinePositionCodes('3_555', '2_555')).toBe('4_545');
+        });
+    });
+
     describe('applySymmetry', () => {
         test('applies symmetry operation with translation', () => {
             const ops = [
