@@ -45,6 +45,16 @@ describe('SymmetryOperation', () => {
             expect(op.transVector).toEqual([0, 0, 0]);
         });
 
+        test('parses identity operation with plus signs', () => {
+            const op = new SymmetryOperation('+X,+Y,+Z');
+            expect(op.rotMatrix).toEqual([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]);
+            expect(op.transVector).toEqual([0, 0, 0]);
+        });
+
         test('parses inversion operation', () => {
             const op = new SymmetryOperation('-x,-y,-z');
             expect(op.rotMatrix).toEqual([
