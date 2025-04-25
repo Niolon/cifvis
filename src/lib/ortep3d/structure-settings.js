@@ -1,5 +1,6 @@
 export default {
     'camera': {
+        'type': 'orthographic',
         'minDistance': 1,
         'maxDistance': 100,
         'wheelZoomSpeed': 0.0008,

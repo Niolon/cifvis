@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { CIF } from '../read-cif/base.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
-import { setupLighting, calculateCameraDistance, structureOrientationMatrix } from './staging.js';
+import { setupLighting, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
 import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../structure/structure-modifiers/fixers.js';
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
+import { createCameraController } from './camera-controllers.js';
 
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
@@ -443,12 +444,9 @@ export class CrystalViewer {
      */
     setupScene() {
         this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(
-            this.options.camera.fov,
-            this.container.clientWidth / this.container.clientHeight,
-            this.options.camera.near,
-            this.options.camera.far,
-        );
+
+        this.cameraController = createCameraController(this.container, this.options);
+        this.camera = this.cameraController.camera;
         
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.resizeRendererToDisplaySize();;
@@ -456,6 +454,7 @@ export class CrystalViewer {
              
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
+        console.log(this);
         
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
@@ -611,12 +610,8 @@ export class CrystalViewer {
      */
     updateCamera() {
         this.controls.handleResize();
-        const distance = calculateCameraDistance(this.moleculeContainer, this.camera);
-        this.camera.position.set(0, 0, distance);
-        this.camera.rotation.set(0, 0, 0);
-        this.camera.lookAt(this.cameraTarget);
-        this.options.camera.minDistance = distance * 0.2;
-        this.options.camera.maxDistance = distance * 2;
+        this.cameraController.fitToStructure(this.moleculeContainer);
+        this.requestRender();
     }
 
     /**
