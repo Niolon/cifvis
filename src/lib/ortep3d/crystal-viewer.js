@@ -454,7 +454,6 @@ export class CrystalViewer {
              
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
-        console.log(this);
         
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
