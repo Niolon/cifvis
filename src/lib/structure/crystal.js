@@ -291,7 +291,7 @@ export class UnitCell {
             cifBlock.get(['_cell.length_b', '_cell_length_b'], 'not found'),
             cifBlock.get(['_cell.length_c', '_cell_length_c'], 'not found'),
             cifBlock.get(['_cell.angle_alpha', '_cell_angle_alpha'], 'not found'),
-            cifBlock.get(['_cell.angle_beta', '_cell_angle_beta'], -9999.),
+            cifBlock.get(['_cell.angle_beta', '_cell_angle_beta'], 'not found'),
             cifBlock.get(['_cell.angle_gamma', '_cell_angle_gamma'], 'not found'),
         ];
 
