@@ -262,7 +262,8 @@ class OrthographicCameraController extends AbstractCameraController {
         this.options.minSize = orthoSize * 0.2;
         this.options.maxSize = orthoSize * 2;
         this.baseSize = orthoSize;
-        this.basePosition = new THREE.Vector3(0, 0, 2 * size.z);
+        this.basePosition = new THREE.Vector3(0, 0, Math.max(size.x, size.y));
+        this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
     }
     
     /**
