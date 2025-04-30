@@ -9,3 +9,27 @@ fetch(`${baseUrl}cif/ED_para_Ag_3.cif`)
         const structure = CrystalStructure.fromCIF(cif.getBlock(0));
         const _output = growSymmetry(structure);
     });
+
+fetch(`${baseUrl}cif/urea.cif`)
+    .then(res => res.text())
+    .then(cifText => {
+        const cif = new CIF(cifText);
+        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+        const _output = growSymmetry(structure);
+    });
+
+fetch(`${baseUrl}cif/CaF2.cif`)
+    .then(res => res.text())
+    .then(cifText => {
+        const cif = new CIF(cifText);
+        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+        const _output = growSymmetry(structure);
+    });
+
+fetch(`${baseUrl}cif/sucrose.cif`)
+    .then(res => res.text())
+    .then(cifText => {
+        const cif = new CIF(cifText);
+        const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+        const _output = growSymmetry(structure);
+    });
