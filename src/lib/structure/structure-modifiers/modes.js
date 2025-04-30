@@ -303,7 +303,6 @@ export class SymmetryGrower extends BaseFilter {
             }
 
             const symmetryAtoms = structure.symmetry.applySymmetry(symOp, group.atoms);
-            const specialPositionMap = new Map();
             symmetryAtoms.forEach(atom => {
                 atom.label = SymmetryGrower.combineSymOpLabel(atom.label, symOp);
                 growthState.labels.add(atom.label);

@@ -438,27 +438,44 @@ describe('CellSymmetry', () => {
             // Combine inversion (3) with a glide plane (2)
             expect(sym.combinePositionCodes('3_555', '2_555')).toBe('4_545');
         });
+
+        test('handles operations with x,y switch (dev from paracyclophane)', () => {
+            const ops = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-y+1/2,x+1/2,z+1/2'),
+                new SymmetryOperation('y+1/2,-x+1/2,z+1/2'),
+                new SymmetryOperation('x+1/2,-y+1/2,-z+1/2'),
+                new SymmetryOperation('-x+1/2,y+1/2,-z+1/2'),
+                new SymmetryOperation('-x,-y,z'),
+                new SymmetryOperation('y,x,-z'),
+                new SymmetryOperation('-y,-x,-z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('y-1/2,-x-1/2,-z-1/2'),
+                new SymmetryOperation('-y-1/2,x-1/2,-z-1/2'),
+                new SymmetryOperation('-x-1/2,y-1/2,z-1/2'),
+                new SymmetryOperation('x-1/2,-y-1/2,z-1/2'),
+                new SymmetryOperation('x,y,-z'),
+                new SymmetryOperation('-y,-x,z'),
+                new SymmetryOperation('y,x,z'),
+            ];
+            const sym = new CellSymmetry('P 42/m n m', 136, ops);
+
+            expect(sym.combinePositionCodes('15_665', '6_665')).toBe('16_555');
+            expect(sym.combinePositionCodes('15_665', '7_556')).toBe('9_666');
+            expect(sym.combinePositionCodes('15_665', '8_666')).toBe('14_556');
+            expect(sym.combinePositionCodes('15_665', '16_555')).toBe('6_665');
+            expect(sym.combinePositionCodes('15_665', '9_666')).toBe('7_556');
+            expect(sym.combinePositionCodes('15_665', '14_556')).toBe('8_666');
+            expect(sym.combinePositionCodes('14_556', '15_665')).toBe('8_666');
+            expect(sym.combinePositionCodes('14_556', '9_666')).toBe('6_665');
+            expect(sym.combinePositionCodes('14_556', '16_555')).toBe('7_556');
+            expect(sym.combinePositionCodes('14_556', '8_666')).toBe('15_665');
+            expect(sym.combinePositionCodes('14_556', '6_665')).toBe('9_666');
+            expect(sym.combinePositionCodes('14_556', '7_556')).toBe('16_555');
+        });
     });
 
     describe('applySymmetry', () => {
-        test('applies symmetry operation with translation', () => {
-            const ops = [
-                new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y,-z'),
-            ];
-            const sym = new CellSymmetry('P2/m', 10, ops);
-            const atom = new Atom(
-                'C1',
-                'C',
-                new FractPosition(0.5, 0.25, 0.75),
-            );
-            
-            const result = sym.applySymmetry('2_456', atom);
-            expect(result.position.x).toBeCloseTo(-1.5);
-            expect(result.position.y).toBeCloseTo(0.25);
-            expect(result.position.z).toBeCloseTo(0.25);
-        });
-
         test('applies symmetry operation with translation to multiple atoms', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
@@ -580,14 +597,14 @@ loop_
     });
 
     describe('CellSymmetry ID handling', () => {
-        let mockAtom;
+        let mockAtoms;
         
         beforeEach(() => {
-            mockAtom = new Atom(
+            mockAtoms = [new Atom(
                 'C1',
                 'C',
                 new FractPosition(0.5, 0.5, 0.5),
-            );
+            )];
         });
     
         test('handles custom operation IDs from CIF', () => {
@@ -610,7 +627,7 @@ b2 -x,-y,z`;
             expect(symmetry.identitySymOpId).toBe('a1');
     
             // Test applying operation with translation
-            const transformed = symmetry.applySymmetry('b2_456', mockAtom);
+            const transformed = symmetry.applySymmetry('b2_456', mockAtoms)[0];
             expect(transformed.position.x).toBeCloseTo(-1.5);
             expect(transformed.position.y).toBeCloseTo(-0.5);
             expect(transformed.position.z).toBeCloseTo(1.5);  // 0.5 + 1
@@ -633,7 +650,7 @@ x,y,z
             expect(symmetry.operationIds.get('2')).toBe(1);
     
             // Test legacy numeric code still works
-            const transformed = symmetry.applySymmetry('2', mockAtom);
+            const transformed = symmetry.applySymmetry('2', mockAtoms)[0];
             expect(transformed.position.x).toBeCloseTo(-0.5);
             expect(transformed.position.y).toBeCloseTo(-0.5);
             expect(transformed.position.z).toBeCloseTo(0.5);
@@ -651,7 +668,7 @@ a1 x,y,z`;
             const block = cif.getBlock(0);
             const symmetry = CellSymmetry.fromCIF(block);
     
-            expect(() => symmetry.applySymmetry('invalid_555', mockAtom))
+            expect(() => symmetry.applySymmetry('invalid_555', mockAtoms))
                 .toThrow('Invalid symmetry operation ID in string invalid_555: invalid');
         });
     });
