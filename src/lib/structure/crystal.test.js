@@ -209,7 +209,7 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         expect(groups).toHaveLength(2);
         expect(groups[0].atoms).toHaveLength(3);
@@ -240,7 +240,7 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds
         // Group 2: P1 alone (unconnected)
@@ -290,7 +290,7 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hbonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         expect(groups).toHaveLength(1);
         const group = groups[0];

@@ -79,7 +79,7 @@ export class CrystalStructure {
         this.atoms = atoms;
         this.bonds = bonds;
         this.hBonds = hBonds;
-        this.recalculateConnectedGroups();
+        this.calculateConnectedGroups();
         this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, [new SymmetryOperation('x,y,z')]);
     }
 
@@ -150,7 +150,7 @@ export class CrystalStructure {
      * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
      * from the provided atoms and bonds
      */
-    recalculateConnectedGroups() {
+    calculateConnectedGroups() {
         // Map to track which atoms have been assigned to a group
         const atomGroupMap = new Map();
         const groups = [];
@@ -247,7 +247,7 @@ export class CrystalStructure {
             groups.push(newGroup);
         });
         // Convert Sets to Arrays for easier handling
-        this.connectedGroups = groups.map(group => ({
+        return groups.map(group => ({
             atoms: Array.from(group.atoms),
             bonds: Array.from(group.bonds),
             hBonds: Array.from(group.hBonds),

@@ -1,3 +1,4 @@
+import { atomLabelsMatch } from '../../fix-cif/reconcile-labels.js';
 import { Bond } from '../bonds.js';
 import { CrystalStructure, inferElementFromLabel } from '../crystal.js';
 import { BaseFilter } from './base.js';
@@ -407,13 +408,15 @@ export class IsolatedHydrogenFixer extends BaseFilter {
      * @returns {Array<object>} Array of isolated hydrogen atoms with their indices
      */
     findIsolatedHydrogenAtoms(structure) {
-        const isolatedHydrogenAtoms = [];
+        const atomsInBonds = new Set();
+        structure.bonds.forEach(b => {
+            atomsInBonds.add(b.atom1Label);
+            atomsInBonds.add(b.atom2Label);
+        });
 
-        // Find connected groups with only a single hydrogen atom
-        structure.connectedGroups.forEach(group => {
-            if (group.atoms.length === 1 && group.atoms[0].atomType === 'H') {
-                const atom = group.atoms[0];
-                const atomIndex = structure.atoms.findIndex(a => a.label === atom.label);
+        const isolatedHydrogenAtoms = [];
+        structure.atoms.forEach((atom, atomIndex) => {
+            if (!atomsInBonds.has(atom.label) && atom.atomType === 'H') {
                 isolatedHydrogenAtoms.push({ atom, atomIndex });
             }
         });
@@ -550,9 +553,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
         }
         
         // Check if there are isolated hydrogen atoms
-        const hasIsolatedHydrogens = structure.connectedGroups.some(group => 
-            group.atoms.length === 1 && group.atoms[0].atomType === 'H',
-        );
+        const hasIsolatedHydrogens = this.findIsolatedHydrogenAtoms(structure).length > 0;
         
         if (hasIsolatedHydrogens) {
             return [
