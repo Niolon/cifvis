@@ -374,13 +374,13 @@ describe('CellSymmetry', () => {
         test('combines identity operations', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
-            expect(sym.combinePositionCodes('1_555', '1_555')).toBe('1_555');
+            expect(sym.combineSymmetryCodes('1_555', '1_555')).toBe('1_555');
         });
     
         test('combines integer translations', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
-            expect(sym.combinePositionCodes('1_655', '1_565')).toBe('1_665');
+            expect(sym.combineSymmetryCodes('1_655', '1_565')).toBe('1_665');
         });
     
         test('combines operations with rotations', () => {
@@ -390,7 +390,7 @@ describe('CellSymmetry', () => {
             ];
             const operationIds = new Map([['1', 0], ['2', 1]]);
             const sym = new CellSymmetry('P-1', 2, ops, operationIds);
-            expect(sym.combinePositionCodes('2_555', '2_555')).toBe('1_555');
+            expect(sym.combineSymmetryCodes('2_555', '2_555')).toBe('1_555');
         });
     
         test('combines rotation with translation', () => {
@@ -401,7 +401,7 @@ describe('CellSymmetry', () => {
             ];
             const operationIds = new Map([['1', 0], ['2', 1], ['3', 2]]);
             const sym = new CellSymmetry('P2/m', 10, ops, operationIds);
-            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+            expect(sym.combineSymmetryCodes('2_555', '1_655')).toBe('2_455');
         });
     
         test('throws error when no matching operation found', () => {
@@ -419,7 +419,7 @@ describe('CellSymmetry', () => {
                     transVector: [0, 0, 0],
                 });
                 
-            expect(() => sym.combinePositionCodes('1_555', '1_555')).toThrow('No matching symmetry operation found');
+            expect(() => sym.combineSymmetryCodes('1_555', '1_555')).toThrow('No matching symmetry operation found');
         });
     
         test('handles complex space group operations', () => {
@@ -433,32 +433,49 @@ describe('CellSymmetry', () => {
             const sym = new CellSymmetry('P21/m', 11, ops, operationIds);
             
             // Combine a 2-fold rotation (2) with a translation
-            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+            expect(sym.combineSymmetryCodes('2_555', '1_655')).toBe('2_455');
             
             // Combine inversion (3) with a glide plane (2)
-            expect(sym.combinePositionCodes('3_555', '2_555')).toBe('4_545');
+            expect(sym.combineSymmetryCodes('3_555', '2_555')).toBe('4_545');
+        });
+
+        test('handles operations with x,y switch (dev from paracyclophane)', () => {
+            const ops = [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-y+1/2,x+1/2,z+1/2'),
+                new SymmetryOperation('y+1/2,-x+1/2,z+1/2'),
+                new SymmetryOperation('x+1/2,-y+1/2,-z+1/2'),
+                new SymmetryOperation('-x+1/2,y+1/2,-z+1/2'),
+                new SymmetryOperation('-x,-y,z'),
+                new SymmetryOperation('y,x,-z'),
+                new SymmetryOperation('-y,-x,-z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('y-1/2,-x-1/2,-z-1/2'),
+                new SymmetryOperation('-y-1/2,x-1/2,-z-1/2'),
+                new SymmetryOperation('-x-1/2,y-1/2,z-1/2'),
+                new SymmetryOperation('x-1/2,-y-1/2,z-1/2'),
+                new SymmetryOperation('x,y,-z'),
+                new SymmetryOperation('-y,-x,z'),
+                new SymmetryOperation('y,x,z'),
+            ];
+            const sym = new CellSymmetry('P 42/m n m', 136, ops);
+
+            expect(sym.combineSymmetryCodes('15_665', '6_665')).toBe('16_555');
+            expect(sym.combineSymmetryCodes('15_665', '7_556')).toBe('9_666');
+            expect(sym.combineSymmetryCodes('15_665', '8_666')).toBe('14_556');
+            expect(sym.combineSymmetryCodes('15_665', '16_555')).toBe('6_665');
+            expect(sym.combineSymmetryCodes('15_665', '9_666')).toBe('7_556');
+            expect(sym.combineSymmetryCodes('15_665', '14_556')).toBe('8_666');
+            expect(sym.combineSymmetryCodes('14_556', '15_665')).toBe('8_666');
+            expect(sym.combineSymmetryCodes('14_556', '9_666')).toBe('6_665');
+            expect(sym.combineSymmetryCodes('14_556', '16_555')).toBe('7_556');
+            expect(sym.combineSymmetryCodes('14_556', '8_666')).toBe('15_665');
+            expect(sym.combineSymmetryCodes('14_556', '6_665')).toBe('9_666');
+            expect(sym.combineSymmetryCodes('14_556', '7_556')).toBe('16_555');
         });
     });
 
     describe('applySymmetry', () => {
-        test('applies symmetry operation with translation', () => {
-            const ops = [
-                new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y,-z'),
-            ];
-            const sym = new CellSymmetry('P2/m', 10, ops);
-            const atom = new Atom(
-                'C1',
-                'C',
-                new FractPosition(0.5, 0.25, 0.75),
-            );
-            
-            const result = sym.applySymmetry('2_456', atom);
-            expect(result.position.x).toBeCloseTo(-1.5);
-            expect(result.position.y).toBeCloseTo(0.25);
-            expect(result.position.z).toBeCloseTo(0.25);
-        });
-
         test('applies symmetry operation with translation to multiple atoms', () => {
             const ops = [
                 new SymmetryOperation('x,y,z'),
@@ -580,14 +597,14 @@ loop_
     });
 
     describe('CellSymmetry ID handling', () => {
-        let mockAtom;
+        let mockAtoms;
         
         beforeEach(() => {
-            mockAtom = new Atom(
+            mockAtoms = [new Atom(
                 'C1',
                 'C',
                 new FractPosition(0.5, 0.5, 0.5),
-            );
+            )];
         });
     
         test('handles custom operation IDs from CIF', () => {
@@ -610,7 +627,7 @@ b2 -x,-y,z`;
             expect(symmetry.identitySymOpId).toBe('a1');
     
             // Test applying operation with translation
-            const transformed = symmetry.applySymmetry('b2_456', mockAtom);
+            const transformed = symmetry.applySymmetry('b2_456', mockAtoms)[0];
             expect(transformed.position.x).toBeCloseTo(-1.5);
             expect(transformed.position.y).toBeCloseTo(-0.5);
             expect(transformed.position.z).toBeCloseTo(1.5);  // 0.5 + 1
@@ -633,7 +650,7 @@ x,y,z
             expect(symmetry.operationIds.get('2')).toBe(1);
     
             // Test legacy numeric code still works
-            const transformed = symmetry.applySymmetry('2', mockAtom);
+            const transformed = symmetry.applySymmetry('2', mockAtoms)[0];
             expect(transformed.position.x).toBeCloseTo(-0.5);
             expect(transformed.position.y).toBeCloseTo(-0.5);
             expect(transformed.position.z).toBeCloseTo(0.5);
@@ -651,7 +668,7 @@ a1 x,y,z`;
             const block = cif.getBlock(0);
             const symmetry = CellSymmetry.fromCIF(block);
     
-            expect(() => symmetry.applySymmetry('invalid_555', mockAtom))
+            expect(() => symmetry.applySymmetry('invalid_555', mockAtoms))
                 .toThrow('Invalid symmetry operation ID in string invalid_555: invalid');
         });
     });

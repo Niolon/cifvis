@@ -200,8 +200,6 @@ export class MockStructure {
                 throw new Error(`H-bond references non-existent acceptor atom ${hbond.acceptorAtomLabel}`);
             }
         }
-        this.structure.recalculateConnectedGroups();
-
         return this.structure;
     }
 }
