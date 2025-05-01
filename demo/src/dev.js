@@ -1,6 +1,12 @@
 import { CrystalStructure, CIF } from '../../src';
 import { growSymmetry } from '../../src/lib/structure/structure-modifiers/grow-symmetry.js';
 
+/**
+ *
+ * @param cifText
+ * @param name
+ * @param runCount
+ */
 async function growStructure(cifText, name, runCount) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
@@ -15,6 +21,10 @@ async function growStructure(cifText, name, runCount) {
     return { output, executionTime };
 }
 
+/**
+ *
+ * @param timings
+ */
 function calculateStatistics(timings) {
     const sum = timings.reduce((acc, time) => acc + time, 0);
     const mean = sum / timings.length;
@@ -42,17 +52,20 @@ function calculateStatistics(timings) {
         min: min.toFixed(2),
         max: max.toFixed(2),
         median: median.toFixed(2),
-        runs: timings.length
+        runs: timings.length,
     };
 }
 
+/**
+ *
+ */
 async function processStructuresWithStatistics() {
     const baseUrl = import.meta.env.BASE_URL;
     const structures = [
         'ED_para_Ag_3.cif',
         'urea.cif',
         'CaF2.cif',
-        'sucrose.cif'
+        'sucrose.cif',
     ];
     
     const numExecutions = 20;
@@ -91,7 +104,7 @@ async function processStructuresWithStatistics() {
     }
     
     // Print summary of all results
-    console.log("\n=== SUMMARY OF ALL RESULTS ===");
+    console.log('\n=== SUMMARY OF ALL RESULTS ===');
     for (const structureName in allResults) {
         const { stats } = allResults[structureName];
         console.log(`${structureName}: Mean=${stats.mean}ms, StdDev=${stats.stdDev}ms, Min=${stats.min}ms, Max=${stats.max}ms, Median=${stats.median}ms`);
@@ -107,5 +120,5 @@ processStructuresWithStatistics()
         // You could do additional analysis on 'results' here if needed
     })
     .catch(error => {
-        console.error("Error in main process:", error);
+        console.error('Error in main process:', error);
     });

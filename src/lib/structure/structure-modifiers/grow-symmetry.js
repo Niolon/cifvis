@@ -23,6 +23,12 @@ function createBondIdentifier(atom1Label, atom2Label) {
     return atom1Label < atom2Label ? `${atom1Label}->${atom2Label}` : `${atom2Label}->${atom1Label}`;
 }
 
+/**
+ *
+ * @param donorAtomLabel
+ * @param acceptorAtomLabel
+ * @param hydrogenAtomLabel
+ */
 function createHBondIdentifier(donorAtomLabel, acceptorAtomLabel, hydrogenAtomLabel) {
 
 }
@@ -602,7 +608,6 @@ export function growSymmetry(structure) {
             } 
         });
     });
-
 
     translationLinks.forEach(tl => {
         for (const conBond of tl.connectingBonds) {
