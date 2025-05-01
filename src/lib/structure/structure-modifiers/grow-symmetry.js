@@ -219,7 +219,7 @@ function exploreConnection(
     const foundTranslations = [];
 
     // Calculate the absolute symmetry operation for the target group reached by this bond
-    const combinedSymmetry = structure.symmetry.combinePositionCodes(
+    const combinedSymmetry = structure.symmetry.combineSymmetryCodes(
         currentConnection.connectingSymOp, // Symmetry to apply to target
         currentConnection.originSymmetry, // Symmetry of the origin group
     );
@@ -232,7 +232,7 @@ function exploreConnection(
     // Process each connection from the target group
     for (const connection of targetGroupConnections) {
         // Calculate the absolute symmetry operation for the *next* group
-        const nextTargetSymmetryAbsolute = structure.symmetry.combinePositionCodes(
+        const nextTargetSymmetryAbsolute = structure.symmetry.combineSymmetryCodes(
             connection.targetSymmetry, // Symmetry to apply to the next target (relative to targetIndex@identity)
             combinedSymmetry,          // Absolute symmetry of the group we just reached (currentConnection.targetIndex)
         );
@@ -377,7 +377,7 @@ export function growSymmetry(structure) {
     // Collect all unique group@symmetry instances needed
     networkConnections.forEach((group) => {
         requiredSymmetryInstances.add(`${group.originIndex}@.@${group.originSymmetry}`);
-        const finalTargetSymmetry = structure.symmetry.combinePositionCodes(
+        const finalTargetSymmetry = structure.symmetry.combineSymmetryCodes(
             group.connectingSymOp, group.originSymmetry,
         );
         requiredSymmetryInstances.add(`${group.targetIndex}@.@${finalTargetSymmetry}`);
@@ -568,7 +568,7 @@ export function growSymmetry(structure) {
         //    return
         //}
         const extSymmHBonds = externalHBonds[groupIndex].map(hb => {
-            const combinedSymm = structure.symmetry.combinePositionCodes(
+            const combinedSymm = structure.symmetry.combineSymmetryCodes(
                 symOp,
                 hb.acceptorAtomSymmetry,
             );
@@ -622,6 +622,23 @@ export function growSymmetry(structure) {
             } 
         }).filter(hb => hb);
         newHBonds = newHBonds.concat(extSymmHBonds);
+    });
+
+    translationLinks.forEach(tl => {
+        for (const conBond of tl.connectingBonds) {
+            const targetSymmetry = structure.symmetry.combineSymmetryCodes(tl.connectingSymOp, tl.originSymmetry);
+            const atom1Label = `${conBond.originAtom}@${tl.originSymmetry}`;
+            const atom2Label = `${conBond.targetAtom}@${targetSymmetry}`;
+            const atom1 = specialPositionAtoms.has(atom1Label) ? specialPositionAtoms.get(atom1Label) : atom1Label;
+            const atom2 = specialPositionAtoms.has(atom2Label) ? specialPositionAtoms.get(atom2Label) : atom2Label;
+            const bondString = atom1 < atom2 ? `${atom1}->${atom2}` : `${atom2}->${atom1}`;
+            if (!existingBonds.has(bondString)) {
+                existingBonds.add(bondString);
+                newBonds.push(
+                    new Bond(atom1, conBond.targetAtom, conBond.bondLength, conBond.bondLengthSU, targetSymmetry),
+                );
+            }
+        }
     });
   
     return new CrystalStructure(structure.cell, newAtoms, newBonds, newHBonds, structure.symmetry);
