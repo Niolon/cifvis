@@ -2,6 +2,32 @@ import { CrystalStructure } from '../crystal.js';
 import { Bond, HBond } from '../bonds.js';
 
 /**
+ * Creates a unique identifier string for an atom including its symmetry code.
+ * @param {string} atomLabel - The base label of the atom (e.g., 'C1').
+ * @param {string} symOpLabel - The symmetry code (e.g., '1_555').
+ * @returns {string} The combined label (e.g., 'C1@1_555').
+ */
+function createSymAtomLabel(atomLabel, symOpLabel) {
+    return `${atomLabel}@${symOpLabel}`;
+}
+
+/**
+ * Creates a unique identifier string for a bond between two atom labels.
+ * Ensures consistent ordering for duplicate checking.
+ * @param {string} atom1Label - Label of the first atom (e.g., 'C1@1_555').
+ * @param {string} atom2Label - Label of the second atom (e.g., 'O2@2_565').
+ * @returns {string} A unique, ordered string representing the bond (e.g., 'C1@1_555->O2@2_565').
+ */
+function createBondIdentifier(atom1Label, atom2Label) {
+    // Ensure consistent order for Set comparison
+    return atom1Label < atom2Label ? `${atom1Label}->${atom2Label}` : `${atom2Label}->${atom1Label}`;
+}
+
+function createHBondIdentifier(donorAtomLabel, acceptorAtomLabel, hydrogenAtomLabel) {
+
+}
+
+/**
  * Represents a group of atoms in a specific symmetry position
  * @class
  * @property {number} groupIndex - Index of the group in the original structure
@@ -283,7 +309,7 @@ function exploreConnection(
  * Object containing the list of bond groups used to build the connected network
  * and bond groups leading to translational duplicates.
  */
-export function createConnectivity(structure) {
+export function growSymmetry(structure) {
     const atomGroups = structure.connectedGroups;
 
     const atomGroupMap = new Map();
@@ -349,31 +375,8 @@ export function createConnectivity(structure) {
         );
     }
 
-    return { networkConnections, translationLinks };
-}
-
-/**
- * Expands the asymmetric unit by applying symmetry operations based on connectivity.
- * (Note: This function is incomplete in the provided snippet but shows usage
- * of the refactored createConnectivity)
- * @param {CrystalStructure} structure - The crystal structure.
- */
-export function growSymmetry(structure) {
-    const atomGroups = structure.connectedGroups;
-    const identitySymOpString = `${structure.symmetry.identitySymOpId}_555`;
-    const atomGroupMap = new Map();
-    atomGroups.forEach((group, i) => {
-        group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
-    });
-
-    // Call the refactored function
-    const {
-        networkConnections,
-        translationLinks,
-    } = createConnectivity(structure);
-
     const requiredSymmetryInstances = new Set();
-    let interGroupBonds = [];
+    const interGroupBonds = [];
     // Collect all unique group@symmetry instances needed
     networkConnections.forEach((group) => {
         requiredSymmetryInstances.add(`${group.originIndex}@.@${group.originSymmetry}`);
@@ -382,37 +385,34 @@ export function growSymmetry(structure) {
         );
         requiredSymmetryInstances.add(`${group.targetIndex}@.@${finalTargetSymmetry}`);
 
-        const addBonds = group.connectingBonds.map(conBond => {
-            const atom1 = `${conBond.originAtom}@${group.originSymmetry}`;
-            const atom2 = `${conBond.targetAtom}@${finalTargetSymmetry}`;
-            return { 
+        group.connectingBonds.forEach(conBond => {
+            const atom1 = group.originSymmetry === identSymmString 
+                ? conBond.originAtom 
+                : createSymAtomLabel(conBond.originAtom, group.originSymmetry);
+            const atom2 = finalTargetSymmetry === identSymmString
+                ? conBond.targetAtom 
+                : createSymAtomLabel(conBond.targetAtom, finalTargetSymmetry);
+            interGroupBonds.push({ 
                 originSymmAtom: atom1, 
                 targetSymmAtom: atom2,
                 bondLength: conBond.bondLength,
                 bondLengthSU: conBond.bondLengthSU,
-            };
+            });
         });
-
-        interGroupBonds = interGroupBonds.concat(addBonds);
     });
 
     // Store potential atoms: [groupIndex][symmInstanceIndex][atomIndex]
     const atomsByGroupAndSymmetry = atomGroups.map(g => [[...g.atoms]]); // Start with identity atoms
-    const identSymmString = structure.symmetry.identitySymOpString;
-    let newBonds = [];
-    let newHBonds = [];
+    const newBonds = [];
+    const newHBonds = [];
     atomGroups.forEach(g => {
-        newBonds = newBonds.concat(g.bonds);
-        newHBonds = newHBonds.concat(g.hBonds);
+        newBonds.push(...g.bonds);
+        newHBonds.push(...g.hBonds);
     });
     
     const existingBonds = new Set();
     newBonds.forEach(b => {
-        if (b.atom1Label < b.atom2Label) {
-            existingBonds.add(`${b.atom1Label}->${b.atom2Label}`);
-        } else {
-            existingBonds.add(`${b.atom2Label}->${b.atom1Label}`);
-        }
+        existingBonds.add(createBondIdentifier(b.atom1Label, b.atom2Label));
     });
 
     const existingHBonds = new Set();
@@ -441,7 +441,7 @@ export function growSymmetry(structure) {
     // position as another atom (either the original or from another symm op).
     // It maps the duplicate atom's label to the label of the atom being kept.
     const specialPositionAtoms = new Map();
-    let newAtoms = [];
+    const newAtoms = [];
 
     atomsByGroupAndSymmetry.forEach(g => {
         // Compare atoms across different symmetry instances *of the same original atom*
@@ -465,53 +465,47 @@ export function growSymmetry(structure) {
                     }
                     if (!specPos) {
                         // This atom represents a unique position for this original atom, keep it
-                        keptSymmAtoms.push(symmAtom);
+                        newAtoms.push(symmAtom);
                     }
                 }
-                newAtoms = newAtoms.concat(keptSymmAtoms);
             }
         }
     });
 
     requiredSymmetryInstances.forEach(g => {
         const [idxStr, symOp] = g.split('@.@');
-        if (symOp === identitySymOpString) {
+        if (symOp === identSymmString) {
             return; // Skip identity operation
         }
         const groupIndex = Number(idxStr);
         const originalBonds = atomGroups[groupIndex].bonds;
-        const addedBonds = originalBonds.map(b => {
-            const atom1Label = `${b.atom1Label}@${symOp}`;
-            const atom2Label = `${b.atom2Label}@${symOp}`;
-            const atom1 = specialPositionAtoms.has(atom1Label) ? specialPositionAtoms.get(atom1Label) : atom1Label;
-            const atom2 = specialPositionAtoms.has(atom2Label) ? specialPositionAtoms.get(atom2Label) : atom2Label;
-            const bondString = atom1 < atom2 ? `${atom1}->${atom2}` : `${atom2}->${atom1}`;
+        originalBonds.forEach(b => {
+            const atom1Label = createSymAtomLabel(b.atom1Label, symOp);
+            const atom2Label = createSymAtomLabel(b.atom2Label, symOp);
+            const atom1 = specialPositionAtoms.get(atom1Label) || atom1Label;
+            const atom2 = specialPositionAtoms.get(atom2Label) || atom2Label;
+            
+            const bondString = createBondIdentifier(atom1, atom2);
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
-                return new Bond(
+                newBonds.push(new Bond(
                     atom1, atom2, b.bondLength, b.bondLengthSU, '.',
-                );
+                ));
             }
-        }).filter(b => b);
-        newBonds = newBonds.concat(addedBonds);
+        });
     });
 
-    const newInterBonds = interGroupBonds.map( b => {
-        const atom1 = specialPositionAtoms.has(b.originSymmAtom) ? 
-            specialPositionAtoms.get(b.originSymmAtom) : 
-            b.originSymmAtom;
-        const atom2 = specialPositionAtoms.has(b.targetSymmAtom) ? 
-            specialPositionAtoms.get(b.targetSymmAtom) : 
-            b.targetSymmAtom;
-        const bondString = atom1 < atom2 ? `${atom1}->${atom2}` : `${atom2}->${atom1}`;
+    interGroupBonds.forEach( b => {
+        const atom1 = specialPositionAtoms.get(b.originSymmAtom) || b.originSymmAtom;
+        const atom2 = specialPositionAtoms.get(b.targetSymmAtom) || b.targetSymmAtom;
+        const bondString = createBondIdentifier(atom1, atom2);
         if (!existingBonds.has(bondString)) {
             existingBonds.add(bondString);
-            return new Bond(
+            newBonds.push(new Bond(
                 atom1, atom2, b.bondLength, b.bondLengthSU, '.',
-            );
+            ));
         }
-    }).filter(b => b);
-    newBonds = newBonds.concat(newInterBonds);
+    });
 
     const atomLabels = new Set(newAtoms.map(a => a.label));
 
@@ -525,29 +519,24 @@ export function growSymmetry(structure) {
 
     requiredSymmetryInstances.forEach(g => {
         const [idxStr, symOp] = g.split('@.@');
-        if (symOp === identitySymOpString) {
+        if (symOp === identSymmString) {
+
             return; // Skip identity operation
         }
         const groupIndex = Number(idxStr);
         const originalHBonds = atomGroups[groupIndex].hBonds;
-        const symmHBonds = originalHBonds.map(hb => {
-            const symmDonorAtom = `${hb.donorAtomLabel}@${symOp}`;
-            const symmAcceptorAtom = `${hb.acceptorAtomLabel}@${symOp}`;
-            const symmHAtom = `${hb.hydrogenAtomLabel}@${symOp}`;
-            const donorAtom = specialPositionAtoms.has(symmDonorAtom) ? 
-                specialPositionAtoms.get(symmDonorAtom) : 
-                symmDonorAtom;
-            const acceptorAtom = specialPositionAtoms.has(symmAcceptorAtom) ? 
-                specialPositionAtoms.get(symmAcceptorAtom) : 
-                symmAcceptorAtom;
-            const hAtom = specialPositionAtoms.has(symmHAtom) ? 
-                specialPositionAtoms.get(symmHAtom) : 
-                symmHAtom;
+        originalHBonds.map(hb => {
+            const symmDonorAtom = createSymAtomLabel(hb.donorAtomLabel, symOp);
+            const symmAcceptorAtom = createSymAtomLabel(hb.acceptorAtomLabel, symOp);
+            const symmHAtom = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
+            const donorAtom = specialPositionAtoms.get(symmDonorAtom) || symmDonorAtom;
+            const acceptorAtom = specialPositionAtoms.get(symmAcceptorAtom) || symmAcceptorAtom;
+            const hAtom = specialPositionAtoms.get(symmHAtom) || symmHAtom;
 
             const hBondString = `${donorAtom}-${hAtom}...${acceptorAtom}`;
             if (!existingHBonds.has(hBondString)) {
                 existingHBonds.add(hBondString);
-                return new HBond(
+                newHBonds.push(new HBond(
                     donorAtom,
                     hAtom,
                     acceptorAtom,
@@ -560,35 +549,26 @@ export function growSymmetry(structure) {
                     hb.hBondAngle,
                     hb.hBondAngleSU,
                     '.',
-                );
+                ));
             }
-        }).filter(hb => hb);
-        newHBonds = newHBonds.concat(symmHBonds);
-        //if (!existingHBonds[groupIndex] || existingHBonds[groupIndex].length === 0) {
-        //    return
-        //}
-        const extSymmHBonds = externalHBonds[groupIndex].map(hb => {
+        });
+
+        externalHBonds[groupIndex].forEach(hb => {
             const combinedSymm = structure.symmetry.combineSymmetryCodes(
                 symOp,
                 hb.acceptorAtomSymmetry,
             );
-            const symmDonorAtom = `${hb.donorAtomLabel}@${symOp}`;
-            const symmAcceptorAtom = `${hb.acceptorAtomLabel}@${combinedSymm}`;
-            const symmHAtom = `${hb.hydrogenAtomLabel}@${symOp}`;
-            const donorAtom = specialPositionAtoms.has(symmDonorAtom) ? 
-                specialPositionAtoms.get(symmDonorAtom) : 
-                symmDonorAtom;
-            const acceptorAtom = specialPositionAtoms.has(symmAcceptorAtom) ? 
-                specialPositionAtoms.get(symmAcceptorAtom) : 
-                symmAcceptorAtom;
-            const hAtom = specialPositionAtoms.has(symmHAtom) ? 
-                specialPositionAtoms.get(symmHAtom) : 
-                symmHAtom;
+            const symmDonorAtom = createSymAtomLabel(hb.donorAtomLabel, symOp);
+            const symmAcceptorAtom = createSymAtomLabel(hb.acceptorAtomLabel, combinedSymm);
+            const symmHAtom = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
+            const donorAtom = specialPositionAtoms.get(symmDonorAtom) || symmDonorAtom;
+            const acceptorAtom = specialPositionAtoms.get(symmAcceptorAtom) || symmAcceptorAtom;
+            const hAtom = specialPositionAtoms.get(symmHAtom) || symmHAtom;
             const hBondString = `${donorAtom}-${hAtom}...${acceptorAtom}`;
             if (!existingHBonds.has(hBondString)) {
                 if (atomLabels.has(acceptorAtom)) {
                     existingHBonds.add(hBondString);
-                    return new HBond(
+                    newHBonds.push(new HBond(
                         donorAtom,
                         hAtom,
                         acceptorAtom,
@@ -601,10 +581,10 @@ export function growSymmetry(structure) {
                         hb.hBondAngle,
                         hb.hBondAngleSU,
                         '.',
-                    );
+                    ));
                 } else {  
                     existingHBonds.add(hBondString);
-                    return new HBond(
+                    newHBonds.push(new HBond(
                         donorAtom,
                         hAtom,
                         hb.acceptorAtomLabel,
@@ -617,21 +597,21 @@ export function growSymmetry(structure) {
                         hb.hBondAngle,
                         hb.hBondAngleSU,
                         combinedSymm,
-                    );
+                    ));
                 }
             } 
-        }).filter(hb => hb);
-        newHBonds = newHBonds.concat(extSymmHBonds);
+        });
     });
+
 
     translationLinks.forEach(tl => {
         for (const conBond of tl.connectingBonds) {
             const targetSymmetry = structure.symmetry.combineSymmetryCodes(tl.connectingSymOp, tl.originSymmetry);
-            const atom1Label = `${conBond.originAtom}@${tl.originSymmetry}`;
-            const atom2Label = `${conBond.targetAtom}@${targetSymmetry}`;
-            const atom1 = specialPositionAtoms.has(atom1Label) ? specialPositionAtoms.get(atom1Label) : atom1Label;
-            const atom2 = specialPositionAtoms.has(atom2Label) ? specialPositionAtoms.get(atom2Label) : atom2Label;
-            const bondString = atom1 < atom2 ? `${atom1}->${atom2}` : `${atom2}->${atom1}`;
+            const atom1Label = createSymAtomLabel(conBond.originAtom, tl.originSymmetry);
+            const atom2Label = createSymAtomLabel(conBond.targetAtom, targetSymmetry);
+            const atom1 = specialPositionAtoms.get(atom1Label) || atom1Label;
+            const atom2 = specialPositionAtoms.get(atom2Label) || atom2Label;
+            const bondString = createBondIdentifier(atom1, atom2);
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
                 newBonds.push(
