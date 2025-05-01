@@ -374,13 +374,13 @@ describe('CellSymmetry', () => {
         test('combines identity operations', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
-            expect(sym.combinePositionCodes('1_555', '1_555')).toBe('1_555');
+            expect(sym.combineSymmetryCodes('1_555', '1_555')).toBe('1_555');
         });
     
         test('combines integer translations', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
-            expect(sym.combinePositionCodes('1_655', '1_565')).toBe('1_665');
+            expect(sym.combineSymmetryCodes('1_655', '1_565')).toBe('1_665');
         });
     
         test('combines operations with rotations', () => {
@@ -390,7 +390,7 @@ describe('CellSymmetry', () => {
             ];
             const operationIds = new Map([['1', 0], ['2', 1]]);
             const sym = new CellSymmetry('P-1', 2, ops, operationIds);
-            expect(sym.combinePositionCodes('2_555', '2_555')).toBe('1_555');
+            expect(sym.combineSymmetryCodes('2_555', '2_555')).toBe('1_555');
         });
     
         test('combines rotation with translation', () => {
@@ -401,7 +401,7 @@ describe('CellSymmetry', () => {
             ];
             const operationIds = new Map([['1', 0], ['2', 1], ['3', 2]]);
             const sym = new CellSymmetry('P2/m', 10, ops, operationIds);
-            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+            expect(sym.combineSymmetryCodes('2_555', '1_655')).toBe('2_455');
         });
     
         test('throws error when no matching operation found', () => {
@@ -419,7 +419,7 @@ describe('CellSymmetry', () => {
                     transVector: [0, 0, 0],
                 });
                 
-            expect(() => sym.combinePositionCodes('1_555', '1_555')).toThrow('No matching symmetry operation found');
+            expect(() => sym.combineSymmetryCodes('1_555', '1_555')).toThrow('No matching symmetry operation found');
         });
     
         test('handles complex space group operations', () => {
@@ -433,10 +433,10 @@ describe('CellSymmetry', () => {
             const sym = new CellSymmetry('P21/m', 11, ops, operationIds);
             
             // Combine a 2-fold rotation (2) with a translation
-            expect(sym.combinePositionCodes('2_555', '1_655')).toBe('2_455');
+            expect(sym.combineSymmetryCodes('2_555', '1_655')).toBe('2_455');
             
             // Combine inversion (3) with a glide plane (2)
-            expect(sym.combinePositionCodes('3_555', '2_555')).toBe('4_545');
+            expect(sym.combineSymmetryCodes('3_555', '2_555')).toBe('4_545');
         });
 
         test('handles operations with x,y switch (dev from paracyclophane)', () => {
@@ -460,18 +460,18 @@ describe('CellSymmetry', () => {
             ];
             const sym = new CellSymmetry('P 42/m n m', 136, ops);
 
-            expect(sym.combinePositionCodes('15_665', '6_665')).toBe('16_555');
-            expect(sym.combinePositionCodes('15_665', '7_556')).toBe('9_666');
-            expect(sym.combinePositionCodes('15_665', '8_666')).toBe('14_556');
-            expect(sym.combinePositionCodes('15_665', '16_555')).toBe('6_665');
-            expect(sym.combinePositionCodes('15_665', '9_666')).toBe('7_556');
-            expect(sym.combinePositionCodes('15_665', '14_556')).toBe('8_666');
-            expect(sym.combinePositionCodes('14_556', '15_665')).toBe('8_666');
-            expect(sym.combinePositionCodes('14_556', '9_666')).toBe('6_665');
-            expect(sym.combinePositionCodes('14_556', '16_555')).toBe('7_556');
-            expect(sym.combinePositionCodes('14_556', '8_666')).toBe('15_665');
-            expect(sym.combinePositionCodes('14_556', '6_665')).toBe('9_666');
-            expect(sym.combinePositionCodes('14_556', '7_556')).toBe('16_555');
+            expect(sym.combineSymmetryCodes('15_665', '6_665')).toBe('16_555');
+            expect(sym.combineSymmetryCodes('15_665', '7_556')).toBe('9_666');
+            expect(sym.combineSymmetryCodes('15_665', '8_666')).toBe('14_556');
+            expect(sym.combineSymmetryCodes('15_665', '16_555')).toBe('6_665');
+            expect(sym.combineSymmetryCodes('15_665', '9_666')).toBe('7_556');
+            expect(sym.combineSymmetryCodes('15_665', '14_556')).toBe('8_666');
+            expect(sym.combineSymmetryCodes('14_556', '15_665')).toBe('8_666');
+            expect(sym.combineSymmetryCodes('14_556', '9_666')).toBe('6_665');
+            expect(sym.combineSymmetryCodes('14_556', '16_555')).toBe('7_556');
+            expect(sym.combineSymmetryCodes('14_556', '8_666')).toBe('15_665');
+            expect(sym.combineSymmetryCodes('14_556', '6_665')).toBe('9_666');
+            expect(sym.combineSymmetryCodes('14_556', '7_556')).toBe('16_555');
         });
     });
 

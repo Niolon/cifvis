@@ -348,14 +348,14 @@ export class CellSymmetry {
 
     /**
      * Combines two position codes to create a new position code
-     * @param {string} positionCodeOuter - Outer position code (applied second)
-     * @param {string} positionCodeInner - Inner position code (applied first)
+     * @param {string} symmetryCodeOuter - Outer position code (applied second)
+     * @param {string} symmetryCodeInner - Inner position code (applied first)
      * @returns {string} Combined position code
      * @throws {Error} If no matching symmetry operation is found
      */
-    combinePositionCodes(positionCodeOuter, positionCodeInner) {
-        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(positionCodeOuter);
-        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(positionCodeInner);
+    combineSymmetryCodes(symmetryCodeOuter, symmetryCodeInner) {
+        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(symmetryCodeOuter);
+        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(symmetryCodeInner);
         const transVecOuter = math.add(math.matrix(transVecOuterArray), math.matrix(symOpOuter.transVector));
         const transVecInner = math.add(math.matrix(transVecInnerArray), math.matrix(symOpInner.transVector));
         const combinedTransVector = math.add(math.multiply(symOpOuter.rotMatrix, transVecInner), transVecOuter);
