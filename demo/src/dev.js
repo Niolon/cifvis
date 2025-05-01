@@ -81,11 +81,14 @@ async function processStructuresWithStatistics() {
             const cifText = await response.text();
             
             // Run multiple executions
+            let structure;
             const timings = [];
             for (let i = 1; i <= numExecutions; i++) {
-                const { executionTime } = await growStructure(cifText, structureName, i);
+                const { output, executionTime } = await growStructure(cifText, structureName, i);
+                structure = output;
                 timings.push(executionTime);
             }
+            const structureInfo = `N(Atoms): ${structure.atoms.length}; N(Bonds): ${structure.bonds.length}; N(HBonds): ${structure.hBonds.length}`;
             
             // Calculate and display statistics
             const stats = calculateStatistics(timings);
@@ -96,7 +99,7 @@ async function processStructuresWithStatistics() {
             //console.log(`Max: ${stats.max} ms`);
             //console.log(`Median: ${stats.median} ms`);
             
-            allResults[structureName] = { timings, stats };
+            allResults[structureName] = { timings, stats, structureInfo };
             
         } catch (error) {
             console.error(`Error processing ${structureName}:`, error);
@@ -106,8 +109,9 @@ async function processStructuresWithStatistics() {
     // Print summary of all results
     console.log('\n=== SUMMARY OF ALL RESULTS ===');
     for (const structureName in allResults) {
-        const { stats } = allResults[structureName];
+        const { stats, structureInfo } = allResults[structureName];
         console.log(`${structureName}: Mean=${stats.mean}ms, StdDev=${stats.stdDev}ms, Min=${stats.min}ms, Max=${stats.max}ms, Median=${stats.median}ms`);
+        console.log(structureInfo);
     }
     
     return allResults;
