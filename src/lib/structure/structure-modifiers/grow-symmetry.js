@@ -712,7 +712,7 @@ function processTranslationLinks(translationLinks, structure, specialPositionAto
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
                 additionalBonds.push(
-                    new Bond(atom1, atom2, conBond.bondLength, conBond.bondLengthSU, targetSymmetry),
+                    new Bond(atom1, conBond.targetAtom, conBond.bondLength, conBond.bondLengthSU, targetSymmetry),
                 );
             }
         }
