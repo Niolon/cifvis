@@ -22,13 +22,14 @@ export class MockStructure {
             this.structure = baseStructure;
         } else {
             const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            // Operations for P2_1/m (No. 11), unique axis b, origin at -1
             const symmetryOps = [
                 new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y+1/2,-z'),
-                new SymmetryOperation('-x+1/2,y,-z+1/2'),
-                new SymmetryOperation('x+1/2,-y+1/2,z'),
+                new SymmetryOperation('-x, y+1/2, -z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('x, -y+1/2, z'),
             ];
-            const symmetry = new CellSymmetry('Test', 1, symmetryOps);
+            const symmetry = new CellSymmetry('P 21/m', 11, symmetryOps);
 
             this.structure = new CrystalStructure(cell, [], [], [], symmetry);
         }
@@ -200,8 +201,6 @@ export class MockStructure {
                 throw new Error(`H-bond references non-existent acceptor atom ${hbond.acceptorAtomLabel}`);
             }
         }
-        this.structure.recalculateConnectedGroups();
-
         return this.structure;
     }
 }
