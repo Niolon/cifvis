@@ -1,5 +1,5 @@
-import { CrystalStructure } from '../crystal.js';
-import { Bond, HBond } from '../bonds.js';
+import { CrystalStructure } from '../../crystal.js';
+import { Bond, HBond } from '../../bonds.js';
 
 /**
  * Creates a unique identifier string for an atom including its symmetry code.

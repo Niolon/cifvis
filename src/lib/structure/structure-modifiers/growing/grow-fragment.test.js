@@ -1,6 +1,6 @@
 import { beforeEach, describe, test } from 'vitest';
-import { MockStructure as MockStructureHelper } from './base.test.js';
-import { Bond } from '../bonds.js';
+import { MockStructure as MockStructureHelper } from '../base.test.js';
+import { Bond } from '../../bonds.js';
 
 import { 
     createSymAtomLabel, 
@@ -19,7 +19,7 @@ import {
     collectSymmetryRequirements,
     processTranslationLinks,
     growSymmetry,
-} from './grow-symmetry.js';
+} from './grow-fragment.js';
 
 describe('Helper Functions', () => {
     test('createSymAtomLabel correctly formats labels', () => {
