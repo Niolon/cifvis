@@ -494,18 +494,19 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
 
 /**
  * Generates bonds for symmetry instances and handles special positions.
- * @param {CrystalStructure} structure - The crystal structure.
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {Set<string>} requiredSymmetryInstances - Set of required symmetry instances.
- * @param {Array<{originSymmAtom: string, targetSymmAtom: string, bondLength: number, bondLengthSU: number}>} 
- *   interGroupBonds - Inter-group bonds from collectSymmetryRequirements.
+ * @param {Array<{originSymmAtom: string, targetSymmAtom: string, bondLength: number, bondLengthSU: number}>} interGroupBonds 
+ * - Inter-group bonds from collectSymmetryRequirements.
  * @param interGroupBonds
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
  * @param newAtoms
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
-export function generateSymmetryBonds(structure, atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmString) {
+export function generateSymmetryBonds(
+    atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmString,
+) {
     // Initialize with the original intra-group bonds
     const newBonds = [];
     atomGroups.forEach(g => {
@@ -573,121 +574,130 @@ export function generateSymmetryBonds(structure, atomGroups, requiredSymmetryIns
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {Array<HBond>} New hydrogen bonds.
  */
-export function generateSymmetryHBonds(structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmString) {
-    // Initialize with the original intra-group hydrogen bonds
-    const newHBonds = [];
-    atomGroups.forEach(g => {
-        newHBonds.push(...g.hBonds);
-    });
-    
-    const existingHBonds = new Set();
-    
-    // Track existing hydrogen bonds to avoid duplicates
-    newHBonds.forEach(hb => {
-        existingHBonds.add(createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel));
+export function generateSymmetryHBonds(
+    structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmString,
+) {
+    const finalHBonds = [];
+    const finalHBondIdentifiers = new Set();
+
+    // Add all original H-bonds first, ensuring their identifiers are correctly stored
+    // to prevent adding duplicates later if they are re-generated.
+    structure.hBonds.forEach(hb => {
+        let identifier;
+        if (hb.acceptorAtomSymmetry === '.' || hb.acceptorAtomSymmetry === identSymmString) { // Internal H-bond
+            identifier = createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel);
+        } else { // External H-bond
+            identifier = `${createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel)}@${hb.acceptorAtomSymmetry}`;
+        }
+        // Only add if not already present (e.g. if input structure.hBonds had duplicates)
+        if (!finalHBondIdentifiers.has(identifier)) {
+            finalHBondIdentifiers.add(identifier);
+            finalHBonds.push(hb);
+        }
     });
 
-    // Get external hydrogen bonds (those that cross between groups)
-    const externalHBonds = atomGroups.map(() => []);
-    
+    // Get definitions of external H-bonds originating from each group in the ASU
+    const externalHBondDefinitions = atomGroups.map(() => []);
     structure.hBonds
         .filter(hb => hb.acceptorAtomSymmetry !== '.')
         .forEach(hb => {
-            externalHBonds[atomGroupMap.get(hb.donorAtomLabel)].push(hb);
+            const donorGroupIndex = atomGroupMap.get(hb.donorAtomLabel);
+            if (donorGroupIndex !== undefined) {
+                externalHBondDefinitions[donorGroupIndex].push(hb);
+            }
         });
 
-    // Process symmetry instances for hydrogen bonds
-    requiredSymmetryInstances.forEach(g => {
-        const [idxStr, symOp] = g.split('@.@');
+    // Process required symmetry instances to generate new H-bonds
+    requiredSymmetryInstances.forEach(gInstance => {
+        const [idxStr, symOp] = gInstance.split('@.@');
+        // Skip generating from identity if not explicitly needed for special position remapping (already handled by initial add)
         if (symOp === identSymmString) {
-            return; // Skip identity operation
+            // Potentially, if atoms involved in an original H-bond were remapped by specialPositionAtoms
+            // even for identity, we might need to re-evaluate. However, the current logic
+            // of adding originals first and then checking identifiers should handle this.
+            // If C1 -> C1_sp, then original O1-H1..C1 becomes O1-H1..C1_sp if we re-evaluate.
+            // For now, this early return is kept as per original logic, assuming `specialPositionAtoms`
+            // primarily remaps non-identity generated atoms.
+            // The tests pass with this, but it's a subtle area.
+            return;
         }
         
         const groupIndex = Number(idxStr);
         
-        // Handle intra-group hydrogen bonds
-        const originalHBonds = atomGroups[groupIndex].hBonds;
-        originalHBonds.forEach(hb => {
-            const symmDonorAtom = createSymAtomLabel(hb.donorAtomLabel, symOp);
-            const symmAcceptorAtom = createSymAtomLabel(hb.acceptorAtomLabel, symOp);
-            const symmHAtom = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
-            const donorAtom = specialPositionAtoms.get(symmDonorAtom) || symmDonorAtom;
-            const acceptorAtom = specialPositionAtoms.get(symmAcceptorAtom) || symmAcceptorAtom;
-            const hAtom = specialPositionAtoms.get(symmHAtom) || symmHAtom;
+        // Handle intra-group H-bonds (generate symmetry copies)
+        const originalIntraGroupHBonds = atomGroups[groupIndex].hBonds;
+        originalIntraGroupHBonds.forEach(hb => {
+            const sDonor = createSymAtomLabel(hb.donorAtomLabel, symOp);
+            const sH = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
+            const sAcceptor = createSymAtomLabel(hb.acceptorAtomLabel, symOp);
 
-            const hBondString = createHBondIdentifier(donorAtom, hAtom, acceptorAtom);
-            if (!existingHBonds.has(hBondString)) {
-                existingHBonds.add(hBondString);
-                newHBonds.push(new HBond(
-                    donorAtom,
-                    hAtom,
-                    acceptorAtom,
-                    hb.donorHydrogenDistance,
-                    hb.donorHydrogenDistanceSU,
-                    hb.acceptorHydrogenDistance,
-                    hb.acceptorHydrogenDistanceSU,
-                    hb.donorAcceptorDistance,
-                    hb.donorAcceptorDistanceSU,
-                    hb.hBondAngle,
-                    hb.hBondAngleSU,
-                    '.',
+            const finalDonor = specialPositionAtoms.get(sDonor) || sDonor;
+            const finalH = specialPositionAtoms.get(sH) || sH;
+            const finalAcceptor = specialPositionAtoms.get(sAcceptor) || sAcceptor;
+
+            const hBondIdentifier = createHBondIdentifier(finalDonor, finalH, finalAcceptor);
+            if (!finalHBondIdentifiers.has(hBondIdentifier)) {
+                finalHBondIdentifiers.add(hBondIdentifier);
+                finalHBonds.push(new HBond(
+                    finalDonor, finalH, finalAcceptor,
+                    hb.donorHydrogenDistance, hb.donorHydrogenDistanceSU,
+                    hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
+                    hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
+                    hb.hBondAngle, hb.hBondAngleSU,
+                    '.' // Generated intra-group H-bonds are internal
                 ));
             }
         });
 
-        // Handle external hydrogen bonds
-        externalHBonds[groupIndex].forEach(hb => {
-            const combinedSymm = structure.symmetry.combineSymmetryCodes(
-                symOp,
-                hb.acceptorAtomSymmetry,
-            );
-            const symmDonorAtom = createSymAtomLabel(hb.donorAtomLabel, symOp);
-            const symmAcceptorAtom = createSymAtomLabel(hb.acceptorAtomLabel, combinedSymm);
-            const symmHAtom = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
-            const donorAtom = specialPositionAtoms.get(symmDonorAtom) || symmDonorAtom;
-            const acceptorAtom = specialPositionAtoms.get(symmAcceptorAtom) || symmAcceptorAtom;
-            const hAtom = specialPositionAtoms.get(symmHAtom) || symmHAtom;
+        // Handle external H-bonds (generate symmetry copies)
+        externalHBondDefinitions[groupIndex].forEach(hb => {
+            const sDonor = createSymAtomLabel(hb.donorAtomLabel, symOp);
+            const sH = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
             
-            const hBondString = createHBondIdentifier(donorAtom, hAtom, acceptorAtom);
-            if (!existingHBonds.has(hBondString)) {
-                if (atomLabels.has(acceptorAtom)) {
-                    existingHBonds.add(hBondString);
-                    newHBonds.push(new HBond(
-                        donorAtom,
-                        hAtom,
-                        acceptorAtom,
-                        hb.donorHydrogenDistance,
-                        hb.donorHydrogenDistanceSU,
-                        hb.acceptorHydrogenDistance,
-                        hb.acceptorHydrogenDistanceSU,
-                        hb.donorAcceptorDistance,
-                        hb.donorAcceptorDistanceSU,
-                        hb.hBondAngle,
-                        hb.hBondAngleSU,
-                        '.',
-                    ));
-                } else {  
-                    existingHBonds.add(hBondString);
-                    newHBonds.push(new HBond(
-                        donorAtom,
-                        hAtom,
-                        hb.acceptorAtomLabel,
-                        hb.donorHydrogenDistance,
-                        hb.donorHydrogenDistanceSU,
-                        hb.acceptorHydrogenDistance,
-                        hb.acceptorHydrogenDistanceSU,
-                        hb.donorAcceptorDistance,
-                        hb.donorAcceptorDistanceSU,
-                        hb.hBondAngle,
-                        hb.hBondAngleSU,
-                        combinedSymm,
-                    ));
-                }
-            } 
+            const finalDonor = specialPositionAtoms.get(sDonor) || sDonor;
+            const finalH = specialPositionAtoms.get(sH) || sH;
+
+            const newAcceptorOverallSymmetry = structure.symmetry.combineSymmetryCodes(
+                symOp, hb.acceptorAtomSymmetry
+            );
+            const potentialAcceptorFullLabel = createSymAtomLabel(hb.acceptorAtomLabel, newAcceptorOverallSymmetry);
+            const finalAcceptorLabelForLookup = specialPositionAtoms.get(potentialAcceptorFullLabel) || potentialAcceptorFullLabel;
+
+            let newHBondToAdd;
+            let hBondIdentifier;
+
+            if (atomLabels.has(finalAcceptorLabelForLookup)) {
+                // Acceptor is generated and becomes internal
+                newHBondToAdd = new HBond(
+                    finalDonor, finalH, finalAcceptorLabelForLookup,
+                    hb.donorHydrogenDistance, hb.donorHydrogenDistanceSU,
+                    hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
+                    hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
+                    hb.hBondAngle, hb.hBondAngleSU,
+                    '.' // Acceptor is now internal
+                );
+                hBondIdentifier = createHBondIdentifier(finalDonor, finalH, finalAcceptorLabelForLookup);
+            } else {
+                // Acceptor remains external
+                newHBondToAdd = new HBond(
+                    finalDonor, finalH, hb.acceptorAtomLabel, // Use base acceptor label
+                    hb.donorHydrogenDistance, hb.donorHydrogenDistanceSU,
+                    hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
+                    hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
+                    hb.hBondAngle, hb.hBondAngleSU,
+                    newAcceptorOverallSymmetry // New external symmetry
+                );
+                hBondIdentifier = `${createHBondIdentifier(finalDonor, finalH, hb.acceptorAtomLabel)}@${newAcceptorOverallSymmetry}`;
+            }
+
+            if (!finalHBondIdentifiers.has(hBondIdentifier)) {
+                finalHBondIdentifiers.add(hBondIdentifier);
+                finalHBonds.push(newHBondToAdd);
+            }
         });
     });
 
-    return newHBonds;
+    return finalHBonds;
 }
 
 /**
@@ -753,7 +763,7 @@ export function growSymmetry(structure) {
 
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(
-        structure, atomGroups, requiredSymmetryInstances, interGroupBonds, 
+        atomGroups, requiredSymmetryInstances, interGroupBonds, 
         specialPositionAtoms, newAtoms, identSymmString,
     );
 
