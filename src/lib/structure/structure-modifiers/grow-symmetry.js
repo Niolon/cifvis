@@ -7,7 +7,7 @@ import { Bond, HBond } from '../bonds.js';
  * @param {string} symOpLabel - The symmetry code (e.g., '1_555').
  * @returns {string} The combined label (e.g., 'C1@1_555').
  */
-function createSymAtomLabel(atomLabel, symOpLabel) {
+export function createSymAtomLabel(atomLabel, symOpLabel) {
     return `${atomLabel}@${symOpLabel}`;
 }
 
@@ -18,7 +18,7 @@ function createSymAtomLabel(atomLabel, symOpLabel) {
  * @param {string} atom2Label - Label of the second atom (e.g., 'O2@2_565').
  * @returns {string} A unique, ordered string representing the bond (e.g., 'C1@1_555->O2@2_565').
  */
-function createBondIdentifier(atom1Label, atom2Label) {
+export function createBondIdentifier(atom1Label, atom2Label) {
     // Ensure consistent order for Set comparison
     return atom1Label < atom2Label ? `${atom1Label}->${atom2Label}` : `${atom2Label}->${atom1Label}`;
 }
@@ -30,7 +30,7 @@ function createBondIdentifier(atom1Label, atom2Label) {
  * @param {string} acceptorAtomLabel - Label of the acceptor atom.
  * @returns {string} A unique string representing the hydrogen bond.
  */
-function createHBondIdentifier(donorAtomLabel, hydrogenAtomLabel, acceptorAtomLabel) {
+export function createHBondIdentifier(donorAtomLabel, hydrogenAtomLabel, acceptorAtomLabel) {
     return `${donorAtomLabel}-${hydrogenAtomLabel}...${acceptorAtomLabel}`;
 }
 
@@ -41,7 +41,7 @@ function createHBondIdentifier(donorAtomLabel, hydrogenAtomLabel, acceptorAtomLa
  * @property {string} symmetryId - Symmetry operation ID part of the symmetry code
  * @property {string} translationId - Translation ID part of the symmetry code (e.g., '555')
  */
-class ConnectedGroup {
+export class ConnectedGroup {
     /**
      * Creates a new connected group
      * @param {number} groupIndex - Index of the group in the original structure
@@ -83,7 +83,7 @@ class ConnectedGroup {
  * @property {string} originAtom - Label of the atom in the origin group
  * @property {string} targetAtom - Label of the atom in the target group (before symmetry)
  */
-class ConnectingBond {
+export class ConnectingBond {
     constructor(originAtom, targetAtom, bondLength, bondLengthSU) {
         this.originAtom = originAtom;
         this.targetAtom = targetAtom;
@@ -102,7 +102,7 @@ class ConnectingBond {
  * @property {ConnectingBond[]} connectingBonds - All bonds that form the connection between the two fragments
  * @property {number} creationOriginIndex - Index of the group within the asym. unit this bond originates from
  */
-class ConnectingBondGroup {
+export class ConnectingBondGroup {
     /**
      * Represents a connection between two molecular fragments via symmetry
      * @param {number} originIndex - Index of the origin group
@@ -157,8 +157,9 @@ class ConnectingBondGroup {
  * and the inner array contains objects describing symmetry connections
  * originating from that group: { targetIndex, targetSymmetry: connectingSymOp, bonds }.
  */
-function getSeedConnections(structure, atomGroups, atomGroupMap) {
-    const seedConnectionsKeys = new Map(); // Used to group bonds between the same groups/symm ops
+export function getSeedConnections(structure, atomGroups, atomGroupMap) {
+    // Used to group bonds between the same groups/symm ops 
+    const seedConnectionsKeys = new Map(); 
     const seedConnectionsInGroup = atomGroups.map(() => []);
 
     structure.bonds
@@ -195,7 +196,7 @@ function getSeedConnections(structure, atomGroups, atomGroupMap) {
  * @returns {{danglingConnections: Array<ConnectingBondGroup>, processedConnections: Set<string>}}
  * An object containing the initial queue and the set of processed connection keys.
  */
-function initializeExploration(seedConnectionsPerGroup, identSymmString) {
+export function initializeExploration(seedConnectionsPerGroup, identSymmString) {
     const danglingConnections = [];
     const processedConnections = new Set();
 
@@ -235,8 +236,8 @@ function initializeExploration(seedConnectionsPerGroup, identSymmString) {
  * @returns {{newConnectedGroup: ConnectedGroup, newDanglingConnections: Array<ConnectingBondGroup>, foundTranslations: Array<ConnectingBondGroup>}}
  * Results of processing the step.
  */
-function exploreConnection(
-    currentConnection, 
+export function exploreConnection(
+    currentConnection,
     structure, 
     discoveredGroups, 
     seedConnectionsPerGroup,
@@ -312,7 +313,7 @@ function exploreConnection(
  * Object containing the list of bond groups used to build the connected network, 
  * bond groups leading to translational duplicates, and the discovered group instances.
  */
-function createConnectivity(structure, atomGroups) {
+export function createConnectivity(structure, atomGroups) {
     const atomGroupMap = new Map();
     atomGroups.forEach((group, i) => {
         group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
@@ -390,7 +391,7 @@ function createConnectivity(structure, atomGroups) {
  *   bondLength: number, bondLengthSU: number}>}}
  * The required symmetry instances and inter-group bonds.
  */
-function collectSymmetryRequirements(networkConnections, structure, identSymmString) {
+export function collectSymmetryRequirements(networkConnections, structure, identSymmString) {
     const requiredSymmetryInstances = new Set();
     const interGroupBonds = [];
     
@@ -429,7 +430,7 @@ function collectSymmetryRequirements(networkConnections, structure, identSymmStr
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {Map<string, string>} Map of special position atoms (from -> to).
  */
-function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmString) {
+export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmString) {
     // Store atom groups for each symmetry: [groupIndex][symmInstanceIndex][atomIndex]
     const atomsByGroupAndSymmetry = atomGroups.map(g => [[...g.atoms]]); // Start with identity atoms
     
@@ -504,7 +505,7 @@ function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure,
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
-function generateSymmetryBonds(structure, atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmString) {
+export function generateSymmetryBonds(structure, atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmString) {
     // Initialize with the original intra-group bonds
     const newBonds = [];
     atomGroups.forEach(g => {
@@ -572,7 +573,7 @@ function generateSymmetryBonds(structure, atomGroups, requiredSymmetryInstances,
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {Array<HBond>} New hydrogen bonds.
  */
-function generateSymmetryHBonds(structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmString) {
+export function generateSymmetryHBonds(structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmString) {
     // Initialize with the original intra-group hydrogen bonds
     const newHBonds = [];
     atomGroups.forEach(g => {
@@ -697,7 +698,7 @@ function generateSymmetryHBonds(structure, atomGroups, atomGroupMap, requiredSym
  * @param {Set<string>} existingBonds - Set of existing bond identifiers.
  * @returns {Array<Bond>} Additional bonds from translation links.
  */
-function processTranslationLinks(translationLinks, structure, specialPositionAtoms, existingBonds) {
+export function processTranslationLinks(translationLinks, structure, specialPositionAtoms, existingBonds) {
     const additionalBonds = [];
     
     translationLinks.forEach(tl => {
