@@ -644,7 +644,7 @@ export function generateSymmetryHBonds(
                     hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
                     hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
                     hb.hBondAngle, hb.hBondAngleSU,
-                    '.' // Generated intra-group H-bonds are internal
+                    '.', // Generated intra-group H-bonds are internal
                 ));
             }
         });
@@ -658,7 +658,7 @@ export function generateSymmetryHBonds(
             const finalH = specialPositionAtoms.get(sH) || sH;
 
             const newAcceptorOverallSymmetry = structure.symmetry.combineSymmetryCodes(
-                symOp, hb.acceptorAtomSymmetry
+                symOp, hb.acceptorAtomSymmetry,
             );
             const potentialAcceptorFullLabel = createSymAtomLabel(hb.acceptorAtomLabel, newAcceptorOverallSymmetry);
             const finalAcceptorLabelForLookup = specialPositionAtoms.get(potentialAcceptorFullLabel) || potentialAcceptorFullLabel;
@@ -674,7 +674,7 @@ export function generateSymmetryHBonds(
                     hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
                     hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
                     hb.hBondAngle, hb.hBondAngleSU,
-                    '.' // Acceptor is now internal
+                    '.', // Acceptor is now internal
                 );
                 hBondIdentifier = createHBondIdentifier(finalDonor, finalH, finalAcceptorLabelForLookup);
             } else {
@@ -685,7 +685,7 @@ export function generateSymmetryHBonds(
                     hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
                     hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
                     hb.hBondAngle, hb.hBondAngleSU,
-                    newAcceptorOverallSymmetry // New external symmetry
+                    newAcceptorOverallSymmetry, // New external symmetry
                 );
                 hBondIdentifier = `${createHBondIdentifier(finalDonor, finalH, hb.acceptorAtomLabel)}@${newAcceptorOverallSymmetry}`;
             }
