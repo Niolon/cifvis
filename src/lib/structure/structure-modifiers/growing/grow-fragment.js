@@ -2,6 +2,53 @@ import { CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
 
 /**
+ * @typedef {object} SeedConnection
+ * @property {number} targetIndex - Index of the target atom group.
+ * @property {string} targetSymmetry - The symmetry operation code needed to reach the target group from the
+ * origin group at identity.
+ * @property {Array<ConnectingBond>} bonds - Specific bonds forming this connection.
+ */
+
+/**
+ * @typedef {object} ExplorationState
+ * @property {Array<ConnectingBondGroup>} danglingConnections - Queue of connection groups to process.
+ * @property {Set<string>} processedConnections - Set of unique keys for connections already processed or queued.
+ */
+
+/**
+ * @typedef {object} ExplorationStepResult
+ * @property {ConnectedGroup} newConnectedGroup - The new group instance discovered in this step.
+ * @property {Array<ConnectingBondGroup>} newDanglingConnections - New connections found that need further
+ * exploration.
+ * @property {Array<ConnectingBondGroup>} foundTranslations - Connections found that lead to translational
+ * duplicates.
+ */
+
+/**
+ * @typedef {object} ConnectivityAnalysisResult
+ * @property {Array<ConnectingBondGroup>} networkConnections - Bond groups forming the core connected network.
+ * @property {Array<ConnectingBondGroup>} translationLinks - Bond groups leading to translational duplicates
+ * (potential infinite growth).
+ * @property {Array<Array<ConnectedGroup>>} discoveredGroups - All unique group instances found, grouped by their
+ * original asymmetric unit group index.
+ */
+
+/**
+ * @typedef {object} InterGroupBondInfo
+ * @property {string} originSymmAtom - Label of the atom in the origin group instance (includes symmetry code 
+ *  if not identity).
+ * @property {string} targetSymmAtom - Label of the atom in the target group instance (includes symmetry code).
+ * @property {number} bondLength - The length of the bond.
+ * @property {number} bondLengthSU - Standard uncertainty of the bond length.
+ */
+
+/**
+ * @typedef {object} SymmetryRequirements
+ * @property {Set<string>} requiredSymmetryInstances - Set of unique group@symmetry strings that need to be generated.
+ * @property {Array<InterGroupBondInfo>} interGroupBonds - List of bonds connecting different symmetry instances.
+ */
+
+/**
  * Creates a unique identifier string for an atom including its symmetry code.
  * @param {string} atomLabel - The base label of the atom (e.g., 'C1').
  * @param {string} symOpLabel - The symmetry code (e.g., '1_555').
@@ -153,8 +200,7 @@ export class ConnectingBondGroup {
  * @param {CrystalStructure} structure - Crystal structure to analyze.
  * @param {Array<object>} atomGroups - Array of atom groups (from structure.connectedGroups).
  * @param {Map<string, number>} atomGroupMap - Map from atom label to group index.
- * @returns {Array<Array<object>>} An array where each index corresponds to an atom group,
- * and the inner array contains objects describing symmetry connections
+ * @returns {Array<Array<SeedConnection>>} An array where each index corresponds to an atom group,
  * originating from that group: { targetIndex, targetSymmetry: connectingSymOp, bonds }.
  */
 export function getSeedConnections(structure, atomGroups, atomGroupMap) {
@@ -193,8 +239,7 @@ export function getSeedConnections(structure, atomGroups, atomGroupMap) {
  * Initializes the queue of bond groups (connections) to process and the set of processed connections.
  * @param {Array<Array<object>>} seedConnectionsPerGroup - Connections extracted by getSeedConnections.
  * @param {string} identSymmString - The string representing the identity symmetry operation ('1_555').
- * @returns {{danglingConnections: Array<ConnectingBondGroup>, processedConnections: Set<string>}}
- * An object containing the initial queue and the set of processed connection keys.
+ * @returns {ExplorationState} An object containing the initial queue and the set of processed connection keys.
  */
 export function initializeExploration(seedConnectionsPerGroup, identSymmString) {
     const danglingConnections = [];
@@ -230,11 +275,12 @@ export function initializeExploration(seedConnectionsPerGroup, identSymmString) 
  * finds new connections, and checks for translations.
  * @param {ConnectingBondGroup} currentConnection - The connection group to process.
  * @param {CrystalStructure} structure - The crystal structure.
- * @param {Array<Array<ConnectedGroup>>} discoveredGroups - Current list of discovered group instances for each creation origin.
- * @param {Array<Array<object>>} seedConnectionsPerGroup - The initial connections for each group type.
- * @param {Set<string>} processedConnections - Set of already processed connection keys (will be mutated).
- * @returns {{newConnectedGroup: ConnectedGroup, newDanglingConnections: Array<ConnectingBondGroup>, foundTranslations: Array<ConnectingBondGroup>}}
- * Results of processing the step.
+ * @param {Array<Array<ConnectedGroup>>} discoveredGroups - Current list of discovered group instances for each
+ *  creation origin.
+ * @param {Array<Array<SeedConnection>>} seedConnectionsPerGroup - The initial connections for each group type.
+ * @param {Set<string>} processedConnections - Set of unique keys for connections already processed or queued. This
+ * function adds new connection keys to this set as they are encountered.
+ * @returns {ExplorationStepResult} Results of processing the step.
  */
 export function exploreConnection(
     currentConnection,
@@ -307,11 +353,9 @@ export function exploreConnection(
  * exploring connections across symmetry operations. It identifies unique symmetry-related
  * groups and flags connections that only involve translation (potential infinite growth).
  * @param {CrystalStructure} structure - Crystal structure to analyze.
- * @param {object[]} atomGroups - created distinct groups of interconnected atoms
- * @returns {{networkConnections: Array<ConnectingBondGroup>, translationLinks: Array<ConnectingBondGroup>, 
- *   discoveredGroups: Array<Array<ConnectedGroup>>}}
- * Object containing the list of bond groups used to build the connected network, 
- * bond groups leading to translational duplicates, and the discovered group instances.
+ * @param {Array<object>} atomGroups - Created distinct groups of interconnected atoms.
+ * @returns {ConnectivityAnalysisResult} - Object containing the list of bond groups used to build the connected
+ *  network, bond groups leading to translational duplicates, and the discovered group instances.
  */
 export function createConnectivity(structure, atomGroups) {
     const atomGroupMap = new Map();
@@ -325,7 +369,10 @@ export function createConnectivity(structure, atomGroups) {
     const seedConnectionsPerGroup = getSeedConnections(structure, atomGroups, atomGroupMap);
 
     // Set up the initial processing queue and processed set
-    const { danglingConnections, processedConnections } = initializeExploration(seedConnectionsPerGroup, identSymmString);
+    const { danglingConnections, processedConnections } = initializeExploration(
+        seedConnectionsPerGroup, 
+        identSymmString,
+    );
 
     const networkConnections = []; // Bonds successfully processed and added to the network
     const translationLinks = []; // Bonds leading to translational duplicates
@@ -344,7 +391,9 @@ export function createConnectivity(structure, atomGroups) {
     // Process the queue iteratively using breadth-first search
     while (danglingConnections.length > 0) {
         if (safetyCounter++ > MAXITER) {
-            console.error('Max iterations reached in createConnectivity. Possible infinite loop or very complex structure.');
+            console.error(
+                'Max iterations reached in createConnectivity. Possible infinite loop orvery complex structure.',
+            );
             break; // Exit loop to prevent freezing
         }
 
@@ -387,9 +436,7 @@ export function createConnectivity(structure, atomGroups) {
  * @param {Array<ConnectingBondGroup>} networkConnections - The network connections from createConnectivity.
  * @param {CrystalStructure} structure - The crystal structure.
  * @param {string} identSymmString - The identity symmetry operation string.
- * @returns {{requiredSymmetryInstances: Set<string>, interGroupBonds: Array<{originSymmAtom: string, targetSymmAtom: string, 
- *   bondLength: number, bondLengthSU: number}>}}
- * The required symmetry instances and inter-group bonds.
+ * @returns {SymmetryRequirements} The required symmetry instances and inter-group bonds.
  */
 export function collectSymmetryRequirements(networkConnections, structure, identSymmString) {
     const requiredSymmetryInstances = new Set();
@@ -404,7 +451,7 @@ export function collectSymmetryRequirements(networkConnections, structure, ident
         requiredSymmetryInstances.add(`${group.targetIndex}@.@${finalTargetSymmetry}`);
 
         group.connectingBonds.forEach(conBond => {
-            const atom1 = group.originSymmetry === identSymmString 
+            const atom1 = group.originSymmetry === identSymmString
                 ? conBond.originAtom 
                 : createSymAtomLabel(conBond.originAtom, group.originSymmetry);
             const atom2 = finalTargetSymmetry === identSymmString
@@ -412,7 +459,7 @@ export function collectSymmetryRequirements(networkConnections, structure, ident
                 : createSymAtomLabel(conBond.targetAtom, finalTargetSymmetry);
             interGroupBonds.push({ 
                 originSymmAtom: atom1, 
-                targetSymmAtom: atom2,
+                targetSymmAtom: atom2, // TODO: This should be the label *before* special position remapping
                 bondLength: conBond.bondLength,
                 bondLengthSU: conBond.bondLengthSU,
             });
@@ -428,7 +475,8 @@ export function collectSymmetryRequirements(networkConnections, structure, ident
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {CrystalStructure} structure - The crystal structure.
  * @param {string} identSymmString - The identity symmetry operation string.
- * @returns {Map<string, string>} Map of special position atoms (from -> to).
+ * @returns {{specialPositionAtoms: Map<string, string>, newAtoms: Array<object>}} Map of special position atoms
+ * (from -> to) and the generated atoms.
  */
 export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmString) {
     // Store atom groups for each symmetry: [groupIndex][symmInstanceIndex][atomIndex]
@@ -496,11 +544,9 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
  * Generates bonds for symmetry instances and handles special positions.
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {Set<string>} requiredSymmetryInstances - Set of required symmetry instances.
- * @param {Array<{originSymmAtom: string, targetSymmAtom: string, bondLength: number, bondLengthSU: number}>} interGroupBonds 
- * - Inter-group bonds from collectSymmetryRequirements.
- * @param interGroupBonds
+ * @param {Array<InterGroupBondInfo>} interGroupBonds - Inter-group bonds from collectSymmetryRequirements.
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
- * @param newAtoms
+ * @param {Array<object>} newAtoms - The generated atoms.
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
@@ -568,8 +614,9 @@ export function generateSymmetryBonds(
  * @param {CrystalStructure} structure - The crystal structure.
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {Map<string, number>} atomGroupMap - Map from atom label to group index.
- * @param {Set<string>} requiredSymmetryInstances - Set of required symmetry instances.
- * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
+ * @param {Set<string>} requiredSymmetryInstances - Set of required symmetry instances (e.g. '0@.@2_655').
+ * @param {Map<string, string>} specialPositionAtoms - Map from a duplicate symmetry-generated atom label to the
+ * label of the atom instance that is kept (representing the same spatial position).
  * @param {Set<string>} atomLabels - Set of atom labels.
  * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {Array<HBond>} New hydrogen bonds.
@@ -587,7 +634,12 @@ export function generateSymmetryHBonds(
         if (hb.acceptorAtomSymmetry === '.' || hb.acceptorAtomSymmetry === identSymmString) { // Internal H-bond
             identifier = createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel);
         } else { // External H-bond
-            identifier = `${createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel)}@${hb.acceptorAtomSymmetry}`;
+            const noSymIdentifier = createHBondIdentifier(
+                hb.donorAtomLabel, 
+                hb.hydrogenAtomLabel, 
+                hb.acceptorAtomLabel,
+            );
+            identifier = `${noSymIdentifier}@${hb.acceptorAtomSymmetry}`;
         }
         // Only add if not already present (e.g. if input structure.hBonds had duplicates)
         if (!finalHBondIdentifiers.has(identifier)) {
@@ -610,7 +662,6 @@ export function generateSymmetryHBonds(
     // Process required symmetry instances to generate new H-bonds
     requiredSymmetryInstances.forEach(gInstance => {
         const [idxStr, symOp] = gInstance.split('@.@');
-        // Skip generating from identity if not explicitly needed for special position remapping (already handled by initial add)
         if (symOp === identSymmString) {
             // Potentially, if atoms involved in an original H-bond were remapped by specialPositionAtoms
             // even for identity, we might need to re-evaluate. However, the current logic
@@ -661,7 +712,9 @@ export function generateSymmetryHBonds(
                 symOp, hb.acceptorAtomSymmetry,
             );
             const potentialAcceptorFullLabel = createSymAtomLabel(hb.acceptorAtomLabel, newAcceptorOverallSymmetry);
-            const finalAcceptorLabelForLookup = specialPositionAtoms.get(potentialAcceptorFullLabel) || potentialAcceptorFullLabel;
+            const finalAcceptorLabelForLookup = specialPositionAtoms.get(
+                potentialAcceptorFullLabel,
+            ) || potentialAcceptorFullLabel;
 
             let newHBondToAdd;
             let hBondIdentifier;
@@ -687,7 +740,8 @@ export function generateSymmetryHBonds(
                     hb.hBondAngle, hb.hBondAngleSU,
                     newAcceptorOverallSymmetry, // New external symmetry
                 );
-                hBondIdentifier = `${createHBondIdentifier(finalDonor, finalH, hb.acceptorAtomLabel)}@${newAcceptorOverallSymmetry}`;
+                const symmHBIdentifier = createHBondIdentifier(finalDonor, finalH, hb.acceptorAtomLabel);
+                hBondIdentifier = `${symmHBIdentifier}@${newAcceptorOverallSymmetry}`;
             }
 
             if (!finalHBondIdentifiers.has(hBondIdentifier)) {
@@ -705,7 +759,8 @@ export function generateSymmetryHBonds(
  * @param {Array<ConnectingBondGroup>} translationLinks - The translation links from createConnectivity.
  * @param {CrystalStructure} structure - The crystal structure.
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
- * @param {Set<string>} existingBonds - Set of existing bond identifiers.
+ * @param {Set<string>} existingBonds - Set of unique bond identifiers. This function adds identifiers of newly
+ * created bonds to this set.
  * @returns {Array<Bond>} Additional bonds from translation links.
  */
 export function processTranslationLinks(translationLinks, structure, specialPositionAtoms, existingBonds) {
