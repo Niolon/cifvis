@@ -22,6 +22,12 @@ async function growStructure(cifText, name, runCount) {
     return { output, executionTime };
 }
 
+/**
+ *
+ * @param cifText
+ * @param name
+ * @param runCount
+ */
 async function growCellStructure(cifText, name, runCount) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
