@@ -1,5 +1,6 @@
 import { CrystalStructure, CIF } from '../../src';
-import { growSymmetry } from '../../src/lib/structure/structure-modifiers/grow-symmetry.js';
+import { growSymmetry } from '../../src/lib/structure/structure-modifiers//growing/grow-fragment.js';
+import { growCell } from '../../src/lib/structure/structure-modifiers/growing/grow-cell.js';
 
 /**
  *
@@ -13,6 +14,20 @@ async function growStructure(cifText, name, runCount) {
     
     const startTime = performance.now();
     const output = growSymmetry(structure);
+    const endTime = performance.now();
+    
+    const executionTime = endTime - startTime;
+    //console.log(`Run ${runCount}: ${name} took ${executionTime.toFixed(2)} milliseconds`);
+    
+    return { output, executionTime };
+}
+
+async function growCellStructure(cifText, name, runCount) {
+    const cif = new CIF(cifText);
+    const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+    
+    const startTime = performance.now();
+    const output = growCell(structure);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
@@ -74,12 +89,12 @@ async function processStructuresWithStatistics() {
     // Process each structure
     for (const structureName of structures) {
         //console.log(`\n=== Starting tests for ${structureName} ===`);
+
+        // Fetch structure data once
+        const response = await fetch(`${baseUrl}cif/${structureName}`);
+        const cifText = await response.text();
         
         try {
-            // Fetch structure data once
-            const response = await fetch(`${baseUrl}cif/${structureName}`);
-            const cifText = await response.text();
-            
             // Run multiple executions
             let structure;
             const timings = [];
@@ -104,6 +119,8 @@ async function processStructuresWithStatistics() {
         } catch (error) {
             console.error(`Error processing ${structureName}:`, error);
         }
+
+        console.log(growCellStructure(cifText, structureName, 0));
     }
     
     // Print summary of all results
