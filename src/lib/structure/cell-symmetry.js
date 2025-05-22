@@ -314,6 +314,9 @@ export class CellSymmetry {
                 return math.equal(symOp.rotMatrix, math.identity(3)) && 
                        math.equal(symOp.transVector, math.zeros(3));
             })?.[0];
+        
+        // Cache for combineSymmetryCodes results
+        this._combineSymmetryCodesCache = new Map();
     }
 
     generateEquivalentPositions(point) {
@@ -354,6 +357,12 @@ export class CellSymmetry {
      * @throws {Error} If no matching symmetry operation is found
      */
     combineSymmetryCodes(symmetryCodeOuter, symmetryCodeInner) {
+        const cacheKey = `${symmetryCodeOuter}|${symmetryCodeInner}`;
+        if (this._combineSymmetryCodesCache.has(cacheKey)) {
+            return this._combineSymmetryCodesCache.get(cacheKey);
+        }
+
+        // Original calculation starts here
         const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(symmetryCodeOuter);
         const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(symmetryCodeInner);
         const transVecOuter = math.add(math.matrix(transVecOuterArray), math.matrix(symOpOuter.transVector));
@@ -383,11 +392,18 @@ export class CellSymmetry {
                 
                 const roundedDiff = remainderVector.toArray().map(val => Math.round(val) + 5);
                 const translationCode = roundedDiff.join('');
-                return `${symOpId}_${translationCode}`;
+                const result = `${symOpId}_${translationCode}`;
+                this._combineSymmetryCodesCache.set(cacheKey, result); // Store in cache
+                return result;
             }
         }
 
-        throw new Error('No matching symmetry operation found for combined position codes');
+        const error = new Error(
+            'No matching symmetry operation found for combined position codes:'
+            + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
+        );
+        this._combineSymmetryCodesCache.set(cacheKey, error);
+        throw error;
     }
 
     /**
