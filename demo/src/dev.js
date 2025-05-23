@@ -8,7 +8,7 @@ import { growCell } from '../../src/lib/structure/structure-modifiers/growing/gr
  * @param name
  * @param runCount
  */
-async function growStructure(cifText, name, runCount) {
+async function growFragmentStructure(cifText, name, runCount) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
@@ -34,6 +34,27 @@ async function growCellStructure(cifText, name, runCount) {
     
     const startTime = performance.now();
     const output = growCell(structure);
+    const endTime = performance.now();
+    
+    const executionTime = endTime - startTime;
+    //console.log(`Run ${runCount}: ${name} took ${executionTime.toFixed(2)} milliseconds`);
+    
+    return { output, executionTime };
+}
+
+/**
+ *
+ * @param cifText
+ * @param name
+ * @param runCount
+ */
+async function growCellFragmentStructure(cifText, name, runCount) {
+    const cif = new CIF(cifText);
+    const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+    
+    const startTime = performance.now();
+    const fStructure = growSymmetry(structure);
+    const output = growCell(fStructure);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
@@ -105,7 +126,7 @@ async function processStructuresWithStatistics() {
             let structure;
             const timings = [];
             for (let i = 1; i <= numExecutions; i++) {
-                const { output, executionTime } = await growStructure(cifText, structureName, i);
+                const { output, executionTime } = await growFragmentStructure(cifText, structureName, i);
                 structure = output;
                 timings.push(executionTime);
             }
@@ -126,7 +147,8 @@ async function processStructuresWithStatistics() {
             console.error(`Error processing ${structureName}:`, error);
         }
 
-        console.log(growCellStructure(cifText, structureName, 0));
+        console.log(await growCellStructure(cifText, structureName, 0));
+        console.log(await growCellFragmentStructure(cifText, structureName, 0));
     }
     
     // Print summary of all results
