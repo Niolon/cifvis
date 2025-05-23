@@ -1,4 +1,4 @@
-import { CellSymmetry } from '../../cell-symmetry.js';
+import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
 import { create, all } from 'mathjs';
@@ -89,11 +89,10 @@ export function getFragmentLimits(atoms) {
     return { minX, maxX, minY, maxY, minZ, maxZ };
 }
 
-
 /**
  * Calculates the center of symmetry-transformed limits.
  * @param {FractionalLimits} limits - Original limits
- * @param {object} symmetry - Symmetry operation
+ * @param {SymmetryOperation} symOp - Symmetry operation
  * @returns {{x: number, y: number, z: number}} Center coordinates
  */
 export function getSymmetryCentre(limits, symOp) {
@@ -114,7 +113,6 @@ export function getSymmetryCentre(limits, symOp) {
         z: symmCentre.get([2]),
     };
 }
-
 
 /**
  * Extracts unique symmetry operations from atom labels in each group.
