@@ -1,6 +1,6 @@
 import { create, all } from 'mathjs';
 
-import { Atom } from './crystal.js';
+import { Atom, UnitCell } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
@@ -215,7 +215,7 @@ export class SymmetryOperation {
 
     /**
      * Applies the symmetry operation to multiple atoms
-     * @param {object[]} atoms - Array of atom objects
+     * @param {Atom[]} atoms - Array of atom objects
      * @param {string} atoms[].label - Atom label
      * @param {string} atoms[].atomType - Chemical element symbol
      * @param {FractPosition} atoms[].position - Fractional position object
@@ -314,6 +314,9 @@ export class CellSymmetry {
                 return math.equal(symOp.rotMatrix, math.identity(3)) && 
                        math.equal(symOp.transVector, math.zeros(3));
             })?.[0];
+        
+        // Cache for combineSymmetryCodes results
+        this._combineSymmetryCodesCache = new Map();
     }
 
     generateEquivalentPositions(point) {
@@ -348,14 +351,20 @@ export class CellSymmetry {
 
     /**
      * Combines two position codes to create a new position code
-     * @param {string} positionCodeOuter - Outer position code (applied second)
-     * @param {string} positionCodeInner - Inner position code (applied first)
+     * @param {string} symmetryCodeOuter - Outer position code (applied second)
+     * @param {string} symmetryCodeInner - Inner position code (applied first)
      * @returns {string} Combined position code
      * @throws {Error} If no matching symmetry operation is found
      */
-    combinePositionCodes(positionCodeOuter, positionCodeInner) {
-        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(positionCodeOuter);
-        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(positionCodeInner);
+    combineSymmetryCodes(symmetryCodeOuter, symmetryCodeInner) {
+        const cacheKey = `${symmetryCodeOuter}|${symmetryCodeInner}`;
+        if (this._combineSymmetryCodesCache.has(cacheKey)) {
+            return this._combineSymmetryCodesCache.get(cacheKey);
+        }
+
+        // Original calculation starts here
+        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(symmetryCodeOuter);
+        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(symmetryCodeInner);
         const transVecOuter = math.add(math.matrix(transVecOuterArray), math.matrix(symOpOuter.transVector));
         const transVecInner = math.add(math.matrix(transVecInnerArray), math.matrix(symOpInner.transVector));
         const combinedTransVector = math.add(math.multiply(symOpOuter.rotMatrix, transVecInner), transVecOuter);
@@ -383,32 +392,64 @@ export class CellSymmetry {
                 
                 const roundedDiff = remainderVector.toArray().map(val => Math.round(val) + 5);
                 const translationCode = roundedDiff.join('');
-                
-                return `${symOpId}_${translationCode}`;
+                const result = `${symOpId}_${translationCode}`;
+                this._combineSymmetryCodesCache.set(cacheKey, result); // Store in cache
+                return result;
             }
         }
 
-        throw new Error('No matching symmetry operation found for combined position codes');
+        const error = new Error(
+            'No matching symmetry operation found for combined position codes:'
+            + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
+        );
+        this._combineSymmetryCodesCache.set(cacheKey, error);
+        throw error;
     }
 
+    /**
+     * Applies the symmetry operation of a position code to multiple atoms, but return atoms on special 
+     * positions separately
+     * @param {string} positionCode - A valid position code.
+     * @param {Atom[]} atoms - Array of atom objects
+     * @returns {Atom[]} - Array of symmetry transformed atoms
+     */
     applySymmetry(positionCode, atoms) {
         const { symOp, transVector } = this.parsePositionCode(positionCode);
 
-        if (Array.isArray(atoms)) {
-            const newAtoms = symOp.applyToAtoms(atoms);
-            newAtoms.forEach(newAtom => {
-                newAtom.position.x += transVector[0];
-                newAtom.position.y += transVector[1];
-                newAtom.position.z += transVector[2];
-            });
-            return newAtoms;
-        }
+        const newAtoms = symOp.applyToAtoms(atoms);
+        newAtoms.forEach(newAtom => {
+            newAtom.position.x += transVector[0];
+            newAtom.position.y += transVector[1];
+            newAtom.position.z += transVector[2];
+        });
+        return newAtoms;
+    }
 
-        const newAtom = symOp.applyToAtom(atoms);
-        newAtom.position.x += transVector[0];
-        newAtom.position.y += transVector[1];
-        newAtom.position.z += transVector[2];
-        return newAtom;
+    /**
+     * Applies the symmetry operation of a position code to multiple atoms, but return atoms on special 
+     * positions separately
+     * @param {string} positionCode - A valid position code.
+     * @param {Atom[]} atoms - Array of atom objects
+     * @param {UnitCell} unitCell - Unit cell object
+     * @returns {{atoms: Atom[], specialPositions: string[]}} - Array of unique symmetry transformed atoms 
+     *  and list of labels of atoms on special positions.
+     */
+    applySymmetryNonSpecial(positionCode, atoms, unitCell) {
+        const newAtoms = this.applySymmetry(positionCode, atoms);
+        const specialPositions  = [];
+        const filteredAtoms = [];
+        newAtoms.forEach((atom, i) => {
+            const isSpecial =  Math.abs(atom.position.x - atoms[i].position.x) * unitCell.a < 1e-3
+                && Math.abs(atom.position.y - atoms[i].position.y) * unitCell.b < 1e-3
+                && Math.abs(atom.position.z - atoms[i].position.z) * unitCell.c < 1e-3;
+
+            if (isSpecial) {
+                specialPositions.push(atom.label);
+            } else {
+                filteredAtoms.push(atom);
+            }
+        });
+        return { atoms: filteredAtoms, specialPositions: specialPositions };
     }
 
     static fromCIF(cifBlock) {

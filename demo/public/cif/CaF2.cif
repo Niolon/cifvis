@@ -1,0 +1,566 @@
+ 
+data_CaF2
+ 
+_audit_creation_method            'SHELXL-2019/3'
+_shelx_SHELXL_version_number      '2019/3'
+_chemical_name_systematic         ?
+_chemical_name_common             ?
+_chemical_melting_point           ?
+_chemical_formula_moiety          ?
+_chemical_formula_sum
+ 'Ca F2' 
+_chemical_formula_weight          78.08
+
+loop_
+ _atom_type_symbol
+ _atom_type_description
+ _atom_type_scat_dispersion_real
+ _atom_type_scat_dispersion_imag
+ _atom_type_scat_source
+ 'Ca'  'Ca'   0.1378   0.1937
+ 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+ 'F'  'F'   0.0060   0.0061
+ 'International Tables Vol C Tables 4.2.6.8 and 6.1.1.4'
+ 
+_space_group_crystal_system       cubic
+_space_group_IT_number            225
+_space_group_name_H-M_alt         'F m -3 m'
+_space_group_name_Hall            '-F 4 2 3'
+ 
+_shelx_space_group_comment
+;
+The symmetry employed for this shelxl refinement is uniquely defined
+by the following loop, which should always be used as a source of
+symmetry information in preference to the above space-group names.
+They are only intended as comments.
+;
+ 
+loop_
+ _space_group_symop_operation_xyz
+ 'x, y, z'
+ '-x, -y, z'
+ '-x, y, -z'
+ 'x, -y, -z'
+ 'z, x, y'
+ 'z, -x, -y'
+ '-z, -x, y'
+ '-z, x, -y'
+ 'y, z, x'
+ '-y, z, -x'
+ 'y, -z, -x'
+ '-y, -z, x'
+ 'y, x, -z'
+ '-y, -x, -z'
+ 'y, -x, z'
+ '-y, x, z'
+ 'x, z, -y'
+ '-x, z, y'
+ '-x, -z, -y'
+ 'x, -z, y'
+ 'z, y, -x'
+ 'z, -y, x'
+ '-z, y, x'
+ '-z, -y, -x'
+ 'x, y+1/2, z+1/2'
+ '-x, -y+1/2, z+1/2'
+ '-x, y+1/2, -z+1/2'
+ 'x, -y+1/2, -z+1/2'
+ 'z, x+1/2, y+1/2'
+ 'z, -x+1/2, -y+1/2'
+ '-z, -x+1/2, y+1/2'
+ '-z, x+1/2, -y+1/2'
+ 'y, z+1/2, x+1/2'
+ '-y, z+1/2, -x+1/2'
+ 'y, -z+1/2, -x+1/2'
+ '-y, -z+1/2, x+1/2'
+ 'y, x+1/2, -z+1/2'
+ '-y, -x+1/2, -z+1/2'
+ 'y, -x+1/2, z+1/2'
+ '-y, x+1/2, z+1/2'
+ 'x, z+1/2, -y+1/2'
+ '-x, z+1/2, y+1/2'
+ '-x, -z+1/2, -y+1/2'
+ 'x, -z+1/2, y+1/2'
+ 'z, y+1/2, -x+1/2'
+ 'z, -y+1/2, x+1/2'
+ '-z, y+1/2, x+1/2'
+ '-z, -y+1/2, -x+1/2'
+ 'x+1/2, y, z+1/2'
+ '-x+1/2, -y, z+1/2'
+ '-x+1/2, y, -z+1/2'
+ 'x+1/2, -y, -z+1/2'
+ 'z+1/2, x, y+1/2'
+ 'z+1/2, -x, -y+1/2'
+ '-z+1/2, -x, y+1/2'
+ '-z+1/2, x, -y+1/2'
+ 'y+1/2, z, x+1/2'
+ '-y+1/2, z, -x+1/2'
+ 'y+1/2, -z, -x+1/2'
+ '-y+1/2, -z, x+1/2'
+ 'y+1/2, x, -z+1/2'
+ '-y+1/2, -x, -z+1/2'
+ 'y+1/2, -x, z+1/2'
+ '-y+1/2, x, z+1/2'
+ 'x+1/2, z, -y+1/2'
+ '-x+1/2, z, y+1/2'
+ '-x+1/2, -z, -y+1/2'
+ 'x+1/2, -z, y+1/2'
+ 'z+1/2, y, -x+1/2'
+ 'z+1/2, -y, x+1/2'
+ '-z+1/2, y, x+1/2'
+ '-z+1/2, -y, -x+1/2'
+ 'x+1/2, y+1/2, z'
+ '-x+1/2, -y+1/2, z'
+ '-x+1/2, y+1/2, -z'
+ 'x+1/2, -y+1/2, -z'
+ 'z+1/2, x+1/2, y'
+ 'z+1/2, -x+1/2, -y'
+ '-z+1/2, -x+1/2, y'
+ '-z+1/2, x+1/2, -y'
+ 'y+1/2, z+1/2, x'
+ '-y+1/2, z+1/2, -x'
+ 'y+1/2, -z+1/2, -x'
+ '-y+1/2, -z+1/2, x'
+ 'y+1/2, x+1/2, -z'
+ '-y+1/2, -x+1/2, -z'
+ 'y+1/2, -x+1/2, z'
+ '-y+1/2, x+1/2, z'
+ 'x+1/2, z+1/2, -y'
+ '-x+1/2, z+1/2, y'
+ '-x+1/2, -z+1/2, -y'
+ 'x+1/2, -z+1/2, y'
+ 'z+1/2, y+1/2, -x'
+ 'z+1/2, -y+1/2, x'
+ '-z+1/2, y+1/2, x'
+ '-z+1/2, -y+1/2, -x'
+ '-x, -y, -z'
+ 'x, y, -z'
+ 'x, -y, z'
+ '-x, y, z'
+ '-z, -x, -y'
+ '-z, x, y'
+ 'z, x, -y'
+ 'z, -x, y'
+ '-y, -z, -x'
+ 'y, -z, x'
+ '-y, z, x'
+ 'y, z, -x'
+ '-y, -x, z'
+ 'y, x, z'
+ '-y, x, -z'
+ 'y, -x, -z'
+ '-x, -z, y'
+ 'x, -z, -y'
+ 'x, z, y'
+ '-x, z, -y'
+ '-z, -y, x'
+ '-z, y, -x'
+ 'z, -y, -x'
+ 'z, y, x'
+ '-x, -y+1/2, -z+1/2'
+ 'x, y+1/2, -z+1/2'
+ 'x, -y+1/2, z+1/2'
+ '-x, y+1/2, z+1/2'
+ '-z, -x+1/2, -y+1/2'
+ '-z, x+1/2, y+1/2'
+ 'z, x+1/2, -y+1/2'
+ 'z, -x+1/2, y+1/2'
+ '-y, -z+1/2, -x+1/2'
+ 'y, -z+1/2, x+1/2'
+ '-y, z+1/2, x+1/2'
+ 'y, z+1/2, -x+1/2'
+ '-y, -x+1/2, z+1/2'
+ 'y, x+1/2, z+1/2'
+ '-y, x+1/2, -z+1/2'
+ 'y, -x+1/2, -z+1/2'
+ '-x, -z+1/2, y+1/2'
+ 'x, -z+1/2, -y+1/2'
+ 'x, z+1/2, y+1/2'
+ '-x, z+1/2, -y+1/2'
+ '-z, -y+1/2, x+1/2'
+ '-z, y+1/2, -x+1/2'
+ 'z, -y+1/2, -x+1/2'
+ 'z, y+1/2, x+1/2'
+ '-x+1/2, -y, -z+1/2'
+ 'x+1/2, y, -z+1/2'
+ 'x+1/2, -y, z+1/2'
+ '-x+1/2, y, z+1/2'
+ '-z+1/2, -x, -y+1/2'
+ '-z+1/2, x, y+1/2'
+ 'z+1/2, x, -y+1/2'
+ 'z+1/2, -x, y+1/2'
+ '-y+1/2, -z, -x+1/2'
+ 'y+1/2, -z, x+1/2'
+ '-y+1/2, z, x+1/2'
+ 'y+1/2, z, -x+1/2'
+ '-y+1/2, -x, z+1/2'
+ 'y+1/2, x, z+1/2'
+ '-y+1/2, x, -z+1/2'
+ 'y+1/2, -x, -z+1/2'
+ '-x+1/2, -z, y+1/2'
+ 'x+1/2, -z, -y+1/2'
+ 'x+1/2, z, y+1/2'
+ '-x+1/2, z, -y+1/2'
+ '-z+1/2, -y, x+1/2'
+ '-z+1/2, y, -x+1/2'
+ 'z+1/2, -y, -x+1/2'
+ 'z+1/2, y, x+1/2'
+ '-x+1/2, -y+1/2, -z'
+ 'x+1/2, y+1/2, -z'
+ 'x+1/2, -y+1/2, z'
+ '-x+1/2, y+1/2, z'
+ '-z+1/2, -x+1/2, -y'
+ '-z+1/2, x+1/2, y'
+ 'z+1/2, x+1/2, -y'
+ 'z+1/2, -x+1/2, y'
+ '-y+1/2, -z+1/2, -x'
+ 'y+1/2, -z+1/2, x'
+ '-y+1/2, z+1/2, x'
+ 'y+1/2, z+1/2, -x'
+ '-y+1/2, -x+1/2, z'
+ 'y+1/2, x+1/2, z'
+ '-y+1/2, x+1/2, -z'
+ 'y+1/2, -x+1/2, -z'
+ '-x+1/2, -z+1/2, y'
+ 'x+1/2, -z+1/2, -y'
+ 'x+1/2, z+1/2, y'
+ '-x+1/2, z+1/2, -y'
+ '-z+1/2, -y+1/2, x'
+ '-z+1/2, y+1/2, -x'
+ 'z+1/2, -y+1/2, -x'
+ 'z+1/2, y+1/2, x'
+ 
+_cell_length_a                    5.45095(5)
+_cell_length_b                    5.45095(5)
+_cell_length_c                    5.45095(5)
+_cell_angle_alpha                 90
+_cell_angle_beta                  90
+_cell_angle_gamma                 90
+_cell_volume                      161.963(5)
+_cell_formula_units_Z             4
+_cell_measurement_temperature     293(2)
+_cell_measurement_reflns_used     ?
+_cell_measurement_theta_min       ?
+_cell_measurement_theta_max       ?
+ 
+_exptl_crystal_description        ?
+_exptl_crystal_colour             ?
+_exptl_crystal_density_meas       ?
+_exptl_crystal_density_method     ?
+_exptl_crystal_density_diffrn     3.202          
+_exptl_crystal_F_000              152
+_exptl_transmission_factor_min    ?
+_exptl_transmission_factor_max    ?
+_exptl_crystal_size_max           ?
+_exptl_crystal_size_mid           ?
+_exptl_crystal_size_min           ?
+_exptl_absorpt_coefficient_mu     1.747
+_shelx_estimated_absorpt_T_min    ?
+_shelx_estimated_absorpt_T_max    ?
+_exptl_absorpt_correction_type    ?
+_exptl_absorpt_correction_T_min   ?
+_exptl_absorpt_correction_T_max   ?
+_exptl_absorpt_process_details    ?
+_exptl_absorpt_special_details    ?
+_diffrn_ambient_temperature       293(2)
+_diffrn_radiation_wavelength      0.56087
+_diffrn_radiation_type            AgK\a
+_diffrn_source                    ?
+_diffrn_measurement_device_type   ?
+_diffrn_measurement_method        ?
+_diffrn_detector_area_resol_mean  ?
+_diffrn_reflns_number             5299
+_diffrn_reflns_av_unetI/netI      0.0117
+_diffrn_reflns_av_R_equivalents   0.0677
+_diffrn_reflns_limit_h_min        -13
+_diffrn_reflns_limit_h_max        13
+_diffrn_reflns_limit_k_min        -13
+_diffrn_reflns_limit_k_max        13
+_diffrn_reflns_limit_l_min        -13
+_diffrn_reflns_limit_l_max        13
+_diffrn_reflns_theta_min          5.112
+_diffrn_reflns_theta_max          44.256
+_diffrn_reflns_theta_full         19.665
+_diffrn_measured_fraction_theta_max   1.000
+_diffrn_measured_fraction_theta_full  1.000
+_diffrn_reflns_Laue_measured_fraction_max    1.000
+_diffrn_reflns_Laue_measured_fraction_full   1.000
+_diffrn_reflns_point_group_measured_fraction_max   1.000
+_diffrn_reflns_point_group_measured_fraction_full  1.000
+_reflns_number_total              96
+_reflns_number_gt                 96
+_reflns_threshold_expression      'I > 2\s(I)'
+_reflns_Friedel_coverage          0.000
+_reflns_Friedel_fraction_max      .
+_reflns_Friedel_fraction_full     .
+ 
+_reflns_special_details
+;
+ Reflections were merged by SHELXL according to the crystal
+ class for the calculation of statistics and refinement.
+ 
+ _reflns_Friedel_fraction is defined as the number of unique
+ Friedel pairs measured divided by the number that would be
+ possible theoretically, ignoring centric projections and
+ systematic absences.
+;
+ 
+_computing_data_collection        ?
+_computing_cell_refinement        ?
+_computing_data_reduction         ?
+_computing_structure_solution     ?
+_computing_structure_refinement 'SHELXL-2019/2 (Sheldrick, 2019)'
+_computing_molecular_graphics     ?
+_computing_publication_material   ?
+_refine_special_details           ?
+_refine_ls_structure_factor_coef  Fsqd
+_refine_ls_matrix_type            full
+_refine_ls_weighting_scheme       calc
+_refine_ls_weighting_details
+'w=1/[\s^2^(Fo^2^)] where P=(Fo^2^+2Fc^2^)/3'
+_atom_sites_solution_primary      ?
+_atom_sites_solution_secondary    ?
+_atom_sites_solution_hydrogens    .
+_refine_ls_hydrogen_treatment     undef
+_refine_ls_extinction_method      none
+_refine_ls_extinction_coef        .
+_refine_ls_number_reflns          96
+_refine_ls_number_parameters      3
+_refine_ls_number_restraints      0
+_refine_ls_R_factor_all           0.0131
+_refine_ls_R_factor_gt            0.0131
+_refine_ls_wR_factor_ref          0.0311
+_refine_ls_wR_factor_gt           0.0311
+_refine_ls_goodness_of_fit_ref    3.746
+_refine_ls_restrained_S_all       3.746
+_refine_ls_shift/su_max           0.000
+_refine_ls_shift/su_mean          0.000
+ 
+loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_U_iso_or_equiv
+ _atom_site_adp_type
+ _atom_site_occupancy
+ _atom_site_site_symmetry_order  
+ _atom_site_calc_flag
+ _atom_site_refinement_flags_posn
+ _atom_site_refinement_flags_adp
+ _atom_site_refinement_flags_occupancy
+ _atom_site_disorder_assembly
+ _atom_site_disorder_group
+Ca01 Ca 0.500000 0.500000 0.500000 0.00321(6) Uani 1 48 d S T P . .
+F002 F 0.250000 0.750000 0.750000 0.00486(8) Uani 1 24 d S T P . .
+ 
+loop_
+ _atom_site_aniso_label
+ _atom_site_aniso_U_11
+ _atom_site_aniso_U_22
+ _atom_site_aniso_U_33
+ _atom_site_aniso_U_23
+ _atom_site_aniso_U_13
+ _atom_site_aniso_U_12
+Ca01 0.00321(6) 0.00321(6) 0.00321(6) 0.000 0.000 0.000
+F002 0.00486(8) 0.00486(8) 0.00486(8) 0.000 0.000 0.000
+ 
+_geom_special_details
+;
+ All esds (except the esd in the dihedral angle between two l.s. planes)
+ are estimated using the full covariance matrix.  The cell esds are taken
+ into account individually in the estimation of esds in distances, angles
+ and torsion angles; correlations between esds in cell parameters are only
+ used when they are defined by crystal symmetry.  An approximate (isotropic)
+ treatment of cell esds is used for estimating esds involving l.s. planes.
+;
+ 
+loop_
+ _geom_bond_atom_site_label_1
+ _geom_bond_atom_site_label_2
+ _geom_bond_distance
+ _geom_bond_site_symmetry_2
+ _geom_bond_publ_flag
+Ca01 F002 2.36033(3) 121_666 ?
+Ca01 F002 2.36033(2) 25_544 ?
+Ca01 F002 2.36033(3) 169_566 ?
+Ca01 F002 2.36033(3) 145_566 ?
+Ca01 F002 2.36033(3) . ?
+Ca01 F002 2.36033(3) 97_666 ?
+Ca01 F002 2.36033(3) 73_545 ?
+Ca01 F002 2.36033(3) 49_554 ?
+Ca01 Ca01 3.85441(4) 25 ?
+Ca01 Ca01 3.85441(4) 49 ?
+Ca01 Ca01 3.85441(4) 73_445 ?
+Ca01 Ca01 3.85441(4) 49_454 ?
+ 
+loop_
+ _geom_angle_atom_site_label_1
+ _geom_angle_atom_site_label_2
+ _geom_angle_atom_site_label_3
+ _geom_angle
+ _geom_angle_site_symmetry_1
+ _geom_angle_site_symmetry_3
+ _geom_angle_publ_flag
+F002 Ca01 F002 180.0 121_666 25_544 ?
+F002 Ca01 F002 109.5 121_666 169_566 ?
+F002 Ca01 F002 70.5 25_544 169_566 ?
+F002 Ca01 F002 109.471(1) 121_666 145_566 ?
+F002 Ca01 F002 70.529(1) 25_544 145_566 ?
+F002 Ca01 F002 109.471(1) 169_566 145_566 ?
+F002 Ca01 F002 70.5 121_666 . ?
+F002 Ca01 F002 109.5 25_544 . ?
+F002 Ca01 F002 70.5 169_566 . ?
+F002 Ca01 F002 70.5 145_566 . ?
+F002 Ca01 F002 109.5 121_666 97_666 ?
+F002 Ca01 F002 70.529(1) 25_544 97_666 ?
+F002 Ca01 F002 109.471(1) 169_566 97_666 ?
+F002 Ca01 F002 109.5 145_566 97_666 ?
+F002 Ca01 F002 180.0 . 97_666 ?
+F002 Ca01 F002 70.529(1) 121_666 73_545 ?
+F002 Ca01 F002 109.5 25_544 73_545 ?
+F002 Ca01 F002 180.0 169_566 73_545 ?
+F002 Ca01 F002 70.5 145_566 73_545 ?
+F002 Ca01 F002 109.5 . 73_545 ?
+F002 Ca01 F002 70.5 97_666 73_545 ?
+F002 Ca01 F002 70.5 121_666 49_554 ?
+F002 Ca01 F002 109.5 25_544 49_554 ?
+F002 Ca01 F002 70.5 169_566 49_554 ?
+F002 Ca01 F002 180.0 145_566 49_554 ?
+F002 Ca01 F002 109.5 . 49_554 ?
+F002 Ca01 F002 70.5 97_666 49_554 ?
+F002 Ca01 F002 109.5 73_545 49_554 ?
+F002 Ca01 Ca01 35.3 121_666 25 ?
+F002 Ca01 Ca01 144.7 25_544 25 ?
+F002 Ca01 Ca01 90.0 169_566 25 ?
+F002 Ca01 Ca01 90.0 145_566 25 ?
+F002 Ca01 Ca01 35.3 . 25 ?
+F002 Ca01 Ca01 144.7 97_666 25 ?
+F002 Ca01 Ca01 90.0 73_545 25 ?
+F002 Ca01 Ca01 90.0 49_554 25 ?
+F002 Ca01 Ca01 35.3 121_666 49 ?
+F002 Ca01 Ca01 144.7 25_544 49 ?
+F002 Ca01 Ca01 144.7 169_566 49 ?
+F002 Ca01 Ca01 90.0 145_566 49 ?
+F002 Ca01 Ca01 90.0 . 49 ?
+F002 Ca01 Ca01 90.0 97_666 49 ?
+F002 Ca01 Ca01 35.3 73_545 49 ?
+F002 Ca01 Ca01 90.0 49_554 49 ?
+Ca01 Ca01 Ca01 60.0 25 49 ?
+F002 Ca01 Ca01 144.7 121_666 73_445 ?
+F002 Ca01 Ca01 35.3 25_544 73_445 ?
+F002 Ca01 Ca01 90.0 169_566 73_445 ?
+F002 Ca01 Ca01 35.3 145_566 73_445 ?
+F002 Ca01 Ca01 90.0 . 73_445 ?
+F002 Ca01 Ca01 90.0 97_666 73_445 ?
+F002 Ca01 Ca01 90.0 73_545 73_445 ?
+F002 Ca01 Ca01 144.7 49_554 73_445 ?
+Ca01 Ca01 Ca01 120.0 25 73_445 ?
+Ca01 Ca01 Ca01 120.0 49 73_445 ?
+F002 Ca01 Ca01 144.7 121_666 49_454 ?
+F002 Ca01 Ca01 35.3 25_544 49_454 ?
+F002 Ca01 Ca01 35.3 169_566 49_454 ?
+F002 Ca01 Ca01 90.0 145_566 49_454 ?
+F002 Ca01 Ca01 90.0 . 49_454 ?
+F002 Ca01 Ca01 90.0 97_666 49_454 ?
+F002 Ca01 Ca01 144.7 73_545 49_454 ?
+F002 Ca01 Ca01 90.0 49_554 49_454 ?
+Ca01 Ca01 Ca01 120.0 25 49_454 ?
+Ca01 Ca01 Ca01 180.0 49 49_454 ?
+Ca01 Ca01 Ca01 60.0 73_445 49_454 ?
+Ca01 F002 Ca01 109.5 25 73_455 ?
+Ca01 F002 Ca01 109.5 25 . ?
+Ca01 F002 Ca01 109.5 73_455 . ?
+Ca01 F002 Ca01 109.5 25 49_455 ?
+Ca01 F002 Ca01 109.5 73_455 49_455 ?
+Ca01 F002 Ca01 109.5 . 49_455 ?
+ 
+ 
+_refine_diff_density_max    0.698
+_refine_diff_density_min   -0.356
+_refine_diff_density_rms    0.116
+
+_shelx_res_file
+;
+TITL caf_ag3_a.res in Fm-3m
+    CaF2.res
+    created by SHELXL-2019/3 at 14:19:48 on 31-Mar-2025
+REM Old TITL CaF_Ag3 in Fm-3m
+REM SHELXT solution in Fm-3m
+REM R1 0.012, Rweak 0.001, Alpha 0.002, Orientation as input
+REM Formula found by SHELXT: F2 Ca
+CELL 0.56087 5.450952 5.450952 5.450952 90 90 90
+ZERR 4 0.000052 0.000052 0.000052 0 0 0
+LATT 4
+SYMM -X,-Y,+Z
+SYMM -X,+Y,-Z
+SYMM +X,-Y,-Z
+SYMM +Z,+X,+Y
+SYMM +Z,-X,-Y
+SYMM -Z,-X,+Y
+SYMM -Z,+X,-Y
+SYMM +Y,+Z,+X
+SYMM -Y,+Z,-X
+SYMM +Y,-Z,-X
+SYMM -Y,-Z,+X
+SYMM +Y,+X,-Z
+SYMM -Y,-X,-Z
+SYMM +Y,-X,+Z
+SYMM -Y,+X,+Z
+SYMM +X,+Z,-Y
+SYMM -X,+Z,+Y
+SYMM -X,-Z,-Y
+SYMM +X,-Z,+Y
+SYMM +Z,+Y,-X
+SYMM +Z,-Y,+X
+SYMM -Z,+Y,+X
+SYMM -Z,-Y,-X
+SFAC Ca F
+DISP Ca 0.1378 0.1937 651.9347
+DISP F 0.006 0.0061 27.6988
+UNIT 4 8
+
+L.S. 10
+PLAN  5
+CONF
+MORE -1
+LIST -6
+
+fmap 2
+acta
+REM <olex2.extras>
+REM <HklSrc "%.\\CaF2.hkl">
+REM </olex2.extras>
+
+WGHT    0.000000
+FVAR       3.05797
+CA01  1    0.500000    0.500000    0.500000    10.02083    0.00321    0.00321 =
+         0.00321    0.00000    0.00000    0.00000
+F002  2    0.250000    0.750000    0.750000    10.04167    0.00486    0.00486 =
+         0.00486    0.00000    0.00000    0.00000
+REM <hkl>
+REM CaF2.hkl
+REM </hkl>
+HKLF 4
+
+
+
+
+REM  caf_ag3_a.res in Fm-3m
+REM wR2 = 0.0311, GooF = S = 3.746, Restrained GooF = 3.746 for all data
+REM R1 = 0.0131 for 96 Fo > 4sig(Fo) and 0.0131 for all 96 data
+REM 3 parameters refined using 0 restraints
+
+END
+
+WGHT      0.0106      0.1059
+
+REM Highest difference peak  0.698,  deepest hole -0.356,  1-sigma level  0.116
+Q1    1   0.5000  0.5727  0.5000  10.12500  0.05    0.70
+Q2    1   0.1571  0.7500  0.7500  10.25000  0.05    0.30
+Q3    1   0.3803  0.6197  0.6197  10.16667  0.05    0.25
+Q4    1   0.2716  0.5000  0.5000  10.12500  0.05    0.22
+Q5    1   0.3349  0.8348  0.7288  10.50000  0.05    0.20
+;
+_shelx_res_checksum   57963

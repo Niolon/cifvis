@@ -461,38 +461,8 @@ describe('IsolatedHydrogenFixer', () => {
             new Bond('C1', 'H1', 1.0, null, '.'),
         ];
         
-        // Create connected groups
-        const connectedGroups = [
-            {
-                atoms: [atoms[0], atoms[2]], // C1 and H1
-                bonds: [bonds[0]],
-                hBonds: [],
-            },
-            {
-                atoms: [atoms[1]], // O1
-                bonds: [],
-                hBonds: [],
-            },
-            {
-                atoms: [atoms[3]], // H2 (isolated)
-                bonds: [],
-                hBonds: [],
-            },
-            {
-                atoms: [atoms[4]], // H3 (isolated)
-                bonds: [],
-                hBonds: [],
-            },
-            {
-                atoms: [atoms[5]], // H4 (isolated)
-                bonds: [],
-                hBonds: [],
-            },
-        ];
-        
         // Mock structure with connected groups
         mockStructure = new CrystalStructure(unitCell, atoms, bonds);
-        mockStructure.connectedGroups = connectedGroups;
         
         // Create fixer with default settings
         hydrogenFixer = new IsolatedHydrogenFixer();
@@ -519,22 +489,17 @@ describe('IsolatedHydrogenFixer', () => {
             [],
             [],
         );
-        noBondsStructure.connectedGroups = mockStructure.connectedGroups;
-        
+
+        const noBondModes = hydrogenFixer.getApplicableModes(noBondsStructure);
+        expect(noBondModes).toEqual(['off']);
+
+        // Structure without isolated hydrogen atoms has only OFF
         const noIsolatedHStructure = new CrystalStructure(
             mockStructure.cell,
-            mockStructure.atoms,
+            mockStructure.atoms.slice(0, 3),
             mockStructure.bonds,
             [],
         );
-        // Mock no isolated H atoms
-        noIsolatedHStructure.connectedGroups = [
-            {
-                atoms: mockStructure.atoms,
-                bonds: mockStructure.bonds,
-                hBonds: [],
-            },
-        ];
         
         const noIsolatedModes = hydrogenFixer.getApplicableModes(noIsolatedHStructure);
         expect(noIsolatedModes).toEqual(['off']);
