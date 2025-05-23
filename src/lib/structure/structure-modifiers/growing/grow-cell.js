@@ -2,7 +2,8 @@ import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
 import { create, all } from 'mathjs';
-import { createSymAtomLabel, createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
+import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
+import { combineSymAtomLabel, createSymAtomLabel } from './util.js';
 
 const math = create(all, {});
 
@@ -223,16 +224,9 @@ export function growCell(structure, cutFragments = true) {
             // Process transformed atoms
             for (let i = 0; i < transformedAtoms.length; i++) {
                 const atom = transformedAtoms[i];
-                const originalLabel = atom.label;
                 
                 // Update atom label with symmetry information
-                const labelParts = originalLabel.split('@');
-                if (labelParts.length === 2) {
-                    const combinedSymm = structure.symmetry.combineSymmetryCodes(symmString, labelParts[1]);
-                    atom.label = createSymAtomLabel(labelParts[0], combinedSymm);
-                } else {
-                    atom.label = createSymAtomLabel(originalLabel, symmString);
-                }
+                atom.label = combineSymAtomLabel(atom.label, symmString, structure.symmetry);
                 
                 // Check if atom is within unit cell
                 if (cutFragments && !isWithinUnitCell(atom)) {

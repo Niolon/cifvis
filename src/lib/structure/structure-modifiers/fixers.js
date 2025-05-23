@@ -1,4 +1,4 @@
-import { atomLabelsMatch } from '../../fix-cif/reconcile-labels.js';
+//import { atomLabelsMatch } from '../../fix-cif/reconcile-labels.js';
 import { Bond } from '../bonds.js';
 import { CrystalStructure, inferElementFromLabel } from '../crystal.js';
 import { BaseFilter } from './base.js';

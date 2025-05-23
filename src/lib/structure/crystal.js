@@ -149,6 +149,8 @@ export class CrystalStructure {
     /**
      * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
      * from the provided atoms and bonds
+     * @returns {Array} Array of connected groups, each containing atoms, bonds, and H-bonds
+     * @throws {Error} If atom with label not found
      */
     calculateConnectedGroups() {
         // Map to track which atoms have been assigned to a group

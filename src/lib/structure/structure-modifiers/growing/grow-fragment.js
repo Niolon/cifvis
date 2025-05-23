@@ -1,5 +1,6 @@
 import { CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
+import { createSymAtomLabel } from './util.js';
 
 /**
  * @typedef {object} SeedConnection
@@ -47,16 +48,6 @@ import { Bond, HBond } from '../../bonds.js';
  * @property {Set<string>} requiredSymmetryInstances - Set of unique group@symmetry strings that need to be generated.
  * @property {Array<InterGroupBondInfo>} interGroupBonds - List of bonds connecting different symmetry instances.
  */
-
-/**
- * Creates a unique identifier string for an atom including its symmetry code.
- * @param {string} atomLabel - The base label of the atom (e.g., 'C1').
- * @param {string} symOpLabel - The symmetry code (e.g., '1_555').
- * @returns {string} The combined label (e.g., 'C1@1_555').
- */
-export function createSymAtomLabel(atomLabel, symOpLabel) {
-    return `${atomLabel}@${symOpLabel}`;
-}
 
 /**
  * Creates a unique identifier string for a bond between two atom labels.
@@ -792,7 +783,7 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
  * @param {CrystalStructure} structure - The crystal structure to grow.
  * @returns {CrystalStructure} New structure with symmetry-expanded atoms and bonds.
  */
-export function growSymmetry(structure) {
+export function growFragment(structure) {
     const atomGroups = structure.calculateConnectedGroups();
     
     // Map atoms to their group indices for faster lookup

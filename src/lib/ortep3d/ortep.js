@@ -3,8 +3,8 @@ import defaultSettings from './structure-settings.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
-import { SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
+//import { createSymAtomLabel } from '../structure/structure-modifiers/growing/util.js';
 
 /**
  * Examines a THREE.Object3D and its children for NaN values in position, rotation, scale, and matrix properties.
@@ -414,13 +414,13 @@ export class ORTEP3JsStructure {
 
         // Handle regular bonds
         const drawnBonds = this.crystalStructure.bonds
-            .map(bond => new Bond(
-                bond.atom1Label,
-                SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry),
-                bond.bondLength,
-                bond.bondLengthSU,
-                '.',
-            ))
+            // .map(bond => new Bond(
+            //     bond.atom1Label,
+            //     createSymAtomLabel(bond.atom2Label, bond.atom2SiteSymmetry),
+            //     bond.bondLength,
+            //     bond.bondLengthSU,
+            //     '.',
+            // ))
             .filter(bond => atomLabels.includes(bond.atom2Label));
 
         for (const bond of drawnBonds) {
@@ -440,23 +440,23 @@ export class ORTEP3JsStructure {
 
         // Handle hydrogen bonds
         const drawnHBonds = this.crystalStructure.hBonds
-            .map(hBond => new HBond(
-                hBond.donorAtomLabel,
-                hBond.hydrogenAtomLabel,
-                SymmetryGrower.combineSymOpLabel(
-                    hBond.acceptorAtomLabel, 
-                    hBond.acceptorAtomSymmetry,
-                ),
-                hBond.donorHydrogenDistance,
-                hBond.donorHydrogenDistanceSU,
-                hBond.acceptorHydrogenDistance,
-                hBond.acceptorHydrogenDistanceSU,
-                hBond.donorAcceptorDistance,
-                hBond.donorAcceptorDistanceSU,
-                hBond.hBondAngle,
-                hBond.hBondAngleSU,
-                '.',
-            ))
+            // .map(hBond => new HBond(
+            //     hBond.donorAtomLabel,
+            //     hBond.hydrogenAtomLabel,
+            //     createSymAtomLabel(
+            //         hBond.acceptorAtomLabel, 
+            //         hBond.acceptorAtomSymmetry,
+            //     ),
+            //     hBond.donorHydrogenDistance,
+            //     hBond.donorHydrogenDistanceSU,
+            //     hBond.acceptorHydrogenDistance,
+            //     hBond.acceptorHydrogenDistanceSU,
+            //     hBond.donorAcceptorDistance,
+            //     hBond.donorAcceptorDistanceSU,
+            //     hBond.hBondAngle,
+            //     hBond.hBondAngleSU,
+            //     '.',
+            // ))
             .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
 
         for (const hbond of drawnHBonds) {

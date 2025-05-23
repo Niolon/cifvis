@@ -1,5 +1,5 @@
 import { CrystalStructure, CIF } from '../../src';
-import { growSymmetry } from '../../src/lib/structure/structure-modifiers//growing/grow-fragment.js';
+import { growFragment } from '../../src/lib/structure/structure-modifiers//growing/grow-fragment.js';
 import { growCell } from '../../src/lib/structure/structure-modifiers/growing/grow-cell.js';
 
 /**
@@ -13,7 +13,7 @@ async function growFragmentStructure(cifText, name, runCount) {
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
     const startTime = performance.now();
-    const output = growSymmetry(structure);
+    const output = growFragment(structure);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
@@ -53,7 +53,7 @@ async function growCellFragmentStructure(cifText, name, runCount) {
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
     const startTime = performance.now();
-    const fStructure = growSymmetry(structure);
+    const fStructure = growFragment(structure);
     const output = growCell(fStructure);
     const endTime = performance.now();
     
