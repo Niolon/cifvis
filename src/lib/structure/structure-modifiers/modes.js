@@ -262,7 +262,7 @@ export class SymmetryGrower extends BaseFilter {
 
     getApplicableModes(structure) {
         const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL];
-        const hasSymmetry = structure.symmetry && structure.symmetry.operations.length > 0;
+        const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
 
         if (!hasSymmetry) {
             return modes;
