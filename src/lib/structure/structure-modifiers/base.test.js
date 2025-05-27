@@ -173,8 +173,7 @@ export class MockStructure {
     }
 
     /**
-     * Finalizes and validates the mock structure
-     * Verifies that all references to atoms exist and recalculates connected groups
+     * Finalizes and validates the mock structure, verifies that all references to atoms exist
      * @returns {CrystalStructure} - The completed crystal structure
      * @throws {Error} If referenced atoms don't exist
      */
