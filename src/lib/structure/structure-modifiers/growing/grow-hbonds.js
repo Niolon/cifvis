@@ -35,9 +35,9 @@ export function growExternalHBonds(structure) {
 
     for (const hBond of growableHBonds) {
         // add the hBond to final hBonds
-        finalBonds.push(new HBond(
-            combineSymAtomLabel(hBond.donorAtomLabel, hBond.acceptorAtomSymmetry, structure.symmetry),
-            combineSymAtomLabel(hBond.hydrogenAtomLabel, hBond.acceptorAtomSymmetry, structure.symmetry),
+        finalHBonds.push(new HBond(
+            hBond.donorAtomLabel,
+            hBond.hydrogenAtomLabel,
             combineSymAtomLabel(hBond.acceptorAtomLabel, hBond.acceptorAtomSymmetry, structure.symmetry),
             hBond.donorHydrogenDistance,
             hBond.donorHydrogenDistanceSU,
@@ -50,14 +50,11 @@ export function growExternalHBonds(structure) {
             '.',
         ));
 
-        // find group index of acceptor atom
+        // find group index of acceptor atom, should always be possible because
+        // of checks in structure.calculateConnectedGroups()
         const acceptorGroupIndex = groups.findIndex(
             group => group.atoms.some(atom => atom.label === hBond.acceptorAtomLabel),
         );
-
-        if (!acceptorGroupIndex) {
-            throw new Error(`HBond has non-existing acceptor atom: ${hBond.acceptorAtomLabel}`);
-        }
 
         const symOpLabel = hBond.acceptorAtomSymmetry;
 
@@ -83,7 +80,7 @@ export function growExternalHBonds(structure) {
         acceptorGroup.bonds
             .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
             .forEach(bond => {
-                finalBonds.add(new Bond(
+                finalBonds.push(new Bond(
                     combineSymAtomLabel(bond.atom1Label, symOpLabel, structure.symmetry),
                     combineSymAtomLabel(bond.atom2Label, symOpLabel, structure.symmetry),
                     bond.bondLength,
@@ -96,7 +93,7 @@ export function growExternalHBonds(structure) {
         acceptorGroup.hBonds
             .filter(({ acceptorAtomSymmetry }) => acceptorAtomSymmetry === '.')
             .forEach(hBond => {
-                finalBonds.push(new HBond(
+                finalHBonds.push(new HBond(
                     combineSymAtomLabel(hBond.donorAtomLabel, symOpLabel, structure.symmetry),
                     combineSymAtomLabel(hBond.hydrogenAtomLabel, symOpLabel, structure.symmetry),
                     combineSymAtomLabel(hBond.acceptorAtomLabel, symOpLabel, structure.symmetry),
