@@ -317,6 +317,47 @@ export class CellSymmetry {
         
         // Cache for combineSymmetryCodes results
         this._combineSymmetryCodesCache = new Map();
+        // Build rotation matrix index
+        this._rotationMatrixIndex = new Map();
+        this._buildRotationIndex();
+    }
+
+    _buildRotationIndex() {
+        this.symmetryOperations.forEach((op, index) => {
+            const key = this._matrixToKey(op.rotMatrix);
+            if (!this._rotationMatrixIndex.has(key)) {
+                this._rotationMatrixIndex.set(key, []);
+            }
+            this._rotationMatrixIndex.get(key).push(index);
+        });
+    }
+
+    _matrixToKey(matrix) {
+        // Convert matrix to a string key for indexing
+        // Round to avoid floating point comparison issues
+        const rounded = matrix.map(row => 
+            row.map(val => Math.round(val * 1000) / 1000),
+        );
+        return JSON.stringify(rounded);
+    }
+
+    // Instead of string concatenation, use a numeric hash
+    _getCacheKey(outerCode, innerCode) {
+        // Simple hash function for two strings
+        const hash1 = this._hashCode(outerCode);
+        const hash2 = this._hashCode(innerCode);
+        // Combine hashes using bit operations
+        return (hash1 << 16) | (hash2 & 0xFFFF);
+    }
+
+    _hashCode(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return hash;
     }
 
     generateEquivalentPositions(point) {
@@ -348,6 +389,34 @@ export class CellSymmetry {
         const symOp = this.symmetryOperations[symOpIndex];
         return { symOp, transVector };
     }
+    // Helper methods for fast 3x3 operations
+    _multiplyMatrices3x3(a, b) {
+        return [
+            [
+                a[0][0]*b[0][0] + a[0][1]*b[1][0] + a[0][2]*b[2][0],
+                a[0][0]*b[0][1] + a[0][1]*b[1][1] + a[0][2]*b[2][1],
+                a[0][0]*b[0][2] + a[0][1]*b[1][2] + a[0][2]*b[2][2],
+            ],
+            [
+                a[1][0]*b[0][0] + a[1][1]*b[1][0] + a[1][2]*b[2][0],
+                a[1][0]*b[0][1] + a[1][1]*b[1][1] + a[1][2]*b[2][1],
+                a[1][0]*b[0][2] + a[1][1]*b[1][2] + a[1][2]*b[2][2],
+            ],
+            [
+                a[2][0]*b[0][0] + a[2][1]*b[1][0] + a[2][2]*b[2][0],
+                a[2][0]*b[0][1] + a[2][1]*b[1][1] + a[2][2]*b[2][1],
+                a[2][0]*b[0][2] + a[2][1]*b[1][2] + a[2][2]*b[2][2],
+            ],
+        ];
+    }
+
+    _multiplyMatrixVector3x3(m, v) {
+        return [
+            m[0][0]*v[0] + m[0][1]*v[1] + m[0][2]*v[2],
+            m[1][0]*v[0] + m[1][1]*v[1] + m[1][2]*v[2],
+            m[2][0]*v[0] + m[2][1]*v[1] + m[2][2]*v[2],
+        ];
+    }
 
     /**
      * Combines two position codes to create a new position code
@@ -357,31 +426,66 @@ export class CellSymmetry {
      * @throws {Error} If no matching symmetry operation is found
      */
     combineSymmetryCodes(symmetryCodeOuter, symmetryCodeInner) {
-        const cacheKey = `${symmetryCodeOuter}|${symmetryCodeInner}`;
-        if (this._combineSymmetryCodesCache.has(cacheKey)) {
-            return this._combineSymmetryCodesCache.get(cacheKey);
+        const cacheKey = this._getCacheKey(symmetryCodeOuter, symmetryCodeInner);
+        const cached = this._combineSymmetryCodesCache.get(cacheKey);
+        if (cached !== undefined) {
+            if (cached instanceof Error) {
+                throw cached;
+            }
+            return cached;
         }
 
         // Original calculation starts here
         const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(symmetryCodeOuter);
         const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(symmetryCodeInner);
-        const transVecOuter = math.add(math.matrix(transVecOuterArray), math.matrix(symOpOuter.transVector));
-        const transVecInner = math.add(math.matrix(transVecInnerArray), math.matrix(symOpInner.transVector));
-        const combinedTransVector = math.add(math.multiply(symOpOuter.rotMatrix, transVecInner), transVecOuter);
-        const combinedRotMatrix = math.multiply(symOpOuter.rotMatrix, symOpInner.rotMatrix);
+        const transVecOuter = [
+            transVecOuterArray[0] + symOpOuter.transVector[0],
+            transVecOuterArray[1] + symOpOuter.transVector[1],
+            transVecOuterArray[2] + symOpOuter.transVector[2],
+        ];
+        
+        const transVecInner = [
+            transVecInnerArray[0] + symOpInner.transVector[0],
+            transVecInnerArray[1] + symOpInner.transVector[1],
+            transVecInnerArray[2] + symOpInner.transVector[2],
+        ];
 
-        for (let i = 0; i < this.symmetryOperations.length; i++) {
+        const combinedRotMatrix = this._multiplyMatrices3x3(symOpOuter.rotMatrix, symOpInner.rotMatrix);
+
+        const rotatedInner = this._multiplyMatrixVector3x3(symOpOuter.rotMatrix, transVecInner);
+        const combinedTransVector = [
+            transVecOuter[0] + rotatedInner[0],
+            transVecOuter[1] + rotatedInner[1],
+            transVecOuter[2] + rotatedInner[2],
+        ];
+
+        // Look up matching operation using index
+        const rotKey = this._matrixToKey(combinedRotMatrix);
+        const candidateIndices = this._rotationMatrixIndex.get(rotKey);
+        
+        if (!candidateIndices) {
+            throw new Error(
+                'No matching symmetry operation found for combined position codes: '
+                + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
+            );
+        }
+        
+        // Check translation vectors for candidates
+        for (const i of candidateIndices) {
             const possibleSymOp = this.symmetryOperations[i];
-            if (!math.deepEqual(combinedRotMatrix, possibleSymOp.rotMatrix)) {
-                continue;
-            };
-            const remainderVector = math.subtract(combinedTransVector, math.matrix(possibleSymOp.transVector));
-            const isIntegerTranslation = remainderVector.toArray().every(val => 
+            const remainderVector = [
+                combinedTransVector[0] - possibleSymOp.transVector[0],
+                combinedTransVector[1] - possibleSymOp.transVector[1],
+                combinedTransVector[2] - possibleSymOp.transVector[2],
+            ];
+            
+            // Check if translation is integer
+            const isInteger = remainderVector.every(val => 
                 Math.abs(val - Math.round(val)) < 1e-10,
             );
-
-            if (isIntegerTranslation) {
-                // Find the ID for this symmetry operation
+            
+            if (isInteger) {
+                // Find the ID for this operation
                 let symOpId = null;
                 for (const [id, index] of this.operationIds.entries()) {
                     if (index === i) {
@@ -390,20 +494,14 @@ export class CellSymmetry {
                     }
                 }
                 
-                const roundedDiff = remainderVector.toArray().map(val => Math.round(val) + 5);
-                const translationCode = roundedDiff.join('');
-                const result = `${symOpId}_${translationCode}`;
-                this._combineSymmetryCodesCache.set(cacheKey, result); // Store in cache
-                return result;
+                const roundedDiff = remainderVector.map(val => Math.round(val) + 5);
+                return `${symOpId}_${roundedDiff.join('')}`;
             }
         }
-
-        const error = new Error(
-            'No matching symmetry operation found for combined position codes:'
-            + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
+        
+        throw new Error(
+            `No matching symmetry operation found for combined position codes: ${symmetryCodeOuter} and ${symmetryCodeInner}`,
         );
-        this._combineSymmetryCodesCache.set(cacheKey, error);
-        throw error;
     }
 
     /**
