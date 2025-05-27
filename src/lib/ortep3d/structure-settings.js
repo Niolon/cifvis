@@ -48,7 +48,7 @@ export default {
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
     'disorderMode': 'all',
-    'symmetryMode': 'bonds-no-hbonds-no',
+    'symmetryMode': 'none',
 
     'bondGrowToleranceFactor': 1.2,
 
