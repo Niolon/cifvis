@@ -277,9 +277,10 @@ export class SymmetryGrower extends BaseFilter {
         const hasGrowableHBonds = structure.hBonds.some(hbond => hbond.acceptorAtomSymmetry !== '.');
         
         if (hasGrowableHBonds) {
-            modes.push(SymmetryGrower.MODES.HBONDS);
             if (hasGrowableBonds) {
                 modes.push(SymmetryGrower.MODES.FRAGMENT_HBONDS);
+            } else {
+                modes.push(SymmetryGrower.MODES.HBONDS);
             }
         }
 
