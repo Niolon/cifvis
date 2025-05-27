@@ -414,13 +414,7 @@ export class ORTEP3JsStructure {
 
         // Handle regular bonds
         const drawnBonds = this.crystalStructure.bonds
-            // .map(bond => new Bond(
-            //     bond.atom1Label,
-            //     createSymAtomLabel(bond.atom2Label, bond.atom2SiteSymmetry),
-            //     bond.bondLength,
-            //     bond.bondLengthSU,
-            //     '.',
-            // ))
+            .filter(bond => bond.atom2SiteSymmetry === null || bond.atom2SiteSymmetry === '.')
             .filter(bond => atomLabels.includes(bond.atom2Label));
 
         for (const bond of drawnBonds) {
@@ -440,23 +434,7 @@ export class ORTEP3JsStructure {
 
         // Handle hydrogen bonds
         const drawnHBonds = this.crystalStructure.hBonds
-            // .map(hBond => new HBond(
-            //     hBond.donorAtomLabel,
-            //     hBond.hydrogenAtomLabel,
-            //     createSymAtomLabel(
-            //         hBond.acceptorAtomLabel, 
-            //         hBond.acceptorAtomSymmetry,
-            //     ),
-            //     hBond.donorHydrogenDistance,
-            //     hBond.donorHydrogenDistanceSU,
-            //     hBond.acceptorHydrogenDistance,
-            //     hBond.acceptorHydrogenDistanceSU,
-            //     hBond.donorAcceptorDistance,
-            //     hBond.donorAcceptorDistanceSU,
-            //     hBond.hBondAngle,
-            //     hBond.hBondAngleSU,
-            //     '.',
-            // ))
+            .filter(hBond => hBond.acceptorAtomSymmetry === null || hBond.acceptorAtomSymmetry === '.')
             .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
 
         for (const hbond of drawnHBonds) {

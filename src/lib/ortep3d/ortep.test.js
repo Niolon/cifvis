@@ -326,10 +326,10 @@ describe('ORTEP3JsStructure', () => {
                 new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0)),
         ];
         const bonds = [
-            new Bond('C1', 'O1', 1.5, 0.01),
+            new Bond('C1', 'O1', 1.5, 0.01, '.'),
         ];
         const hbonds = [
-            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),
         ];
         
         mockCrystalStructure = new CrystalStructure(cell, atoms, bonds, hbonds);
