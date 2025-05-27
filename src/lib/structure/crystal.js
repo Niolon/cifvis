@@ -79,7 +79,6 @@ export class CrystalStructure {
         this.atoms = atoms;
         this.bonds = bonds;
         this.hBonds = hBonds;
-        this.calculateConnectedGroups();
         this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, [new SymmetryOperation('x,y,z')]);
     }
 
