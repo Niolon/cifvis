@@ -495,7 +495,9 @@ export class CellSymmetry {
                 }
                 
                 const roundedDiff = remainderVector.map(val => Math.round(val) + 5);
-                return `${symOpId}_${roundedDiff.join('')}`;
+                const combinedPositionCode = `${symOpId}_${roundedDiff.join('')}`;
+                this._combineSymmetryCodesCache.set(cacheKey, combinedPositionCode);
+                return combinedPositionCode;
             }
         }
         
