@@ -192,13 +192,21 @@ export function growCell(structure, moveAtomsInsideCell = true) {
         );
     });
 
+    const groupsExternalHBonds = atomGroups.map(group => {
+        return structure.hBonds.filter(hbond =>
+            (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') &&
+            group.atoms.some(atom => atom.label === hbond.donorAtomLabel),
+        );
+    });
+
     // Prepare collections for the grown structure
     const atomMap = new Map(); // position key -> atom
     const bondMap = new Map(); // bond identifier -> bond
     const hbondMap = new Map(); // hbond identifier -> hbond
     const specialPositionMap = new Map(); // duplicate label -> kept label
     const atomTranslations = new Map(); // atom label -> [translated label, symmetry string]
-    const potentialExternalBonds = [];
+    const potentialExternalBondMap = new Map();
+    const potentialExternalHBondMap = new Map();
 
     // Process each atom group with its required symmetry operations
     for (let groupIdx = 0; groupIdx < atomGroups.length; groupIdx++) {
@@ -214,12 +222,12 @@ export function growCell(structure, moveAtomsInsideCell = true) {
             const offsetX = Math.floor(symmCentre.x);
             const offsetY = Math.floor(symmCentre.y);
             const offsetZ = Math.floor(symmCentre.z);
-            const translationString = `${5 + offsetX}${5 + offsetY}${5 + offsetZ}`;
+            const translationString = `${5 - offsetX}${5 - offsetY}${5 - offsetZ}`;
             const symmString = `${symId}_${translationString}`;
             
             // Apply symmetry to atoms
             const transformedAtoms = structure.symmetry.applySymmetry(symmString, group.atoms);
-            
+
             // Process transformed atoms
             for (let i = 0; i < transformedAtoms.length; i++) {
                 const atom = transformedAtoms[i];
@@ -386,9 +394,10 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                     bond.atom2SiteSymmetry,
                 );
 
+                let atom1Symm = null;
+
                 if (atomTranslations.has(atom1Label)) {
-                    const [atom1Labelr, atom1Symm] = atomTranslations.get(atom1Label);
-                    atom1Label = atom1Labelr;
+                    [atom1Label, atom1Symm] = atomTranslations.get(atom1Label);
                     atom2Symm = structure.symmetry.combineSymmetryCodes(
                         atom1Symm,
                         atom2Symm,
@@ -396,13 +405,76 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                 }
 
                 const atom2Label = combineSymAtomLabel(bond.atom2Label, atom2Symm, structure.symmetry);
-                potentialExternalBonds.push(new Bond(
-                    atom1Label,
-                    atom2Label,
-                    bond.bondLength,
-                    bond.bondLengthSU,
-                    '.',
-                ));
+                
+                const bondId = createBondIdentifier(atom1Label, atom2Label);
+                if (!potentialExternalBondMap.has(bondId)) {
+                    potentialExternalBondMap.set(bondId, [
+                        new Bond(
+                            atom1Label,
+                            atom2Label,
+                            bond.bondLength,
+                            bond.bondLengthSU,
+                            '.',
+                        ), 
+                        atom1Symm,
+                    ]);
+                }
+            }
+            // Process potential external H-bonds
+            for (const hbond of groupsExternalHBonds[groupIdx]) {
+                let donorLabel = specialPositionMap.get(
+                    combineSymAtomLabel(hbond.donorAtomLabel, symmString, structure.symmetry),
+                ) || combineSymAtomLabel(hbond.donorAtomLabel, symmString, structure.symmetry);
+
+                let hydrogenLabel = specialPositionMap.get(
+                    combineSymAtomLabel(hbond.hydrogenAtomLabel, symmString, structure.symmetry),
+                ) || combineSymAtomLabel(hbond.hydrogenAtomLabel, symmString, structure.symmetry);
+
+                let acceptorSymm = structure.symmetry.combineSymmetryCodes(
+                    symmString,
+                    hbond.acceptorAtomSymmetry,
+                );
+                let donorTransSymm = null;
+
+                if (atomTranslations.has(donorLabel)) {
+                    [donorLabel, donorTransSymm] = atomTranslations.get(donorLabel);
+                    acceptorSymm = structure.symmetry.combineSymmetryCodes(
+                        donorTransSymm,
+                        acceptorSymm,
+                    );
+                }
+                
+                if (atomTranslations.has(hydrogenLabel)) {
+                    const [hydrogenLabelr, hydrogenSymm] = atomTranslations.get(hydrogenLabel);
+                    hydrogenLabel = hydrogenLabelr;
+                    acceptorSymm = structure.symmetry.combineSymmetryCodes(
+                        hydrogenSymm,
+                        acceptorSymm,
+                    );
+                }
+
+                const acceptorLabel = combineSymAtomLabel(hbond.acceptorAtomLabel, acceptorSymm, structure.symmetry);
+                
+                const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
+                if (!potentialExternalHBondMap.has(hbondId)) {
+                    potentialExternalHBondMap.set(hbondId, [
+                        new HBond(
+                            donorLabel,
+                            hydrogenLabel,
+                            acceptorLabel,
+                            hbond.donorHydrogenDistance,
+                            hbond.donorHydrogenDistanceSU,
+                            hbond.acceptorHydrogenDistance,
+                            hbond.acceptorHydrogenDistanceSU,
+                            hbond.donorAcceptorDistance,
+                            hbond.donorAcceptorDistanceSU,
+                            hbond.hBondAngle,
+                            hbond.hBondAngleSU,
+                            '.',
+                        ),
+                        donorTransSymm,
+                    ]);
+                }
             }
         }
     }
@@ -416,13 +488,20 @@ export function growCell(structure, moveAtomsInsideCell = true) {
         atomLabelSet.has(bond.atom1Label) && atomLabelSet.has(bond.atom2Label),
     );
 
-    for (const bond of potentialExternalBonds) {
+    for (const [bond, atom1Symm] of potentialExternalBondMap.values()) {
         let atom2Lookup = specialPositionMap.get(bond.atom2Label) || bond.atom2Label;
+
+        // If atom2 is not in the set, try to translate it
         if (atomTranslations.has(atom2Lookup)) {
-            atom2Lookup = atomTranslations.get(atom2Lookup)[0];
+            const [translatedAtom2, symm] = atomTranslations.get(atom2Lookup);
+            if (atom1Symm !== symm) {
+                continue;
+            }
+            atom2Lookup = translatedAtom2;
         }
+        
         // Only add bond if both atoms exist in the grown structure
-        if (atomLabelSet.has(bond.atom1Label) && atomLabelSet.has(atom2Lookup)) {
+        if (atomLabelSet.has(atom2Lookup) && atomLabelSet.has(bond.atom1Label)) {
             const bondId = createBondIdentifier(bond.atom1Label, bond.atom2Label);
             if (!bondMap.has(bondId)) {
                 bondMap.set(bondId, bond);
@@ -435,7 +514,6 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                 ));
             }
         }
-        
     }
     
     // Filter H-bonds to ensure all atoms exist
@@ -445,66 +523,54 @@ export function growCell(structure, moveAtomsInsideCell = true) {
         atomLabelSet.has(hbond.acceptorAtomLabel),
     );
     
-    // // Process inter-group H-bonds from the structure level
-    // for (const hbond of structure.hBonds) {
-    //     if (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') {
-    //         // This is an inter-group H-bond with symmetry
-    //         for (const symOps of growSymIds) {
-    //             for (const symId of symOps) {
-    //                 const symOpIndex = structure.symmetry.operationIds.get(symId);
-    //                 const symOp = structure.symmetry.symmetryOperations[symOpIndex];
-                    
-    //                 const symmCentre = getSymmetryCentre(limits, symOp);
-    //                 const offsetX = Math.round(symmCentre.x);
-    //                 const offsetY = Math.round(symmCentre.y);
-    //                 const offsetZ = Math.round(symmCentre.z);
-    //                 const translationString = `${5 + offsetX}${5 + offsetY}${5 + offsetZ}`;
-    //                 const symmString = `${symId}_${translationString}`;
-                    
-    //                 const donorLabel = specialPositionMap.get(
-    //                     createSymAtomLabel(hbond.donorAtomLabel, symmString),
-    //                 ) || createSymAtomLabel(hbond.donorAtomLabel, symmString);
-                    
-    //                 const hydrogenLabel = specialPositionMap.get(
-    //                     createSymAtomLabel(hbond.hydrogenAtomLabel, symmString),
-    //                 ) || createSymAtomLabel(hbond.hydrogenAtomLabel, symmString);
-                    
-    //                 // Combine symmetries for acceptor
-    //                 const acceptorSymm = structure.symmetry.combineSymmetryCodes(
-    //                     symmString,
-    //                     hbond.acceptorAtomSymmetry,
-    //                 );
-    //                 const acceptorLabel = specialPositionMap.get(
-    //                     createSymAtomLabel(hbond.acceptorAtomLabel, acceptorSymm),
-    //                 ) || createSymAtomLabel(hbond.acceptorAtomLabel, acceptorSymm);
-                    
-    //                 const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
-    //                 if (!hbondMap.has(hbondId) &&
-    //                     atomLabelSet.has(donorLabel) && 
-    //                     atomLabelSet.has(hydrogenLabel) && 
-    //                     atomLabelSet.has(acceptorLabel)) {
-    //                     hbondMap.set(hbondId, new HBond(
-    //                         donorLabel,
-    //                         hydrogenLabel,
-    //                         acceptorLabel,
-    //                         hbond.donorHydrogenDistance,
-    //                         hbond.donorHydrogenDistanceSU,
-    //                         hbond.acceptorHydrogenDistance,
-    //                         hbond.acceptorHydrogenDistanceSU,
-    //                         hbond.donorAcceptorDistance,
-    //                         hbond.donorAcceptorDistanceSU,
-    //                         hbond.hBondAngle,
-    //                         hbond.hBondAngleSU,
-    //                         '.',
-    //                     ));
-    //                     finalHBonds.push(hbondMap.get(hbondId));
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    for (const [hbond, donorTransSymm] of potentialExternalHBondMap.values()) {
+        let acceptorLookup = hbond.acceptorAtomLabel;
 
-    console.log(structure.symmetry);
+        if (!atomLabelSet.has(acceptorLookup)) {
+            acceptorLookup = specialPositionMap.get(acceptorLookup) || acceptorLookup;
+        }
+
+        // If acceptor is not in the set, try to translate it
+        if (atomTranslations.has(acceptorLookup)) {
+            const [translatedAcceptor, acceptorSymm] = atomTranslations.get(acceptorLookup);
+            if (acceptorSymm !== donorTransSymm) {
+                // If the symmetry of the translated acceptor does not match the donor, skip
+                continue;
+            }
+            acceptorLookup = translatedAcceptor;
+        }
+        
+        // Only add H-bond if all atoms exist in the grown structure
+        if (
+            atomLabelSet.has(hbond.donorAtomLabel) &&
+            atomLabelSet.has(hbond.hydrogenAtomLabel) &&
+            atomLabelSet.has(acceptorLookup)
+        ) {
+            const hbondId = createHBondIdentifier(
+                hbond.donorAtomLabel,
+                hbond.hydrogenAtomLabel,
+                acceptorLookup,
+            );
+            if (!hbondMap.has(hbondId)) {
+                hbondMap.set(hbondId, hbond);
+                finalHBonds.push(new HBond(
+                    hbond.donorAtomLabel,
+                    hbond.hydrogenAtomLabel,
+                    acceptorLookup,
+                    hbond.donorHydrogenDistance,
+                    hbond.donorHydrogenDistanceSU,
+                    hbond.acceptorHydrogenDistance,
+                    hbond.acceptorHydrogenDistanceSU,
+                    hbond.donorAcceptorDistance,
+                    hbond.donorAcceptorDistanceSU,
+                    hbond.hBondAngle,
+                    hbond.hBondAngleSU,
+                    '.',
+                ));
+            }
+        }
+    }
+    console.log(specialPositionMap, atomTranslations);
     
     return new CrystalStructure(
         structure.cell,
