@@ -394,8 +394,6 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                     bond.atom2SiteSymmetry,
                 );
 
-                
-
                 if (atomTranslations.has(atom1Label)) {
                     let atom1Symm;
                     [atom1Label, atom1Symm] = atomTranslations.get(atom1Label);
@@ -418,7 +416,7 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                             bond.bondLengthSU,
                             '.',
                         ), 
-                        );
+                    );
                 }
             }
             // Process potential external H-bonds
