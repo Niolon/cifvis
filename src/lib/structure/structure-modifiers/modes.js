@@ -247,6 +247,11 @@ export class SymmetryGrower extends BaseFilter {
         return this.mode === SymmetryGrower.MODES.CELL || this.mode === SymmetryGrower.MODES.FRAGMENT_CELL;
     }
 
+    /**
+     * Applies symmetry growth according to current mode
+     * @param {CrystalStructure} structure - Structure to grow
+     * @returns {CrystalStructure} New structure with grown symmetry
+     */
     apply(structure) {
         this.ensureValidMode(structure);
         let workStructure = structure;
@@ -266,6 +271,11 @@ export class SymmetryGrower extends BaseFilter {
         return workStructure;
     }
 
+    /**
+     * Gets applicable modes based on structure symmetry and bonds
+     * @param {CrystalStructure} structure - Structure to analyze
+     * @returns {Array<string>} Array of applicable mode names
+     */
     getApplicableModes(structure) {
         const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL, SymmetryGrower.MODES.FRAGMENT_CELL];
         const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
