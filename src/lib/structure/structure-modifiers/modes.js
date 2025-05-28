@@ -243,14 +243,20 @@ export class SymmetryGrower extends BaseFilter {
         return true;
     }
 
+    get drawCell() {
+        return this.mode === SymmetryGrower.MODES.CELL || this.mode === SymmetryGrower.MODES.FRAGMENT_CELL;
+    }
+
     apply(structure) {
         this.ensureValidMode(structure);
         let workStructure = structure;
         if (this.mode === SymmetryGrower.MODES.FRAGMENT || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
             workStructure = growFragment(structure);
         }
-        if (this.mode === SymmetryGrower.MODES.CELL || this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
+        if (this.mode === SymmetryGrower.MODES.CELL) {
             workStructure = growCell(structure);
+        } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
+            workStructure = growCell(growFragment(structure), false);
         }
 
         if (this.mode === SymmetryGrower.MODES.HBONDS || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
@@ -261,7 +267,7 @@ export class SymmetryGrower extends BaseFilter {
     }
 
     getApplicableModes(structure) {
-        const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL];
+        const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL, SymmetryGrower.MODES.FRAGMENT_CELL];
         const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
 
         if (!hasSymmetry) {
@@ -271,7 +277,6 @@ export class SymmetryGrower extends BaseFilter {
         const hasGrowableBonds = structure.bonds.some(bond => bond.atom2SiteSymmetry !== '.');
         if (hasGrowableBonds) {
             modes.push(SymmetryGrower.MODES.FRAGMENT);
-            modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
         }
 
         const hasGrowableHBonds = structure.hBonds.some(hbond => hbond.acceptorAtomSymmetry !== '.');
