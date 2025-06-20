@@ -115,7 +115,7 @@ async function processStructuresWithStatistics() {
     
     // Process each structure
     for (const structureName of structures) {
-        //console.log(`\n=== Starting tests for ${structureName} ===`);
+        console.log(`\n=== Starting tests for ${structureName} ===`);
 
         // Fetch structure data once
         const response = await fetch(`${baseUrl}cif/${structureName}`);
