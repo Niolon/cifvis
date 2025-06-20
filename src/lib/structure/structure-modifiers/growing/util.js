@@ -28,7 +28,7 @@ export function combineSymAtomLabel(atomLabel, symOpLabel, symmetry) {
         const combinedSymm = symmetry.combineSymmetryCodes(symOpLabel, labelParts[1]);
         return createSymAtomLabel(labelParts[0], combinedSymm);
     } else {
-        if (symOpLabel.startsWith(symmetry.identitySymOpId) && symOpLabel.endsWith('555')) {
+        if (symOpLabel === `${symmetry.identitySymOpId}_555`) {
             return atomLabel; // No change needed for identity operation
         }
         return createSymAtomLabel(atomLabel, symOpLabel);
