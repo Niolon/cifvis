@@ -154,7 +154,7 @@ function getAtomPositionKey(atom, precision = 4) {
     const y = Math.round(atom.position.y * factor) / factor;
     const z = Math.round(atom.position.z * factor) / factor;
     const labelParts = atom.label.split('@');
-    return `${labelParts[0]}_${x}_${y}_${z}`;
+    return `${labelParts[0]}_x${x}_y${y}_z${z}`;
 }
 
 /**
