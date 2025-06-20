@@ -9,6 +9,7 @@ import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../struct
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 import { createCameraController } from './camera-controllers.js';
+import { createCell3D } from './cell3d.js';
 
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
@@ -405,6 +406,10 @@ export class CrystalViewer {
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
+            cell: {
+                ...defaultSettings.cell,
+                ...options.cell,
+            },
         };
   
         this.state = {
@@ -592,8 +597,15 @@ export class CrystalViewer {
     update3DOrtep() {
         this.removeStructure();
         let structure = this.state.baseStructure;
+        let drawCell = false;
         for (const modifier of Object.values(this.modifiers)) {
             structure = modifier.apply(structure);
+            drawCell = drawCell || modifier.drawCell;
+        }
+        
+        if (drawCell) {
+            const cell3D = createCell3D(structure.cell, this.options.cell);
+            this.moleculeContainer.add(cell3D);
         }
 
         const ortep = new ORTEP3JsStructure(structure, this.options);

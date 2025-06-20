@@ -79,6 +79,20 @@ export default {
     'hbondDashSegmentLength': 0.3, // Target length for each dash+gap segment
     'hbondDashFraction': 0.6,    // Fraction of segment that is solid (vs gap)
 
+    // Cell visualisation settings
+    'cell': {
+        'color': '#000000',
+        'opacity': 0.8,
+        'lineWidth': 2,
+        'colorA': '#E74C3C', // Red',
+        'colorB': '#2ECC71', // Green',
+        'colorC': '#3498DB', // Blue',
+        'headLengthMult': 0.05,
+        'headWidthMult': 0.25,
+        'cylinderRadius': 0.04,
+
+    },
+
     'elementProperties': {
         'H': { 'radius': 0.31, 'atomColor': '#ffffff', 'ringColor': '#000000' },
         'D': { 'radius': 0.31, 'atomColor': '#ffffff', 'ringColor': '#000000' },

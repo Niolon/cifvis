@@ -502,7 +502,8 @@ export class CellSymmetry {
         }
         
         throw new Error(
-            `No matching symmetry operation found for combined position codes: ${symmetryCodeOuter} and ${symmetryCodeInner}`,
+            'No matching symmetry operation found for combined position codes: '
+            + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
         );
     }
 

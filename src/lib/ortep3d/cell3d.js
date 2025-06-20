@@ -1,34 +1,49 @@
 import * as THREE from 'three';
 import { UnitCell } from '../structure/crystal';
+import { calcBondTransform } from './ortep.js';
 
 /**
- *
- * @param vector
- * @param color
- * @param headLength
- * @param headWidth
+ * Creates a 3D arrow visualization using a cylinder shaft and cone head.
+ * The arrow points in the direction of the provided vector from the origin.
+ * @param {THREE.Vector3} vector - The direction and magnitude vector for the arrow
+ * @param {THREE.Color|string|number} color - The color for both shaft and head (THREE.Color, hex string, or number)
+ * @param {number} headLength - The length/height of the cone arrowhead
+ * @param {number} headWidth - The radius of the cone arrowhead base
+ * @param {number} cylinderRadius - The radius of the cylinder shaft for the arrow
+ * @returns {THREE.Group} A THREE.Group containing the cylinder shaft and cone head meshes
  */
-function createCylinderArrow(vector, color, headLength, headWidth) {
+function createCylinderArrow(vector, color, headLength, headWidth, cylinderRadius) {
     const direction = vector.clone().normalize();
-    const origin = new THREE.Vector3(0, 0, 0);
+    const magnitude = vector.length();
+    const shaftLength = magnitude - headLength;
     
     // Create a cylinder geometry for the arrow shaft
-    const cylinderGeometry = new THREE.CylinderGeometry(0.05, 0.05, vector.length(), 8);
+    const cylinderGeometry = new THREE.CylinderGeometry(cylinderRadius, cylinderRadius, shaftLength, 8);
     const cylinderMaterial = new THREE.MeshBasicMaterial({ color: color });
     const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-    
-    // Position the cylinder
-    cylinderMesh.position.copy(origin);
-    cylinderMesh.lookAt(direction.add(origin));
     
     // Create a cone geometry for the arrow head
     const coneGeometry = new THREE.ConeGeometry(headWidth, headLength, 8);
     const coneMaterial = new THREE.MeshBasicMaterial({ color: color });
     const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
     
-    // Position the cone at the end of the cylinder
-    coneMesh.position.copy(direction.multiplyScalar(vector.length()).add(origin));
-    coneMesh.lookAt(direction.add(origin));
+    // Default cylinder points along Y-axis (0, 1, 0)
+    // Default cone points along Y-axis (0, 1, 0)
+    const defaultDirection = new THREE.Vector3(0, 1, 0);
+    
+    // Create rotation quaternion to align with target direction
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(defaultDirection, direction);
+    
+    // Apply rotation to both meshes
+    cylinderMesh.applyQuaternion(quaternion);
+    coneMesh.applyQuaternion(quaternion);
+    
+    // Position cylinder at half its length along the direction
+    cylinderMesh.position.copy(direction.clone().multiplyScalar(shaftLength / 2));
+    
+    // Position cone at the end of the shaft
+    coneMesh.position.copy(direction.clone().multiplyScalar(shaftLength + headLength / 2));
     
     // Combine the cylinder and cone into a group
     const arrowGroup = new THREE.Group();
@@ -39,67 +54,134 @@ function createCylinderArrow(vector, color, headLength, headWidth) {
 }
 
 /**
- * Creates a 3D representation of a unit cell using Three.js.
- * @param {UnitCell} cell - The unit cell object containing dimensions and angles.
- * @param {object} cellSettings - Settings for the cell representation.
- * @param {string} cellSettings.color - Color of the cell.
- * @param {number} cellSettings.opacity - Opacity of the cell.
- * @param {string} cellSettings.colorA - Color for axis A.
- * @param {string} cellSettings.colorB - Color for axis B.
- * @param {string} cellSettings.colorC - Color for axis C.
- * @returns {THREE.Group} - A Three.js Group containing the cell mesh and axes.
+ * Creates the wireframe edges of a unit cell using line segments.
+ * This creates a proper parallelepiped representation with 12 edges.
+ * @param {THREE.Matrix4} transformationMatrix - The fractional-to-cartesian transformation matrix
+ * @param {string|number} color - Color for the wireframe lines
+ * @param {number} opacity - Opacity of the wireframe lines
+ * @param {number} lineWidth - Width of the lines (note: may not work in all browsers)
+ * @returns {THREE.Group} A group containing all the wireframe edges
+ */
+function createUnitCellWireframe(transformationMatrix, color, opacity, lineWidth) {
+    const wireframeGroup = new THREE.Group();
+    
+    // Define the 8 vertices of a unit cube in fractional coordinates
+    const vertices = [
+        new THREE.Vector3(0, 0, 0), // 0: origin
+        new THREE.Vector3(1, 0, 0), // 1: along a
+        new THREE.Vector3(0, 1, 0), // 2: along b  
+        new THREE.Vector3(0, 0, 1), // 3: along c
+        new THREE.Vector3(1, 1, 0), // 4: a+b
+        new THREE.Vector3(1, 0, 1), // 5: a+c
+        new THREE.Vector3(0, 1, 1), // 6: b+c
+        new THREE.Vector3(1, 1, 1), // 7: a+b+c
+    ];
+    
+    // Transform vertices to cartesian coordinates
+    const cartesianVertices = vertices.map(vertex => {
+        return vertex.clone().applyMatrix4(transformationMatrix);
+    });
+    
+    // Define the 12 edges of the parallelepiped
+    const edges = [
+        // Bottom face (z=0)
+        [0, 1], [1, 4], [4, 2], [2, 0],
+        // Top face (z=1)  
+        [3, 5], [5, 7], [7, 6], [6, 3],
+        // Vertical edges connecting bottom and top
+        [0, 3], [1, 5], [4, 7], [2, 6],
+    ];
+    
+    // Create line material
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+        color: color,
+        transparent: opacity < 1.0,
+        opacity: opacity,
+        linewidth: lineWidth, // Note: may not work in WebGL
+    });
+    
+    // Create each edge as a line segment
+    edges.forEach(([startIdx, endIdx]) => {
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+            cartesianVertices[startIdx],
+            cartesianVertices[endIdx],
+        ]);
+        
+        const line = new THREE.Line(geometry, lineMaterial);
+        wireframeGroup.add(line);
+    });
+    
+    return wireframeGroup;
+}
+
+/**
+ * Creates a 3D representation of a unit cell using Three.js with proper wireframe edges.
+ * @param {UnitCell} cell - The unit cell object containing dimensions and angles
+ * @param {object} cellSettings - Settings for the cell representation
+ * @param {string} cellSettings.color - Color of the cell wireframe
+ * @param {number} cellSettings.opacity - Opacity of the cell wireframe
+ * @param {string} cellSettings.colorA - Color for axis A
+ * @param {string} cellSettings.colorB - Color for axis B
+ * @param {string} cellSettings.colorC - Color for axis C
+ * @param {number} [cellSettings.headLengthMult] - Head length as fraction of smallest axis
+ * @param {number} [cellSettings.headWidthMult] - Head width as fraction of head length
+ * @param {number} [cellSettings.lineWidth] - Width of wireframe lines
+ * @returns {THREE.Group} A Three.js Group containing the cell wireframe and axes
  */
 export function createCell3D(cell, cellSettings) {
-    const { color, opacity } = cellSettings;
+    const { 
+        color, 
+        opacity, 
+        colorA, 
+        colorB, 
+        colorC, 
+        headLengthMult, 
+        headWidthMult,
+        lineWidth,
+        cylinderRadius,
+    } = cellSettings;
 
     const cellGroup = new THREE.Group();
 
-    // Create a THREE.BoxGeometry based on the unit cell dimensions
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    // Create transformation matrix from the unit cell
+    const matrixArray = cell.fractToCartMatrix.toArray();
+    const transformationMatrix = new THREE.Matrix4(
+        matrixArray[0][0], matrixArray[0][1], matrixArray[0][2], 0,
+        matrixArray[1][0], matrixArray[1][1], matrixArray[1][2], 0,
+        matrixArray[2][0], matrixArray[2][1], matrixArray[2][2], 0,
+        0, 0, 0, 1,
+    );
 
-    // Create a material with the specified color and opacity
-    const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(color),
-        transparent: true,
-        opacity: opacity,
-        side: THREE.DoubleSide,
-    });
+    // Create the wireframe using line segments
+    const wireframe = createUnitCellWireframe(transformationMatrix, color, opacity, lineWidth);
+    cellGroup.add(wireframe);
 
-    // Create the mesh for the unit cell
-    const cellMesh = new THREE.Mesh(geometry, material);
+    // Extract basis vectors for the axes
+    const directionA = new THREE.Vector3();
+    const directionB = new THREE.Vector3();
+    const directionC = new THREE.Vector3();
+    transformationMatrix.extractBasis(directionA, directionB, directionC);
 
-    const transformationMatrix = new THREE.Matrix4(...cell.fractToCartMatrix.toArray());
-    cellMesh.applyMatrix4(transformationMatrix);
-
-    // Set the rotation based on the angles alpha, beta, gamma
-    cellGroup.add(cellMesh);
-
-    const rotationMatrix = new THREE.Matrix4();
-    transformationMatrix.extractRotation(rotationMatrix);
-
-    const directionA = new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix);
-    const directionB = new THREE.Vector3(0, 1, 0).applyMatrix4(rotationMatrix);
-    const directionC = new THREE.Vector3(0, 0, 1).applyMatrix4(rotationMatrix);
-    const origin = new THREE.Vector3(0, 0, 0);
-
+    // Calculate arrow dimensions based on cell parameters
     const { a, b, c } = cell;
-    const { colorA, colorB, colorC, headLengthMult, headWidthMult } = cellSettings;
-
-    const headLength = Math.min(a, b, c) * headLengthMult; // Length of the arrow heads
-    const headWidth = headLength * headWidthMult; // Width of the arrow heads
+    const headLength = Math.max(a, b, c) * headLengthMult;
+    const headWidth = headLength * headWidthMult;
 
     // Create arrows to represent the cell axes
-
-    const arrowA = new THREE.ArrowHelper(directionA, origin, a, new THREE.Color(colorA), headLength, headWidth);
-    const arrowB = new THREE.ArrowHelper(directionB, origin, b, new THREE.Color(colorB), headLength, headWidth);
-    const arrowC = new THREE.ArrowHelper(directionC, origin, c, new THREE.Color(colorC), headLength, headWidth);
+    const arrowA = createCylinderArrow(directionA, colorA, headLength, headWidth, cylinderRadius);
+    const arrowB = createCylinderArrow(directionB, colorB, headLength, headWidth, cylinderRadius);
+    const arrowC = createCylinderArrow(directionC, colorC, headLength, headWidth, cylinderRadius);
 
     cellGroup.add(arrowA);
     cellGroup.add(arrowB);
     cellGroup.add(arrowC);
+    
+    // Add metadata
     cellGroup.name = 'UnitCell';
     cellGroup.userData = {
         selectable: false,
+        cellParameters: { a, b, c, alpha: cell.alpha, beta: cell.beta, gamma: cell.gamma },
+        type: 'UnitCell',
     };
     
     return cellGroup;

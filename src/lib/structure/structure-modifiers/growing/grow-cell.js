@@ -3,7 +3,7 @@ import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
 import { create, all } from 'mathjs';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
-import { combineSymAtomLabel, createSymAtomLabel } from './util.js';
+import { combineSymAtomLabel } from './util.js';
 
 const math = create(all, {});
 
