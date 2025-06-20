@@ -136,7 +136,7 @@ export class ConnectingBond {
  * @property {number} originIndex - Index of the origin group
  * @property {string} originSymmetry - Symmetry operation of origin group
  * @property {number} targetIndex - Index of the target group
- * @property {string} connectingSymOp - Symmetry operation to apply to the target group (relative to originSymmetry)
+ * @property {string} targetSymmetry - Direct symmetry operation for the target group
  * @property {ConnectingBond[]} connectingBonds - All bonds that form the connection between the two fragments
  * @property {number} creationOriginIndex - Index of the group within the asym. unit this bond originates from
  */
@@ -146,16 +146,16 @@ export class ConnectingBondGroup {
      * @param {number} originIndex - Index of the origin group
      * @param {string} originSymmetry - Symmetry operation of origin group
      * @param {number} targetIndex - Index of the target group
-     * @param {string} connectingSymOp - Additional symmetry operation to get to target
+     * @param {string} targetSymmetry - Direct symmetry operation for the target
      * @param {ConnectingBond[]} connectingBonds - All bonds that form the connection between the two fragments
      * @param {number} creationOriginIndex - Index of the group within the asym. unit this bond originates from. Used to
      *  track which groups belong together when checking for translational duplicates.
      */
-    constructor(originIndex, originSymmetry, targetIndex, connectingSymOp, connectingBonds, creationOriginIndex) {
+    constructor(originIndex, originSymmetry, targetIndex, targetSymmetry, connectingBonds, creationOriginIndex) {
         this.originIndex = originIndex;
         this.originSymmetry = originSymmetry;
         this.targetIndex = targetIndex;
-        this.connectingSymOp = connectingSymOp; // Note: This is the *additional* symm op, not the final one
+        this.targetSymmetry = targetSymmetry; // Direct symmetry operation for the target
         this.connectingBonds = connectingBonds;
         this.creationOriginIndex = creationOriginIndex;
     }
@@ -163,24 +163,23 @@ export class ConnectingBondGroup {
     /**
      * Gets a key that uniquely identifies this bond connection, respecting symmetry and order.
      * Ensures that the connection A->B with symm S is the same key as B->A with inverse symm S'.
-     * @param {string} finalTargetSymmetry - The fully combined symmetry operation for the target.
      * @returns {string} Unique identifier for the bond connection.
      */
-    getKey(finalTargetSymmetry) {
+    getKey() {
         // Ensure consistent ordering for the key regardless of bond direction
         if (this.originIndex === this.targetIndex) {
             // Intra-group connection across symmetry
-            if (this.originSymmetry < finalTargetSymmetry) {
-                return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${finalTargetSymmetry}`;
+            if (this.originSymmetry < this.targetSymmetry) {
+                return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${this.targetSymmetry}`;
             } else {
-                return `${this.targetIndex}_${finalTargetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
+                return `${this.targetIndex}_${this.targetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
             }
         } else if (this.originIndex < this.targetIndex) {
             // Inter-group connection
-            return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${finalTargetSymmetry}`;
+            return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${this.targetSymmetry}`;
         } else {
             // Inter-group connection (reversed order)
-            return `${this.targetIndex}_${finalTargetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
+            return `${this.targetIndex}_${this.targetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
         }
     }
 }
@@ -248,8 +247,8 @@ export function initializeExploration(seedConnectionsPerGroup, identSymmString) 
                 groupIndex,            // The creation origin is the group itself initially
             );
 
-            // Calculate the key based on the *final* target symmetry (which is just connection.targetSymmetry here)
-            const bondKey = initialBondGroup.getKey(connection.targetSymmetry);
+            // Calculate the key based on the target symmetry
+            const bondKey = initialBondGroup.getKey();
 
             if (!processedConnections.has(bondKey)) {
                 danglingConnections.push(initialBondGroup);
@@ -283,13 +282,7 @@ export function exploreConnection(
     const newDanglingConnections = [];
     const foundTranslations = [];
 
-    // Calculate the absolute symmetry operation for the target group reached by this bond
-    const combinedSymmetry = structure.symmetry.combineSymmetryCodes(
-        currentConnection.connectingSymOp, // Symmetry to apply to target
-        currentConnection.originSymmetry, // Symmetry of the origin group
-    );
-
-    const newConnectedGroup = new ConnectedGroup(currentConnection.targetIndex, combinedSymmetry);
+    const newConnectedGroup = new ConnectedGroup(currentConnection.targetIndex, currentConnection.targetSymmetry);
 
     // Find connections originating from the *type* of group we just reached (targetIndex)
     const targetGroupConnections = seedConnectionsPerGroup[currentConnection.targetIndex];
@@ -298,22 +291,22 @@ export function exploreConnection(
     for (const connection of targetGroupConnections) {
         // Calculate the absolute symmetry operation for the *next* group
         const nextTargetSymmetryAbsolute = structure.symmetry.combineSymmetryCodes(
+            currentConnection.targetSymmetry, // Absolute symmetry of the group we just reached)
             connection.targetSymmetry, // Symmetry to apply to the next target (relative to targetIndex@identity)
-            combinedSymmetry,          // Absolute symmetry of the group we just reached (currentConnection.targetIndex)
         );
 
         // Create the prospective bond representing the next step
         const prospectiveConnection = new ConnectingBondGroup(
             currentConnection.targetIndex,  // Origin is the group we just reached
-            combinedSymmetry,              // Symmetry of this origin
+            currentConnection.targetSymmetry,      // Symmetry of this origin
             connection.targetIndex,        // Target group index for the *next* step
-            connection.targetSymmetry,     // Symmetry needed to get there *from targetIndex@identity*
+            nextTargetSymmetryAbsolute,     // Direct symmetry needed to get to the target
             connection.bonds,              // Specific atom bonds for this connection type
             currentConnection.creationOriginIndex, // Propagate the original creation index
         );
 
         // Check if this connection path has already been processed or queued
-        const connectionKey = prospectiveConnection.getKey(nextTargetSymmetryAbsolute);
+        const connectionKey = prospectiveConnection.getKey();
         if (processedConnections.has(connectionKey)) {
             continue;
         }
@@ -436,18 +429,15 @@ export function collectSymmetryRequirements(networkConnections, structure, ident
     // Collect all unique group@symmetry instances needed
     networkConnections.forEach((group) => {
         requiredSymmetryInstances.add(`${group.originIndex}@.@${group.originSymmetry}`);
-        const finalTargetSymmetry = structure.symmetry.combineSymmetryCodes(
-            group.connectingSymOp, group.originSymmetry,
-        );
-        requiredSymmetryInstances.add(`${group.targetIndex}@.@${finalTargetSymmetry}`);
+        requiredSymmetryInstances.add(`${group.targetIndex}@.@${group.targetSymmetry}`);
 
         group.connectingBonds.forEach(conBond => {
             const atom1 = group.originSymmetry === identSymmString
                 ? conBond.originAtom 
                 : createSymAtomLabel(conBond.originAtom, group.originSymmetry);
-            const atom2 = finalTargetSymmetry === identSymmString
+            const atom2 = group.targetSymmetry === identSymmString
                 ? conBond.targetAtom 
-                : createSymAtomLabel(conBond.targetAtom, finalTargetSymmetry);
+                : createSymAtomLabel(conBond.targetAtom, group.targetSymmetry);
             interGroupBonds.push({ 
                 originSymmAtom: atom1, 
                 targetSymmAtom: atom2, // TODO: This should be the label *before* special position remapping
@@ -581,7 +571,7 @@ export function generateSymmetryBonds(
         });
     });
 
-    // Add inter-group bonds
+    //Add inter-group bonds
     interGroupBonds.forEach(b => {
         const atom1 = specialPositionAtoms.get(b.originSymmAtom) || b.originSymmAtom;
         const atom2 = specialPositionAtoms.get(b.targetSymmAtom) || b.targetSymmAtom;
@@ -755,13 +745,11 @@ export function generateSymmetryHBonds(
  * @returns {Array<Bond>} Additional bonds from translation links.
  */
 export function processTranslationLinks(translationLinks, structure, specialPositionAtoms, existingBonds) {
-    const additionalBonds = [];
-    
+    const additionalBonds = [];    
     translationLinks.forEach(tl => {
         for (const conBond of tl.connectingBonds) {
-            const targetSymmetry = structure.symmetry.combineSymmetryCodes(tl.connectingSymOp, tl.originSymmetry);
             const atom1Label = createSymAtomLabel(conBond.originAtom, tl.originSymmetry);
-            const atom2Label = createSymAtomLabel(conBond.targetAtom, targetSymmetry);
+            const atom2Label = createSymAtomLabel(conBond.targetAtom, tl.targetSymmetry);
             const atom1 = specialPositionAtoms.get(atom1Label) || atom1Label;
             const atom2 = specialPositionAtoms.get(atom2Label) || atom2Label;
             
@@ -769,7 +757,7 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
                 additionalBonds.push(
-                    new Bond(atom1, conBond.targetAtom, conBond.bondLength, conBond.bondLengthSU, targetSymmetry),
+                    new Bond(atom1, conBond.targetAtom, conBond.bondLength, conBond.bondLengthSU, tl.targetSymmetry),
                 );
             }
         }
