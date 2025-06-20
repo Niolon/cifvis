@@ -45,6 +45,13 @@ export class Bond {
             siteSymmetry2 = '.';
         }
 
+        if (siteSymmetry2 === '?') {
+            siteSymmetry2 = '.';
+        }
+        if (siteSymmetry2 !== '.' && !siteSymmetry2.includes('_')) {
+            siteSymmetry2 = `${siteSymmetry2}_555`;
+        }
+
         return new Bond(
             bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
             bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
