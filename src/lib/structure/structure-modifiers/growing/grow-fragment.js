@@ -816,5 +816,8 @@ export function growFragment(structure) {
     newBonds.push(...translationBonds);
 
     // Step 7: Create the new structure with grown symmetry
-    return new CrystalStructure(structure.cell, newAtoms, newBonds, newHBonds, structure.symmetry);
+    return {
+        grownStructure: new CrystalStructure(structure.cell, newAtoms, newBonds, newHBonds, structure.symmetry),
+        specialPositionAtoms: specialPositionAtoms,
+    };
 }

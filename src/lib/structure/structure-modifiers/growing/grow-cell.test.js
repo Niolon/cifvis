@@ -175,7 +175,7 @@ describe('growCell integration tests', () => {
 
             const result = growCell(structure);
 
-            expect(result.atoms.length).toEqual(2);
+            expect(result.atoms.length).toEqual(3);
             expect(result.atoms[0].label).toBe('C1');
             expect(result.atoms[1].label).toBe('O1');
             

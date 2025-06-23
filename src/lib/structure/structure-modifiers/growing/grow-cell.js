@@ -48,6 +48,7 @@ export function minimalGrowthSet(symmetry, preexistingSymOps) {
 
         keepSet.add(id);
     }
+    console.log('Minimal growth set:', keepSet);
 
     return keepSet;
 }
@@ -110,10 +111,10 @@ export function getSymmetryCentre(limits, symOp) {
  * @param {CrystalStructure} structure - Crystal structure
  * @returns {Array<string[]>} Array of symmetry operation IDs for each group
  */
-function evaluateAtomGroupsGrown(atomGroups, structure) {
+function evaluateAtomGroupsGrown(atomGroups, structure, specialPositionMap) {
     const identitySymOp = structure.symmetry.identitySymOpId;
     
-    return atomGroups.map(group => {
+    const atomGroupSymmetries = atomGroups.map(group => {
         const groupSymmetries = new Set();
         
         for (const atom of group.atoms) {
@@ -127,6 +128,32 @@ function evaluateAtomGroupsGrown(atomGroups, structure) {
         
         return Array.from(groupSymmetries);
     });
+    console.log(atomGroupSymmetries);
+    console.log(specialPositionMap);
+
+    const atomLabelsInGroups = atomGroups.map(group =>
+        new Set(group.atoms.map(atom => atom.label)),
+    );
+
+    for (const atomLabel of specialPositionMap.keys()) {
+        const labelParts = atomLabel.split('@');
+        let symOpId = identitySymOp;
+        if (labelParts.length === 2) {
+            symOpId = labelParts[1].split('_')[0];
+        }
+        for (let groupIdx = 0; groupIdx < atomGroupSymmetries.length; groupIdx++) {
+            if (
+                atomLabelsInGroups[groupIdx].has(specialPositionMap.get(atomLabel)) 
+                && !atomGroupSymmetries[groupIdx].includes(symOpId)
+            ) {
+                // If the atom label is in this group, add the symmetry operation
+                atomGroupSymmetries[groupIdx].push(symOpId);
+            }
+        }
+    }
+    console.log(atomGroupSymmetries);
+
+    return atomGroupSymmetries;
 }
 
 /**
@@ -163,7 +190,15 @@ function getAtomPositionKey(atom, precision = 4) {
  * @param {boolean} [moveAtomsInsideCell] - Whether to exclude atoms outside unit cell
  * @returns {CrystalStructure} New structure filling the unit cell
  */
-export function growCell(structure, moveAtomsInsideCell = true) {
+export function growCell(structure, moveAtomsInsideCell = true, startingSpecialPositions = null) {
+    let specialPositionMap;
+    if (startingSpecialPositions !== null) {
+        // If a starting special position is provided, initialize the map with it
+        specialPositionMap = startingSpecialPositions;
+    } else {
+        specialPositionMap = new Map(); // duplicate label -> kept label
+    }
+
     // Early return for empty structures
     if (structure.atoms.length === 0) {
         return new CrystalStructure(
@@ -177,7 +212,7 @@ export function growCell(structure, moveAtomsInsideCell = true) {
 
     // Analyze connected groups and their symmetry operations
     const atomGroups = structure.calculateConnectedGroups();
-    const presentSymmetries = evaluateAtomGroupsGrown(atomGroups, structure);
+    const presentSymmetries = evaluateAtomGroupsGrown(atomGroups, structure, specialPositionMap);
     const limits = getFragmentLimits(structure.atoms);
     
     // Determine minimal set of symmetry operations needed for each group
@@ -203,7 +238,6 @@ export function growCell(structure, moveAtomsInsideCell = true) {
     const atomMap = new Map(); // position key -> atom
     const bondMap = new Map(); // bond identifier -> bond
     const hbondMap = new Map(); // hbond identifier -> hbond
-    const specialPositionMap = new Map(); // duplicate label -> kept label
     const atomTranslations = new Map(); // atom label -> [translated label, symmetry string]
     const potentialExternalBondMap = new Map();
     const potentialExternalHBondMap = new Map();
@@ -212,8 +246,12 @@ export function growCell(structure, moveAtomsInsideCell = true) {
     for (let groupIdx = 0; groupIdx < atomGroups.length; groupIdx++) {
         const group = atomGroups[groupIdx];
         const symOpsToApply = growSymIds[groupIdx];
+        const grownAtomsGroups = [group.atoms];
+        const grownBonds = group.bonds;
+        const grownHBonds = group.hBonds;
         
         for (const symId of symOpsToApply) {
+
             const symOpIndex = structure.symmetry.operationIds.get(symId);
             const symOp = structure.symmetry.symmetryOperations[symOpIndex];
             
@@ -225,43 +263,56 @@ export function growCell(structure, moveAtomsInsideCell = true) {
             const translationString = `${5 - offsetX}${5 - offsetY}${5 - offsetZ}`;
             const symmString = `${symId}_${translationString}`;
             
+            // apply symmetry to each grownAtomGroup 
+            
             // Apply symmetry to atoms
-            const transformedAtoms = structure.symmetry.applySymmetry(symmString, group.atoms);
+            const nGrownAtomGroups = grownAtomsGroups.length;
+            let currentGrownIndex = 0;
+            while (currentGrownIndex < nGrownAtomGroups) {
 
-            // Process transformed atoms
-            for (let i = 0; i < transformedAtoms.length; i++) {
-                const atom = transformedAtoms[i];
-                
-                // Update atom label with symmetry information
-                atom.label = combineSymAtomLabel(atom.label, symmString, structure.symmetry);
-                
-                // Check if atom is within unit cell
-                if (moveAtomsInsideCell && !isWithinUnitCell(atom)) {
-                    const atomOffsetX = Math.floor(atom.position.x);
-                    const atomOffsetY = Math.floor(atom.position.y);
-                    const atomOffsetZ = Math.floor(atom.position.z);
-                    atom.position.x -= atomOffsetX;
-                    atom.position.y -= atomOffsetY;
-                    atom.position.z -= atomOffsetZ;
-                    // Update label to reflect new position
-                    const translationString = `${structure.symmetry.identitySymOpId}_`
-                        + `${5 + atomOffsetX}${5 + atomOffsetY}${5 + atomOffsetZ}`;
-                    const newLabel = combineSymAtomLabel(atom.label, translationString, structure.symmetry);
-                    atomTranslations.set(atom.label, [newLabel, translationString]);
-                    atom.label = newLabel;
+                const transformedAtoms = structure.symmetry.applySymmetry(symmString, grownAtomsGroups[currentGrownIndex]);
+
+                // Process transformed atoms
+                for (let i = 0; i < transformedAtoms.length; i++) {
+                    const atom = transformedAtoms[i];
+                    
+                    // Update atom label with symmetry information
+                    atom.label = combineSymAtomLabel(atom.label, symmString, structure.symmetry);
+                    
+                    // Check if atom is within unit cell
+                    if (moveAtomsInsideCell && !isWithinUnitCell(atom)) {
+                        const atomOffsetX = Math.floor(atom.position.x);
+                        const atomOffsetY = Math.floor(atom.position.y);
+                        const atomOffsetZ = Math.floor(atom.position.z);
+                        atom.position.x -= atomOffsetX;
+                        atom.position.y -= atomOffsetY;
+                        atom.position.z -= atomOffsetZ;
+                        // Update label to reflect new position
+                        const translationString = `${structure.symmetry.identitySymOpId}_`
+                            + `${5 + atomOffsetX}${5 + atomOffsetY}${5 + atomOffsetZ}`;
+                        const newLabel = combineSymAtomLabel(atom.label, translationString, structure.symmetry);
+                        atomTranslations.set(atom.label, [newLabel, translationString]);
+                        atom.label = newLabel;
+                    }
+                    
+                    // Check for special positions (duplicates)
+                    const posKey = getAtomPositionKey(atom);
+                    const existingAtom = atomMap.get(posKey);
+                    
+                    if (existingAtom) {
+                        // This is a special position - map to existing atom
+                        specialPositionMap.set(atom.label, existingAtom.label);
+                    } else {
+                        // New unique position
+                        atomMap.set(posKey, atom);
+                        
+                    }
                 }
-                
-                // Check for special positions (duplicates)
-                const posKey = getAtomPositionKey(atom);
-                const existingAtom = atomMap.get(posKey);
-                
-                if (existingAtom) {
-                    // This is a special position - map to existing atom
-                    specialPositionMap.set(atom.label, existingAtom.label);
-                } else {
-                    // New unique position
-                    atomMap.set(posKey, atom);
-                }
+                console.log('atomMap', atomMap);
+                grownAtomsGroups.push(transformedAtoms.filter(atom => atomMap.has(getAtomPositionKey(atom))));
+                currentGrownIndex++;
+                console.log('grownAtomGroups', grownAtomsGroups);
+                console.log(currentGrownIndex, nGrownAtomGroups);
             }
             
             // Process bonds
@@ -284,13 +335,15 @@ export function growCell(structure, moveAtomsInsideCell = true) {
 
                     const bondId = createBondIdentifier(atom1Label, atom2Label);
                     if (!bondMap.has(bondId)) {
-                        bondMap.set(bondId, new Bond(
+                        const newBond = new Bond(
                             atom1Label,
                             atom2Label,
                             bond.bondLength,
                             bond.bondLengthSU,
                             '.',
-                        ));
+                        );
+                        bondMap.set(bondId, newBond);
+                        //grownBonds.push(newBond);
                     }
                 } else if (atomTranslations.has(atom1Label) && atomTranslations.has(atom2Label)) {
                     // If both atoms are translated, use their new labels
@@ -301,13 +354,15 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                         // Only create bond if atoms have been translated with the same symmetry
                         const bondId = createBondIdentifier(newAtom1Label, newAtom2Label);
                         if (!bondMap.has(bondId)) {
-                            bondMap.set(bondId, new Bond(
+                            const newBond = new Bond(
                                 newAtom1Label,
                                 newAtom2Label,
                                 bond.bondLength,
                                 bond.bondLengthSU,
                                 '.',
-                            ));
+                            );
+                            bondMap.set(bondId, newBond);
+                            grownBonds.push(newBond);
                         }
                     }
                 }
@@ -335,7 +390,7 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                 ) {
                     const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
                     if (!hbondMap.has(hbondId)) {
-                        hbondMap.set(hbondId, new HBond(
+                        const newHBond = new new HBond(
                             donorLabel,
                             hydrogenLabel,
                             acceptorLabel,
@@ -348,7 +403,9 @@ export function growCell(structure, moveAtomsInsideCell = true) {
                             hbond.hBondAngle,
                             hbond.hBondAngleSU,
                             '.',
-                        ));
+                        );
+                        hbondMap.set(hbondId, newHBond);
+                        grownHBonds.push(newHBond);
                     }
                 } else if (
                     atomTranslations.has(donorLabel) && 

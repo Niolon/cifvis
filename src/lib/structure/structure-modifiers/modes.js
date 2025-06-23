@@ -261,7 +261,8 @@ export class SymmetryGrower extends BaseFilter {
         if (this.mode === SymmetryGrower.MODES.CELL) {
             workStructure = growCell(structure);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
-            workStructure = growCell(growFragment(structure), false);
+            const { grownStructure, specialPositionAtoms } = growFragment(workStructure);
+            workStructure = growCell(grownStructure, false, specialPositionAtoms);
         }
 
         if (this.mode === SymmetryGrower.MODES.HBONDS || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
