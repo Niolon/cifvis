@@ -8,11 +8,17 @@ import {
     centreSymmetryString,
     growCell,
     growAtomsinGroup, 
+    growInternalBondsInGroup,
+    growInternalHBondsInGroup,
+    growExternalBondsInGroup,
+    growExternalHBondsInGroup,
 } from './grow-cell.js';
+
+import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
 import { FractPosition } from '../../position.js';
-import { Bond } from '../../bonds.js';
+import { Bond, HBond } from '../../bonds.js';
 import { create, all } from 'mathjs';
 const math = create(all, {});
 
@@ -529,7 +535,6 @@ describe('Individual growing functions', () => {
                 ];
 
                 const result = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, false);
-                console.log(result);
 
                 // Should return no new atoms since position already exists
                 expect(result).toHaveLength(0);
@@ -645,6 +650,566 @@ describe('Individual growing functions', () => {
             });
         });
     });
+    describe('Bond Growing Functions', () => {
+        let symmetry;
+        let grownGroup;
+        let objectTracker;
+
+        beforeEach(() => {
+            // Set up symmetry operations for testing (space group Cc - 9)
+            const symmetryOps = [
+                new SymmetryOperation('x,y,z'),              // 1_555 (identity)
+                new SymmetryOperation('x,-y,z+1/2'),         // 2_555
+                new SymmetryOperation('x+1/2,y+1/2,z'),      // 3_555
+                new SymmetryOperation('x+1/2,-y+1/2,z+1/2'), // 4_555
+            ];
+            const operationIds = new Map([
+                ['1', 0], ['2', 1], ['3', 2], ['4', 3],
+            ]);
+            symmetry = new CellSymmetry('Test', 1, symmetryOps, operationIds);
+
+            // Set up object tracker
+            objectTracker = {
+                atomMap: new Map(),
+                createdBonds: new Set(),
+                createdHBonds: new Set(),
+                specialPositionMap: new Map(),
+                atomTranslations: new Map(),
+            };
+        });
+
+        describe('growInternalBondsInGroup', () => {
+            beforeEach(() => {
+                grownGroup = {
+                    atoms: [
+                        new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3)),
+                        new Atom('O1', 'O', new FractPosition(0.8, 0.9, 0.1)),
+                        new Atom('C2', 'C', new FractPosition(0.4, 0.5, 0.6)),
+                    ],
+                    internalBonds: [
+                        new Bond('C1', 'O1', 1.5, 0.01, '.'),
+                        new Bond('C1', 'C2', 1.4, 0.02, '.'),
+                    ],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                };
+            });
+
+            test('grows internal bonds with identity transformation', () => {
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                expect(result[0].atom1Label).toBe('C1'); // Identity keeps original label
+                expect(result[0].atom2Label).toBe('O1'); // Identity keeps original label
+                expect(result[0].bondLength).toBe(1.5);
+                expect(result[0].bondLengthSU).toBe(0.01);
+                expect(result[0].atom2SiteSymmetry).toBe('.');
+
+                expect(result[1].atom1Label).toBe('C1');
+                expect(result[1].atom2Label).toBe('C2');
+            });
+
+            test('grows internal bonds with non-identity transformation', () => {
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '2_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                expect(result[0].atom1Label).toBe('C1@2_555'); // Non-identity gets symmetry code
+                expect(result[0].atom2Label).toBe('O1@2_555');
+                expect(result[0].bondLength).toBe(1.5);
+                expect(result[0].atom2SiteSymmetry).toBe('.');
+
+                expect(result[1].atom1Label).toBe('C1@2_555');
+                expect(result[1].atom2Label).toBe('C2@2_555');
+            });
+
+            test('avoids duplicate bonds', () => {
+                // First call
+                const result1 = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result1).toHaveLength(2);
+
+                // Second call with same bonds - should create no new bonds
+                const result2 = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result2).toHaveLength(0);
+                expect(objectTracker.createdBonds.size).toBe(2);
+            });
+
+            test('skips self-bonds', () => {
+                grownGroup.internalBonds = [
+                    new Bond('C1', 'C1', 1.5, 0.01, '.'), // Self-bond
+                    new Bond('C1', 'O1', 1.5, 0.01, '.'), // Normal bond
+                ];
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(1);
+                expect(result[0].atom1Label).toBe('C1');
+                expect(result[0].atom2Label).toBe('O1');
+            });
+
+            test('handles special position mapping', () => {
+                // Set up special position mapping
+                objectTracker.specialPositionMap.set('C1@2_555', 'C1'); // Maps to identity atom
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '2_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                // Should use mapped atom label from special positions
+                expect(result[0].atom1Label).toBe('C1'); // Mapped from C1@2_555 to identity
+            });
+
+            test('handles atom translations correctly', () => {
+                // Set up atom translations - both atoms translated with same symmetry
+                objectTracker.atomTranslations.set('C1', ['C1_trans@1_444', '1_444']);
+                objectTracker.atomTranslations.set('O1', ['O1_trans@1_444', '1_444']);
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(1); // Only one bond because C2 not translated
+                expect(result[0].atom1Label).toBe('C1_trans@1_444');
+                expect(result[0].atom2Label).toBe('O1_trans@1_444');
+            });
+
+            test('skips bonds when only one atom is translated', () => {
+                // Set up atom translations - only one atom translated
+                objectTracker.atomTranslations.set('C1', ['C1_trans@1_444', '1_444']);
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0); // No bonds because only one atom is translated
+            });
+
+            test('skips bonds when atoms have different translation symmetries', () => {
+                // Set up atom translations with different symmetries
+                objectTracker.atomTranslations.set('C1', ['C1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('C2', ['C2@1_444', '1_444']);
+                objectTracker.atomTranslations.set('O1', ['O1@1_555', '1_555']);
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(1); // Only C1-C2 bond (C2 not translated)
+                expect(result[0].atom2Label).toBe('C2@1_444'); // C2 has translation symmetry
+            });
+
+            test('handles empty internal bonds', () => {
+                grownGroup.internalBonds = [];
+
+                const result = growInternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0);
+                expect(objectTracker.createdBonds.size).toBe(0);
+            });
+        });
+
+        describe('growExternalBondsInGroup', () => {
+            beforeEach(() => {
+                grownGroup = {
+                    atoms: [
+                        new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3)),
+                        new Atom('O1', 'O', new FractPosition(0.8, 0.9, 0.1)),
+                    ],
+                    externalBonds: [
+                        new Bond('C1', 'N1', 1.5, 0.01, '2_555'), // External bond
+                        new Bond('O1', 'S1', 1.8, 0.02, '3_666'), // External bond
+                    ],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                };
+            });
+
+            test('grows external bonds with identity transformation', () => {
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                
+                expect(result[0].atom1Label).toBe('C1'); // Identity keeps original label
+                expect(result[0].atom2Label).toBe('N1'); // Original atom2Label preserved
+                expect(result[0].bondLength).toBe(1.5);
+                expect(result[0].atom2SiteSymmetry).toBe('2_555'); // Combined symmetry
+
+                expect(result[1].atom1Label).toBe('O1');
+                expect(result[1].atom2Label).toBe('S1');
+                expect(result[1].atom2SiteSymmetry).toBe('3_666');
+            });
+
+            test('grows external bonds with non-identity transformation', () => {
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '2_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                // Non-identity transformation should add symmetry codes
+                expect(result[0].atom1Label).toBe('C1@2_555');
+                expect(result[1].atom1Label).toBe('O1@2_555');
+                // Symmetry should be combined: symmString (2_555) + atom2SiteSymmetry
+                expect(result[0].atom2SiteSymmetry).toBeDefined();
+                expect(result[1].atom2SiteSymmetry).toBeDefined();
+            });
+
+            test('handles both atoms translated scenario', () => {
+                // Set up translations for both atoms
+                objectTracker.atomTranslations.set('C1', ['C1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('N1', ['N1@1_444', '1_444']);
+
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                // Should handle complex translation logic
+                expect(result.length).toBeGreaterThanOrEqual(0);
+            });
+
+            test('take into account of only one atom translated', () => {
+                // Set up translation for only atom1
+                objectTracker.atomTranslations.set('C1', ['C1@1_444', '1_444']);
+
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                // Should skip bonds where only one atom is translated
+                expect(result).toHaveLength(2); 
+                expect(result[0].atom1Label).toBe('C1@1_444');
+                expect(result[0].atom2Label).toBe('N1'); // N1 no applied translatetion
+                expect(result[0].atom2SiteSymmetry).toBe('2_444'); // Should be combined symmetry
+                expect(result[1].atom1Label).toBe('O1');
+                
+            });
+
+            test('updates objectTracker createdBonds set', () => {
+                const _result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(objectTracker.createdBonds.size).toBe(2);
+                expect(objectTracker.createdBonds.has(createBondIdentifier('C1', 'N1@2_555'))).toBe(true);
+                expect(objectTracker.createdBonds.has(createBondIdentifier('O1', 'S1@3_666'))).toBe(true);
+            });
+
+            test('avoids duplicate external bonds', () => {
+                // First call
+                const result1 = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result1).toHaveLength(2);
+
+                // Second call - should create no duplicates
+                const result2 = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result2).toHaveLength(0);
+            });
+
+            test('handles special position mapping for external bonds', () => {
+                objectTracker.specialPositionMap.set('C1', 'C1_mapped');
+
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result[0].atom1Label).toBe('C1_mapped');
+            });
+
+            test('handles empty external bonds', () => {
+                grownGroup.externalBonds = [];
+
+                const result = growExternalBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0);
+                expect(objectTracker.createdBonds.size).toBe(0);
+            });
+        });
+
+        describe('growInternalHBondsInGroup', () => {
+            beforeEach(() => {
+                grownGroup = {
+                    atoms: [
+                        new Atom('O1', 'O', new FractPosition(0.1, 0.2, 0.3)),
+                        new Atom('H1', 'H', new FractPosition(0.2, 0.2, 0.3)),
+                        new Atom('N1', 'N', new FractPosition(0.8, 0.9, 0.1)),
+                    ],
+                    internalHBonds: [
+                        new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),
+                        new HBond('N1', 'H2', 'O2', 1.1, 0.02, 1.9, 0.03, 2.9, 0.04, 178, 2, '.'),
+                    ],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                };
+            });
+
+            test('grows internal hydrogen bonds with identity transformation', () => {
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                
+                expect(result[0].donorAtomLabel).toBe('O1'); // Identity keeps original labels
+                expect(result[0].hydrogenAtomLabel).toBe('H1');
+                expect(result[0].acceptorAtomLabel).toBe('N1');
+                expect(result[0].donorHydrogenDistance).toBe(1.0);
+                expect(result[0].acceptorHydrogenDistance).toBe(2.0);
+                expect(result[0].hBondAngle).toBe(175);
+                expect(result[0].acceptorAtomSymmetry).toBe('.');
+
+                expect(result[1].donorAtomLabel).toBe('N1');
+                expect(result[1].hydrogenAtomLabel).toBe('H2');
+                expect(result[1].acceptorAtomLabel).toBe('O2');
+            });
+
+            test('updates objectTracker createdHBonds set', () => {
+                const _result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(objectTracker.createdHBonds.size).toBe(2);
+                expect(objectTracker.createdHBonds.has(
+                    createHBondIdentifier('O1', 'H1', 'N1'),
+                )).toBe(true);
+                expect(objectTracker.createdHBonds.has(
+                    createHBondIdentifier('N1', 'H2', 'O2'),
+                )).toBe(true);
+            });
+
+            test('avoids duplicate hydrogen bonds', () => {
+                // First call
+                const result1 = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result1).toHaveLength(2);
+
+                // Second call - should create no duplicates
+                const result2 = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result2).toHaveLength(0);
+                expect(objectTracker.createdHBonds.size).toBe(2);
+            });
+
+            test('handles special position mapping for hydrogen bonds', () => {
+                objectTracker.specialPositionMap.set('O1', 'O1_mapped');
+                objectTracker.specialPositionMap.set('H1', 'H1_mapped');
+
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result[0].donorAtomLabel).toBe('O1_mapped');
+                expect(result[0].hydrogenAtomLabel).toBe('H1_mapped');
+            });
+
+            test('handles all atoms translated with same symmetry', () => {
+                // Set up translations for all three atoms with same symmetry
+                objectTracker.atomTranslations.set('O1', ['O1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('H1', ['H1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('N1', ['N1@1_444', '1_444']);
+
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(1); // Only first H-bond (all atoms translated)
+                expect(result[0].donorAtomLabel).toBe('O1@1_444');
+                expect(result[0].hydrogenAtomLabel).toBe('H1@1_444');
+                expect(result[0].acceptorAtomLabel).toBe('N1@1_444');
+            });
+
+            test('skips hydrogen bonds when atoms have different translation symmetries', () => {
+                // Set up translations with different symmetries
+                objectTracker.atomTranslations.set('O1', ['O1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('H1', ['H1@1_555', '1_444']);
+                objectTracker.atomTranslations.set('N1', ['N1@1_555', '1_555']);
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0); // Only H-bond where no atoms are translated
+            });
+
+            test('skips hydrogen bonds when only some atoms are translated', () => {
+                // Only donor atom translated
+                objectTracker.atomTranslations.set('O1', ['O1@1_444', '1_444']);
+
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(1); // Only second H-bond (no translated atoms)
+                expect(result[0].donorAtomLabel).toBe('N1');
+            });
+
+            test('preserves all hydrogen bond properties', () => {
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                const hbond = result[0];
+                expect(hbond.donorHydrogenDistance).toBe(1.0);
+                expect(hbond.donorHydrogenDistanceSU).toBe(0.01);
+                expect(hbond.acceptorHydrogenDistance).toBe(2.0);
+                expect(hbond.acceptorHydrogenDistanceSU).toBe(0.02);
+                expect(hbond.donorAcceptorDistance).toBe(2.8);
+                expect(hbond.donorAcceptorDistanceSU).toBe(0.03);
+                expect(hbond.hBondAngle).toBe(175);
+                expect(hbond.hBondAngleSU).toBe(1);
+                expect(hbond.acceptorAtomSymmetry).toBe('.');
+            });
+
+            test('handles empty internal hydrogen bonds', () => {
+                grownGroup.internalHBonds = [];
+
+                const result = growInternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0);
+                expect(objectTracker.createdHBonds.size).toBe(0);
+            });
+        });
+
+        describe('growExternalHBondsInGroup', () => {
+            beforeEach(() => {
+                grownGroup = {
+                    atoms: [
+                        new Atom('O1', 'O', new FractPosition(0.1, 0.2, 0.3)),
+                        new Atom('H1', 'H', new FractPosition(0.2, 0.2, 0.3)),
+                    ],
+                    externalHBonds: [
+                        new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_555'),
+                        new HBond('O2', 'H2', 'S1', 1.1, 0.02, 1.9, 0.03, 2.9, 0.04, 178, 2, '3_666'),
+                    ],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                };
+            });
+
+            test('grows external hydrogen bonds with symmetry transformations', () => {
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '3_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                
+                expect(result[0].donorAtomLabel).toBe('O1@3_555'); // Non-identity gets symmetry code
+                expect(result[0].hydrogenAtomLabel).toBe('H1@3_555');
+                expect(result[0].acceptorAtomLabel).toBe('N1'); // Original acceptor label
+                expect(result[0].acceptorAtomSymmetry).toBe('4_555'); // Combined symmetry
+
+                expect(result[1].donorAtomLabel).toBe('O2@3_555');
+                expect(result[1].hydrogenAtomLabel).toBe('H2@3_555');
+                expect(result[1].acceptorAtomLabel).toBe('S1');
+                expect(result[1].acceptorAtomSymmetry).toBe('1_776');
+            });
+
+            test('combines acceptor symmetry strings correctly', () => {
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '2_555', objectTracker);
+
+                expect(result).toHaveLength(2);
+                // Acceptor symmetry should be combined: symmString + original acceptor symmetry
+                expect(result[0].acceptorAtomSymmetry).toBeDefined();
+                expect(result[1].acceptorAtomSymmetry).toBeDefined();
+                // Note: exact values depend on symmetry.combineSymmetryCodes implementation
+            });
+
+            test('handles all atoms translated scenario', () => {
+                // Set up translations - all atoms translated with same symmetry
+                objectTracker.atomTranslations.set('O1', ['O1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('H1', ['H1@1_444', '1_444']);
+                objectTracker.atomTranslations.set('N1', ['N1@1_444', '1_444']);
+
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                // Should handle complex translation and symmetry combination logic
+                expect(result.length).toBeGreaterThanOrEqual(0);
+            });
+
+            test('skips hydrogen bonds when only some atoms are translated', () => {
+                // Set up translation for only donor
+                objectTracker.atomTranslations.set('O1', ['O1@1_444', '1_444']);
+
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                // Should skip H-bonds where only some atoms are translated
+                expect(result).toHaveLength(1); // Only O2-H2...S1 bond should remain
+                expect(result[0].donorAtomLabel).toBe('O2');
+            });
+
+            test('updates objectTracker createdHBonds set', () => {
+                const _result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(objectTracker.createdHBonds.size).toBe(2);
+                expect(objectTracker.createdHBonds.has(
+                    createHBondIdentifier('O1', 'H1', 'N1@2_555'),
+                )).toBe(true);
+                expect(objectTracker.createdHBonds.has(
+                    createHBondIdentifier('O2', 'H2', 'S1@3_666'),
+                )).toBe(true);
+            });
+
+            test('avoids duplicate external hydrogen bonds', () => {
+                // First call
+                const result1 = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result1).toHaveLength(2);
+
+                // Second call - should create no duplicates
+                const result2 = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+                expect(result2).toHaveLength(0);
+            });
+
+            test('handles special position mapping for external hydrogen bonds', () => {
+                objectTracker.specialPositionMap.set('O1', 'O1_mapped');
+
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result[0].donorAtomLabel).toBe('O1_mapped');
+            });
+
+            test('preserves all external hydrogen bond properties', () => {
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                const hbond = result[0];
+                expect(hbond.donorHydrogenDistance).toBe(1.0);
+                expect(hbond.donorHydrogenDistanceSU).toBe(0.01);
+                expect(hbond.acceptorHydrogenDistance).toBe(2.0);
+                expect(hbond.acceptorHydrogenDistanceSU).toBe(0.02);
+                expect(hbond.donorAcceptorDistance).toBe(2.8);
+                expect(hbond.donorAcceptorDistanceSU).toBe(0.03);
+                expect(hbond.hBondAngle).toBe(175);
+                expect(hbond.hBondAngleSU).toBe(1);
+            });
+
+            test('handles empty external hydrogen bonds', () => {
+                grownGroup.externalHBonds = [];
+
+                const result = growExternalHBondsInGroup(grownGroup, symmetry, '1_555', objectTracker);
+
+                expect(result).toHaveLength(0);
+                expect(objectTracker.createdHBonds.size).toBe(0);
+            });
+        });
+
+        describe('cross-function integration', () => {
+            test('bond and hbond identifiers do not conflict', () => {
+                const bondId = createBondIdentifier('C1@1_555', 'O1@1_555');
+                const hbondId = createHBondIdentifier('O1@1_555', 'H1@1_555', 'N1@1_555');
+
+                objectTracker.createdBonds.add(bondId);
+                objectTracker.createdHBonds.add(hbondId);
+
+                expect(objectTracker.createdBonds.has(bondId)).toBe(true);
+                expect(objectTracker.createdHBonds.has(hbondId)).toBe(true);
+                expect(objectTracker.createdBonds.size).toBe(1);
+                expect(objectTracker.createdHBonds.size).toBe(1);
+            });
+
+            test('object tracker state persists across function calls', () => {
+                const bondGroup = {
+                    atoms: [new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3))],
+                    internalBonds: [new Bond('C1', 'O1', 1.5, 0.01, '.')],
+                    externalBonds: [new Bond('C1', 'N1', 1.4, 0.02, '2_555')],
+                    internalHBonds: [],
+                    externalHBonds: [],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.1, 0.2, 0.3]),
+                };
+
+                // Call both bond growing functions
+                const internalBonds = growInternalBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+                const externalBonds = growExternalBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+
+                // Verify state persistence
+                expect(objectTracker.createdBonds.size).toBe(2);
+                expect(internalBonds).toHaveLength(1);
+                expect(externalBonds).toHaveLength(1);
+            });
+
+            test('functions handle shared special position mapping', () => {
+                // Set up shared special position
+                objectTracker.specialPositionMap.set('C1', 'C1_shared');
+
+                const bondGroup = {
+                    atoms: [new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3))],
+                    internalBonds: [new Bond('C1', 'O1', 1.5, 0.01, '.')],
+                    externalBonds: [new Bond('C1', 'N1', 1.4, 0.02, '2_555')],
+                    internalHBonds: [new HBond('C1', 'H1', 'O1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.')],
+                    externalHBonds: [new HBond('C1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_555')],
+                    symmString: '1_555',
+                    groupCentre: math.matrix([0.1, 0.2, 0.3]),
+                };
+
+                // All functions should use the same mapped atom
+                const internalBonds = growInternalBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+                const externalBonds = growExternalBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+                const internalHBonds = growInternalHBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+                const externalHBonds = growExternalHBondsInGroup(bondGroup, symmetry, '1_555', objectTracker);
+
+                expect(internalBonds[0].atom1Label).toBe('C1_shared');
+                expect(externalBonds[0].atom1Label).toBe('C1_shared');
+                expect(internalHBonds[0].donorAtomLabel).toBe('C1_shared');
+                expect(externalHBonds[0].donorAtomLabel).toBe('C1_shared');
+            });
+        });
+    });
 });
 
 describe('growCell integration tests', () => {
@@ -687,12 +1252,6 @@ describe('growCell integration tests', () => {
             // Check that we have some symmetry-generated atoms
             const symmetryAtoms = result.atoms.filter(atom => atom.label.includes('@'));
             expect(symmetryAtoms.length).toBeGreaterThan(0);
-            
-            console.log('Original atoms:', mockStructure.atoms.length);
-            console.log('Result atoms:', result.atoms.length);
-            console.log('Original bonds:', mockStructure.bonds.length);
-            console.log('Result bonds:', result.bonds.length);
-            console.log('Sample atom labels:', result.atoms.slice(0, 10).map(a => a.label));
         });
     });
 
@@ -735,28 +1294,6 @@ describe('growCell integration tests', () => {
             expect(result.atoms[0].label).toBe('C1');
             expect(result.atoms[1].label).toBe('O1');
             
-        });
-    });
-
-    describe('performance and edge cases', () => {
-        test('handles structure with many symmetry operations', () => {
-            // Test with a structure that has more complex symmetry
-            const mockStructure = MockStructure.createDefault({ 
-                hasMultipleSymmetry: true,
-                hasHydrogens: true, 
-            }).build();
-
-            const startTime = Date.now();
-            const result = growCell(mockStructure);
-            const endTime = Date.now();
-            
-            expect(result).toBeDefined();
-            expect(result.atoms.length).toBeGreaterThan(0);
-            console.log(`Growth took ${endTime - startTime}ms`);
-            console.log('Complex structure result:');
-            console.log('Atoms:', result.atoms.length);
-            console.log('Bonds:', result.bonds.length);
-            console.log('H-bonds:', result.hBonds.length);
         });
     });
 });

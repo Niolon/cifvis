@@ -462,22 +462,13 @@ export function growExternalBondsInGroup(grownGroup, symmetry, symmString, objec
         let atom2Label = combineSymAtomLabel(bond.atom2Label, atom2Symm, symmetry);
         atom2Label = objectTracker.specialPositionMap.get(atom2Label) || atom2Label;
 
-        if (objectTracker.atomTranslations.has(atom1Label) && objectTracker.atomTranslations.has(atom2Label)) {
+        if (objectTracker.atomTranslations.has(atom1Label)) {
             let atom1Symm;
             [atom1Label, atom1Symm] = objectTracker.atomTranslations.get(atom1Label);
             atom2Symm = symmetry.combineSymmetryCodes(
                 atom1Symm,
                 atom2Symm,
             );
-
-            const [atom2Labelr, atom2SymmTrans] = objectTracker.atomTranslations.get(atom2Label);
-            atom2Label = atom2Labelr;
-            atom2Symm = symmetry.combineSymmetryCodes(
-                atom2SymmTrans,
-                atom2Symm,
-            );
-        } else if (objectTracker.atomTranslations.has(atom1Label) || objectTracker.atomTranslations.has(atom2Label)) {
-            continue; // If only one atom is translated, we skip the bond
         }
 
         const bondId = createBondIdentifier(atom1Label, atom2Label);
@@ -530,7 +521,6 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
         if (
             objectTracker.atomTranslations.has(donorLabel)
             && objectTracker.atomTranslations.has(hydrogenLabel)
-            && objectTracker.atomTranslations.has(acceptorLabel)
         ) {
             let donorTransSymm;
             [donorLabel, donorTransSymm] = objectTracker.atomTranslations.get(donorLabel);
@@ -553,14 +543,13 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
         } else if (
             objectTracker.atomTranslations.has(donorLabel) 
             || objectTracker.atomTranslations.has(hydrogenLabel)
-            || objectTracker.atomTranslations.has(acceptorLabel)
         ) {
-            // If only one or two atoms are translated, we skip the hydrogen bond
+            // If only one atom is translated, we skip the hydrogen bond
             continue;
         } 
         
         const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
-        if (!objectTracker.createdBonds.has(hbondId)) {
+        if (!objectTracker.createdHBonds.has(hbondId)) {
             const newHBond = new HBond(
                 donorLabel,
                 hydrogenLabel,
