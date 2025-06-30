@@ -13,7 +13,7 @@ async function growFragmentStructure(cifText, name, runCount) {
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
     const startTime = performance.now();
-    const output = growFragment(structure);
+    const {grownStructure: output } = growFragment(structure);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
@@ -53,8 +53,8 @@ async function growCellFragmentStructure(cifText, name, runCount) {
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
     const startTime = performance.now();
-    const fStructure = growFragment(structure);
-    const output = growCell(fStructure);
+    const { grownStructure: fStructure, specialPositionAtoms: spAtoms } = growFragment(structure);
+    const output = growCell(fStructure, false, spAtoms);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
