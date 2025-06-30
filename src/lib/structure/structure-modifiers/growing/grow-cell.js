@@ -79,9 +79,6 @@ export function getFragmentLimits(atoms) {
  * @returns {math.Matrix} The center of the fragment as a 3D vector
  */
 export function getFragmentCentre(atoms) {
-    if (atoms.length === 0) {
-        return math.matrix([0.5, 0.5, 0.5]);
-    }
     const limits = getFragmentLimits(atoms);
     return math.matrix([
         (limits.minX + limits.maxX) / 2,
@@ -113,7 +110,7 @@ export function getSymmetryCentre(centre, symOp) {
  * @param {Map<string, string>} specialPositionMap - Map of special positions (duplicates
  * @returns {string[]} Array of unique symmetry operation IDs for the group
  */
-function getGrownSymmetriesofGroup(group, structure, specialPositionMap) {
+export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) {
     const identitySymOp = structure.symmetry.identitySymOpId;
     const groupSymmetries = new Set();
 
@@ -177,7 +174,7 @@ function getAtomPositionKey(atom, precision = 4) {
  * @param {object} symmCentre - Centre coordinates to center the symmetry string around
  * @returns {string} Transformed symmetry string
  */
-function centreSymmetryString(symmetry, symmString, symmCentre) {
+export function centreSymmetryString(symmetry, symmString, symmCentre) {
     const { symOp, transVector } = symmetry.parsePositionCode(symmString);
     
     const symOpResult = math.add(
@@ -195,7 +192,7 @@ function centreSymmetryString(symmetry, symmString, symmCentre) {
 
     const originalTranslationString = symmString.split('_')[1] || '555';
     const translationParts = originalTranslationString.split('').map(part => {
-        return parseInt(part, 10) || 5; // Default to 5 if part is not a number
+        return parseInt(part, 10); // Default to 5 if part is not a number
     });
 
     const newTranslationString = (
