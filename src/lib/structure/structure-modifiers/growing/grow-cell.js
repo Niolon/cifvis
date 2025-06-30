@@ -103,8 +103,6 @@ export function getSymmetryCentre(centre, symOp) {
         symOp.transVector,
     );
 
-    console.log(symmCentre);
-
     return symmCentre; 
 }
 
@@ -464,19 +462,30 @@ export function growExternalBondsInGroup(grownGroup, symmetry, symmString, objec
             bond.atom2SiteSymmetry,
         );
 
-        if (objectTracker.atomTranslations.has(atom1Label)) {
+        let atom2Label = combineSymAtomLabel(bond.atom2Label, atom2Symm, symmetry);
+        atom2Label = objectTracker.specialPositionMap.get(atom2Label) || atom2Label;
+
+        if (objectTracker.atomTranslations.has(atom1Label) && objectTracker.atomTranslations.has(atom2Label)) {
             let atom1Symm;
             [atom1Label, atom1Symm] = objectTracker.atomTranslations.get(atom1Label);
             atom2Symm = symmetry.combineSymmetryCodes(
                 atom1Symm,
                 atom2Symm,
             );
+
+            const [atom2Labelr, atom2SymmTrans] = objectTracker.atomTranslations.get(atom2Label);
+            atom2Label = atom2Labelr;
+            atom2Symm = symmetry.combineSymmetryCodes(
+                atom2SymmTrans,
+                atom2Symm,
+            );
+        } else if (objectTracker.atomTranslations.has(atom1Label) || objectTracker.atomTranslations.has(atom2Label)) {
+            continue; // If only one atom is translated, we skip the bond
         }
 
-        const atom2Label = combineSymAtomLabel(bond.atom2Label, atom2Symm, symmetry);
-        
         const bondId = createBondIdentifier(atom1Label, atom2Label);
         if (!objectTracker.createdBonds.has(bondId)) {
+
             const newBond = new Bond(
                 atom1Label,
                 bond.atom2Label,
@@ -519,24 +528,39 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
             hBond.acceptorAtomSymmetry,
         );
 
-        if (objectTracker.atomTranslations.has(donorLabel)) {
+        let acceptorLabel = combineSymAtomLabel(hBond.acceptorAtomLabel, acceptorSymm, symmetry);
+
+        if (
+            objectTracker.atomTranslations.has(donorLabel)
+            && objectTracker.atomTranslations.has(hydrogenLabel)
+            && objectTracker.atomTranslations.has(acceptorLabel)
+        ) {
             let donorTransSymm;
             [donorLabel, donorTransSymm] = objectTracker.atomTranslations.get(donorLabel);
             acceptorSymm = symmetry.combineSymmetryCodes(
                 donorTransSymm,
                 acceptorSymm,
             );
-        } else if (objectTracker.atomTranslations.has(hydrogenLabel)) {
             const [hydrogenLabelr, hydrogenSymm] = objectTracker.atomTranslations.get(hydrogenLabel);
             hydrogenLabel = hydrogenLabelr;
             acceptorSymm = symmetry.combineSymmetryCodes(
                 hydrogenSymm,
                 acceptorSymm,
             );
-        }
-
-        const acceptorLabel = combineSymAtomLabel(hBond.acceptorAtomLabel, acceptorSymm, symmetry);
-        console.log('found external hbond', hBond, donorLabel, hydrogenLabel, acceptorLabel, acceptorSymm);
+            const [acceptorLabelr, acceptorSymmTrans] = objectTracker.atomTranslations.get(hBond.acceptorAtomLabel);
+            acceptorSymm = symmetry.combineSymmetryCodes(
+                acceptorSymmTrans,
+                acceptorSymm,
+            );
+            acceptorLabel = acceptorLabelr;
+        } else if (
+            objectTracker.atomTranslations.has(donorLabel) 
+            || objectTracker.atomTranslations.has(hydrogenLabel)
+            || objectTracker.atomTranslations.has(acceptorLabel)
+        ) {
+            // If only one or two atoms are translated, we skip the hydrogen bond
+            continue;
+        } 
         
         const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
         if (!objectTracker.createdBonds.has(hbondId)) {
@@ -733,119 +757,108 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
     const finalAtoms = grownAtomsGroups.flatMap(group => group.atoms);
     const finalBonds = grownAtomsGroups.flatMap(group => group.internalBonds);
     const finalHBonds = grownAtomsGroups.flatMap(group => group.internalHBonds);
+    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.label));
 
     grownAtomsGroups.forEach(group => {
         // Add external bonds and H-bonds to the potential maps
         group.externalBonds.forEach(bond => {
-            const atom2Lookup = objectTracker.specialPositionMap.get(bond.atom2Label) || bond.atom2Label;
-            const combinedAtom2Label = combineSymAtomLabel(atom2Lookup, bond.atom2SiteSymmetry, structure.symmetry);
+            const combinedAtom2Label = combineSymAtomLabel(bond.atom2Label, bond.atom2SiteSymmetry, structure.symmetry);
             const specialPositionAtom2 = objectTracker.specialPositionMap.get(combinedAtom2Label) || combinedAtom2Label;
-            const bondId = createBondIdentifier(bond.atom1Label, specialPositionAtom2);
-            if (!objectTracker.createdBonds.has(bondId)) {
+            //const bondId = createBondIdentifier(bond.atom1Label, specialPositionAtom2);
                 
-                if (objectTracker.atomMap.has(bond.atom1Label) && objectTracker.atomMap.has(combinedAtom2Label)) {
-                    // Both atoms exist in the grown structure -> create non-symm Bond
+            if (finalAtomLabels.has(bond.atom1Label) && finalAtomLabels.has(combinedAtom2Label)) {
+                // Both atoms exist in the grown structure -> create non-symm Bond
 
-                    const newBond = new Bond(
-                        objectTracker.atomMap.get(bond.atom1Label),
-                        specialPositionAtom2,
-                        bond.bondLength,
-                        bond.bondLengthSU,
-                        '.',
-                    );
-                    finalBonds.push(newBond);
-                    objectTracker.createdBonds.add(bondId);
-                } else if (objectTracker.atomMap.has(bond.atom1Label)) {
-                    // Only atom1 exists in the grown structure -> create symm Bond
-                    const newBond = new Bond(
-                        objectTracker.atomMap.get(bond.atom1Label),
-                        atom2Lookup,
-                        bond.bondLength,
-                        bond.bondLengthSU,
-                        bond.atom2SiteSymmetry,
-                    );
-                    finalBonds.push(newBond);
-                    objectTracker.createdBonds.add(bondId);
-                }
-
+                const newBond = new Bond(
+                    bond.atom1Label,
+                    specialPositionAtom2,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    '.',
+                );
+                finalBonds.push(newBond);
+            } else if (objectTracker.atomMap.has(bond.atom1Label)) {
+                // Only atom1 exists in the grown structure -> create symm Bond
+                const newBond = new Bond(
+                    objectTracker.atomMap.get(bond.atom1Label),
+                    bond.atom2Label,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    bond.atom2SiteSymmetry,
+                );
+                finalBonds.push(newBond);
             }
+
         });
 
         group.externalHBonds.forEach(hbond => {
             let donorLookup = objectTracker.specialPositionMap.get(hbond.donorAtomLabel) || hbond.donorAtomLabel;
-            if (!objectTracker.atomMap.has(donorLookup)) {
+            if (!finalAtomLabels.has(donorLookup)) {
                 donorLookup = objectTracker.specialPositionMap.get(donorLookup) || donorLookup;
                 donorLookup = objectTracker.atomTranslations.get(donorLookup) || donorLookup;
             }
             let hydrogenLookup = objectTracker.specialPositionMap.get(
                 hbond.hydrogenAtomLabel,
             ) || hbond.hydrogenAtomLabel;
-            if (!objectTracker.atomMap.has(hydrogenLookup)) {
+            if (!finalAtomLabels.has(hydrogenLookup)) {
                 hydrogenLookup = objectTracker.specialPositionMap.get(hydrogenLookup) || hydrogenLookup;
                 hydrogenLookup = objectTracker.atomTranslations.get(hydrogenLookup) || hydrogenLookup;
             } 
-            let acceptorLookup = hbond.acceptorAtomLabel;
-            if (!objectTracker.atomMap.has(acceptorLookup)) {
+            let acceptorLookup = combineSymAtomLabel(
+                hbond.acceptorAtomLabel,
+                hbond.acceptorAtomSymmetry,
+                structure.symmetry,
+            );
+
+            if (!finalAtomLabels.has(acceptorLookup)) {
                 acceptorLookup = objectTracker.specialPositionMap.get(acceptorLookup) || acceptorLookup;
                 acceptorLookup = objectTracker.atomTranslations.get(acceptorLookup) || acceptorLookup;
             }
-            const hbondId = createHBondIdentifier(
-                donorLookup,
-                hydrogenLookup,
-                acceptorLookup,
-            );
             
-            if (!objectTracker.createdHBonds.has(hbondId)) {
-                console.log('found external hbond', hbondId, donorLookup, hydrogenLookup, acceptorLookup);
-                if (
-                    objectTracker.atomMap.has(donorLookup) &&
-                    objectTracker.atomMap.has(hydrogenLookup) &&
-                    objectTracker.atomMap.has(acceptorLookup)
-                ) {
-                    // All atoms exist in the grown structure -> create non-symm HBond
-                    const newHBond = new HBond(
-                        donorLookup,
-                        hydrogenLookup,
-                        acceptorLookup,
-                        hbond.donorHydrogenDistance,
-                        hbond.donorHydrogenDistanceSU,
-                        hbond.acceptorHydrogenDistance,
-                        hbond.acceptorHydrogenDistanceSU,
-                        hbond.donorAcceptorDistance,
-                        hbond.donorAcceptorDistanceSU,
-                        hbond.hBondAngle,
-                        hbond.hBondAngleSU,
-                        '.',
-                    );
-                    finalHBonds.push(newHBond);
-                    objectTracker.createdHBonds.add(hbondId);
-                } else if (
-                    objectTracker.atomMap.has(donorLookup) &&
-                    objectTracker.atomMap.has(hydrogenLookup)
-                ) {
-                    // Only donor and hydrogen exist in the grown structure -> create symm HBond
-                    const newHBond = new HBond(
-                        donorLookup,
-                        hydrogenLookup,
-                        acceptorLookup,
-                        hbond.donorHydrogenDistance,
-                        hbond.donorHydrogenDistanceSU,
-                        hbond.acceptorHydrogenDistance,
-                        hbond.acceptorHydrogenDistanceSU,
-                        hbond.donorAcceptorDistance,
-                        hbond.donorAcceptorDistanceSU,
-                        hbond.hBondAngle,
-                        hbond.hBondAngleSU,
-                        hbond.acceptorAtomSymmetry,
-                    );
-                    finalHBonds.push(newHBond);
-                    objectTracker.createdHBonds.add(hbondId);
-                }
+            if (
+                finalAtomLabels.has(donorLookup) &&
+                finalAtomLabels.has(hydrogenLookup) &&
+                finalAtomLabels.has(acceptorLookup)
+            ) {
+                // All atoms exist in the grown structure -> create non-symm HBond
+                const newHBond = new HBond(
+                    donorLookup,
+                    hydrogenLookup,
+                    acceptorLookup,
+                    hbond.donorHydrogenDistance,
+                    hbond.donorHydrogenDistanceSU,
+                    hbond.acceptorHydrogenDistance,
+                    hbond.acceptorHydrogenDistanceSU,
+                    hbond.donorAcceptorDistance,
+                    hbond.donorAcceptorDistanceSU,
+                    hbond.hBondAngle,
+                    hbond.hBondAngleSU,
+                    '.',
+                );
+                finalHBonds.push(newHBond);
+            } else if (
+                finalAtomLabels.has(donorLookup) &&
+                finalAtomLabels.has(hydrogenLookup)
+            ) {
+                // Only donor and hydrogen exist in the grown structure -> create symm HBond
+                const newHBond = new HBond(
+                    donorLookup,
+                    hydrogenLookup,
+                    acceptorLookup,
+                    hbond.donorHydrogenDistance,
+                    hbond.donorHydrogenDistanceSU,
+                    hbond.acceptorHydrogenDistance,
+                    hbond.acceptorHydrogenDistanceSU,
+                    hbond.donorAcceptorDistance,
+                    hbond.donorAcceptorDistanceSU,
+                    hbond.hBondAngle,
+                    hbond.hBondAngleSU,
+                    hbond.acceptorAtomSymmetry,
+                );
+                finalHBonds.push(newHBond);
             }
         });
     });
-
-    console.log(finalHBonds);
 
     return new CrystalStructure(
         structure.cell,
