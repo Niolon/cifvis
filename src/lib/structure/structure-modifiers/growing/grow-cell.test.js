@@ -338,8 +338,6 @@ describe('growCell basic functions', () => {
     });
 });
 
-
-
 describe('growCell integration tests', () => {
     describe('simple structures', () => {
         test('handles empty structure', () => {
