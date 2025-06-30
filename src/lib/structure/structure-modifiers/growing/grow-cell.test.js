@@ -6,7 +6,8 @@ import {
     getSymmetryCentre, 
     getGrownSymmetriesofGroup,
     centreSymmetryString,
-    growCell, 
+    growCell,
+    growAtomsinGroup, 
 } from './grow-cell.js';
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
@@ -334,6 +335,314 @@ describe('growCell basic functions', () => {
             // Check symmetry string: default translation 555 (0,0,0), offsets [0,0,0]
             // New translation should be [5-0, 5-0, 5-0] = [5,5,5] = '555'
             expect(result.newString).toBe('3_555');
+        });
+    });
+});
+
+describe('Individual growing functions', () => {
+
+    describe('growAtomsinGroup', () => {
+        let symmetry;
+        let grownGroup;
+        let objectTracker;
+
+        beforeEach(() => {
+            // Set up symmetry operations for testing (space group Cc - 9)
+            const symmetryOps = [
+                new SymmetryOperation('x,y,z'),              // 1_555 (identity)
+                new SymmetryOperation('x,-y,z+1/2'),         // 2_555
+                new SymmetryOperation('x+1/2,y+1/2,z'),      // 3_555
+                new SymmetryOperation('x+1/2,-y+1/2,z+1/2'), // 4_555
+            ];
+            const operationIds = new Map([
+                ['1', 0], ['2', 1], ['3', 2], ['4', 3],
+            ]);
+            symmetry = new CellSymmetry('Test', 1, symmetryOps, operationIds);
+
+            // Set up a basic grown group with some test atoms
+            grownGroup = {
+                atoms: [
+                    new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3)),
+                    new Atom('O1', 'O', new FractPosition(0.8, 0.9, 0.1)),
+                ],
+                symmString: '1_555',
+                groupCentre: math.matrix([0.45, 0.55, 0.2]),
+            };
+
+            // Set up object tracker
+            objectTracker = {
+                atomMap: new Map(),
+                createdBonds: new Set(),
+                createdHBonds: new Set(),
+                specialPositionMap: new Map(),
+                atomTranslations: new Map(),
+            };
+        });
+
+        describe('basic functionality', () => {
+            test('applies identity transformation correctly', () => {
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+
+                expect(result).toHaveLength(2);
+                expect(result[0].label).toBe('C1');
+                expect(result[1].label).toBe('O1');
+                
+                // Positions should remain the same for identity operation
+                expect(result[0].position.x).toBeCloseTo(0.1);
+                expect(result[0].position.y).toBeCloseTo(0.2);
+                expect(result[0].position.z).toBeCloseTo(0.3);
+            });
+
+            test('applies non-identity transformation correctly', () => {
+                const result = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, false);
+
+                expect(result).toHaveLength(2);
+                expect(result[0].label).toBe('C1@2_555');
+                expect(result[1].label).toBe('O1@2_555');
+                
+                // For transformation x,-y,z+1/2: (0.1,0.2,0.3) -> (0.1,-0.2,0.8)
+                expect(result[0].position.x).toBeCloseTo(0.1);
+                expect(result[0].position.y).toBeCloseTo(-0.2);
+                expect(result[0].position.z).toBeCloseTo(0.8);
+            });
+
+            test('updates object tracker with atom positions', () => {
+                const _result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+
+                // Check that atomMap is populated
+                expect(objectTracker.atomMap.size).toBe(2);
+                
+                // Check that position keys are correctly generated
+                const atom1Key = Array.from(objectTracker.atomMap.keys())[0];
+                const atom2Key = Array.from(objectTracker.atomMap.keys())[1];
+                
+                expect(atom1Key).toMatch(/^[CO]1_x[\d.-]+_y[\d.-]+_z[\d.-]+$/);
+                expect(atom2Key).toMatch(/^[CO]1_x[\d.-]+_y[\d.-]+_z[\d.-]+$/);
+            });
+        });
+
+        describe('moveAtomsInsideCell functionality', () => {
+            beforeEach(() => {
+                // Create atoms that will be outside unit cell after transformation
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(1.2, 0.2, 0.3)),  // x > 1
+                    new Atom('O1', 'O', new FractPosition(0.1, -0.5, 0.9)), // y < 0
+                    new Atom('N1', 'N', new FractPosition(0.5, 0.5, 2.1)),  // z > 1
+                ];
+            });
+
+            test('moves atoms inside cell when moveAtomsInsideCell is true', () => {
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, true);
+
+                expect(result).toHaveLength(3);
+                
+                // Check atoms are now within [0,1) range
+                result.forEach(atom => {
+                    expect(atom.position.x).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.x).toBeLessThan(1 + 1e-6);
+                    expect(atom.position.y).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.y).toBeLessThan(1 + 1e-6);
+                    expect(atom.position.z).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.z).toBeLessThan(1 + 1e-6);
+                });
+            });
+
+            test('does not move atoms when moveAtomsInsideCell is false', () => {
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+
+                expect(result).toHaveLength(3);
+                
+                // Atoms should retain original positions (possibly outside unit cell)
+                expect(result[0].position.x).toBeCloseTo(1.2);  // C1
+                expect(result[1].position.y).toBeCloseTo(-0.5); // O1
+                expect(result[2].position.z).toBeCloseTo(2.1);  // N1
+            });
+
+            test('updates atomTranslations map when moving atoms', () => {
+                const _result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, true);
+
+                // Check that translations are recorded
+                expect(objectTracker.atomTranslations.size).toBeGreaterThan(0);
+                
+                // Each translation should map original label to [new label, translation string]
+                for (const [originalLabel, [newLabel, translationString]] of objectTracker.atomTranslations) {
+                    expect(typeof originalLabel).toBe('string');
+                    expect(typeof newLabel).toBe('string');
+                    expect(typeof translationString).toBe('string');
+                    expect(translationString).toMatch(/^1_\d{3}$/); // Format: 1_xyz where xyz are digits
+                }
+            });
+
+            test('correctly calculates translation strings', () => {
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(2.3, -1.7, 3.9)), // Large offsets
+                ];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, true);
+
+                expect(result).toHaveLength(1);
+                expect(result[0].position.x).toBeCloseTo(0.3); // 2.3 - 2
+                expect(result[0].position.y).toBeCloseTo(0.3); // -1.7 - (-2) = 0.3
+                expect(result[0].position.z).toBeCloseTo(0.9); // 3.9 - 3
+
+                // Check translation string format: 1_abc where a=5+offsetX, b=5+offsetY, c=5+offsetZ
+                const translation = objectTracker.atomTranslations.get('C1');
+                expect(translation).toBeDefined();
+                expect(translation[1]).toBe('1_738'); // 5-(2), 5-(2), 5-(-3) = 7,3,8
+            });
+        });
+
+        describe('special positions and duplicates', () => {
+            test('detects and handles duplicate atom positions', () => {
+                // Create a scenario where symmetry operation creates duplicate position
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(0.5, 0.5, 0.5)), // Center position
+                ];
+
+                // First call - should create atom
+                const result1 = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+                expect(result1).toHaveLength(1);
+                expect(objectTracker.atomMap.size).toBe(1);
+
+                // Second call with same position - should detect duplicate
+                const result2 = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, false);
+                
+                // If the symmetry operation produces the same position, it should be detected as special position
+                if (result2.length === 0) {
+                    expect(objectTracker.specialPositionMap.size).toBeGreaterThan(0);
+                } else {
+                    // Different position was created
+                    expect(result2).toHaveLength(1);
+                }
+            });
+
+            test('maps duplicate atoms to existing atoms in special position map', () => {
+                // Manually set up a special position scenario
+                const existingAtomLabel = 'C1';
+                const duplicatePosition = 'C1_x0.5_y-0.5_z1';
+                
+                // Pre-populate the atomMap to simulate existing atom
+                objectTracker.atomMap.set(duplicatePosition, existingAtomLabel);
+
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(0.5, 0.5, 0.5)), // Same position as existing
+                ];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, false);
+                console.log(result);
+
+                // Should return no new atoms since position already exists
+                expect(result).toHaveLength(0);
+                
+                // Should map the duplicate to the existing atom
+                expect(objectTracker.specialPositionMap.has('C1@2_555')).toBe(true);
+                expect(objectTracker.specialPositionMap.get('C1@2_555')).toBe(existingAtomLabel);
+            });
+        });
+
+        describe('edge cases', () => {
+            test('handles empty atom group', () => {
+                grownGroup.atoms = [];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+
+                expect(result).toHaveLength(0);
+                expect(objectTracker.atomMap.size).toBe(0);
+            });
+
+            test('handles atoms with existing symmetry labels', () => {
+                grownGroup.atoms = [
+                    new Atom('C1@3_666', 'C', new FractPosition(0.1, 0.2, 0.3)),
+                ];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, false);
+
+                expect(result).toHaveLength(1);
+                // Label should be updated to combine both symmetry operations
+                expect(result[0].label).toMatch(/C1@.*_\d{3}/);
+            });
+
+            test('handles atoms at unit cell boundaries', () => {
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(0.0, 0.0, 0.0)),   // At origin
+                    new Atom('O1', 'O', new FractPosition(1.0, 1.0, 1.0)),   // At opposite corner
+                    new Atom('N1', 'N', new FractPosition(0.5, 0.0, 1.0)),   // On boundaries
+                ];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, true);
+
+                expect(result).toHaveLength(3);
+                
+                // Check that boundary atoms are handled correctly
+                result.forEach(atom => {
+                    expect(atom.position.x).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.x).toBeLessThan(1 + 1e-6);
+                    expect(atom.position.y).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.y).toBeLessThan(1 + 1e-6);
+                    expect(atom.position.z).toBeGreaterThanOrEqual(-1e-6);
+                    expect(atom.position.z).toBeLessThan(1 + 1e-6);
+                });
+            });
+
+            test('handles complex symmetry operations with translations', () => {
+                const result = growAtomsinGroup(grownGroup, symmetry, '4_555', objectTracker, false);
+
+                expect(result).toHaveLength(2);
+                expect(result[0].label).toBe('C1@4_555');
+                expect(result[1].label).toBe('O1@4_555');
+                
+                // Verify that complex transformation x+1/2,-y+1/2,z+1/2 is applied correctly
+                // Original C1: (0.1, 0.2, 0.3) -> (0.1+0.5, -0.2+0.5, 0.3+0.5) = (0.6, 0.3, 0.8)
+                expect(result[0].position.x).toBeCloseTo(0.6);
+                expect(result[0].position.y).toBeCloseTo(0.3);
+                expect(result[0].position.z).toBeCloseTo(0.8);
+            });
+        });
+
+        describe('precision and tolerance', () => {
+
+            test('correctly rounds positions for boundary detection', () => {
+                grownGroup.atoms = [
+                    new Atom('C1', 'C', new FractPosition(0.9999999, 0.0000001, 0.5)),
+                ];
+
+                const result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, true);
+
+                expect(result).toHaveLength(1);
+                // Position should be considered as within bounds and not moved
+                expect(result[0].position.x).toBeCloseTo(0.9999999, 6);
+                expect(result[0].position.y).toBeCloseTo(0.0000001, 6);
+            });
+        });
+
+        describe('object tracker interactions', () => {
+            test('correctly populates all object tracker maps', () => {
+                const _result = growAtomsinGroup(grownGroup, symmetry, '2_555', objectTracker, true);
+
+                // AtomMap should be populated
+                expect(objectTracker.atomMap.size).toBeGreaterThan(0);
+                
+                // Other maps should be initialized but may be empty for this function
+                expect(objectTracker.createdBonds).toBeInstanceOf(Set);
+                expect(objectTracker.createdHBonds).toBeInstanceOf(Set);
+                expect(objectTracker.specialPositionMap).toBeInstanceOf(Map);
+                expect(objectTracker.atomTranslations).toBeInstanceOf(Map);
+            });
+
+            test('preserves existing object tracker state', () => {
+                // Pre-populate object tracker
+                objectTracker.atomMap.set('existing_key', 'existing_value');
+                objectTracker.specialPositionMap.set('existing_special', 'existing_atom');
+
+                const _result = growAtomsinGroup(grownGroup, symmetry, '1_555', objectTracker, false);
+
+                // Should preserve existing entries
+                expect(objectTracker.atomMap.get('existing_key')).toBe('existing_value');
+                expect(objectTracker.specialPositionMap.get('existing_special')).toBe('existing_atom');
+                
+                // Should also add new entries
+                expect(objectTracker.atomMap.size).toBeGreaterThan(1);
+            });
         });
     });
 });
