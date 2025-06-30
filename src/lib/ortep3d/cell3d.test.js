@@ -134,10 +134,7 @@ describe('cell3d.js', () => {
             expect(result.userData.cellParameters.alpha).toBe(75);
         });
 
-        test('calculates arrow dimensions correctly', () => {
-            // Mock the createCylinderArrow function to capture its arguments
-            const originalCreateCylinderArrow = vitest.fn(() => new THREE.Group());
-            
+        test('calculates arrow dimensions correctly', () => {            
             // We need to test this indirectly by checking the head dimensions calculation
             const smallCell = {
                 a: 2.0,
