@@ -256,7 +256,8 @@ export class SymmetryGrower extends BaseFilter {
         this.ensureValidMode(structure);
         let workStructure = structure;
         if (this.mode === SymmetryGrower.MODES.FRAGMENT || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
-            workStructure = growFragment(structure);
+            const growthResult = growFragment(structure);
+            workStructure = growthResult.grownStructure;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
             workStructure = growCell(structure);

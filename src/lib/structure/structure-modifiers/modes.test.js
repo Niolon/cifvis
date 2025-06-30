@@ -293,7 +293,7 @@ describe('SymmetryGrower', () => {
             const result = grower.apply(structure);
             
             // Compare with direct growFragment call
-            const expected = growFragment(structure);
+            const {grownStructure: expected} = growFragment(structure);
             expect(result.atoms.length).toBe(expected.atoms.length);
             expect(result.bonds.length).toBe(expected.bonds.length);
         });
@@ -313,7 +313,7 @@ describe('SymmetryGrower', () => {
             const result = grower.apply(structure);
             
             // Should first grow fragment then HBonds
-            const fragmentGrown = growFragment(structure);
+            const {grownStructure: fragmentGrown} = growFragment(structure);
             const expected = growExternalHBonds(fragmentGrown);
             
             expect(result.atoms.length).toBe(expected.atoms.length);
@@ -326,7 +326,7 @@ describe('SymmetryGrower', () => {
             const result = grower.apply(structure);
             
             // Should first grow fragment then cell without cutting
-            const fragmentGrown = growFragment(structure);
+            const {grownStructure: fragmentGrown} = growFragment(structure);
             const expected = growCell(fragmentGrown, false);
             
             expect(result.atoms.length).toBe(expected.atoms.length);
