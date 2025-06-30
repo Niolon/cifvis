@@ -763,10 +763,10 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                     '.',
                 );
                 finalBonds.push(newBond);
-            } else if (objectTracker.atomMap.has(bond.atom1Label)) {
+            } else if (finalAtomLabels.has(bond.atom1Label)) {
                 // Only atom1 exists in the grown structure -> create symm Bond
                 const newBond = new Bond(
-                    objectTracker.atomMap.get(bond.atom1Label),
+                    bond.atom1Label,
                     bond.atom2Label,
                     bond.bondLength,
                     bond.bondLengthSU,
@@ -830,7 +830,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 const newHBond = new HBond(
                     donorLookup,
                     hydrogenLookup,
-                    acceptorLookup,
+                    hbond.acceptorAtomLabel,
                     hbond.donorHydrogenDistance,
                     hbond.donorHydrogenDistanceSU,
                     hbond.acceptorHydrogenDistance,
