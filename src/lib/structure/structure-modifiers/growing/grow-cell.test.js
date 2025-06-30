@@ -10,6 +10,8 @@ import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
 import { FractPosition } from '../../position.js';
 import { Bond } from '../../bonds.js';
+import { create, all } from 'mathjs';
+const math = create(all, {});
 
 describe('growCell basic functions', () => {
     let symmetry;
@@ -31,7 +33,7 @@ describe('growCell basic functions', () => {
     describe('minimalGrowthSet', () => {
         test('returns identity for empty preexisting ops', () => {
             const result = minimalGrowthSet(symmetry, []);
-            expect(result).toEqual(new Set(['1', '2', '3']));
+            expect(result).toEqual(new Set(['1', '2', '3', '4']));
         });
 
         test('handles preexisting symmetry operations', () => {
@@ -69,24 +71,28 @@ describe('growCell basic functions', () => {
 
     describe('getSymmetryCentre', () => {
         test('calculates center for identity operation', () => {
-            const limits = { minX: 0.1, maxX: 0.9, minY: 0.2, maxY: 0.8, minZ: 0.3, maxZ: 0.7 };
+            const startCentre = math.matrix([0.1, 0.2, 0.3]);
             const identityOp = symmetry.symmetryOperations[0]; // x,y,z
             
-            const centre = getSymmetryCentre(limits, identityOp);
-            expect(centre.x).toBeCloseTo(0.5); // (0.1 + 0.9) / 2
-            expect(centre.y).toBeCloseTo(0.5); // (0.2 + 0.8) / 2
-            expect(centre.z).toBeCloseTo(0.5); // (0.3 + 0.7) / 2
+            const centre = getSymmetryCentre(startCentre, identityOp);
+            const centreArray = centre.toArray();
+            expect(centreArray.length).toBe(3);
+            expect(centreArray[0]).toBeCloseTo(0.1);
+            expect(centreArray[1]).toBeCloseTo(0.2);
+            expect(centreArray[2]).toBeCloseTo(0.3);
         });
 
         test('calculates center for c-glide plane', () => {
-            const limits = { minX: 0.1, maxX: 0.9, minY: 0.2, maxY: 0.8, minZ: 0.3, maxZ: 0.7 };
-            const inversionOp = symmetry.symmetryOperations[1]; // x,-y,z+1/2
+            const startCentre = math.matrix([0.1, 0.2, 0.3]);
+            const glidePlaneOp = symmetry.symmetryOperations[1]; // x,-y,z+1/2
             
-            const centre = getSymmetryCentre(limits, inversionOp);
+            const centre = getSymmetryCentre(startCentre, glidePlaneOp);
             // Should apply the transformation to the center point
-            expect(centre.x).toBeCloseTo(0.5); // 0.5
-            expect(centre.y).toBeCloseTo(-0.5);  // -0.5
-            expect(centre.z).toBeCloseTo(1); // 0.5 + 0.5
+            const centreArray = centre.toArray();
+            expect(centreArray.length).toBe(3);
+            expect(centreArray[0]).toBeCloseTo(0.1); // x
+            expect(centreArray[1]).toBeCloseTo(-0.2); // -
+            expect(centreArray[2]).toBeCloseTo(0.8); // z + 1/2
         });
     });
 });
