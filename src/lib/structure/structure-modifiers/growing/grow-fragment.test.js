@@ -1345,7 +1345,7 @@ describe('Structure dependent methods', () => {
                 .addBond('C1', 'N1', '.'); // No symmetry operation
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
 
             expect(grownStructure.atoms.length).toBe(2);
             expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining(['C1', 'N1']));
@@ -1363,7 +1363,7 @@ describe('Structure dependent methods', () => {
                 .addBond('C1', 'N1', '2_555');    // C1 -> N1@2_555
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
             // Expected atoms: C1 (ASU), N1 (ASU), N1@2_555
             // Expected bonds: C1 - N1@2_555 (direct bond after growth)
 
@@ -1384,7 +1384,7 @@ describe('Structure dependent methods', () => {
                 .addBond('C1', 'C1', '2_555');    // C1 -> C1@2_555
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
             // Expected atoms: C1 (ASU), C1@2_555
             // Expected bonds: C1 - C1@2_555 (direct bond after growth)
 
@@ -1408,7 +1408,7 @@ describe('Structure dependent methods', () => {
                 .addBond('B1', 'C1', '3_555');     // B1 -> C1@3_555 (from ASU B1)
             structure = structureHelper.build();
             
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
 
             // Expected atoms: A1, B1, C1 (ASU)
             // B1@2_555 (from A1-B1@S1)
@@ -1446,7 +1446,7 @@ describe('Structure dependent methods', () => {
             // This setup leads to translational links as detailed in thought process.
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
 
             // Expected atoms: C1, N1 (ASU), N1@2_555, C1@2_565
             expect(grownStructure.atoms.length).toBe(4);
@@ -1505,7 +1505,7 @@ describe('Structure dependent methods', () => {
                 .addBond('C2', 'C1', '3_555');     // C2 connects to C1@3_555
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
 
             // Expected atoms: C1, C2 (ASU), C2@3_555. (C1@3_555 maps to C1)
             expect(grownStructure.atoms.length).toBe(3);
@@ -1540,7 +1540,7 @@ describe('Structure dependent methods', () => {
                 .addHBond('O1', 'H1', 'N1', '2_555'); // O1-H1 ... N1@2_555
             structure = structureHelper.build();
 
-            const grownStructure = growFragment(structure);
+            const { grownStructure } = growFragment(structure);
 
             // Expected atoms: O1, H1, N1 (ASU), N1@2_555
             expect(grownStructure.atoms.length).toBe(3);
