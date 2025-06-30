@@ -3,17 +3,16 @@ import { growFragment } from '../../src/lib/structure/structure-modifiers//growi
 import { growCell } from '../../src/lib/structure/structure-modifiers/growing/grow-cell.js';
 
 /**
- *
- * @param cifText
- * @param name
- * @param runCount
+ * Grows a fragment structure from CIF text and measures execution time
+ * @param {string} cifText - The CIF text content
+ * @returns {Promise<{output: object, executionTime: number}>} The grown structure and execution time
  */
-async function growFragmentStructure(cifText, name, runCount) {
+async function growFragmentStructure(cifText) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
     const startTime = performance.now();
-    const {grownStructure: output } = growFragment(structure);
+    const { grownStructure: output } = growFragment(structure);
     const endTime = performance.now();
     
     const executionTime = endTime - startTime;
@@ -23,12 +22,11 @@ async function growFragmentStructure(cifText, name, runCount) {
 }
 
 /**
- *
- * @param cifText
- * @param name
- * @param runCount
+ * Grows a cell structure from CIF text and measures execution time
+ * @param {string} cifText - The CIF text content
+ * @returns {Promise<{output: object, executionTime: number}>} The grown structure and execution time
  */
-async function growCellStructure(cifText, name, runCount) {
+async function growCellStructure(cifText) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
@@ -43,12 +41,11 @@ async function growCellStructure(cifText, name, runCount) {
 }
 
 /**
- *
- * @param cifText
- * @param name
- * @param runCount
+ * Grows a cell fragment structure from CIF text and measures execution time
+ * @param {string} cifText - The CIF text content
+ * @returns {Promise<{output: object, executionTime: number}>} The grown structure and execution time
  */
-async function growCellFragmentStructure(cifText, name, runCount) {
+async function growCellFragmentStructure(cifText) {
     const cif = new CIF(cifText);
     const structure = CrystalStructure.fromCIF(cif.getBlock(0));
     
@@ -64,8 +61,9 @@ async function growCellFragmentStructure(cifText, name, runCount) {
 }
 
 /**
- *
- * @param timings
+ * Calculates statistical measures for timing data
+ * @param {number[]} timings - Array of execution times in milliseconds
+ * @returns {object} Statistics object containing mean, stdDev, min, max, median, and runs
  */
 function calculateStatistics(timings) {
     const sum = timings.reduce((acc, time) => acc + time, 0);
@@ -99,7 +97,8 @@ function calculateStatistics(timings) {
 }
 
 /**
- *
+ * Processes multiple crystal structures with statistical analysis for all growth methods
+ * @returns {Promise<object>} Promise that resolves to results object containing stats for all structures and methods
  */
 async function processStructuresWithStatistics() {
     const baseUrl = import.meta.env.BASE_URL;
@@ -122,41 +121,80 @@ async function processStructuresWithStatistics() {
         const cifText = await response.text();
         
         try {
-            // Run multiple executions
-            let structure;
-            const timings = [];
+            // Run multiple executions for growFragmentStructure
+            let fragmentStructure;
+            const fragmentTimings = [];
             for (let i = 1; i <= numExecutions; i++) {
-                const { output, executionTime } = await growFragmentStructure(cifText, structureName, i);
-                structure = output;
-                timings.push(executionTime);
+                const { output, executionTime } = await growFragmentStructure(cifText);
+                fragmentStructure = output;
+                fragmentTimings.push(executionTime);
             }
-            const structureInfo = `N(Atoms): ${structure.atoms.length}; N(Bonds): ${structure.bonds.length}; N(HBonds): ${structure.hBonds.length}`;
+            const fragmentStructureInfo = `N(Atoms): ${fragmentStructure.atoms.length}; ` +
+                `N(Bonds): ${fragmentStructure.bonds.length}; N(HBonds): ${fragmentStructure.hBonds.length}`;
             
-            // Calculate and display statistics
-            const stats = calculateStatistics(timings);
-            //console.log(`\nStatistics for ${structureName} (${numExecutions} runs):`);
-            //console.log(`Mean: ${stats.mean} ms`);
-            //console.log(`Standard Deviation: ${stats.stdDev} ms`);
-            //console.log(`Min: ${stats.min} ms`);
-            //console.log(`Max: ${stats.max} ms`);
-            //console.log(`Median: ${stats.median} ms`);
+            // Run multiple executions for growCellStructure  
+            let cellStructure;
+            const cellTimings = [];
+            for (let i = 1; i <= numExecutions; i++) {
+                const { output, executionTime } = await growCellStructure(cifText);
+                cellStructure = output;
+                cellTimings.push(executionTime);
+            }
+            const cellStructureInfo = `N(Atoms): ${cellStructure.atoms.length}; ` +
+                `N(Bonds): ${cellStructure.bonds.length}; N(HBonds): ${cellStructure.hBonds.length}`;
             
-            allResults[structureName] = { timings, stats, structureInfo };
+            // Run multiple executions for growCellFragmentStructure
+            let cellFragmentStructure;
+            const cellFragmentTimings = [];
+            for (let i = 1; i <= numExecutions; i++) {
+                const { output, executionTime } = await growCellFragmentStructure(cifText);
+                cellFragmentStructure = output;
+                cellFragmentTimings.push(executionTime);
+            }
+            const cellFragmentStructureInfo = `N(Atoms): ${cellFragmentStructure.atoms.length}; ` +
+                `N(Bonds): ${cellFragmentStructure.bonds.length}; N(HBonds): ${cellFragmentStructure.hBonds.length}`;
+            
+            // Calculate statistics for all methods
+            const fragmentStats = calculateStatistics(fragmentTimings);
+            const cellStats = calculateStatistics(cellTimings);
+            const cellFragmentStats = calculateStatistics(cellFragmentTimings);
+            
+            allResults[structureName] = { 
+                fragment: { timings: fragmentTimings, stats: fragmentStats, structureInfo: fragmentStructureInfo },
+                cell: { timings: cellTimings, stats: cellStats, structureInfo: cellStructureInfo },
+                cellFragment: { 
+                    timings: cellFragmentTimings, 
+                    stats: cellFragmentStats, 
+                    structureInfo: cellFragmentStructureInfo,
+                },
+            };
             
         } catch (error) {
             console.error(`Error processing ${structureName}:`, error);
         }
-
-        console.log(await growCellStructure(cifText, structureName, 0));
-        console.log(await growCellFragmentStructure(cifText, structureName, 0));
     }
     
     // Print summary of all results
     console.log('\n=== SUMMARY OF ALL RESULTS ===');
     for (const structureName in allResults) {
-        const { stats, structureInfo } = allResults[structureName];
-        console.log(`${structureName}: Mean=${stats.mean}ms, StdDev=${stats.stdDev}ms, Min=${stats.min}ms, Max=${stats.max}ms, Median=${stats.median}ms`);
-        console.log(structureInfo);
+        const { fragment, cell, cellFragment } = allResults[structureName];
+        
+        console.log(`\n${structureName}:`);
+        console.log('  Fragment Growth:');
+        console.log(`    Mean=${fragment.stats.mean}ms, StdDev=${fragment.stats.stdDev}ms, ` +
+                    `Min=${fragment.stats.min}ms, Max=${fragment.stats.max}ms, Median=${fragment.stats.median}ms`);
+        console.log(`    ${fragment.structureInfo}`);
+        
+        console.log('  Cell Growth:');
+        console.log(`    Mean=${cell.stats.mean}ms, StdDev=${cell.stats.stdDev}ms, ` +
+                    `Min=${cell.stats.min}ms, Max=${cell.stats.max}ms, Median=${cell.stats.median}ms`);
+        console.log(`    ${cell.structureInfo}`);
+        
+        console.log('  Cell Fragment Growth:');
+        console.log(`    Mean=${cellFragment.stats.mean}ms, StdDev=${cellFragment.stats.stdDev}ms, ` +
+                    `Min=${cellFragment.stats.min}ms, Max=${cellFragment.stats.max}ms, ` +
+                    `Median=${cellFragment.stats.median}ms`);
+        console.log(`    ${cellFragment.structureInfo}`);
     }
     
     return allResults;
@@ -164,7 +202,7 @@ async function processStructuresWithStatistics() {
 
 // Start processing
 processStructuresWithStatistics()
-    .then(results => {
+    .then(_results => {
         //console.log("All processing complete!");
         // You could do additional analysis on 'results' here if needed
     })
