@@ -43,6 +43,10 @@ export class HydrogenFilter extends BaseFilter {
     apply(structure) {
         this.ensureValidMode(structure);
 
+        if (this.mode === HydrogenFilter.MODES.ANISOTROPIC) {
+            return structure;
+        }
+
         const filteredAtoms = structure.atoms
             .filter(atom => atom.atomType !== 'H' || this.mode !== HydrogenFilter.MODES.NONE)
             .map(atom => (new Atom(
@@ -57,6 +61,17 @@ export class HydrogenFilter extends BaseFilter {
         const filteredBonds = structure.bonds
             .filter(bond => {
                 if (this.mode === HydrogenFilter.MODES.NONE) {
+                    if (bond.atom2SiteSymmetry !== '.') {
+                        try {
+                            // With cell growing the base atoms might not be present 
+                            // anymore, so we need to handle that gracefully
+                            const atom1 = structure.getAtomByLabel(bond.atom1Label);
+                            const atom2 = structure.getAtomByLabel(bond.atom2Label);
+                            return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                        } catch {
+                            return true; // Keep bond if there's an error
+                        }
+                    } 
                     const atom1 = structure.getAtomByLabel(bond.atom1Label);
                     const atom2 = structure.getAtomByLabel(bond.atom2Label);
                     return !(atom1.atomType === 'H' || atom2.atomType === 'H');
