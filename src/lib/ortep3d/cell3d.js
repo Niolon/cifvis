@@ -96,7 +96,7 @@ function createUnitCellWireframe(transformationMatrix, color, opacity, lineWidth
         color: color,
         transparent: opacity < 1.0,
         opacity: opacity,
-        linewidth: lineWidth, // Note: may not work in WebGL
+        linewidth: 1.0 * lineWidth, // Note: may not work in WebGL
     });
     
     // Create each edge as a line segment
@@ -129,15 +129,15 @@ function createUnitCellWireframe(transformationMatrix, color, opacity, lineWidth
  */
 export function createCell3D(cell, cellSettings) {
     const { 
-        color, 
-        opacity, 
-        colorA, 
-        colorB, 
-        colorC, 
-        headLengthMult, 
-        headWidthMult,
-        lineWidth,
-        cylinderRadius,
+        boxColor, 
+        boxOpacity, 
+        boxLineWidth,
+        arrowColorA, 
+        arrowColorB, 
+        arrowColorC, 
+        arrowHeadLengthMult, 
+        arrowHeadWidthMult,
+        arrowCylinderRadius,
     } = cellSettings;
 
     const cellGroup = new THREE.Group();
@@ -152,7 +152,7 @@ export function createCell3D(cell, cellSettings) {
     );
 
     // Create the wireframe using line segments
-    const wireframe = createUnitCellWireframe(transformationMatrix, color, opacity, lineWidth);
+    const wireframe = createUnitCellWireframe(transformationMatrix, boxColor, boxOpacity, boxLineWidth);
     cellGroup.add(wireframe);
 
     // Extract basis vectors for the axes
@@ -163,13 +163,13 @@ export function createCell3D(cell, cellSettings) {
 
     // Calculate arrow dimensions based on cell parameters
     const { a, b, c } = cell;
-    const headLength = Math.max(a, b, c) * headLengthMult;
-    const headWidth = headLength * headWidthMult;
+    const headLength = Math.max(a, b, c) * arrowHeadLengthMult;
+    const headWidth = headLength * arrowHeadWidthMult;
 
     // Create arrows to represent the cell axes
-    const arrowA = createCylinderArrow(directionA, colorA, headLength, headWidth, cylinderRadius);
-    const arrowB = createCylinderArrow(directionB, colorB, headLength, headWidth, cylinderRadius);
-    const arrowC = createCylinderArrow(directionC, colorC, headLength, headWidth, cylinderRadius);
+    const arrowA = createCylinderArrow(directionA, arrowColorA, headLength, headWidth, arrowCylinderRadius);
+    const arrowB = createCylinderArrow(directionB, arrowColorB, headLength, headWidth, arrowCylinderRadius);
+    const arrowC = createCylinderArrow(directionC, arrowColorC, headLength, headWidth, arrowCylinderRadius);
 
     cellGroup.add(arrowA);
     cellGroup.add(arrowB);

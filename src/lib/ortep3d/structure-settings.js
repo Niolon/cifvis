@@ -81,16 +81,15 @@ export default {
 
     // Cell visualisation settings
     'cell': {
-        'color': '#000000',
-        'opacity': 0.8,
-        'lineWidth': 2,
-        'colorA': '#E74C3C', // Red',
-        'colorB': '#2ECC71', // Green',
-        'colorC': '#3498DB', // Blue',
-        'headLengthMult': 0.05,
-        'headWidthMult': 0.25,
-        'cylinderRadius': 0.04,
-
+        'boxColor': '#000000',
+        'boxOpacity': 0.8,
+        'boxLineWidth': 2,
+        'arrowColorA': '#E74C3C', // Red',
+        'arrowColorB': '#2ECC71', // Green',
+        'arrowColorC': '#3498DB', // Blue',
+        'arrowHeadLengthMult': 0.05,
+        'arrowHeadWidthMult': 0.25,
+        'arrowCylinderRadius': 0.04,
     },
 
     'elementProperties': {
