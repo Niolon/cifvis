@@ -115,9 +115,7 @@ export class ViewerControls {
      * @private
      */
     resetCameraPosition() {
-        this.camera.position.x = this.state.initialCameraPosition.x;
-        this.camera.position.y = this.state.initialCameraPosition.y;
-        this.camera.rotation.set(0, 0, 0);
+        this.viewer.cameraController.reset();
         this.viewer.requestRender();
     }
 
@@ -174,27 +172,7 @@ export class ViewerControls {
      * @private
      */
     panCamera(delta) {
-        const distance = this.camera.position.z;
-        
-        // Calculate the size of the view frustum at the object's distance
-        // Factor 2 missing from height as delta goes from -1 to 1 -> 2
-        const fovRadians = this.camera.fov * Math.PI / 180;
-        const frustumHeight = Math.tan(fovRadians / 2) * distance;
-        const frustumWidth = frustumHeight * this.camera.aspect;
-        
-        // Convert screen coordinates to world space movement
-        const moveX = -delta.x * frustumWidth;
-        const moveY = -delta.y * frustumHeight;
-        
-        // Get camera's right and up vectors
-        const right = new THREE.Vector3();
-        const up = new THREE.Vector3();
-        this.camera.matrix.extractBasis(right, up, new THREE.Vector3());
-        
-        // Move camera in the view plane
-        this.camera.position.addScaledVector(right, moveX);
-        this.camera.position.addScaledVector(up, moveY);
-        
+        this.viewer.cameraController.pan(delta);
         this.viewer.requestRender();
     }
 
@@ -220,17 +198,7 @@ export class ViewerControls {
      * @private
      */
     handleZoom(zoomDelta) {
-        const { minDistance, maxDistance } = this.options.camera;
-        const maxTravel = maxDistance - minDistance;
-        const currentDistance = this.camera.position.length();
-        const newDistance = THREE.MathUtils.clamp(
-            currentDistance + zoomDelta * maxTravel,
-            minDistance,
-            maxDistance,
-        );
-        
-        const direction = this.camera.position.clone().normalize();
-        this.camera.position.copy(direction.multiplyScalar(newDistance));
+        this.viewer.cameraController.zoom(zoomDelta);
         this.viewer.requestRender();
     }
 
@@ -457,23 +425,8 @@ export class ViewerControls {
      * @private
      */
     handleResize() {
-        const rect = this.container.getBoundingClientRect();
-        const aspect = rect.width / rect.height;
-        this.camera.aspect = aspect;
-
-        // Calculate field of view to fit object based on smallest dimension
-        const targetFov = this.options.camera.fov;
-        
-        if (rect.width < rect.height) {
-            // Width is limiting factor, adjust FOV to maintain object size
-            this.camera.fov = 2 * Math.atan(Math.tan(targetFov * Math.PI / 360) / aspect) * 180 / Math.PI;
-        } else {
-            // Height is limiting factor, use target FOV directly
-            this.camera.fov = targetFov;
-        }
-
+        this.viewer.cameraController.handleResize();
         this.viewer.resizeRendererToDisplaySize();
-        this.camera.updateProjectionMatrix();
         this.viewer.requestRender();
     }
 

@@ -11,7 +11,7 @@
   "files": [
     "dist",
     "src/lib/generated",
-    "src", 
+    "src",
     "LICENSE.md"
   ],
   "scripts": {
@@ -32,7 +32,8 @@
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docs": "jsdoc -r ./src/lib"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",
@@ -52,6 +53,7 @@
     "gh-pages": "^6.1.1",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
+    "jsdoc": "^4.0.4",
     "jsdom": "^24.0.0",
     "lint-staged": "^15.4.3",
     "vite": "^6.0.11",

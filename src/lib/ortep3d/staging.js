@@ -61,35 +61,6 @@ function threeMatrixToMathJS(matrix) {
 }
 
 /**
- * Calculates the optimal camera distance to fit a structure entirely in the viewport
- * based on its bounding box and camera properties.
- * @param {THREE.Object3D} structureGroup - The structure to analyze
- * @param {THREE.PerspectiveCamera} camera - The camera that will view the structure
- * @returns {number} Required camera distance in scene units
- */
-export function calculateCameraDistance(structureGroup, camera) {
-    // Get the bounding box
-    const boundingBox = new THREE.Box3().setFromObject(structureGroup);
-    
-    if (boundingBox.isEmpty()) {
-        return 10; // Return sensible default if no atoms found
-    }
-    
-    const size = new THREE.Vector3();
-    boundingBox.getSize(size);
-    const verticalFovRadians = camera.fov * Math.PI / 180;
-    const horizontalFovRadians = Math.atan(camera.aspect * Math.tan(verticalFovRadians / 2) * 2);
-
-    const structureAspect = size.x / size.y;
-    if (structureAspect <= camera.aspect) {
-        return (size.y / 2 / Math.tan(verticalFovRadians / 2) + size.z / 2);
-    } else {
-        return (size.x / 2 / Math.tan(horizontalFovRadians / 2) + size.z / 2);
-    }
-    
-}
-
-/**
  * Finds optimal rotation to view a molecular structure in a standard orientation:
  * perpendicular to its mean plane, with the longest axis aligned horizontally, and
  * with a slight tilt for better 3D perception.
