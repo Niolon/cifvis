@@ -83,8 +83,8 @@ describe('cell3d.js', () => {
         test('applies correct wireframe color and opacity', () => {
             const customSettings = {
                 ...defaultCellSettings,
-                color: '#FF5500',
-                opacity: 0.7,
+                boxColor: '#FF5500',
+                boxOpacity: 0.7,
             };
             
             const result = createCell3D(mockUnitCell, customSettings);
@@ -240,7 +240,7 @@ describe('cell3d.js', () => {
 
         test('handles opacity correctly for transparent and opaque cases', () => {
             // Test transparent case
-            const transparentSettings = { ...defaultCellSettings, opacity: 0.3 };
+            const transparentSettings = { ...defaultCellSettings, boxOpacity: 0.3 };
             const transparentResult = createCell3D(mockUnitCell, transparentSettings);
             const transparentWireframe = transparentResult.children[0];
             const transparentLine = transparentWireframe.children[0];
