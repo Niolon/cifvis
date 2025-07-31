@@ -516,7 +516,7 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
             hBond.acceptorAtomSymmetry,
         );
 
-        let acceptorLabel = combineSymAtomLabel(hBond.acceptorAtomLabel, acceptorSymm, symmetry);
+        const acceptorLabel = combineSymAtomLabel(hBond.acceptorAtomLabel, acceptorSymm, symmetry);
 
         if (
             objectTracker.atomTranslations.has(donorLabel)
@@ -534,12 +534,6 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
                 hydrogenSymm,
                 acceptorSymm,
             );
-            const [acceptorLabelr, acceptorSymmTrans] = objectTracker.atomTranslations.get(hBond.acceptorAtomLabel);
-            acceptorSymm = symmetry.combineSymmetryCodes(
-                acceptorSymmTrans,
-                acceptorSymm,
-            );
-            acceptorLabel = acceptorLabelr;
         } else if (
             objectTracker.atomTranslations.has(donorLabel) 
             || objectTracker.atomTranslations.has(hydrogenLabel)
