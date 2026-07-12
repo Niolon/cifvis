@@ -1,7 +1,8 @@
 
 import { HBond, Bond } from '../../bonds.js';
 import { CrystalStructure } from '../../crystal.js';
-import { combineSymAtomLabel } from './util.js';
+import { combineAtomId } from './util.js';
+import { AppliedSymmetry } from '../../applied-symmetry.js';
 
 /**
  * Grows external hydrogen bonds (HBonds) in a crystal structure by applying symmetry operations
@@ -35,10 +36,12 @@ export function growExternalHBonds(structure) {
 
     for (const hBond of growableHBonds) {
         // add the hBond to final hBonds
+        // Extract base label from acceptorAtomLabel (may already contain symmetry like 'O|1_554')
+        const acceptorBaseLabel = hBond.acceptorAtomId.split('|')[0];
         finalHBonds.push(new HBond(
-            hBond.donorAtomLabel,
-            hBond.hydrogenAtomLabel,
-            combineSymAtomLabel(hBond.acceptorAtomLabel, hBond.acceptorAtomSymmetry, structure.symmetry),
+            hBond.donorAtomId,
+            hBond.hydrogenAtomId,
+            combineAtomId(acceptorBaseLabel, hBond.acceptorAtomSymmetry, structure.symmetry),
             hBond.donorHydrogenDistance,
             hBond.donorHydrogenDistanceSU,
             hBond.acceptorHydrogenDistance,
@@ -52,8 +55,10 @@ export function growExternalHBonds(structure) {
 
         // find group index of acceptor atom, should always be possible because
         // of checks in structure.calculateConnectedGroups()
+        // Extract base label from acceptorAtomId (e.g., 'N1|2_555' -> 'N1')
+        const acceptorGroupBaseLabel = hBond.acceptorAtomId.split('|')[0];
         const acceptorGroupIndex = groups.findIndex(
-            group => group.atoms.some(atom => atom.label === hBond.acceptorAtomLabel),
+            group => group.atoms.some(atom => atom.label === acceptorGroupBaseLabel),
         );
 
         const symOpLabel = hBond.acceptorAtomSymmetry;
@@ -69,20 +74,33 @@ export function growExternalHBonds(structure) {
         // Get the acceptor group
         const acceptorGroup = groups[acceptorGroupIndex];
 
-        // Create new atoms
+        // Create new atoms - combine symmetries if atom already had appliedSymmetry
         const symmetryAtoms = structure.symmetry.applySymmetry(symOpLabel, acceptorGroup.atoms);
-        symmetryAtoms.forEach(atom => {
-            atom.label = combineSymAtomLabel(atom.label, symOpLabel, structure.symmetry);
+        for (let i = 0; i < symmetryAtoms.length; i++) {
+            const atom = symmetryAtoms[i];
+            const originalAtom = acceptorGroup.atoms[i];
+
+            // Combine symmetries if original atom had existing symmetry (from fragment growth)
+            let combinedSymm = symOpLabel;
+            if (originalAtom.appliedSymmetry &&
+                originalAtom.appliedSymmetry.key !== `${structure.symmetry.identitySymOpId}_555`) {
+                combinedSymm = structure.symmetry.combineSymmetryCodes(
+                    symOpLabel, originalAtom.appliedSymmetry.key,
+                );
+            }
+
+            atom.appliedSymmetry = AppliedSymmetry.fromString(combinedSymm);
+            // atom.label remains base label
             finalAtoms.push(atom);
-        });
+        }
 
         // Create new bonds
         acceptorGroup.bonds
             .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
             .forEach(bond => {
                 finalBonds.push(new Bond(
-                    combineSymAtomLabel(bond.atom1Label, symOpLabel, structure.symmetry),
-                    combineSymAtomLabel(bond.atom2Label, symOpLabel, structure.symmetry),
+                    combineAtomId(bond.atom1Id, symOpLabel, structure.symmetry),
+                    combineAtomId(bond.atom2Id, symOpLabel, structure.symmetry),
                     bond.bondLength,
                     bond.bondLengthSU,
                     '.',
@@ -94,9 +112,9 @@ export function growExternalHBonds(structure) {
             .filter(({ acceptorAtomSymmetry }) => acceptorAtomSymmetry === '.')
             .forEach(hBond => {
                 finalHBonds.push(new HBond(
-                    combineSymAtomLabel(hBond.donorAtomLabel, symOpLabel, structure.symmetry),
-                    combineSymAtomLabel(hBond.hydrogenAtomLabel, symOpLabel, structure.symmetry),
-                    combineSymAtomLabel(hBond.acceptorAtomLabel, symOpLabel, structure.symmetry),
+                    combineAtomId(hBond.donorAtomId, symOpLabel, structure.symmetry),
+                    combineAtomId(hBond.hydrogenAtomId, symOpLabel, structure.symmetry),
+                    combineAtomId(hBond.acceptorAtomId, symOpLabel, structure.symmetry),
                     hBond.donorHydrogenDistance,
                     hBond.donorHydrogenDistanceSU,
                     hBond.acceptorHydrogenDistance,

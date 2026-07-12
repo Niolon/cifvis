@@ -40,7 +40,7 @@ export class AtomLabelFilter extends BaseFilter {
      */
     _parseRangeExpression(rangeExpr, allLabels) {
         const [startLabel, endLabel] = rangeExpr.split('>').map(label => label.trim());
-        
+
         if (!startLabel || !endLabel) {
             console.warn(`Invalid range expression: ${rangeExpr}`);
             return [];
@@ -53,10 +53,10 @@ export class AtomLabelFilter extends BaseFilter {
         if (!allLabels.includes(endLabel)) {
             throw new Error(`Range filtering included unknown end label: ${endLabel}`);
         }
-             
+
         const startIndex = allLabels.indexOf(startLabel);
         const endIndex = allLabels.indexOf(endLabel);
-        
+
         return allLabels.slice(startIndex, endIndex + 1);
     }
 
@@ -66,13 +66,13 @@ export class AtomLabelFilter extends BaseFilter {
      */
     setFilteredLabels(labels) {
         let labelArray = [];
-        
+
         if (typeof labels === 'string') {
             labelArray = labels.split(',').map(label => label.trim()).filter(label => label);
         } else if (Array.isArray(labels)) {
             labelArray = labels;
         }
-        
+
         this.filteredLabels = new Set(labelArray);
     }
 
@@ -85,7 +85,7 @@ export class AtomLabelFilter extends BaseFilter {
     _expandRanges(structure) {
         const allLabels = structure.atoms.map(atom => atom.label);
         const expandedLabels = new Set();
-        
+
         for (const label of this.filteredLabels) {
             if (label.includes('>') && !allLabels.includes(label)) {
                 // This is a range expression
@@ -96,7 +96,7 @@ export class AtomLabelFilter extends BaseFilter {
                 expandedLabels.add(label);
             }
         }
-        
+
         return expandedLabels;
     }
 
@@ -111,21 +111,25 @@ export class AtomLabelFilter extends BaseFilter {
         }
 
         const expandedLabels = this._expandRanges(structure);
-        
-        const filteredAtoms = structure.atoms.filter(atom => 
+
+        const filteredAtoms = structure.atoms.filter(atom =>
             !expandedLabels.has(atom.label),
         );
 
-        const filteredBonds = structure.bonds.filter(bond => 
-            !expandedLabels.has(bond.atom1Label) && 
-            !expandedLabels.has(bond.atom2Label),
-        );
+        const filteredBonds = structure.bonds.filter(bond => {
+            const atom1 = structure.getAtomById(bond.atom1Id);
+            const atom2 = structure.getAtomById(bond.atom2Id);
+            return !expandedLabels.has(atom1.label) && !expandedLabels.has(atom2.label);
+        });
 
-        const filteredHBonds = structure.hBonds.filter(hBond => 
-            !expandedLabels.has(hBond.donorAtomLabel) &&
-            !expandedLabels.has(hBond.hydrogenAtomLabel) &&
-            !expandedLabels.has(hBond.acceptorAtomLabel),
-        );
+        const filteredHBonds = structure.hBonds.filter(hBond => {
+            const donor = structure.getAtomById(hBond.donorAtomId);
+            const hydrogen = structure.getAtomById(hBond.hydrogenAtomId);
+            const acceptor = structure.getAtomById(hBond.acceptorAtomId);
+            return !expandedLabels.has(donor.label) &&
+                !expandedLabels.has(hydrogen.label) &&
+                !expandedLabels.has(acceptor.label);
+        });
 
         return new CrystalStructure(
             structure.cell,
@@ -215,7 +219,7 @@ export class BondGenerator extends BaseFilter {
 
         atoms.forEach(atom => {
             const cartPos = atom.position.toCartesian(cell);
-            atomPositions.set(atom.label, [cartPos.x, cartPos.y, cartPos.z]);
+            atomPositions.set(atom.uniqueId, [cartPos.x, cartPos.y, cartPos.z]); // Key by uniqueId
             if (Object.prototype.hasOwnProperty.call(elementProperties, atom.atomType)
                 && !elementMap.has(atom.atomType)) {
                 elementMap.set(atom.atomType, atom.atomType);
@@ -231,16 +235,16 @@ export class BondGenerator extends BaseFilter {
         // Check distances between all atom pairs
         for (let i = 0; i < atoms.length; i++) {
             const atom1 = atoms[i];
-            const pos1 = atomPositions.get(atom1.label);
+            const pos1 = atomPositions.get(atom1.uniqueId);
 
             for (let j = i + 1; j < atoms.length; j++) {
                 const atom2 = atoms[j];
-                const pos2 = atomPositions.get(atom2.label);
+                const pos2 = atomPositions.get(atom2.uniqueId);
 
                 // Skip if either atom is hydrogen and we already have bonds
                 if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
-                    structure.bonds.some(bond => bond.atom1Label === atom1.label || bond.atom1Label === atom2.label ||
-                        bond.atom2Label === atom1.label || bond.atom2Label === atom2.label)) {
+                    structure.bonds.some(bond => bond.atom1Id === atom1.uniqueId || bond.atom1Id === atom2.uniqueId ||
+                        bond.atom2Id === atom1.uniqueId || bond.atom2Id === atom2.uniqueId)) {
                     continue;
                 }
 
@@ -255,8 +259,8 @@ export class BondGenerator extends BaseFilter {
 
                 if (distance <= maxDistance && distance > 0.0001) {
                     generatedBonds.add(new Bond(
-                        atom1.label,
-                        atom2.label,
+                        atom1.uniqueId,
+                        atom2.uniqueId,
                         distance,
                         null, // No standard uncertainty for generated bonds
                         '.',
@@ -384,14 +388,14 @@ export class IsolatedHydrogenFixer extends BaseFilter {
 
         // Find all isolated hydrogen atoms
         const isolatedHydrogenAtoms = this.findIsolatedHydrogenAtoms(structure);
-        
+
         if (isolatedHydrogenAtoms.length === 0) {
             return structure;
         }
 
         // Create new bonds for isolated hydrogen atoms
         const newBonds = this.createBondsForIsolatedHydrogens(structure, isolatedHydrogenAtoms);
-        
+
         // Return structure with additional bonds
         return new CrystalStructure(
             structure.cell,
@@ -410,13 +414,13 @@ export class IsolatedHydrogenFixer extends BaseFilter {
     findIsolatedHydrogenAtoms(structure) {
         const atomsInBonds = new Set();
         structure.bonds.forEach(b => {
-            atomsInBonds.add(b.atom1Label);
-            atomsInBonds.add(b.atom2Label);
+            atomsInBonds.add(b.atom1Id);
+            atomsInBonds.add(b.atom2Id);
         });
 
         const isolatedHydrogenAtoms = [];
         structure.atoms.forEach((atom, atomIndex) => {
-            if (!atomsInBonds.has(atom.label) && atom.atomType === 'H') {
+            if (!atomsInBonds.has(atom.uniqueId) && atom.atomType === 'H') {
                 isolatedHydrogenAtoms.push({ atom, atomIndex });
             }
         });
@@ -437,27 +441,27 @@ export class IsolatedHydrogenFixer extends BaseFilter {
             // Convert hydrogen position to Cartesian coordinates
             const cartPos = atom.position.toCartesian(structure.cell);
             const hydrogenPosition = [cartPos.x, cartPos.y, cartPos.z];
-            
+
             // Try to bond with the previous atom first (common case)
             if (atomIndex > 0) {
                 const previousAtom = structure.atoms[atomIndex - 1];
-                
-                if (previousAtom.atomType !== 'H' && 
-                    (previousAtom.disorderGroup === atom.disorderGroup || 
-                     previousAtom.disorderGroup === 0 || 
-                     atom.disorderGroup === 0)) {
-                    
+
+                if (previousAtom.atomType !== 'H' &&
+                    (previousAtom.disorderGroup === atom.disorderGroup ||
+                        previousAtom.disorderGroup === 0 ||
+                        atom.disorderGroup === 0)) {
+
                     const prevPos = previousAtom.position.toCartesian(structure.cell);
                     const prevPosition = [prevPos.x, prevPos.y, prevPos.z];
-                    
+
                     const diff = math.subtract(hydrogenPosition, prevPosition);
                     const distance = math.norm(diff);
-                    
+
                     if (distance <= this.maxBondDistance) {
                         // Create a bond to the previous atom
                         newBonds.push(new Bond(
-                            previousAtom.label,
-                            atom.label,
+                            previousAtom.uniqueId,
+                            atom.uniqueId,
                             distance,
                             null,
                             '.',
@@ -467,34 +471,34 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                     }
                 }
             }
-            
+
             // If no bond with previous atom, check others in reverse order
             let foundBond = false;
-            
+
             // Check atoms before hydrogen (in reverse)
             for (let i = atomIndex - 1; i >= 0 && !foundBond; i--) {
                 const partner = structure.atoms[i];
-                
+
                 if (partner.atomType === 'H') {
-                    continue; 
+                    continue;
                 }
-                
-                if (!(partner.disorderGroup === atom.disorderGroup || 
-                      partner.disorderGroup === 0 || 
-                      atom.disorderGroup === 0)) {
-                    continue; 
+
+                if (!(partner.disorderGroup === atom.disorderGroup ||
+                    partner.disorderGroup === 0 ||
+                    atom.disorderGroup === 0)) {
+                    continue;
                 }
-                
+
                 const partnerPos = partner.position.toCartesian(structure.cell);
                 const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
-                
+
                 const diff = math.subtract(hydrogenPosition, partnerPosition);
                 const distance = math.norm(diff);
-                
+
                 if (distance <= this.maxBondDistance) {
                     newBonds.push(new Bond(
-                        partner.label,
-                        atom.label,
+                        partner.uniqueId,
+                        atom.uniqueId,
                         distance,
                         null,
                         '.',
@@ -502,32 +506,32 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                     foundBond = true;
                 }
             }
-            
+
             // Only check atoms after hydrogen if no bond found yet
             if (!foundBond && atomIndex < structure.atoms.length - 1) {
                 for (let i = atomIndex + 1; i < structure.atoms.length && !foundBond; i++) {
                     const partner = structure.atoms[i];
-                    
+
                     if (partner.atomType === 'H') {
-                        continue; 
+                        continue;
                     }
-                    
-                    if (!(partner.disorderGroup === atom.disorderGroup || 
-                          partner.disorderGroup === 0 || 
-                          atom.disorderGroup === 0)) {
-                        continue; 
+
+                    if (!(partner.disorderGroup === atom.disorderGroup ||
+                        partner.disorderGroup === 0 ||
+                        atom.disorderGroup === 0)) {
+                        continue;
                     }
-                    
+
                     const partnerPos = partner.position.toCartesian(structure.cell);
                     const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
-                    
+
                     const diff = math.subtract(hydrogenPosition, partnerPosition);
                     const distance = math.norm(diff);
-                    
+
                     if (distance <= this.maxBondDistance) {
                         newBonds.push(new Bond(
-                            partner.label,
-                            atom.label,
+                            partner.uniqueId,
+                            atom.uniqueId,
                             distance,
                             null,
                             '.',
@@ -537,7 +541,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                 }
             }
         });
-        
+
         return newBonds;
     }
 
@@ -551,17 +555,17 @@ export class IsolatedHydrogenFixer extends BaseFilter {
         if (structure.bonds.length === 0) {
             return [IsolatedHydrogenFixer.MODES.OFF];
         }
-        
+
         // Check if there are isolated hydrogen atoms
         const hasIsolatedHydrogens = this.findIsolatedHydrogenAtoms(structure).length > 0;
-        
+
         if (hasIsolatedHydrogens) {
             return [
                 IsolatedHydrogenFixer.MODES.ON,
                 //IsolatedHydrogenFixer.MODES.OFF,
             ];
         }
-        
+
         return [IsolatedHydrogenFixer.MODES.OFF];
     }
 }

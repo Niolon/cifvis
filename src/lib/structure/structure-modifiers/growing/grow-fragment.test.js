@@ -22,15 +22,15 @@ import {
 
 describe('Helper Functions', () => {   
     test('createBondIdentifier orders labels consistently', () => {
-        expect(createBondIdentifier('C1@1_555', 'O2@2_565')).toBe('C1@1_555->O2@2_565');
-        expect(createBondIdentifier('O2@2_565', 'C1@1_555')).toBe('C1@1_555->O2@2_565'); // Reversed input
+        expect(createBondIdentifier('C1|1_555', 'O2|2_565')).toBe('C1|1_555->O2|2_565');
+        expect(createBondIdentifier('O2|2_565', 'C1|1_555')).toBe('C1|1_555->O2|2_565'); // Reversed input
         expect(createBondIdentifier('A', 'B')).toBe('A->B');
         expect(createBondIdentifier('B', 'A')).toBe('A->B');
     });
 
     test('createHBondIdentifier correctly formats labels', () => {
         expect(createHBondIdentifier('D@1', 'H@1', 'A@2')).toBe('D@1-H@1...A@2');
-        expect(createHBondIdentifier('O1', 'H1A', 'N2@2_655')).toBe('O1-H1A...N2@2_655');
+        expect(createHBondIdentifier('O1', 'H1A', 'N2|2_655')).toBe('O1-H1A...N2|2_655');
     });
 });
 
@@ -39,8 +39,8 @@ describe('ConnectedGroup', () => {
 
     test('constructor splits symmetry correctly', () => {
         expect(group.groupIndex).toBe(0);
-        expect(group.symmetryId).toBe('2');
-        expect(group.translationId).toBe('565');
+        expect(group.appliedSymmetry.id).toBe('2');
+        expect(group.appliedSymmetry.key).toBe('2_565');
     });
 
     test('getSymmetryString returns the full string', () => {
@@ -66,9 +66,9 @@ describe('ConnectingBondGroup', () => {
 
     test('constructor sets properties correctly', () => {
         expect(bondGroup.originIndex).toBe(0);
-        expect(bondGroup.originSymmetry).toBe('1_555');
+        expect(bondGroup.originSymmetry.key).toBe('1_555');
         expect(bondGroup.targetIndex).toBe(0);
-        expect(bondGroup.targetSymmetry).toBe('2_555');
+        expect(bondGroup.targetSymmetry.key).toBe('2_555');
         expect(bondGroup.connectingBonds).toEqual(connectingBonds);
         expect(bondGroup.creationOriginIndex).toBe(0);
     });
@@ -124,7 +124,7 @@ describe('Structure dependent methods', () => {
             atomGroups = structure.calculateConnectedGroups();
             atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
         }
 
@@ -140,11 +140,11 @@ describe('Structure dependent methods', () => {
             expect(seedConnectionsPerGroup[0].length).toBe(1);
             const connection0 = seedConnectionsPerGroup[0][0];
             expect(connection0.targetIndex).toBe(1); // Target is group 1 (N1)
-            expect(connection0.targetSymmetry).toBe('2_565');
+            expect(connection0.targetSymmetry.key).toBe('2_565');
             expect(connection0.bonds.length).toBe(1);
             expect(connection0.bonds[0]).toBeInstanceOf(ConnectingBond);
-            expect(connection0.bonds[0].originAtom).toBe('O1');
-            expect(connection0.bonds[0].targetAtom).toBe('N1');
+            expect(connection0.bonds[0].originAtom).toBe('O1|1_555');
+            expect(connection0.bonds[0].targetAtom).toBe('N1|2_565');
             expect(connection0.bonds[0].bondLength).toBe(2.0);
             expect(connection0.bonds[0].bondLengthSU).toBe(0.02);
 
@@ -188,13 +188,17 @@ describe('Structure dependent methods', () => {
             
             const connection0 = seedConnectionsPerGroup[0][0];
             expect(connection0.targetIndex).toBe(1); // Target is group 1 (N1)
-            expect(connection0.targetSymmetry).toBe('2_565');
+            expect(connection0.targetSymmetry.key).toBe('2_565');
             expect(connection0.bonds.length).toBe(2); // Two atomic bonds form this connection
 
             expect(connection0.bonds).toEqual(
                 expect.arrayContaining([
-                    expect.objectContaining({ originAtom: 'C1', targetAtom: 'N1', bondLength: 1.8 }),
-                    expect.objectContaining({ originAtom: 'O1', targetAtom: 'N1', bondLength: 1.9 }),
+                    expect.objectContaining({
+                        originAtom: 'C1|1_555', targetAtom: 'N1|2_565', bondLength: 1.8,
+                    }),
+                    expect.objectContaining({
+                        originAtom: 'O1|1_555', targetAtom: 'N1|2_565', bondLength: 1.9,
+                    }),
                 ]),
             );
         });
@@ -212,17 +216,17 @@ describe('Structure dependent methods', () => {
 
             const connToN1 = seedConnectionsPerGroup[0].find(c => c.targetIndex === 1);
             expect(connToN1).toBeDefined();
-            expect(connToN1.targetSymmetry).toBe('2_565');
+            expect(connToN1.targetSymmetry.key).toBe('2_565');
             expect(connToN1.bonds.length).toBe(1);
-            expect(connToN1.bonds[0].originAtom).toBe('O1');
-            expect(connToN1.bonds[0].targetAtom).toBe('N1');
+            expect(connToN1.bonds[0].originAtom).toBe('O1|1_555');
+            expect(connToN1.bonds[0].targetAtom).toBe('N1|2_565');
 
             const connToS1 = seedConnectionsPerGroup[0].find(c => c.targetIndex === 2);
             expect(connToS1).toBeDefined();
-            expect(connToS1.targetSymmetry).toBe('3_444');
+            expect(connToS1.targetSymmetry.key).toBe('3_444');
             expect(connToS1.bonds.length).toBe(1);
-            expect(connToS1.bonds[0].originAtom).toBe('C1');
-            expect(connToS1.bonds[0].targetAtom).toBe('S1');
+            expect(connToS1.bonds[0].originAtom).toBe('C1|1_555');
+            expect(connToS1.bonds[0].targetAtom).toBe('S1|3_444');
         });
 
         test('should handle symmetry bonds from different origin groups', () => {
@@ -240,7 +244,7 @@ describe('Structure dependent methods', () => {
             // Connection from Group 0
             expect(seedConnectionsPerGroup[0].length).toBe(1);
             expect(seedConnectionsPerGroup[0][0].targetIndex).toBe(1); // N1
-            expect(seedConnectionsPerGroup[0][0].targetSymmetry).toBe('2_565');
+            expect(seedConnectionsPerGroup[0][0].targetSymmetry.key).toBe('2_565');
 
             // No connections from Group 1 (N1)
             expect(seedConnectionsPerGroup[1].length).toBe(0); 
@@ -248,7 +252,7 @@ describe('Structure dependent methods', () => {
             // Connection from Group 2 (S1)
             expect(seedConnectionsPerGroup[2].length).toBe(1);
             expect(seedConnectionsPerGroup[2][0].targetIndex).toBe(3); // P1
-            expect(seedConnectionsPerGroup[2][0].targetSymmetry).toBe('4_555');
+            expect(seedConnectionsPerGroup[2][0].targetSymmetry.key).toBe('4_555');
 
             // No connections from Group 3 (P1)
             expect(seedConnectionsPerGroup[3].length).toBe(0);
@@ -297,9 +301,9 @@ describe('Structure dependent methods', () => {
             const bondGroup = danglingConnections[0];
             expect(bondGroup).toBeInstanceOf(ConnectingBondGroup);
             expect(bondGroup.originIndex).toBe(0);
-            expect(bondGroup.originSymmetry).toBe(identSymmString);
+            expect(bondGroup.originSymmetry.key).toBe(identSymmString);
             expect(bondGroup.targetIndex).toBe(1);
-            expect(bondGroup.targetSymmetry).toBe('2_565');
+            expect(bondGroup.targetSymmetry.key).toBe('2_565');
             expect(bondGroup.connectingBonds).toEqual(b1);
             expect(bondGroup.creationOriginIndex).toBe(0);
 
@@ -323,8 +327,8 @@ describe('Structure dependent methods', () => {
             expect(danglingConnections.length).toBe(2);
             expect(danglingConnections[0].creationOriginIndex).toBe(0);
             expect(danglingConnections[1].creationOriginIndex).toBe(0);
-            expect(danglingConnections[0].targetSymmetry).toBe('2_565');
-            expect(danglingConnections[1].targetSymmetry).toBe('3_444');
+            expect(danglingConnections[0].targetSymmetry.key).toBe('2_565');
+            expect(danglingConnections[1].targetSymmetry.key).toBe('3_444');
 
             expect(processedConnections.size).toBe(2);
             expect(processedConnections.has('0_1_555_1_2_565')).toBe(true); // 0 -> 1 via 2_565
@@ -348,12 +352,12 @@ describe('Structure dependent methods', () => {
             expect(bondGroup0).toBeDefined();
             expect(bondGroup0.originIndex).toBe(0);
             expect(bondGroup0.targetIndex).toBe(1);
-            expect(bondGroup0.targetSymmetry).toBe('2_565');
+            expect(bondGroup0.targetSymmetry.key).toBe('2_565');
 
             expect(bondGroup1).toBeDefined();
             expect(bondGroup1.originIndex).toBe(1);
             expect(bondGroup1.targetIndex).toBe(0);
-            expect(bondGroup1.targetSymmetry).toBe('3_565');
+            expect(bondGroup1.targetSymmetry.key).toBe('3_565');
 
             expect(processedConnections.size).toBe(2);
             expect(processedConnections.has('0_1_555_1_2_565')).toBe(true);
@@ -403,7 +407,7 @@ describe('Structure dependent methods', () => {
             atomGroups = structure.calculateConnectedGroups();
             atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
 
             // Initialize discoveredGroups with identity for each group
@@ -441,7 +445,7 @@ describe('Structure dependent methods', () => {
             expect(result.newDanglingConnections.length).toBe(1);
             const newDangling = result.newDanglingConnections[0];
             expect(newDangling.originIndex).toBe(1); // Origin is the group we just reached
-            expect(newDangling.originSymmetry).toBe('2_565');
+            expect(newDangling.originSymmetry.key).toBe('2_565');
             expect(newDangling.targetIndex).toBe(2); // Target from seed
             // targetSymmetry should be the result of combining '3_444' (seed) with '2_565' (current origin)
             expect(newDangling.connectingBonds).toEqual(bondsForSeed);
@@ -502,9 +506,9 @@ describe('Structure dependent methods', () => {
             expect(result.foundTranslations.length).toBe(1);
             const translation = result.foundTranslations[0];
             expect(translation.originIndex).toBe(1); // From N1
-            expect(translation.originSymmetry).toBe('2_555');
+            expect(translation.originSymmetry.key).toBe('2_555');
             expect(translation.targetIndex).toBe(0); // To C1 (group 0)
-            expect(translation.targetSymmetry).toBe('1_565'); // Direct target symmetry
+            expect(translation.targetSymmetry.key).toBe('1_565'); // Direct target symmetry
             expect(translation.creationOriginIndex).toBe(0);
 
             expect(processedConnections.size).toBe(1); // The translational link was added to processed
@@ -559,8 +563,8 @@ describe('Structure dependent methods', () => {
             // Bond 2: N1 (G1) -> C1 (G0) via symm op '2_565'
             // '2_565' means: apply symmetry operation #2, and translate by (0,1,0) from standard origin.
             // When exploring from N1 (already at symm '2_555' due to the first bond),
-            // applying this '2_565' (as direct target symmetry) to C1 will result in C1@2_565.
-            // C1@2_565 is a translational duplicate of C1@1_555 (the ASU C1).
+            // applying this '2_565' (as direct target symmetry) to C1 will result in C1|2_565.
+            // C1|2_565 is a translational duplicate of C1|1_555 (the ASU C1).
             // So, this path should lead to a translationLink.
             structureHelper.addBond('N1', 'C1', '2_556');
 
@@ -578,66 +582,66 @@ describe('Structure dependent methods', () => {
             expect(networkConnections.length).toBe(2);
 
             const cbg_C1_to_N1_symm = networkConnections.find(
-                bg => bg.originIndex === 0 && bg.targetIndex === 1 && bg.targetSymmetry === '2_555',
+                bg => bg.originIndex === 0 && bg.targetIndex === 1 && bg.targetSymmetry.key === '2_555',
             );
             expect(cbg_C1_to_N1_symm).toBeDefined();
-            expect(cbg_C1_to_N1_symm.originSymmetry).toBe(identSymmString);
+            expect(cbg_C1_to_N1_symm.originSymmetry.key).toBe(identSymmString);
             expect(cbg_C1_to_N1_symm.creationOriginIndex).toBe(0);
-            expect(cbg_C1_to_N1_symm.connectingBonds[0].originAtom).toBe('C1');
-            expect(cbg_C1_to_N1_symm.connectingBonds[0].targetAtom).toBe('N1');
+            expect(cbg_C1_to_N1_symm.connectingBonds[0].originAtom).toBe('C1|1_555');
+            expect(cbg_C1_to_N1_symm.connectingBonds[0].targetAtom).toBe('N1|2_555');
 
             const cbg_N1_to_C1_symm = networkConnections.find(
-                bg => bg.originIndex === 1 && bg.targetIndex === 0 && bg.targetSymmetry === '2_556',
+                bg => bg.originIndex === 1 && bg.targetIndex === 0 && bg.targetSymmetry.key === '2_556',
             );
             expect(cbg_N1_to_C1_symm).toBeDefined();
-            expect(cbg_N1_to_C1_symm.originSymmetry).toBe(identSymmString);
+            expect(cbg_N1_to_C1_symm.originSymmetry.key).toBe(identSymmString);
             expect(cbg_N1_to_C1_symm.creationOriginIndex).toBe(1);
-            expect(cbg_N1_to_C1_symm.connectingBonds[0].originAtom).toBe('N1');
-            expect(cbg_N1_to_C1_symm.connectingBonds[0].targetAtom).toBe('C1');
+            expect(cbg_N1_to_C1_symm.connectingBonds[0].originAtom).toBe('N1|1_555');
+            expect(cbg_N1_to_C1_symm.connectingBonds[0].targetAtom).toBe('C1|2_556');
 
             // Assertions for translationLinks
             // Each network connection will explore one step further, leading to a translational link.
             expect(translationLinks.length).toBe(2);
 
-            // Path: C1@1_555 -> N1@2_555 (network). From N1@2_555, seed N1->C1@2_565 leads to C1@1_575.
-            // This C1@1_575 is a translation of C1@1_555.
+            // Path: C1|1_555 -> N1|2_555 (network). From N1|2_555, seed N1->C1|2_565 leads to C1|1_575.
+            // This C1|1_575 is a translation of C1|1_555.
             const tl_from_N1_at_2_555 = translationLinks.find(
-                bg => bg.originIndex === 1 && bg.originSymmetry === '2_555' && // From N1@2_555
-                      bg.targetIndex === 0 && bg.targetSymmetry === '1_564',   // To C1 via direct target symmetry
+                bg => bg.originIndex === 1 && bg.originSymmetry.key === '2_555' && // From N1|2_555
+                      bg.targetIndex === 0 && bg.targetSymmetry.key === '1_566',
             );
             expect(tl_from_N1_at_2_555).toBeDefined();
             expect(tl_from_N1_at_2_555.creationOriginIndex).toBe(0); // Path started from C1
-            expect(tl_from_N1_at_2_555.connectingBonds[0].originAtom).toBe('N1');
-            expect(tl_from_N1_at_2_555.connectingBonds[0].targetAtom).toBe('C1');
+            expect(tl_from_N1_at_2_555.connectingBonds[0].originAtom).toBe('N1|1_555');
+            expect(tl_from_N1_at_2_555.connectingBonds[0].targetAtom).toBe('C1|2_556');
 
-            // Path: N1@1_555 -> C1@2_565 (network). From C1@2_565, seed C1->N1@2_555 leads to N1@1_575.
-            // This N1@1_575 is a translation of N1@1_555.
+            // Path: N1|1_555 -> C1|2_565 (network). From C1|2_565, seed C1->N1|2_555 leads to N1|1_575.
+            // This N1|1_575 is a translation of N1|1_555.
             const tl_from_C1_at_2_556 = translationLinks.find(
-                bg => bg.originIndex === 0 && bg.originSymmetry === '2_556' && // From C1@2_556
-                      bg.targetIndex === 1 && bg.targetSymmetry === '1_566',   // To N1 via direct target symmetry
+                bg => bg.originIndex === 0 && bg.originSymmetry.key === '2_556' && // From C1|2_556
+                      bg.targetIndex === 1 && bg.targetSymmetry.key === '1_564',
             );
             expect(tl_from_C1_at_2_556).toBeDefined();
             expect(tl_from_C1_at_2_556.creationOriginIndex).toBe(1); // Path started from N1
-            expect(tl_from_C1_at_2_556.connectingBonds[0].originAtom).toBe('C1');
-            expect(tl_from_C1_at_2_556.connectingBonds[0].targetAtom).toBe('N1');
+            expect(tl_from_C1_at_2_556.connectingBonds[0].originAtom).toBe('C1|1_555');
+            expect(tl_from_C1_at_2_556.connectingBonds[0].targetAtom).toBe('N1|2_555');
 
             // Assertions for discoveredGroups
             expect(discoveredGroups.length).toBe(2); // For Group 0 (C1) and Group 1 (N1)
 
-            // Discovered groups for creationOriginIndex 0 (path starting from C1@1_555)
-            // Should contain C1@1_555 (identity) and N1@2_555 (from C1 -> N1@2_555 connection)
+            // Discovered groups for creationOriginIndex 0 (path starting from C1|1_555)
+            // Should contain C1|1_555 (identity) and N1|2_555 (from C1 -> N1|2_555 connection)
             expect(discoveredGroups[0].length).toBe(2);
             expect(discoveredGroups[0]).toEqual(expect.arrayContaining([
-                expect.objectContaining({ groupIndex: 0, symmetryId: '1', translationId: '555' }), // C1@1_555
-                expect.objectContaining({ groupIndex: 1, symmetryId: '2', translationId: '555' }), // N1@2_555
+                expect.objectContaining({ groupIndex: 0, appliedSymmetry: expect.objectContaining({ key: '1_555' }) }),
+                expect.objectContaining({ groupIndex: 1, appliedSymmetry: expect.objectContaining({ key: '2_555' }) }),
             ]));
 
-            // Discovered groups for creationOriginIndex 1 (path starting from N1@1_555)
-            // Should contain N1@1_555 (identity) and C1@2_565 (from N1 -> C1@2_565 connection)
+            // Discovered groups for creationOriginIndex 1 (path starting from N1|1_555)
+            // Should contain N1|1_555 (identity) and C1|2_565 (from N1 -> C1|2_565 connection)
             expect(discoveredGroups[1].length).toBe(2);
             expect(discoveredGroups[1]).toEqual(expect.arrayContaining([
-                expect.objectContaining({ groupIndex: 1, symmetryId: '1', translationId: '555' }), // N1@1_555
-                expect.objectContaining({ groupIndex: 0, symmetryId: '2', translationId: '556' }), // C1@2_565
+                expect.objectContaining({ groupIndex: 1, appliedSymmetry: expect.objectContaining({ key: '1_555' }) }),
+                expect.objectContaining({ groupIndex: 0, appliedSymmetry: expect.objectContaining({ key: '2_556' }) }),
             ]));
         });
 
@@ -670,11 +674,11 @@ describe('Structure dependent methods', () => {
             const { networkConnections, translationLinks, discoveredGroups } = createConnectivity(
                 structure, atomGroups,
             );
-            expect(networkConnections.length).toBe(1); // C1@1_555 -> N1@2_555
+            expect(networkConnections.length).toBe(1); // C1|1_555 -> N1|2_555
             expect(translationLinks.length).toBe(0);
-            // Discovered for C1's path: C1@1_555 (initial), N1@2_555 (new)
+            // Discovered for C1's path: C1|1_555 (initial), N1|2_555 (new)
             expect(discoveredGroups[0].length).toBe(2);
-            // Discovered for N1's path: N1@1_555 (initial)
+            // Discovered for N1's path: N1|1_555 (initial)
             expect(discoveredGroups[1].length).toBe(1);
         });
     });
@@ -695,7 +699,7 @@ describe('Structure dependent methods', () => {
             const atomGroups = structure.calculateConnectedGroups();
             const atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
             identSymmString = structure.symmetry.identitySymOpId + '_555';
             return createConnectivity(structure, atomGroups);
@@ -724,8 +728,8 @@ describe('Structure dependent methods', () => {
             expect(requiredSymmetryInstances).toContain('1@.@2_555'); // Symmetry for N1
         
             expect(interGroupBonds.length).toBe(1);
-            expect(interGroupBonds[0].originSymmAtom).toBe('C1'); // Should be identity by default
-            expect(interGroupBonds[0].targetSymmAtom).toBe('N1@2_555');
+            expect(interGroupBonds[0].originAtomId).toBe('C1|1_555');
+            expect(interGroupBonds[0].targetAtomId).toBe('N1|2_555');
             expect(interGroupBonds[0].bondLength).toBe(1.5);
             expect(interGroupBonds[0].bondLengthSU).toBe(0.01);
         });
@@ -741,7 +745,7 @@ describe('Structure dependent methods', () => {
                 .addBond('C1', 'N1', '1_555', 1.4, 0.02); // Explicit identity symmetry
 
             const { networkConnections } = setupConnectivity(helper);
-            // Expected networkConnections: one entry for C1@1_555 -> N1 via direct targetSymmetry '1_555'
+            // Expected networkConnections: one entry for C1|1_555 -> N1 via direct targetSymmetry '1_555'
             // originSymmetry = '1_555', targetSymmetry = '1_555'
 
             const { requiredSymmetryInstances, interGroupBonds } = collectSymmetryRequirements(
@@ -753,56 +757,56 @@ describe('Structure dependent methods', () => {
             expect(requiredSymmetryInstances).toContain('1@.@1_555'); // N1 at identity
 
             expect(interGroupBonds.length).toBe(1);
-            expect(interGroupBonds[0].originSymmAtom).toBe('C1');
-            expect(interGroupBonds[0].targetSymmAtom).toBe('N1');
+            expect(interGroupBonds[0].originAtomId).toBe('C1|1_555');
+            expect(interGroupBonds[0].targetAtomId).toBe('N1|1_555');
             expect(interGroupBonds[0].bondLength).toBe(1.4);
         });
 
         test('should handle origin=symmetry, finalTarget=symmetry (chain connection)', () => {
             // Scenario 3: atom1 = originAtom@symm, atom2 = targetAtom@symm_combined
-            // Path: A@1_555 -> B@2_555. Then from B@2_555, connect to D via '3_555' (relative to ASU B).
-            // Results in B@2_555 -> D@4_555 (using P21/m: op3(op2(X)) = op4 with y-translation)
+            // Path: A|1_555 -> B|2_555. Then from B|2_555, connect to D via '3_555' (relative to ASU B).
+            // Results in B|2_555 -> D|4_555 (using P21/m: op3(op2(X)) = op4 with y-translation)
             const helper = new MockStructureHelper()
                 .addAtom('A1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('B1', 'N', 0.2, 0.2, 0.2) // Group 1
                 .addAtom('D1', 'O', 0.3, 0.3, 0.3) // Group 2
-                .addBond('A1', 'B1', '2_555', 1.5, 0.01)  // A1 -> B1@2_555
-                .addBond('B1', 'D1', '3_555', 1.6, 0.02); // B1(ASU) -> D1@3_555
+                .addBond('A1', 'B1', '2_555', 1.5, 0.01)  // A1 -> B1|2_555
+                .addBond('B1', 'D1', '3_555', 1.6, 0.02); // B1(ASU) -> D1|3_555
 
             const { networkConnections } = setupConnectivity(helper);
             // networkConnections will include:
-            // 1. A1@1_555 -> B1 via 2_555 (results in B1@2_555)
-            // 2. B1@1_555 -> D1 via 3_555 (results in D1@3_555)
-            // 3. B1@2_555 -> D1 via 3_555 (results in D1@4_555)
+            // 1. A1|1_555 -> B1 via 2_555 (results in B1|2_555)
+            // 2. B1|1_555 -> D1 via 3_555 (results in D1|3_555)
+            // 3. B1|2_555 -> D1 via 3_555 (results in D1|4_555)
 
             const { requiredSymmetryInstances, interGroupBonds } = collectSymmetryRequirements(
                 networkConnections, structure, identSymmString,
             );
 
-            expect(requiredSymmetryInstances.size).toBe(5); // A1@1, B1@1, D1@1, B1@2_555, D1@3_555, D1@4_555
+            expect(requiredSymmetryInstances.size).toBe(5); // A1@1, B1@1, D1@1, B1|2_555, D1|3_555, D1|4_555
             expect(requiredSymmetryInstances).toContain('0@.@1_555'); // A1
             expect(requiredSymmetryInstances).toContain('1@.@1_555'); // B1
-            expect(requiredSymmetryInstances).toContain('1@.@2_555'); // B1@2_555
-            expect(requiredSymmetryInstances).toContain('2@.@3_555'); // D1@3_555
-            expect(requiredSymmetryInstances).toContain('2@.@4_555'); // D1@4_555
+            expect(requiredSymmetryInstances).toContain('1@.@2_555'); // B1|2_555
+            expect(requiredSymmetryInstances).toContain('2@.@3_555'); // D1|3_555
+            expect(requiredSymmetryInstances).toContain('2@.@4_545');
 
             expect(interGroupBonds.length).toBe(3);
             expect(interGroupBonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ originSymmAtom: 'A1', targetSymmAtom: 'B1@2_555' }),
-                expect.objectContaining({ originSymmAtom: 'B1', targetSymmAtom: 'D1@3_555' }),
-                expect.objectContaining({ originSymmAtom: 'B1@2_555', targetSymmAtom: 'D1@4_555' }),
+                expect.objectContaining({ originAtomId: 'A1|1_555', targetAtomId: 'B1|2_555' }),
+                expect.objectContaining({ originAtomId: 'B1|1_555', targetAtomId: 'D1|3_555' }),
+                expect.objectContaining({ originAtomId: 'B1|1_555', targetAtomId: 'D1|3_555' }),
             ]));
         });
 
         test('should handle origin=symmetry, finalTarget=identity (return to identity)', () => {
             // Scenario 4: atom1 = originAtom@symm, atom2 = targetAtom
-            // Path: A@1_555 -> B@2_555. Then from B@2_555, connect to A via '2_555' (relative to ASU B).
-            // Results in B@2_555 -> A@1_555 (using P21/m: op2(op2(X)) = op1)
+            // Path: A|1_555 -> B|2_555. Then from B|2_555, connect to A via '2_555' (relative to ASU B).
+            // Results in B|2_555 -> A|1_555 (using P21/m: op2(op2(X)) = op1)
             const helper = new MockStructureHelper()
                 .addAtom('A1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('B1', 'N', 0.2, 0.2, 0.2) // Group 1
-                .addBond('A1', 'B1', '2_555', 1.5, 0.01)  // A1 -> B1@2_555
-                .addBond('B1', 'A1', '2_555', 1.5, 0.01); // B1(ASU) -> A1@2_555
+                .addBond('A1', 'B1', '2_555', 1.5, 0.01)  // A1 -> B1|2_555
+                .addBond('B1', 'A1', '2_555', 1.5, 0.01); // B1(ASU) -> A1|2_555
 
             const { networkConnections } = setupConnectivity(helper);
 
@@ -810,16 +814,16 @@ describe('Structure dependent methods', () => {
                 networkConnections, structure, identSymmString,
             );
 
-            expect(requiredSymmetryInstances.size).toBe(4); // A1@1, B1@1, B1@2_555, A1@2_555
+            expect(requiredSymmetryInstances.size).toBe(4); // A1@1, B1@1, B1|2_555, A1|2_555
             expect(requiredSymmetryInstances).toContain('0@.@1_555'); // A1
             expect(requiredSymmetryInstances).toContain('1@.@1_555'); // B1
-            expect(requiredSymmetryInstances).toContain('1@.@2_555'); // B1@2_555
-            expect(requiredSymmetryInstances).toContain('0@.@2_555'); // A1@2_555
+            expect(requiredSymmetryInstances).toContain('1@.@2_555'); // B1|2_555
+            expect(requiredSymmetryInstances).toContain('0@.@2_555'); // A1|2_555
 
             expect(interGroupBonds.length).toBe(2); // A1->B1@S2, B1->A1@S2, B1@S2->A1@S1
             expect(interGroupBonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ originSymmAtom: 'A1', targetSymmAtom: 'B1@2_555' }),
-                expect.objectContaining({ originSymmAtom: 'B1', targetSymmAtom: 'A1@2_555' }),
+                expect.objectContaining({ originAtomId: 'A1|1_555', targetAtomId: 'B1|2_555' }),
+                expect.objectContaining({ originAtomId: 'B1|1_555', targetAtomId: 'A1|2_555' }),
             ]));
         });
 
@@ -848,8 +852,8 @@ describe('Structure dependent methods', () => {
 
             expect(interGroupBonds.length).toBe(2);
             expect(interGroupBonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ originSymmAtom: 'C1', targetSymmAtom: 'N1@2_555', bondLength: 1.5 }),
-                expect.objectContaining({ originSymmAtom: 'C1', targetSymmAtom: 'S1@3_555', bondLength: 1.8 }),
+                expect.objectContaining({ originAtomId: 'C1|1_555', targetAtomId: 'N1|2_555', bondLength: 1.5 }),
+                expect.objectContaining({ originAtomId: 'C1|1_555', targetAtomId: 'S1|3_555', bondLength: 1.8 }),
             ]));
         });
 
@@ -881,8 +885,8 @@ describe('Structure dependent methods', () => {
 
             expect(interGroupBonds.length).toBe(2);
             expect(interGroupBonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ originSymmAtom: 'C1', targetSymmAtom: 'N1@2_555', bondLength: 1.5 }),
-                expect.objectContaining({ originSymmAtom: 'S1', targetSymmAtom: 'P1@4_555', bondLength: 2.0 }),
+                expect.objectContaining({ originAtomId: 'C1|1_555', targetAtomId: 'N1|2_555', bondLength: 1.5 }),
+                expect.objectContaining({ originAtomId: 'S1|1_555', targetAtomId: 'P1|4_555', bondLength: 2.0 }),
             ]));
         });
 
@@ -905,8 +909,8 @@ describe('Structure dependent methods', () => {
 
             expect(interGroupBonds.length).toBe(1);
             expect(interGroupBonds[0]).toEqual(expect.objectContaining({
-                originSymmAtom: 'C1',
-                targetSymmAtom: 'C1@2_555',
+                originAtomId: 'C1|1_555',
+                targetAtomId: 'C1|2_555',
                 bondLength: 2.5,
                 bondLengthSU: 0.05,
             }));
@@ -935,8 +939,8 @@ describe('Structure dependent methods', () => {
             expect(requiredSymmetryInstances).toContain('1@.@2_555'); // Symmetry for N1
 
             expect(interGroupBonds.length).toBe(2);
-            expect(interGroupBonds[0].originSymmAtom).toBe('C1'); // Should be identity by default
-            expect(interGroupBonds[0].targetSymmAtom).toBe('N1@2_555');
+            expect(interGroupBonds[0].originAtomId).toBe('C1|1_555');
+            expect(interGroupBonds[0].targetAtomId).toBe('N1|2_555');
             expect(interGroupBonds[0].bondLength).toBe(1.5);
             expect(interGroupBonds[0].bondLengthSU).toBe(0.01);
         });
@@ -949,7 +953,7 @@ describe('Structure dependent methods', () => {
 
     describe('generateSymmetryAtoms', () => {
         test('should generate symmetry atoms and handle special positions', () => {
-            // Start with C1 and apply '2_555' symmetry, it should generate C1@2_555
+            // Start with C1 and apply '2_555' symmetry, it should generate C1|2_555
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1);
             structure = structureHelper.build();
@@ -962,15 +966,15 @@ describe('Structure dependent methods', () => {
             );
 
             expect(specialPositionAtoms.size).toBe(0);
-            expect(newAtoms.length).toBe(2);
+            expect(newAtoms).toHaveLength(1);
             expect(newAtoms[0].label).toBe('C1');
-            expect(newAtoms[1].label).toBe('C1@2_555');
+            expect(newAtoms[0].uniqueId).toBe('C1|2_555');
         });
     });
 
     describe('generateSymmetryBonds', () => {
         test('should generate symmetry bonds and handle special positions', () => {
-            // C1-C2 with identity and requires C1@2_555-C2@2_555
+            // C1-C2 with identity and requires C1|2_555-C2|2_555
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1)
                 .addAtom('C2', 'C', 0.2, 0.2, 0.2)
@@ -991,11 +995,11 @@ describe('Structure dependent methods', () => {
             expect(newBonds.length).toBe(2);
             expect(newBonds).toEqual(
                 expect.arrayContaining([
-                    expect.objectContaining({ atom1Label: 'C1', atom2Label: 'C2' }), // Original
-                    expect.objectContaining({ atom1Label: 'C1@2_555', atom2Label: 'C2@2_555' }), // Symmetry
+                    expect.objectContaining({ atom1Id: 'C1|1_555', atom2Id: 'C2|1_555' }),
+                    expect.objectContaining({ atom1Id: 'C1|2_555', atom2Id: 'C2|2_555' }),
                 ]),
             );
-            expect(atomLabels.size).toBe(4);
+            expect(atomLabels.size).toBe(2);
         });        test('should correctly add inter-group bonds', () => {
             const atomGroups = [
                 { atoms: [{ label: 'C1', atomType: 'C' }], bonds: [], hBonds: [] }, // Group 0
@@ -1006,12 +1010,13 @@ describe('Structure dependent methods', () => {
                 '1@.@2_555', // N1 at symm '2_555'
             ]);
             const interGroupBonds = [
-                { originSymmAtom: 'C1', targetSymmAtom: 'N1@2_555', bondLength: 1.6, bondLengthSU: 0.02 },
+                { originAtomId: 'C1', targetAtomId: 'N1|2_555', bondLength: 1.6, bondLengthSU: 0.02 },
             ];
             const specialPositionAtoms = new Map();
             // Simulating atoms that would be in the final structure
             const newAtomsList = [ 
-                { label: 'C1', atomType: 'C' }, { label: 'N1@2_555', atomType: 'N' },
+                { label: 'C1', uniqueId: 'C1|1_555', atomType: 'C' },
+                { label: 'N1', uniqueId: 'N1|2_555', atomType: 'N' },
             ];
             const identSymmString = '1_555';
 
@@ -1022,15 +1027,15 @@ describe('Structure dependent methods', () => {
 
             expect(newBonds.length).toBe(1); // Only the inter-group bond
             expect(newBonds[0]).toEqual(expect.objectContaining({
-                atom1Label: 'C1',
-                atom2Label: 'N1@2_555',
+                atom1Id: 'C1|1_555',
+                atom2Id: 'N1|2_555',
                 bondLength: 1.6,
                 bondLengthSU: 0.02,
                 atom2SiteSymmetry: '.', // Inter-group bonds are created as direct connections
             }));
             expect(atomLabels.size).toBe(2);
-            expect(atomLabels).toContain('C1');
-            expect(atomLabels).toContain('N1@2_555');
+            expect(atomLabels).toContain('C1|1_555');
+            expect(atomLabels).toContain('N1|2_555');
         });
 
         test('should handle special positions in inter-group bonds', () => {
@@ -1045,14 +1050,15 @@ describe('Structure dependent methods', () => {
                 '0@.@3_555', 
             ]);
             const interGroupBonds = [
-                { originSymmAtom: 'C1@3_555', targetSymmAtom: 'N1@2_555', bondLength: 1.7, bondLengthSU: 0.03 },
+                { originAtomId: 'C1|3_555', targetAtomId: 'N1|2_555', bondLength: 1.7, bondLengthSU: 0.03 },
             ];
             const specialPositionAtoms = new Map([
-                ['C1@3_555', 'C1X'], // C1@3_555 is mapped to C1X
-                ['N1@2_555', 'N1Y'], // N1@2_555 is mapped to N1Y
+                ['C1|3_555', 'C1X|1_555'],
+                ['N1|2_555', 'N1Y|1_555'],
             ]);
             const newAtomsList = [ // Atoms that are kept after special position resolution
-                { label: 'C1X', atomType: 'C' }, { label: 'N1Y', atomType: 'N' },
+                { label: 'C1X', uniqueId: 'C1X|1_555', atomType: 'C' },
+                { label: 'N1Y', uniqueId: 'N1Y|1_555', atomType: 'N' },
             ];
             const identSymmString = '1_555';
 
@@ -1063,13 +1069,13 @@ describe('Structure dependent methods', () => {
 
             expect(newBonds.length).toBe(1);
             expect(newBonds[0]).toEqual(expect.objectContaining({
-                atom1Label: 'C1X', // Resolved from C1@3_555
-                atom2Label: 'N1Y', // Resolved from N1@2_555
+                atom1Id: 'C1X|1_555',
+                atom2Id: 'N1Y|1_555',
                 bondLength: 1.7,
             }));
             expect(atomLabels.size).toBe(2);
-            expect(atomLabels).toContain('C1X');
-            expect(atomLabels).toContain('N1Y');
+            expect(atomLabels).toContain('C1X|1_555');
+            expect(atomLabels).toContain('N1Y|1_555');
         });
 
         test('should not add duplicate inter-group bonds (after special position resolution)', () => {
@@ -1079,16 +1085,16 @@ describe('Structure dependent methods', () => {
             ];
             const requiredSymmetryInstances = new Set(); // Not relevant for this specific test focus
             const interGroupBonds = [
-                { originSymmAtom: 'C1', targetSymmAtom: 'N1@2_555', bondLength: 1.6, bondLengthSU: 0.02 },
+                { originAtomId: 'C1', targetAtomId: 'N1|2_555', bondLength: 1.6, bondLengthSU: 0.02 },
                 // This bond, after special position mapping, will be identical to the first one
-                { originSymmAtom: 'C1@3_555', targetSymmAtom: 'N1@4_555', bondLength: 1.6, bondLengthSU: 0.02 },
+                { originAtomId: 'C1|3_555', targetAtomId: 'N1|4_555', bondLength: 1.6, bondLengthSU: 0.02 },
             ];
             const specialPositionAtoms = new Map([
-                ['C1@3_555', 'C1'],      // Map C1@3_555 back to C1
-                ['N1@4_555', 'N1@2_555'], // Map N1@4_555 back to N1@2_555
+                ['C1|3_555', 'C1|1_555'],
+                ['N1|4_555', 'N1|2_555'], // Map N1|4_555 back to N1|2_555
             ]);
             const newAtomsList = [
-                { label: 'C1', atomType: 'C' }, { label: 'N1@2_555', atomType: 'N' },
+                { label: 'C1', atomType: 'C' }, { label: 'N1|2_555', atomType: 'N' },
             ];
             const identSymmString = '1_555';
 
@@ -1098,8 +1104,8 @@ describe('Structure dependent methods', () => {
             );
 
             expect(newBonds.length).toBe(1); // Only one bond should be present
-            expect(newBonds[0].atom1Label).toBe('C1');
-            expect(newBonds[0].atom2Label).toBe('N1@2_555');
+            expect(newBonds[0].atom1Id).toBe('C1|1_555');
+            expect(newBonds[0].atom2Id).toBe('N1|2_555');
         });
 
         test(
@@ -1123,11 +1129,11 @@ describe('Structure dependent methods', () => {
                 // '1@.@symm_B' for N1@symm_B (used in interGroupBonds)
                 ]);
                 const interGroupBonds = [
-                    { originSymmAtom: 'C1@symm_A', targetSymmAtom: 'N1@symm_B', bondLength: 1.5, bondLengthSU: 0.01 },
+                    { originAtomId: 'C1|2_555', targetAtomId: 'N1|3_555', bondLength: 1.5, bondLengthSU: 0.01 },
                 ];
                 const specialPositionAtoms = new Map([
-                    ['C1@symm_A', 'C1'], 
-                    ['N1@symm_B', 'C2'], 
+                    ['C1|2_555', 'C1|1_555'],
+                    ['N1|3_555', 'C2|1_555'],
                 ]);
                 const newAtomsList = [ 
                     { label: 'C1', atomType: 'C' }, { label: 'C2', atomType: 'C' }, { label: 'N1', atomType: 'N' },
@@ -1158,12 +1164,12 @@ describe('Structure dependent methods', () => {
             const requiredSymmetryInstances = new Set(['0@.@2_555']);
             const atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
             const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
                 requiredSymmetryInstances, atomGroups, structure, identSymmString,
             );
-            const atomLabels = new Set(newAtoms.map(a => a.label));
+            const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
             const newHBonds = generateSymmetryHBonds(
                 structure, atomGroups, atomGroupMap, requiredSymmetryInstances,
                 specialPositionAtoms, atomLabels, identSymmString,
@@ -1173,12 +1179,12 @@ describe('Structure dependent methods', () => {
             expect(newHBonds).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({ 
-                        donorAtomLabel: 'O1', hydrogenAtomLabel: 'H1', acceptorAtomLabel: 'N1', 
+                        donorAtomId: 'O1|1_555', hydrogenAtomId: 'H1|1_555', acceptorAtomId: 'N1|1_555',
                     }), // Original
                     expect.objectContaining({ 
-                        donorAtomLabel: 'O1@2_555',
-                        hydrogenAtomLabel: 'H1@2_555',
-                        acceptorAtomLabel: 'N1@2_555', 
+                        donorAtomId: 'O1|2_555',
+                        hydrogenAtomId: 'H1|2_555',
+                        acceptorAtomId: 'N1|2_555',
                     }), // Symmetry
                 ]),
             );
@@ -1190,27 +1196,27 @@ describe('Structure dependent methods', () => {
                 .addAtom('H1', 'H', 0.15, 0.15, 0.15) // Group 0
                 .addAtom('N1', 'N', 0.4, 0.4, 0.4)   // Group 1
                 .addBond('O1', 'H1', '.')
-                // External H-bond: O1-H1 ... N1@2_555
+                // External H-bond: O1-H1 ... N1|2_555
                 .addHBond('O1', 'H1', 'N1', '2_555', { daDist: 2.8, angle: 160 });
             structure = structureHelper.build();
             atomGroups = structure.calculateConnectedGroups();
             const identSymmString = structure.symmetry.identitySymOpId + '_555'; // '1_555'
             const atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
 
             // Required symmetry:
             // - Group 0 (O1, H1) at symm '3_555'
             // - Group 1 (N1) at symm combine('3_555', '2_555') -> '4_545' (from P21/m default)
             const requiredSymmetryInstances = new Set([
-                '0@.@3_555', // For O1@3_555, H1@3_555
-                '1@.@4_545', // For N1@4_545 (target acceptor)
+                '0@.@3_555', // For O1|3_555, H1|3_555
+                '1@.@4_545', // For N1|4_545 (target acceptor)
             ]);
             const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
                 requiredSymmetryInstances, atomGroups, structure, identSymmString,
             );
-            const atomLabels = new Set(newAtoms.map(a => a.label)); // Will contain N1@4_545
+            const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
 
             const newHBonds = generateSymmetryHBonds(
                 structure, atomGroups, atomGroupMap, requiredSymmetryInstances,
@@ -1218,16 +1224,16 @@ describe('Structure dependent methods', () => {
             );
 
             // Expected:
-            // 1. Original ASU H-bond: O1-H1...N1@2_555 (remains as is, acceptor is external)
-            // 2. Symm-generated external H-bond: O1@3_555 - H1@3_555 ... N1@4_545 (acceptor is internal)
+            // 1. Original ASU H-bond: O1-H1...N1|2_555 (remains as is, acceptor is external)
+            // 2. Symm-generated external H-bond: O1|3_555 - H1|3_555 ... N1|4_545 (acceptor is internal)
             expect(newHBonds.length).toBe(2);
             expect(newHBonds).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({ // Original external H-bond
-                        donorAtomLabel: 'O1', hydrogenAtomLabel: 'H1', acceptorAtomLabel: 'N1',
+                        donorAtomId: 'O1|1_555', hydrogenAtomId: 'H1|1_555', acceptorAtomId: 'N1|2_555',
                         acceptorAtomSymmetry: '2_555' }),
                     expect.objectContaining({ // Symmetry generated, acceptor now internal
-                        donorAtomLabel: 'O1@3_555', hydrogenAtomLabel: 'H1@3_555', acceptorAtomLabel: 'N1@4_545',
+                        donorAtomId: 'O1|3_555', hydrogenAtomId: 'H1|3_555', acceptorAtomId: 'N1|4_545',
                         acceptorAtomSymmetry: '.' }),
                 ]),
             );
@@ -1239,13 +1245,13 @@ describe('Structure dependent methods', () => {
                 .addAtom('H1', 'H', 0.15, 0.15, 0.15) // Group 0
                 .addAtom('N1', 'N', 0.4, 0.4, 0.4)   // Group 1
                 .addBond('O1', 'H1', '.')
-                .addHBond('O1', 'H1', 'N1', '2_555', { daDist: 2.8, angle: 160 }); // O1-H1 ... N1@2_555
+                .addHBond('O1', 'H1', 'N1', '2_555', { daDist: 2.8, angle: 160 }); // O1-H1 ... N1|2_555
             structure = structureHelper.build();
             atomGroups = structure.calculateConnectedGroups();
             const identSymmString = structure.symmetry.identitySymOpId + '_555';
             const atomGroupMap = new Map();
             atomGroups.forEach((group, i) => {
-                group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+                group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
             });
 
             // Required symmetry:
@@ -1255,7 +1261,7 @@ describe('Structure dependent methods', () => {
             const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
                 requiredSymmetryInstances, atomGroups, structure, identSymmString,
             );
-            const atomLabels = new Set(newAtoms.map(a => a.label)); // Will NOT contain N1@4_545
+            const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
 
             const newHBonds = generateSymmetryHBonds(
                 structure, atomGroups, atomGroupMap, requiredSymmetryInstances,
@@ -1263,16 +1269,16 @@ describe('Structure dependent methods', () => {
             );
 
             // Expected:
-            // 1. Original ASU H-bond: O1-H1...N1@2_555
-            // 2. Symm-generated external H-bond: O1@3_555 - H1@3_555 ... N1 (acceptor is N1, symm is '4_545')
+            // 1. Original ASU H-bond: O1-H1...N1|2_555
+            // 2. Symm-generated external H-bond: O1|3_555 - H1|3_555 ... N1 (acceptor is N1, symm is '4_545')
             expect(newHBonds.length).toBe(2);
             expect(newHBonds).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({
-                        donorAtomLabel: 'O1', hydrogenAtomLabel: 'H1', acceptorAtomLabel: 'N1',
+                        donorAtomId: 'O1|1_555', hydrogenAtomId: 'H1|1_555', acceptorAtomId: 'N1|2_555',
                         acceptorAtomSymmetry: '2_555' }),
                     expect.objectContaining({
-                        donorAtomLabel: 'O1@3_555', hydrogenAtomLabel: 'H1@3_555', acceptorAtomLabel: 'N1',
+                        donorAtomId: 'O1|3_555', hydrogenAtomId: 'H1|3_555', acceptorAtomId: 'N1|4_545',
                         acceptorAtomSymmetry: '4_545' }), // Combined symm of '3_555' and '2_555'
                 ]),
             );
@@ -1282,27 +1288,27 @@ describe('Structure dependent methods', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('O1', 'O').addAtom('H1', 'H').addAtom('N1', 'N') // G0: O1,H1; G1: N1
                 .addBond('O1', 'H1', '.')
-                .addHBond('O1', 'H1', 'N1', '2_555'); // O1-H1 ... N1@2_555
+                .addHBond('O1', 'H1', 'N1', '2_555'); // O1-H1 ... N1|2_555
             structure = structureHelper.build();
             atomGroups = structure.calculateConnectedGroups();
             const identSymmString = '1_555';
             const atomGroupMap = new Map();
-            atomGroups.forEach((g, i) => g.atoms.forEach(a => atomGroupMap.set(a.label, i)));
+            atomGroups.forEach((g, i) => g.atoms.forEach(a => atomGroupMap.set(a.uniqueId, i)));
 
-            const requiredSymmetryInstances = new Set(['0@.@3_555', '1@.@4_545']); // O1@3_555, H1@3_555, N1@4_545
-            const specialPositionAtoms = new Map([['N1@4_545', 'N1_mapped']]); // N1@4_545 maps to N1_mapped
+            const requiredSymmetryInstances = new Set(['0@.@3_555', '1@.@4_545']); // O1|3_555, H1|3_555, N1|4_545
+            const specialPositionAtoms = new Map([['N1|4_545', 'N1_mapped|1_555']]);
             const { newAtoms } = generateSymmetryAtoms(
                 requiredSymmetryInstances, atomGroups, structure, identSymmString,
             );
-            const atomLabels = new Set([...newAtoms.map(a => a.label), 'N1_mapped']); // Ensure N1_mapped is "present"
+            const atomLabels = new Set([...newAtoms.map(a => a.uniqueId), 'N1_mapped|1_555']);
 
             const newHBonds = generateSymmetryHBonds(
                 structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms,
                 atomLabels, identSymmString,
             );
             expect(newHBonds.find(hb => {
-                return hb.donorAtomLabel === 'O1@3_555' 
-                  && hb.acceptorAtomLabel === 'N1_mapped' 
+                return hb.donorAtomId === 'O1|3_555'
+                  && hb.acceptorAtomId === 'N1_mapped|1_555'
                   && hb.acceptorAtomSymmetry === '.';
             })).toBeDefined();
         });
@@ -1331,8 +1337,8 @@ describe('Structure dependent methods', () => {
             );
 
             expect(additionalBonds.length).toBe(1);
-            expect(additionalBonds[0].atom1Label).toBe('C1@1_555');
-            expect(additionalBonds[0].atom2Label).toBe('N1');
+            expect(additionalBonds[0].atom1Id).toBe('C1|1_555');
+            expect(additionalBonds[0].atom2Id).toBe('N1|1_555');
             expect(additionalBonds[0].atom2SiteSymmetry).toBe('2_565');
         });
     });
@@ -1360,20 +1366,22 @@ describe('Structure dependent methods', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('N1', 'N', 0.4, 0.4, 0.4) // Group 1
-                .addBond('C1', 'N1', '2_555');    // C1 -> N1@2_555
+                .addBond('C1', 'N1', '2_555');    // C1 -> N1|2_555
             structure = structureHelper.build();
 
             const { grownStructure } = growFragment(structure);
-            // Expected atoms: C1 (ASU), N1 (ASU), N1@2_555
-            // Expected bonds: C1 - N1@2_555 (direct bond after growth)
+            // Expected atoms: C1 (ASU), N1 (ASU), N1|2_555
+            // Expected bonds: C1 - N1|2_555 (direct bond after growth)
 
             expect(grownStructure.atoms.length).toBe(3);
-            expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining(['C1', 'N1', 'N1@2_555']));
+            expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(
+                expect.arrayContaining(['C1|1_555', 'N1|1_555', 'N1|2_555']),
+            );
             
             expect(grownStructure.bonds.length).toBe(1);
             const bond = grownStructure.bonds[0];
             expect(bond.atom1Label).toBe('C1');
-            expect(bond.atom2Label).toBe('N1@2_555');
+            expect(bond.atom2Id).toBe('N1|2_555');
             expect(bond.atom2SiteSymmetry).toBe('.'); // Bond is now direct
         });
 
@@ -1381,21 +1389,23 @@ describe('Structure dependent methods', () => {
             // C1 (Group 0) bonds to its own image C1 via symmetry '2_555'
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1) // Group 0
-                .addBond('C1', 'C1', '2_555');    // C1 -> C1@2_555
+                .addBond('C1', 'C1', '2_555');    // C1 -> C1|2_555
             structure = structureHelper.build();
 
             const { grownStructure } = growFragment(structure);
-            // Expected atoms: C1 (ASU), C1@2_555
-            // Expected bonds: C1 - C1@2_555 (direct bond after growth)
+            // Expected atoms: C1 (ASU), C1|2_555
+            // Expected bonds: C1 - C1|2_555 (direct bond after growth)
 
             expect(grownStructure.atoms.length).toBe(2);
-            expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining(['C1', 'C1@2_555']));
+            expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(
+                expect.arrayContaining(['C1|1_555', 'C1|2_555']),
+            );
 
             expect(grownStructure.bonds.length).toBe(2);
             const bond = grownStructure.bonds[0];
             // Order might vary due to createBondIdentifier
-            const bondLabels = [bond.atom1Label, bond.atom2Label].sort();
-            expect(bondLabels).toEqual(['C1', 'C1@2_555'].sort());
+            const bondIds = [bond.atom1Id, bond.atom2Id].sort();
+            expect(bondIds).toEqual(['C1|1_555', 'C1|2_555'].sort());
             expect(bond.atom2SiteSymmetry).toBe('.');
         });
 
@@ -1404,36 +1414,32 @@ describe('Structure dependent methods', () => {
                 .addAtom('A1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('B1', 'N', 0.2, 0.2, 0.2) // Group 1
                 .addAtom('C1', 'O', 0.3, 0.3, 0.3) // Group 2
-                .addBond('A1', 'B1', '2_555')      // A1 -> B1@2_555
-                .addBond('B1', 'C1', '3_555');     // B1 -> C1@3_555 (from ASU B1)
+                .addBond('A1', 'B1', '2_555')      // A1 -> B1|2_555
+                .addBond('B1', 'C1', '3_555');     // B1 -> C1|3_555 (from ASU B1)
             structure = structureHelper.build();
             
             const { grownStructure } = growFragment(structure);
 
             // Expected atoms: A1, B1, C1 (ASU)
-            // B1@2_555 (from A1-B1@S1)
-            // C1_symm (from B1@2_555 connecting to C1 via '3_555' relative to ASU B1)
-            //   Symmetry of B1@2_555 is '2_555'. Connecting op to C1 is '3_555'.
+            // B1|2_555 (from A1-B1@S1)
+            // C1_symm (from B1|2_555 connecting to C1 via '3_555' relative to ASU B1)
+            //   Symmetry of B1|2_555 is '2_555'. Connecting op to C1 is '3_555'.
             //   Final symm for C1 is combine('3_555', '2_555').
             //   P21/m: op2 = (-x,y+1/2,-z), op3 = (-x,-y,-z)
             //   op3(op2(X)) = op3(-x,y+1/2,-z) = (x, -(y+1/2), z) = (x, -y-1/2, z). This is op4 with y-translation.
-            //   So C1_symm should be C1@4_545 (approx, depends on exact combination logic for translations)
+            //   So C1_symm should be C1|4_545 (approx, depends on exact combination logic for translations)
             //   Let's verify with actual combination: combine('3_555','2_555') -> '4_545'
-            const combinedSymm_B1_to_C1 = structure.symmetry.combineSymmetryCodes(
-                '2_555', '3_555',
-            ); // Should be '4_545'
-
             expect(grownStructure.atoms.length).toBe(6);
-            expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining([
-                'A1', 'B1', 'C1', 'B1@2_555', `C1@${combinedSymm_B1_to_C1}`,
+            expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(expect.arrayContaining([
+                'A1|1_555', 'B1|1_555', 'C1|1_555',
+                'B1|2_555', 'C1|3_555', 'C1|4_545',
             ]));
 
             expect(grownStructure.bonds.length).toBe(3);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ atom1Label: 'A1', atom2Label: 'B1@2_555', atom2SiteSymmetry: '.' }),
-                expect.objectContaining(
-                    { atom1Label: 'B1@2_555', atom2Label: `C1@${combinedSymm_B1_to_C1}`, atom2SiteSymmetry: '.' },
-                ),
+                expect.objectContaining({ atom1Id: 'A1|1_555', atom2Id: 'B1|2_555', atom2SiteSymmetry: '.' }),
+                expect.objectContaining({ atom1Id: 'B1|1_555', atom2Id: 'C1|3_555', atom2SiteSymmetry: '.' }),
+                expect.objectContaining({ atom1Id: 'B1|2_555', atom2Id: 'C1|4_545', atom2SiteSymmetry: '.' }),
             ]));
         });
 
@@ -1441,50 +1447,50 @@ describe('Structure dependent methods', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('N1', 'N', 0.4, 0.4, 0.4); // Group 1
-            structureHelper.addBond('C1', 'N1', '2_555'); // C1@1_555 -> N1@2_555
-            structureHelper.addBond('N1', 'C1', '2_565'); // N1@1_555 -> C1@2_565
+            structureHelper.addBond('C1', 'N1', '2_555'); // C1|1_555 -> N1|2_555
+            structureHelper.addBond('N1', 'C1', '2_565'); // N1|1_555 -> C1|2_565
             // This setup leads to translational links as detailed in thought process.
             structure = structureHelper.build();
 
             const { grownStructure } = growFragment(structure);
 
-            // Expected atoms: C1, N1 (ASU), N1@2_555, C1@2_565
+            // Expected atoms: C1, N1 (ASU), N1|2_555, C1|2_565
             expect(grownStructure.atoms.length).toBe(4);
-            expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining([
-                'C1', 'N1', 'N1@2_555', 'C1@2_565',
+            expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(expect.arrayContaining([
+                'C1|1_555', 'N1|1_555', 'N1|2_555', 'C1|2_565',
             ]));
 
             // Expected bonds:
-            // 1. C1 - N1@2_555 (symm '.') from network connection
-            // 2. N1 - C1@2_565 (symm '.') from network connection
-            // 3. N1@2_555 - C1 (symm '1_565') from translationLink
-            // 4. C1@2_565 - N1 (symm '1_545') from translationLink
+            // 1. C1 - N1|2_555 (symm '.') from network connection
+            // 2. N1 - C1|2_565 (symm '.') from network connection
+            // 3. N1|2_555 - C1 (symm '1_565') from translationLink
+            // 4. C1|2_565 - N1 (symm '1_545') from translationLink
             expect(grownStructure.bonds.length).toBe(4);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
                 expect.objectContaining({ 
-                    atom1Label: 'C1', 
-                    atom2Label: 'N1@2_555', 
+                    atom1Id: 'C1|1_555',
+                    atom2Id: 'N1|2_555',
                     atom2SiteSymmetry: '.', 
                     bondLength: 1.5, 
                     bondLengthSU: 0.01,
                 }),
                 expect.objectContaining({ 
-                    atom1Label: 'N1', 
-                    atom2Label: 'C1@2_565', 
+                    atom1Id: 'N1|1_555',
+                    atom2Id: 'C1|2_565',
                     atom2SiteSymmetry: '.', 
                     bondLength: 1.5, 
                     bondLengthSU: 0.01, 
                 }),
                 expect.objectContaining({ 
-                    atom1Label: 'N1@2_555', 
-                    atom2Label: 'C1', 
+                    atom1Id: 'N1|2_555',
+                    atom2Id: 'C1|2_565',
                     atom2SiteSymmetry: '1_575', 
                     bondLength: 1.5, 
                     bondLengthSU: 0.01, 
                 }),
                 expect.objectContaining({ 
-                    atom1Label: 'C1@2_565', 
-                    atom2Label: 'N1', 
+                    atom1Id: 'C1|2_565',
+                    atom2Id: 'N1|2_555',
                     atom2SiteSymmetry: '1_575',
                     bondLength: 1.5, 
                     bondLengthSU: 0.01, 
@@ -1497,33 +1503,34 @@ describe('Structure dependent methods', () => {
             // C2 at (0.1,0.1,0.1)
             // Bond C1-C2 (intra-group)
             // Bond C2 to C1 via symm '3_555' (op3 is inversion -x,-y,-z)
-            // C1@3_555 should map to C1.
+            // C1|3_555 should map to C1.
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0, 0, 0)       // Group 0
                 .addAtom('C2', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addBond('C1', 'C2', '.')          // Intra-group bond
-                .addBond('C2', 'C1', '3_555');     // C2 connects to C1@3_555
+                .addBond('C2', 'C1', '3_555');     // C2 connects to C1|3_555
             structure = structureHelper.build();
 
             const { grownStructure } = growFragment(structure);
 
-            // Expected atoms: C1, C2 (ASU), C2@3_555. (C1@3_555 maps to C1)
+            // Expected atoms: C1, C2 (ASU), C2|3_555. (C1|3_555 maps to C1)
             expect(grownStructure.atoms.length).toBe(3);
-            expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining([
-                'C1', 'C2', 'C2@3_555',
+            expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(expect.arrayContaining([
+                'C1|1_555', 'C2|1_555', 'C2|3_555',
             ]));
 
             // Expected bonds:
             // 1. C1-C2 (original ASU bond)
-            // 2. C1-C2@3_555 (symm copy of C1-C2, where C1@3_555 became C1)
-            // The inter-group bond C2 - C1@3_555 becomes C2-C1, which is a duplicate of #1 and should be skipped.
+            // 2. C1-C2|3_555 (symm copy of C1-C2, where C1|3_555 became C1)
+            // The inter-group bond C2 - C1|3_555 becomes C2-C1, which is a duplicate of #1 and should be skipped.
             expect(grownStructure.bonds.length).toBe(2);
             const bond1 = grownStructure.bonds.find(b => 
-                (b.atom1Label === 'C1' && b.atom2Label === 'C2') || (b.atom1Label === 'C2' && b.atom2Label === 'C1'),
+                (b.atom1Id === 'C1|1_555' && b.atom2Id === 'C2|1_555')
+                || (b.atom1Id === 'C2|1_555' && b.atom2Id === 'C1|1_555'),
             );
             const bond2 = grownStructure.bonds.find(b =>
-                (b.atom1Label === 'C1' && b.atom2Label === 'C2@3_555') 
-                || (b.atom1Label === 'C2@3_555' && b.atom2Label === 'C1'),
+                (b.atom1Id === 'C1|1_555' && b.atom2Id === 'C2|3_555')
+                || (b.atom1Id === 'C2|3_555' && b.atom2Id === 'C1|1_555'),
             );
             expect(bond1).toBeDefined();
             expect(bond1.atom2SiteSymmetry).toBe('.');
@@ -1537,12 +1544,12 @@ describe('Structure dependent methods', () => {
                 .addAtom('H1', 'H', 0.15, 0.15, 0.15) // Group 0
                 .addAtom('N1', 'N', 0.4, 0.4, 0.4)   // Group 1
                 .addBond('O1', 'H1', '.') // O1-H1 bond
-                .addHBond('O1', 'H1', 'N1', '2_555'); // O1-H1 ... N1@2_555
+                .addHBond('O1', 'H1', 'N1', '2_555'); // O1-H1 ... N1|2_555
             structure = structureHelper.build();
 
             const { grownStructure } = growFragment(structure);
 
-            // Expected atoms: O1, H1, N1 (ASU), N1@2_555
+            // Expected atoms: O1, H1, N1 (ASU), N1|2_555
             expect(grownStructure.atoms.length).toBe(3);
             expect(grownStructure.atoms.map(a => a.label)).toEqual(expect.arrayContaining([
                 'O1', 'H1', 'N1',
@@ -1553,7 +1560,7 @@ describe('Structure dependent methods', () => {
             expect(grownStructure.bonds[0].atom1Label).toBe('O1');
             expect(grownStructure.bonds[0].atom2Label).toBe('H1');
 
-            // Expected H-Bonds: O1-H1...N1@2_555
+            // Expected H-Bonds: O1-H1...N1|2_555
             expect(grownStructure.hBonds.length).toBe(1);
             const hbond = grownStructure.hBonds[0];
             expect(hbond.donorAtomLabel).toBe('O1');

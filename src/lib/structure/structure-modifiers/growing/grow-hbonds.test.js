@@ -34,7 +34,10 @@ describe('growExternalHBonds', () => {
 
         expect(grown.hBonds.length).toBe(3); // 2 from default + 1 added = 3 total
         expect(grown.hBonds.every(hb => hb.acceptorAtomSymmetry === '.')).toBe(true);
-        expect(grown.hBonds.some(hb => hb.donorAtomLabel === 'O1' && hb.acceptorAtomLabel === 'N1')).toBe(true);
+        // Use donorAtomId and acceptorAtomId which contain uniqueId format
+        expect(grown.hBonds.some(hb =>
+            hb.donorAtomId.startsWith('O1|') && hb.acceptorAtomId.startsWith('N1|'),
+        )).toBe(true);
     });
 
     test('grows external HBonds with symmetry operations', () => {
@@ -43,10 +46,10 @@ describe('growExternalHBonds', () => {
         // Should have both the original internal HBond and the grown external one
         expect(grown.hBonds.length).toBeGreaterThan(basicStructure.hBonds.length);
 
-        // Check for the grown HBond with updated labels
-        const grownHBond = grown.hBonds.find(hb => 
-            hb.donorAtomLabel === 'O1@2_555' && 
-            hb.acceptorAtomLabel === 'N1@2_555' &&
+        // Check for the grown HBond with updated IDs (using uniqueId format)
+        const grownHBond = grown.hBonds.find(hb =>
+            hb.donorAtomId === 'O1|2_555' &&
+            hb.acceptorAtomId === 'N1|2_555' &&
             hb.acceptorAtomSymmetry === '.',
         );
         expect(grownHBond).toBeDefined();
@@ -58,8 +61,8 @@ describe('growExternalHBonds', () => {
         // Should have grown atoms from the acceptor group
         expect(grown.atoms.length).toBeGreaterThan(basicStructure.atoms.length);
 
-        // Check for grown atoms with symmetry labels
-        const grownAtoms = grown.atoms.filter(atom => atom.label.includes('@2_555'));
+        // Check for grown atoms with symmetry in uniqueId (not label)
+        const grownAtoms = grown.atoms.filter(atom => atom.uniqueId.includes('|2_555'));
         expect(grownAtoms.length).toBeGreaterThan(0);
 
         // Should have grown bonds within the acceptor group
@@ -77,8 +80,10 @@ describe('growExternalHBonds', () => {
 
         const grown = growExternalHBonds(structure);
 
-        // Count how many times N1@2_555 appears (should be once for each HBond but group grown only once)
-        const grownN1Atoms = grown.atoms.filter(atom => atom.label === 'N1@2_555');
+        // Count how many times N1 with 2_555 symmetry appears (should be once)
+        const grownN1Atoms = grown.atoms.filter(atom =>
+            atom.label === 'N1' && atom.uniqueId === 'N1|2_555',
+        );
         expect(grownN1Atoms.length).toBe(1); // Group should only be grown once
     });
 
@@ -93,9 +98,9 @@ describe('growExternalHBonds', () => {
 
         const grown = growExternalHBonds(structure);
 
-        // Should have grown atoms for both symmetry operations
-        const grown2_555 = grown.atoms.filter(atom => atom.label.includes('@2_555'));
-        const grown3_565 = grown.atoms.filter(atom => atom.label.includes('@3_565'));
+        // Should have grown atoms for both symmetry operations (check uniqueId)
+        const grown2_555 = grown.atoms.filter(atom => atom.uniqueId.includes('|2_555'));
+        const grown3_565 = grown.atoms.filter(atom => atom.uniqueId.includes('|3_565'));
 
         expect(grown2_555.length).toBeGreaterThan(0);
         expect(grown3_565.length).toBeGreaterThan(0);
@@ -114,11 +119,13 @@ describe('growExternalHBonds', () => {
 
         const grown = growExternalHBonds(structure);
 
-        const grownHBond = grown.hBonds.find(hb => 
-            hb.donorAtomLabel === 'N2' && 
-            hb.acceptorAtomLabel === 'S1@2_555',
+        // Find the original external HBond (donor is in ASU, acceptor has symmetry applied)
+        const grownHBond = grown.hBonds.find(hb =>
+            hb.donorAtomId.startsWith('N2|') &&
+            hb.acceptorAtomId === 'S1|2_555',
         );
 
+        expect(grownHBond).toBeDefined();
         expect(grownHBond.donorHydrogenDistance).toBe(1.1);
         expect(grownHBond.donorHydrogenDistanceSU).toBe(0.02);
         expect(grownHBond.acceptorHydrogenDistance).toBe(2.1);
@@ -140,8 +147,9 @@ describe('growExternalHBonds', () => {
         const grown = growExternalHBonds(structure);
 
         // All grown bonds should have atom2SiteSymmetry of '.'
-        const grownBonds = grown.bonds.filter(bond => 
-            bond.atom1Label.includes('@2_555') || bond.atom2Label.includes('@2_555'),
+        // Check using atom1Id/atom2Id which now contain uniqueId format
+        const grownBonds = grown.bonds.filter(bond =>
+            bond.atom1Id.includes('|2_555') || bond.atom2Id.includes('|2_555'),
         );
 
         grownBonds.forEach(bond => {
@@ -160,10 +168,10 @@ describe('growExternalHBonds', () => {
 
         const grown = growExternalHBonds(structure);
 
-        // Should find grown internal HBonds with updated labels
-        const grownInternalHBond = grown.hBonds.find(hb => 
-            hb.donorAtomLabel === 'N1@2_555' && 
-            hb.acceptorAtomLabel === 'C1@2_555' &&
+        // Should find grown internal HBonds with updated IDs
+        const grownInternalHBond = grown.hBonds.find(hb =>
+            hb.donorAtomId === 'N1|2_555' &&
+            hb.acceptorAtomId === 'C1|2_555' &&
             hb.acceptorAtomSymmetry === '.',
         );
 
@@ -207,12 +215,14 @@ describe('growExternalHBonds', () => {
         const grown = growExternalHBonds(structure);
 
         const originalA0 = structure.atoms.find(atom => atom.label === 'A0');
-        const grownA0 = grown.atoms.find(atom => atom.label === 'A0@2_555');
+        // Find grown atom by uniqueId instead of label
+        const grownA0 = grown.atoms.find(atom => atom.uniqueId === 'A0|2_555');
 
         expect(grownA0).toBeDefined();
+        expect(grownA0.label).toBe('A0'); // Label should be pure now
         expect(grownA0.atomType).toBe(originalA0.atomType);
         expect(grownA0.disorderGroup).toBe(originalA0.disorderGroup);
-        
+
         if (originalA0.adp) {
             expect(grownA0.adp).toBeDefined();
             expect(grownA0.adp.constructor.name).toBe(originalA0.adp.constructor.name);

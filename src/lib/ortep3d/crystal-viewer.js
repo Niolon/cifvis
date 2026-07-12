@@ -59,7 +59,7 @@ export class SelectionManager {
 
         // Remove any stored data that doesn't exist in current structure
         this.selectedData = new Set(
-            Array.from(this.selectedData).filter(stored => 
+            Array.from(this.selectedData).filter(stored =>
                 availableData.has(JSON.stringify({
                     type: stored.type,
                     ...this.getDataWithoutColor(stored),
@@ -100,27 +100,28 @@ export class SelectionManager {
      */
     getObjectDescriptorData(object) {
         if (!object.userData) {
-            return null; 
+            return null;
         }
-        
+
         switch (object.userData.type) {
             case 'atom':
                 return {
                     type: 'atom',
+                    id: object.userData.atomData.uniqueId,
                     label: object.userData.atomData.label,
                 };
             case 'bond':
                 return {
                     type: 'bond',
-                    atom1: object.userData.bondData.atom1Label,
-                    atom2: object.userData.bondData.atom2Label,
+                    atom1: object.userData.bondData.atom1Id,
+                    atom2: object.userData.bondData.atom2Id,
                 };
             case 'hbond':
                 return {
                     type: 'hbond',
-                    donor: object.userData.hbondData.donorAtomLabel,
-                    hydrogen: object.userData.hbondData.hydrogenAtomLabel,
-                    acceptor: object.userData.hbondData.acceptorAtomLabel,
+                    donor: object.userData.hbondData.donorAtomId,
+                    hydrogen: object.userData.hbondData.hydrogenAtomId,
+                    acceptor: object.userData.hbondData.acceptorAtomId,
                 };
             default:
                 return null;
@@ -134,7 +135,7 @@ export class SelectionManager {
      */
     hasMatchingData(data) {
         if (!data) {
-            return false; 
+            return false;
         }
 
         return Array.from(this.selectedData).some(stored => this.matchData(stored, data));
@@ -160,11 +161,11 @@ export class SelectionManager {
         this.selectedData.forEach(data => {
             colorCounts.set(data.color, (colorCounts.get(data.color) || 0) + 1);
         });
-        
+
         let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
         if (!color) {
             const minCount = Math.min(...colorCounts.values());
-            color = this.options.selection.markerColors.find(c => 
+            color = this.options.selection.markerColors.find(c =>
                 colorCounts.get(c) === minCount,
             );
         }
@@ -187,7 +188,7 @@ export class SelectionManager {
 
         const data = this.getObjectDescriptorData(object);
         if (!data) {
-            return null; 
+            return null;
         }
 
         let color;
@@ -215,19 +216,19 @@ export class SelectionManager {
      */
     matchData(data1, data2) {
         if (data1.type !== data2.type) {
-            return false; 
+            return false;
         }
 
         switch (data1.type) {
             case 'atom':
-                return data1.label === data2.label;
+                return data1.id === data2.id;
             case 'bond':
                 return (data1.atom1 === data2.atom1 && data1.atom2 === data2.atom2) ||
-                       (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
+                    (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
             case 'hbond':
                 return data1.donor === data2.donor &&
-                       data1.hydrogen === data2.hydrogen &&
-                       data1.acceptor === data2.acceptor;
+                    data1.hydrogen === data2.hydrogen &&
+                    data1.acceptor === data2.acceptor;
             default:
                 return false;
         }
@@ -279,8 +280,8 @@ export class SelectionManager {
     notifyCallbacks() {
         const selections = Array.from(this.selectedObjects).map(object => ({
             type: object.userData.type,
-            data: object.userData.type === 'hbond' ? object.userData.hbondData : 
-                object.userData.type === 'bond' ? object.userData.bondData : 
+            data: object.userData.type === 'hbond' ? object.userData.hbondData :
+                object.userData.type === 'bond' ? object.userData.bondData :
                     object.userData.atomData,
             color: object.selectionColor,
         }));
@@ -296,14 +297,14 @@ export class SelectionManager {
         if (mode !== 'single' && mode !== 'multiple') {
             throw new Error('Selection mode must be either "single" or "multiple"');
         }
-        
+
         this.options.mode = mode;
-        
+
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
             const lastSelected = selectedObjects[selectedObjects.length - 1];
             const lastData = this.getObjectDescriptorData(lastSelected);
-            
+
             this.clear();
             if (lastData) {
                 this.add(lastSelected);
@@ -319,6 +320,28 @@ export class SelectionManager {
     dispose() {
         this.clear();
         this.selectionCallbacks.clear();
+    }
+
+    /**
+     * Selects atoms matching the provided labels.
+     * @param {string[]} atomLabels - Labels of atoms to select
+     * @param {THREE.Object3D} container - Container with selectable objects
+     */
+    selectAtoms(atomLabels, container) {
+        const labelsSet = new Set(atomLabels);
+        container.traverse((object) => {
+            if (object.userData?.type === 'atom' &&
+                object.userData?.selectable &&
+                labelsSet.has(object.userData.atomData.label)) {
+
+                const data = this.getObjectDescriptorData(object);
+                if (!this.hasMatchingData(data)) {
+                    this.add(object);
+                    this.selectedData.add({ ...data, color: object.selectionColor });
+                }
+            }
+        });
+        this.notifyCallbacks();
     }
 }
 
@@ -411,7 +434,7 @@ export class CrystalViewer {
                 ...options.cell,
             },
         };
-  
+
         this.state = {
             isDragging: false,
             currentCifContent: null,
@@ -452,14 +475,14 @@ export class CrystalViewer {
 
         this.cameraController = createCameraController(this.container, this.options);
         this.camera = this.cameraController.camera;
-        
+
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.resizeRendererToDisplaySize();;
         this.container.appendChild(this.renderer.domElement);
-             
+
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
-        
+
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);
@@ -484,7 +507,7 @@ export class CrystalViewer {
      * }
      * ```
      */
-    async loadCIF(cifText, cifBlockIndex=0) {
+    async loadCIF(cifText, cifBlockIndex = 0) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
@@ -496,7 +519,7 @@ export class CrystalViewer {
                 structure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
             } catch (e) {
                 if (!this.options.fixCifErrors) {
-                    try{ 
+                    try {
                         const maybeFixedCifBlock = tryToFixCifBlock(cif.getBlock(cifBlockIndex));
                         structure = CrystalStructure.fromCIF(maybeFixedCifBlock);
                     } catch {
@@ -507,8 +530,8 @@ export class CrystalViewer {
                     throw e;
                 }
             }
-            await this.loadStructure(structure);            
-    
+            await this.loadStructure(structure);
+
             return { success: true };
         } catch (error) {
             console.error('Error loading structure:', error);
@@ -525,7 +548,7 @@ export class CrystalViewer {
     async loadStructure(structure) {
         this.state.baseStructure = structure;
         this.selections.clear();
-        
+
         // Complete reset of molecule container
         this.moleculeContainer.position.set(0, 0, 0);
         this.moleculeContainer.rotation.set(0, 0, 0);
@@ -533,23 +556,23 @@ export class CrystalViewer {
         this.moleculeContainer.updateMatrix();
         this.moleculeContainer.matrixAutoUpdate = true;  // Enable auto updates for new transformations
         this.moleculeContainer.updateMatrixWorld(true);
-        
+
         // Reset camera target and position
         this.cameraTarget.set(0, 0, 0);
         this.camera.position.copy(this.options.camera.initialPosition);
         this.camera.lookAt(this.cameraTarget);
-        
+
         // Reset structure center
         this.state.structureCenter.set(0, 0, 0);
-        
+
         this.update3DOrtep();
-        
+
         // Calculate initial rotation
         const rotation = structureOrientationMatrix(this.state.currentStructure);
         if (this.container.clientHeight > this.container.clientWidth) {
             rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
         }
-        
+
         if (rotation) {
             this.moleculeContainer.setRotationFromMatrix(rotation);
             this.moleculeContainer.updateMatrix();
@@ -558,7 +581,7 @@ export class CrystalViewer {
         // Calculate center from rotated structure for proper bounding box
         const extent = new THREE.Box3().setFromObject(this.moleculeContainer);
         extent.getCenter(this.state.structureCenter);
-        
+
         this.moleculeContainer.position.sub(this.state.structureCenter);
 
         this.updateCamera();
@@ -577,11 +600,11 @@ export class CrystalViewer {
         try {
             const currentRotation = this.moleculeContainer.matrix.clone();
             this.update3DOrtep();
-            
+
             // Restore rotation
             this.moleculeContainer.matrix.copy(currentRotation);
             this.moleculeContainer.matrixAutoUpdate = false;
-            
+
             this.requestRender();
             return { success: true };
         } catch (error) {
@@ -602,7 +625,7 @@ export class CrystalViewer {
             structure = modifier.apply(structure);
             drawCell = drawCell || modifier.drawCell;
         }
-        
+
         if (drawCell) {
             const cell3D = createCell3D(structure.cell, this.options.cell);
             this.moleculeContainer.add(cell3D);
@@ -632,10 +655,10 @@ export class CrystalViewer {
     removeStructure() {
         this.moleculeContainer.traverse((object) => {
             if (object.geometry) {
-                object.geometry.dispose(); 
+                object.geometry.dispose();
             }
             if (object.material) {
-                object.material.dispose(); 
+                object.material.dispose();
             }
         });
         this.moleculeContainer.clear();
@@ -689,7 +712,7 @@ export class CrystalViewer {
      */
     numberModifierModes(modifierName) {
         if (!this.state.baseStructure) {
-            return false; 
+            return false;
         }
         const atomfilteredStructure = this.modifiers.removeatoms.apply(this.state.baseStructure);
 
@@ -731,16 +754,16 @@ export class CrystalViewer {
         const pixelRatio = window.devicePixelRatio || 1;
         const width = Math.floor(this.container.clientWidth * pixelRatio);
         const height = Math.floor(this.container.clientHeight * pixelRatio);
-        
+
         const needResize = canvas.width !== width || canvas.height !== height;
         if (needResize) {
             // Set the internal pixel dimensions (renderer buffer size)
             this.renderer.setSize(width, height, false);
-            
+
             // Explicitly set the CSS dimensions to match the container
             canvas.style.width = `${this.container.clientWidth}px`;
             canvas.style.height = `${this.container.clientHeight}px`;
-            
+
             // Update the renderer's viewport
             this.renderer.setViewport(0, 0, width, height);
         }
@@ -775,7 +798,7 @@ export class CrystalViewer {
      */
     dispose() {
         this.controls.dispose();
-        
+
         this.scene.traverse((object) => {
             if (object.geometry) {
                 object.geometry.dispose();

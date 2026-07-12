@@ -51,8 +51,3 @@ coverage/
 .vite/
 *.local
 .nvmrc
-
-# Nix Shell
-shell.nix
-flake.lock
-flake.nix

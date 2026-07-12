@@ -1,11 +1,12 @@
 import { CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
-import { createSymAtomLabel } from './util.js';
+import { createAtomId, combineAtomId } from './util.js';
+import { AppliedSymmetry } from '../../applied-symmetry.js';
 
 /**
  * @typedef {object} SeedConnection
  * @property {number} targetIndex - Index of the target atom group.
- * @property {string} targetSymmetry - The symmetry operation code needed to reach the target group from the
+ * @property {AppliedSymmetry} targetSymmetry - The symmetry operation needed to reach the target group from the
  * origin group at identity.
  * @property {Array<ConnectingBond>} bonds - Specific bonds forming this connection.
  */
@@ -36,9 +37,10 @@ import { createSymAtomLabel } from './util.js';
 
 /**
  * @typedef {object} InterGroupBondInfo
- * @property {string} originSymmAtom - Label of the atom in the origin group instance (includes symmetry code 
- *  if not identity).
- * @property {string} targetSymmAtom - Label of the atom in the target group instance (includes symmetry code).
+ * @property {string} originAtomId - ID of the atom in the origin group.
+ * @property {AppliedSymmetry} originSymmetry - Symmetry of the origin group.
+ * @property {string} targetAtomId - ID of the atom in the target group.
+ * @property {AppliedSymmetry} targetSymmetry - Symmetry of the target group.
  * @property {number} bondLength - The length of the bond.
  * @property {number} bondLengthSU - Standard uncertainty of the bond length.
  */
@@ -76,21 +78,19 @@ export function createHBondIdentifier(donorAtomLabel, hydrogenAtomLabel, accepto
  * Represents a group of atoms in a specific symmetry position
  * @class
  * @property {number} groupIndex - Index of the group in the original structure
- * @property {string} symmetryId - Symmetry operation ID part of the symmetry code
- * @property {string} translationId - Translation ID part of the symmetry code (e.g., '555')
+ * @property {AppliedSymmetry} appliedSymmetry - Symmetry object defining position
  */
 export class ConnectedGroup {
     /**
      * Creates a new connected group
      * @param {number} groupIndex - Index of the group in the original structure
-     * @param {string} symmetry - Full symmetry operation code (e.g., '2_565')
+     * @param {AppliedSymmetry} appliedSymmetry - Symmetry object
      */
-    constructor(groupIndex, symmetry) {
+    constructor(groupIndex, appliedSymmetry) {
         this.groupIndex = groupIndex;
-        // Split symm code for efficient comparison later
-        const [symmetryId, translationId] = symmetry.split('_');
-        this.symmetryId = symmetryId;
-        this.translationId = translationId;
+        this.appliedSymmetry = typeof appliedSymmetry === 'string'
+            ? AppliedSymmetry.fromString(appliedSymmetry)
+            : appliedSymmetry;
     }
 
     /**
@@ -100,10 +100,14 @@ export class ConnectedGroup {
      *  different translations.
      */
     isTranslationalDuplicateOf(other) {
-        // Check if only the translation part differs
+        // Check if same group and same symmetry ID, but different translation
         return this.groupIndex === other.groupIndex &&
-               this.symmetryId === other.symmetryId &&
-               this.translationId !== other.translationId;
+            this.appliedSymmetry.id === other.appliedSymmetry.id &&
+            (
+                this.appliedSymmetry.translation[0] !== other.appliedSymmetry.translation[0] ||
+                this.appliedSymmetry.translation[1] !== other.appliedSymmetry.translation[1] ||
+                this.appliedSymmetry.translation[2] !== other.appliedSymmetry.translation[2]
+            );
     }
 
     /**
@@ -111,7 +115,7 @@ export class ConnectedGroup {
      * @returns {string} The combined symmetry and translation ID string.
      */
     getSymmetryString() {
-        return `${this.symmetryId}_${this.translationId}`;
+        return this.appliedSymmetry.toString();
     }
 }
 
@@ -123,8 +127,8 @@ export class ConnectedGroup {
  */
 export class ConnectingBond {
     constructor(originAtom, targetAtom, bondLength, bondLengthSU) {
-        this.originAtom = originAtom;
-        this.targetAtom = targetAtom;
+        this.originAtom = originAtom.includes('|') ? originAtom : createAtomId(originAtom, '1_555');
+        this.targetAtom = targetAtom.includes('|') ? targetAtom : createAtomId(targetAtom, '1_555');
         this.bondLength = bondLength;
         this.bondLengthSU = bondLengthSU;
     }
@@ -134,9 +138,9 @@ export class ConnectingBond {
  * Represents a bond group that crosses symmetry operations
  * @class
  * @property {number} originIndex - Index of the origin group
- * @property {string} originSymmetry - Symmetry operation of origin group
+ * @property {AppliedSymmetry} originSymmetry - Symmetry operation of origin group
  * @property {number} targetIndex - Index of the target group
- * @property {string} targetSymmetry - Direct symmetry operation for the target group
+ * @property {AppliedSymmetry} targetSymmetry - Direct symmetry operation for the target group
  * @property {ConnectingBond[]} connectingBonds - All bonds that form the connection between the two fragments
  * @property {number} creationOriginIndex - Index of the group within the asym. unit this bond originates from
  */
@@ -144,18 +148,22 @@ export class ConnectingBondGroup {
     /**
      * Represents a connection between two molecular fragments via symmetry
      * @param {number} originIndex - Index of the origin group
-     * @param {string} originSymmetry - Symmetry operation of origin group
+     * @param {AppliedSymmetry} originSymmetry - Symmetry operation of origin group
      * @param {number} targetIndex - Index of the target group
-     * @param {string} targetSymmetry - Direct symmetry operation for the target
+     * @param {AppliedSymmetry} targetSymmetry - Direct symmetry operation for the target
      * @param {ConnectingBond[]} connectingBonds - All bonds that form the connection between the two fragments
      * @param {number} creationOriginIndex - Index of the group within the asym. unit this bond originates from. Used to
      *  track which groups belong together when checking for translational duplicates.
      */
     constructor(originIndex, originSymmetry, targetIndex, targetSymmetry, connectingBonds, creationOriginIndex) {
         this.originIndex = originIndex;
-        this.originSymmetry = originSymmetry;
+        this.originSymmetry = typeof originSymmetry === 'string'
+            ? AppliedSymmetry.fromString(originSymmetry)
+            : originSymmetry;
         this.targetIndex = targetIndex;
-        this.targetSymmetry = targetSymmetry; // Direct symmetry operation for the target
+        this.targetSymmetry = typeof targetSymmetry === 'string'
+            ? AppliedSymmetry.fromString(targetSymmetry)
+            : targetSymmetry;
         this.connectingBonds = connectingBonds;
         this.creationOriginIndex = creationOriginIndex;
     }
@@ -167,19 +175,23 @@ export class ConnectingBondGroup {
      */
     getKey() {
         // Ensure consistent ordering for the key regardless of bond direction
+        // Use cached keys from AppliedSymmetry
+        const originSymKey = this.originSymmetry.key;
+        const targetSymKey = this.targetSymmetry.key;
+
         if (this.originIndex === this.targetIndex) {
             // Intra-group connection across symmetry
-            if (this.originSymmetry < this.targetSymmetry) {
-                return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${this.targetSymmetry}`;
+            if (originSymKey < targetSymKey) {
+                return `${this.originIndex}_${originSymKey}_${this.targetIndex}_${targetSymKey}`;
             } else {
-                return `${this.targetIndex}_${this.targetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
+                return `${this.targetIndex}_${targetSymKey}_${this.originIndex}_${originSymKey}`;
             }
         } else if (this.originIndex < this.targetIndex) {
             // Inter-group connection
-            return `${this.originIndex}_${this.originSymmetry}_${this.targetIndex}_${this.targetSymmetry}`;
+            return `${this.originIndex}_${originSymKey}_${this.targetIndex}_${targetSymKey}`;
         } else {
             // Inter-group connection (reversed order)
-            return `${this.targetIndex}_${this.targetSymmetry}_${this.originIndex}_${this.originSymmetry}`;
+            return `${this.targetIndex}_${targetSymKey}_${this.originIndex}_${originSymKey}`;
         }
     }
 }
@@ -195,30 +207,40 @@ export class ConnectingBondGroup {
  */
 export function getSeedConnections(structure, atomGroups, atomGroupMap) {
     // Used to group bonds between the same groups/symm ops 
-    const seedConnectionsKeys = new Map(); 
+    const seedConnectionsKeys = atomGroups.map(() => new Map());
     const seedConnectionsInGroup = atomGroups.map(() => []);
 
     structure.bonds
         .filter(bond => bond.atom2SiteSymmetry !== '.') // Only consider bonds crossing symmetry
         .forEach(bond => {
-            const atom1Group = atomGroupMap.get(bond.atom1Label);
-            const atom2Group = atomGroupMap.get(bond.atom2Label);
+            // For group lookup, we always need the base atom ID (identity symmetry)
+            // bond.atom1Id is already in identity (set by BondsFactory)
+            const atom1Group = atomGroupMap.get(bond.atom1Id) ?? atomGroupMap.get(bond.atom1Label);
+
+            const atom2Label = bond.atom2Id.split('|')[0];
+            const atom2BaseId = `${atom2Label}|1_555`;
+            const atom2Group = atomGroupMap.get(atom2BaseId) ?? atomGroupMap.get(atom2Label);
+
+            if (atom1Group === undefined || atom2Group === undefined) {
+                return;
+            }
+
             // Key identifies the specific connection: origin group -> target group @ identity symm -> target symm
             const targetKey = `${atom1Group}->${atom2Group}@.@${bond.atom2SiteSymmetry}`;
 
-            if (seedConnectionsKeys.has(targetKey)) {
+            if (seedConnectionsKeys[atom1Group].has(targetKey)) {
                 // Add bond to existing connection object
-                const index = seedConnectionsKeys.get(targetKey);
+                const index = seedConnectionsKeys[atom1Group].get(targetKey);
                 seedConnectionsInGroup[atom1Group][index].bonds.push(
-                    new ConnectingBond(bond.atom1Label, bond.atom2Label, bond.bondLength, bond.bondLengthSU),
+                    new ConnectingBond(bond.atom1Id, bond.atom2Id, bond.bondLength, bond.bondLengthSU),
                 );
             } else {
                 // Create new connection object
-                seedConnectionsKeys.set(targetKey, seedConnectionsInGroup[atom1Group].length);
+                seedConnectionsKeys[atom1Group].set(targetKey, seedConnectionsInGroup[atom1Group].length);
                 seedConnectionsInGroup[atom1Group].push({
                     targetIndex: atom2Group,
-                    targetSymmetry: bond.atom2SiteSymmetry, // Symmetry op needed to reach atom 2
-                    bonds: [new ConnectingBond(bond.atom1Label, bond.atom2Label, bond.bondLength, bond.bondLengthSU)],
+                    targetSymmetry: AppliedSymmetry.fromString(bond.atom2SiteSymmetry),
+                    bonds: [new ConnectingBond(bond.atom1Id, bond.atom2Id, bond.bondLength, bond.bondLengthSU)],
                 });
             }
         });
@@ -228,10 +250,10 @@ export function getSeedConnections(structure, atomGroups, atomGroupMap) {
 /**
  * Initializes the queue of bond groups (connections) to process and the set of processed connections.
  * @param {Array<Array<object>>} seedConnectionsPerGroup - Connections extracted by getSeedConnections.
- * @param {string} identSymmString - The string representing the identity symmetry operation ('1_555').
+ * @param {AppliedSymmetry} identSymm - The identity symmetry operation object.
  * @returns {ExplorationState} An object containing the initial queue and the set of processed connection keys.
  */
-export function initializeExploration(seedConnectionsPerGroup, identSymmString) {
+export function initializeExploration(seedConnectionsPerGroup, identSymm) {
     const danglingConnections = [];
     const processedConnections = new Set();
 
@@ -240,7 +262,7 @@ export function initializeExploration(seedConnectionsPerGroup, identSymmString) 
             // Initial bond groups start from the identity symmetry
             const initialBondGroup = new ConnectingBondGroup(
                 groupIndex,            // Origin group index
-                identSymmString,       // Origin symmetry is identity
+                identSymm,             // Origin symmetry is identity
                 connection.targetIndex, // Target group index
                 connection.targetSymmetry, // Symmetry op to reach target from origin
                 connection.bonds,      // Specific atom bonds
@@ -274,8 +296,8 @@ export function initializeExploration(seedConnectionsPerGroup, identSymmString) 
  */
 export function exploreConnection(
     currentConnection,
-    structure, 
-    discoveredGroups, 
+    structure,
+    discoveredGroups,
     seedConnectionsPerGroup,
     processedConnections,
 ) {
@@ -290,9 +312,20 @@ export function exploreConnection(
     // Process each connection from the target group
     for (const connection of targetGroupConnections) {
         // Calculate the absolute symmetry operation for the *next* group
-        const nextTargetSymmetryAbsolute = structure.symmetry.combineSymmetryCodes(
-            currentConnection.targetSymmetry, // Absolute symmetry of the group we just reached)
-            connection.targetSymmetry, // Symmetry to apply to the next target (relative to targetIndex@identity)
+        // Use AppliedSymmetry.combine method
+        // currentConnection.targetSymmetry is "outer" (where we are)
+        // connection.targetSymmetry is "inner" relative move (or vice versa depending on definition)
+        // If we are at S, and we move by Op, detailed logic says apply Op then S?
+        // Let's trust my logic trace: combine(other) -> other then this.
+        // We want Op then S. So S.combine(Op).
+        // currentConnection.targetSymmetry (S). combine (connection.targetSymmetry (Op)).
+
+        const relativeTargetSymmetry = typeof connection.targetSymmetry === 'string'
+            ? AppliedSymmetry.fromString(connection.targetSymmetry)
+            : connection.targetSymmetry;
+        const nextTargetSymmetryAbsolute = currentConnection.targetSymmetry.combine(
+            relativeTargetSymmetry,
+            structure.symmetry,
         );
 
         // Create the prospective bond representing the next step
@@ -344,29 +377,30 @@ export function exploreConnection(
 export function createConnectivity(structure, atomGroups) {
     const atomGroupMap = new Map();
     atomGroups.forEach((group, i) => {
-        group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+        group.atoms.forEach(atom => atomGroupMap.set(atom.uniqueId, i));
     });
-    
-    const identSymmString = structure.symmetry.identitySymOpId + '_555';
+
+    // Create base identity AppliedSymmetry
+    const identSymm = AppliedSymmetry.fromString(structure.symmetry.identitySymOpId + '_555');
 
     // Find all initial connections defined in the bond list
     const seedConnectionsPerGroup = getSeedConnections(structure, atomGroups, atomGroupMap);
 
     // Set up the initial processing queue and processed set
     const { danglingConnections, processedConnections } = initializeExploration(
-        seedConnectionsPerGroup, 
-        identSymmString,
+        seedConnectionsPerGroup,
+        identSymm,
     );
 
     const networkConnections = []; // Bonds successfully processed and added to the network
     const translationLinks = []; // Bonds leading to translational duplicates
-    
+
     // Tracks all symmetry instances found for each original group index
     const discoveredGroups = atomGroups.map(() => []);
 
     // Add the initial identity group for each original group index
     atomGroups.forEach((_, i) => {
-        discoveredGroups[i].push(new ConnectedGroup(i, identSymmString));
+        discoveredGroups[i].push(new ConnectedGroup(i, identSymm));
     });
 
     let safetyCounter = 0;
@@ -418,29 +452,25 @@ export function createConnectivity(structure, atomGroups) {
 /**
  * Collects required symmetry instances and creates inter-group bonds from network connections.
  * @param {Array<ConnectingBondGroup>} networkConnections - The network connections from createConnectivity.
- * @param {CrystalStructure} structure - The crystal structure.
- * @param {string} identSymmString - The identity symmetry operation string.
  * @returns {SymmetryRequirements} The required symmetry instances and inter-group bonds.
  */
-export function collectSymmetryRequirements(networkConnections, structure, identSymmString) {
+export function collectSymmetryRequirements(networkConnections) {
     const requiredSymmetryInstances = new Set();
     const interGroupBonds = [];
-    
+
     // Collect all unique group@symmetry instances needed
     networkConnections.forEach((group) => {
-        requiredSymmetryInstances.add(`${group.originIndex}@.@${group.originSymmetry}`);
-        requiredSymmetryInstances.add(`${group.targetIndex}@.@${group.targetSymmetry}`);
+        // Use .key for string representation in Set
+        requiredSymmetryInstances.add(`${group.originIndex}@.@${group.originSymmetry.key}`);
+        requiredSymmetryInstances.add(`${group.targetIndex}@.@${group.targetSymmetry.key}`);
 
         group.connectingBonds.forEach(conBond => {
-            const atom1 = group.originSymmetry === identSymmString
-                ? conBond.originAtom 
-                : createSymAtomLabel(conBond.originAtom, group.originSymmetry);
-            const atom2 = group.targetSymmetry === identSymmString
-                ? conBond.targetAtom 
-                : createSymAtomLabel(conBond.targetAtom, group.targetSymmetry);
-            interGroupBonds.push({ 
-                originSymmAtom: atom1, 
-                targetSymmAtom: atom2, // TODO: This should be the label *before* special position remapping
+            // Store raw components for reconstruction later
+            interGroupBonds.push({
+                originAtomId: conBond.originAtom,
+                originSymmetry: group.originSymmetry,
+                targetAtomId: conBond.targetAtom,
+                targetSymmetry: group.targetSymmetry,
                 bondLength: conBond.bondLength,
                 bondLengthSU: conBond.bondLengthSU,
             });
@@ -455,14 +485,14 @@ export function collectSymmetryRequirements(networkConnections, structure, ident
  * @param {Set<string>} requiredSymmetryInstances - Set of required symmetry instances.
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {CrystalStructure} structure - The crystal structure.
- * @param {string} identSymmString - The identity symmetry operation string.
+ * @param {string} identSymmKey - The identity symmetry operation key.
  * @returns {{specialPositionAtoms: Map<string, string>, newAtoms: Array<object>}} Map of special position atoms
  * (from -> to) and the generated atoms.
  */
-export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmString) {
+export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmKey) {
     // Store atom groups for each symmetry: [groupIndex][symmInstanceIndex][atomIndex]
     const atomsByGroupAndSymmetry = atomGroups.map(g => [[...g.atoms]]); // Start with identity atoms
-    
+
     // --- Special position handling ---
     // This logic identifies atoms generated by symmetry that occupy the same
     // position as another atom (either the original or from another symm op).
@@ -472,17 +502,23 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
 
     // Generate atoms for all required symmetry instances
     requiredSymmetryInstances.forEach(g => {
-        const [idxStr, symOp] = g.split('@.@');
-        if (symOp === identSymmString) {
+        const [idxStr, symKey] = g.split('@.@');
+        if (symKey === identSymmKey) {
             return; // Skip identity operation
         }
         const groupIndex = Number(idxStr);
         // Ensure atoms are cloned/copied properly if modified later
         const originalAtoms = atomGroups[groupIndex].atoms;
-        const newGroupAtoms = structure.symmetry.applySymmetry(symOp, originalAtoms);
+        const newGroupAtoms = structure.symmetry.applySymmetry(symKey, originalAtoms);
+
+        // Convert to AppliedSymmetry once for this group
+        const appliedSym = AppliedSymmetry.fromString(symKey);
+
         newGroupAtoms.forEach(atom => {
-            // Modify label to indicate symmetry instance
-            atom.label = createSymAtomLabel(atom.label, symOp);
+            // Set the appliedSymmetry object
+            atom.appliedSymmetry = appliedSym;
+            // Label remains the chemical label.
+            // uniqueId will automatically include the symmetry info.
         });
         atomsByGroupAndSymmetry[groupIndex].push(newGroupAtoms);
     });
@@ -495,23 +531,28 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
             for (let atomIdx = 0; atomIdx < numOriginalAtoms; ++atomIdx) {
                 const atomsForOriginal = g.map(symmGroup => symmGroup[atomIdx]); // Get atom from all symmetry instances
                 const keptSymmAtoms = []; // Track unique positions found for this original atom
-                for (const symmAtom of atomsForOriginal) {
+                for (let symmGroupIdx = 0; symmGroupIdx < atomsForOriginal.length; symmGroupIdx++) {
+                    const symmAtom = atomsForOriginal[symmGroupIdx];
+                    const isIdentity = symmGroupIdx === 0; // First group is identity
                     let specPos = false; // Assume not special position initially
                     for (const keptSymmAtom of keptSymmAtoms) {
                         // Use a small tolerance for floating point comparisons
                         specPos = Math.abs(keptSymmAtom.position.x - symmAtom.position.x) * structure.cell.a < 1e-4 &&
-                                   Math.abs(keptSymmAtom.position.y - symmAtom.position.y) * structure.cell.b < 1e-4 &&
-                                   Math.abs(keptSymmAtom.position.z - symmAtom.position.z) * structure.cell.c < 1e-4;
+                            Math.abs(keptSymmAtom.position.y - symmAtom.position.y) * structure.cell.b < 1e-4 &&
+                            Math.abs(keptSymmAtom.position.z - symmAtom.position.z) * structure.cell.c < 1e-4;
                         if (specPos) {
-                            // Map the duplicate atom label to the kept atom label
-                            specialPositionAtoms.set(symmAtom.label, keptSymmAtom.label);
+                            // Map the duplicate atom ID to the kept atom ID
+                            specialPositionAtoms.set(symmAtom.uniqueId, keptSymmAtom.uniqueId);
                             break; // Found a match, no need to check further kept atoms
                         }
                     }
                     if (!specPos) {
                         // This atom represents a unique position for this original atom, keep it
                         keptSymmAtoms.push(symmAtom);
-                        newAtoms.push(symmAtom);
+                        // Only add non-identity atoms to newAtoms (identity atoms are already in structure.atoms)
+                        if (!isIdentity) {
+                            newAtoms.push(symmAtom);
+                        }
                     }
                 }
             }
@@ -528,39 +569,43 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
  * @param {Array<InterGroupBondInfo>} interGroupBonds - Inter-group bonds from collectSymmetryRequirements.
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
  * @param {Array<object>} newAtoms - The generated atoms.
- * @param {string} identSymmString - The identity symmetry operation string.
+ * @param {string} identSymmKey - The identity symmetry operation key.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
 export function generateSymmetryBonds(
-    atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmString,
+    atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmKey,
 ) {
     // Initialize with the original intra-group bonds
     const newBonds = [];
     atomGroups.forEach(g => {
         newBonds.push(...g.bonds);
     });
-    
+
     const existingBonds = new Set();
-    
+
     // Track existing bonds to avoid duplicates
     newBonds.forEach(b => {
-        existingBonds.add(createBondIdentifier(b.atom1Label, b.atom2Label));
+        existingBonds.add(createBondIdentifier(b.atom1Id, b.atom2Id));
     });
 
     // Generate symmetry-related intra-group bonds
     requiredSymmetryInstances.forEach(g => {
-        const [idxStr, symOp] = g.split('@.@');
-        if (symOp === identSymmString) {
+        const [idxStr, symKey] = g.split('@.@');
+        if (symKey === identSymmKey) {
             return; // Skip identity operation
         }
         const groupIndex = Number(idxStr);
         const originalBonds = atomGroups[groupIndex].bonds;
         originalBonds.forEach(b => {
-            const atom1Label = createSymAtomLabel(b.atom1Label, symOp);
-            const atom2Label = createSymAtomLabel(b.atom2Label, symOp);
-            const atom1 = specialPositionAtoms.get(atom1Label) || atom1Label;
-            const atom2 = specialPositionAtoms.get(atom2Label) || atom2Label;
-            
+            // Extract base label from the bond's atom IDs (which are in uniqueId format)
+            const atom1BaseLabel = b.atom1Id.split('|')[0];
+            const atom2BaseLabel = b.atom2Id.split('|')[0];
+            // Create new IDs with the target symmetry
+            const atom1Id = createAtomId(atom1BaseLabel, symKey);
+            const atom2Id = createAtomId(atom2BaseLabel, symKey);
+            const atom1 = specialPositionAtoms.get(atom1Id) || atom1Id;
+            const atom2 = specialPositionAtoms.get(atom2Id) || atom2Id;
+
             const bondString = createBondIdentifier(atom1, atom2);
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
@@ -573,8 +618,30 @@ export function generateSymmetryBonds(
 
     //Add inter-group bonds
     interGroupBonds.forEach(b => {
-        const atom1 = specialPositionAtoms.get(b.originSymmAtom) || b.originSymmAtom;
-        const atom2 = specialPositionAtoms.get(b.targetSymmAtom) || b.targetSymmAtom;
+        const originAtomId = b.originAtomId || b.originSymmAtom;
+        const targetAtomId = b.targetAtomId || b.targetSymmAtom;
+        const originBaseLabel = originAtomId.split(/[|@]/)[0];
+        const targetBaseLabel = targetAtomId.split(/[|@]/)[0];
+        const originSymmetry = b.originSymmetry || AppliedSymmetry.fromString(
+            originAtomId.split(/[|@]/)[1] || identSymmKey,
+        );
+        const targetSymmetry = b.targetSymmetry || AppliedSymmetry.fromString(
+            targetAtomId.split(/[|@]/)[1] || identSymmKey,
+        );
+
+        const atom1Raw = originSymmetry.key === identSymmKey
+            ? createAtomId(originBaseLabel, identSymmKey)
+            : createAtomId(originBaseLabel, originSymmetry.key);
+
+        const atom2Raw = targetSymmetry.key === identSymmKey
+            ? createAtomId(targetBaseLabel, identSymmKey)
+            : createAtomId(targetBaseLabel, targetSymmetry.key);
+
+        const mappedAtom1 = specialPositionAtoms.get(atom1Raw) || atom1Raw;
+        const mappedAtom2 = specialPositionAtoms.get(atom2Raw) || atom2Raw;
+        const atom1 = mappedAtom1.includes('|') ? mappedAtom1 : createAtomId(mappedAtom1, identSymmKey);
+        const atom2 = mappedAtom2.includes('|') ? mappedAtom2 : createAtomId(mappedAtom2, identSymmKey);
+
         const bondString = createBondIdentifier(atom1, atom2);
         if (!existingBonds.has(bondString)) {
             existingBonds.add(bondString);
@@ -585,8 +652,8 @@ export function generateSymmetryBonds(
     });
 
     // Create set of atom labels for lookup
-    const atomLabels = new Set(newAtoms.map(a => a.label));
-    
+    const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
+
     return { newBonds, atomLabels };
 }
 
@@ -599,30 +666,28 @@ export function generateSymmetryBonds(
  * @param {Map<string, string>} specialPositionAtoms - Map from a duplicate symmetry-generated atom label to the
  * label of the atom instance that is kept (representing the same spatial position).
  * @param {Set<string>} atomLabels - Set of atom labels.
- * @param {string} identSymmString - The identity symmetry operation string.
+ * @param {string} identSymmKey - The identity symmetry operation key.
  * @returns {Array<HBond>} New hydrogen bonds.
  */
 export function generateSymmetryHBonds(
-    structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmString,
+    structure, atomGroups, atomGroupMap, requiredSymmetryInstances, specialPositionAtoms, atomLabels, identSymmKey,
 ) {
     const finalHBonds = [];
     const finalHBondIdentifiers = new Set();
 
-    // Add all original H-bonds first, ensuring their identifiers are correctly stored
-    // to prevent adding duplicates later if they are re-generated.
+    // Add all original H-bonds first
     structure.hBonds.forEach(hb => {
         let identifier;
-        if (hb.acceptorAtomSymmetry === '.' || hb.acceptorAtomSymmetry === identSymmString) { // Internal H-bond
-            identifier = createHBondIdentifier(hb.donorAtomLabel, hb.hydrogenAtomLabel, hb.acceptorAtomLabel);
+        if (hb.acceptorAtomSymmetry === '.' || hb.acceptorAtomSymmetry === identSymmKey) { // Internal H-bond
+            identifier = createHBondIdentifier(hb.donorAtomId, hb.hydrogenAtomId, hb.acceptorAtomId);
         } else { // External H-bond
             const noSymIdentifier = createHBondIdentifier(
-                hb.donorAtomLabel, 
-                hb.hydrogenAtomLabel, 
-                hb.acceptorAtomLabel,
+                hb.donorAtomId,
+                hb.hydrogenAtomId,
+                hb.acceptorAtomId,
             );
             identifier = `${noSymIdentifier}@${hb.acceptorAtomSymmetry}`;
         }
-        // Only add if not already present (e.g. if input structure.hBonds had duplicates)
         if (!finalHBondIdentifiers.has(identifier)) {
             finalHBondIdentifiers.add(identifier);
             finalHBonds.push(hb);
@@ -634,7 +699,8 @@ export function generateSymmetryHBonds(
     structure.hBonds
         .filter(hb => hb.acceptorAtomSymmetry !== '.')
         .forEach(hb => {
-            const donorGroupIndex = atomGroupMap.get(hb.donorAtomLabel);
+            // Use the full donor atom ID for lookup since atomGroupMap is keyed by uniqueId
+            const donorGroupIndex = atomGroupMap.get(hb.donorAtomId);
             if (donorGroupIndex !== undefined) {
                 externalHBondDefinitions[donorGroupIndex].push(hb);
             }
@@ -642,26 +708,24 @@ export function generateSymmetryHBonds(
 
     // Process required symmetry instances to generate new H-bonds
     requiredSymmetryInstances.forEach(gInstance => {
-        const [idxStr, symOp] = gInstance.split('@.@');
-        if (symOp === identSymmString) {
-            // Potentially, if atoms involved in an original H-bond were remapped by specialPositionAtoms
-            // even for identity, we might need to re-evaluate. However, the current logic
-            // of adding originals first and then checking identifiers should handle this.
-            // If C1 -> C1_sp, then original O1-H1..C1 becomes O1-H1..C1_sp if we re-evaluate.
-            // For now, this early return is kept as per original logic, assuming `specialPositionAtoms`
-            // primarily remaps non-identity generated atoms.
-            // The tests pass with this, but it's a subtle area.
+        const [idxStr, symKey] = gInstance.split('@.@');
+        if (symKey === identSymmKey) {
             return;
         }
-        
+
         const groupIndex = Number(idxStr);
-        
+
         // Handle intra-group H-bonds (generate symmetry copies)
         const originalIntraGroupHBonds = atomGroups[groupIndex].hBonds;
         originalIntraGroupHBonds.forEach(hb => {
-            const sDonor = createSymAtomLabel(hb.donorAtomLabel, symOp);
-            const sH = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
-            const sAcceptor = createSymAtomLabel(hb.acceptorAtomLabel, symOp);
+            // Extract base labels from the H-bond's atom IDs (which are in uniqueId format)
+            const donorBaseLabel = hb.donorAtomId.split('|')[0];
+            const hBaseLabel = hb.hydrogenAtomId.split('|')[0];
+            const acceptorBaseLabel = hb.acceptorAtomId.split('|')[0];
+            // Create new IDs with the target symmetry
+            const sDonor = createAtomId(donorBaseLabel, symKey);
+            const sH = createAtomId(hBaseLabel, symKey);
+            const sAcceptor = createAtomId(acceptorBaseLabel, symKey);
 
             const finalDonor = specialPositionAtoms.get(sDonor) || sDonor;
             const finalH = specialPositionAtoms.get(sH) || sH;
@@ -683,45 +747,51 @@ export function generateSymmetryHBonds(
 
         // Handle external H-bonds (generate symmetry copies)
         externalHBondDefinitions[groupIndex].forEach(hb => {
-            const sDonor = createSymAtomLabel(hb.donorAtomLabel, symOp);
-            const sH = createSymAtomLabel(hb.hydrogenAtomLabel, symOp);
-            
+            // Extract base labels from the H-bond's atom IDs
+            const donorBaseLabel = hb.donorAtomId.split('|')[0];
+            const hBaseLabel = hb.hydrogenAtomId.split('|')[0];
+            // Create new IDs with the target symmetry
+            const sDonor = createAtomId(donorBaseLabel, symKey);
+            const sH = createAtomId(hBaseLabel, symKey);
+
             const finalDonor = specialPositionAtoms.get(sDonor) || sDonor;
             const finalH = specialPositionAtoms.get(sH) || sH;
 
             const newAcceptorOverallSymmetry = structure.symmetry.combineSymmetryCodes(
-                symOp, hb.acceptorAtomSymmetry,
+                symKey, hb.acceptorAtomSymmetry,
             );
-            const potentialAcceptorFullLabel = createSymAtomLabel(hb.acceptorAtomLabel, newAcceptorOverallSymmetry);
-            const finalAcceptorLabelForLookup = specialPositionAtoms.get(
-                potentialAcceptorFullLabel,
-            ) || potentialAcceptorFullLabel;
+            const acceptorBaseLabel = hb.acceptorAtomId.split('|')[0];
+            const potentialAcceptorFullId = createAtomId(acceptorBaseLabel, newAcceptorOverallSymmetry);
+            const finalAcceptorIdForLookup = specialPositionAtoms.get(
+                potentialAcceptorFullId,
+            ) || potentialAcceptorFullId;
 
             let newHBondToAdd;
             let hBondIdentifier;
 
-            if (atomLabels.has(finalAcceptorLabelForLookup)) {
+            if (atomLabels.has(finalAcceptorIdForLookup)) {
                 // Acceptor is generated and becomes internal
                 newHBondToAdd = new HBond(
-                    finalDonor, finalH, finalAcceptorLabelForLookup,
+                    finalDonor, finalH, finalAcceptorIdForLookup,
                     hb.donorHydrogenDistance, hb.donorHydrogenDistanceSU,
                     hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
                     hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
                     hb.hBondAngle, hb.hBondAngleSU,
                     '.', // Acceptor is now internal
                 );
-                hBondIdentifier = createHBondIdentifier(finalDonor, finalH, finalAcceptorLabelForLookup);
+                hBondIdentifier = createHBondIdentifier(finalDonor, finalH, finalAcceptorIdForLookup);
             } else {
                 // Acceptor remains external
+                // Extract base label from acceptor (acceptorAtomLabel may already contain symmetry like 'O|1_554')
                 newHBondToAdd = new HBond(
-                    finalDonor, finalH, hb.acceptorAtomLabel, // Use base acceptor label
+                    finalDonor, finalH, acceptorBaseLabel, // Use base acceptor label
                     hb.donorHydrogenDistance, hb.donorHydrogenDistanceSU,
                     hb.acceptorHydrogenDistance, hb.acceptorHydrogenDistanceSU,
                     hb.donorAcceptorDistance, hb.donorAcceptorDistanceSU,
                     hb.hBondAngle, hb.hBondAngleSU,
                     newAcceptorOverallSymmetry, // New external symmetry
                 );
-                const symmHBIdentifier = createHBondIdentifier(finalDonor, finalH, hb.acceptorAtomLabel);
+                const symmHBIdentifier = createHBondIdentifier(finalDonor, finalH, acceptorBaseLabel);
                 hBondIdentifier = `${symmHBIdentifier}@${newAcceptorOverallSymmetry}`;
             }
 
@@ -745,24 +815,30 @@ export function generateSymmetryHBonds(
  * @returns {Array<Bond>} Additional bonds from translation links.
  */
 export function processTranslationLinks(translationLinks, structure, specialPositionAtoms, existingBonds) {
-    const additionalBonds = [];    
+    const additionalBonds = [];
     translationLinks.forEach(tl => {
         for (const conBond of tl.connectingBonds) {
-            const atom1Label = createSymAtomLabel(conBond.originAtom, tl.originSymmetry);
-            const atom2Label = createSymAtomLabel(conBond.targetAtom, tl.targetSymmetry);
-            const atom1 = specialPositionAtoms.get(atom1Label) || atom1Label;
-            const atom2 = specialPositionAtoms.get(atom2Label) || atom2Label;
-            
+            const atom1Id = combineAtomId(conBond.originAtom, tl.originSymmetry.key, structure.symmetry);
+            const atom2Id = combineAtomId(conBond.targetAtom, tl.targetSymmetry.key, structure.symmetry);
+            const atom1 = specialPositionAtoms.get(atom1Id) || atom1Id;
+            const atom2 = specialPositionAtoms.get(atom2Id) || atom2Id;
+
             const bondString = createBondIdentifier(atom1, atom2);
             if (!existingBonds.has(bondString)) {
                 existingBonds.add(bondString);
                 additionalBonds.push(
-                    new Bond(atom1, conBond.targetAtom, conBond.bondLength, conBond.bondLengthSU, tl.targetSymmetry),
+                    new Bond(
+                        atom1,
+                        conBond.targetAtom,
+                        conBond.bondLength,
+                        conBond.bondLengthSU,
+                        tl.targetSymmetry.key,
+                    ),
                 );
             }
         }
     });
-    
+
     return additionalBonds;
 }
 
@@ -773,51 +849,56 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
  */
 export function growFragment(structure) {
     const atomGroups = structure.calculateConnectedGroups();
-    
+
     // Map atoms to their group indices for faster lookup
     const atomGroupMap = new Map();
     atomGroups.forEach((group, i) => {
-        group.atoms.forEach(atom => atomGroupMap.set(atom.label, i));
+        group.atoms.forEach(atom => {
+            atomGroupMap.set(atom.uniqueId, i);
+        });
     });
-    
-    const identSymmString = structure.symmetry.identitySymOpId + '_555';
+
+    const identSymmKey = structure.symmetry.identitySymOpId + '_555';
 
     // Step 1: Analyze connectivity to find all necessary symmetry operations
     const { networkConnections, translationLinks } = createConnectivity(structure, atomGroups);
 
     // Step 2: Collect required symmetry instances and inter-group bonds
     const { requiredSymmetryInstances, interGroupBonds } = collectSymmetryRequirements(
-        networkConnections, structure, identSymmString,
+        networkConnections, structure, identSymmKey,
     );
 
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
-        requiredSymmetryInstances, atomGroups, structure, identSymmString,
+        requiredSymmetryInstances, atomGroups, structure, identSymmKey,
     );
 
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(
-        atomGroups, requiredSymmetryInstances, interGroupBonds, 
-        specialPositionAtoms, newAtoms, identSymmString,
+        atomGroups, requiredSymmetryInstances, interGroupBonds,
+        specialPositionAtoms, newAtoms, identSymmKey,
     );
 
-    // Step 5: Generate hydrogen bonds for symmetry instances
+    // Step 5: Generate hydrogen bonds
     const newHBonds = generateSymmetryHBonds(
-        structure, atomGroups, atomGroupMap, requiredSymmetryInstances, 
-        specialPositionAtoms, atomLabels, identSymmString,
+        structure, atomGroups, atomGroupMap, requiredSymmetryInstances,
+        specialPositionAtoms, atomLabels, identSymmKey,
     );
 
-    // Step 6: Process translation links to add any remaining bonds
-    const existingBondIds = new Set(newBonds.map(b => createBondIdentifier(b.atom1Label, b.atom2Label)));
+    // Step 6: Process translation links
     const translationBonds = processTranslationLinks(
-        translationLinks, structure, specialPositionAtoms, existingBondIds,
+        translationLinks, structure, specialPositionAtoms,
+        new Set(newBonds.map(b => createBondIdentifier(b.atom1Id, b.atom2Id))),
     );
-    
     newBonds.push(...translationBonds);
 
-    // Step 7: Create the new structure with grown symmetry
-    return {
-        grownStructure: new CrystalStructure(structure.cell, newAtoms, newBonds, newHBonds, structure.symmetry),
-        specialPositionAtoms: specialPositionAtoms,
-    };
+    const grownStructure = new CrystalStructure(
+        structure.cell,
+        [...structure.atoms, ...newAtoms],
+        newBonds,
+        newHBonds,
+        structure.symmetry,
+    );
+
+    return { grownStructure, specialPositionAtoms };
 }

@@ -29,8 +29,9 @@ C1 O1 1.5 0.002 ?
         const cif = new CIF(cifText);
         const bond = Bond.fromCIF(cif.getBlock(0), 0);
 
-        expect(bond.atom1Label).toBe('C1');
-        expect(bond.atom2Label).toBe('O1');
+        // atom1Id is always label|1_555 (ASU), atom2Id uses provided symmetry
+        expect(bond.atom1Id).toBe('C1|1_555');
+        expect(bond.atom2Id).toBe('O1|2_665');
         expect(bond.bondLength).toBe(1.5);
         expect(bond.bondLengthSU).toBe(0.002);
         expect(bond.atom2SiteSymmetry).toBe('2_665');
@@ -48,9 +49,10 @@ describe('HBond', () => {
             1.0, 0.01, 2.0, 0.02,
             2.8, 0.03, 175, 1, '1_555',
         );
-        expect(hBond.donorAtomLabel).toBe('O1');
-        expect(hBond.hydrogenAtomLabel).toBe('H1');
-        expect(hBond.acceptorAtomLabel).toBe('O2');
+        // HBond constructor takes IDs, so check atomId properties
+        expect(hBond.donorAtomId).toBe('O1|1_555');
+        expect(hBond.hydrogenAtomId).toBe('H1|1_555');
+        expect(hBond.acceptorAtomId).toBe('O2|1_555');
         expect(hBond.acceptorAtomSymmetry).toBe('1_555');
     });
 
@@ -72,8 +74,9 @@ O1 H2 O2 1.0 2.0 2.8 175 ?
         const cif = new CIF(cifText);
         const hBond = HBond.fromCIF(cif.getBlock(0), 0);
 
-        expect(hBond.donorAtomLabel).toBe('O1');
-        expect(hBond.hydrogenAtomLabel).toBe('H1');
+        // fromCIF creates IDs with | separator: label|symmetry
+        expect(hBond.donorAtomId).toBe('O1|1_555');
+        expect(hBond.hydrogenAtomId).toBe('H1|1_555');
         expect(hBond.acceptorAtomSymmetry).toBe('1_555');
 
         const hBond2 = HBond.fromCIF(cif.getBlock(0), 1);
@@ -99,10 +102,11 @@ C1 N1 1.4 .`;
             const bonds = BondsFactory.createBonds(cif.getBlock(0), validAtoms);
 
             expect(bonds).toHaveLength(2);
-            expect(bonds[0].atom1Label).toBe('C1');
-            expect(bonds[0].atom2Label).toBe('O1');
-            expect(bonds[1].atom1Label).toBe('C1');
-            expect(bonds[1].atom2Label).toBe('N1');
+            // atom1Id is always label|1_555 (ASU), atom2Id is label|1_555 for identity symmetry
+            expect(bonds[0].atom1Id).toBe('C1|1_555');
+            expect(bonds[0].atom2Id).toBe('O1|1_555');
+            expect(bonds[1].atom1Id).toBe('C1|1_555');
+            expect(bonds[1].atom2Id).toBe('N1|1_555');
         });
 
         test('filters out invalid centroid bonds', () => {
@@ -120,8 +124,8 @@ C1 Cnt1 1.4`;
             const bonds = BondsFactory.createBonds(cif.getBlock(0), validAtoms);
 
             expect(bonds).toHaveLength(1);
-            expect(bonds[0].atom1Label).toBe('C1');
-            expect(bonds[0].atom2Label).toBe('O1');
+            expect(bonds[0].atom1Id).toBe('C1|1_555');
+            expect(bonds[0].atom2Id).toBe('O1|1_555');
         });
 
         test('includes centroid bonds if in atom list', () => {
@@ -145,9 +149,9 @@ C1 Cnt1 1.4`;
             const cifText = 'data_test\n_cell_length_a 5.0';
             const cif = new CIF(cifText);
             const validAtoms = new Set(['C1']);
-            
+
             const bonds = BondsFactory.createBonds(cif.getBlock(0), validAtoms);
-            
+
             expect(bonds).toHaveLength(0);
         });
     });
@@ -171,9 +175,10 @@ O2 H2 N2 0.9 2.1 2.9 170`;
             const hBonds = BondsFactory.createHBonds(cif.getBlock(0), validAtoms);
 
             expect(hBonds).toHaveLength(2);
-            expect(hBonds[0].donorAtomLabel).toBe('O1');
-            expect(hBonds[0].hydrogenAtomLabel).toBe('H1');
-            expect(hBonds[0].acceptorAtomLabel).toBe('N1');
+            // donorAtomId is always label|1_555 (ASU) for CIF H-bonds
+            expect(hBonds[0].donorAtomId).toBe('O1|1_555');
+            expect(hBonds[0].hydrogenAtomId).toBe('H1|1_555');
+            expect(hBonds[0].acceptorAtomId).toBe('N1|1_555');
         });
 
         test('filters out invalid centroid H-bonds', () => {
@@ -195,9 +200,9 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
             const hBonds = BondsFactory.createHBonds(cif.getBlock(0), validAtoms);
 
             expect(hBonds).toHaveLength(1);
-            expect(hBonds[0].donorAtomLabel).toBe('O1');
-            expect(hBonds[0].hydrogenAtomLabel).toBe('H1');
-            expect(hBonds[0].acceptorAtomLabel).toBe('N1');
+            expect(hBonds[0].donorAtomId).toBe('O1|1_555');
+            expect(hBonds[0].hydrogenAtomId).toBe('H1|1_555');
+            expect(hBonds[0].acceptorAtomId).toBe('N1|1_555');
         });
 
         test('includes centroid H-bonds if in atom list', () => {
@@ -226,7 +231,7 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
             const cif = new CIF(cifText);
             const validAtoms = new Set(['O1']);
             const hBonds = BondsFactory.createHBonds(cif.getBlock(0), validAtoms);
-            
+
             expect(hBonds).toHaveLength(0);
         });
     });
@@ -234,7 +239,7 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
     describe('validation helpers', () => {
         test('isValidBondPair checks centroid atoms', () => {
             const validAtoms = new Set(['C1', 'O1', 'Cg2']);
-            
+
             expect(BondsFactory.isValidBondPair('C1', 'O1', validAtoms)).toBe(true);
             expect(BondsFactory.isValidBondPair('C1', 'Cg1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidBondPair('C1', 'Cg2', validAtoms)).toBe(true);
@@ -248,7 +253,7 @@ O2 H3 Cnt1 0.9 2.1 2.9 170`;
 
         test('isValidHBondTriplet checks centroid atoms', () => {
             const validAtoms = new Set(['O1', 'H1', 'N1', 'Cg2']);
-            
+
             expect(BondsFactory.isValidHBondTriplet('O1', 'H1', 'N1', validAtoms)).toBe(true);
             expect(BondsFactory.isValidHBondTriplet('Cg1', 'H1', 'N1', validAtoms)).toBe(false);
             expect(BondsFactory.isValidHBondTriplet('O1', 'Cg1', 'N1', validAtoms)).toBe(false);
@@ -270,7 +275,7 @@ describe('Bond Validation', () => {
     beforeEach(() => {
         symmetryOps = [new SymmetryOperation('x,y,z')];
         symmetry = new CellSymmetry('P1', 1, symmetryOps);
-        
+
         atoms = [
             new Atom('C1', 'C', new FractPosition(0, 0, 0)),
             new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5)),

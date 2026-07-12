@@ -3,7 +3,8 @@ import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
 import { create, all } from 'mathjs';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
-import { combineSymAtomLabel } from './util.js';
+import { combineAtomId } from './util.js';
+import { AppliedSymmetry } from './../../applied-symmetry.js';
 
 const math = create(all, {});
 
@@ -100,7 +101,7 @@ export function getSymmetryCentre(centre, symOp) {
         symOp.transVector,
     );
 
-    return symmCentre; 
+    return symmCentre;
 }
 
 /**
@@ -115,23 +116,25 @@ export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) 
     const groupSymmetries = new Set();
 
     for (const atom of group.atoms) {
-        const labelParts = atom.label.split('@');
-        if (labelParts.length === 2) {
-            groupSymmetries.add(labelParts[1].split('_')[0]);
+        if (atom.appliedSymmetry) {
+            groupSymmetries.add(atom.appliedSymmetry.id);
         } else {
             groupSymmetries.add(identitySymOp);
         }
     }
 
-    const atomLabelsInGroup = new Set(group.atoms.map(atom => atom.label));
+    const atomIdsInGroup = new Set(group.atoms.map(atom => atom.uniqueId));
 
-    for (const atomLabel of specialPositionMap.keys()) {
-        const labelParts = atomLabel.split('@');
+    for (const [originalId, mapTargetId] of specialPositionMap) {
         let symOpId = identitySymOp;
-        if (labelParts.length === 2) {
-            symOpId = labelParts[1].split('_')[0];
+        // Parse ID directly since it's now guaranteed to be label|symmetry
+        // Format: Label|SymID_Trans
+        if (originalId.includes('|')) {
+            const symKey = originalId.split('|')[1];
+            symOpId = symKey.split('_')[0];
         }
-        if (atomLabelsInGroup.has(specialPositionMap.get(atomLabel))) {
+
+        if (atomIdsInGroup.has(mapTargetId)) {
             groupSymmetries.add(symOpId);
         }
     }
@@ -147,9 +150,10 @@ export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) 
  */
 function isWithinUnitCell(atom, tolerance = 1e-6) {
     const { x, y, z } = atom.position;
-    return x >= -tolerance && x < 1 + tolerance &&
-           y >= -tolerance && y < 1 + tolerance &&
-           z >= -tolerance && z < 1 + tolerance;
+    // Atoms at position >= 1 - tolerance should be wrapped to 0 (same periodic position)
+    return x >= -tolerance && x < 1 - tolerance &&
+        y >= -tolerance && y < 1 - tolerance &&
+        z >= -tolerance && z < 1 - tolerance;
 }
 
 /**
@@ -158,13 +162,14 @@ function isWithinUnitCell(atom, tolerance = 1e-6) {
  * @param {number} [precision] - Decimal places for rounding
  * @returns {string} Position key
  */
-function getAtomPositionKey(atom, precision = 4) {
-    const factor = Math.pow(10, precision);
-    const x = Math.round(atom.position.x * factor) / factor;
-    const y = Math.round(atom.position.y * factor) / factor;
-    const z = Math.round(atom.position.z * factor) / factor;
-    const labelParts = atom.label.split('@');
-    return `${labelParts[0]}_x${x}_y${y}_z${z}`;
+function getAtomPositionKey(atom, precision = 3) {
+    // Use toFixed for consistent string representation to avoid floating-point precision issues
+    // (e.g., 0.14485 and 0.14484999999999992 should produce the same key)
+    const x = atom.position.x.toFixed(precision);
+    const y = atom.position.y.toFixed(precision);
+    const z = atom.position.z.toFixed(precision);
+    // Use the base chemical label from the atom, which is now just 'label'
+    return `${atom.label}_x${x}_y${y}_z${z}`;
 }
 
 /**
@@ -176,7 +181,7 @@ function getAtomPositionKey(atom, precision = 4) {
  */
 export function centreSymmetryString(symmetry, symmString, symmCentre) {
     const { symOp, transVector } = symmetry.parsePositionCode(symmString);
-    
+
     const symOpResult = math.add(
         math.multiply(symOp.rotMatrix, math.matrix(symmCentre)),
         symOp.transVector,
@@ -244,10 +249,23 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
     const transformedAtoms = symmetry.applySymmetry(symmString, grownGroup.atoms);
 
     // Process transformed atoms
-    for (const atom of transformedAtoms) {
-        // Update atom label with symmetry information
-        atom.label = combineSymAtomLabel(atom.label, symmString, symmetry);
-        
+    for (let i = 0; i < transformedAtoms.length; i++) {
+        const atom = transformedAtoms[i];
+        const originalAtom = grownGroup.atoms[i];
+
+        // If original atom had an existing symmetry (from fragment growth), combine with new symmetry
+        // Otherwise just use the new symmetry
+        let combinedSymm = symmString;
+        if (originalAtom.appliedSymmetry && originalAtom.appliedSymmetry.key !== `${symmetry.identitySymOpId}_555`) {
+            // Combine: new symmetry (outer) applied to existing symmetry (inner)
+            combinedSymm = symmetry.combineSymmetryCodes(symmString, originalAtom.appliedSymmetry.key);
+        }
+
+        // Atom label remains the chemical label (e.g., C1)
+        // We track combined symmetry via appliedSymmetry object
+        atom.appliedSymmetry = AppliedSymmetry.fromString(combinedSymm);
+        const preShiftId = atom.uniqueId;
+
         // Check if atom is within unit cell
         if (moveAtomsInsideCell && !isWithinUnitCell(atom)) {
             const atomOffsetX = Math.floor(atom.position.x);
@@ -256,24 +274,33 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
             atom.position.x -= atomOffsetX;
             atom.position.y -= atomOffsetY;
             atom.position.z -= atomOffsetZ;
-            // Update label to reflect new position
+
+            // Update symmetry translation
+            atom.appliedSymmetry.translation[0] -= atomOffsetX;
+            atom.appliedSymmetry.translation[1] -= atomOffsetY;
+            atom.appliedSymmetry.translation[2] -= atomOffsetZ;
+            atom.appliedSymmetry._updateKey(); // Important: update key after modifying
+
+            const postShiftId = atom.uniqueId;
             const translationString = `${symmetry.identitySymOpId}_`
-                + `${5 + atomOffsetX}${5 + atomOffsetY}${5 + atomOffsetZ}`;
-            const newLabel = combineSymAtomLabel(atom.label, translationString, symmetry);
-            objectTracker.atomTranslations.set(atom.label, [newLabel, translationString]);
-            atom.label = newLabel;
+                + `${5 - atomOffsetX}${5 - atomOffsetY}${5 - atomOffsetZ}`;
+
+            // Map the pre-shift ID (which internal bonds will look for) to the final post-shift ID
+            objectTracker.atomTranslations.set(preShiftId, [postShiftId, translationString]);
         }
-        
+
+        const uniqueId = atom.uniqueId;
+
         // Check for special positions (duplicates)
         const posKey = getAtomPositionKey(atom);
-        const existingAtom = objectTracker.atomMap.get(posKey);
+        const existingAtomId = objectTracker.atomMap.get(posKey);
 
-        if (existingAtom) {
-            // This is a special position - map to existing atom
-            objectTracker.specialPositionMap.set(atom.label, existingAtom);
+        if (existingAtomId) {
+            // This is a special position - map to existing atom ID
+            objectTracker.specialPositionMap.set(uniqueId, existingAtomId);
         } else {
             // New unique position
-            objectTracker.atomMap.set(posKey, atom.label);
+            objectTracker.atomMap.set(posKey, uniqueId);
             newAtoms.push(atom);
         }
     }
@@ -294,44 +321,44 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
 export function growInternalBondsInGroup(grownGroup, symmetry, symmString, objectTracker) {
     const grownBonds = [];
     for (const bond of grownGroup.internalBonds) {
-        const potentialAtom1Label = combineSymAtomLabel(bond.atom1Label, symmString, symmetry);
-        const atom1Label = objectTracker.specialPositionMap.get(potentialAtom1Label) || potentialAtom1Label;
-        const potentialAtom2Label = combineSymAtomLabel(bond.atom2Label, symmString, symmetry);
-        const atom2Label = objectTracker.specialPositionMap.get(potentialAtom2Label) || potentialAtom2Label;
+        const potentialAtom1Id = combineAtomId(bond.atom1Id, symmString, symmetry);
+        const atom1Id = objectTracker.specialPositionMap.get(potentialAtom1Id) || potentialAtom1Id;
+        const potentialAtom2Id = combineAtomId(bond.atom2Id, symmString, symmetry);
+        const atom2Id = objectTracker.specialPositionMap.get(potentialAtom2Id) || potentialAtom2Id;
 
         // Skip self-bonds
-        if (atom1Label === atom2Label) {
+        if (atom1Id === atom2Id) {
             continue;
         }
 
-        if (!objectTracker.atomTranslations.has(atom1Label) && !objectTracker.atomTranslations.has(atom2Label)) {
-            // If both atoms are not translated, use their original labels
+        if (!objectTracker.atomTranslations.has(atom1Id) && !objectTracker.atomTranslations.has(atom2Id)) {
+            // If both atoms are not translated, use their original IDs
 
-            const bondId = createBondIdentifier(atom1Label, atom2Label);
+            const bondId = createBondIdentifier(atom1Id, atom2Id);
             if (!objectTracker.createdBonds.has(bondId)) {
+                // Note: We use atom1Id/atom2Id which are now IDs (Label|Symmetry)
                 const newBond = new Bond(
-                    atom1Label,
-                    atom2Label,
+                    atom1Id,
+                    atom2Id,
                     bond.bondLength,
                     bond.bondLengthSU,
                     '.',
                 );
                 grownBonds.push(newBond);
                 objectTracker.createdBonds.add(bondId);
-                //grownBonds.push(newBond);
             }
-        } else if (objectTracker.atomTranslations.has(atom1Label) && objectTracker.atomTranslations.has(atom2Label)) {
-            // If both atoms are translated, use their new labels
-            const [newAtom1Label, symm1] = objectTracker.atomTranslations.get(atom1Label);
-            const [newAtom2Label, symm2] = objectTracker.atomTranslations.get(atom2Label);
+        } else if (objectTracker.atomTranslations.has(atom1Id) && objectTracker.atomTranslations.has(atom2Id)) {
+            // If both atoms are translated, use their new IDs
+            const [newAtom1Id, symm1] = objectTracker.atomTranslations.get(atom1Id);
+            const [newAtom2Id, symm2] = objectTracker.atomTranslations.get(atom2Id);
 
             if (symm1 === symm2) {
                 // Only create bond if atoms have been translated with the same symmetry
-                const bondId = createBondIdentifier(newAtom1Label, newAtom2Label);
+                const bondId = createBondIdentifier(newAtom1Id, newAtom2Id);
                 if (!objectTracker.createdBonds.has(bondId)) {
                     const newBond = new Bond(
-                        newAtom1Label,
-                        newAtom2Label,
+                        newAtom1Id,
+                        newAtom2Id,
                         bond.bondLength,
                         bond.bondLengthSU,
                         '.',
@@ -341,7 +368,7 @@ export function growInternalBondsInGroup(grownGroup, symmetry, symmString, objec
                 }
             }
         }
-        // if only one atom is translated, we skip the bond
+        // if only one atom is translated, we skip the bond (bond crosses cell boundary)
     }
     return grownBonds;
 }
@@ -361,29 +388,41 @@ export function growInternalHBondsInGroup(grownGroup, symmetry, symmString, obje
     const grownHBonds = [];
 
     for (const hbond of grownGroup.internalHBonds) {
-        const donorLabel = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(hbond.donorAtomLabel, symmString, symmetry),
-        ) || combineSymAtomLabel(hbond.donorAtomLabel, symmString, symmetry);
-        
-        const hydrogenLabel = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(hbond.hydrogenAtomLabel, symmString, symmetry),
-        ) || combineSymAtomLabel(hbond.hydrogenAtomLabel, symmString, symmetry);
-        
-        const acceptorLabel = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(hbond.acceptorAtomLabel, symmString, symmetry),
-        ) || combineSymAtomLabel(hbond.acceptorAtomLabel, symmString, symmetry);
+        const donorId = objectTracker.specialPositionMap.get(
+            combineAtomId(hbond.donorAtomId, symmString, symmetry),
+        ) || combineAtomId(hbond.donorAtomId, symmString, symmetry);
+
+        const hydrogenId = objectTracker.specialPositionMap.get(
+            combineAtomId(hbond.hydrogenAtomId, symmString, symmetry),
+        ) || combineAtomId(hbond.hydrogenAtomId, symmString, symmetry);
+
+        // For external H-bonds (acceptorAtomSymmetry !== '.'), combine the acceptor's symmetry
+        // with the new group symmetry, then extract base label and combine
+        let acceptorId;
+        if (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') {
+            // External H-bond: combine symmetries and use base label
+            const acceptorBaseLabel = hbond.acceptorAtomId.split('|')[0];
+            const combinedAcceptorSymm = symmetry.combineSymmetryCodes(symmString, hbond.acceptorAtomSymmetry);
+            const potentialAcceptorId = `${acceptorBaseLabel}|${combinedAcceptorSymm}`;
+            acceptorId = objectTracker.specialPositionMap.get(potentialAcceptorId) || potentialAcceptorId;
+        } else {
+            // Internal H-bond: just combine with group symmetry
+            acceptorId = objectTracker.specialPositionMap.get(
+                combineAtomId(hbond.acceptorAtomId, symmString, symmetry),
+            ) || combineAtomId(hbond.acceptorAtomId, symmString, symmetry);
+        }
 
         if (
-            !objectTracker.atomTranslations.has(donorLabel) 
-                && !objectTracker.atomTranslations.has(hydrogenLabel) 
-                && !objectTracker.atomTranslations.has(acceptorLabel)
+            !objectTracker.atomTranslations.has(donorId)
+            && !objectTracker.atomTranslations.has(hydrogenId)
+            && !objectTracker.atomTranslations.has(acceptorId)
         ) {
-            const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
+            const hbondId = createHBondIdentifier(donorId, hydrogenId, acceptorId);
             if (!objectTracker.createdHBonds.has(hbondId)) {
                 const newHBond = new HBond(
-                    donorLabel,
-                    hydrogenLabel,
-                    acceptorLabel,
+                    donorId,
+                    hydrogenId,
+                    acceptorId,
                     hbond.donorHydrogenDistance,
                     hbond.donorHydrogenDistanceSU,
                     hbond.acceptorHydrogenDistance,
@@ -398,23 +437,23 @@ export function growInternalHBondsInGroup(grownGroup, symmetry, symmString, obje
                 grownHBonds.push(newHBond);
             }
         } else if (
-            objectTracker.atomTranslations.has(donorLabel) && 
-            objectTracker.atomTranslations.has(hydrogenLabel) && 
-            objectTracker.atomTranslations.has(acceptorLabel)
+            objectTracker.atomTranslations.has(donorId) &&
+            objectTracker.atomTranslations.has(hydrogenId) &&
+            objectTracker.atomTranslations.has(acceptorId)
         ) {
             // If all atoms are translated, use their new labels
-            const [newDonorLabel, symmD] = objectTracker.atomTranslations.get(donorLabel);
-            const [newHydrogenLabel, symmH] = objectTracker.atomTranslations.get(hydrogenLabel);
-            const [newAcceptorLabel, symmA] = objectTracker.atomTranslations.get(acceptorLabel);
-            
+            const [newDonorId, symmD] = objectTracker.atomTranslations.get(donorId);
+            const [newHydrogenId, symmH] = objectTracker.atomTranslations.get(hydrogenId);
+            const [newAcceptorId, symmA] = objectTracker.atomTranslations.get(acceptorId);
+
             if (symmD === symmH && symmH === symmA) {
 
-                const hbondId = createHBondIdentifier(newDonorLabel, newHydrogenLabel, newAcceptorLabel);
+                const hbondId = createHBondIdentifier(newDonorId, newHydrogenId, newAcceptorId);
                 if (!objectTracker.createdHBonds.has(hbondId)) {
                     const newHBond = new HBond(
-                        newDonorLabel,
-                        newHydrogenLabel,
-                        newAcceptorLabel,
+                        newDonorId,
+                        newHydrogenId,
+                        newAcceptorId,
                         hbond.donorHydrogenDistance,
                         hbond.donorHydrogenDistanceSU,
                         hbond.acceptorHydrogenDistance,
@@ -450,33 +489,45 @@ export function growInternalHBondsInGroup(grownGroup, symmetry, symmString, obje
 export function growExternalBondsInGroup(grownGroup, symmetry, symmString, objectTracker) {
     const grownExternalBonds = [];
     for (const bond of grownGroup.externalBonds) {
-        let atom1Label = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(bond.atom1Label, symmString, symmetry),
-        ) || combineSymAtomLabel(bond.atom1Label, symmString, symmetry);
+        let atom1Id = objectTracker.specialPositionMap.get(
+            combineAtomId(bond.atom1Id, symmString, symmetry),
+        ) || combineAtomId(bond.atom1Id, symmString, symmetry);
 
         let atom2Symm = symmetry.combineSymmetryCodes(
             symmString,
             bond.atom2SiteSymmetry,
         );
+        const atom2BaseLabel = bond.atom2Id.split('|')[0];
 
-        let atom2Label = combineSymAtomLabel(bond.atom2Label, atom2Symm, symmetry);
-        atom2Label = objectTracker.specialPositionMap.get(atom2Label) || atom2Label;
-
-        if (objectTracker.atomTranslations.has(atom1Label)) {
+        if (objectTracker.atomTranslations.has(atom1Id)) {
             let atom1Symm;
-            [atom1Label, atom1Symm] = objectTracker.atomTranslations.get(atom1Label);
+            [atom1Id, atom1Symm] = objectTracker.atomTranslations.get(atom1Id);
+            // Re-calculate atom2Symm based on the translation of atom1?
+            // If atom1 was translated, its effective symmetry changed.
+            // We need to apply that same "shift" logic to atom2Symm?
+            // Or rather, combine symmetry codes properly.
+
+            // logic in original code:
+            // atom2Symm = symmetry.combineSymmetryCodes(atom1Symm, atom2Symm);
+            // This looks suspicious. atom1Symm is the translation string e.g. "1_565".
+            // If we combine it with atom2Symm, we are shifting atom2Symm too.
+            // This seems correct if the relative symmetry is preserved.
+
             atom2Symm = symmetry.combineSymmetryCodes(
                 atom1Symm,
                 atom2Symm,
             );
         }
 
-        const bondId = createBondIdentifier(atom1Label, atom2Label);
+        let atom2Id = `${atom2BaseLabel}|${atom2Symm}`;
+        atom2Id = objectTracker.specialPositionMap.get(atom2Id) || atom2Id;
+
+        const bondId = createBondIdentifier(atom1Id, atom2Id);
         if (!objectTracker.createdBonds.has(bondId)) {
 
             const newBond = new Bond(
-                atom1Label,
-                bond.atom2Label,
+                atom1Id,
+                atom2Id, // Use calculated atom2Id with combined symmetry
                 bond.bondLength,
                 bond.bondLengthSU,
                 atom2Symm,
@@ -503,51 +554,64 @@ export function growExternalBondsInGroup(grownGroup, symmetry, symmString, objec
 export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, objectTracker) {
     const grownExternalHBonds = [];
     for (const hBond of grownGroup.externalHBonds) {
-        let donorLabel = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(hBond.donorAtomLabel, symmString, symmetry),
-        ) || combineSymAtomLabel(hBond.donorAtomLabel, symmString, symmetry);
+        let donorId = objectTracker.specialPositionMap.get(
+            combineAtomId(hBond.donorAtomId, symmString, symmetry),
+        ) || combineAtomId(hBond.donorAtomId, symmString, symmetry);
 
-        let hydrogenLabel = objectTracker.specialPositionMap.get(
-            combineSymAtomLabel(hBond.hydrogenAtomLabel, symmString, symmetry),
-        ) || combineSymAtomLabel(hBond.hydrogenAtomLabel, symmString, symmetry);
+        let hydrogenId = objectTracker.specialPositionMap.get(
+            combineAtomId(hBond.hydrogenAtomId, symmString, symmetry),
+        ) || combineAtomId(hBond.hydrogenAtomId, symmString, symmetry);
 
         let acceptorSymm = symmetry.combineSymmetryCodes(
             symmString,
             hBond.acceptorAtomSymmetry,
         );
 
-        const acceptorLabel = combineSymAtomLabel(hBond.acceptorAtomLabel, acceptorSymm, symmetry);
+        // Don't calculate acceptorId yet - it depends on acceptorSymm which may be modified below
 
         if (
-            objectTracker.atomTranslations.has(donorLabel)
-            && objectTracker.atomTranslations.has(hydrogenLabel)
+            objectTracker.atomTranslations.has(donorId)
+            && objectTracker.atomTranslations.has(hydrogenId)
         ) {
             let donorTransSymm;
-            [donorLabel, donorTransSymm] = objectTracker.atomTranslations.get(donorLabel);
+            [donorId, donorTransSymm] = objectTracker.atomTranslations.get(donorId);
+            const [hydrogenIdr, hydrogenSymm] = objectTracker.atomTranslations.get(hydrogenId);
+            if (donorTransSymm !== hydrogenSymm) {
+                continue;
+            }
+            hydrogenId = hydrogenIdr;
             acceptorSymm = symmetry.combineSymmetryCodes(
                 donorTransSymm,
                 acceptorSymm,
             );
-            const [hydrogenLabelr, hydrogenSymm] = objectTracker.atomTranslations.get(hydrogenLabel);
-            hydrogenLabel = hydrogenLabelr;
-            acceptorSymm = symmetry.combineSymmetryCodes(
-                hydrogenSymm,
-                acceptorSymm,
-            );
         } else if (
-            objectTracker.atomTranslations.has(donorLabel) 
-            || objectTracker.atomTranslations.has(hydrogenLabel)
+            objectTracker.atomTranslations.has(donorId)
+            || objectTracker.atomTranslations.has(hydrogenId)
         ) {
             // If only one atom is translated, we skip the hydrogen bond
             continue;
-        } 
-        
-        const hbondId = createHBondIdentifier(donorLabel, hydrogenLabel, acceptorLabel);
+        }
+
+        // Now calculate acceptorId with the corrected acceptorSymm
+        // Extract base label from acceptorAtomId (may already contain symmetry)
+        const acceptorBaseLabel = hBond.acceptorAtomId.split('|')[0];
+        const acceptorId = `${acceptorBaseLabel}|${acceptorSymm}`;
+
+        // Skip intra-molecular H-bonds: if donor and acceptor are in the same molecule after
+        // symmetry combination, this is not a valid inter-molecular H-bond
+        // The donor's symmetry after this growth is embedded in donorId as the part after '|'
+        const donorSymm = donorId.split('|')[1];
+        if (donorSymm === acceptorSymm) {
+            // Donor and acceptor are in the same molecule - skip this H-bond
+            continue;
+        }
+
+        const hbondId = createHBondIdentifier(donorId, hydrogenId, acceptorId);
         if (!objectTracker.createdHBonds.has(hbondId)) {
             const newHBond = new HBond(
-                donorLabel,
-                hydrogenLabel,
-                hBond.acceptorAtomLabel,
+                donorId,
+                hydrogenId,
+                acceptorId, // Use calculated acceptorId with combined symmetry
                 hBond.donorHydrogenDistance,
                 hBond.donorHydrogenDistanceSU,
                 hBond.acceptorHydrogenDistance,
@@ -634,7 +698,7 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
         symmString: centredSymmString,
         groupCentre: transformedCentre,
     };
-        
+
 }
 
 /**
@@ -666,7 +730,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
 
     // Analyze connected groups and their symmetry operations
     const atomGroups = structure.calculateConnectedGroups();
-    
+
     // Determine minimal set of symmetry operations needed for each group
     const growSymIdsPerGroup = atomGroups.map(group => {
         const alreadyGrownSymmetries = getGrownSymmetriesofGroup(
@@ -680,20 +744,35 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
     const groupsExternalBonds = atomGroups.map(group => {
         return structure.bonds.filter(bond =>
             (bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.') &&
-            group.atoms.some(atom => atom.label === bond.atom1Label),
+            // Extract base label from atom1Label (e.g., 'N|1_555' -> 'N') for comparison
+            group.atoms.some(atom => atom.label === bond.atom1Id.split('|')[0]),
         );
     });
 
     const groupsExternalHBonds = atomGroups.map(group => {
         return structure.hBonds.filter(hbond =>
             (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') &&
-            group.atoms.some(atom => atom.label === hbond.donorAtomLabel),
+            // Extract base label from donorAtomLabel (e.g., 'N|1_555' -> 'N') for comparison
+            group.atoms.some(atom => atom.label === hbond.donorAtomId.split('|')[0]),
         );
     });
 
     // Prepare collections for the grown structure
+    // Initialize atomMap with existing atoms only if NOT moving atoms inside cell
+    // For CELL mode (moveAtomsInsideCell=true), we process all atoms fresh with repositioning
+    const atomMap = new Map();
+    if (!moveAtomsInsideCell) {
+        for (const atom of structure.atoms) {
+            const posKey = getAtomPositionKey(atom);
+            // Only add if not already in the map (shouldn't happen, but be safe)
+            if (!atomMap.has(posKey)) {
+                atomMap.set(posKey, atom.uniqueId);
+            }
+        }
+    }
+
     const objectTracker = {
-        atomMap: new Map(), // atomMap
+        atomMap, // Pre-seeded with existing atoms
         createdBonds: new Set(), // createdBonds
         createdHBonds: new Set(), // createdHBonds
         specialPositionMap, // specialPositionMap
@@ -719,7 +798,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             externalBonds: groupsExternalBonds[groupIdx],
             externalHBonds: groupsExternalHBonds[groupIdx],
         };
-        
+
         for (const symId of symOpsToApply) {
 
             const nonTransSymmString = `${symId}_555`;
@@ -731,37 +810,82 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 objectTracker,
                 moveAtomsInsideCell,
             );
-            grownAtomsGroups.push(newGrownGroup);            
+            grownAtomsGroups.push(newGrownGroup);
         }
     }
-    const finalAtoms = grownAtomsGroups.flatMap(group => group.atoms);
-    const finalBonds = grownAtomsGroups.flatMap(group => group.internalBonds);
-    const finalHBonds = grownAtomsGroups.flatMap(group => group.internalHBonds);
-    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.label));
+    // Include original atoms from structure only if NOT moving atoms inside cell
+    // When moveAtomsInsideCell is true (CELL mode), grown atoms already include the originals
+    // with proper repositioning, so we don't add unprocessed originals
+    const finalAtoms = moveAtomsInsideCell
+        ? grownAtomsGroups.flatMap(group => group.atoms)
+        : [...structure.atoms, ...grownAtomsGroups.flatMap(group => group.atoms)];
+    // Include original bonds only if NOT moving atoms inside cell
+    const finalBonds = moveAtomsInsideCell
+        ? grownAtomsGroups.flatMap(group => group.internalBonds)
+        : [...structure.bonds, ...grownAtomsGroups.flatMap(group => group.internalBonds)];
+
+    // Transform original H-bonds: for external H-bonds, create proper acceptorAtomId from base label + symmetry
+    const transformedOriginalHBonds = structure.hBonds.map(hb => {
+        if (hb.acceptorAtomSymmetry && hb.acceptorAtomSymmetry !== '.') {
+            // External H-bond: combine base label with symmetry to get proper acceptorAtomId
+            const acceptorBaseLabel = hb.acceptorAtomId.split('|')[0];
+            const combinedAcceptorId = `${acceptorBaseLabel}|${hb.acceptorAtomSymmetry}`;
+            return new HBond(
+                hb.donorAtomId,
+                hb.hydrogenAtomId,
+                combinedAcceptorId,
+                hb.donorHydrogenDistance,
+                hb.donorHydrogenDistanceSU,
+                hb.acceptorHydrogenDistance,
+                hb.acceptorHydrogenDistanceSU,
+                hb.donorAcceptorDistance,
+                hb.donorAcceptorDistanceSU,
+                hb.hBondAngle,
+                hb.hBondAngleSU,
+                '.', // Transformed to internal since acceptor is now identified
+            );
+        }
+        return hb; // Internal H-bond, keep as is
+    });
+
+    // Include original H-bonds only if NOT moving atoms inside cell
+    const finalHBonds = moveAtomsInsideCell
+        ? grownAtomsGroups.flatMap(group => group.internalHBonds)
+        : [...transformedOriginalHBonds, ...grownAtomsGroups.flatMap(group => group.internalHBonds)];
+    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
 
     grownAtomsGroups.forEach(group => {
         // Add external bonds and H-bonds to the potential maps
         group.externalBonds.forEach(bond => {
-            const combinedAtom2Label = combineSymAtomLabel(bond.atom2Label, bond.atom2SiteSymmetry, structure.symmetry);
-            const specialPositionAtom2 = objectTracker.specialPositionMap.get(combinedAtom2Label) || combinedAtom2Label;
-            //const bondId = createBondIdentifier(bond.atom1Label, specialPositionAtom2);
-                
-            if (finalAtomLabels.has(bond.atom1Label) && finalAtomLabels.has(combinedAtom2Label)) {
-                // Both atoms exist in the grown structure -> create non-symm Bond
+            // Resolve atom1Id through translations and special positions
+            let atom1Id = objectTracker.specialPositionMap.get(bond.atom1Id) || bond.atom1Id;
+            if (objectTracker.atomTranslations.has(atom1Id)) {
+                [atom1Id] = objectTracker.atomTranslations.get(atom1Id);
+            }
 
+            const combinedAtom2Id = combineAtomId(bond.atom2Id, bond.atom2SiteSymmetry, structure.symmetry);
+            let atom2Id = objectTracker.specialPositionMap.get(combinedAtom2Id) || combinedAtom2Id;
+            if (objectTracker.atomTranslations.has(atom2Id)) {
+                [atom2Id] = objectTracker.atomTranslations.get(atom2Id);
+            }
+            // Do NOT normalize to _555 - atoms at different translations are different positions
+
+            // For external bonds, only create if both atoms exist and are not at same position
+            if (finalAtomLabels.has(atom1Id) && finalAtomLabels.has(atom2Id) && atom1Id !== atom2Id) {
+                // Both atoms exist in the grown structure -> create non-symm Bond
                 const newBond = new Bond(
-                    bond.atom1Label,
-                    specialPositionAtom2,
+                    atom1Id,
+                    atom2Id,
                     bond.bondLength,
                     bond.bondLengthSU,
                     '.',
                 );
                 finalBonds.push(newBond);
-            } else if (finalAtomLabels.has(bond.atom1Label)) {
+            } else if (finalAtomLabels.has(atom1Id)) {
                 // Only atom1 exists in the grown structure -> create symm Bond
                 const newBond = new Bond(
-                    bond.atom1Label,
-                    bond.atom2Label,
+                    atom1Id,
+                    bond.atom2Id,
                     bond.bondLength,
                     bond.bondLengthSU,
                     bond.atom2SiteSymmetry,
@@ -772,29 +896,51 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         });
 
         group.externalHBonds.forEach(hbond => {
-            let donorLookup = objectTracker.specialPositionMap.get(hbond.donorAtomLabel) || hbond.donorAtomLabel;
+            let donorTranslation = null;
+            let donorLookup = objectTracker.specialPositionMap.get(hbond.donorAtomId) || hbond.donorAtomId;
             if (!finalAtomLabels.has(donorLookup)) {
                 donorLookup = objectTracker.specialPositionMap.get(donorLookup) || donorLookup;
-                donorLookup = objectTracker.atomTranslations.get(donorLookup) || donorLookup;
+                if (objectTracker.atomTranslations.has(donorLookup)) {
+                    [donorLookup, donorTranslation] = objectTracker.atomTranslations.get(donorLookup);
+                }
             }
+            let hydrogenTranslation = null;
             let hydrogenLookup = objectTracker.specialPositionMap.get(
-                hbond.hydrogenAtomLabel,
-            ) || hbond.hydrogenAtomLabel;
+                hbond.hydrogenAtomId,
+            ) || hbond.hydrogenAtomId;
             if (!finalAtomLabels.has(hydrogenLookup)) {
                 hydrogenLookup = objectTracker.specialPositionMap.get(hydrogenLookup) || hydrogenLookup;
-                hydrogenLookup = objectTracker.atomTranslations.get(hydrogenLookup) || hydrogenLookup;
-            } 
-            let acceptorLookup = combineSymAtomLabel(
-                hbond.acceptorAtomLabel,
-                hbond.acceptorAtomSymmetry,
-                structure.symmetry,
-            );
+                if (objectTracker.atomTranslations.has(hydrogenLookup)) {
+                    [hydrogenLookup, hydrogenTranslation] = objectTracker.atomTranslations.get(hydrogenLookup);
+                }
+            }
+            // Determine acceptor lookup - if acceptorAtomSymmetry is '.' or undefined, use acceptorAtomLabel directly
+            // Otherwise, combine base label with symmetry
+            let acceptorLookup;
+            if (!hbond.acceptorAtomSymmetry || hbond.acceptorAtomSymmetry === '.') {
+                // Internal H-bond or already resolved - use acceptorAtomLabel (which is same as acceptorAtomId)
+                acceptorLookup = hbond.acceptorAtomId;
+            } else {
+                // External H-bond - combine base label with symmetry
+                const acceptorBaseLabel = hbond.acceptorAtomId.split('|')[0];
+                acceptorLookup = `${acceptorBaseLabel}|${hbond.acceptorAtomSymmetry}`;
+            }
 
             if (!finalAtomLabels.has(acceptorLookup)) {
                 acceptorLookup = objectTracker.specialPositionMap.get(acceptorLookup) || acceptorLookup;
-                acceptorLookup = objectTracker.atomTranslations.get(acceptorLookup) || acceptorLookup;
+                if (objectTracker.atomTranslations.has(acceptorLookup)) {
+                    const [translatedAcceptor, acceptorTranslation] = objectTracker.atomTranslations.get(
+                        acceptorLookup,
+                    );
+                    // Wrapping only the acceptor changes the periodic image in the H-bond. Internalize it only
+                    // when donor, hydrogen, and acceptor were all wrapped by the same lattice translation.
+                    if (donorTranslation === acceptorTranslation &&
+                        hydrogenTranslation === acceptorTranslation) {
+                        acceptorLookup = translatedAcceptor;
+                    }
+                }
             }
-            
+
             if (
                 finalAtomLabels.has(donorLookup) &&
                 finalAtomLabels.has(hydrogenLookup) &&
@@ -824,7 +970,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 const newHBond = new HBond(
                     donorLookup,
                     hydrogenLookup,
-                    hbond.acceptorAtomLabel,
+                    hbond.acceptorAtomId,
                     hbond.donorHydrogenDistance,
                     hbond.donorHydrogenDistanceSU,
                     hbond.acceptorHydrogenDistance,
@@ -840,11 +986,24 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         });
     });
 
+    // Filter bonds to only include those where both atoms exist
+    const filteredBonds = finalBonds.filter(bond => {
+        const atom1Present = finalAtomLabels.has(bond.atom1Id);
+        const atom2IsExternal = bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.';
+        return atom1Present && (finalAtomLabels.has(bond.atom2Id) || atom2IsExternal);
+    });
+
+    // Filter H-bonds to only include those where donor and hydrogen exist
+    // (acceptor may be outside the cell with non-identity symmetry)
+    const filteredHBonds = finalHBonds.filter(hbond =>
+        finalAtomLabels.has(hbond.donorAtomId) && finalAtomLabels.has(hbond.hydrogenAtomId),
+    );
+
     return new CrystalStructure(
         structure.cell,
         finalAtoms,
-        finalBonds,
-        finalHBonds,
+        filteredBonds,
+        filteredHBonds,
         structure.symmetry,
     );
 }

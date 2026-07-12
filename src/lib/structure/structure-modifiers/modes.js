@@ -56,6 +56,7 @@ export class HydrogenFilter extends BaseFilter {
                 atom.atomType === 'H' && this.mode === HydrogenFilter.MODES.CONSTANT ?
                     null : atom.adp,
                 atom.disorderGroup,
+                atom.appliedSymmetry, // Preserve symmetry info for correct uniqueId
             )));
 
         const filteredBonds = structure.bonds
@@ -65,16 +66,21 @@ export class HydrogenFilter extends BaseFilter {
                         try {
                             // With cell growing the base atoms might not be present 
                             // anymore, so we need to handle that gracefully
-                            const atom1 = structure.getAtomByLabel(bond.atom1Label);
-                            const atom2 = structure.getAtomByLabel(bond.atom2Label);
+                            // anymore, so we need to handle that gracefully
+                            const atom1 = structure.getAtomById(bond.atom1Id);
+                            const atom2 = structure.getAtomById(bond.atom2Id);
                             return !(atom1.atomType === 'H' || atom2.atomType === 'H');
                         } catch {
                             return true; // Keep bond if there's an error
                         }
-                    } 
-                    const atom1 = structure.getAtomByLabel(bond.atom1Label);
-                    const atom2 = structure.getAtomByLabel(bond.atom2Label);
-                    return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                    }
+                    try {
+                        const atom1 = structure.getAtomById(bond.atom1Id);
+                        const atom2 = structure.getAtomById(bond.atom2Id);
+                        return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                    } catch {
+                        return true;
+                    }
                 }
                 return true;
             });
@@ -162,40 +168,50 @@ export class DisorderFilter extends BaseFilter {
         });
 
         const filteredBonds = structure.bonds.filter(bond => {
-            const atom1 = structure.getAtomByLabel(bond.atom1Label);
-            const atom2 = structure.getAtomByLabel(bond.atom2Label);
+            try {
+                const atom1 = structure.getAtomById(bond.atom1Id);
+                const atom2 = structure.getAtomById(bond.atom2Id);
 
-            if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
-                return false;
+                if (this.mode === DisorderFilter.MODES.GROUP1 &&
+                    (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
+                    return false;
+                }
+
+                if (this.mode === DisorderFilter.MODES.GROUP2 &&
+                    (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
+                    return false;
+                }
+
+                return true;
+            } catch {
+                // If an atom is missing, we keep the bond as we can't determine if it should be filtered
+                // This happens when bonds reference symmetry atoms not yet in the structure
+                return true;
             }
-
-            if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
-                return false;
-            }
-
-            return true;
         });
 
         const filteredHBonds = structure.hBonds.filter(hbond => {
-            const donor = structure.getAtomByLabel(hbond.donorAtomLabel);
-            const hydrogen = structure.getAtomByLabel(hbond.hydrogenAtomLabel);
-            const acceptor = structure.getAtomByLabel(hbond.acceptorAtomLabel);
+            try {
+                const donor = structure.getAtomById(hbond.donorAtomId);
+                const hydrogen = structure.getAtomById(hbond.hydrogenAtomId);
+                const acceptor = structure.getAtomById(hbond.acceptorAtomId);
 
-            if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
-                    acceptor.disorderGroup > 1)) {
-                return false;
+                if (this.mode === DisorderFilter.MODES.GROUP1 &&
+                    (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
+                        acceptor.disorderGroup > 1)) {
+                    return false;
+                }
+
+                if (this.mode === DisorderFilter.MODES.GROUP2 &&
+                    (donor.disorderGroup === 1 || hydrogen.disorderGroup === 1 ||
+                        acceptor.disorderGroup === 1)) {
+                    return false;
+                }
+
+                return true;
+            } catch {
+                return true;
             }
-
-            if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                (donor.disorderGroup === 1 || hydrogen.disorderGroup === 1 ||
-                    acceptor.disorderGroup === 1)) {
-                return false;
-            }
-
-            return true;
         });
 
         return new CrystalStructure(
@@ -307,7 +323,7 @@ export class SymmetryGrower extends BaseFilter {
         }
 
         const hasGrowableHBonds = structure.hBonds.some(hbond => hbond.acceptorAtomSymmetry !== '.');
-        
+
         if (hasGrowableHBonds) {
             if (hasGrowableBonds) {
                 modes.push(SymmetryGrower.MODES.FRAGMENT_HBONDS);

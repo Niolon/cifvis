@@ -4,7 +4,6 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
-//import { createSymAtomLabel } from '../structure/structure-modifiers/growing/util.js';
 
 /**
  * Examines a THREE.Object3D and its children for NaN values in position, rotation, scale, and matrix properties.
@@ -97,7 +96,7 @@ export function calcBondTransform(position1, position2) {
     const yAxis = new THREE.Vector3(0, 1, 0);
     const rotationAxis = new THREE.Vector3().crossVectors(unit, yAxis);
     const angle = -Math.acos(unit.dot(yAxis));
-    
+
     return new THREE.Matrix4()
         .makeScale(1, length, 1)
         .premultiply(new THREE.Matrix4().makeRotationAxis(
@@ -146,7 +145,7 @@ export class GeometryMaterialCache {
     initializeGeometries() {
         // Base atom geometry
         this.geometries.atom = new THREE.IcosahedronGeometry(
-            this.scaling, 
+            this.scaling,
             this.options.atomDetail,
         );
 
@@ -203,7 +202,7 @@ export class GeometryMaterialCache {
         if (!this.options.elementProperties[elementType]) {
             throw new Error(
                 `Unknown element type: ${elementType}. ` +
-                'Please ensure element properties are defined.' + 
+                'Please ensure element properties are defined.' +
                 'Pass the type settings as custom options, if' +
                 'they are element from periodic table',
             );
@@ -225,7 +224,7 @@ export class GeometryMaterialCache {
         const key = `${elementType}_materials`;
         if (!this.elementMaterials[key]) {
             const elementProperty = this.options.elementProperties[elementType];
-            
+
             const atomMaterial = new THREE.MeshStandardMaterial({
                 color: elementProperty.atomColor,
                 roughness: this.options.atomColorRoughness,
@@ -258,19 +257,19 @@ export class GeometryMaterialCache {
             this.options.atomADPInnerSections,
             this.options.atomADPRingSections,
         );
-        
+
         const positions = fullRing.attributes.position.array;
         const indices = fullRing.index.array;
         const newPositions = [];
         const newIndices = [];
         const keptIndices = new Set();
-        
+
         // First pass: identify vertices to keep
         for (let i = 0; i < indices.length; i += 3) {
             const idx1 = indices[i] * 3;
             const idx2 = indices[i + 1] * 3;
             const idx3 = indices[i + 2] * 3;
-            
+
             const vertices = [idx1, idx2, idx3].map(idx => ({
                 index: idx / 3,
                 distance: Math.sqrt(
@@ -279,16 +278,16 @@ export class GeometryMaterialCache {
                     positions[idx + 2] * positions[idx + 2],
                 ),
             }));
-            
+
             if (vertices.some(v => v.distance >= this.scaling)) {
                 vertices.forEach(v => keptIndices.add(indices[i + v.index % 3]));
             }
         }
-        
+
         // Second pass: create new vertex array and index mapping
         const indexMap = new Map();
         let newIndex = 0;
-        
+
         keptIndices.forEach(oldIndex => {
             const idx = oldIndex * 3;
             newPositions.push(
@@ -298,11 +297,11 @@ export class GeometryMaterialCache {
             );
             indexMap.set(oldIndex, newIndex++);
         });
-        
+
         // Third pass: create new index array using mapped indices
         for (let i = 0; i < indices.length; i += 3) {
-            if (keptIndices.has(indices[i]) && 
-                keptIndices.has(indices[i + 1]) && 
+            if (keptIndices.has(indices[i]) &&
+                keptIndices.has(indices[i + 1]) &&
                 keptIndices.has(indices[i + 2])) {
                 newIndices.push(
                     indexMap.get(indices[i]),
@@ -311,13 +310,13 @@ export class GeometryMaterialCache {
                 );
             }
         }
-        
+
         const baseADPRing = new THREE.BufferGeometry();
         baseADPRing.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
         baseADPRing.setIndex(newIndices);
         baseADPRing.computeVertexNormals();
         baseADPRing.rotateX(0.5 * Math.PI);
-        
+
         fullRing.dispose();
         return baseADPRing;
     }
@@ -347,7 +346,7 @@ export class ORTEP3JsStructure {
      */
     constructor(crystalStructure, options = {}) {
         const safeOptions = options || {};
-        
+
         // Handle deep merging of elementProperties
         const mergedElementProperties = { ...defaultSettings.elementProperties };
         if (safeOptions.elementProperties) {
@@ -364,10 +363,10 @@ export class ORTEP3JsStructure {
             ...safeOptions,
             elementProperties: mergedElementProperties,
         };
-        
+
         this.crystalStructure = crystalStructure;
         this.cache = new GeometryMaterialCache(this.options);
-        
+
         this.createStructure();
     }
     /**
@@ -379,12 +378,12 @@ export class ORTEP3JsStructure {
         this.bonds3D = [];
         this.hBonds3D = [];
 
-        const atomLabels = this.crystalStructure.atoms.map(atom => atom.label);
-        
+        const atomIds = this.crystalStructure.atoms.map(atom => atom.uniqueId);
+
         // Create atoms
         for (const atom of this.crystalStructure.atoms) {
             const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
-            
+
             if (atom.adp instanceof UAnisoADP) {
                 this.atoms3D.push(new ORTEPAniAtom(
                     atom,
@@ -413,9 +412,13 @@ export class ORTEP3JsStructure {
         }
 
         // Handle regular bonds
+        // Only draw bonds where both atoms are present in the current structure
         const drawnBonds = this.crystalStructure.bonds
-            .filter(bond => bond.atom2SiteSymmetry === null || bond.atom2SiteSymmetry === '.')
-            .filter(bond => atomLabels.includes(bond.atom2Label));
+            .filter(bond => {
+                const atom1Present = atomIds.includes(bond.atom1Id);
+                const atom2Present = atomIds.includes(bond.atom2Id);
+                return atom1Present && atom2Present;
+            });
 
         for (const bond of drawnBonds) {
             try {
@@ -433,9 +436,14 @@ export class ORTEP3JsStructure {
         }
 
         // Handle hydrogen bonds
+        // Only draw h-bonds where all atoms are present in the current structure
         const drawnHBonds = this.crystalStructure.hBonds
-            .filter(hBond => hBond.acceptorAtomSymmetry === null || hBond.acceptorAtomSymmetry === '.')
-            .filter(hBond => atomLabels.includes(hBond.acceptorAtomLabel));
+            .filter(hBond => {
+                const present = atomIds.includes(hBond.donorAtomId) &&
+                    atomIds.includes(hBond.acceptorAtomId) &&
+                    (hBond.hydrogenAtomId ? atomIds.includes(hBond.hydrogenAtomId) : true);
+                return present;
+            });
 
         for (const hbond of drawnHBonds) {
             try {
@@ -461,20 +469,20 @@ export class ORTEP3JsStructure {
      */
     getGroup() {
         const group = new THREE.Group();
-        
+
         for (const atom3D of this.atoms3D) {
             group.add(atom3D);
         }
-        
+
         for (const bond3D of this.bonds3D) {
             group.add(bond3D);
         }
-        
+
         for (const hBond3D of this.hBonds3D) {
             group.add(hBond3D);
         }
         checkForNaN(group);
-        
+
         return group;
     }
 
@@ -532,7 +540,7 @@ export class ORTEPObject extends THREE.Mesh {
      */
     select(color, options) {
         this._selectionColor = color;
-        
+
         const highlightMaterial = this.material.clone();
         highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
         this.originalMaterial = this.material;
@@ -572,7 +580,7 @@ export class ORTEPObject extends THREE.Mesh {
             this.marker.material?.dispose();
             this.marker = null;
         }
-        
+
         if (this.originalMaterial) {
             this.material.dispose();
             this.material = this.originalMaterial;
@@ -622,7 +630,7 @@ export class ORTEPAtom extends ORTEPObject {
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
-            this.geometry, 
+            this.geometry,
             this.createSelectionMaterial(color),
         );
         outlineMesh.scale.multiplyScalar(options.selection.markerMult);
@@ -654,18 +662,18 @@ export class ORTEPAniAtom extends ORTEPAtom {
             const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
             if (ellipsoidMatrix.toArray().includes(NaN)) {
                 this.geometry = new THREE.TetrahedronGeometry(0.8);
-            } else {            
+            } else {
                 for (const matrix of this.adpRingMatrices) {
                     const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
                     ringMesh.applyMatrix4(matrix);
                     ringMesh.userData.selectable = false;
                     this.add(ringMesh);
                 }
-    
+
                 this.applyMatrix4(ellipsoidMatrix);
             }
         }
-        
+
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
         this.position.copy(position);
         this.userData = {
@@ -748,9 +756,9 @@ export class ORTEPConstantAtom extends ORTEPAtom {
         super(atom, unitCell, baseAtom, atomMaterial);
         let elementType = atom.atomType;
         try {
-            if (!options.elementProperties[elementType]) {   
+            if (!options.elementProperties[elementType]) {
                 elementType = inferElementFromLabel(atom.atomType);
-            } 
+            }
         } catch {
             throw new Error(`Element properties not found for atom type: '${atom.atomType}'`);
         }
@@ -775,12 +783,12 @@ export class ORTEPBond extends ORTEPObject {
      */
     constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
         super(baseBond, baseBondMaterial);
-        const bondAtom1 = crystalStructure.getAtomByLabel(bond.atom1Label);
-        const bondAtom2 = crystalStructure.getAtomByLabel(bond.atom2Label);
+        const bondAtom1 = crystalStructure.getAtomById(bond.atom1Id);
+        const bondAtom2 = crystalStructure.getAtomById(bond.atom2Id);
         const atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
         const atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
         const bondTransform = calcBondTransform(atom1position, atom2position);
-        
+
         this.applyMatrix4(bondTransform);
         this.userData = {
             type: 'bond',
@@ -797,7 +805,7 @@ export class ORTEPBond extends ORTEPObject {
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
-            this.geometry, 
+            this.geometry,
             this.createSelectionMaterial(color),
         );
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
@@ -841,12 +849,12 @@ export class ORTEPGroupObject extends THREE.Group {
             if (object instanceof THREE.Mesh) {
                 // Store original raycast method
                 const originalRaycast = object.raycast;
-                
+
                 // Override raycast to redirect to parent
                 object.raycast = (raycaster, intersects) => {
                     const meshIntersects = [];
                     originalRaycast.call(object, raycaster, meshIntersects);
-                    
+
                     if (meshIntersects.length > 0) {
                         const intersection = meshIntersects[0];
                         intersects.push({
@@ -861,7 +869,7 @@ export class ORTEPGroupObject extends THREE.Group {
                 };
             }
         });
-        
+
         return super.add(...objects);
     }
 
@@ -886,7 +894,7 @@ export class ORTEPGroupObject extends THREE.Group {
      */
     select(color, options) {
         this._selectionColor = color;
-        
+
         // Handle materials for all children
         this.traverse(child => {
             if (child instanceof THREE.Mesh) {
@@ -920,7 +928,7 @@ export class ORTEPGroupObject extends THREE.Group {
             });
             this.marker = null;
         }
-        
+
         // Restore original materials
         this.traverse(child => {
             if (child instanceof THREE.Mesh && child.originalMaterial) {
@@ -984,9 +992,9 @@ export class ORTEPHBond extends ORTEPGroupObject {
             hbondData: hbond,
             selectable: true,
         };
-        
-        const hydrogenAtom = crystalStructure.getAtomByLabel(hbond.hydrogenAtomLabel);
-        const acceptorAtom = crystalStructure.getAtomByLabel(hbond.acceptorAtomLabel);
+
+        const hydrogenAtom = crystalStructure.getAtomById(hbond.hydrogenAtomId);
+        const acceptorAtom = crystalStructure.getAtomById(hbond.acceptorAtomId);
         const hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
         const acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell));
 

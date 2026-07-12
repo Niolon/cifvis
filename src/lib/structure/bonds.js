@@ -1,23 +1,54 @@
 import { CifBlock } from '../read-cif/base.js';
 
 /**
- * Represents a covalent bond between atoms in a crystal structure
+ * Returns the chemical label portion of an atom ID.
+ * @param {string} atomId - Atom ID or legacy atom label
+ * @returns {string} Chemical atom label
+ */
+function getAtomLabel(atomId) {
+    return String(atomId).split('|')[0];
+}
+
+/**
+ * Normalizes an atom label or ID to the canonical label|symmetry form.
+ * @param {string} atomId - Atom ID or legacy atom label
+ * @param {string} [symmetry] - Symmetry used for legacy labels
+ * @returns {string} Canonical atom ID
+ */
+function normalizeAtomId(atomId, symmetry = '1_555') {
+    const stringId = String(atomId);
+    return stringId.includes('|') ? stringId : `${stringId}|${symmetry}`;
+}
+
+/**
+ * Represents a covalent bond between atoms in a crystal structure.
  */
 export class Bond {
     /**
      * Creates a new bond
-     * @param {string} atom1Label - Label of first atom
-     * @param {string} atom2Label - Label of second atom
+     * @param {string} atom1Id - Unique ID of first atom
+     * @param {string} atom2Id - Unique ID of second atom
      * @param {number} [bondLength] - Bond length in Å
      * @param {number} [bondLengthSU] - Standard uncertainty in bond length
      * @param {string} [atom2SiteSymmetry] - Symmetry operation for second atom
      */
-    constructor(atom1Label, atom2Label, bondLength = null, bondLengthSU = null, atom2SiteSymmetry = null) {
-        this.atom1Label = atom1Label;
-        this.atom2Label = atom2Label;
+    constructor(atom1Id, atom2Id, bondLength = null, bondLengthSU = null, atom2SiteSymmetry = null) {
+        this.atom1Id = normalizeAtomId(atom1Id);
+        this.atom2Id = normalizeAtomId(
+            atom2Id,
+            atom2SiteSymmetry && atom2SiteSymmetry !== '.' ? atom2SiteSymmetry : '1_555',
+        );
         this.bondLength = bondLength;
         this.bondLengthSU = bondLengthSU;
         this.atom2SiteSymmetry = atom2SiteSymmetry;
+    }
+
+    get atom1Label() {
+        return getAtomLabel(this.atom1Id);
+    }
+
+    get atom2Label() {
+        return getAtomLabel(this.atom2Id);
     }
 
     /**
@@ -52,12 +83,27 @@ export class Bond {
             siteSymmetry2 = `${siteSymmetry2}_555`;
         }
 
+        const atom1Label = bondLoop.getIndex(
+            ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
+            bondIndex,
+        );
+        // Atom 1 is always in the asymmetric unit in standard CIF bond lists, so we use identity symmetry 1_555
+        const atom1Id = `${atom1Label}|1_555`;
+
+        const atom2Label = bondLoop.getIndex(
+            ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
+            bondIndex,
+        );
+        const atom2Symmetry = siteSymmetry2 !== '?' ? siteSymmetry2 : '.';
+        // If symmetry is identity ('.'), use 1_555, otherwise use the symmetry code
+        const atom2Id = `${atom2Label}|${atom2Symmetry === '.' ? '1_555' : atom2Symmetry}`;
+
         return new Bond(
-            bondLoop.getIndex(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'], bondIndex),
-            bondLoop.getIndex(['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'], bondIndex),
+            atom1Id,
+            atom2Id,
             bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
-            siteSymmetry2 !== '?' ? siteSymmetry2: '.',
+            atom2Symmetry,
         );
     }
 }
@@ -68,9 +114,9 @@ export class Bond {
 export class HBond {
     /**
      * Creates a new hydrogen bond
-     * @param {string} donorAtomLabel - Label of donor atom (D)
-     * @param {string} hydrogenAtomLabel - Label of hydrogen atom (H)
-     * @param {string} acceptorAtomLabel - Label of acceptor atom (A)
+     * @param {string} donorAtomId - Unique ID of donor atom (D)
+     * @param {string} hydrogenAtomId - Unique ID of hydrogen atom (H)
+     * @param {string} acceptorAtomId - Unique ID of acceptor atom (A)
      * @param {number} donorHydrogenDistance - D-H distance in Å
      * @param {number} donorHydrogenDistanceSU - Standard uncertainty in D-H distance
      * @param {number} acceptorHydrogenDistance - H···A distance in Å
@@ -82,9 +128,9 @@ export class HBond {
      * @param {string} acceptorAtomSymmetry - Symmetry operation for acceptor atom
      */
     constructor(
-        donorAtomLabel,
-        hydrogenAtomLabel,
-        acceptorAtomLabel,
+        donorAtomId,
+        hydrogenAtomId,
+        acceptorAtomId,
         donorHydrogenDistance,
         donorHydrogenDistanceSU,
         acceptorHydrogenDistance,
@@ -95,9 +141,12 @@ export class HBond {
         hBondAngleSU,
         acceptorAtomSymmetry,
     ) {
-        this.donorAtomLabel = donorAtomLabel;
-        this.hydrogenAtomLabel = hydrogenAtomLabel;
-        this.acceptorAtomLabel = acceptorAtomLabel;
+        this.donorAtomId = normalizeAtomId(donorAtomId);
+        this.hydrogenAtomId = normalizeAtomId(hydrogenAtomId);
+        this.acceptorAtomId = normalizeAtomId(
+            acceptorAtomId,
+            acceptorAtomSymmetry && acceptorAtomSymmetry !== '.' ? acceptorAtomSymmetry : '1_555',
+        );
         this.donorHydrogenDistance = donorHydrogenDistance;
         this.donorHydrogenDistanceSU = donorHydrogenDistanceSU;
         this.acceptorHydrogenDistance = acceptorHydrogenDistance;
@@ -107,6 +156,18 @@ export class HBond {
         this.hBondAngle = hBondAngle;
         this.hBondAngleSU = hBondAngleSU;
         this.acceptorAtomSymmetry = acceptorAtomSymmetry;
+    }
+
+    get donorAtomLabel() {
+        return getAtomLabel(this.donorAtomId);
+    }
+
+    get hydrogenAtomLabel() {
+        return getAtomLabel(this.hydrogenAtomId);
+    }
+
+    get acceptorAtomLabel() {
+        return getAtomLabel(this.acceptorAtomId);
     }
 
     /**
@@ -122,10 +183,29 @@ export class HBond {
             '.',
         );
 
+        const donorLabel = hBondLoop.getIndex(
+            ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
+            hBondIndex,
+        );
+        const donorId = `${donorLabel}|1_555`;
+
+        const hydrogenLabel = hBondLoop.getIndex(
+            ['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'],
+            hBondIndex,
+        );
+        const hydrogenId = `${hydrogenLabel}|1_555`;
+
+        const acceptorLabel = hBondLoop.getIndex(
+            ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
+            hBondIndex,
+        );
+        const acceptorSymmetry = acceptorAtomSymmetry !== '?' ? acceptorAtomSymmetry : '.';
+        const acceptorId = `${acceptorLabel}|${acceptorSymmetry === '.' ? '1_555' : acceptorSymmetry}`;
+
         return new HBond(
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'], hBondIndex),
-            hBondLoop.getIndex(['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'], hBondIndex),
+            donorId,
+            hydrogenId,
+            acceptorId,
             hBondLoop.getIndex(['_geom_hbond.distance_dh', '_geom_hbond_distance_DH'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.distance_dh_su', '_geom_hbond_distance_DH_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.distance_ha', '_geom_hbond_distance_HA'], hBondIndex, NaN),
@@ -134,7 +214,7 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            acceptorAtomSymmetry !== '?' ? acceptorAtomSymmetry : '.',
+            acceptorSymmetry,
         );
     }
 }
@@ -217,7 +297,7 @@ export class BondsFactory {
             const bondLoop = cifBlock.get('_geom_bond');
             const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
             const bonds = [];
-            
+
             for (let i = 0; i < nBonds; i++) {
                 const atom1Label = bondLoop.getIndex(
                     ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
@@ -227,7 +307,7 @@ export class BondsFactory {
                     ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
                     i,
                 );
-                
+
                 if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
                     bonds.push(Bond.fromCIF(cifBlock, i));
                 }
@@ -252,7 +332,7 @@ export class BondsFactory {
 
         const nHBonds = hbondLoop.get(['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D']).length;
         const hBonds = [];
-        
+
         for (let i = 0; i < nHBonds; i++) {
             const donorLabel = hbondLoop.getIndex(
                 ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
@@ -274,7 +354,7 @@ export class BondsFactory {
                 hBonds.push(HBond.fromCIF(cifBlock, i));
             }
         }
-        
+
         return hBonds;
     }
 
@@ -291,11 +371,15 @@ export class BondsFactory {
 
         for (const bond of bonds) {
             const missingAtoms = [];
-            if (!atomLabels.has(bond.atom1Label)) {
-                missingAtoms.push(bond.atom1Label);
+            // Extract label from ID (format: label|symmetry)
+            const atom1Label = bond.atom1Id.split('|')[0];
+            const atom2Label = bond.atom2Id.split('|')[0];
+
+            if (!atomLabels.has(atom1Label)) {
+                missingAtoms.push(atom1Label);
             }
-            if (!atomLabels.has(bond.atom2Label)) {
-                missingAtoms.push(bond.atom2Label);
+            if (!atomLabels.has(atom2Label)) {
+                missingAtoms.push(atom2Label);
             }
             if (missingAtoms.length > 0) {
                 result.addAtomLabelError(
@@ -328,22 +412,26 @@ export class BondsFactory {
     static validateHBonds(hBonds, atoms, symmetry) {
         const result = new ValidationResult();
         const atomsLabels = new Set(atoms.map(atom => atom.label));
-        
+
         for (const hbond of hBonds) {
             const missingAtoms = [];
-            if (!atomsLabels.has(hbond.donorAtomLabel)) {
-                missingAtoms.push(hbond.donorAtomLabel);
+            const donorLabel = hbond.donorAtomId.split('|')[0];
+            const hydrogenLabel = hbond.hydrogenAtomId.split('|')[0];
+            const acceptorLabel = hbond.acceptorAtomId.split('|')[0];
+
+            if (!atomsLabels.has(donorLabel)) {
+                missingAtoms.push(donorLabel);
             }
-            if (!atomsLabels.has(hbond.hydrogenAtomLabel)) {
-                missingAtoms.push(hbond.hydrogenAtomLabel);
+            if (!atomsLabels.has(hydrogenLabel)) {
+                missingAtoms.push(hydrogenLabel);
             }
-            if (!atomsLabels.has(hbond.acceptorAtomLabel)) {
-                missingAtoms.push(hbond.acceptorAtomLabel);
+            if (!atomsLabels.has(acceptorLabel)) {
+                missingAtoms.push(acceptorLabel);
             }
             if (missingAtoms.length > 0) {
                 result.addAtomLabelError(
                     `Non-existent atoms in H-bond: ${hbond.donorAtomLabel} - ` +
-                    `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
+                        `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
                     `non-existent atom(s): ${missingAtoms.join(', ')}`,
                 );
             }
@@ -388,8 +476,8 @@ export class BondsFactory {
             return false;
         }
 
-        return (!atom1IsCentroid || atomLabels.has(atom1Label)) && 
-               (!atom2IsCentroid || atomLabels.has(atom2Label));
+        return (!atom1IsCentroid || atomLabels.has(atom1Label)) &&
+            (!atom2IsCentroid || atomLabels.has(atom2Label));
     }
 
     /**
@@ -411,7 +499,7 @@ export class BondsFactory {
         }
 
         return (!donorIsCentroid || atomLabels.has(donorLabel)) &&
-               (!hydrogenIsCentroid || atomLabels.has(hydrogenLabel)) &&
-               (!acceptorIsCentroid || atomLabels.has(acceptorLabel));
+            (!hydrogenIsCentroid || atomLabels.has(hydrogenLabel)) &&
+            (!acceptorIsCentroid || atomLabels.has(acceptorLabel));
     }
 }
