@@ -455,6 +455,8 @@ export class CrystalViewer {
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
+                defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
             plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
             plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,

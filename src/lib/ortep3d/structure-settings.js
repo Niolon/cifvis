@@ -51,6 +51,7 @@ export default {
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
     'plot2DBondColor': '#000000',
+    'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
     'plot2DStripeWidth': 0.18,
     'plot2DOutlineScale': 1.035,

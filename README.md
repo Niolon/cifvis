@@ -84,7 +84,8 @@ const viewer = new CrystalViewer(container, {
   atomEllipsoidStyle: 'solid', // Use 'cutout' for a camera-facing ORTEP octant cutaway
   atomCutawayStripeCount: 7, // Horizontal hatch lines across each cutaway disc
   atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
-  renderStyle: 'standard', // Use '2d' for an element-coloured publication plot
+  renderStyle: 'standard', // '2d': publication plot; PART 2 bonds are outline-only
+  plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
   plot2DStripeCount: 7,
   plot2DStripeWidth: 0.18,
   hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'

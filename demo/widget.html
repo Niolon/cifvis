@@ -533,11 +533,12 @@ _cell.angle_gamma 90
                 </div>
                 
                 <div class="widget-container">
-                    <span class="example-label">Disorder - all groups shown:</span>
+                    <span class="example-label">2D disorder - all parts shown:</span>
                     <cifview-widget 
                         src="cif/disorder.cif"
-                        caption="Structure with all disorder groups visible"
-                        disorder-mode="all">
+                        caption="Non-disordered/PART 1 bonds are solid; PART 2 bonds are open"
+                        disorder-mode="all"
+                        options='{"renderStyle":"2d"}'>
                     </cifview-widget>
                 </div>
 

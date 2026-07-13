@@ -320,6 +320,11 @@ describe('GeometryMaterialCache', () => {
             expect(carbonHatch.userData.plot2DHatch.color.getHexString()).toBe('000000');
             expect(oxygenHatch.userData.plot2DHatch.color.getHexString()).toBe('ff0d0d');
             expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
+            expect(plotCache.materials.openBond.color.getHexString()).toBe('ffffff');
+            expect(plotCache.materials.openBond.transparent).toBe(false);
+            expect(plotCache.materials.openBond.depthWrite).toBe(true);
+            expect(plotCache.materials.openBondOutline.color.getHexString()).toBe('000000');
+            expect(plotCache.materials.openBondOutline.side).toBe(THREE.BackSide);
             expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
 
             plotCache.dispose();
@@ -576,6 +581,67 @@ describe('ORTEP3JsStructure', () => {
             expect(anisotropicAtom.cutawayOutlines.filter(outline => outline.visible)).toHaveLength(7);
             expect(anisotropicAtom.cutawayPlanes.material.userData.plot2DHatch).toBeDefined();
             expect(structure.bonds3D[0].material).toBeInstanceOf(THREE.MeshBasicMaterial);
+        });
+
+        test('renders PART 2 bonds with opaque white centres in the 2D plot', () => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom(
+                    'C0',
+                    'C',
+                    new FractPosition(0, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                ),
+                new Atom(
+                    'C1',
+                    'C',
+                    new FractPosition(0.25, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                    1,
+                ),
+                new Atom(
+                    'C2',
+                    'C',
+                    new FractPosition(0.5, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                    2,
+                ),
+            ];
+            const bonds = [
+                new Bond('C0', 'C1'),
+                new Bond('C0', 'C2'),
+            ];
+            structure = new ORTEP3JsStructure(
+                new CrystalStructure(cell, atoms, bonds),
+                { renderStyle: '2d' },
+            );
+
+            const [nonDisordered, part1, part2] = structure.atoms3D;
+            const [closedBond, openBond] = structure.bonds3D;
+            const group = structure.getGroup();
+
+            expect(nonDisordered.isCutaway).toBe(true);
+            expect(part1.isCutaway).toBe(true);
+            expect(part2.isCutaway).toBe(true);
+            expect(group.cameraFacingAtoms).toEqual([nonDisordered, part1, part2]);
+
+            expect(closedBond.userData.isOpenDisorderBond).toBe(false);
+            expect(closedBond.material.color.getHexString()).toBe('000000');
+            expect(closedBond.openBondOutline).toBeUndefined();
+
+            expect(openBond.userData.isOpenDisorderBond).toBe(true);
+            expect(openBond.material.color.getHexString()).toBe('ffffff');
+            expect(openBond.material.transparent).toBe(false);
+            expect(openBond.material.opacity).toBe(1);
+            expect(openBond.material.depthWrite).toBe(true);
+            expect(openBond.openBondOutline).toBeInstanceOf(THREE.Mesh);
+            expect(openBond.openBondOutline.material.color.getHexString()).toBe('000000');
+            expect(openBond.openBondOutline.material.side).toBe(THREE.BackSide);
+            expect(openBond.scale.x).toBeCloseTo(0.5);
+            expect(openBond.scale.z).toBeCloseTo(0.5);
+            expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
+            expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
         });
     });
 

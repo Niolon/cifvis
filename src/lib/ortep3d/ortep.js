@@ -421,6 +421,13 @@ export class GeometryMaterialCache {
             this.materials.bond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DBondColor,
             });
+            this.materials.openBond = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DAtomColor,
+            });
+            this.materials.openBondOutline = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DBondColor,
+                side: THREE.BackSide,
+            });
             this.materials.hbond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DLineColor,
             });
@@ -773,13 +780,22 @@ export class ORTEP3JsStructure {
 
         for (const bond of drawnBonds) {
             try {
+                const atom1 = atomsById.get(bond.atom1Id);
+                const atom2 = atomsById.get(bond.atom2Id);
+                const isOpenDisorderBond = this.options.renderStyle === '2d' &&
+                    [atom1, atom2].some(atom => Number(atom.disorderGroup) > 1);
                 this.bonds3D.push(new ORTEPBond(
                     bond,
                     this.crystalStructure,
                     this.cache.geometries.bond,
-                    this.cache.materials.bond,
+                    isOpenDisorderBond ?
+                        this.cache.materials.openBond : this.cache.materials.bond,
                     getCartesianPosition,
                     getRenderedAtom,
+                    isOpenDisorderBond ? {
+                        outlineMaterial: this.cache.materials.openBondOutline,
+                        innerScale: this.options.plot2DOpenBondInnerScale,
+                    } : null,
                 ));
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -1377,6 +1393,7 @@ export class ORTEPBond extends ORTEPObject {
      * @param {THREE.Material} baseBondMaterial - Bond material
      * @param {Function} [getCartesianPosition] - Cached atom-position resolver
      * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @param {object|null} [openStyle] - Optional opaque fill and outline setup
      */
     constructor(
         bond,
@@ -1385,6 +1402,7 @@ export class ORTEPBond extends ORTEPObject {
         baseBondMaterial,
         getCartesianPosition = null,
         getRenderedAtom = null,
+        openStyle = null,
     ) {
         super(baseBond, baseBondMaterial);
         let atom1position;
@@ -1409,10 +1427,22 @@ export class ORTEPBond extends ORTEPObject {
         const bondTransform = calcBondTransform(atom1position, atom2position);
 
         this.applyMatrix4(bondTransform);
+        if (openStyle) {
+            const innerScale = THREE.MathUtils.clamp(openStyle.innerScale, 0.05, 0.95);
+            this.scale.x *= innerScale;
+            this.scale.z *= innerScale;
+
+            const outline = new THREE.Mesh(baseBond, openStyle.outlineMaterial);
+            outline.scale.set(1 / innerScale, 1, 1 / innerScale);
+            outline.userData = { selectable: false, type: '2d-open-bond-outline' };
+            this.add(outline);
+            this.openBondOutline = outline;
+        }
         this.userData = {
             type: 'bond',
             bondData: bond,
             selectable: true,
+            isOpenDisorderBond: Boolean(openStyle),
         };
     }
 
