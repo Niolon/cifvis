@@ -383,6 +383,7 @@ export class CifViewWidget extends HTMLElement {
             case 'block': {
                 const cifText = this.viewer.state.currentCifContent;
                 if (cifText) {
+                    this.resetLoadState();
                     const result = await this.viewer.loadCIF(cifText, this.resolveBlockSelector(newValue));
                     if (result.success) {
                         this.setupButtons();
@@ -416,7 +417,18 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
+    /**
+     * Clears any lingering error state (overlay + error caption) left over from a
+     * previous failed load, so a new load attempt starts from a clean slate.
+     */
+    resetLoadState() {
+        this.clearErrorDiv();
+        this.baseCaption = this.getAttribute('caption') || this.defaultCaption;
+        this.updateCaption();
+    }
+
     async loadFromUrl(url, blockSelector = 0) {
+        this.resetLoadState();
         try {
             const response = await fetch(url);
 
@@ -448,9 +460,15 @@ export class CifViewWidget extends HTMLElement {
     }
 
     async loadFromString(data, blockSelector = 0) {
+        this.resetLoadState();
         try {
-            await this.viewer.loadCIF(data, blockSelector);
-            this.setupButtons();  // Setup buttons after loading
+            const result = await this.viewer.loadCIF(data, blockSelector);
+
+            if (result.success) {
+                this.setupButtons();  // Setup buttons after loading
+            } else {
+                throw new Error(result.error || 'Unknown Error');
+            }
         } catch (error) {
             this.createErrorDiv(error);
         }
@@ -458,25 +476,26 @@ export class CifViewWidget extends HTMLElement {
 
     createErrorDiv(error) {
         console.error('Error loading structure:', error);
-            
+
         // Sanitize error message
         const sanitizedMessage = this.sanitizeHTML(error.message);
-        
+
         // Update caption to show sanitized error message
         this.baseCaption = `Error loading structure: ${sanitizedMessage}`;
         this.updateCaption();
-        
-        // Optional: Create an error display in the viewer area
+
+        // Overlay an error display on top of the viewer area without touching its
+        // existing children (the WebGL canvas and button container must survive so
+        // a later successful load can recover without recreating the viewer).
         if (this.viewer) {
             const container = this.querySelector('.crystal-container');
             if (container) {
-                // Clear the container
-                while (container.firstChild) {
-                    container.firstChild.remove();
-                }
-                
-                // Add error message
+                this.clearErrorDiv();
+
                 const errorDiv = document.createElement('div');
+                errorDiv.style.position = 'absolute';
+                errorDiv.style.inset = '0';
+                errorDiv.style.zIndex = '2000';
                 errorDiv.style.display = 'flex';
                 errorDiv.style.justifyContent = 'center';
                 errorDiv.style.alignItems = 'center';
@@ -484,25 +503,34 @@ export class CifViewWidget extends HTMLElement {
                 errorDiv.style.padding = '20px';
                 errorDiv.style.textAlign = 'center';
                 errorDiv.style.color = '#d32f2f';
-                
+                errorDiv.style.background = '#fafafa';
+
                 // Create elements programmatically instead of using innerHTML
                 const contentDiv = document.createElement('div');
-                
+
                 const heading = document.createElement('h3');
                 heading.textContent = 'Error Loading Structure';
                 contentDiv.appendChild(heading);
-                
+
                 const messagePara = document.createElement('p');
                 messagePara.textContent = sanitizedMessage;
                 contentDiv.appendChild(messagePara);
-                
+
                 const helpPara = document.createElement('p');
                 helpPara.textContent = 'Please check that the file exists and is a valid CIF file.';
                 contentDiv.appendChild(helpPara);
-                
+
                 errorDiv.appendChild(contentDiv);
                 container.appendChild(errorDiv);
+                this.errorDiv = errorDiv;
             }
+        }
+    }
+
+    clearErrorDiv() {
+        if (this.errorDiv) {
+            this.errorDiv.remove();
+            this.errorDiv = null;
         }
     }
     

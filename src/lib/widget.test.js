@@ -294,7 +294,78 @@ describe('CifViewWidget', () => {
             'Error loading structure:',
             expect.any(Error),
         );
-        
+
+        consoleSpy.mockRestore();
+    });
+
+    test('recovers after a failed load when a valid src is set afterward', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockRejectedValueOnce(new Error('Load failed'));
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('src', 'bad.cif');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        let caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Error loading structure');
+        // The button container must survive the error so recovery is possible.
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+
+        widget.setAttribute('src', 'good.cif');
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).not.toContain('Error loading structure');
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+        expect(widget.querySelectorAll('.control-button').length).toBeGreaterThan(0);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('recovers after a failed load when valid data is set afterward', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockRejectedValueOnce(new Error('Load failed'));
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'not valid cif');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        let caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Error loading structure');
+        // The button container must survive the error so recovery is possible.
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+
+        widget.setAttribute(
+            'data',
+            'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+        );
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).not.toContain('Error loading structure');
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+        expect(widget.querySelectorAll('.control-button').length).toBeGreaterThan(0);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('surfaces a resolved-but-unsuccessful loadCIF result via the data attribute', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockResolvedValueOnce({ success: false, error: 'Invalid structure' });
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'data_bad\n_some_key value');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Invalid structure');
+
         consoleSpy.mockRestore();
     });
 
