@@ -534,10 +534,30 @@ _cell.angle_gamma 90
                 
                 <div class="widget-container">
                     <span class="example-label">2D disorder - all parts shown:</span>
-                    <cifview-widget 
+                    <cifview-widget
                         src="cif/disorder.cif"
                         caption="Non-disordered/PART 1 bonds are solid; PART 2 bonds are open"
                         disorder-mode="all"
+                        options='{"renderStyle":"2d"}'>
+                    </cifview-widget>
+                </div>
+
+                <div class="widget-container">
+                    <span class="example-label">2D disorder - group1of2 only:</span>
+                    <cifview-widget
+                        src="cif/disorder.cif"
+                        caption="Non-disordered atoms plus the first disorder group only"
+                        disorder-mode="group1of2"
+                        options='{"renderStyle":"2d"}'>
+                    </cifview-widget>
+                </div>
+
+                <div class="widget-container">
+                    <span class="example-label">2D disorder - group2of2 only:</span>
+                    <cifview-widget
+                        src="cif/disorder.cif"
+                        caption="Non-disordered atoms plus the second disorder group only"
+                        disorder-mode="group2of2"
                         options='{"renderStyle":"2d"}'>
                     </cifview-widget>
                 </div>
@@ -622,11 +642,16 @@ _cell.angle_gamma 90
                 </tr>
                 <tr>
                     <td><code>disorder-mode</code></td>
-                    <td><code>all</code>, <code>group1</code>, <code>group2</code></td>
+                    <td><code>all</code>, <code>group&lt;rank&gt;of&lt;total&gt;</code> (e.g. <code>group1of2</code>)</td>
                     <td>
                         Controls which disorder groups are displayed. <br>
-                        <code>group1</code> displays disorder group 1 and non-disorder atoms, <br>
-                        <code>group2</code> displays all but disorder groups 1 atoms.
+                        Group modes are named by rank and the total number of disorder groups present
+                        in the structure, not by their raw CIF <code>disorder_group</code> number. <br>
+                        For a structure with two disorder groups: <code>group1of2</code> displays the
+                        lower-numbered disorder group plus non-disordered atoms, <code>group2of2</code>
+                        displays the other group plus non-disordered atoms. <br>
+                        A structure with N disorder groups exposes modes <code>group1ofN</code>
+                        through <code>groupNofN</code>.
                     </td>
                 </tr>
                 <tr>

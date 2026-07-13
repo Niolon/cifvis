@@ -426,10 +426,10 @@ describe('CifViewWidget', () => {
         
         await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
         
-        widget.setAttribute('disorder-mode', 'group1');
+        widget.setAttribute('disorder-mode', 'group1of2');
         await new Promise(resolve => setTimeout(resolve, 0));
         
-        expect(mockCrystalViewer.modifiers.disorder.mode).toBe('group1');
+        expect(mockCrystalViewer.modifiers.disorder.mode).toBe('group1of2');
         expect(mockCrystalViewer.updateStructure).toHaveBeenCalled();
     });
 
@@ -620,7 +620,7 @@ describe('CifViewWidget', () => {
     test('handles initial attribute modes during creation', async () => {
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('hydrogen-mode', 'constant');
-        widget.setAttribute('disorder-mode', 'group1');
+        widget.setAttribute('disorder-mode', 'group1of2');
         widget.setAttribute('symmetry-mode', 'bonds-yes-hbonds-yes');
         document.body.appendChild(widget);
         
@@ -629,7 +629,7 @@ describe('CifViewWidget', () => {
         // Check that options were passed to CrystalViewer
         expect(CrystalViewer.mock.calls[0][1]).toMatchObject({
             hydrogenMode: 'constant',
-            disorderMode: 'group1',
+            disorderMode: 'group1of2',
             symmetryMode: 'bonds-yes-hbonds-yes',
         });
     });

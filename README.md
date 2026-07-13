@@ -89,7 +89,7 @@ const viewer = new CrystalViewer(container, {
   plot2DStripeCount: 7,
   plot2DStripeWidth: 0.18,
   hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'
-  disorderMode: 'all',     // 'all', 'group1', 'group2'
+  disorderMode: 'all',     // 'all', 'group1of2', 'group2of2', ... "group<rank>of<total>" per disorder group in the structure
   symmetryMode: 'bonds-no-hbonds-no' // See symmetry modes below
 });
 ```

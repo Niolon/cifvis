@@ -310,24 +310,75 @@ export class CifViewWidget extends HTMLElement {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
         const mode = this.viewer.modifiers[type].mode;
-        button.innerHTML = this.icons[type][mode];
+        button.innerHTML = this.getIcon(type, mode);
         button.title = altText;
-        
+
         const svgElement = button.querySelector('svg');
         if (svgElement) {
             svgElement.setAttribute('alt', altText);
             svgElement.setAttribute('role', 'img');
             svgElement.setAttribute('aria-label', altText);
         }
-        
+
         container.appendChild(button);
 
         button.addEventListener('click', async () => {
             const result = await this.viewer.cycleModifierMode(type);
             if (result.success) {
-                button.innerHTML = this.icons[type][result.mode];
+                button.innerHTML = this.getIcon(type, result.mode);
             }
         });
+    }
+
+    /**
+     * Resolves the icon markup for a modifier mode.
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @returns {string} SVG markup for the icon
+     */
+    getIcon(type, mode) {
+        if (type === 'disorder') {
+            return this.getDisorderIcon(mode);
+        }
+        return this.icons[type]?.[mode] || '';
+    }
+
+    /**
+     * Resolves the icon for a disorder filter mode. "all" always uses the
+     * dedicated both-groups-in-black icon. Mode names encode rank and total
+     * group count (e.g. "group1of2"), so when there are exactly two disorder
+     * groups the mode name matches the dedicated two-tone group1of2/group2of2
+     * artwork directly. With more than two groups there is no dedicated art
+     * for each individual one, so the shared both-groups icon is reused in
+     * grey with the group's rank overlaid in front of it.
+     * @param {string} mode - Disorder filter mode
+     * @returns {string} SVG markup for the icon
+     */
+    getDisorderIcon(mode) {
+        const disorderIcons = this.icons.disorder;
+        if (mode === 'all') {
+            return disorderIcons.all;
+        }
+        if (disorderIcons[mode]) {
+            return disorderIcons[mode];
+        }
+
+        const rank = /^group(\d+)of\d+$/.exec(mode)?.[1];
+        return rank ? this.generateDisorderGroupIcon(rank) : '';
+    }
+
+    /**
+     * Generates an icon for an individual disorder group when there is no
+     * dedicated two-tone artwork for it: the shared both-groups icon,
+     * recoloured grey, with the group number overlaid in front.
+     * @param {string|number} groupNumber - Disorder group number to display
+     * @returns {string} SVG markup
+     */
+    generateDisorderGroupIcon(groupNumber) {
+        const greyIcon = this.icons.disorder.all.replace(/#000000/g, '#8f8f8f');
+        const label = '<text x="1.5" y="7" font-size="7" font-family="system-ui, sans-serif" ' +
+            `font-weight="bold" fill="#000000">${groupNumber}</text>`;
+        return greyIcon.replace('</svg>', `${label}</svg>`);
     }
 
     async attributeChangedCallback(name, oldValue, newValue) {
