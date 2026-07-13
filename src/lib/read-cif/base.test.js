@@ -137,6 +137,17 @@ _cell_length_a 5.4309(5)`);
             );
         });
         
+        test('throws error for out-of-range block index', () => {
+            const cif = new CIF(`data_block1
+_cell_length_a 5.4309(5)
+
+data_block2
+_cell_length_a 3.2468(3)`);
+
+            expect(() => cif.getBlock(2)).toThrow('Block index 2 out of range. This CIF has 2 block(s).');
+            expect(() => cif.getBlock(-1)).toThrow('Block index -1 out of range. This CIF has 2 block(s).');
+        });
+
         test('handles complex block names with dots and hyphens', () => {
             const cif = new CIF(`data_complex-name.123
 _cell_length_a 5.4309(5)

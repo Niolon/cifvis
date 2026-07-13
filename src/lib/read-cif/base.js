@@ -59,8 +59,12 @@ export class CIF {
      * Gets a specific CIF data block.
      * @param {number} index - Block index (default: 0)
      * @returns {CifBlock} The requested CIF block
+     * @throws {Error} If index is out of range
      */
     getBlock(index = 0) {
+        if (index < 0 || index >= this.rawCifBlocks.length) {
+            throw new Error(`Block index ${index} out of range. This CIF has ${this.rawCifBlocks.length} block(s).`);
+        }
         if (!this.blocks[index]) {
             this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU);
         }

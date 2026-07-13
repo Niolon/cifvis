@@ -46,10 +46,11 @@ describe('CifViewWidget', () => {
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
-            loadCIF: vi.fn().mockImplementation((cifData) => {
+            loadCIF: vi.fn().mockImplementation((cifData, cifBlock = 0) => {
                 // Simulate CIF validation - mock data from fetch needs to look like valid CIF data
                 if (cifData && cifData.includes('data_')) {
                     mockCrystalViewer.state.currentCifContent = cifData;
+                    mockCrystalViewer.state.currentCifBlock = cifBlock;
                     return Promise.resolve({ success: true });
                 } else {
                     return Promise.reject(new Error('Failed to load CIF file: Invalid CIF format'));
@@ -59,9 +60,10 @@ describe('CifViewWidget', () => {
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             loadStructure: vi.fn().mockResolvedValue({ success: true }),
-            state: { 
-                baseStructure: {}, 
-                currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0', 
+            state: {
+                baseStructure: {},
+                currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+                currentCifBlock: 0,
             },
             selections: {
                 onChange: vi.fn(),
@@ -136,6 +138,7 @@ describe('CifViewWidget', () => {
 
         expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+            0,
         );
     });
 
@@ -327,6 +330,7 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0',
+            0,
         );
     });
 
@@ -369,6 +373,70 @@ describe('CifViewWidget', () => {
         
         expect(mockCrystalViewer.modifiers.symmetry.mode).toBe('fragment');
         //expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+    });
+
+    test('handles block attribute changes with a numeric index', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        mockCrystalViewer.loadCIF.mockClear();
+
+        widget.setAttribute('block', '1');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            mockCrystalViewer.state.currentCifContent,
+            1,
+        );
+    });
+
+    test('handles block attribute changes with a block name', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        mockCrystalViewer.loadCIF.mockClear();
+
+        widget.setAttribute('block', 'crystal_b');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            mockCrystalViewer.state.currentCifContent,
+            'crystal_b',
+        );
+    });
+
+    test('passes the initial block attribute into the first load', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        widget.setAttribute('block', '2');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10)); // Let initial setup complete
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+            2,
+        );
+    });
+
+    test('shows an error when the requested block cannot be resolved', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+
+        mockCrystalViewer.loadCIF.mockResolvedValueOnce({
+            success: false,
+            error: 'Block with name \'missing\' not found. Available blocks: block1',
+        });
+
+        widget.setAttribute('block', 'missing');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('missing');
     });
 
     test('parses options attribute', async () => {

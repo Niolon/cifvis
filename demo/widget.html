@@ -639,6 +639,15 @@ _cell.angle_gamma 90
                         Only one additional sphere is grown.
                     </td>
                 </tr>
+                <tr>
+                    <td><code>block</code></td>
+                    <td>numeric index (e.g. <code>0</code>) or block name (e.g. <code>crystal_a</code>)</td>
+                    <td>
+                        Selects which CIF data block (dataset) to display for multi-block CIF files.<br>
+                        Defaults to the first block. A value made up entirely of digits is treated as an index,<br>
+                        any other value is treated as the block's name (the text following <code>data_</code>).
+                    </td>
+                </tr>
             </table>
         </section>
 

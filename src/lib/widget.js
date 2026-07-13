@@ -69,7 +69,7 @@ export class CifViewWidget extends HTMLElement {
     static get observedAttributes() {
         return [
             'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
-            'symmetry-mode',
+            'symmetry-mode', 'block',
         ];
     }
 
@@ -130,11 +130,25 @@ export class CifViewWidget extends HTMLElement {
         // Load structure first to determine which buttons to show
         const src = this.getAttribute('src');
         const data = this.getAttribute('data');
+        const blockSelector = this.resolveBlockSelector(this.getAttribute('block'));
         if (src) {
-            await this.loadFromUrl(src); 
+            await this.loadFromUrl(src, blockSelector);
         } else if (data) {
-            await this.loadFromString(data); 
+            await this.loadFromString(data, blockSelector);
         }
+    }
+
+    /**
+     * Resolves the raw `block` attribute value into a selector for CrystalViewer.loadCIF.
+     * A value made up entirely of digits is treated as a block index, otherwise as a block name.
+     * @param {string|null} rawValue - Raw attribute value
+     * @returns {number|string} Block index (default 0) or block name
+     */
+    resolveBlockSelector(rawValue) {
+        if (!rawValue) {
+            return 0;
+        }
+        return /^\d+$/.test(rawValue) ? Number(rawValue) : rawValue;
     }
 
     parseOptions() {
@@ -329,12 +343,12 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'src':
                 if (newValue) {
-                    await this.loadFromUrl(newValue); 
+                    await this.loadFromUrl(newValue, this.resolveBlockSelector(this.getAttribute('block')));
                 }
                 break;
             case 'data':
                 if (newValue) {
-                    await this.loadFromString(newValue); 
+                    await this.loadFromString(newValue, this.resolveBlockSelector(this.getAttribute('block')));
                 }
                 break;
             case 'icons':
@@ -350,6 +364,7 @@ export class CifViewWidget extends HTMLElement {
                 if (this.viewer) {
                     const container = this.querySelector('.crystal-container');
                     const currentCifContent = this.viewer.state.currentCifContent;
+                    const currentCifBlock = this.viewer.state.currentCifBlock;
 
                     this.viewer.dispose();
                     this.viewer = new CrystalViewer(container, this.userOptions);
@@ -357,14 +372,26 @@ export class CifViewWidget extends HTMLElement {
                         this.selections = selections;
                         this.updateCaption();
                     });
-                    
+
                     // Reload structure if we already had one
                     if (currentCifContent) {
-                        await this.viewer.loadCIF(currentCifContent);
+                        await this.viewer.loadCIF(currentCifContent, currentCifBlock ?? 0);
                         this.setupButtons();
                     }
                 }
                 break;
+            case 'block': {
+                const cifText = this.viewer.state.currentCifContent;
+                if (cifText) {
+                    const result = await this.viewer.loadCIF(cifText, this.resolveBlockSelector(newValue));
+                    if (result.success) {
+                        this.setupButtons();
+                    } else {
+                        this.createErrorDiv(new Error(result.error));
+                    }
+                }
+                break;
+            }
             case 'hydrogen-mode':
                 if (this.viewer.modifiers.hydrogen) {
                     this.viewer.modifiers.hydrogen.mode = newValue;
@@ -389,27 +416,27 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
-    async loadFromUrl(url) {
+    async loadFromUrl(url, blockSelector = 0) {
         try {
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 throw new Error(`Failed to load CIF file: ${response.status} ${response.statusText}`);
             }
-            
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('text/html')) {
                 throw new Error('Received no or invalid content for src.');
             }
-            
+
             const text = await response.text();
-            
+
             if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
                 throw new Error('Received no or invalid content for src.');
             }
-            
-            const result = await this.viewer.loadCIF(text);
-            
+
+            const result = await this.viewer.loadCIF(text, blockSelector);
+
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
             } else {
@@ -417,12 +444,12 @@ export class CifViewWidget extends HTMLElement {
             }
         } catch (error) {
             this.createErrorDiv(error);
-        }    
+        }
     }
-    
-    async loadFromString(data) {
+
+    async loadFromString(data, blockSelector = 0) {
         try {
-            await this.viewer.loadCIF(data);
+            await this.viewer.loadCIF(data, blockSelector);
             this.setupButtons();  // Setup buttons after loading
         } catch (error) {
             this.createErrorDiv(error);

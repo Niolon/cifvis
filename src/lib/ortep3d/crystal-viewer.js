@@ -478,6 +478,7 @@ export class CrystalViewer {
         this.state = {
             isDragging: false,
             currentCifContent: null,
+            currentCifBlock: null,
             currentStructure: null,
             currentFloor: null,
             baseStructure: null,
@@ -535,11 +536,14 @@ export class CrystalViewer {
      * Loads a crystal structure from CIF text.
      * This is the main entry point for displaying a new structure.
      * @param {string} cifText - CIF format text content
-     * @param {number} [cifBlockIndex] - Index of the CIF block to load (for multi-block CIFs)
+     * @param {number|string} [cifBlock] - Index or name of the CIF block to load (for multi-block CIFs)
      * @returns {Promise<object>} Result object with:
      * - success: Boolean indicating if loading succeeded
      * - error: Error message if loading failed
-     * 
+     *
+     * On success, `cifText` and `cifBlock` are persisted to `this.state.currentCifContent` /
+     * `this.state.currentCifBlock` so a later reload (e.g. after an options change) can reuse them.
+     *
      * Example:
      * ```
      * const result = await viewer.loadCIF(cifContent);
@@ -550,20 +554,26 @@ export class CrystalViewer {
      * }
      * ```
      */
-    async loadCIF(cifText, cifBlockIndex = 0) {
+    async loadCIF(cifText, cifBlock = 0) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
         }
         try {
             const cif = new CIF(cifText);
+            let block;
+            try {
+                block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
             let structure;
             try {
-                structure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
+                structure = CrystalStructure.fromCIF(block);
             } catch (e) {
                 if (!this.options.fixCifErrors) {
                     try {
-                        const maybeFixedCifBlock = tryToFixCifBlock(cif.getBlock(cifBlockIndex));
+                        const maybeFixedCifBlock = tryToFixCifBlock(block);
                         structure = CrystalStructure.fromCIF(maybeFixedCifBlock);
                     } catch {
                         // throw original error as it should be more informative
@@ -574,6 +584,9 @@ export class CrystalViewer {
                 }
             }
             await this.loadStructure(structure);
+
+            this.state.currentCifContent = cifText;
+            this.state.currentCifBlock = cifBlock;
 
             return { success: true };
         } catch (error) {
