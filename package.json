@@ -59,15 +59,10 @@
     "vite": "^6.0.11",
     "vitest": "^3.0.7"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "*.{js,mjs}": [
       "eslint --fix",
-      "git add"
+      "git diff --exit-code"
     ]
   }
 }

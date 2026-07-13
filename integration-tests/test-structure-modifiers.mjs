@@ -97,12 +97,15 @@ function generateSummary(isInterim = false) {
     
     // Calculate percentage of unhandled structure errors
     const totalStructureErrors = stats.errors.CrystalStructure.total;
-    const unhandledPercentage = (
+    const unhandledPercentage = totalStructureErrors === 0 ? '0.0' : (
         (stats.errors.CrystalStructure.otherAndLogged / totalStructureErrors) * 100
     ).toFixed(1);
     
     // Validate that our counts add up
-    const totalAccountedFor = stats.successfulStructure + stats.errors.CIF + stats.errors.CrystalStructure.total;
+    // Initial structure errors can be recovered by tryToFixCifBlock. Only errors that
+    // persist after that attempt are terminal and belong in the file accounting total.
+    const totalAccountedFor = stats.successfulStructure + stats.errors.CIF +
+        stats.errors.CrystalStructureFixed.total;
     const accountingDiscrepancy = stats.totalFiles - totalAccountedFor;
     
     const summaryText = `
@@ -307,17 +310,34 @@ async function testCIFFile(filePath) {
 
             // Try each combination
             for (const hydrogenMode of applicableModes.hydrogen) {
+                modifiers.hydrogen.mode = hydrogenMode;
+                let hydrogenStructure;
+                let hydrogenError;
+                try {
+                    hydrogenStructure = modifiers.hydrogen.apply(baseStructure);
+                } catch (error) {
+                    hydrogenError = error;
+                }
+
                 for (const disorderMode of applicableModes.disorder) {
+                    modifiers.disorder.mode = disorderMode;
+                    let filteredStructure;
+                    let filterError = hydrogenError;
+                    if (!filterError) {
+                        try {
+                            filteredStructure = modifiers.disorder.apply(hydrogenStructure);
+                        } catch (error) {
+                            filterError = error;
+                        }
+                    }
+
                     for (const symmetryMode of applicableModes.symmetry) {
                         try {
-                            let structure = baseStructure;
-                            modifiers.hydrogen.mode = hydrogenMode;
-                            modifiers.disorder.mode = disorderMode;
+                            if (filterError) {
+                                throw filterError;
+                            }
                             modifiers.symmetry.mode = symmetryMode;
-                         
-                            structure = modifiers.hydrogen.apply(baseStructure);
-                            structure = modifiers.disorder.apply(structure); 
-                            structure = modifiers.symmetry.apply(structure);
+                            modifiers.symmetry.apply(filteredStructure);
                         } catch (error) {
                             logMessage(
                                 `Modifier Error in ${filePath}:`

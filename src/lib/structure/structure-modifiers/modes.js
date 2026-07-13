@@ -1,9 +1,16 @@
-import { Bond, HBond } from '../bonds.js';
 import { Atom, CrystalStructure } from '../crystal.js';
 import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
 import { create, all } from 'mathjs';
+import { growFragment } from './growing/grow-fragment.js';
+import { growCell } from './growing/grow-cell.js';
+import { chemicalBonds } from '../bond-classification.js';
+import {
+    filterBondsByGeometry,
+    growExternalHBonds,
+    reconcileHBondsByGeometry,
+} from './growing/grow-hbonds.js';
 export const math = create(all);
 
 /**
@@ -41,6 +48,10 @@ export class HydrogenFilter extends BaseFilter {
     apply(structure) {
         this.ensureValidMode(structure);
 
+        if (this.mode === HydrogenFilter.MODES.ANISOTROPIC) {
+            return structure;
+        }
+
         const filteredAtoms = structure.atoms
             .filter(atom => atom.atomType !== 'H' || this.mode !== HydrogenFilter.MODES.NONE)
             .map(atom => (new Atom(
@@ -50,14 +61,31 @@ export class HydrogenFilter extends BaseFilter {
                 atom.atomType === 'H' && this.mode === HydrogenFilter.MODES.CONSTANT ?
                     null : atom.adp,
                 atom.disorderGroup,
+                atom.appliedSymmetry, // Preserve symmetry info for correct uniqueId
             )));
 
         const filteredBonds = structure.bonds
             .filter(bond => {
                 if (this.mode === HydrogenFilter.MODES.NONE) {
-                    const atom1 = structure.getAtomByLabel(bond.atom1Label);
-                    const atom2 = structure.getAtomByLabel(bond.atom2Label);
-                    return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                    if (bond.atom2SiteSymmetry !== '.') {
+                        try {
+                            // With cell growing the base atoms might not be present 
+                            // anymore, so we need to handle that gracefully
+                            // anymore, so we need to handle that gracefully
+                            const atom1 = structure.getAtomById(bond.atom1Id);
+                            const atom2 = structure.getAtomById(bond.atom2Id);
+                            return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                        } catch {
+                            return true; // Keep bond if there's an error
+                        }
+                    }
+                    try {
+                        const atom1 = structure.getAtomById(bond.atom1Id);
+                        const atom2 = structure.getAtomById(bond.atom2Id);
+                        return !(atom1.atomType === 'H' || atom2.atomType === 'H');
+                    } catch {
+                        return true;
+                    }
                 }
                 return true;
             });
@@ -134,6 +162,11 @@ export class DisorderFilter extends BaseFilter {
     apply(structure) {
         this.ensureValidMode(structure);
 
+        // External bond endpoints identify symmetry images that are not present yet.
+        // Disorder membership is a property of the asymmetric-unit atom and is unchanged
+        // by symmetry, so resolve all references through their base labels here.
+        const getAsymmetricAtom = atomId => structure.getAtomByLabel(atomId.split('|')[0]);
+
         const filteredAtoms = structure.atoms.filter(atom => {
             if (this.mode === DisorderFilter.MODES.GROUP1 && atom.disorderGroup > 1) {
                 return false;
@@ -145,40 +178,49 @@ export class DisorderFilter extends BaseFilter {
         });
 
         const filteredBonds = structure.bonds.filter(bond => {
-            const atom1 = structure.getAtomByLabel(bond.atom1Label);
-            const atom2 = structure.getAtomByLabel(bond.atom2Label);
+            try {
+                const atom1 = getAsymmetricAtom(bond.atom1Id);
+                const atom2 = getAsymmetricAtom(bond.atom2Id);
 
-            if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
+                if (this.mode === DisorderFilter.MODES.GROUP1 &&
+                    (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
+                    return false;
+                }
+
+                if (this.mode === DisorderFilter.MODES.GROUP2 &&
+                    (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
+                    return false;
+                }
+
+                return true;
+            } catch {
+                // Do not retain dangling connections after their atoms have been removed.
                 return false;
             }
-
-            if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
-                return false;
-            }
-
-            return true;
         });
 
         const filteredHBonds = structure.hBonds.filter(hbond => {
-            const donor = structure.getAtomByLabel(hbond.donorAtomLabel);
-            const hydrogen = structure.getAtomByLabel(hbond.hydrogenAtomLabel);
-            const acceptor = structure.getAtomByLabel(hbond.acceptorAtomLabel);
+            try {
+                const donor = getAsymmetricAtom(hbond.donorAtomId);
+                const hydrogen = getAsymmetricAtom(hbond.hydrogenAtomId);
+                const acceptor = getAsymmetricAtom(hbond.acceptorAtomId);
 
-            if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
-                    acceptor.disorderGroup > 1)) {
+                if (this.mode === DisorderFilter.MODES.GROUP1 &&
+                    (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
+                        acceptor.disorderGroup > 1)) {
+                    return false;
+                }
+
+                if (this.mode === DisorderFilter.MODES.GROUP2 &&
+                    (donor.disorderGroup === 1 || hydrogen.disorderGroup === 1 ||
+                        acceptor.disorderGroup === 1)) {
+                    return false;
+                }
+
+                return true;
+            } catch {
                 return false;
             }
-
-            if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                (donor.disorderGroup === 1 || hydrogen.disorderGroup === 1 ||
-                    acceptor.disorderGroup === 1)) {
-                return false;
-            }
-
-            return true;
         });
 
         return new CrystalStructure(
@@ -213,35 +255,27 @@ export class DisorderFilter extends BaseFilter {
         return modes;
     }
 }
-/**
- * Grows a crystal structure by applying symmetry operations to create symmetry-equivalent atoms and bonds.
- * Can selectively grow based on regular bonds and/or hydrogen bonds.
- * @augments BaseFilter
- */
 
 export class SymmetryGrower extends BaseFilter {
     static MODES = Object.freeze({
-        BONDS_YES_HBONDS_YES: 'bonds-yes-hbonds-yes',
-        BONDS_YES_HBONDS_NO: 'bonds-yes-hbonds-no',
-        BONDS_YES_HBONDS_NONE: 'bonds-yes-hbonds-none',
-        BONDS_NO_HBONDS_NO: 'bonds-no-hbonds-no',
-        BONDS_NO_HBONDS_NONE: 'bonds-no-hbonds-none',
-        BONDS_NONE_HBONDS_YES: 'bonds-none-hbonds-yes',
-        BONDS_NONE_HBONDS_NO: 'bonds-none-hbonds-no',
-        BONDS_NONE_HBONDS_NONE: 'bonds-none-hbonds-none',
+        NONE: 'none',
+        HBONDS: 'hbonds',
+        FRAGMENT: 'fragment',
+        FRAGMENT_HBONDS: 'fragment-hbonds',
+        CELL: 'cell',
+        FRAGMENT_CELL: 'fragment-cell',
     });
 
     static PREFERRED_FALLBACK_ORDER = [
-        SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
-        SymmetryGrower.MODES.BONDS_NO_HBONDS_NONE,
-        SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO,
+        SymmetryGrower.MODES.FRAGMENT,
+        SymmetryGrower.MODES.CELL,
     ];
 
     /**
      * Creates a new symmetry grower
      * @param {SymmetryGrower.MODES} [mode] - Initial mode for growing symmetry
      */
-    constructor(mode = SymmetryGrower.MODES.BONDS_NO_HBONDS_NO) {
+    constructor(mode = SymmetryGrower.MODES.NONE) {
         super(SymmetryGrower.MODES, mode, 'SymmetryGrower', SymmetryGrower.PREFERRED_FALLBACK_ORDER);
     }
 
@@ -249,206 +283,100 @@ export class SymmetryGrower extends BaseFilter {
         return true;
     }
 
-    /**
-     * Combines an atom label with a symmetry operation code to create a unique identifier
-     * @param {string} atomLabel - Original atom label
-     * @param {string} symOp - Symmetry operation code (e.g., "2_555")
-     * @returns {string} Combined label or original label if no symmetry operation
-     */
-    static combineSymOpLabel(atomLabel, symOp) {
-        return (!symOp || symOp === '.') ? atomLabel : `${atomLabel}@${symOp}`;
+    get drawCell() {
+        return this.mode === SymmetryGrower.MODES.CELL || this.mode === SymmetryGrower.MODES.FRAGMENT_CELL;
     }
 
     /**
-     * Finds atoms that can be grown through symmetry operations
-     * @param {CrystalStructure} structure - Structure to analyze
-     * @returns {object} Atoms that can be grown through bonds and hydrogen bonds
-     */
-    findGrowableAtoms(structure) {
-        const bondAtoms = structure.bonds
-            .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry && atom2SiteSymmetry !== '.')
-            .map(({ atom2Label, atom2SiteSymmetry }) => [atom2Label, atom2SiteSymmetry]);
-
-        const hBondAtoms = structure.hBonds
-            .filter(({ acceptorAtomSymmetry }) => acceptorAtomSymmetry && acceptorAtomSymmetry !== '.',
-            )
-            .map(({ acceptorAtomLabel, acceptorAtomSymmetry }) => [acceptorAtomLabel, acceptorAtomSymmetry],
-            );
-
-        return { bondAtoms, hBondAtoms };
-    }
-
-    /**
-     * Grows a set of atoms and their connected groups using symmetry operations
-     * @param {CrystalStructure} structure - Original structure containing atoms to grow
-     * @param {Array<[string, string]>} atomsToGrow - Array of [atomLabel, symmetryOperation] pairs
-     * @param {object} growthState - Current state of structure growth
-     * @returns {object} Updated growth state including new atoms and bonds
-     * @throws {Error} If an atom is not found in any connected group
-     */
-    growAtomArray(structure, atomsToGrow, growthState) {
-        for (const [atomLabel, symOp] of atomsToGrow) {
-            const newLabel = SymmetryGrower.combineSymOpLabel(atomLabel, symOp);
-            if (growthState.labels.has(newLabel)) {
-                continue;
-            }
-
-            const group = structure.connectedGroups.find(group => group.atoms.some(atom => atom.label === atomLabel),
-            );
-
-            if (!group) {
-                throw new Error(
-                    `Atom ${atomLabel} is not in any group. Typo or structure.recalculateConnectedGroups()?`,
-                );
-            }
-
-            const symmetryAtoms = structure.symmetry.applySymmetry(symOp, group.atoms);
-            const specialPositionMap = new Map();
-            symmetryAtoms.forEach(atom => {
-                atom.label = SymmetryGrower.combineSymOpLabel(atom.label, symOp);
-                growthState.labels.add(atom.label);
-                growthState.atoms.add(atom);
-            });
-
-            group.bonds
-                .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
-                .forEach(bond => {
-                    growthState.bonds.add(new Bond(
-                        SymmetryGrower.combineSymOpLabel(bond.atom1Label, symOp),
-                        SymmetryGrower.combineSymOpLabel(bond.atom2Label, symOp),
-                        bond.bondLength,
-                        bond.bondLengthSU,
-                        '.',
-                    ));
-                });
-
-            group.hBonds
-                .filter(({ acceptorAtomSymmetry }) => acceptorAtomSymmetry === '.')
-                .forEach(hBond => {
-                    growthState.hBonds.add(new HBond(
-                        SymmetryGrower.combineSymOpLabel(hBond.donorAtomLabel, symOp),
-                        SymmetryGrower.combineSymOpLabel(hBond.hydrogenAtomLabel, symOp),
-                        SymmetryGrower.combineSymOpLabel(hBond.acceptorAtomLabel, symOp),
-                        hBond.donorHydrogenDistance,
-                        hBond.donorHydrogenDistanceSU,
-                        hBond.acceptorHydrogenDistance,
-                        hBond.acceptorHydrogenDistanceSU,
-                        hBond.donorAcceptorDistance,
-                        hBond.donorAcceptorDistanceSU,
-                        hBond.hBondAngle,
-                        hBond.hBondAngleSU,
-                        '.',
-                    ));
-                });
-        }
-        return growthState;
-    }
-    /**
-     * Grows the structure according to the current mode. Switches mode with a warning if
-     * current mode is not applicable.
+     * Applies symmetry growth according to current mode
      * @param {CrystalStructure} structure - Structure to grow
-     * @returns {CrystalStructure} New structure with grown atoms and bonds
+     * @returns {CrystalStructure} New structure with grown symmetry
      */
     apply(structure) {
         this.ensureValidMode(structure);
-
-        const growableAtoms = this.findGrowableAtoms(structure);
-
-        const growthState = {
-            atoms: new Set(structure.atoms),
-            bonds: new Set(structure.bonds),
-            hBonds: new Set(structure.hBonds),
-            labels: new Set(structure.atoms.map(({ label }) => label)),
-        };
-
-        if (this.mode.startsWith('bonds-yes')) {
-            this.growAtomArray(structure, growableAtoms.bondAtoms, growthState);
+        // NONE is the faithful raw-CIF view. Every growth mode operates on one
+        // shared chemical graph, excluding publication contacts that may also be
+        // present in `_geom_bond`.
+        let workStructure = this.mode === SymmetryGrower.MODES.NONE
+            ? structure
+            : new CrystalStructure(
+                structure.cell,
+                structure.atoms,
+                chemicalBonds(structure),
+                structure.hBonds,
+                structure.symmetry,
+            );
+        let specialPositionAtoms = new Map();
+        if (this.mode === SymmetryGrower.MODES.FRAGMENT || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+            const growthResult = growFragment(workStructure);
+            workStructure = growthResult.grownStructure;
+            specialPositionAtoms = growthResult.specialPositionAtoms;
+        }
+        if (this.mode === SymmetryGrower.MODES.CELL) {
+            workStructure = growCell(workStructure);
+        } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
+            const growthResult = growFragment(workStructure);
+            specialPositionAtoms = growthResult.specialPositionAtoms;
+            workStructure = growCell(growthResult.grownStructure, false, specialPositionAtoms);
+            // Fragment-cell contains only complete components centred in the unit
+            // cell. Periodic H-bond partner shells belong to fragment-hbonds mode.
+            workStructure = reconcileHBondsByGeometry(workStructure);
         }
 
-        if (this.mode.includes('hbonds-yes')) {
-            this.growAtomArray(structure, growableAtoms.hBondAtoms, growthState);
-        }
-
-        const atomArray = Array.from(growthState.atoms);
-
-        for (const bond of structure.bonds) {
-            if (bond.atom2SiteSymmetry === '.') {
-                continue;
-            }
-            const symmLabel = SymmetryGrower.combineSymOpLabel(bond.atom2Label, bond.atom2SiteSymmetry);
-            if (atomArray.some(a => a.label === symmLabel)) {
-                growthState.bonds.add(
-                    new Bond(bond.atom1Label, symmLabel, bond.bondLength, bond.bondLengthSU, '.'),
+        if (this.mode === SymmetryGrower.MODES.HBONDS || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+            if (this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+                workStructure = new CrystalStructure(
+                    workStructure.cell,
+                    workStructure.atoms,
+                    filterBondsByGeometry(workStructure, workStructure.bonds),
+                    workStructure.hBonds,
+                    workStructure.symmetry,
                 );
             }
-        }
-        for (const hBond of structure.hBonds) {
-            if (hBond.acceptorAtomSymmetry === '.') {
-                continue;
-            }
-            const symmLabel = SymmetryGrower.combineSymOpLabel(hBond.acceptorAtomLabel, hBond.acceptorAtomSymmetry);
-            if (atomArray.some(a => a.label === symmLabel)) {
-                growthState.hBonds.add(
-                    new HBond(
-                        hBond.donorAtomLabel, hBond.hydrogenAtomLabel, symmLabel,
-                        hBond.donorHydrogenDistance, hBond.donorHydrogenDistanceSU,
-                        hBond.acceptorHydrogenDistance, hBond.acceptorHydrogenDistanceSU,
-                        hBond.donorAcceptorDistance, hBond.donorAcceptorDistanceSU,
-                        hBond.hBondAngle, hBond.hBondAngleSU,
-                        '.',
-                    ),
+            workStructure = growExternalHBonds(workStructure, specialPositionAtoms);
+            if (this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+                workStructure = new CrystalStructure(
+                    workStructure.cell,
+                    workStructure.atoms,
+                    filterBondsByGeometry(workStructure, workStructure.bonds),
+                    workStructure.hBonds,
+                    workStructure.symmetry,
                 );
+                workStructure = reconcileHBondsByGeometry(workStructure);
             }
         }
 
-        const hbondArray = Array.from(growthState.hBonds)
-            .filter(({ acceptorAtomLabel, hydrogenAtomLabel, donorAtomLabel }) => {
-                const condition1 = growthState.labels.has(acceptorAtomLabel);
-                const condition2 = growthState.labels.has(hydrogenAtomLabel);
-                const condition3 = growthState.labels.has(donorAtomLabel);
-                return condition1 && condition2 && condition3;
-            });
-
-        return new CrystalStructure(
-            structure.cell,
-            atomArray,
-            Array.from(growthState.bonds),
-            hbondArray,
-            structure.symmetry,
-        );
+        return workStructure;
     }
+
     /**
-     * Gets the modes that can be applied to the structure based on content
+     * Gets applicable modes based on structure symmetry and bonds
      * @param {CrystalStructure} structure - Structure to analyze
      * @returns {Array<string>} Array of applicable mode names
      */
     getApplicableModes(structure) {
-        const growableAtoms = this.findGrowableAtoms(structure);
-        const hasGrowableBonds = growableAtoms.bondAtoms.length > 0;
-        const hasGrowableHBonds = growableAtoms.hBondAtoms.length > 0;
+        const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL, SymmetryGrower.MODES.FRAGMENT_CELL];
+        const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
 
-        if (!hasGrowableBonds && !hasGrowableHBonds) {
-            return [SymmetryGrower.MODES.BONDS_NONE_HBONDS_NONE];
+        if (!hasSymmetry) {
+            return modes;
         }
 
-        if (!hasGrowableBonds) {
-            return [
-                SymmetryGrower.MODES.BONDS_NONE_HBONDS_YES,
-                SymmetryGrower.MODES.BONDS_NONE_HBONDS_NO,
-            ];
+        const hasGrowableBonds = structure.bonds.some(bond => bond.atom2SiteSymmetry !== '.');
+        if (hasGrowableBonds) {
+            modes.push(SymmetryGrower.MODES.FRAGMENT);
         }
 
-        if (!hasGrowableHBonds) {
-            return [
-                SymmetryGrower.MODES.BONDS_YES_HBONDS_NONE,
-                SymmetryGrower.MODES.BONDS_NO_HBONDS_NONE,
-            ];
+        const hasGrowableHBonds = structure.hBonds.some(hbond => hbond.acceptorAtomSymmetry !== '.');
+
+        if (hasGrowableHBonds) {
+            if (hasGrowableBonds) {
+                modes.push(SymmetryGrower.MODES.FRAGMENT_HBONDS);
+            } else {
+                modes.push(SymmetryGrower.MODES.HBONDS);
+            }
         }
 
-        return [
-            SymmetryGrower.MODES.BONDS_YES_HBONDS_YES,
-            SymmetryGrower.MODES.BONDS_YES_HBONDS_NO,
-            SymmetryGrower.MODES.BONDS_NO_HBONDS_NO,
-        ];
+        return modes;
     }
 }

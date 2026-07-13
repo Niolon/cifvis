@@ -28,6 +28,10 @@ export class BaseFilter {
         return false;
     }
 
+    get drawCell() {
+        return false;
+    }
+
     /**
      * Gets the current mode
      * @returns {string} Current mode

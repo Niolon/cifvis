@@ -23,9 +23,9 @@ describe('Transformation Functions', () => {
                     [0.7, 0.8, 0.9],
                 ])),
             };
-            
+
             const matrix = getThreeEllipsoidMatrix(mockUAnisoADP, {});
-            
+
             expect(matrix).toBeInstanceOf(THREE.Matrix4);
             expect(matrix.elements).toEqual([
                 0.1, 0.4, 0.7, 0,
@@ -40,13 +40,13 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for vertical bond', () => {
             const pos1 = new THREE.Vector3(0, -1, 0);
             const pos2 = new THREE.Vector3(0, 1, 0);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
 
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(1);
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(2);
             expect(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix).length()).toBeCloseTo(1);
-            
+
             // Check position (should be at midpoint)
             expect(matrix.elements[12]).toBeCloseTo(0); // x
             expect(matrix.elements[13]).toBeCloseTo(0); // y
@@ -56,13 +56,13 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for vertical bond not centred on zero', () => {
             const pos1 = new THREE.Vector3(0, 0, 0);
             const pos2 = new THREE.Vector3(0, 2, 0);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
-            
+
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(Math.sqrt(2));
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(3);
             expect(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix).length()).toBeCloseTo(Math.sqrt(2));
-            
+
             // Check position (should be at midpoint)
             expect(matrix.elements[12]).toBeCloseTo(0); // x
             expect(matrix.elements[13]).toBeCloseTo(1); // y
@@ -72,14 +72,14 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for diagonal bond', () => {
             const pos1 = new THREE.Vector3(0.5, 0.5, 0.5);
             const pos2 = new THREE.Vector3(-0.5, -0.5, -0.5);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
-            
+
             // Check length preservation
             const bondLength = pos1.distanceTo(pos2);
             const transformedLength = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length();
             expect(transformedLength).toBeCloseTo(bondLength);
-            
+
             // Check midpoint position
             const expectedMidpoint = pos1.clone().add(pos2).multiplyScalar(0.5);
             expect(matrix.elements[12]).toBeCloseTo(expectedMidpoint.x);
@@ -98,7 +98,7 @@ describe('Transformation Functions', () => {
 
 describe('GeometryMaterialCache', () => {
     let cache;
-    
+
     beforeEach(() => {
         cache = new GeometryMaterialCache();
     });
@@ -133,7 +133,7 @@ describe('GeometryMaterialCache', () => {
             expect(customCache.options.atomDetail).toBe(4);
             expect(customCache.options.bondRadius).toBe(0.0001);
             expect(customCache.options.bondColor).toBe('#ff0000');
-            
+
             // Should preserve default options not overridden
             expect(customCache.options.bondSections).toBe(defaultSettings.bondSections);
         });
@@ -194,7 +194,7 @@ describe('GeometryMaterialCache', () => {
 
         test('applies correct material properties', () => {
             const [atomMaterial, ringMaterial] = cache.getAtomMaterials('C');
-            
+
             expect(atomMaterial.roughness).toBe(cache.options.atomColorRoughness);
             expect(atomMaterial.metalness).toBe(cache.options.atomColorMetalness);
             expect(ringMaterial.roughness).toBe(cache.options.atomColorRoughness);
@@ -205,7 +205,7 @@ describe('GeometryMaterialCache', () => {
     describe('ADP ring geometry', () => {
         test('creates valid ADP ring geometry', () => {
             const ring = cache.createADPHalfTorus();
-            
+
             expect(ring).toBeInstanceOf(THREE.BufferGeometry);
             expect(ring.attributes.position).toBeDefined();
             expect(ring.attributes.normal).toBeDefined();
@@ -216,7 +216,7 @@ describe('GeometryMaterialCache', () => {
             const ring = cache.createADPHalfTorus();
             const positions = ring.attributes.position.array;
             const indices = ring.index.array;
-            
+
             // Check that each triangle has at least one vertex outside the scaling radius
             for (let i = 0; i < indices.length; i += 3) {
                 const vertices = [
@@ -230,10 +230,10 @@ describe('GeometryMaterialCache', () => {
                         positions[idx + 2] * positions[idx + 2],
                     ),
                 }));
-                
+
                 expect(vertices.some(v => v.distance >= cache.scaling)).toBe(true);
             }
-            
+
             // Additionally verify that we have vertices both inside and outside
             // to ensure we're actually creating a connection to the sphere
             const distances = [];
@@ -245,7 +245,7 @@ describe('GeometryMaterialCache', () => {
                 );
                 distances.push(distance);
             }
-            
+
             expect(distances.some(d => d >= cache.scaling)).toBe(true);
             expect(distances.some(d => d < cache.scaling)).toBe(true);
         });
@@ -254,24 +254,24 @@ describe('GeometryMaterialCache', () => {
             const ring = cache.createADPHalfTorus();
             const matrix = new THREE.Matrix4();
             ring.computeBoundingBox();
-            
+
             // Should be rotated around X axis by PI/2
-            matrix.makeRotationX(-Math.PI/2);
+            matrix.makeRotationX(-Math.PI / 2);
             ring.applyMatrix4(matrix);
             ring.computeBoundingBox();
-            
+
             // After un-rotating, the ring should be primarily in the XY plane
             const { min, max } = ring.boundingBox;
             const zRange = max.z - min.z;
             const xyRange = Math.max(max.x - min.x, max.y - min.y);
-            
+
             expect(zRange).toBeLessThan(xyRange);
         });
     });
 
     describe('resource disposal', () => {
         let disposeSpy;
-        
+
         beforeEach(() => {
             disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
         });
@@ -282,7 +282,7 @@ describe('GeometryMaterialCache', () => {
 
         test('disposes all geometries', () => {
             cache.dispose();
-            
+
             // We should have 4 geometries: atom, adpRing, bond, and hbond
             expect(disposeSpy).toHaveBeenCalledTimes(4);
         });
@@ -291,16 +291,16 @@ describe('GeometryMaterialCache', () => {
             // Create some materials first
             cache.getAtomMaterials('C');
             cache.getAtomMaterials('O');
-            
+
             const materialDisposeSpy = vi.spyOn(THREE.Material.prototype, 'dispose');
-            
+
             cache.dispose();
-            
+
             // Should dispose base materials and element materials
             const expectedCalls = 2 + // Base materials (bond, hbond)
-                                4;  // Element materials (2 elements × 2 materials each)
+                4;  // Element materials (2 elements × 2 materials each)
             expect(materialDisposeSpy).toHaveBeenCalledTimes(expectedCalls);
-            
+
             materialDisposeSpy.mockRestore();
         });
 
@@ -314,7 +314,7 @@ describe('GeometryMaterialCache', () => {
 describe('ORTEP3JsStructure', () => {
     let structure;
     let mockCrystalStructure;
-    
+
     beforeEach(() => {
         // Create a mock crystal structure with minimal data
         const cell = new UnitCell(10, 10, 10, 90, 90, 90);
@@ -322,16 +322,16 @@ describe('ORTEP3JsStructure', () => {
             new Atom('C1', 'C', new FractPosition(0, 0, 0)),
             new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5),
                 new UIsoADP(0.02)),
-            new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1), 
+            new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1),
                 new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0)),
         ];
         const bonds = [
-            new Bond('C1', 'O1', 1.5, 0.01),
+            new Bond('C1', 'O1', 1.5, 0.01, '.'),
         ];
         const hbonds = [
-            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),
         ];
-        
+
         mockCrystalStructure = new CrystalStructure(cell, atoms, bonds, hbonds);
     });
 
@@ -345,13 +345,13 @@ describe('ORTEP3JsStructure', () => {
         test('updates single property while preserving others', () => {
             const originalAtomColor = defaultSettings.elementProperties.C.atomColor;
             const newRingColor = '#00ff00';
-            
+
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
                     'C': { ringColor: newRingColor },
                 },
             });
-            
+
             expect(structure.options.elementProperties.C.atomColor).toBe(originalAtomColor);
             expect(structure.options.elementProperties.C.ringColor).toBe(newRingColor);
         });
@@ -368,13 +368,13 @@ describe('ORTEP3JsStructure', () => {
 
         test('preserves other elements when updating one', () => {
             const originalOxygenProps = { ...defaultSettings.elementProperties.O };
-            
+
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
                     'C': { ringColor: '#00ff00' },
                 },
             });
-            
+
             expect(structure.options.elementProperties.O).toEqual(originalOxygenProps);
         });
     });
@@ -455,9 +455,9 @@ describe('ORTEPObject', () => {
     test('properly disposes resources', () => {
         const geometrySpy = vi.spyOn(object.geometry, 'dispose');
         const materialSpy = vi.spyOn(object.material, 'dispose');
-        
+
         object.dispose();
-        
+
         expect(geometrySpy).toHaveBeenCalled();
         expect(materialSpy).toHaveBeenCalled();
     });
@@ -532,7 +532,7 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with basic properties', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             expect(ortepAtom.geometry).toBe(mockGeometry);
             expect(ortepAtom.material).toBe(mockMaterial);
             expect(ortepAtom.userData.type).toBe('atom');
@@ -542,10 +542,10 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('correctly transforms fractional to cartesian coordinates', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Calculate expected cartesian position
             const cartPos = mockAtom.position.toCartesian(mockUnitCell);
-            
+
             expect(ortepAtom.position.x).toBeCloseTo(cartPos.x);
             expect(ortepAtom.position.y).toBeCloseTo(cartPos.y);
             expect(ortepAtom.position.z).toBeCloseTo(cartPos.z);
@@ -553,7 +553,7 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('handles selection and deselection correctly', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Test selection
             ortepAtom.select(0xff0000, mockOptions);
             expect(ortepAtom.selectionColor).toBe(0xff0000);
@@ -583,18 +583,18 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with anisotropic properties', () => {
             const ortepAtom = new ORTEPAniAtom(
-                mockAtom, 
-                mockUnitCell, 
-                mockGeometry, 
+                mockAtom,
+                mockUnitCell,
+                mockGeometry,
                 mockMaterial,
                 mockADPRing,
                 mockRingMaterial,
             );
-            
+
             expect(ortepAtom.geometry).toBe(mockGeometry);
             expect(ortepAtom.material).toBe(mockMaterial);
             expect(ortepAtom.children.length).toBe(3); // 3 ADP rings
-            
+
             // Verify rings were created correctly
             ortepAtom.children.forEach(ring => {
                 expect(ring).toBeInstanceOf(THREE.Mesh);
@@ -612,14 +612,14 @@ describe('ORTEPAtom and subclasses', () => {
                 new FractPosition(0.1, 0.2, 0.3),
                 new UAnisoADP(NaN, 0.02, 0.03, 0.001, 0.002, 0.003),
             );
-            
+
             const ortepAtom = new ORTEPAniAtom(
                 invalidAtom,
                 mockUnitCell,
                 mockGeometry,
                 mockMaterial,
             );
-            
+
             // Should fall back to tetrahedron geometry
             expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
         });
@@ -633,12 +633,12 @@ describe('ORTEPAtom and subclasses', () => {
                 mockADPRing,
                 mockRingMaterial,
             );
-            
+
             const matrices = ortepAtom.adpRingMatrices;
-            
+
             // Check we have 3 matrices
             expect(matrices).toHaveLength(3);
-            
+
             // Verify each matrix is orthogonal
             matrices.forEach(matrix => {
                 const elements = matrix.elements;
@@ -668,7 +668,7 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with correct scaling based on Uiso', () => {
             const ortepAtom = new ORTEPIsoAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Scale should be based on sqrt(Uiso)
             const expectedScale = Math.sqrt(mockAtom.adp.uiso);
             expect(ortepAtom.scale.x).toBeCloseTo(expectedScale);
@@ -682,7 +682,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'C',
                 new FractPosition(0.1, 0.2, 0.3),
             );
-            
+
             expect(() => new ORTEPIsoAtom(
                 invalidAtom,
                 mockUnitCell,
@@ -703,15 +703,15 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with correct scaling based on element radius and multiplier', () => {
             const ortepAtom = new ORTEPConstantAtom(
-                mockAtom, 
-                mockUnitCell, 
-                mockGeometry, 
+                mockAtom,
+                mockUnitCell,
+                mockGeometry,
                 mockMaterial,
                 mockOptions,
             );
-            
-            const expectedScale = mockOptions.atomConstantRadiusMultiplier * 
-                                mockOptions.elementProperties[mockAtom.atomType].radius;
+
+            const expectedScale = mockOptions.atomConstantRadiusMultiplier *
+                mockOptions.elementProperties[mockAtom.atomType].radius;
             expect(ortepAtom.scale.x).toBeCloseTo(expectedScale);
             expect(ortepAtom.scale.y).toBeCloseTo(expectedScale);
             expect(ortepAtom.scale.z).toBeCloseTo(expectedScale);
@@ -723,7 +723,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'X',  // Unknown element
                 new FractPosition(0.1, 0.2, 0.3),
             );
-            
+
             expect(() => new ORTEPConstantAtom(
                 unknownAtom,
                 mockUnitCell,
@@ -880,7 +880,7 @@ describe('ORTEPBond', () => {
             mockCrystalStructure,
             mockGeometry,
             mockMaterial,
-        )).toThrow('Could not find atom with label: X1');
+        )).toThrow('Could not find atom with ID: X1');
     });
 
     test('creates correctly scaled selection marker', () => {
@@ -940,7 +940,7 @@ class TestORTEPGroupObject extends ORTEPGroupObject {
     createSelectionMarker(color, _options) {
         const marker = new THREE.Group();
         const material = this.createSelectionMaterial(color);
-        
+
         this.children.forEach(child => {
             if (child instanceof THREE.Mesh) {
                 const markerMesh = new THREE.Mesh(child.geometry, material);
@@ -999,7 +999,7 @@ describe('ORTEPGroupObject', () => {
 
     test('throws error when createSelectionMarker not implemented', () => {
         // Create minimal concrete subclass without implementing createSelectionMarker
-        class MinimalGroup extends ORTEPGroupObject {}
+        class MinimalGroup extends ORTEPGroupObject { }
         const minimalGroup = new MinimalGroup();
 
         expect(() => {
@@ -1010,23 +1010,23 @@ describe('ORTEPGroupObject', () => {
     test('redirects raycasting from children to group', () => {
         const raycaster = new THREE.Raycaster();
         const intersects = [];
-        
+
         // Position raycaster to hit child1
         raycaster.ray.origin.set(0, 0, -5);
         raycaster.ray.direction.set(0, 0, 1);
-        
+
         child1.raycast(raycaster, intersects);
-        
+
         expect(intersects.length).toBe(1);
         expect(intersects[0].object).toBe(group);
     });
 
     test('handles selection for all children', () => {
         group.select(0xff0000, mockOptions);
-        
+
         expect(group.selectionColor).toBe(0xff0000);
         expect(group.marker).toBeTruthy();
-        
+
         const nonMarkerChildren = group.children.filter(child => child !== group.marker);
         nonMarkerChildren.forEach(child => {
             expect(child.originalMaterial).toBeTruthy();
@@ -1035,23 +1035,23 @@ describe('ORTEPGroupObject', () => {
 
     test('handles deselection for all children', () => {
         const originalMaterials = group.children.map(child => child.material);
-        
+
         group.select(0xff0000, mockOptions);
         group.deselect();
-        
+
         expect(group.selectionColor).toBeNull();
         expect(group.marker).toBeNull();
-        
+
         // Check each child has its original material restored
         group.children.forEach((child, index) => {
             expect(child.material).toBe(originalMaterials[index]);
-            expect(child.originalMaterial).toBeNull(); 
+            expect(child.originalMaterial).toBeNull();
         });
     });
 
     test('deselecting a deselected object is handled gracefully', () => {
         const originalMaterials = group.children.map(child => child.material);
-        
+
         // Deselect without selecting first
         expect(() => {
             group.deselect();
@@ -1059,7 +1059,7 @@ describe('ORTEPGroupObject', () => {
 
         expect(group.selectionColor).toBeNull();
         expect(group.marker).toBeNull();
-        
+
         // Verify children still have their original materials
         group.children.forEach((child, index) => {
             expect(child.material).toBe(originalMaterials[index]);
@@ -1069,31 +1069,31 @@ describe('ORTEPGroupObject', () => {
 
     test('properly disposes all resources when selected', () => {
         group.select(0xff0000, mockOptions); // Select first
-        
+
         const geometrySpies = group.children
             .filter(child => child instanceof THREE.Mesh)
             .map(child => vi.spyOn(child.geometry, 'dispose'));
         const materialSpies = group.children
             .filter(child => child instanceof THREE.Mesh)
             .map(child => vi.spyOn(child.material, 'dispose'));
-        
+
         group.dispose();
-        
+
         geometrySpies.forEach(spy => expect(spy).toHaveBeenCalled());
         materialSpies.forEach(spy => expect(spy).toHaveBeenCalled());
     });
 
     test('properly disposes all resources when not selected', () => {
-        const geometrySpies = group.children.map(child => 
+        const geometrySpies = group.children.map(child =>
             vi.spyOn(child.geometry, 'dispose'),
         );
-        const materialSpies = group.children.map(child => 
+        const materialSpies = group.children.map(child =>
             vi.spyOn(child.material, 'dispose'),
         );
-        
+
         // Dispose without ever selecting
         group.dispose();
-        
+
         geometrySpies.forEach(spy => expect(spy).toHaveBeenCalled());
         materialSpies.forEach(spy => expect(spy).toHaveBeenCalled());
         expect(group.children).toHaveLength(0);
@@ -1224,7 +1224,7 @@ describe('ORTEPHBond', () => {
         hbond.children.forEach(segment => {
             const segmentPosition = new THREE.Vector3();
             segment.getWorldPosition(segmentPosition);
-            
+
             // Verify segment is on the line between H and A
             const segmentDirection = segmentPosition.clone().sub(hydrogenPos).normalize();
             expect(segmentDirection.dot(direction)).toBeCloseTo(1, 5);

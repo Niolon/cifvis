@@ -19,6 +19,43 @@ function determineAvailableKey(loop, keys) {
 }
 
 /**
+ * Falls back to equivalent isotropic displacement values when a CIF declares Uani
+ * atoms but its anisotropic loop has no atom-label column. Without labels the tensor
+ * rows cannot be associated with atoms, while the per-atom U equivalent values remain
+ * safe to use for display.
+ * @param {CifLoop} atomSite - Atom-site loop
+ * @param {CifLoop} atomSiteAniso - Invalid anisotropic loop
+ */
+function downgradeUnusableAnisoData(atomSite, atomSiteAniso) {
+    const anisoLabelKey = determineAvailableKey(
+        atomSiteAniso,
+        ['_atom_site_aniso.label', '_atom_site_aniso_label'],
+    );
+    if (anisoLabelKey) {
+        return;
+    }
+
+    const adpTypeKey = determineAvailableKey(
+        atomSite,
+        ['_atom_site.adp_type', '_atom_site_adp_type'],
+    );
+    const uIsoKey = determineAvailableKey(
+        atomSite,
+        ['_atom_site.u_iso_or_equiv', '_atom_site_U_iso_or_equiv'],
+    );
+    if (!adpTypeKey || !uIsoKey) {
+        return;
+    }
+
+    const adpTypes = atomSite.get(adpTypeKey);
+    const uIsoValues = atomSite.get(uIsoKey);
+    atomSite.data[adpTypeKey] = adpTypes.map((type, index) => {
+        const hasEquivalentValue = Number.isFinite(Number(uIsoValues[index]));
+        return /^uani$/i.test(String(type)) && hasEquivalentValue ? 'Uiso' : type;
+    });
+}
+
+/**
  * Attempts to fix inconsistencies in a CIF block by reconciling atom labels and symmetry operations
  * across different data categories (ADP, bonds, h-bonds)
  * @param {CifBlock} block - CIF block to fix
@@ -27,9 +64,11 @@ function determineAvailableKey(loop, keys) {
  * @param {boolean} [fixBondSymmetry] - Whether to fix symmetry operation formats in bond data
  */
 export function tryToFixCifBlock(block, fixADPLabels=true, fixBondLabels=true, fixBondSymmetry=true) {
+    let atomSite;
     let atomSiteLabels;
     if (fixADPLabels || fixBondLabels) {
-        atomSiteLabels = block.get('_atom_site').get(['_atom_site.label', '_atom_site_label']);
+        atomSite = block.get('_atom_site');
+        atomSiteLabels = atomSite.get(['_atom_site.label', '_atom_site_label']);
     }
     if (fixADPLabels) {
         const atomSiteAniso = block.get('_atom_site_aniso', false);
@@ -37,6 +76,8 @@ export function tryToFixCifBlock(block, fixADPLabels=true, fixBondLabels=true, f
             const labelKey = determineAvailableKey(atomSiteAniso, ['_atom_site_aniso.label', '_atom_site_aniso_label']);
             if (labelKey) {
                 reconcileAtomLabels(atomSiteAniso, labelKey, atomSiteLabels);
+            } else {
+                downgradeUnusableAnisoData(atomSite, atomSiteAniso);
             }
         }
     }

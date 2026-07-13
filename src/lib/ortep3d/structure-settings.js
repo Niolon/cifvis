@@ -48,7 +48,7 @@ export default {
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
     'disorderMode': 'all',
-    'symmetryMode': 'bonds-no-hbonds-no',
+    'symmetryMode': 'none',
 
     'bondGrowToleranceFactor': 1.2,
 
@@ -78,6 +78,19 @@ export default {
     'hbondColorMetalness': 0.1,  
     'hbondDashSegmentLength': 0.3, // Target length for each dash+gap segment
     'hbondDashFraction': 0.6,    // Fraction of segment that is solid (vs gap)
+
+    // Cell visualisation settings
+    'cell': {
+        'boxColor': '#000000',
+        'boxOpacity': 0.8,
+        'boxLineWidth': 2,
+        'arrowColorA': '#E74C3C', // Red',
+        'arrowColorB': '#2ECC71', // Green',
+        'arrowColorC': '#3498DB', // Blue',
+        'arrowHeadLengthMult': 0.05,
+        'arrowHeadWidthMult': 0.25,
+        'arrowCylinderRadius': 0.04,
+    },
 
     'elementProperties': {
         'H': { 'radius': 0.31, 'atomColor': '#ffffff', 'ringColor': '#000000' },
