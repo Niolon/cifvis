@@ -2,6 +2,7 @@ import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
+import { getDisorderIcon } from './disorder-icons.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -338,47 +339,9 @@ export class CifViewWidget extends HTMLElement {
      */
     getIcon(type, mode) {
         if (type === 'disorder') {
-            return this.getDisorderIcon(mode);
+            return getDisorderIcon(this.icons.disorder, mode);
         }
         return this.icons[type]?.[mode] || '';
-    }
-
-    /**
-     * Resolves the icon for a disorder filter mode. "all" always uses the
-     * dedicated both-groups-in-black icon. Mode names encode rank and total
-     * group count (e.g. "group1of2"), so when there are exactly two disorder
-     * groups the mode name matches the dedicated two-tone group1of2/group2of2
-     * artwork directly. With more than two groups there is no dedicated art
-     * for each individual one, so the shared both-groups icon is reused in
-     * grey with the group's rank overlaid in front of it.
-     * @param {string} mode - Disorder filter mode
-     * @returns {string} SVG markup for the icon
-     */
-    getDisorderIcon(mode) {
-        const disorderIcons = this.icons.disorder;
-        if (mode === 'all') {
-            return disorderIcons.all;
-        }
-        if (disorderIcons[mode]) {
-            return disorderIcons[mode];
-        }
-
-        const rank = /^group(\d+)of\d+$/.exec(mode)?.[1];
-        return rank ? this.generateDisorderGroupIcon(rank) : '';
-    }
-
-    /**
-     * Generates an icon for an individual disorder group when there is no
-     * dedicated two-tone artwork for it: the shared both-groups icon,
-     * recoloured grey, with the group number overlaid in front.
-     * @param {string|number} groupNumber - Disorder group number to display
-     * @returns {string} SVG markup
-     */
-    generateDisorderGroupIcon(groupNumber) {
-        const greyIcon = this.icons.disorder.all.replace(/#000000/g, '#8f8f8f');
-        const label = '<text x="1.5" y="7" font-size="7" font-family="system-ui, sans-serif" ' +
-            `font-weight="bold" fill="#000000">${groupNumber}</text>`;
-        return greyIcon.replace('</svg>', `${label}</svg>`);
     }
 
     async attributeChangedCallback(name, oldValue, newValue) {
