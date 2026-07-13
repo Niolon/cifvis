@@ -860,6 +860,36 @@ _cell.angle_gamma 90
                             <td>String</td>
                             <td>Rendering style, either interactive "standard" or publication-style "2d". <span class="default-value">Default: "standard"</span></td>
                         </tr>
+                        <tr class="option-row" data-keywords="2d plot background color white publication">
+                            <td><span class="option-code">plot2DBackground</span></td>
+                            <td>Color</td>
+                            <td>Canvas background colour for the 2D rendering style. <span class="default-value">Default: "#ffffff"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot atom fill color white publication">
+                            <td><span class="option-code">plot2DAtomColor</span></td>
+                            <td>Color</td>
+                            <td>Opaque atom and open-bond fill colour in the 2D rendering style. <span class="default-value">Default: "#ffffff"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot line color hydrogen hbond publication">
+                            <td><span class="option-code">plot2DLineColor</span></td>
+                            <td>Color</td>
+                            <td>Fallback line and hydrogen-bond colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot bond color outline publication">
+                            <td><span class="option-code">plot2DBondColor</span></td>
+                            <td>Color</td>
+                            <td>Solid bond and open-bond outline colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot disorder open bond white inner scale part 2">
+                            <td><span class="option-code">plot2DOpenBondInnerScale</span></td>
+                            <td>Number</td>
+                            <td>Opaque inner width of open PART 2 bonds relative to a solid bond. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot atom outline scale publication">
+                            <td><span class="option-code">plot2DOutlineScale</span></td>
+                            <td>Number</td>
+                            <td>Scale multiplier used to expose atom silhouette outlines. <span class="default-value">Default: 1.035</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="fix cif errors">
                             <td><span class="option-code">fixCifErrors</span></td>
                             <td>Boolean</td>
@@ -889,6 +919,11 @@ _cell.angle_gamma 90
                             <td><span class="option-code">atomEllipsoidStyle</span></td>
                             <td>String</td>
                             <td>Ellipsoid display style, either "solid" or camera-facing "cutout". <span class="default-value">Default: "solid"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway camera hysteresis octant rotation ortep">
+                            <td><span class="option-code">atomCutawayHysteresis</span></td>
+                            <td>Number</td>
+                            <td>Direction threshold that prevents cutaway octants flickering near an axis. <span class="default-value">Default: 0.025</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom cutaway stripe count hatch ortep">
                             <td><span class="option-code">atomCutawayStripeCount</span></td>

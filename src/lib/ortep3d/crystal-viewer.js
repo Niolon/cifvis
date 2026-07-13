@@ -390,7 +390,7 @@ export class CrystalViewer {
      * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
      * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
      * see ./structure-settings.js for the default values
-     * @throws {Error} If an invalid render mode is provided
+     * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
@@ -404,6 +404,14 @@ export class CrystalViewer {
             throw new Error(
                 `Invalid render style: "${options.renderStyle}". ` +
                 `Must be one of: ${validRenderStyles.join(', ')}`,
+            );
+        }
+        const validAtomEllipsoidStyles = ['solid', 'cutout'];
+        if (options.atomEllipsoidStyle &&
+            !validAtomEllipsoidStyles.includes(options.atomEllipsoidStyle)) {
+            throw new Error(
+                `Invalid atom ellipsoid style: "${options.atomEllipsoidStyle}". ` +
+                `Must be one of: ${validAtomEllipsoidStyles.join(', ')}`,
             );
         }
 
@@ -512,7 +520,7 @@ export class CrystalViewer {
         if (this.options.renderStyle === '2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
-        this.resizeRendererToDisplaySize();;
+        this.resizeRendererToDisplaySize();
         this.container.appendChild(this.renderer.domElement);
 
         this.moleculeContainer = new THREE.Group();
