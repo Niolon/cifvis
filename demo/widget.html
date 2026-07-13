@@ -86,6 +86,17 @@
             gap: 20px;
             margin: 20px 0;
         }
+
+        .render-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            margin: 20px 0 30px;
+        }
+
+        .render-mode-grid .widget-container {
+            margin-bottom: 0;
+        }
         
         cifview-widget {
             width: 100%;
@@ -290,6 +301,10 @@
         
         @media screen and (max-width: 768px) {
             .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .render-mode-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -518,15 +533,45 @@ _cell.angle_gamma 90
                 </div>
                 
                 <div class="widget-container">
-                    <span class="example-label">Disorder - all groups shown:</span>
+                    <span class="example-label">2D disorder - all parts shown:</span>
                     <cifview-widget 
                         src="cif/disorder.cif"
-                        caption="Structure with all disorder groups visible"
-                        disorder-mode="all">
+                        caption="Non-disordered/PART 1 bonds are solid; PART 2 bonds are open"
+                        disorder-mode="all"
+                        options='{"renderStyle":"2d"}'>
                     </cifview-widget>
                 </div>
 
             </div>
+
+            <h3 id="ortep-render-modes">ORTEP render modes</h3>
+            <div class="render-mode-grid">
+                <div class="widget-container">
+                    <span class="example-label">Solid</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"atomEllipsoidStyle":"solid"}'
+                        caption="Standard solid ellipsoids.">
+                    </cifview-widget>
+                </div>
+                <div class="widget-container">
+                    <span class="example-label">Cutout</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"atomEllipsoidStyle":"cutout"}'
+                        caption="Camera-facing cutout with three hatched faces.">
+                    </cifview-widget>
+                </div>
+                <div class="widget-container">
+                    <span class="example-label">2D</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"renderStyle":"2d"}'
+                        caption="Element-coloured publication style.">
+                    </cifview-widget>
+                </div>
+            </div>
+
             <h3>Growing symmetry</h3>
             <p>
                 You can grow the symmetry one additional sphere using bonds or hydrogen bonds contained in the cif tables:
@@ -810,6 +855,41 @@ _cell.angle_gamma 90
                             <td>String</td>
                             <td>Rendering mode, either "constant" (render continuously) or "onDemand" (render only when needed). <span class="default-value">Default: "onDemand"</span></td>
                         </tr>
+                        <tr class="option-row" data-keywords="render style standard 2d publication ortep">
+                            <td><span class="option-code">renderStyle</span></td>
+                            <td>String</td>
+                            <td>Rendering style, either interactive "standard" or publication-style "2d". <span class="default-value">Default: "standard"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot background color white publication">
+                            <td><span class="option-code">plot2DBackground</span></td>
+                            <td>Color</td>
+                            <td>Canvas background colour for the 2D rendering style. <span class="default-value">Default: "#ffffff"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot atom fill color white publication">
+                            <td><span class="option-code">plot2DAtomColor</span></td>
+                            <td>Color</td>
+                            <td>Opaque atom and open-bond fill colour in the 2D rendering style. <span class="default-value">Default: "#ffffff"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot line color hydrogen hbond publication">
+                            <td><span class="option-code">plot2DLineColor</span></td>
+                            <td>Color</td>
+                            <td>Fallback line and hydrogen-bond colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot bond color outline publication">
+                            <td><span class="option-code">plot2DBondColor</span></td>
+                            <td>Color</td>
+                            <td>Solid bond and open-bond outline colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot disorder open bond white inner scale part 2">
+                            <td><span class="option-code">plot2DOpenBondInnerScale</span></td>
+                            <td>Number</td>
+                            <td>Opaque inner width of open PART 2 bonds relative to a solid bond. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot atom outline scale publication">
+                            <td><span class="option-code">plot2DOutlineScale</span></td>
+                            <td>Number</td>
+                            <td>Scale multiplier used to expose atom silhouette outlines. <span class="default-value">Default: 1.035</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="fix cif errors">
                             <td><span class="option-code">fixCifErrors</span></td>
                             <td>Boolean</td>
@@ -834,6 +914,36 @@ _cell.angle_gamma 90
                             <td><span class="option-code">atomDetail</span></td>
                             <td>Number</td>
                             <td>Level of detail for atom geometry (1-5). <span class="default-value">Default: 3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom ellipsoid style solid cutout cutaway ortep">
+                            <td><span class="option-code">atomEllipsoidStyle</span></td>
+                            <td>String</td>
+                            <td>Ellipsoid display style, either "solid" or camera-facing "cutout". <span class="default-value">Default: "solid"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway camera hysteresis octant rotation ortep">
+                            <td><span class="option-code">atomCutawayHysteresis</span></td>
+                            <td>Number</td>
+                            <td>Direction threshold that prevents cutaway octants flickering near an axis. <span class="default-value">Default: 0.025</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway stripe count hatch ortep">
+                            <td><span class="option-code">atomCutawayStripeCount</span></td>
+                            <td>Number</td>
+                            <td>Number of hatch repeats across each cutaway disc. <span class="default-value">Default: 7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway stripe width hatch ortep">
+                            <td><span class="option-code">atomCutawayStripeWidth</span></td>
+                            <td>Number</td>
+                            <td>Atom-colour stripe width as a fraction of each repeat. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot stripe count hatch ortep">
+                            <td><span class="option-code">plot2DStripeCount</span></td>
+                            <td>Number</td>
+                            <td>Number of hatch repeats across each 2D section face. <span class="default-value">Default: 7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot stripe width hatch ortep">
+                            <td><span class="option-code">plot2DStripeWidth</span></td>
+                            <td>Number</td>
+                            <td>Element-coloured line width as a fraction of each repeat. <span class="default-value">Default: 0.18</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom color roughness material">
                             <td><span class="option-code">atomColorRoughness</span></td>

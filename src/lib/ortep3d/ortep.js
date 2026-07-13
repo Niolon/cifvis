@@ -1,9 +1,194 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import defaultSettings from './structure-settings.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
+
+const OCTANT_SIGNS = [
+    [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
+    [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1],
+];
+
+const BASE_OCTANT_SIGNS = [-1, 1, 1];
+
+/**
+ * Creates the hatched material used on the exposed principal planes of a
+ * cutaway ellipsoid. CircleGeometry UVs keep the stripes horizontal on each
+ * disc without adding extra geometry.
+ * @param {object} elementProperty - Atom and ring colours for the element
+ * @param {object} options - ORTEP rendering options
+ * @returns {THREE.MeshStandardMaterial} Hatched cutaway-plane material
+ */
+export function createCutawayPlaneMaterial(elementProperty, options) {
+    const stripeColor = new THREE.Color(elementProperty.atomColor);
+    const stripeCount = Math.max(1, options.atomCutawayStripeCount);
+    const stripeHalfWidth = THREE.MathUtils.clamp(
+        options.atomCutawayStripeWidth,
+        0.01,
+        1,
+    ) / 2;
+    const material = new THREE.MeshStandardMaterial({
+        color: elementProperty.ringColor,
+        roughness: options.atomColorRoughness,
+        metalness: options.atomColorMetalness,
+        side: THREE.DoubleSide,
+    });
+
+    material.userData.cutawayStripes = {
+        color: stripeColor,
+        count: stripeCount,
+        width: stripeHalfWidth * 2,
+    };
+    material.onBeforeCompile = shader => {
+        shader.uniforms.cutawayStripeColor = { value: stripeColor };
+        shader.uniforms.cutawayStripeCount = { value: stripeCount };
+        shader.uniforms.cutawayStripeHalfWidth = { value: stripeHalfWidth };
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <uv_pars_vertex>',
+                '#include <uv_pars_vertex>\nvarying vec2 vCutawayUv;',
+            )
+            .replace(
+                '#include <uv_vertex>',
+                '#include <uv_vertex>\nvCutawayUv = uv;',
+            );
+        shader.fragmentShader = shader.fragmentShader
+            .replace(
+                '#include <common>',
+                '#include <common>\n' +
+                'varying vec2 vCutawayUv;\n' +
+                'uniform vec3 cutawayStripeColor;\n' +
+                'uniform float cutawayStripeCount;\n' +
+                'uniform float cutawayStripeHalfWidth;',
+            )
+            .replace(
+                '#include <color_fragment>',
+                '#include <color_fragment>\n' +
+                'float cutawayStripeCoordinate = vCutawayUv.y * cutawayStripeCount;\n' +
+                'float cutawayStripePhase = fract(cutawayStripeCoordinate);\n' +
+                'float cutawayStripeDistance = abs(cutawayStripePhase - 0.5);\n' +
+                'float cutawayStripeEdge = max(fwidth(cutawayStripeCoordinate), 0.001);\n' +
+                'float cutawayStripeMask = 1.0 - smoothstep(\n' +
+                '    cutawayStripeHalfWidth - cutawayStripeEdge,\n' +
+                '    cutawayStripeHalfWidth + cutawayStripeEdge,\n' +
+                '    cutawayStripeDistance\n' +
+                ');\n' +
+                'diffuseColor.rgb = mix(\n' +
+                '    diffuseColor.rgb, cutawayStripeColor, cutawayStripeMask\n' +
+                ');',
+            );
+    };
+    material.customProgramCacheKey = () => 'cutaway-horizontal-stripes-v1';
+
+    return material;
+}
+
+/**
+ * Creates the element-coloured hatch material for the three principal-plane
+ * faces in the publication-style 2D renderer.
+ * @param {object} options - ORTEP rendering options
+ * @param {THREE.ColorRepresentation} lineColor - Element colour for hatch lines
+ * @returns {THREE.MeshBasicMaterial} Hatched 2D plot material
+ */
+export function create2DPlotHatchMaterial(options, lineColor = options.plot2DLineColor) {
+    const stripeColor = new THREE.Color(lineColor);
+    const stripeCount = Math.max(1, options.plot2DStripeCount);
+    const stripeHalfWidth = THREE.MathUtils.clamp(
+        options.plot2DStripeWidth,
+        0.01,
+        1,
+    ) / 2;
+    const material = new THREE.MeshBasicMaterial({
+        color: options.plot2DAtomColor,
+        side: THREE.DoubleSide,
+    });
+
+    material.userData.plot2DHatch = {
+        color: stripeColor,
+        count: stripeCount,
+        width: stripeHalfWidth * 2,
+    };
+    material.onBeforeCompile = shader => {
+        shader.uniforms.plot2DStripeColor = { value: stripeColor };
+        shader.uniforms.plot2DStripeCount = { value: stripeCount };
+        shader.uniforms.plot2DStripeHalfWidth = { value: stripeHalfWidth };
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <uv_pars_vertex>',
+                '#include <uv_pars_vertex>\nvarying vec2 vPlot2DUv;',
+            )
+            .replace(
+                '#include <uv_vertex>',
+                '#include <uv_vertex>\nvPlot2DUv = uv;',
+            );
+        shader.fragmentShader = shader.fragmentShader
+            .replace(
+                '#include <common>',
+                '#include <common>\n' +
+                'varying vec2 vPlot2DUv;\n' +
+                'uniform vec3 plot2DStripeColor;\n' +
+                'uniform float plot2DStripeCount;\n' +
+                'uniform float plot2DStripeHalfWidth;',
+            )
+            .replace(
+                '#include <color_fragment>',
+                '#include <color_fragment>\n' +
+                'float plot2DStripeCoordinate = vPlot2DUv.y * plot2DStripeCount;\n' +
+                'float plot2DStripePhase = fract(plot2DStripeCoordinate);\n' +
+                'float plot2DStripeDistance = abs(plot2DStripePhase - 0.5);\n' +
+                'float plot2DStripeEdge = max(fwidth(plot2DStripeCoordinate), 0.001);\n' +
+                'float plot2DStripeMask = 1.0 - smoothstep(\n' +
+                '    plot2DStripeHalfWidth - plot2DStripeEdge,\n' +
+                '    plot2DStripeHalfWidth + plot2DStripeEdge,\n' +
+                '    plot2DStripeDistance\n' +
+                ');\n' +
+                'diffuseColor.rgb = mix(\n' +
+                '    diffuseColor.rgb, plot2DStripeColor, plot2DStripeMask\n' +
+                ');',
+            );
+    };
+    material.customProgramCacheKey = () => '2d-plot-curved-octant-hatch-v1';
+
+    return material;
+}
+
+/**
+ * Reflects the shared base octant into a requested sign combination.
+ * @param {THREE.Object3D} object - Octant mesh to transform
+ * @param {number[]} signs - Requested signs for the local X, Y and Z axes
+ */
+function setOctantTransform(object, signs) {
+    object.scale.set(
+        signs[0] / BASE_OCTANT_SIGNS[0],
+        signs[1] / BASE_OCTANT_SIGNS[1],
+        signs[2] / BASE_OCTANT_SIGNS[2],
+    );
+}
+
+/**
+ * Rotates a disc's UV coordinates around its centre so each principal plane
+ * can use a distinct hatch direction with the same stripe material.
+ * @param {THREE.BufferGeometry} geometry - Disc geometry whose UVs to rotate
+ * @param {number} angle - UV rotation in radians
+ */
+function rotateCutawayUVs(geometry, angle) {
+    const uv = geometry.getAttribute('uv');
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    for (let index = 0; index < uv.count; index++) {
+        const u = uv.getX(index) - 0.5;
+        const v = uv.getY(index) - 0.5;
+        uv.setXY(
+            index,
+            u * cos - v * sin + 0.5,
+            u * sin + v * cos + 0.5,
+        );
+    }
+    uv.needsUpdate = true;
+}
 
 /**
  * Examines a THREE.Object3D and its children for NaN values in position, rotation, scale, and matrix properties.
@@ -109,6 +294,41 @@ export function calcBondTransform(position1, position2) {
 }
 
 /**
+ * Moves bond endpoints from atom centres to their rendered surfaces.
+ * @param {THREE.Vector3} position1 - First atom centre
+ * @param {THREE.Vector3} position2 - Second atom centre
+ * @param {ORTEPAtom} atom1 - Rendered first atom
+ * @param {ORTEPAtom} atom2 - Rendered second atom
+ * @returns {THREE.Vector3[]} Trimmed start and end positions
+ */
+export function trimBondToAtomSurfaces(position1, position2, atom1, atom2) {
+    const start = position1.clone();
+    const end = position2.clone();
+    const direction = end.clone().sub(start);
+    const totalLength = direction.length();
+    if (totalLength === 0 || !atom1 || !atom2) {
+        return [start, end];
+    }
+
+    direction.divideScalar(totalLength);
+    let startTrim = atom1.getSurfaceDistanceAlong(direction);
+    let endTrim = atom2.getSurfaceDistanceAlong(direction.clone().negate());
+    startTrim = Number.isFinite(startTrim) && startTrim > 0 ? startTrim : 0;
+    endTrim = Number.isFinite(endTrim) && endTrim > 0 ? endTrim : 0;
+    const totalTrim = startTrim + endTrim;
+
+    if (totalTrim >= totalLength) {
+        const trimScale = (totalLength * (1 - Number.EPSILON)) / totalTrim;
+        startTrim *= trimScale;
+        endTrim *= trimScale;
+    }
+
+    start.addScaledVector(direction, startTrim);
+    end.addScaledVector(direction, -endTrim);
+    return [start, end];
+}
+
+/**
  * Cache for Three.js geometries and materials used in molecular visualisation.
  * Allows for reuse of geometries and materials, which is more efficient than
  * generating copies for every object.
@@ -149,6 +369,25 @@ export class GeometryMaterialCache {
             this.options.atomDetail,
         );
 
+        if (this.options.atomEllipsoidStyle === 'cutout' ||
+            this.options.renderStyle === '2d') {
+            const octantSections = Math.max(3, 2 ** this.options.atomDetail + 2);
+            this.geometries.atomOctant = new THREE.SphereGeometry(
+                this.scaling,
+                octantSections,
+                octantSections,
+                0,
+                Math.PI / 2,
+                0,
+                Math.PI / 2,
+            );
+            this.geometries.emptyAtom = new THREE.BufferGeometry();
+            if (this.options.atomEllipsoidStyle === 'cutout' ||
+                this.options.renderStyle === '2d') {
+                this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
+            }
+        }
+
         // ADP ring geometry
         this.geometries.adpRing = this.createADPHalfTorus();
 
@@ -178,6 +417,23 @@ export class GeometryMaterialCache {
      * @private
      */
     initializeMaterials() {
+        if (this.options.renderStyle === '2d') {
+            this.materials.bond = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DBondColor,
+            });
+            this.materials.openBond = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DAtomColor,
+            });
+            this.materials.openBondOutline = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DBondColor,
+                side: THREE.BackSide,
+            });
+            this.materials.hbond = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DLineColor,
+            });
+            return;
+        }
+
         // Base bond material
         this.materials.bond = new THREE.MeshStandardMaterial({
             color: this.options.bondColor,
@@ -221,6 +477,38 @@ export class GeometryMaterialCache {
         }
         this.validateElementType(elementType);
 
+        if (this.options.renderStyle === '2d') {
+            const plotKey = `${elementType}_2d_materials`;
+            if (!this.elementMaterials[plotKey]) {
+                const elementProperty = this.options.elementProperties[elementType];
+                const elementLineColor = ['H', 'D'].includes(elementType) ?
+                    this.options.plot2DLineColor : elementProperty.atomColor;
+                const outlineMaterial = new THREE.MeshBasicMaterial({
+                    color: elementLineColor,
+                    side: THREE.BackSide,
+                });
+                const atomMaterial = new THREE.MeshBasicMaterial({
+                    color: this.options.plot2DAtomColor,
+                });
+                atomMaterial.userData.plot2DOutlineMaterial = outlineMaterial;
+                atomMaterial.userData.plot2DOutlineScale = this.options.plot2DOutlineScale;
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: elementLineColor,
+                });
+                const hatchMaterial = create2DPlotHatchMaterial(
+                    this.options,
+                    elementLineColor,
+                );
+                this.elementMaterials[plotKey] = [
+                    atomMaterial,
+                    ringMaterial,
+                    hatchMaterial,
+                    outlineMaterial,
+                ];
+            }
+            return this.elementMaterials[plotKey];
+        }
+
         const key = `${elementType}_materials`;
         if (!this.elementMaterials[key]) {
             const elementProperty = this.options.elementProperties[elementType];
@@ -238,6 +526,11 @@ export class GeometryMaterialCache {
             });
 
             this.elementMaterials[key] = [atomMaterial, ringMaterial];
+            if (this.options.atomEllipsoidStyle === 'cutout') {
+                this.elementMaterials[key].push(
+                    createCutawayPlaneMaterial(elementProperty, this.options),
+                );
+            }
         }
 
         return this.elementMaterials[key];
@@ -322,14 +615,39 @@ export class GeometryMaterialCache {
     }
 
     /**
+     * Creates the three intersecting principal planes exposed by a missing octant.
+     * @param {number} sections - Number of radial sections in each disc
+     * @returns {THREE.BufferGeometry} Merged XY, XZ and YZ discs
+     */
+    createCutawayPlanes(sections) {
+        const xyPlane = new THREE.CircleGeometry(this.scaling, sections);
+        const xzPlane = new THREE.CircleGeometry(this.scaling, sections);
+        const yzPlane = new THREE.CircleGeometry(this.scaling, sections);
+
+        // Use each principal direction exactly once: X on XY, Z on XZ,
+        // and Y on YZ. A quarter turn makes the latter two follow their
+        // second local disc axis rather than the default first axis.
+        rotateCutawayUVs(xzPlane, Math.PI / 2);
+        rotateCutawayUVs(yzPlane, Math.PI / 2);
+
+        xzPlane.rotateX(Math.PI / 2);
+        yzPlane.rotateY(Math.PI / 2);
+
+        const planes = mergeGeometries([xyPlane, xzPlane, yzPlane]);
+        xyPlane.dispose();
+        xzPlane.dispose();
+        yzPlane.dispose();
+        return planes;
+    }
+
+    /**
      * Cleans up all cached resources.
      */
     dispose() {
         Object.values(this.geometries).forEach(geometry => geometry.dispose());
         Object.values(this.materials).forEach(material => material.dispose());
-        Object.values(this.elementMaterials).forEach(([atomMaterial, ringMaterial]) => {
-            atomMaterial.dispose();
-            ringMaterial.dispose();
+        Object.values(this.elementMaterials).forEach(materials => {
+            materials.forEach(material => material.dispose());
         });
     }
 }
@@ -389,6 +707,7 @@ export class ORTEP3JsStructure {
             }
         }
         const cartesianPositions = new Map();
+        const renderedAtomsById = new Map();
         const getCartesianPosition = atomId => {
             let position = cartesianPositions.get(atomId);
             if (!position) {
@@ -402,34 +721,53 @@ export class ORTEP3JsStructure {
 
         // Create atoms
         for (const atom of this.crystalStructure.atoms) {
-            const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
+            const [atomMaterial, ringMaterial, cutawayMaterial] =
+                this.cache.getAtomMaterials(atom.atomType);
 
+            let atom3D;
             if (atom.adp instanceof UAnisoADP) {
-                this.atoms3D.push(new ORTEPAniAtom(
+                atom3D = new ORTEPAniAtom(
                     atom,
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
                     atomMaterial,
                     this.cache.geometries.adpRing,
                     ringMaterial,
-                ));
+                    this.options.atomEllipsoidStyle === 'cutout' ||
+                        this.options.renderStyle === '2d' ? {
+                            octantGeometry: this.cache.geometries.atomOctant,
+                            emptyGeometry: this.cache.geometries.emptyAtom,
+                            planeGeometry: this.cache.geometries.cutawayPlanes,
+                            planeMaterial: cutawayMaterial,
+                            hysteresis: this.options.atomCutawayHysteresis,
+                        } : null,
+                );
             } else if (atom.adp instanceof UIsoADP) {
-                this.atoms3D.push(new ORTEPIsoAtom(
+                atom3D = new ORTEPIsoAtom(
                     atom,
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
                     atomMaterial,
-                ));
+                );
             } else {
-                this.atoms3D.push(new ORTEPConstantAtom(
+                atom3D = new ORTEPConstantAtom(
                     atom,
                     this.crystalStructure.cell,
                     this.cache.geometries.atom,
                     atomMaterial,
                     this.options,
-                ));
+                );
+            }
+            this.atoms3D.push(atom3D);
+            if (!renderedAtomsById.has(atom.uniqueId)) {
+                renderedAtomsById.set(atom.uniqueId, atom3D);
             }
         }
+
+        const trimBondsToSurfaces = this.options.atomEllipsoidStyle === 'cutout' ||
+            this.options.renderStyle === '2d';
+        const getRenderedAtom = trimBondsToSurfaces ?
+            atomId => renderedAtomsById.get(atomId) : null;
 
         // Handle regular bonds
         // Only draw bonds where both atoms are present in the current structure
@@ -442,12 +780,22 @@ export class ORTEP3JsStructure {
 
         for (const bond of drawnBonds) {
             try {
+                const atom1 = atomsById.get(bond.atom1Id);
+                const atom2 = atomsById.get(bond.atom2Id);
+                const isOpenDisorderBond = this.options.renderStyle === '2d' &&
+                    [atom1, atom2].some(atom => Number(atom.disorderGroup) > 1);
                 this.bonds3D.push(new ORTEPBond(
                     bond,
                     this.crystalStructure,
                     this.cache.geometries.bond,
-                    this.cache.materials.bond,
+                    isOpenDisorderBond ?
+                        this.cache.materials.openBond : this.cache.materials.bond,
                     getCartesianPosition,
+                    getRenderedAtom,
+                    isOpenDisorderBond ? {
+                        outlineMaterial: this.cache.materials.openBondOutline,
+                        innerScale: this.options.plot2DOpenBondInnerScale,
+                    } : null,
                 ));
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -476,6 +824,7 @@ export class ORTEP3JsStructure {
                     this.options.hbondDashSegmentLength,
                     this.options.hbondDashFraction,
                     getCartesianPosition,
+                    getRenderedAtom,
                 ));
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -504,6 +853,8 @@ export class ORTEP3JsStructure {
             group.add(hBond3D);
         }
         checkForNaN(group);
+        group.cutawayAtoms = this.atoms3D.filter(atom => atom.isCutaway);
+        group.cameraFacingAtoms = group.cutawayAtoms;
 
         return group;
     }
@@ -634,6 +985,15 @@ export class ORTEPAtom extends ORTEPObject {
      */
     constructor(atom, unitCell, baseAtom, atomMaterial) {
         super(baseAtom, atomMaterial);
+        this.updateSurfaceRadius();
+        const plot2DOutlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
+        if (plot2DOutlineMaterial) {
+            const outline = new THREE.Mesh(baseAtom, plot2DOutlineMaterial);
+            outline.scale.multiplyScalar(atomMaterial.userData.plot2DOutlineScale);
+            outline.userData = { selectable: false, type: '2d-atom-outline' };
+            this.add(outline);
+            this.plot2DOutline = outline;
+        }
         const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
 
         this.position.copy(position);
@@ -642,6 +1002,36 @@ export class ORTEPAtom extends ORTEPObject {
             atomData: atom,
             selectable: true,
         };
+    }
+
+    /**
+     * Updates the untransformed radius used for bond-surface intersections.
+     * @private
+     */
+    updateSurfaceRadius() {
+        if (!this.geometry.boundingSphere) {
+            this.geometry.computeBoundingSphere();
+        }
+        this.surfaceRadius = this.geometry.boundingSphere?.radius || 0;
+    }
+
+    /**
+     * Finds the distance from this atom's centre to its rendered surface in a
+     * structure-space direction.
+     * @param {THREE.Vector3} direction - Direction from the atom centre
+     * @returns {number} Distance to the atom surface
+     */
+    getSurfaceDistanceAlong(direction) {
+        if (direction.lengthSq() === 0 || this.surfaceRadius === 0) {
+            return 0;
+        }
+
+        this.updateMatrix();
+        const inverseTransform = this.matrix.clone().setPosition(0, 0, 0).invert();
+        const localDirection = direction.clone().normalize().applyMatrix4(inverseTransform);
+        const localLength = localDirection.length();
+        return Number.isFinite(localLength) && localLength > 0 ?
+            this.surfaceRadius / localLength : 0;
     }
 
     /**
@@ -675,16 +1065,36 @@ export class ORTEPAniAtom extends ORTEPAtom {
      * @param {THREE.Material} atomMaterial - Atom material
      * @param {THREE.BufferGeometry} baseADPRing - ADP ring geometry
      * @param {THREE.Material} ADPRingMaterial - ADP ring material
+     * @param {object|null} cutaway - Optional cutaway geometries and settings
      */
-    constructor(atom, unitCell, baseAtom, atomMaterial, baseADPRing, ADPRingMaterial) {
+    constructor(
+        atom,
+        unitCell,
+        baseAtom,
+        atomMaterial,
+        baseADPRing,
+        ADPRingMaterial,
+        cutaway = null,
+    ) {
         super(atom, unitCell, baseAtom, atomMaterial);
         if ([atom.adp.u11, atom.adp.u3, atom.adp.u33].some(val => val <= 0)) {
             this.geometry = new THREE.TetrahedronGeometry(0.8);
+            if (this.plot2DOutline) {
+                this.plot2DOutline.geometry = this.geometry;
+            }
+            this.updateSurfaceRadius();
         } else {
             const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
             if (ellipsoidMatrix.toArray().includes(NaN)) {
                 this.geometry = new THREE.TetrahedronGeometry(0.8);
+                if (this.plot2DOutline) {
+                    this.plot2DOutline.geometry = this.geometry;
+                }
+                this.updateSurfaceRadius();
             } else {
+                if (cutaway) {
+                    this.setupCutaway(cutaway, atomMaterial);
+                }
                 for (const matrix of this.adpRingMatrices) {
                     const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
                     ringMesh.applyMatrix4(matrix);
@@ -703,6 +1113,184 @@ export class ORTEPAniAtom extends ORTEPAtom {
             atomData: atom,
             selectable: true,
         };
+    }
+
+    /**
+     * Replaces the solid shell with eight shared-geometry octant meshes and
+     * adds the three internal principal planes.
+     * @param {object} cutaway - Cutaway geometries and settings
+     * @param {THREE.Material} atomMaterial - Material for the outer shell
+     * @private
+     */
+    setupCutaway(cutaway, atomMaterial) {
+        this.geometry = cutaway.emptyGeometry;
+        this.isCutaway = true;
+        this.cutawayHysteresis = cutaway.hysteresis;
+        this.cutawaySigns = [1, 1, 1];
+        this.cutawayViewDirection = new THREE.Vector3();
+        this.cutawayWorldPosition = new THREE.Vector3();
+        this.cutawayInverseRotation = new THREE.Matrix4();
+        this.cutawayOctants = OCTANT_SIGNS.map((signs, index) => {
+            const octant = new THREE.Mesh(cutaway.octantGeometry, atomMaterial);
+            setOctantTransform(octant, signs);
+            octant.userData = {
+                selectable: false,
+                type: 'ellipsoid-octant',
+                octantIndex: index,
+            };
+            this.add(octant);
+            return octant;
+        });
+
+        if (this.plot2DOutline) {
+            this.remove(this.plot2DOutline);
+            const outlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
+            const outlineScale = atomMaterial.userData.plot2DOutlineScale;
+            this.cutawayOutlines = OCTANT_SIGNS.map((signs, index) => {
+                const outline = new THREE.Mesh(cutaway.octantGeometry, outlineMaterial);
+                setOctantTransform(outline, signs);
+                outline.scale.multiplyScalar(outlineScale);
+                outline.userData = {
+                    selectable: false,
+                    type: '2d-ellipsoid-outline',
+                    octantIndex: index,
+                };
+                this.add(outline);
+                return outline;
+            });
+            this.plot2DOutline = null;
+        }
+
+        const planes = new THREE.Mesh(cutaway.planeGeometry, cutaway.planeMaterial);
+        planes.userData = { selectable: false, type: 'ellipsoid-cutaway-planes' };
+        this.add(planes);
+        this.cutawayPlanes = planes;
+        this.setMissingOctant(7);
+    }
+
+    /**
+     * Finds the local ellipsoid octant facing the active camera.
+     * @param {THREE.Camera} camera - Active viewer camera
+     * @returns {number} Camera-facing octant index
+     * @private
+     */
+    getCameraFacingOctant(camera) {
+        const viewDirection = this.cutawayViewDirection;
+        if (camera.isPerspectiveCamera) {
+            camera.getWorldPosition(viewDirection);
+            this.getWorldPosition(this.cutawayWorldPosition);
+            viewDirection.sub(this.cutawayWorldPosition);
+        } else {
+            camera.getWorldDirection(viewDirection).negate();
+        }
+        this.cutawayInverseRotation.extractRotation(this.matrixWorld).invert();
+        viewDirection.transformDirection(this.cutawayInverseRotation);
+
+        const components = [viewDirection.x, viewDirection.y, viewDirection.z];
+        components.forEach((component, axis) => {
+            if (Math.abs(component) > this.cutawayHysteresis) {
+                this.cutawaySigns[axis] = component < 0 ? -1 : 1;
+            }
+        });
+
+        return (this.cutawaySigns[0] > 0 ? 4 : 0) +
+            (this.cutawaySigns[1] > 0 ? 2 : 0) +
+            (this.cutawaySigns[2] > 0 ? 1 : 0);
+    }
+
+    /**
+     * Selects the missing local octant from the current camera direction.
+     * @param {THREE.Camera} camera - Active viewer camera
+     */
+    updateCutawayOctant(camera) {
+        if (!this.isCutaway) {
+            return;
+        }
+
+        this.setMissingOctant(this.getCameraFacingOctant(camera));
+    }
+
+    /**
+     * Shows every surface octant except the selected one.
+     * @param {number} missingIndex - Index of the octant to hide
+     * @private
+     */
+    setMissingOctant(missingIndex) {
+        if (missingIndex === this.missingOctantIndex) {
+            return;
+        }
+        this.missingOctantIndex = missingIndex;
+        this.cutawayOctants.forEach((octant, index) => {
+            octant.visible = index !== missingIndex;
+        });
+        this.cutawayOutlines?.forEach((outline, index) => {
+            outline.visible = index !== missingIndex;
+        });
+        this.marker?.cutawayOctants?.forEach((octant, index) => {
+            octant.visible = index !== missingIndex;
+        });
+    }
+
+    createSelectionMarker(color, options) {
+        if (!this.isCutaway) {
+            return super.createSelectionMarker(color, options);
+        }
+
+        const marker = new THREE.Group();
+        const markerMaterial = this.createSelectionMaterial(color);
+        marker.cutawayOctants = OCTANT_SIGNS.map((signs, index) => {
+            const octant = new THREE.Mesh(this.cutawayOctants[0].geometry, markerMaterial);
+            setOctantTransform(octant, signs);
+            octant.visible = index !== this.missingOctantIndex;
+            octant.userData.selectable = false;
+            marker.add(octant);
+            return octant;
+        });
+        // ORTEPObject.removeSelectionMarker disposes this shared marker material.
+        marker.material = markerMaterial;
+        marker.scale.multiplyScalar(options.selection.markerMult);
+        marker.userData.selectable = false;
+        return marker;
+    }
+
+    select(color, options) {
+        super.select(color, options);
+        this.cutawayOctants?.forEach(octant => {
+            octant.material = this.material;
+        });
+    }
+
+    deselect() {
+        super.deselect();
+        this.cutawayOctants?.forEach(octant => {
+            octant.material = this.material;
+        });
+    }
+
+    /**
+     * Raycasts the visible cutaway parts while returning this selectable atom
+     * as the hit object.
+     * @param {THREE.Raycaster} raycaster - Raycaster performing the hit test
+     * @param {object[]} intersects - Array receiving ray intersections
+     * @returns {boolean|undefined} False for cutaways to skip duplicate child raycasts
+     */
+    raycast(raycaster, intersects) {
+        if (!this.isCutaway) {
+            return super.raycast(raycaster, intersects);
+        }
+
+        const childIntersects = [];
+        const raycastMeshes = [
+            ...this.cutawayOctants.filter(octant => octant.visible),
+            this.cutawayPlanes,
+        ];
+        raycastMeshes.forEach(mesh => {
+            THREE.Mesh.prototype.raycast.call(mesh, raycaster, childIntersects);
+        });
+        childIntersects.forEach(intersection => {
+            intersects.push({ ...intersection, object: this });
+        });
+        return false;
     }
 
     /**
@@ -754,6 +1342,7 @@ export class ORTEPIsoAtom extends ORTEPAtom {
         }
         if (atom.adp.uiso <= 0.0) {
             this.geometry = new THREE.TetrahedronGeometry(1);
+            this.updateSurfaceRadius();
         } else {
             this.scale.multiplyScalar(Math.sqrt(atom.adp.uiso));
         }
@@ -803,8 +1392,18 @@ export class ORTEPBond extends ORTEPObject {
      * @param {THREE.BufferGeometry} baseBond - Bond geometry
      * @param {THREE.Material} baseBondMaterial - Bond material
      * @param {Function} [getCartesianPosition] - Cached atom-position resolver
+     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @param {object|null} [openStyle] - Optional opaque fill and outline setup
      */
-    constructor(bond, crystalStructure, baseBond, baseBondMaterial, getCartesianPosition = null) {
+    constructor(
+        bond,
+        crystalStructure,
+        baseBond,
+        baseBondMaterial,
+        getCartesianPosition = null,
+        getRenderedAtom = null,
+        openStyle = null,
+    ) {
         super(baseBond, baseBondMaterial);
         let atom1position;
         let atom2position;
@@ -817,13 +1416,33 @@ export class ORTEPBond extends ORTEPObject {
             atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
             atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
         }
+        if (getRenderedAtom) {
+            [atom1position, atom2position] = trimBondToAtomSurfaces(
+                atom1position,
+                atom2position,
+                getRenderedAtom(bond.atom1Id),
+                getRenderedAtom(bond.atom2Id),
+            );
+        }
         const bondTransform = calcBondTransform(atom1position, atom2position);
 
         this.applyMatrix4(bondTransform);
+        if (openStyle) {
+            const innerScale = THREE.MathUtils.clamp(openStyle.innerScale, 0.05, 0.95);
+            this.scale.x *= innerScale;
+            this.scale.z *= innerScale;
+
+            const outline = new THREE.Mesh(baseBond, openStyle.outlineMaterial);
+            outline.scale.set(1 / innerScale, 1, 1 / innerScale);
+            outline.userData = { selectable: false, type: '2d-open-bond-outline' };
+            this.add(outline);
+            this.openBondOutline = outline;
+        }
         this.userData = {
             type: 'bond',
             bondData: bond,
             selectable: true,
+            isOpenDisorderBond: Boolean(openStyle),
         };
     }
 
@@ -1015,6 +1634,7 @@ export class ORTEPHBond extends ORTEPGroupObject {
      * @param {number} targetSegmentLength - Approximate target length for dashed segments
      * @param {number} dashFraction - Fraction of segment that is solid
      * @param {Function} [getCartesianPosition] - Cached atom-position resolver
+     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
      */
     constructor(
         hbond,
@@ -1024,6 +1644,7 @@ export class ORTEPHBond extends ORTEPGroupObject {
         targetSegmentLength,
         dashFraction,
         getCartesianPosition = null,
+        getRenderedAtom = null,
     ) {
         super();
         this.userData = {
@@ -1042,6 +1663,15 @@ export class ORTEPHBond extends ORTEPGroupObject {
             const acceptorAtom = crystalStructure.getAtomById(hbond.acceptorAtomId);
             hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
             acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell));
+        }
+
+        if (getRenderedAtom) {
+            [hydrogenPosition, acceptorPosition] = trimBondToAtomSurfaces(
+                hydrogenPosition,
+                acceptorPosition,
+                getRenderedAtom(hbond.hydrogenAtomId),
+                getRenderedAtom(hbond.acceptorAtomId),
+            );
         }
 
         this.createDashedBondSegments(

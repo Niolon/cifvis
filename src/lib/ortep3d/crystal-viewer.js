@@ -390,7 +390,7 @@ export class CrystalViewer {
      * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
      * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
      * see ./structure-settings.js for the default values
-     * @throws {Error} If an invalid render mode is provided
+     * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
@@ -399,13 +399,30 @@ export class CrystalViewer {
                 `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
             );
         }
+        const validRenderStyles = ['standard', '2d'];
+        if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
+            throw new Error(
+                `Invalid render style: "${options.renderStyle}". ` +
+                `Must be one of: ${validRenderStyles.join(', ')}`,
+            );
+        }
+        const validAtomEllipsoidStyles = ['solid', 'cutout'];
+        if (options.atomEllipsoidStyle &&
+            !validAtomEllipsoidStyles.includes(options.atomEllipsoidStyle)) {
+            throw new Error(
+                `Invalid atom ellipsoid style: "${options.atomEllipsoidStyle}". ` +
+                `Must be one of: ${validAtomEllipsoidStyles.join(', ')}`,
+            );
+        }
 
         this.container = container;
+        const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
         this.options = {
             camera: {
                 ...defaultSettings.camera,
-                initialPosition: new THREE.Vector3(...defaultSettings.camera.initialPosition),
                 ...(options.camera || {}),
+                initialPosition: initialPosition.isVector3 ?
+                    initialPosition.clone() : new THREE.Vector3(...initialPosition),
             },
             selection: {
                 ...defaultSettings.selection,
@@ -416,6 +433,12 @@ export class CrystalViewer {
                 ...(options.interaction || {}),
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
+            atomEllipsoidStyle: options.atomEllipsoidStyle || defaultSettings.atomEllipsoidStyle,
+            atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
+            atomCutawayStripeCount: options.atomCutawayStripeCount ??
+                defaultSettings.atomCutawayStripeCount,
+            atomCutawayStripeWidth: options.atomCutawayStripeWidth ??
+                defaultSettings.atomCutawayStripeWidth,
             atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
             atomColorMetalness: options.atomColorMetalness || defaultSettings.atomColorMetalness,
             atomADPRingWidthFactor: options.atomADPRingWidthFactor || defaultSettings.atomADPRingWidthFactor,
@@ -435,6 +458,16 @@ export class CrystalViewer {
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
+            renderStyle: options.renderStyle || defaultSettings.renderStyle,
+            plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
+            plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
+            plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
+            plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
+                defaultSettings.plot2DOpenBondInnerScale,
+            plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
+            plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
+            plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
             cell: {
                 ...defaultSettings.cell,
@@ -484,7 +517,10 @@ export class CrystalViewer {
         this.camera = this.cameraController.camera;
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        this.resizeRendererToDisplaySize();;
+        if (this.options.renderStyle === '2d') {
+            this.renderer.setClearColor(this.options.plot2DBackground, 1);
+        }
+        this.resizeRendererToDisplaySize();
         this.container.appendChild(this.renderer.domElement);
 
         this.moleculeContainer = new THREE.Group();
@@ -734,10 +770,28 @@ export class CrystalViewer {
      */
     animate() {
         if (this.options.renderMode === 'constant' || this.needsRender) {
+            this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
+    }
+
+    /**
+     * Keeps cutaway ellipsoids open towards the camera as the structure rotates.
+     * @private
+     */
+    updateCameraFacingOctants() {
+        const cameraFacingAtoms = this.state.currentStructure?.cameraFacingAtoms;
+        if (!cameraFacingAtoms?.length) {
+            return;
+        }
+
+        this.camera.updateMatrixWorld();
+        this.moleculeContainer.updateMatrixWorld(true);
+        cameraFacingAtoms.forEach(atom => {
+            atom.updateCutawayOctant(this.camera);
+        });
     }
 
     /**
