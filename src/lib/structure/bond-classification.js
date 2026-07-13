@@ -70,5 +70,35 @@ export function isChemicalBond(structure, bond) {
  * @returns {import('./bonds.js').Bond[]} Chemical graph edges
  */
 export function chemicalBonds(structure, bonds = structure.bonds) {
-    return bonds.filter(bond => isChemicalBond(structure, bond));
+    // CIF atom labels identify asymmetric-unit atoms. Build the same first-match
+    // lookup used by getAtomByLabel once instead of scanning all atoms per bond.
+    const atomTypesByLabel = new Map();
+    for (const atom of structure.atoms) {
+        if (!atomTypesByLabel.has(atom.label)) {
+            atomTypesByLabel.set(atom.label, atom.atomType);
+        }
+    }
+
+    return bonds.filter(bond => {
+        if (!Number.isFinite(bond.bondLength)) {
+            return true;
+        }
+        if (bond.bondLength > MAX_CHEMICAL_BOND_LENGTH) {
+            return false;
+        }
+
+        const atomType1 = atomTypesByLabel.get(bond.atom1Label);
+        const atomType2 = atomTypesByLabel.get(bond.atom2Label);
+        if (atomType1 === undefined || atomType2 === undefined) {
+            return true;
+        }
+
+        const radius1 = NON_METAL_COVALENT_RADII[atomType1];
+        const radius2 = NON_METAL_COVALENT_RADII[atomType2];
+        if (radius1 === undefined || radius2 === undefined) {
+            return true;
+        }
+
+        return bond.bondLength <= NON_METAL_RADIUS_TOLERANCE * (radius1 + radius2);
+    });
 }

@@ -310,17 +310,34 @@ async function testCIFFile(filePath) {
 
             // Try each combination
             for (const hydrogenMode of applicableModes.hydrogen) {
+                modifiers.hydrogen.mode = hydrogenMode;
+                let hydrogenStructure;
+                let hydrogenError;
+                try {
+                    hydrogenStructure = modifiers.hydrogen.apply(baseStructure);
+                } catch (error) {
+                    hydrogenError = error;
+                }
+
                 for (const disorderMode of applicableModes.disorder) {
+                    modifiers.disorder.mode = disorderMode;
+                    let filteredStructure;
+                    let filterError = hydrogenError;
+                    if (!filterError) {
+                        try {
+                            filteredStructure = modifiers.disorder.apply(hydrogenStructure);
+                        } catch (error) {
+                            filterError = error;
+                        }
+                    }
+
                     for (const symmetryMode of applicableModes.symmetry) {
                         try {
-                            let structure = baseStructure;
-                            modifiers.hydrogen.mode = hydrogenMode;
-                            modifiers.disorder.mode = disorderMode;
+                            if (filterError) {
+                                throw filterError;
+                            }
                             modifiers.symmetry.mode = symmetryMode;
-                         
-                            structure = modifiers.hydrogen.apply(baseStructure);
-                            structure = modifiers.disorder.apply(structure); 
-                            structure = modifiers.symmetry.apply(structure);
+                            modifiers.symmetry.apply(filteredStructure);
                         } catch (error) {
                             logMessage(
                                 `Modifier Error in ${filePath}:`

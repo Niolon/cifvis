@@ -177,6 +177,23 @@ export class CrystalStructure {
      * @throws {Error} If atom with label not found
      */
     calculateConnectedGroups() {
+        // Resolve bond endpoints through one snapshot index. Calling getAtomById
+        // for every endpoint scans the complete atom array and repeatedly builds
+        // symmetry-qualified IDs, which dominates growth for large cells.
+        const atomsById = new Map();
+        const identityAtomsByLabel = new Map();
+        for (const atom of this.atoms) {
+            const atomId = atom.uniqueId;
+            if (!atomsById.has(atomId)) {
+                atomsById.set(atomId, atom);
+            }
+            if (!atom.appliedSymmetry && !identityAtomsByLabel.has(atom.label)) {
+                identityAtomsByLabel.set(atom.label, atom);
+            }
+        }
+        const resolveAtom = atomId => atomsById.get(atomId) ||
+            (!atomId.includes('|') ? identityAtomsByLabel.get(atomId) : undefined);
+
         // Map to track which atoms have been assigned to a group (keyed by uniqueId)
         const atomGroupMap = new Map();
         const groups = [];
@@ -201,11 +218,9 @@ export class CrystalStructure {
             const atom1Id = bond.atom1Id || bond.atom1Label;
             const atom2Id = bond.atom2Id || bond.atom2Label;
 
-            let atom1, atom2;
-            try {
-                atom1 = this.getAtomById(atom1Id);
-                atom2 = this.getAtomById(atom2Id);
-            } catch {
+            const atom1 = resolveAtom(atom1Id);
+            const atom2 = resolveAtom(atom2Id);
+            if (!atom1 || !atom2) {
                 // If atoms are missing (e.g. symmetry atoms not yet grown), skip this bond
                 continue;
             }
@@ -255,11 +270,9 @@ export class CrystalStructure {
             const donorId = hbond.donorAtomId || hbond.donorAtomLabel;
             const acceptorId = hbond.acceptorAtomId || hbond.acceptorAtomLabel;
 
-            let donorAtom, acceptorAtom;
-            try {
-                donorAtom = this.getAtomById(donorId);
-                acceptorAtom = this.getAtomById(acceptorId);
-            } catch {
+            const donorAtom = resolveAtom(donorId);
+            const acceptorAtom = resolveAtom(acceptorId);
+            if (!donorAtom || !acceptorAtom) {
                 continue;
             }
             // Skip hbonds to symmetry equivalent positions for initial grouping
@@ -277,8 +290,17 @@ export class CrystalStructure {
             }
 
         }
+        // Atom IDs are normally unique, but malformed/legacy structures can
+        // contain distinct atom objects with the same ID. Preserve the existing
+        // object-identity behavior while avoiding groups.some() for every atom.
+        const groupedAtoms = new Set();
+        for (const group of groups) {
+            for (const atom of group.atoms) {
+                groupedAtoms.add(atom);
+            }
+        }
         const unboundAtoms = this.atoms
-            .filter(atom => !groups.some(g => g.atoms.has(atom)));
+            .filter(atom => !groupedAtoms.has(atom));
 
         unboundAtoms.forEach(atom => {
             const newGroup = {

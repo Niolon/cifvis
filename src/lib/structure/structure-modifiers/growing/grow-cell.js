@@ -995,6 +995,16 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
     });
 
     const finalAtomsById = new Map(finalAtoms.map(atom => [atom.uniqueId, atom]));
+    const cartesianPositions = new Map();
+
+    const getCartesianPosition = atom => {
+        let position = cartesianPositions.get(atom.uniqueId);
+        if (!position) {
+            position = atom.position.toCartesian(structure.cell);
+            cartesianPositions.set(atom.uniqueId, position);
+        }
+        return position;
+    };
 
     /**
      * Checks that a displayed internal bond still connects nearby periodic images.
@@ -1018,8 +1028,8 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             // because both displayed endpoints are required.
             return bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.';
         }
-        const cart1 = atom1.position.toCartesian(structure.cell);
-        const cart2 = atom2.position.toCartesian(structure.cell);
+        const cart1 = getCartesianPosition(atom1);
+        const cart2 = getCartesianPosition(atom2);
         const actualLength = Math.hypot(
             cart1.x - cart2.x,
             cart1.y - cart2.y,

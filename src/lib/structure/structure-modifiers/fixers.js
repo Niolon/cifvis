@@ -213,13 +213,21 @@ export class BondGenerator extends BaseFilter {
         const generatedBonds = new Set();
         const { cell, atoms } = structure;
 
-        // Create a map of atom positions for faster lookup
+        // Prepare pairwise data once. The previous implementation allocated a
+        // mathjs vector and matrix-backed norm for every atom pair.
         const atomPositions = new Map();
         const elementMap = new Map();
+        const bondedAtomIds = new Set();
+        for (const bond of structure.bonds) {
+            bondedAtomIds.add(bond.atom1Id);
+            bondedAtomIds.add(bond.atom2Id);
+        }
 
         atoms.forEach(atom => {
             const cartPos = atom.position.toCartesian(cell);
-            atomPositions.set(atom.uniqueId, [cartPos.x, cartPos.y, cartPos.z]); // Key by uniqueId
+            // Preserve the established behavior for duplicate atom IDs: the last
+            // position in the structure is the one used for every matching ID.
+            atomPositions.set(atom.uniqueId, [cartPos.x, cartPos.y, cartPos.z]);
             if (Object.prototype.hasOwnProperty.call(elementProperties, atom.atomType)
                 && !elementMap.has(atom.atomType)) {
                 elementMap.set(atom.atomType, atom.atomType);
@@ -243,19 +251,27 @@ export class BondGenerator extends BaseFilter {
 
                 // Skip if either atom is hydrogen and we already have bonds
                 if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
-                    structure.bonds.some(bond => bond.atom1Id === atom1.uniqueId || bond.atom1Id === atom2.uniqueId ||
-                        bond.atom2Id === atom1.uniqueId || bond.atom2Id === atom2.uniqueId)) {
+                    (bondedAtomIds.has(atom1.uniqueId) || bondedAtomIds.has(atom2.uniqueId))) {
                     continue;
                 }
 
-                // Calculate distance using mathjs
-                const diff = math.subtract(pos1, pos2);
-                const distance = math.norm(diff);
+                const dx = pos1[0] - pos2[0];
+                const dy = pos1[1] - pos2[1];
+                const dz = pos1[2] - pos2[2];
                 const maxDistance = this.getMaxBondDistance(
                     elementMap.get(atom1.atomType),
                     elementMap.get(atom2.atomType),
                     elementProperties,
                 );
+
+                // A bond-length sphere is contained by this axis-aligned box.
+                // Reject distant pairs before invoking mathjs while retaining the
+                // exact historical norm calculation for all possible bonds.
+                if (Math.abs(dx) > maxDistance || Math.abs(dy) > maxDistance ||
+                    Math.abs(dz) > maxDistance) {
+                    continue;
+                }
+                const distance = math.norm([dx, dy, dz]);
 
                 if (distance <= maxDistance && distance > 0.0001) {
                     generatedBonds.add(new Bond(

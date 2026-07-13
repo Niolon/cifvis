@@ -402,7 +402,8 @@ export function createConnectivity(structure, atomGroups) {
     const MAXITER = 10000; // Safety limit
 
     // Process the queue iteratively using breadth-first search
-    while (danglingConnections.length > 0) {
+    let connectionIndex = 0;
+    while (connectionIndex < danglingConnections.length) {
         if (safetyCounter++ > MAXITER) {
             console.error(
                 'Max iterations reached in createConnectivity. Possible infinite loop orvery complex structure.',
@@ -410,7 +411,9 @@ export function createConnectivity(structure, atomGroups) {
             break; // Exit loop to prevent freezing
         }
 
-        const currentConnection = danglingConnections.shift();
+        // Advancing an index preserves FIFO order without shifting the remaining
+        // queue on every iteration.
+        const currentConnection = danglingConnections[connectionIndex++];
 
         // Process this connection group to find the next connected group and any new bonds
         const stepResult = exploreConnection(
@@ -434,9 +437,10 @@ export function createConnectivity(structure, atomGroups) {
         networkConnections.push(currentConnection);
     }
 
-    if (danglingConnections.length > 0) {
+    if (connectionIndex < danglingConnections.length) {
         console.warn(
-            `Connectivity processing stopped due to iteration limit. ${danglingConnections.length} ` +
+            'Connectivity processing stopped due to iteration limit. ' +
+            `${danglingConnections.length - connectionIndex} ` +
             'connections remain unprocessed.',
         );
     }
