@@ -378,7 +378,27 @@ export class ORTEP3JsStructure {
         this.bonds3D = [];
         this.hBonds3D = [];
 
-        const atomIds = this.crystalStructure.atoms.map(atom => atom.uniqueId);
+        const atomIds = new Set();
+        const atomsById = new Map();
+        for (const atom of this.crystalStructure.atoms) {
+            const atomId = atom.uniqueId;
+            atomIds.add(atomId);
+            // getAtomById historically returns the first matching atom.
+            if (!atomsById.has(atomId)) {
+                atomsById.set(atomId, atom);
+            }
+        }
+        const cartesianPositions = new Map();
+        const getCartesianPosition = atomId => {
+            let position = cartesianPositions.get(atomId);
+            if (!position) {
+                const atom = atomsById.get(atomId);
+                const cartesian = atom.position.toCartesian(this.crystalStructure.cell);
+                position = new THREE.Vector3(cartesian.x, cartesian.y, cartesian.z);
+                cartesianPositions.set(atomId, position);
+            }
+            return position;
+        };
 
         // Create atoms
         for (const atom of this.crystalStructure.atoms) {
@@ -415,8 +435,8 @@ export class ORTEP3JsStructure {
         // Only draw bonds where both atoms are present in the current structure
         const drawnBonds = this.crystalStructure.bonds
             .filter(bond => {
-                const atom1Present = atomIds.includes(bond.atom1Id);
-                const atom2Present = atomIds.includes(bond.atom2Id);
+                const atom1Present = atomIds.has(bond.atom1Id);
+                const atom2Present = atomIds.has(bond.atom2Id);
                 return atom1Present && atom2Present;
             });
 
@@ -427,6 +447,7 @@ export class ORTEP3JsStructure {
                     this.crystalStructure,
                     this.cache.geometries.bond,
                     this.cache.materials.bond,
+                    getCartesianPosition,
                 ));
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -439,9 +460,9 @@ export class ORTEP3JsStructure {
         // Only draw h-bonds where all atoms are present in the current structure
         const drawnHBonds = this.crystalStructure.hBonds
             .filter(hBond => {
-                const present = atomIds.includes(hBond.donorAtomId) &&
-                    atomIds.includes(hBond.acceptorAtomId) &&
-                    (hBond.hydrogenAtomId ? atomIds.includes(hBond.hydrogenAtomId) : true);
+                const present = atomIds.has(hBond.donorAtomId) &&
+                    atomIds.has(hBond.acceptorAtomId) &&
+                    (hBond.hydrogenAtomId ? atomIds.has(hBond.hydrogenAtomId) : true);
                 return present;
             });
 
@@ -454,6 +475,7 @@ export class ORTEP3JsStructure {
                     this.cache.materials.hbond,
                     this.options.hbondDashSegmentLength,
                     this.options.hbondDashFraction,
+                    getCartesianPosition,
                 ));
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -780,13 +802,21 @@ export class ORTEPBond extends ORTEPObject {
      * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
      * @param {THREE.BufferGeometry} baseBond - Bond geometry
      * @param {THREE.Material} baseBondMaterial - Bond material
+     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
      */
-    constructor(bond, crystalStructure, baseBond, baseBondMaterial) {
+    constructor(bond, crystalStructure, baseBond, baseBondMaterial, getCartesianPosition = null) {
         super(baseBond, baseBondMaterial);
-        const bondAtom1 = crystalStructure.getAtomById(bond.atom1Id);
-        const bondAtom2 = crystalStructure.getAtomById(bond.atom2Id);
-        const atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
-        const atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
+        let atom1position;
+        let atom2position;
+        if (getCartesianPosition) {
+            atom1position = getCartesianPosition(bond.atom1Id);
+            atom2position = getCartesianPosition(bond.atom2Id);
+        } else {
+            const bondAtom1 = crystalStructure.getAtomById(bond.atom1Id);
+            const bondAtom2 = crystalStructure.getAtomById(bond.atom2Id);
+            atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
+            atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
+        }
         const bondTransform = calcBondTransform(atom1position, atom2position);
 
         this.applyMatrix4(bondTransform);
@@ -984,8 +1014,17 @@ export class ORTEPHBond extends ORTEPGroupObject {
      * @param {THREE.Material} baseHBondMaterial - H-bond material
      * @param {number} targetSegmentLength - Approximate target length for dashed segments
      * @param {number} dashFraction - Fraction of segment that is solid
+     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
      */
-    constructor(hbond, crystalStructure, baseHBond, baseHBondMaterial, targetSegmentLength, dashFraction) {
+    constructor(
+        hbond,
+        crystalStructure,
+        baseHBond,
+        baseHBondMaterial,
+        targetSegmentLength,
+        dashFraction,
+        getCartesianPosition = null,
+    ) {
         super();
         this.userData = {
             type: 'hbond',
@@ -993,10 +1032,17 @@ export class ORTEPHBond extends ORTEPGroupObject {
             selectable: true,
         };
 
-        const hydrogenAtom = crystalStructure.getAtomById(hbond.hydrogenAtomId);
-        const acceptorAtom = crystalStructure.getAtomById(hbond.acceptorAtomId);
-        const hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
-        const acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell));
+        let hydrogenPosition;
+        let acceptorPosition;
+        if (getCartesianPosition) {
+            hydrogenPosition = getCartesianPosition(hbond.hydrogenAtomId);
+            acceptorPosition = getCartesianPosition(hbond.acceptorAtomId);
+        } else {
+            const hydrogenAtom = crystalStructure.getAtomById(hbond.hydrogenAtomId);
+            const acceptorAtom = crystalStructure.getAtomById(hbond.acceptorAtomId);
+            hydrogenPosition = new THREE.Vector3(...hydrogenAtom.position.toCartesian(crystalStructure.cell));
+            acceptorPosition = new THREE.Vector3(...acceptorAtom.position.toCartesian(crystalStructure.cell));
+        }
 
         this.createDashedBondSegments(
             hydrogenPosition, acceptorPosition,

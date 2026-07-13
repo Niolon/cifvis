@@ -46,6 +46,13 @@ export class SelectionManager {
         // Clear old visual selections since the objects no longer exist
         this.selectedObjects.clear();
 
+        // With no stored selection there is nothing to reconcile. This is the
+        // normal initial-display path and avoids two full scene traversals.
+        if (this.selectedData.size === 0) {
+            this.notifyCallbacks();
+            return;
+        }
+
         // Collect all available data in current structure
         const availableData = new Set();
         container.traverse((object) => {
