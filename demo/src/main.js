@@ -21,7 +21,6 @@ function updateStatus(message, type = 'info') {
 
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body);
-globalThis.__cifvisDebugViewer = viewer;
 viewer.animate();
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
