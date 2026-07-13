@@ -546,6 +546,24 @@ _cell.angle_gamma 90
     options='{"atomEllipsoidStyle":"cutout"}'&gt;
 &lt;/cifview-widget&gt;</code></pre>
 
+            <h3 id="2d-renderer">2D publication style</h3>
+            <p>
+                Set <code>renderStyle</code> to <code>2d</code> for white-filled atoms,
+                element-coloured outlines and hatching, and black bonds.
+            </p>
+            <div class="widget-container">
+                <span class="example-label">Element-coloured 2D ORTEP plot:</span>
+                <cifview-widget
+                    src="cif/urea.cif"
+                    options='{"renderStyle":"2d"}'
+                    caption="Rotate the plot to move the three hatched section faces.">
+                </cifview-widget>
+            </div>
+            <pre><code>&lt;cifview-widget
+    src="structure.cif"
+    options='{"renderStyle":"2d"}'&gt;
+&lt;/cifview-widget&gt;</code></pre>
+
             <h3>Growing symmetry</h3>
             <p>
                 You can grow the symmetry one additional sphere using bonds or hydrogen bonds contained in the cif tables:
@@ -829,6 +847,11 @@ _cell.angle_gamma 90
                             <td>String</td>
                             <td>Rendering mode, either "constant" (render continuously) or "onDemand" (render only when needed). <span class="default-value">Default: "onDemand"</span></td>
                         </tr>
+                        <tr class="option-row" data-keywords="render style standard 2d publication ortep">
+                            <td><span class="option-code">renderStyle</span></td>
+                            <td>String</td>
+                            <td>Rendering style, either interactive "standard" or publication-style "2d". <span class="default-value">Default: "standard"</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="fix cif errors">
                             <td><span class="option-code">fixCifErrors</span></td>
                             <td>Boolean</td>
@@ -868,6 +891,16 @@ _cell.angle_gamma 90
                             <td><span class="option-code">atomCutawayStripeWidth</span></td>
                             <td>Number</td>
                             <td>Atom-colour stripe width as a fraction of each repeat. <span class="default-value">Default: 0.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot stripe count hatch ortep">
+                            <td><span class="option-code">plot2DStripeCount</span></td>
+                            <td>Number</td>
+                            <td>Number of hatch repeats across each 2D section face. <span class="default-value">Default: 7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot stripe width hatch ortep">
+                            <td><span class="option-code">plot2DStripeWidth</span></td>
+                            <td>Number</td>
+                            <td>Element-coloured line width as a fraction of each repeat. <span class="default-value">Default: 0.18</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom color roughness material">
                             <td><span class="option-code">atomColorRoughness</span></td>

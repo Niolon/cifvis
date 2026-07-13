@@ -399,6 +399,13 @@ export class CrystalViewer {
                 `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
             );
         }
+        const validRenderStyles = ['standard', '2d'];
+        if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
+            throw new Error(
+                `Invalid render style: "${options.renderStyle}". ` +
+                `Must be one of: ${validRenderStyles.join(', ')}`,
+            );
+        }
 
         this.container = container;
         const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
@@ -420,6 +427,10 @@ export class CrystalViewer {
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomEllipsoidStyle: options.atomEllipsoidStyle || defaultSettings.atomEllipsoidStyle,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
+            atomCutawayStripeCount: options.atomCutawayStripeCount ??
+                defaultSettings.atomCutawayStripeCount,
+            atomCutawayStripeWidth: options.atomCutawayStripeWidth ??
+                defaultSettings.atomCutawayStripeWidth,
             atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
             atomColorMetalness: options.atomColorMetalness || defaultSettings.atomColorMetalness,
             atomADPRingWidthFactor: options.atomADPRingWidthFactor || defaultSettings.atomADPRingWidthFactor,
@@ -439,6 +450,14 @@ export class CrystalViewer {
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
+            renderStyle: options.renderStyle || defaultSettings.renderStyle,
+            plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
+            plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
+            plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
+            plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
+            plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
+            plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
             cell: {
                 ...defaultSettings.cell,
@@ -488,6 +507,9 @@ export class CrystalViewer {
         this.camera = this.cameraController.camera;
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        if (this.options.renderStyle === '2d') {
+            this.renderer.setClearColor(this.options.plot2DBackground, 1);
+        }
         this.resizeRendererToDisplaySize();;
         this.container.appendChild(this.renderer.domElement);
 
@@ -738,7 +760,7 @@ export class CrystalViewer {
      */
     animate() {
         if (this.options.renderMode === 'constant' || this.needsRender) {
-            this.updateCutawayOctants();
+            this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
             this.needsRender = false;
         }
@@ -749,15 +771,17 @@ export class CrystalViewer {
      * Keeps cutaway ellipsoids open towards the camera as the structure rotates.
      * @private
      */
-    updateCutawayOctants() {
-        const cutawayAtoms = this.state.currentStructure?.cutawayAtoms;
-        if (!cutawayAtoms?.length) {
+    updateCameraFacingOctants() {
+        const cameraFacingAtoms = this.state.currentStructure?.cameraFacingAtoms;
+        if (!cameraFacingAtoms?.length) {
             return;
         }
 
         this.camera.updateMatrixWorld();
         this.moleculeContainer.updateMatrixWorld(true);
-        cutawayAtoms.forEach(atom => atom.updateCutawayOctant(this.camera));
+        cameraFacingAtoms.forEach(atom => {
+            atom.updateCutawayOctant(this.camera);
+        });
     }
 
     /**

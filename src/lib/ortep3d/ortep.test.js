@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {
     ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
-    ORTEPBond, createCutawayPlaneMaterial, trimBondToAtomSurfaces,
+    ORTEPBond, create2DPlotHatchMaterial, createCutawayPlaneMaterial,
+    trimBondToAtomSurfaces,
 } from './ortep.js';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { Bond, HBond } from '../structure/bonds.js';
@@ -303,6 +304,51 @@ describe('GeometryMaterialCache', () => {
 
             material.dispose();
         });
+
+        test('creates element-coloured materials for the 2D plot style', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: '2d' });
+            const [carbon, carbonRing, carbonHatch] = plotCache.getAtomMaterials('C');
+            const [oxygen, oxygenRing, oxygenHatch] = plotCache.getAtomMaterials('O');
+
+            expect(carbon).toBeInstanceOf(THREE.MeshBasicMaterial);
+            expect(carbon.color.getHexString()).toBe('ffffff');
+            expect(oxygen.color.getHexString()).toBe('ffffff');
+            expect(carbonRing.color.getHexString()).toBe('000000');
+            expect(oxygenRing.color.getHexString()).toBe('ff0d0d');
+            expect(carbonHatch.userData.plot2DHatch.color.getHexString()).toBe('000000');
+            expect(oxygenHatch.userData.plot2DHatch.color.getHexString()).toBe('ff0d0d');
+            expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
+            expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+
+            plotCache.dispose();
+        });
+
+        test('injects antialiased stripes into the 2D hatch material', () => {
+            const material = create2DPlotHatchMaterial(
+                {
+                    plot2DAtomColor: '#ffffff',
+                    plot2DLineColor: '#000000',
+                    plot2DStripeCount: 8,
+                    plot2DStripeWidth: 0.25,
+                },
+                '#3050f8',
+            );
+            const shader = {
+                uniforms: {},
+                vertexShader: '#include <uv_pars_vertex>\n#include <uv_vertex>',
+                fragmentShader: '#include <common>\n#include <color_fragment>',
+            };
+
+            material.onBeforeCompile(shader);
+
+            expect(shader.uniforms.plot2DStripeColor.value.getHexString()).toBe('3050f8');
+            expect(shader.uniforms.plot2DStripeCount.value).toBe(8);
+            expect(shader.uniforms.plot2DStripeHalfWidth.value).toBe(0.125);
+            expect(shader.vertexShader).toContain('vPlot2DUv = uv');
+            expect(shader.fragmentShader).toContain('vPlot2DUv.y * plot2DStripeCount');
+
+            material.dispose();
+        });
     });
 
     describe('ADP ring geometry', () => {
@@ -508,6 +554,24 @@ describe('ORTEP3JsStructure', () => {
             const group = structure.getGroup();
             expect(group.cutawayAtoms).toHaveLength(1);
             expect(group.cutawayAtoms[0].userData.atomData.label).toBe('H1');
+        });
+
+        test('creates a surface-trimmed, camera-facing 2D plot structure', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                renderStyle: '2d',
+            });
+            const group = structure.getGroup();
+            const anisotropicAtom = structure.atoms3D[2];
+
+            expect(group.cameraFacingAtoms).toEqual([anisotropicAtom]);
+            expect(anisotropicAtom.isCutaway).toBe(true);
+            expect(anisotropicAtom.cutawayOctants).toHaveLength(8);
+            expect(anisotropicAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            expect(anisotropicAtom.cutawayOutlines).toHaveLength(8);
+            expect(anisotropicAtom.cutawayOutlines.filter(outline => outline.visible)).toHaveLength(7);
+            expect(anisotropicAtom.cutawayPlanes.material.userData.plot2DHatch).toBeDefined();
+            expect(structure.bonds3D[0].material).toBeInstanceOf(THREE.MeshBasicMaterial);
         });
     });
 
