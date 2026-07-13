@@ -300,6 +300,8 @@ describe('GeometryMaterialCache', () => {
             expect(shader.uniforms.cutawayStripeHalfWidth.value).toBe(0.1);
             expect(shader.vertexShader).toContain('vCutawayUv = uv');
             expect(shader.fragmentShader).toContain('vCutawayUv.y * cutawayStripeCount');
+            expect(shader.fragmentShader).toContain('fwidth(cutawayStripeCoordinate)');
+            expect(shader.fragmentShader).not.toContain('fwidth(cutawayStripePhase)');
             expect(shader.fragmentShader).toContain('diffuseColor.rgb = mix');
 
             material.dispose();
@@ -346,6 +348,8 @@ describe('GeometryMaterialCache', () => {
             expect(shader.uniforms.plot2DStripeHalfWidth.value).toBe(0.125);
             expect(shader.vertexShader).toContain('vPlot2DUv = uv');
             expect(shader.fragmentShader).toContain('vPlot2DUv.y * plot2DStripeCount');
+            expect(shader.fragmentShader).toContain('fwidth(plot2DStripeCoordinate)');
+            expect(shader.fragmentShader).not.toContain('fwidth(plot2DStripePhase)');
 
             material.dispose();
         });

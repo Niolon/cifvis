@@ -66,9 +66,10 @@ export function createCutawayPlaneMaterial(elementProperty, options) {
             .replace(
                 '#include <color_fragment>',
                 '#include <color_fragment>\n' +
-                'float cutawayStripePhase = fract(vCutawayUv.y * cutawayStripeCount);\n' +
+                'float cutawayStripeCoordinate = vCutawayUv.y * cutawayStripeCount;\n' +
+                'float cutawayStripePhase = fract(cutawayStripeCoordinate);\n' +
                 'float cutawayStripeDistance = abs(cutawayStripePhase - 0.5);\n' +
-                'float cutawayStripeEdge = max(fwidth(cutawayStripePhase), 0.001);\n' +
+                'float cutawayStripeEdge = max(fwidth(cutawayStripeCoordinate), 0.001);\n' +
                 'float cutawayStripeMask = 1.0 - smoothstep(\n' +
                 '    cutawayStripeHalfWidth - cutawayStripeEdge,\n' +
                 '    cutawayStripeHalfWidth + cutawayStripeEdge,\n' +
@@ -85,8 +86,8 @@ export function createCutawayPlaneMaterial(elementProperty, options) {
 }
 
 /**
- * Creates the monochrome hatch material for the curved, camera-facing octant
- * in the publication-style 2D renderer.
+ * Creates the element-coloured hatch material for the three principal-plane
+ * faces in the publication-style 2D renderer.
  * @param {object} options - ORTEP rendering options
  * @param {THREE.ColorRepresentation} lineColor - Element colour for hatch lines
  * @returns {THREE.MeshBasicMaterial} Hatched 2D plot material
@@ -134,9 +135,10 @@ export function create2DPlotHatchMaterial(options, lineColor = options.plot2DLin
             .replace(
                 '#include <color_fragment>',
                 '#include <color_fragment>\n' +
-                'float plot2DStripePhase = fract(vPlot2DUv.y * plot2DStripeCount);\n' +
+                'float plot2DStripeCoordinate = vPlot2DUv.y * plot2DStripeCount;\n' +
+                'float plot2DStripePhase = fract(plot2DStripeCoordinate);\n' +
                 'float plot2DStripeDistance = abs(plot2DStripePhase - 0.5);\n' +
-                'float plot2DStripeEdge = max(fwidth(plot2DStripePhase), 0.001);\n' +
+                'float plot2DStripeEdge = max(fwidth(plot2DStripeCoordinate), 0.001);\n' +
                 'float plot2DStripeMask = 1.0 - smoothstep(\n' +
                 '    plot2DStripeHalfWidth - plot2DStripeEdge,\n' +
                 '    plot2DStripeHalfWidth + plot2DStripeEdge,\n' +

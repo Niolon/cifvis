@@ -86,6 +86,17 @@
             gap: 20px;
             margin: 20px 0;
         }
+
+        .render-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            margin: 20px 0 30px;
+        }
+
+        .render-mode-grid .widget-container {
+            margin-bottom: 0;
+        }
         
         cifview-widget {
             width: 100%;
@@ -290,6 +301,10 @@
         
         @media screen and (max-width: 768px) {
             .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .render-mode-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -528,41 +543,33 @@ _cell.angle_gamma 90
 
             </div>
 
-            <h3 id="ortep-cutaway">ORTEP cutaway</h3>
-            <p>
-                Set <code>atomEllipsoidStyle</code> to <code>cutout</code> to remove the
-                camera-facing octant and expose the hatched principal planes.
-            </p>
-            <div class="widget-container">
-                <span class="example-label">Camera-facing cutaway ellipsoids:</span>
-                <cifview-widget
-                    src="cif/urea.cif"
-                    options='{"atomEllipsoidStyle":"cutout"}'
-                    caption="Rotate the structure to move the open octant.">
-                </cifview-widget>
+            <h3 id="ortep-render-modes">ORTEP render modes</h3>
+            <div class="render-mode-grid">
+                <div class="widget-container">
+                    <span class="example-label">Solid</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"atomEllipsoidStyle":"solid"}'
+                        caption="Standard solid ellipsoids.">
+                    </cifview-widget>
+                </div>
+                <div class="widget-container">
+                    <span class="example-label">Cutout</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"atomEllipsoidStyle":"cutout"}'
+                        caption="Camera-facing cutout with three hatched faces.">
+                    </cifview-widget>
+                </div>
+                <div class="widget-container">
+                    <span class="example-label">2D</span>
+                    <cifview-widget
+                        src="cif/urea.cif"
+                        options='{"renderStyle":"2d"}'
+                        caption="Element-coloured publication style.">
+                    </cifview-widget>
+                </div>
             </div>
-            <pre><code>&lt;cifview-widget
-    src="structure.cif"
-    options='{"atomEllipsoidStyle":"cutout"}'&gt;
-&lt;/cifview-widget&gt;</code></pre>
-
-            <h3 id="2d-renderer">2D publication style</h3>
-            <p>
-                Set <code>renderStyle</code> to <code>2d</code> for white-filled atoms,
-                element-coloured outlines and hatching, and black bonds.
-            </p>
-            <div class="widget-container">
-                <span class="example-label">Element-coloured 2D ORTEP plot:</span>
-                <cifview-widget
-                    src="cif/urea.cif"
-                    options='{"renderStyle":"2d"}'
-                    caption="Rotate the plot to move the three hatched section faces.">
-                </cifview-widget>
-            </div>
-            <pre><code>&lt;cifview-widget
-    src="structure.cif"
-    options='{"renderStyle":"2d"}'&gt;
-&lt;/cifview-widget&gt;</code></pre>
 
             <h3>Growing symmetry</h3>
             <p>
