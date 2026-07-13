@@ -97,12 +97,15 @@ function generateSummary(isInterim = false) {
     
     // Calculate percentage of unhandled structure errors
     const totalStructureErrors = stats.errors.CrystalStructure.total;
-    const unhandledPercentage = (
+    const unhandledPercentage = totalStructureErrors === 0 ? '0.0' : (
         (stats.errors.CrystalStructure.otherAndLogged / totalStructureErrors) * 100
     ).toFixed(1);
     
     // Validate that our counts add up
-    const totalAccountedFor = stats.successfulStructure + stats.errors.CIF + stats.errors.CrystalStructure.total;
+    // Initial structure errors can be recovered by tryToFixCifBlock. Only errors that
+    // persist after that attempt are terminal and belong in the file accounting total.
+    const totalAccountedFor = stats.successfulStructure + stats.errors.CIF +
+        stats.errors.CrystalStructureFixed.total;
     const accountingDiscrepancy = stats.totalFiles - totalAccountedFor;
     
     const summaryText = `

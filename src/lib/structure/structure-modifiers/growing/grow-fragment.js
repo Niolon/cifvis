@@ -1,7 +1,8 @@
 import { CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
-import { createAtomId, combineAtomId } from './util.js';
+import { createAtomId } from './util.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
+import { chemicalBonds } from '../../bond-classification.js';
 
 /**
  * @typedef {object} SeedConnection
@@ -311,20 +312,14 @@ export function exploreConnection(
 
     // Process each connection from the target group
     for (const connection of targetGroupConnections) {
-        // Calculate the absolute symmetry operation for the *next* group
-        // Use AppliedSymmetry.combine method
-        // currentConnection.targetSymmetry is "outer" (where we are)
-        // connection.targetSymmetry is "inner" relative move (or vice versa depending on definition)
-        // If we are at S, and we move by Op, detailed logic says apply Op then S?
-        // Let's trust my logic trace: combine(other) -> other then this.
-        // We want Op then S. So S.combine(Op).
-        // currentConnection.targetSymmetry (S). combine (connection.targetSymmetry (Op)).
-
+        // A seed connection is defined at identity as origin -> T(target).
+        // When visiting that origin group at absolute symmetry S, both endpoints
+        // are transformed by S, so the new target is S(T(target)).
         const relativeTargetSymmetry = typeof connection.targetSymmetry === 'string'
             ? AppliedSymmetry.fromString(connection.targetSymmetry)
             : connection.targetSymmetry;
-        const nextTargetSymmetryAbsolute = currentConnection.targetSymmetry.combine(
-            relativeTargetSymmetry,
+        const nextTargetSymmetryAbsolute = relativeTargetSymmetry.combine(
+            currentConnection.targetSymmetry,
             structure.symmetry,
         );
 
@@ -818,10 +813,17 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
     const additionalBonds = [];
     translationLinks.forEach(tl => {
         for (const conBond of tl.connectingBonds) {
-            const atom1Id = combineAtomId(conBond.originAtom, tl.originSymmetry.key, structure.symmetry);
-            const atom2Id = combineAtomId(conBond.targetAtom, tl.targetSymmetry.key, structure.symmetry);
+            // ConnectingBond IDs retain the relative symmetry from the source CIF
+            // row, while the translation link contains the absolute symmetry of
+            // each endpoint. Use the labels plus those absolute symmetries; combining
+            // them would apply the source symmetry twice.
+            const atom1Label = conBond.originAtom.split('|')[0];
+            const atom2Label = conBond.targetAtom.split('|')[0];
+            const atom1Id = createAtomId(atom1Label, tl.originSymmetry.key);
+            const atom2Id = createAtomId(atom2Label, tl.targetSymmetry.key);
             const atom1 = specialPositionAtoms.get(atom1Id) || atom1Id;
             const atom2 = specialPositionAtoms.get(atom2Id) || atom2Id;
+            const atom2Symmetry = atom2.split('|')[1] || tl.targetSymmetry.key;
 
             const bondString = createBondIdentifier(atom1, atom2);
             if (!existingBonds.has(bondString)) {
@@ -829,10 +831,14 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
                 additionalBonds.push(
                     new Bond(
                         atom1,
-                        conBond.targetAtom,
+                        // A translation link terminates at an intentionally omitted
+                        // periodic image. Keep its absolute ID consistent with the
+                        // external symmetry instead of accidentally resolving the
+                        // bond to the existing identity atom.
+                        atom2,
                         conBond.bondLength,
                         conBond.bondLengthSU,
-                        tl.targetSymmetry.key,
+                        atom2Symmetry,
                     ),
                 );
             }
@@ -848,7 +854,17 @@ export function processTranslationLinks(translationLinks, structure, specialPosi
  * @returns {CrystalStructure} New structure with symmetry-expanded atoms and bonds.
  */
 export function growFragment(structure) {
-    const atomGroups = structure.calculateConnectedGroups();
+    // `_geom_bond` loops can contain publication contacts as well as chemical
+    // bonds. Fragment growth must operate on the chemical graph only; otherwise
+    // an intermolecular contact turns a finite molecule into a symmetry network.
+    const graphStructure = new CrystalStructure(
+        structure.cell,
+        structure.atoms,
+        chemicalBonds(structure),
+        structure.hBonds,
+        structure.symmetry,
+    );
+    const atomGroups = graphStructure.calculateConnectedGroups();
 
     // Map atoms to their group indices for faster lookup
     const atomGroupMap = new Map();
@@ -861,7 +877,7 @@ export function growFragment(structure) {
     const identSymmKey = structure.symmetry.identitySymOpId + '_555';
 
     // Step 1: Analyze connectivity to find all necessary symmetry operations
-    const { networkConnections, translationLinks } = createConnectivity(structure, atomGroups);
+    const { networkConnections, translationLinks } = createConnectivity(graphStructure, atomGroups);
 
     // Step 2: Collect required symmetry instances and inter-group bonds
     const { requiredSymmetryInstances, interGroupBonds } = collectSymmetryRequirements(
@@ -870,7 +886,7 @@ export function growFragment(structure) {
 
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
-        requiredSymmetryInstances, atomGroups, structure, identSymmKey,
+        requiredSymmetryInstances, atomGroups, graphStructure, identSymmKey,
     );
 
     // Step 4: Generate bonds for symmetry instances
@@ -881,23 +897,28 @@ export function growFragment(structure) {
 
     // Step 5: Generate hydrogen bonds
     const newHBonds = generateSymmetryHBonds(
-        structure, atomGroups, atomGroupMap, requiredSymmetryInstances,
+        graphStructure, atomGroups, atomGroupMap, requiredSymmetryInstances,
         specialPositionAtoms, atomLabels, identSymmKey,
     );
 
     // Step 6: Process translation links
     const translationBonds = processTranslationLinks(
-        translationLinks, structure, specialPositionAtoms,
+        translationLinks, graphStructure, specialPositionAtoms,
         new Set(newBonds.map(b => createBondIdentifier(b.atom1Id, b.atom2Id))),
     );
-    newBonds.push(...translationBonds);
+    // Avoid passing very large translation networks as function arguments. Complex
+    // structures can legitimately produce tens of thousands of translation bonds,
+    // which exceeds the JavaScript engine's argument-count/stack limit with push(...).
+    for (const bond of translationBonds) {
+        newBonds.push(bond);
+    }
 
     const grownStructure = new CrystalStructure(
-        structure.cell,
-        [...structure.atoms, ...newAtoms],
+        graphStructure.cell,
+        [...graphStructure.atoms, ...newAtoms],
         newBonds,
         newHBonds,
-        structure.symmetry,
+        graphStructure.symmetry,
     );
 
     return { grownStructure, specialPositionAtoms };

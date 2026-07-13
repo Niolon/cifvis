@@ -330,6 +330,17 @@ _symmetry_equiv_pos_as_xyz
             expect(op2.toSymmetryString()).toBe('1/2x,-1/2y,z');
         });
 
+        test('treats whitespace inside a signed variable term as insignificant', () => {
+            const op = new SymmetryOperation('x-1/2, y, -  z-1/2');
+
+            expect(op.rotMatrix).toEqual([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, -1],
+            ]);
+            expect(op.transVector).toEqual([-0.5, 0, -0.5]);
+        });
+
         test('handles special cases', () => {
             // Zero expression
             const zeroOp = new SymmetryOperation('0,y,0');
@@ -371,6 +382,21 @@ describe('CellSymmetry', () => {
     });
 
     describe('combinePositionCodes', () => {
+        test('combines operations containing rounded fractional translations', () => {
+            const cif = new CIF(`
+data_rounded
+loop_
+_symmetry_equiv_pos_site_id
+_symmetry_equiv_pos_as_xyz
+1 x,y,z
+13 2/3+x,1/3+y,1/3+z
+34 1/3-x+y,2/3+y,1.16667+z
+`);
+            const sym = CellSymmetry.fromCIF(cif.getBlock());
+
+            expect(sym.combineSymmetryCodes('34_444', '34_444')).toBe('13_445');
+        });
+
         test('combines identity operations', () => {
             const ops = [new SymmetryOperation('x,y,z')];
             const sym = new CellSymmetry('P1', 1, ops);
@@ -472,6 +498,25 @@ describe('CellSymmetry', () => {
             expect(sym.combineSymmetryCodes('14_556', '8_666')).toBe('15_665');
             expect(sym.combineSymmetryCodes('14_556', '6_665')).toBe('9_666');
             expect(sym.combineSymmetryCodes('14_556', '7_556')).toBe('16_555');
+        });
+    });
+
+    describe('invertPositionCode', () => {
+        test('inverts lattice translations', () => {
+            const sym = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+
+            expect(sym.invertPositionCode('1_655')).toBe('1_455');
+            expect(sym.combineSymmetryCodes('1_655', '1_455')).toBe('1_555');
+        });
+
+        test('inverts symmetry operations including their intrinsic translation', () => {
+            const sym = new CellSymmetry('P 21/m', 11, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,y+1/2,-z'),
+            ]);
+
+            expect(sym.invertPositionCode('2_555')).toBe('2_545');
+            expect(sym.combineSymmetryCodes('2_555', '2_545')).toBe('1_555');
         });
     });
 

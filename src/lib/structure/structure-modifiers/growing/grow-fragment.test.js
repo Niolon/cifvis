@@ -603,22 +603,22 @@ describe('Structure dependent methods', () => {
             // Each network connection will explore one step further, leading to a translational link.
             expect(translationLinks.length).toBe(2);
 
-            // Path: C1|1_555 -> N1|2_555 (network). From N1|2_555, seed N1->C1|2_565 leads to C1|1_575.
-            // This C1|1_575 is a translation of C1|1_555.
+            // Path: C1|1_555 -> N1|2_555 (network). Applying the absolute
+            // N1 symmetry to the N1->C1|2_556 seed leads to C1|1_564.
             const tl_from_N1_at_2_555 = translationLinks.find(
                 bg => bg.originIndex === 1 && bg.originSymmetry.key === '2_555' && // From N1|2_555
-                      bg.targetIndex === 0 && bg.targetSymmetry.key === '1_566',
+                      bg.targetIndex === 0 && bg.targetSymmetry.key === '1_564',
             );
             expect(tl_from_N1_at_2_555).toBeDefined();
             expect(tl_from_N1_at_2_555.creationOriginIndex).toBe(0); // Path started from C1
             expect(tl_from_N1_at_2_555.connectingBonds[0].originAtom).toBe('N1|1_555');
             expect(tl_from_N1_at_2_555.connectingBonds[0].targetAtom).toBe('C1|2_556');
 
-            // Path: N1|1_555 -> C1|2_565 (network). From C1|2_565, seed C1->N1|2_555 leads to N1|1_575.
-            // This N1|1_575 is a translation of N1|1_555.
+            // Path: N1|1_555 -> C1|2_556 (network). Applying the absolute
+            // C1 symmetry to the C1->N1|2_555 seed leads to N1|1_566.
             const tl_from_C1_at_2_556 = translationLinks.find(
                 bg => bg.originIndex === 0 && bg.originSymmetry.key === '2_556' && // From C1|2_556
-                      bg.targetIndex === 1 && bg.targetSymmetry.key === '1_564',
+                      bg.targetIndex === 1 && bg.targetSymmetry.key === '1_566',
             );
             expect(tl_from_C1_at_2_556).toBeDefined();
             expect(tl_from_C1_at_2_556.creationOriginIndex).toBe(1); // Path started from N1
@@ -765,7 +765,7 @@ describe('Structure dependent methods', () => {
         test('should handle origin=symmetry, finalTarget=symmetry (chain connection)', () => {
             // Scenario 3: atom1 = originAtom@symm, atom2 = targetAtom@symm_combined
             // Path: A|1_555 -> B|2_555. Then from B|2_555, connect to D via '3_555' (relative to ASU B).
-            // Results in B|2_555 -> D|4_555 (using P21/m: op3(op2(X)) = op4 with y-translation)
+            // Results in B|2_555 -> D|4_555 (S(T(D)): op2(op3(D))).
             const helper = new MockStructureHelper()
                 .addAtom('A1', 'C', 0.1, 0.1, 0.1) // Group 0
                 .addAtom('B1', 'N', 0.2, 0.2, 0.2) // Group 1
@@ -783,12 +783,12 @@ describe('Structure dependent methods', () => {
                 networkConnections, structure, identSymmString,
             );
 
-            expect(requiredSymmetryInstances.size).toBe(5); // A1@1, B1@1, D1@1, B1|2_555, D1|3_555, D1|4_555
+            expect(requiredSymmetryInstances.size).toBe(5);
             expect(requiredSymmetryInstances).toContain('0@.@1_555'); // A1
             expect(requiredSymmetryInstances).toContain('1@.@1_555'); // B1
             expect(requiredSymmetryInstances).toContain('1@.@2_555'); // B1|2_555
             expect(requiredSymmetryInstances).toContain('2@.@3_555'); // D1|3_555
-            expect(requiredSymmetryInstances).toContain('2@.@4_545');
+            expect(requiredSymmetryInstances).toContain('2@.@4_555');
 
             expect(interGroupBonds.length).toBe(3);
             expect(interGroupBonds).toEqual(expect.arrayContaining([
@@ -1338,7 +1338,7 @@ describe('Structure dependent methods', () => {
 
             expect(additionalBonds.length).toBe(1);
             expect(additionalBonds[0].atom1Id).toBe('C1|1_555');
-            expect(additionalBonds[0].atom2Id).toBe('N1|1_555');
+            expect(additionalBonds[0].atom2Id).toBe('N1|2_565');
             expect(additionalBonds[0].atom2SiteSymmetry).toBe('2_565');
         });
     });
@@ -1424,22 +1424,20 @@ describe('Structure dependent methods', () => {
             // B1|2_555 (from A1-B1@S1)
             // C1_symm (from B1|2_555 connecting to C1 via '3_555' relative to ASU B1)
             //   Symmetry of B1|2_555 is '2_555'. Connecting op to C1 is '3_555'.
-            //   Final symm for C1 is combine('3_555', '2_555').
+            //   Final symmetry is S(T(C1)) = op2(op3(C1)).
             //   P21/m: op2 = (-x,y+1/2,-z), op3 = (-x,-y,-z)
-            //   op3(op2(X)) = op3(-x,y+1/2,-z) = (x, -(y+1/2), z) = (x, -y-1/2, z). This is op4 with y-translation.
-            //   So C1_symm should be C1|4_545 (approx, depends on exact combination logic for translations)
-            //   Let's verify with actual combination: combine('3_555','2_555') -> '4_545'
+            //   op2(op3(X)) = op2(-x,-y,-z) = (x,-y+1/2,z), i.e. op4.
             expect(grownStructure.atoms.length).toBe(6);
             expect(grownStructure.atoms.map(a => a.uniqueId)).toEqual(expect.arrayContaining([
                 'A1|1_555', 'B1|1_555', 'C1|1_555',
-                'B1|2_555', 'C1|3_555', 'C1|4_545',
+                'B1|2_555', 'C1|3_555', 'C1|4_555',
             ]));
 
             expect(grownStructure.bonds.length).toBe(3);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
                 expect.objectContaining({ atom1Id: 'A1|1_555', atom2Id: 'B1|2_555', atom2SiteSymmetry: '.' }),
                 expect.objectContaining({ atom1Id: 'B1|1_555', atom2Id: 'C1|3_555', atom2SiteSymmetry: '.' }),
-                expect.objectContaining({ atom1Id: 'B1|2_555', atom2Id: 'C1|4_545', atom2SiteSymmetry: '.' }),
+                expect.objectContaining({ atom1Id: 'B1|2_555', atom2Id: 'C1|4_555', atom2SiteSymmetry: '.' }),
             ]));
         });
 
@@ -1463,8 +1461,8 @@ describe('Structure dependent methods', () => {
             // Expected bonds:
             // 1. C1 - N1|2_555 (symm '.') from network connection
             // 2. N1 - C1|2_565 (symm '.') from network connection
-            // 3. N1|2_555 - C1 (symm '1_565') from translationLink
-            // 4. C1|2_565 - N1 (symm '1_545') from translationLink
+            // 3. N1|2_555 - omitted C1|1_575 from translationLink
+            // 4. C1|2_565 - omitted N1|1_575 from translationLink
             expect(grownStructure.bonds.length).toBe(4);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
                 expect.objectContaining({ 
@@ -1483,14 +1481,14 @@ describe('Structure dependent methods', () => {
                 }),
                 expect.objectContaining({ 
                     atom1Id: 'N1|2_555',
-                    atom2Id: 'C1|2_565',
+                    atom2Id: 'C1|1_575',
                     atom2SiteSymmetry: '1_575', 
                     bondLength: 1.5, 
                     bondLengthSU: 0.01, 
                 }),
                 expect.objectContaining({ 
                     atom1Id: 'C1|2_565',
-                    atom2Id: 'N1|2_555',
+                    atom2Id: 'N1|1_575',
                     atom2SiteSymmetry: '1_575',
                     bondLength: 1.5, 
                     bondLengthSU: 0.01, 

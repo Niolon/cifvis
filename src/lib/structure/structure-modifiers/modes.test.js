@@ -1,12 +1,14 @@
+import { readFileSync } from 'fs';
 import { CrystalStructure, UnitCell } from '../crystal.js';
 import { CellSymmetry, SymmetryOperation } from '../cell-symmetry.js';
+import { CIF } from '../../read-cif/base.js';
 import {
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from './modes.js';
 import { MockStructure } from './base.test.js';
 import { growFragment } from './growing/grow-fragment.js';
 import { growCell } from './growing/grow-cell.js';
-import { growExternalHBonds } from './growing/grow-hbonds.js';
+import { growExternalHBonds, reconcileHBondsByGeometry } from './growing/grow-hbonds.js';
 
 describe('HydrogenFilter', () => {
     test('handles structures without hydrogens', () => {
@@ -153,6 +155,23 @@ describe('DisorderFilter', () => {
         expect(filtered.hBonds.some(hbond => hbond.hydrogenAtomId === 'A0|1_555' &&
             hbond.acceptorAtomId === 'A1|1_555',
         )).toBe(false);
+    });
+
+    test.each([
+        [DisorderFilter.MODES.GROUP1, 'A1'],
+        [DisorderFilter.MODES.GROUP2, 'A0'],
+    ])('filters external h-bonds whose acceptor is removed in %s mode', (mode, acceptor) => {
+        const structure = MockStructure.createDefault({
+            hasHydrogens: true,
+            disorderGroups: [1, 2],
+        })
+            .addHBond('O1', 'H1', acceptor, '2_555')
+            .build();
+
+        const filtered = new DisorderFilter(mode).apply(structure);
+
+        expect(filtered.hBonds.some(hbond => hbond.acceptorAtomLabel === acceptor)).toBe(false);
+        expect(() => growExternalHBonds(filtered)).not.toThrow();
     });
 });
 
@@ -312,25 +331,73 @@ describe('SymmetryGrower', () => {
             const grower = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_HBONDS);
             const result = grower.apply(structure);
 
-            // Should first grow fragment then HBonds
-            const { grownStructure: fragmentGrown } = growFragment(structure);
-            const expected = growExternalHBonds(fragmentGrown);
+            const atomIds = new Set(result.atoms.map(atom => atom.uniqueId));
+            expect(result.hBonds.every(hbond =>
+                hbond.acceptorAtomSymmetry === '.' &&
+                atomIds.has(hbond.donorAtomId) &&
+                atomIds.has(hbond.hydrogenAtomId) &&
+                atomIds.has(hbond.acceptorAtomId),
+            )).toBe(true);
 
-            expect(result.atoms.length).toBe(expected.atoms.length);
-            expect(result.bonds.length).toBe(expected.bonds.length);
-            expect(result.hBonds.length).toBe(expected.hBonds.length);
+            // All surviving H-bonds are internalized, so another growth pass must
+            // terminate without adding a second shell of atoms or bonds.
+            const repeated = growExternalHBonds(result);
+            expect(repeated.atoms).toHaveLength(result.atoms.length);
+            expect(repeated.bonds).toHaveLength(result.bonds.length);
+            expect(repeated.hBonds).toHaveLength(result.hBonds.length);
+        });
+
+        test('keeps both H-bonds from a molecule completed across a special position', () => {
+            const cifContent = readFileSync('demo/public/cif/urea.cif', 'utf8');
+            const urea = CrystalStructure.fromCIF(new CIF(cifContent).getBlock(0));
+            const result = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_HBONDS)
+                .apply(urea);
+
+            // The incoming molecule contains the directly generated N|1_556 half and
+            // its N|6_566 special-position partner.
+            expect(result.atoms.some(atom => atom.uniqueId === 'N|1_556')).toBe(true);
+            expect(result.atoms.some(atom => atom.uniqueId === 'N|6_566')).toBe(true);
+
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|1_556',
+                hydrogenAtomId: 'Ha|1_556',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|6_566',
+                hydrogenAtomId: 'Ha|6_566',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
         });
 
         test('combines fragment and cell growth in FRAGMENT_CELL mode', () => {
             const grower = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_CELL);
             const result = grower.apply(structure);
 
-            // Should first grow fragment then cell without cutting, passing special positions
-            const { grownStructure: fragmentGrown, specialPositionAtoms } = growFragment(structure);
-            const expected = growCell(fragmentGrown, false, specialPositionAtoms);
+            const { grownStructure, specialPositionAtoms } = growFragment(structure);
+            const expected = reconcileHBondsByGeometry(
+                growCell(grownStructure, false, specialPositionAtoms),
+            );
+            expect(result.atoms).toHaveLength(expected.atoms.length);
+            expect(result.bonds).toHaveLength(expected.bonds.length);
+            expect(result.hBonds).toHaveLength(expected.hBonds.length);
 
-            expect(result.atoms.length).toBe(expected.atoms.length);
-            expect(result.bonds.length).toBe(expected.bonds.length);
+            for (const group of result.calculateConnectedGroups()) {
+                for (const axis of ['x', 'y', 'z']) {
+                    const coordinates = group.atoms.map(atom => atom.position[axis]);
+                    const midpoint = (Math.min(...coordinates) + Math.max(...coordinates)) / 2;
+                    expect(midpoint).toBeGreaterThanOrEqual(-1e-6);
+                    expect(midpoint).toBeLessThanOrEqual(1 + 1e-6);
+                }
+            }
+            const atomIds = new Set(result.atoms.map(atom => atom.uniqueId));
+            expect(result.hBonds.every(hbond =>
+                atomIds.has(hbond.donorAtomId) &&
+                atomIds.has(hbond.hydrogenAtomId) &&
+                atomIds.has(hbond.acceptorAtomId),
+            )).toBe(true);
         });
 
         test('validates mode before applying', () => {

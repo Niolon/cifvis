@@ -70,6 +70,7 @@ _geom_hbond_angle_DHA
 _geom_hbond_site_symmetry_A
 O1 H1 O2 1.0 2.0 2.8 175 1_555
 O1 H2 O2 1.0 2.0 2.8 175 ?
+O1 H2 O2 1.0 2.0 2.8 175 2
 `;
         const cif = new CIF(cifText);
         const hBond = HBond.fromCIF(cif.getBlock(0), 0);
@@ -81,6 +82,10 @@ O1 H2 O2 1.0 2.0 2.8 175 ?
 
         const hBond2 = HBond.fromCIF(cif.getBlock(0), 1);
         expect(hBond2.acceptorAtomSymmetry).toBe('.');
+
+        const hBond3 = HBond.fromCIF(cif.getBlock(0), 2);
+        expect(hBond3.acceptorAtomSymmetry).toBe('2_555');
+        expect(hBond3.acceptorAtomId).toBe('O2|2_555');
 
     });
 });

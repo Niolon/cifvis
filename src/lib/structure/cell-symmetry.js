@@ -4,6 +4,7 @@ import { Atom, UnitCell } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
+import { decodePositionCode, encodePositionCode } from './position-code.js';
 import { CifBlock } from '../read-cif/base.js';
 
 const math = create(all);
@@ -73,7 +74,11 @@ export class SymmetryOperation {
         const matrix = Array(3).fill().map(() => Array(3).fill(0));
         const vector = Array(3).fill(0);
         
-        const components = instruction.split(',').map(comp => comp.trim().toUpperCase());
+        // Whitespace is insignificant in crystallographic symmetry expressions. Remove
+        // internal whitespace as well as trimming so forms such as "-  z-1/2" retain
+        // the sign on the variable term.
+        const components = instruction.split(',')
+            .map(comp => comp.toUpperCase().replace(/\s+/g, ''));
         if (components.length !== 3) {
             throw new Error('Symmetry operation must have exactly three components');
         }
@@ -365,17 +370,7 @@ export class CellSymmetry {
     }
 
     parsePositionCode(positionCode) {
-        let transVector, opId;
-        try {
-            // Split code into operation ID and translation
-            const [symOpId, translations] = positionCode.split('_');
-            opId = symOpId;
-            transVector = translations.split('').map(t => parseInt(t) - 5);
-        } catch {
-            // Handle legacy case where positionCode is just a number
-            opId = positionCode.toString();
-            transVector = [0, 0, 0];
-        }
+        const { id: opId, translation: transVector } = decodePositionCode(positionCode);
 
         // Look up symmetry operation index using ID map
         const symOpIndex = this.operationIds.get(opId);
@@ -480,8 +475,11 @@ export class CellSymmetry {
             ];
             
             // Check if translation is integer
-            const isInteger = remainderVector.every(val => 
-                Math.abs(val - Math.round(val)) < 1e-10,
+            // CIF symmetry operations are sometimes stored as rounded decimals
+            // (for example 1.16667 instead of 7/6). Allow the last printed decimal
+            // to vary when deciding whether the remaining translation is a lattice vector.
+            const isInteger = remainderVector.every(val =>
+                Math.abs(val - Math.round(val)) < 1e-5,
             );
             
             if (isInteger) {
@@ -494,8 +492,8 @@ export class CellSymmetry {
                     }
                 }
                 
-                const roundedDiff = remainderVector.map(val => Math.round(val) + 5);
-                const combinedPositionCode = `${symOpId}_${roundedDiff.join('')}`;
+                const roundedDiff = remainderVector.map(val => Math.round(val));
+                const combinedPositionCode = encodePositionCode(symOpId, roundedDiff);
                 this._combineSymmetryCodesCache.set(cacheKey, combinedPositionCode);
                 return combinedPositionCode;
             }
@@ -505,6 +503,53 @@ export class CellSymmetry {
             'No matching symmetry operation found for combined position codes: '
             + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
         );
+    }
+
+    /**
+     * Returns the position code for the inverse of a symmetry transform.
+     * @param {string|number} positionCode - Position code to invert
+     * @returns {string} Inverse position code
+     * @throws {Error} If no matching inverse operation exists in the symmetry group
+     */
+    invertPositionCode(positionCode) {
+        const { symOp, transVector } = this.parsePositionCode(positionCode);
+        const totalTranslation = [
+            transVector[0] + symOp.transVector[0],
+            transVector[1] + symOp.transVector[1],
+            transVector[2] + symOp.transVector[2],
+        ];
+        const inverseRotation = math.inv(symOp.rotMatrix);
+        const inverseTranslation = this._multiplyMatrixVector3x3(
+            inverseRotation,
+            totalTranslation.map(value => -value),
+        );
+
+        const candidateIndices = this._rotationMatrixIndex.get(
+            this._matrixToKey(inverseRotation),
+        );
+        if (candidateIndices) {
+            for (const index of candidateIndices) {
+                const possibleSymOp = this.symmetryOperations[index];
+                const remainderVector = inverseTranslation.map(
+                    (value, component) => value - possibleSymOp.transVector[component],
+                );
+                const isInteger = remainderVector.every(value =>
+                    Math.abs(value - Math.round(value)) < 1e-5,
+                );
+                if (!isInteger) {
+                    continue;
+                }
+
+                const symOpId = Array.from(this.operationIds.entries())
+                    .find(([, operationIndex]) => operationIndex === index)?.[0];
+                return encodePositionCode(
+                    symOpId,
+                    remainderVector.map(value => Math.round(value)),
+                );
+            }
+        }
+
+        throw new Error(`No inverse symmetry operation found for position code: ${positionCode}`);
     }
 
     /**

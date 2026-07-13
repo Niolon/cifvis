@@ -5,7 +5,12 @@ import { UAnisoADP } from '../adp.js';
 import { create, all } from 'mathjs';
 import { growFragment } from './growing/grow-fragment.js';
 import { growCell } from './growing/grow-cell.js';
-import { growExternalHBonds } from './growing/grow-hbonds.js';
+import { chemicalBonds } from '../bond-classification.js';
+import {
+    filterBondsByGeometry,
+    growExternalHBonds,
+    reconcileHBondsByGeometry,
+} from './growing/grow-hbonds.js';
 export const math = create(all);
 
 /**
@@ -157,6 +162,11 @@ export class DisorderFilter extends BaseFilter {
     apply(structure) {
         this.ensureValidMode(structure);
 
+        // External bond endpoints identify symmetry images that are not present yet.
+        // Disorder membership is a property of the asymmetric-unit atom and is unchanged
+        // by symmetry, so resolve all references through their base labels here.
+        const getAsymmetricAtom = atomId => structure.getAtomByLabel(atomId.split('|')[0]);
+
         const filteredAtoms = structure.atoms.filter(atom => {
             if (this.mode === DisorderFilter.MODES.GROUP1 && atom.disorderGroup > 1) {
                 return false;
@@ -169,8 +179,8 @@ export class DisorderFilter extends BaseFilter {
 
         const filteredBonds = structure.bonds.filter(bond => {
             try {
-                const atom1 = structure.getAtomById(bond.atom1Id);
-                const atom2 = structure.getAtomById(bond.atom2Id);
+                const atom1 = getAsymmetricAtom(bond.atom1Id);
+                const atom2 = getAsymmetricAtom(bond.atom2Id);
 
                 if (this.mode === DisorderFilter.MODES.GROUP1 &&
                     (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
@@ -184,17 +194,16 @@ export class DisorderFilter extends BaseFilter {
 
                 return true;
             } catch {
-                // If an atom is missing, we keep the bond as we can't determine if it should be filtered
-                // This happens when bonds reference symmetry atoms not yet in the structure
-                return true;
+                // Do not retain dangling connections after their atoms have been removed.
+                return false;
             }
         });
 
         const filteredHBonds = structure.hBonds.filter(hbond => {
             try {
-                const donor = structure.getAtomById(hbond.donorAtomId);
-                const hydrogen = structure.getAtomById(hbond.hydrogenAtomId);
-                const acceptor = structure.getAtomById(hbond.acceptorAtomId);
+                const donor = getAsymmetricAtom(hbond.donorAtomId);
+                const hydrogen = getAsymmetricAtom(hbond.hydrogenAtomId);
+                const acceptor = getAsymmetricAtom(hbond.acceptorAtomId);
 
                 if (this.mode === DisorderFilter.MODES.GROUP1 &&
                     (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
@@ -210,7 +219,7 @@ export class DisorderFilter extends BaseFilter {
 
                 return true;
             } catch {
-                return true;
+                return false;
             }
         });
 
@@ -285,20 +294,56 @@ export class SymmetryGrower extends BaseFilter {
      */
     apply(structure) {
         this.ensureValidMode(structure);
-        let workStructure = structure;
+        // NONE is the faithful raw-CIF view. Every growth mode operates on one
+        // shared chemical graph, excluding publication contacts that may also be
+        // present in `_geom_bond`.
+        let workStructure = this.mode === SymmetryGrower.MODES.NONE
+            ? structure
+            : new CrystalStructure(
+                structure.cell,
+                structure.atoms,
+                chemicalBonds(structure),
+                structure.hBonds,
+                structure.symmetry,
+            );
+        let specialPositionAtoms = new Map();
         if (this.mode === SymmetryGrower.MODES.FRAGMENT || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
-            const growthResult = growFragment(structure);
+            const growthResult = growFragment(workStructure);
             workStructure = growthResult.grownStructure;
+            specialPositionAtoms = growthResult.specialPositionAtoms;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
-            workStructure = growCell(structure);
+            workStructure = growCell(workStructure);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
-            const { grownStructure, specialPositionAtoms } = growFragment(workStructure);
-            workStructure = growCell(grownStructure, false, specialPositionAtoms);
+            const growthResult = growFragment(workStructure);
+            specialPositionAtoms = growthResult.specialPositionAtoms;
+            workStructure = growCell(growthResult.grownStructure, false, specialPositionAtoms);
+            // Fragment-cell contains only complete components centred in the unit
+            // cell. Periodic H-bond partner shells belong to fragment-hbonds mode.
+            workStructure = reconcileHBondsByGeometry(workStructure);
         }
 
         if (this.mode === SymmetryGrower.MODES.HBONDS || this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
-            workStructure = growExternalHBonds(workStructure);
+            if (this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+                workStructure = new CrystalStructure(
+                    workStructure.cell,
+                    workStructure.atoms,
+                    filterBondsByGeometry(workStructure, workStructure.bonds),
+                    workStructure.hBonds,
+                    workStructure.symmetry,
+                );
+            }
+            workStructure = growExternalHBonds(workStructure, specialPositionAtoms);
+            if (this.mode === SymmetryGrower.MODES.FRAGMENT_HBONDS) {
+                workStructure = new CrystalStructure(
+                    workStructure.cell,
+                    workStructure.atoms,
+                    filterBondsByGeometry(workStructure, workStructure.bonds),
+                    workStructure.hBonds,
+                    workStructure.symmetry,
+                );
+                workStructure = reconcileHBondsByGeometry(workStructure);
+            }
         }
 
         return workStructure;

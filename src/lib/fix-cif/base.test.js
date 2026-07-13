@@ -86,4 +86,25 @@ C1`;
         
         expect(() => tryToFixCifBlock(block)).not.toThrow();
     });
+
+    test('downgrades Uani atoms when an anisotropic loop has no atom labels', () => {
+        const cifText = `
+data_test
+loop_
+_atom_site_label
+_atom_site_adp_type
+_atom_site_U_iso_or_equiv
+Cu1 Uani 0.02
+O1 Uiso 0.03
+
+loop_
+_atom_site_aniso_type_symbol
+_atom_site_aniso_U_11
+Cu 0.02`;
+        const block = new CIF(cifText).getBlock();
+
+        tryToFixCifBlock(block, true, false, false);
+
+        expect(block.get('_atom_site').get('_atom_site_adp_type')).toEqual(['Uiso', 'Uiso']);
+    });
 });

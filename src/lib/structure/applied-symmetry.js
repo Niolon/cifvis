@@ -1,4 +1,5 @@
 /** @typedef {import('./cell-symmetry.js').CellSymmetry} CellSymmetry */
+import { decodePositionCode, encodePositionCode } from './position-code.js';
 
 export class AppliedSymmetry {
     /**
@@ -13,10 +14,7 @@ export class AppliedSymmetry {
 
     _updateKey() {
         // Cache the string representation for efficient comparison
-        const x = this.translation[0] + 5;
-        const y = this.translation[1] + 5;
-        const z = this.translation[2] + 5;
-        this.key = `${this.id}_${x}${y}${z}`;
+        this.key = encodePositionCode(this.id, this.translation);
     }
 
     /**
@@ -25,17 +23,8 @@ export class AppliedSymmetry {
      * @returns {AppliedSymmetry} New AppliedSymmetry instance
      */
     static fromString(symmString) {
-        const [symId, encodedTranslation] = symmString.split('_');
-        let transString = encodedTranslation;
-        if (!transString) {
-            transString = '555';
-        }
-
-        const x = parseInt(transString[0]) - 5;
-        const y = parseInt(transString[1]) - 5;
-        const z = parseInt(transString[2]) - 5;
-
-        return new AppliedSymmetry(symId, [x, y, z]);
+        const { id, translation } = decodePositionCode(symmString);
+        return new AppliedSymmetry(id, translation);
     }
 
     /**

@@ -1,6 +1,36 @@
-import { CrystalStructure } from '../../crystal.js';
-import { growExternalHBonds } from './grow-hbonds.js';
+import { Atom, CrystalStructure, UnitCell } from '../../crystal.js';
+import { growExternalHBonds, reconcileHBondsByGeometry } from './grow-hbonds.js';
 import { MockStructure } from '../base.test.js';
+import { FractPosition } from '../../position.js';
+import { HBond } from '../../bonds.js';
+import { AppliedSymmetry } from '../../applied-symmetry.js';
+
+test('reconciles a stale H-bond with the periodic image matching its CIF distances', () => {
+    const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+    const atoms = [
+        new Atom('D1', 'N', new FractPosition(0.1, 0.5, 0.5)),
+        new Atom('H1', 'H', new FractPosition(0.2, 0.5, 0.5)),
+        new Atom('A1', 'O', new FractPosition(0.9, 0.5, 0.5)),
+        new Atom(
+            'A1',
+            'O',
+            new FractPosition(0.4, 0.5, 0.5),
+            null,
+            0,
+            AppliedSymmetry.fromString('1_455'),
+        ),
+    ];
+    const staleHBond = new HBond(
+        'D1', 'H1', 'A1',
+        1, 0.01, 2, 0.01, 3, 0.01, 180, 1, '.',
+    );
+    const structure = new CrystalStructure(cell, atoms, [], [staleHBond]);
+
+    const result = reconcileHBondsByGeometry(structure);
+
+    expect(result.hBonds).toHaveLength(1);
+    expect(result.hBonds[0].acceptorAtomId).toBe('A1|1_455');
+});
 
 describe('growExternalHBonds', () => {
     let basicStructure;
@@ -55,6 +85,45 @@ describe('growExternalHBonds', () => {
         expect(grownHBond).toBeDefined();
     });
 
+    test('grows reciprocal donor images that hydrogen-bond into the base structure', () => {
+        const structure = MockStructure.createDefault({
+            hasHydrogens: true,
+        })
+            .addHBond('O1', 'H1', 'N1', '1_655')
+            .build();
+
+        const grown = growExternalHBonds(structure);
+
+        expect(grown.atoms.some(atom => atom.uniqueId === 'O1|1_455')).toBe(true);
+        expect(grown.atoms.some(atom => atom.uniqueId === 'H1|1_455')).toBe(true);
+        expect(grown.hBonds).toContainEqual(expect.objectContaining({
+            donorAtomId: 'O1|1_455',
+            hydrogenAtomId: 'H1|1_455',
+            acceptorAtomId: 'N1|1_555',
+            acceptorAtomSymmetry: '.',
+        }));
+        expect(grown.hBonds).toContainEqual(expect.objectContaining({
+            donorAtomId: 'O1|1_555',
+            acceptorAtomId: 'N1|1_655',
+            acceptorAtomSymmetry: '.',
+        }));
+    });
+
+    test('does not duplicate a reciprocal interaction for explicit identity symmetry', () => {
+        const structure = MockStructure.createDefault({ hasHydrogens: true })
+            .addHBond('O1', 'H1', 'N1', '1_555')
+            .build();
+
+        const grown = growExternalHBonds(structure);
+        const matching = grown.hBonds.filter(hBond =>
+            hBond.donorAtomId === 'O1|1_555' &&
+            hBond.hydrogenAtomId === 'H1|1_555' &&
+            hBond.acceptorAtomId === 'N1|1_555',
+        );
+
+        expect(matching).toHaveLength(1);
+    });
+
     test('grows connected atoms, bonds, and HBonds for acceptor group', () => {
         const grown = growExternalHBonds(basicStructure);
 
@@ -72,7 +141,6 @@ describe('growExternalHBonds', () => {
     test('avoids growing the same group twice for different HBonds', () => {
         const structure = MockStructure.createDefault({
             hasHydrogens: true,
-            hasMultipleSymmetry: true,
         })
             .addHBond('O1', 'H1', 'N1', '2_555')  // First HBond to same acceptor group
             .addHBond('C1', 'H2', 'N1', '2_555')  // Second HBond to same acceptor group
@@ -227,5 +295,18 @@ describe('growExternalHBonds', () => {
             expect(grownA0.adp).toBeDefined();
             expect(grownA0.adp.constructor.name).toBe(originalA0.adp.constructor.name);
         }
+    });
+
+    test('reports a missing external acceptor instead of dereferencing an undefined group', () => {
+        const structure = MockStructure.createDefault({
+            hasHydrogens: true,
+        })
+            .addHBond('O1', 'H1', 'N1', '2_555')
+            .build();
+        structure.atoms = structure.atoms.filter(atom => atom.label !== 'N1');
+
+        expect(() => growExternalHBonds(structure)).toThrow(
+            'Cannot grow H-bond: acceptor atom N1 is not in the structure',
+        );
     });
 });

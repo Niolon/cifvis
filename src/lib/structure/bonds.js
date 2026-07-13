@@ -1,4 +1,5 @@
 import { CifBlock } from '../read-cif/base.js';
+import { normalizeSiteSymmetry } from './position-code.js';
 
 /**
  * Returns the chemical label portion of an atom ID.
@@ -33,14 +34,15 @@ export class Bond {
      * @param {string} [atom2SiteSymmetry] - Symmetry operation for second atom
      */
     constructor(atom1Id, atom2Id, bondLength = null, bondLengthSU = null, atom2SiteSymmetry = null) {
+        const normalizedSymmetry = normalizeSiteSymmetry(atom2SiteSymmetry);
         this.atom1Id = normalizeAtomId(atom1Id);
         this.atom2Id = normalizeAtomId(
             atom2Id,
-            atom2SiteSymmetry && atom2SiteSymmetry !== '.' ? atom2SiteSymmetry : '1_555',
+            normalizedSymmetry !== '.' ? normalizedSymmetry : '1_555',
         );
         this.bondLength = bondLength;
         this.bondLengthSU = bondLengthSU;
-        this.atom2SiteSymmetry = atom2SiteSymmetry;
+        this.atom2SiteSymmetry = normalizedSymmetry;
     }
 
     get atom1Label() {
@@ -76,12 +78,7 @@ export class Bond {
             siteSymmetry2 = '.';
         }
 
-        if (siteSymmetry2 === '?') {
-            siteSymmetry2 = '.';
-        }
-        if (siteSymmetry2 !== '.' && !siteSymmetry2.includes('_')) {
-            siteSymmetry2 = `${siteSymmetry2}_555`;
-        }
+        siteSymmetry2 = normalizeSiteSymmetry(siteSymmetry2);
 
         const atom1Label = bondLoop.getIndex(
             ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
@@ -141,11 +138,12 @@ export class HBond {
         hBondAngleSU,
         acceptorAtomSymmetry,
     ) {
+        const normalizedSymmetry = normalizeSiteSymmetry(acceptorAtomSymmetry);
         this.donorAtomId = normalizeAtomId(donorAtomId);
         this.hydrogenAtomId = normalizeAtomId(hydrogenAtomId);
         this.acceptorAtomId = normalizeAtomId(
             acceptorAtomId,
-            acceptorAtomSymmetry && acceptorAtomSymmetry !== '.' ? acceptorAtomSymmetry : '1_555',
+            normalizedSymmetry !== '.' ? normalizedSymmetry : '1_555',
         );
         this.donorHydrogenDistance = donorHydrogenDistance;
         this.donorHydrogenDistanceSU = donorHydrogenDistanceSU;
@@ -155,7 +153,7 @@ export class HBond {
         this.donorAcceptorDistanceSU = donorAcceptorDistanceSU;
         this.hBondAngle = hBondAngle;
         this.hBondAngleSU = hBondAngleSU;
-        this.acceptorAtomSymmetry = acceptorAtomSymmetry;
+        this.acceptorAtomSymmetry = normalizedSymmetry;
     }
 
     get donorAtomLabel() {
@@ -199,7 +197,7 @@ export class HBond {
             ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
             hBondIndex,
         );
-        const acceptorSymmetry = acceptorAtomSymmetry !== '?' ? acceptorAtomSymmetry : '.';
+        const acceptorSymmetry = normalizeSiteSymmetry(acceptorAtomSymmetry);
         const acceptorId = `${acceptorLabel}|${acceptorSymmetry === '.' ? '1_555' : acceptorSymmetry}`;
 
         return new HBond(

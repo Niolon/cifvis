@@ -1298,8 +1298,16 @@ describe('growCell integration tests', () => {
             const resultWithCutting = growCell(mockStructure, true);
             const resultWithoutCutting = growCell(mockStructure, false);
 
-            // Without cutting should potentially have more atoms
-            expect(resultWithoutCutting.atoms.length).toBeGreaterThanOrEqual(resultWithCutting.atoms.length);
+            expect(resultWithCutting.atoms.length).toBeGreaterThan(0);
+            for (const group of resultWithoutCutting.calculateConnectedGroups()) {
+                const limits = getFragmentLimits(group.atoms);
+                const midpoint = [
+                    (limits.minX + limits.maxX) / 2,
+                    (limits.minY + limits.maxY) / 2,
+                    (limits.minZ + limits.maxZ) / 2,
+                ];
+                expect(midpoint.every(value => value >= 0 && value < 1)).toBe(true);
+            }
         });
     });
 
@@ -1420,5 +1428,87 @@ describe('growCell integration tests', () => {
             acceptorAtomId: 'O|2_556',
             acceptorAtomSymmetry: '.',
         }));
+    });
+
+    test('omits bonds whose molecule is split across the displayed cell boundary', () => {
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        const atoms = [
+            new Atom('C1', 'C', new FractPosition(0.95, 0.5, 0.5)),
+            new Atom('C2', 'C', new FractPosition(0.05, 0.5, 0.5)),
+            new Atom('N1', 'N', new FractPosition(0.2, 0.5, 0.5)),
+            new Atom('N2', 'N', new FractPosition(0.3, 0.5, 0.5)),
+            new Atom('Cl1', 'Cl', new FractPosition(0.4, 0.5, 0.5)),
+            new Atom('O1', 'O', new FractPosition(0.9, 0.5, 0.5)),
+        ];
+        const bonds = [
+            new Bond('C1', 'C2', 1.0, 0.01, '.'),
+            new Bond('N1', 'N2', 1.0, 0.01, '.'),
+            new Bond('Cl1', 'O1', 5.0, 0.01, '.'),
+        ];
+        const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+
+        const result = growCell(structure, true);
+        const uncutResult = growCell(structure, false);
+
+        expect(result.bonds).not.toContainEqual(expect.objectContaining({
+            atom1Id: 'C1|1_555',
+            atom2Id: 'C2|1_555',
+        }));
+        expect(result.bonds).toContainEqual(expect.objectContaining({
+            atom1Id: 'N1|1_555',
+            atom2Id: 'N2|1_555',
+        }));
+        expect(uncutResult.bonds).not.toContainEqual(expect.objectContaining({
+            atom1Id: 'C1|1_555',
+            atom2Id: 'C2|1_555',
+        }));
+        expect(result.bonds).not.toContainEqual(expect.objectContaining({
+            atom1Id: 'Cl1|1_555',
+            atom2Id: 'O1|1_555',
+        }));
+        expect(uncutResult.bonds).not.toContainEqual(expect.objectContaining({
+            atom1Id: 'Cl1|1_555',
+            atom2Id: 'O1|1_555',
+        }));
+    });
+
+    test('centres disconnected molecules independently in fragment-cell mode', () => {
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        const atoms = [
+            new Atom('C1', 'C', new FractPosition(1.1, 0.2, 0.3)),
+            new Atom('C2', 'C', new FractPosition(1.2, 0.2, 0.3)),
+            new Atom('N1', 'N', new FractPosition(-0.3, 0.7, 0.6)),
+            new Atom('N2', 'N', new FractPosition(-0.1, 0.7, 0.6)),
+        ];
+        const bonds = [
+            new Bond('C1', 'C2', 1.0, 0.01, '.'),
+            new Bond('N1', 'N2', 2.0, 0.01, '.'),
+        ];
+        const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+        const originalAtoms = structure.atoms.map(atom => ({
+            id: atom.uniqueId,
+            position: [atom.position.x, atom.position.y, atom.position.z],
+        }));
+        const originalBonds = structure.bonds.map(bond => [bond.atom1Id, bond.atom2Id]);
+
+        const result = growCell(structure, false);
+        const carbonAtoms = result.atoms.filter(atom => atom.atomType === 'C');
+        const nitrogenAtoms = result.atoms.filter(atom => atom.atomType === 'N');
+        const midpointX = moleculeAtoms => (
+            Math.min(...moleculeAtoms.map(atom => atom.position.x)) +
+            Math.max(...moleculeAtoms.map(atom => atom.position.x))
+        ) / 2;
+
+        expect(result.atoms).toHaveLength(4);
+        expect(midpointX(carbonAtoms)).toBeCloseTo(0.15);
+        expect(midpointX(nitrogenAtoms)).toBeCloseTo(0.8);
+        expect(result.atoms.every(atom => atom.position.x >= 0 && atom.position.x < 1)).toBe(true);
+        expect(structure.atoms.map(atom => ({
+            id: atom.uniqueId,
+            position: [atom.position.x, atom.position.y, atom.position.z],
+        }))).toEqual(originalAtoms);
+        expect(structure.bonds.map(bond => [bond.atom1Id, bond.atom2Id])).toEqual(originalBonds);
     });
 });

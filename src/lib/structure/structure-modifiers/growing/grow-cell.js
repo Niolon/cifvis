@@ -7,6 +7,7 @@ import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from './../../applied-symmetry.js';
 
 const math = create(all, {});
+const MAX_DISPLAYED_BOND_LENGTH = 4;
 
 /**
  * @typedef {object} FractionalLimits
@@ -757,22 +758,13 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         );
     });
 
-    // Prepare collections for the grown structure
-    // Initialize atomMap with existing atoms only if NOT moving atoms inside cell
-    // For CELL mode (moveAtomsInsideCell=true), we process all atoms fresh with repositioning
+    // Prepare collections for the grown structure. All final atoms come from the
+    // centred groups below, so duplicate detection must not be pre-seeded with
+    // uncentred input atoms that will not be retained.
     const atomMap = new Map();
-    if (!moveAtomsInsideCell) {
-        for (const atom of structure.atoms) {
-            const posKey = getAtomPositionKey(atom);
-            // Only add if not already in the map (shouldn't happen, but be safe)
-            if (!atomMap.has(posKey)) {
-                atomMap.set(posKey, atom.uniqueId);
-            }
-        }
-    }
 
     const objectTracker = {
-        atomMap, // Pre-seeded with existing atoms
+        atomMap,
         createdBonds: new Set(), // createdBonds
         createdHBonds: new Set(), // createdHBonds
         specialPositionMap, // specialPositionMap
@@ -785,7 +777,10 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
     for (let groupIdx = 0; groupIdx < atomGroups.length; groupIdx++) {
         const group = atomGroups[groupIdx];
         const symOpsToApply = growSymIdsPerGroup[groupIdx];
-        const originalCentre = getFragmentCentre(structure.atoms);
+        // Each disconnected molecule/component must choose its own lattice
+        // translation. Using the centre of the entire asymmetric unit moves all
+        // components as one object and can leave some of them outside the cell.
+        const originalCentre = getFragmentCentre(group.atoms);
 
         const symId = symOpsToApply[0];
 
@@ -813,45 +808,56 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             grownAtomsGroups.push(newGrownGroup);
         }
     }
-    // Include original atoms from structure only if NOT moving atoms inside cell
-    // When moveAtomsInsideCell is true (CELL mode), grown atoms already include the originals
-    // with proper repositioning, so we don't add unprocessed originals
-    const finalAtoms = moveAtomsInsideCell
-        ? grownAtomsGroups.flatMap(group => group.atoms)
-        : [...structure.atoms, ...grownAtomsGroups.flatMap(group => group.atoms)];
-    // Include original bonds only if NOT moving atoms inside cell
-    const finalBonds = moveAtomsInsideCell
-        ? grownAtomsGroups.flatMap(group => group.internalBonds)
-        : [...structure.bonds, ...grownAtomsGroups.flatMap(group => group.internalBonds)];
-
-    // Transform original H-bonds: for external H-bonds, create proper acceptorAtomId from base label + symmetry
-    const transformedOriginalHBonds = structure.hBonds.map(hb => {
-        if (hb.acceptorAtomSymmetry && hb.acceptorAtomSymmetry !== '.') {
-            // External H-bond: combine base label with symmetry to get proper acceptorAtomId
-            const acceptorBaseLabel = hb.acceptorAtomId.split('|')[0];
-            const combinedAcceptorId = `${acceptorBaseLabel}|${hb.acceptorAtomSymmetry}`;
-            return new HBond(
-                hb.donorAtomId,
-                hb.hydrogenAtomId,
-                combinedAcceptorId,
-                hb.donorHydrogenDistance,
-                hb.donorHydrogenDistanceSU,
-                hb.acceptorHydrogenDistance,
-                hb.acceptorHydrogenDistanceSU,
-                hb.donorAcceptorDistance,
-                hb.donorAcceptorDistanceSU,
-                hb.hBondAngle,
-                hb.hBondAngleSU,
-                '.', // Transformed to internal since acceptor is now identified
-            );
+    // Preserve the fragment-grown objects in fragment-cell mode so their bond and
+    // H-bond endpoint IDs remain available. The post-filter component pass below
+    // centres and deduplicates both these objects and the newly grown copies.
+    const clonedInputAtoms = !moveAtomsInsideCell
+        ? structure.symmetry.applySymmetry(
+            `${structure.symmetry.identitySymOpId}_555`,
+            structure.atoms,
+        ).map((atom, index) => {
+            atom.appliedSymmetry = structure.atoms[index].appliedSymmetry?.copy() || null;
+            return atom;
+        })
+        : [];
+    const candidateAtoms = [
+        ...clonedInputAtoms,
+        ...grownAtomsGroups.flatMap(group => group.atoms),
+    ];
+    const finalAtomsByUniqueId = new Map();
+    for (const atom of candidateAtoms) {
+        if (!finalAtomsByUniqueId.has(atom.uniqueId)) {
+            finalAtomsByUniqueId.set(atom.uniqueId, atom);
         }
-        return hb; // Internal H-bond, keep as is
-    });
-
-    // Include original H-bonds only if NOT moving atoms inside cell
-    const finalHBonds = moveAtomsInsideCell
-        ? grownAtomsGroups.flatMap(group => group.internalHBonds)
-        : [...transformedOriginalHBonds, ...grownAtomsGroups.flatMap(group => group.internalHBonds)];
+    }
+    const finalAtoms = Array.from(finalAtomsByUniqueId.values());
+    const finalBonds = [
+        ...(!moveAtomsInsideCell ? structure.bonds.map(bond => new Bond(
+            bond.atom1Id,
+            bond.atom2Id,
+            bond.bondLength,
+            bond.bondLengthSU,
+            bond.atom2SiteSymmetry,
+        )) : []),
+        ...grownAtomsGroups.flatMap(group => group.internalBonds),
+    ];
+    const finalHBonds = [
+        ...(!moveAtomsInsideCell ? structure.hBonds.map(hbond => new HBond(
+            hbond.donorAtomId,
+            hbond.hydrogenAtomId,
+            hbond.acceptorAtomId,
+            hbond.donorHydrogenDistance,
+            hbond.donorHydrogenDistanceSU,
+            hbond.acceptorHydrogenDistance,
+            hbond.acceptorHydrogenDistanceSU,
+            hbond.donorAcceptorDistance,
+            hbond.donorAcceptorDistanceSU,
+            hbond.hBondAngle,
+            hbond.hBondAngleSU,
+            hbond.acceptorAtomSymmetry,
+        )) : []),
+        ...grownAtomsGroups.flatMap(group => group.internalHBonds),
+    ];
     const finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
 
     grownAtomsGroups.forEach(group => {
@@ -863,8 +869,10 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 [atom1Id] = objectTracker.atomTranslations.get(atom1Id);
             }
 
-            const combinedAtom2Id = combineAtomId(bond.atom2Id, bond.atom2SiteSymmetry, structure.symmetry);
-            let atom2Id = objectTracker.specialPositionMap.get(combinedAtom2Id) || combinedAtom2Id;
+            // growExternalBondsInGroup has already combined the group's symmetry with
+            // atom2SiteSymmetry. Recombining here applies the operation twice and can
+            // connect an atom to the wrong periodic image across the entire cell.
+            let atom2Id = objectTracker.specialPositionMap.get(bond.atom2Id) || bond.atom2Id;
             if (objectTracker.atomTranslations.has(atom2Id)) {
                 [atom2Id] = objectTracker.atomTranslations.get(atom2Id);
             }
@@ -986,11 +994,49 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         });
     });
 
-    // Filter bonds to only include those where both atoms exist
+    const finalAtomsById = new Map(finalAtoms.map(atom => [atom.uniqueId, atom]));
+
+    /**
+     * Checks that a displayed internal bond still connects nearby periodic images.
+     * @param {Bond} bond - Bond to check
+     * @returns {boolean} Whether the bond length is compatible with its CIF value
+     */
+    const hasCompatibleDisplayedLength = bond => {
+        if (!Number.isFinite(bond.bondLength)) {
+            return true;
+        }
+        // _geom_bond loops frequently include long publication contacts in addition
+        // to chemical bonds. They are useful metadata but should not become solid
+        // lines spanning a cell visualization.
+        if (bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
+            return false;
+        }
+        const atom1 = finalAtomsById.get(bond.atom1Id);
+        const atom2 = finalAtomsById.get(bond.atom2Id);
+        if (!atom1 || !atom2) {
+            // Preserve unresolved external bond metadata. Rendering already omits it
+            // because both displayed endpoints are required.
+            return bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.';
+        }
+        const cart1 = atom1.position.toCartesian(structure.cell);
+        const cart2 = atom2.position.toCartesian(structure.cell);
+        const actualLength = Math.hypot(
+            cart1.x - cart2.x,
+            cart1.y - cart2.y,
+            cart1.z - cart2.z,
+        );
+        const tolerance = Math.max(0.15, bond.bondLength * 0.1);
+        return actualLength <= bond.bondLength + tolerance;
+    };
+
+    // Filter bonds to only include existing endpoints and omit periodic boundary
+    // connections whose wrapped endpoints are no longer adjacent.
     const filteredBonds = finalBonds.filter(bond => {
         const atom1Present = finalAtomLabels.has(bond.atom1Id);
         const atom2IsExternal = bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.';
-        return atom1Present && (finalAtomLabels.has(bond.atom2Id) || atom2IsExternal);
+        return atom1Present &&
+            (finalAtomLabels.has(bond.atom2Id) || atom2IsExternal) &&
+            hasCompatibleDisplayedLength(bond);
     });
 
     // Filter H-bonds to only include those where donor and hydrogen exist
@@ -999,11 +1045,99 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         finalAtomLabels.has(hbond.donorAtomId) && finalAtomLabels.has(hbond.hydrogenAtomId),
     );
 
-    return new CrystalStructure(
+    // Fragment growth can temporarily join several translated molecules through
+    // external bonds. Once invalid display bonds have been removed, the remaining
+    // connectivity describes the individual displayed molecules. Centre each of
+    // those components independently and collapse translated duplicates.
+    // Centre according to the bonds that will actually remain in the returned
+    // structure. H-bond metadata must not temporarily join otherwise disconnected
+    // atoms/components: if reconciliation later removes that H-bond, such atoms
+    // would be left outside the cell despite being standalone in the final model.
+    const centringBonds = filteredBonds;
+    const filteredStructure = new CrystalStructure(
         structure.cell,
         finalAtoms,
-        filteredBonds,
+        centringBonds,
         filteredHBonds,
+        structure.symmetry,
+    );
+    const atomIdMap = new Map();
+    for (const group of filteredStructure.calculateConnectedGroups()) {
+        const centre = getFragmentCentre(group.atoms).toArray();
+        const offset = centre.map(value => Math.floor(value));
+        for (const atom of group.atoms) {
+            const oldId = atom.uniqueId;
+            atom.position.x -= offset[0];
+            atom.position.y -= offset[1];
+            atom.position.z -= offset[2];
+            if (atom.appliedSymmetry) {
+                atom.appliedSymmetry.translation[0] -= offset[0];
+                atom.appliedSymmetry.translation[1] -= offset[1];
+                atom.appliedSymmetry.translation[2] -= offset[2];
+                atom.appliedSymmetry._updateKey();
+            }
+            atomIdMap.set(oldId, atom.uniqueId);
+        }
+    }
+
+    const centredAtoms = [];
+    const centredPositionMap = new Map();
+    const centredAtomIds = new Map();
+    const duplicateAtomIds = new Map();
+    for (const atom of finalAtoms) {
+        const positionKey = getAtomPositionKey(atom);
+        const existingId = centredAtomIds.get(atom.uniqueId) || centredPositionMap.get(positionKey);
+        if (existingId) {
+            duplicateAtomIds.set(atom.uniqueId, existingId);
+        } else {
+            centredPositionMap.set(positionKey, atom.uniqueId);
+            centredAtomIds.set(atom.uniqueId, atom.uniqueId);
+            centredAtoms.push(atom);
+        }
+    }
+    for (const [oldId, translatedId] of atomIdMap) {
+        atomIdMap.set(oldId, duplicateAtomIds.get(translatedId) || translatedId);
+    }
+
+    const centredBonds = [];
+    const centredBondIds = new Set();
+    for (const bond of filteredBonds) {
+        const atom1Id = atomIdMap.get(bond.atom1Id) || bond.atom1Id;
+        const atom2Id = atomIdMap.get(bond.atom2Id) || bond.atom2Id;
+        if (atom1Id === atom2Id) {
+            continue;
+        }
+        const bondId = createBondIdentifier(atom1Id, atom2Id);
+        if (!centredBondIds.has(bondId)) {
+            bond.atom1Id = atom1Id;
+            bond.atom2Id = atom2Id;
+            centredBonds.push(bond);
+            centredBondIds.add(bondId);
+        }
+    }
+
+    const centredHBonds = [];
+    const centredHBondIds = new Set();
+    for (const hbond of filteredHBonds) {
+        hbond.donorAtomId = atomIdMap.get(hbond.donorAtomId) || hbond.donorAtomId;
+        hbond.hydrogenAtomId = atomIdMap.get(hbond.hydrogenAtomId) || hbond.hydrogenAtomId;
+        hbond.acceptorAtomId = atomIdMap.get(hbond.acceptorAtomId) || hbond.acceptorAtomId;
+        const hbondId = createHBondIdentifier(
+            hbond.donorAtomId,
+            hbond.hydrogenAtomId,
+            hbond.acceptorAtomId,
+        );
+        if (!centredHBondIds.has(hbondId)) {
+            centredHBonds.push(hbond);
+            centredHBondIds.add(hbondId);
+        }
+    }
+
+    return new CrystalStructure(
+        structure.cell,
+        centredAtoms,
+        centredBonds,
+        centredHBonds,
         structure.symmetry,
     );
 }
