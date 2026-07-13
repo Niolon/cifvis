@@ -401,11 +401,13 @@ export class CrystalViewer {
         }
 
         this.container = container;
+        const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
         this.options = {
             camera: {
                 ...defaultSettings.camera,
-                initialPosition: new THREE.Vector3(...defaultSettings.camera.initialPosition),
                 ...(options.camera || {}),
+                initialPosition: initialPosition.isVector3 ?
+                    initialPosition.clone() : new THREE.Vector3(...initialPosition),
             },
             selection: {
                 ...defaultSettings.selection,
@@ -416,6 +418,8 @@ export class CrystalViewer {
                 ...(options.interaction || {}),
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
+            atomEllipsoidStyle: options.atomEllipsoidStyle || defaultSettings.atomEllipsoidStyle,
+            atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
             atomColorMetalness: options.atomColorMetalness || defaultSettings.atomColorMetalness,
             atomADPRingWidthFactor: options.atomADPRingWidthFactor || defaultSettings.atomADPRingWidthFactor,
@@ -734,10 +738,26 @@ export class CrystalViewer {
      */
     animate() {
         if (this.options.renderMode === 'constant' || this.needsRender) {
+            this.updateCutawayOctants();
             this.renderer.render(this.scene, this.camera);
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
+    }
+
+    /**
+     * Keeps cutaway ellipsoids open towards the camera as the structure rotates.
+     * @private
+     */
+    updateCutawayOctants() {
+        const cutawayAtoms = this.state.currentStructure?.cutawayAtoms;
+        if (!cutawayAtoms?.length) {
+            return;
+        }
+
+        this.camera.updateMatrixWorld();
+        this.moleculeContainer.updateMatrixWorld(true);
+        cutawayAtoms.forEach(atom => atom.updateCutawayOctant(this.camera));
     }
 
     /**

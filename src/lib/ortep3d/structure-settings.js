@@ -56,6 +56,10 @@ export default {
 
     // atom visualisation Settings
     'atomDetail': 3,
+    'atomEllipsoidStyle': 'solid',
+    'atomCutawayHysteresis': 0.025,
+    'atomCutawayStripeCount': 7,
+    'atomCutawayStripeWidth': 0.5,
     'atomColorRoughness': 0.4,
     'atomColorMetalness': 0.5,
     'atomADPRingWidthFactor': 1.0,

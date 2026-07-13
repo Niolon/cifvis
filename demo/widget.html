@@ -527,6 +527,25 @@ _cell.angle_gamma 90
                 </div>
 
             </div>
+
+            <h3 id="ortep-cutaway">ORTEP cutaway</h3>
+            <p>
+                Set <code>atomEllipsoidStyle</code> to <code>cutout</code> to remove the
+                camera-facing octant and expose the hatched principal planes.
+            </p>
+            <div class="widget-container">
+                <span class="example-label">Camera-facing cutaway ellipsoids:</span>
+                <cifview-widget
+                    src="cif/urea.cif"
+                    options='{"atomEllipsoidStyle":"cutout"}'
+                    caption="Rotate the structure to move the open octant.">
+                </cifview-widget>
+            </div>
+            <pre><code>&lt;cifview-widget
+    src="structure.cif"
+    options='{"atomEllipsoidStyle":"cutout"}'&gt;
+&lt;/cifview-widget&gt;</code></pre>
+
             <h3>Growing symmetry</h3>
             <p>
                 You can grow the symmetry one additional sphere using bonds or hydrogen bonds contained in the cif tables:
@@ -834,6 +853,21 @@ _cell.angle_gamma 90
                             <td><span class="option-code">atomDetail</span></td>
                             <td>Number</td>
                             <td>Level of detail for atom geometry (1-5). <span class="default-value">Default: 3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom ellipsoid style solid cutout cutaway ortep">
+                            <td><span class="option-code">atomEllipsoidStyle</span></td>
+                            <td>String</td>
+                            <td>Ellipsoid display style, either "solid" or camera-facing "cutout". <span class="default-value">Default: "solid"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway stripe count hatch ortep">
+                            <td><span class="option-code">atomCutawayStripeCount</span></td>
+                            <td>Number</td>
+                            <td>Number of hatch repeats across each cutaway disc. <span class="default-value">Default: 7</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom cutaway stripe width hatch ortep">
+                            <td><span class="option-code">atomCutawayStripeWidth</span></td>
+                            <td>Number</td>
+                            <td>Atom-colour stripe width as a fraction of each repeat. <span class="default-value">Default: 0.5</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom color roughness material">
                             <td><span class="option-code">atomColorRoughness</span></td>
