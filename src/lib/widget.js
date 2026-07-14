@@ -310,9 +310,30 @@ export class CifViewWidget extends HTMLElement {
     addButton(container, type, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
-        const mode = this.viewer.modifiers[type].mode;
-        button.innerHTML = this.getIcon(type, mode);
         button.title = altText;
+        this.renderButtonIcon(button, type, this.viewer.modifiers[type].mode, altText);
+
+        container.appendChild(button);
+
+        button.addEventListener('click', async () => {
+            const result = await this.viewer.cycleModifierMode(type);
+            if (result.success) {
+                this.renderButtonIcon(button, type, result.mode, altText);
+            }
+        });
+    }
+
+    /**
+     * Renders a modifier button's icon and re-applies the accessibility
+     * attributes (alt/role/aria-label) to the newly inserted SVG, since
+     * replacing innerHTML drops whatever was set on the previous element.
+     * @param {HTMLButtonElement} button - Button whose icon should be updated
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @param {string} altText - Accessible label for the icon
+     */
+    renderButtonIcon(button, type, mode, altText) {
+        button.innerHTML = this.getIcon(type, mode);
 
         const svgElement = button.querySelector('svg');
         if (svgElement) {
@@ -320,15 +341,6 @@ export class CifViewWidget extends HTMLElement {
             svgElement.setAttribute('role', 'img');
             svgElement.setAttribute('aria-label', altText);
         }
-
-        container.appendChild(button);
-
-        button.addEventListener('click', async () => {
-            const result = await this.viewer.cycleModifierMode(type);
-            if (result.success) {
-                button.innerHTML = this.getIcon(type, result.mode);
-            }
-        });
     }
 
     /**

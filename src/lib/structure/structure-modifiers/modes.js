@@ -273,7 +273,7 @@ export class DisorderFilter extends BaseFilter {
         this._groupValuesByRank = groups;
 
         const modes = { ALL: DisorderFilter.MODES.ALL };
-        groups.forEach((groupValue, index) => {
+        groups.forEach((_group, index) => {
             modes[`GROUP${index + 1}`] = DisorderFilter.modeForGroup(index + 1, groups.length);
         });
         this.MODES = Object.freeze(modes);
