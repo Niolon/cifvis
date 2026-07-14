@@ -1,0 +1,11 @@
+{
+    "source": {
+        "include": ["./src/lib"],
+        "includePattern": ".+\\.js$",
+        "excludePattern": "(\\.test\\.js$|/generated/)"
+    },
+    "opts": {
+        "destination": "./jsdoc-out/",
+        "recurse": true
+    }
+}

@@ -468,7 +468,7 @@ export class GeometryMaterialCache {
     /**
      * Gets or creates cached materials for given atom type.
      * @param {string} atomType - Chemical element symbol
-     * @returns {[THREE.Material, THREE.Material]} Array containing [atomMaterial, ringMaterial]
+     * @returns {THREE.Material[]} Array containing [atomMaterial, ringMaterial]
      */
     getAtomMaterials(atomType) {
         let elementType = atomType;

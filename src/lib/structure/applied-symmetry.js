@@ -1,4 +1,4 @@
-/** @typedef {import('./cell-symmetry.js').CellSymmetry} CellSymmetry */
+/** @typedef {CellSymmetry} CellSymmetry */
 import { decodePositionCode, encodePositionCode } from './position-code.js';
 
 export class AppliedSymmetry {

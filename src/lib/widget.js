@@ -11,22 +11,22 @@ const defaultStyles = `
     font-family: system-ui, -apple-system, sans-serif;
     height: 100%;
     position: relative;
-    background: #fafafa;
-    border-radius: 8px;
+    background: var(--cifvis-bg, #fafafa);
+    border-radius: var(--cifvis-radius, 8px);
     overflow: hidden;
   }
-  
+
   cifview-widget .crystal-container {
     flex: 1;
     min-height: 0;
     position: relative;
   }
-  
+
   cifview-widget .crystal-caption {
     padding: 12px 16px;
-    background: #ffffff;
-    border-top: 1px solid #eaeaea;
-    color: #333;
+    background: var(--cifvis-caption-bg, #ffffff);
+    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);
+    color: var(--cifvis-caption-color, #333);
     font-size: 14px;
     line-height: 1.5;
   }
@@ -44,8 +44,8 @@ const defaultStyles = `
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--cifvis-button-radius, 8px);
+    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -56,7 +56,7 @@ const defaultStyles = `
   }
 
   cifview-widget .control-button:hover {
-    background: #ffffff;
+    background: var(--cifvis-button-hover-bg, #ffffff);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
   }
 
@@ -382,7 +382,10 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'filtered-atoms':
                 await this.updateFilteredAtoms();
-                await this.viewer.updateStructure();
+                // AtomLabelFilter.requiresCameraUpdate is true: removing/restoring atoms can
+                // change the structure's extent, so reset the camera/orientation like
+                // cycleModifierMode does, instead of updateStructure()'s preserve-rotation path.
+                await this.viewer.loadStructure();
                 break;
             case 'options':
                 this.parseOptions();
@@ -436,6 +439,9 @@ export class CifViewWidget extends HTMLElement {
             case 'symmetry-mode':
                 if (this.viewer.modifiers.symmetry) {
                     this.viewer.modifiers.symmetry.mode = newValue;
+                    // SymmetryGrower.requiresCameraUpdate is true: called with no argument,
+                    // loadStructure() defaults to the current base structure and resets the
+                    // camera/orientation, like cycleModifierMode does for this modifier.
                     await this.viewer.loadStructure();
                     this.setupButtons();
                 }

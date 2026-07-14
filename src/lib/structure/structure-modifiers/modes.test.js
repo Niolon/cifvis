@@ -376,7 +376,7 @@ describe('SymmetryGrower', () => {
         });
 
         test('keeps both H-bonds from a molecule completed across a special position', () => {
-            const cifContent = readFileSync('demo/public/cif/urea.cif', 'utf8');
+            const cifContent = readFileSync('site/public/cif/urea.cif', 'utf8');
             const urea = CrystalStructure.fromCIF(new CIF(cifContent).getBlock(0));
             const result = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_HBONDS)
                 .apply(urea);

@@ -7,7 +7,7 @@ import { CrystalStructure } from './src/lib/structure/crystal.js';
 import { growCell } from './src/lib/structure/structure-modifiers/growing/grow-cell.js';
 import { CIF } from './src/lib/read-cif/base.js';
 
-const cifContent = readFileSync('./demo/public/cif/urea.cif', 'utf-8');
+const cifContent = readFileSync('./site/public/cif/urea.cif', 'utf-8');
 const cif = new CIF(cifContent);
 const structure = CrystalStructure.fromCIF(cif.getBlock(0));
 
