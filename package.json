@@ -17,10 +17,10 @@
   "scripts": {
     "generate-svg-icons": "node scripts/generate-svg-icons.js",
     "prebuild": "npm run generate-svg-icons",
-    "dev": "vite --config vite/vite.config.mjs serve ./demo",
+    "dev": "vite --config vite/vite.config.mjs serve ./site",
     "build": "vite build --config vite/vite.config.mjs",
     "build:alldeps": "vite build --config vite/vite.alldeps.config.mjs",
-    "build:demo": "vite build --config vite/vite.demo.config.mjs",
+    "build:site": "vite build --config vite/vite.site.config.mjs",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -33,7 +33,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "husky",
-    "docs": "jsdoc -r ./src/lib"
+    "docs": "jsdoc -c jsdoc.json"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

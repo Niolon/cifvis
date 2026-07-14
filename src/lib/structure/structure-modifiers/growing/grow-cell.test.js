@@ -1417,7 +1417,7 @@ describe('growCell integration tests', () => {
     });
 
     test('does not internalize an H-bond when only its acceptor is wrapped', () => {
-        const cifContent = readFileSync('demo/public/cif/urea.cif', 'utf8');
+        const cifContent = readFileSync('site/public/cif/urea.cif', 'utf8');
         const structure = CrystalStructure.fromCIF(new CIF(cifContent).getBlock(0));
 
         const result = growCell(structure, true);

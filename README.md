@@ -1,6 +1,17 @@
 # CifVis - Crystal Structure Visualisation
 
-A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/widget.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/docs/widget-usage.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+
+## Documentation
+
+The [full documentation hub](https://niolon.github.io/cifvis/docs/index.html) (also under `site/docs/` in this repo) covers:
+
+- [Developing with CifVis](https://niolon.github.io/cifvis/docs/using-cifvis.html) &mdash; parsing CIF files (Blocks, entries, Loops), driving `CrystalViewer` directly to build a custom GUI, using Filters, and using CifVis structures in your own Three.js scene.
+- [Widget Usage](https://niolon.github.io/cifvis/docs/widget-usage.html) &mdash; the `<cifview-widget>` component: attributes, display modes, and styling it (light DOM, CSS custom properties).
+- [Options Reference](https://niolon.github.io/cifvis/docs/options-reference.html) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
+- [Developing CifVis](https://niolon.github.io/cifvis/docs/developing-cifvis.html) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
+
+For the full generated API reference (every exported class/method), run `npm run docs` to build it locally at `jsdoc-out/index.html`.
 
 ## Features
 
@@ -21,7 +32,7 @@ npm install cifvis
 ```
 
 ### Web Component
-For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/widget.html).
+For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/docs/widget-usage.html).
 
 ```html
 <cifview-widget 

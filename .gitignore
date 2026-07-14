@@ -8,6 +8,7 @@ dist/
 build/
 out/
 src/lib/generated/
+jsdoc-out/
 
 # integration testing directory
 cod/

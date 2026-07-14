@@ -597,11 +597,13 @@ export class CrystalViewer {
 
     /**
      * Initializes a new structure in the viewer with proper orientation.
-     * @param {CrystalStructure} structure - crystal structure to load
+     * @param {CrystalStructure} [structure] - Crystal structure to load. Defaults to the
+     * viewer's current base structure, so callers can use this to reset the camera/orientation
+     * for a modifier change without having to thread the structure through themselves.
      * @returns {Promise<object>} Object indicating success
      * @private
      */
-    async loadStructure(structure) {
+    async loadStructure(structure = this.state.baseStructure) {
         this.state.baseStructure = structure;
         this.selections.clear();
 

@@ -217,7 +217,7 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
  * @property {Set<string>} createdBonds - Set of created bond identifiers
  * @property {Set<string>} createdHBonds - Set of created hydrogen bond identifiers
  * @property {Map<string, string>} specialPositionMap - Maps original atom labels to kept atom labels for duplicates
- * @property {Map<string, [string, string]>} atomTranslations - Maps original atom labels to [new label, 
+ * @property {Map<string, string[]>} atomTranslations - Maps original atom labels to [new label,
  *  translation string]
  */
 
