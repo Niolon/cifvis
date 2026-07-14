@@ -530,7 +530,9 @@ describe('SymmetryGrower', () => {
 
             // Check ADP preservation
             if (originalA0.adp) {
+                // eslint-disable-next-line vitest/no-conditional-expect -- adp presence is data-dependent
                 expect(grownA0.adp).toBeDefined();
+                // eslint-disable-next-line vitest/no-conditional-expect -- adp presence is data-dependent
                 expect(grownA0.adp.constructor.name).toBe(originalA0.adp.constructor.name);
             }
         });

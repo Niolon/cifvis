@@ -80,7 +80,9 @@ describe('CifViewWidget', () => {
                 removeatoms: new AtomLabelFilter(),
             },
         };
-        CrystalViewer.mockImplementation(() => mockCrystalViewer);
+        CrystalViewer.mockImplementation(function mockCrystalViewerImpl() {
+            return mockCrystalViewer;
+        });
 
         // Mock selection callback storage
         mockSelectionCallback = null;

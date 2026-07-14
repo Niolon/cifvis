@@ -539,9 +539,11 @@ describe('Individual growing functions', () => {
 
                 // If the symmetry operation produces the same position, it should be detected as special position
                 if (result2.length === 0) {
+                    // eslint-disable-next-line vitest/no-conditional-expect -- outcome is data-dependent
                     expect(objectTracker.specialPositionMap.size).toBeGreaterThan(0);
                 } else {
                     // Different position was created
+                    // eslint-disable-next-line vitest/no-conditional-expect -- outcome is data-dependent
                     expect(result2).toHaveLength(1);
                 }
             });

@@ -20,8 +20,29 @@ function updateStatus(message, type = 'info') {
     }
 }
 
+/**
+ * Reads viewer style overrides from URL query parameters.
+ * Supported flags: `?style=2d` for the publication-style 2D renderer and
+ * `?octant=cut` for the cutaway ("cut octant") ellipsoid style. Either can
+ * be combined, e.g. `?style=2d&octant=cut`.
+ * @returns {object} CrystalViewer options derived from the URL
+ */
+function getStyleOptionsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const options = {};
+
+    if (params.get('style') === '2d') {
+        options.renderStyle = '2d';
+    }
+    if (params.get('octant') === 'cut') {
+        options.atomEllipsoidStyle = 'cutout';
+    }
+
+    return options;
+}
+
 // Initialize the viewer
-const viewer = new CrystalViewer(document.body);
+const viewer = new CrystalViewer(document.body, getStyleOptionsFromUrl());
 viewer.animate();
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
