@@ -32,7 +32,13 @@ export function getDisorderIcon(disorderIcons, mode) {
  */
 export function generateDisorderGroupIcon(disorderIcons, groupNumber) {
     const greyIcon = disorderIcons.all.replace(/#000000/g, '#8f8f8f');
-    const label = '<text x="1.5" y="7" font-size="7" font-family="system-ui, sans-serif" ' +
-        `font-weight="bold" fill="#000000">${groupNumber}</text>`;
+    // Centered on the (square, ~17.85-unit) icon viewBox, sized to match the cap
+    // height of the "H" glyph used by the hydrogen icons (~6.15 units tall) for a
+    // single digit; shrunk a bit for multi-digit ranks so they still fit comfortably.
+    const digitCount = String(groupNumber).length;
+    const fontSize = digitCount <= 1 ? 9 : Math.max(9 - (digitCount - 1) * 1.5, 5);
+    const label = '<text x="8.925192" y="8.925193" text-anchor="middle" dominant-baseline="central" ' +
+        `font-size="${fontSize}" font-family="system-ui, sans-serif" font-weight="bold" ` +
+        `fill="#000000">${groupNumber}</text>`;
     return greyIcon.replace('</svg>', `${label}</svg>`);
 }
