@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using CifVis &mdash; CifVis Docs</title>
+    <style>
+        #custom-gui-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .custom-gui-buttons {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .custom-gui-buttons button {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        #custom-gui-selection {
+            font-size: 0.9em;
+            color: #555;
+        }
+    </style>
+  <script type="module" crossorigin src="/cifvis/assets/docsUsing.dB3IAZ4-.js"></script>
+  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.SMKij_8o.js">
+  <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
+</head>
+<body>
+    <nav class="docs-nav">
+        <a href="./index.html">Docs Home</a>
+        <a href="./using-cifvis.html" class="current">Using CifVis</a>
+        <a href="./widget-usage.html">Widget Usage</a>
+        <a href="./options-reference.html">Options Reference</a>
+        <a href="./developing-cifvis.html">Developing CifVis</a>
+        <a href="../index.html">&larr; Back to Demo</a>
+    </nav>
+
+    <header>
+        <h1>Developing with CifVis</h1>
+        <p>Using the JavaScript library directly &mdash; parsing CIF files, driving <code>CrystalViewer</code> to build a
+        custom GUI, and using Filters.</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Interacting with a CIF file (Blocks, entries, Loops)</h2>
+            <p>
+                <code>CIF</code> parses raw CIF text into <code>CifBlock</code> objects, each holding scalar key/value
+                entries plus <code>CifLoop</code> objects for every <code>loop_</code> table. Neither <code>CifBlock</code>
+                nor <code>CifLoop</code> is exported from the package &mdash; you only ever reach them as return values
+                from a <code>CIF</code> instance.
+            </p>
+            <pre><code>import { CIF, CrystalStructure } from 'cifvis';
+
+const cif = new CIF(cifText);          // splitSU=true by default: "1.234(5)" -> {value, su}
+const block = cif.getBlock(0);          // or cif.getBlockByName('crystal_a')
+const structure = CrystalStructure.fromCIF(block);</code></pre>
+
+            <h3><code>CIF</code></h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th></tr>
+                <tr><td><code>getBlock(index = 0)</code></td><td>The <code>CifBlock</code> at <code>index</code>.</td></tr>
+                <tr><td><code>getAllBlocks()</code></td><td><code>CifBlock[]</code> for every block in the file.</td></tr>
+                <tr><td><code>getBlockNames()</code></td><td><code>string[]</code> of block names (the token after <code>data_</code>).</td></tr>
+                <tr><td><code>getBlockByName(name)</code></td><td>The <code>CifBlock</code> matching <code>name</code>.</td></tr>
+            </table>
+
+            <h3><code>CifBlock</code></h3>
+            <p>
+                <code>block.get(keys, defaultValue)</code> reads one entry. <code>keys</code> can be a single tag or an
+                array of alternatives &mdash; useful because CIF has both classic dictionary tags
+                (<code>_cell_length_a</code>) and CIF2/mmCIF-style dotted tags (<code>_cell.length_a</code>). It returns
+                either a scalar value or, if the tag names a <code>loop_</code>, a <code>CifLoop</code>.
+            </p>
+            <pre><code>const a = block.get(['_cell.length_a', '_cell_length_a']);
+const atomSite = block.get('_atom_site');   // a CifLoop</code></pre>
+
+            <h3><code>CifLoop</code></h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th></tr>
+                <tr><td><code>get(keys, defaultValue)</code></td><td>A whole column as an array (same multi-key fallback as <code>CifBlock.get</code>).</td></tr>
+                <tr><td><code>getIndex(keys, rowIndex, defaultValue)</code></td><td>A single value at one row &mdash; the usual way to read "one atom".</td></tr>
+                <tr><td><code>getHeaders()</code></td><td><code>string[]</code> of all column headers.</td></tr>
+                <tr><td><code>getName()</code></td><td>The loop's common tag prefix, e.g. <code>_atom_site</code>.</td></tr>
+            </table>
+            <pre><code>const labels = atomSite.get('_atom_site.label');           // whole column
+const firstLabel = atomSite.getIndex('_atom_site.label', 0); // one row</code></pre>
+
+            <p>
+                Values with a standard uncertainty (e.g. <code>1.234(5)</code>) are split into the value and a sibling
+                key with an <code>_su</code> suffix (e.g. <code>_cell_length_a_su</code>), both on blocks and loop
+                columns. <code>formatValueEsd(value, su)</code> formats them back into the conventional
+                <code>1.234(5)</code> notation for display.
+            </p>
+            <p>
+                If a CIF file is malformed, <code>tryToFixCifBlock(block)</code> attempts common repairs (reconciling
+                atom labels, guessing missing symmetry operations) before you retry <code>CrystalStructure.fromCIF</code>:
+            </p>
+            <pre><code>import { tryToFixCifBlock } from 'cifvis';
+
+let structure;
+try {
+    structure = CrystalStructure.fromCIF(block);
+} catch (e) {
+    structure = CrystalStructure.fromCIF(tryToFixCifBlock(block));
+}</code></pre>
+
+            <h3>Try it live</h3>
+            <p>Fetches <code>cif/urea.cif</code>, parses it, and prints the block name plus the first three rows of the <code>_atom_site</code> loop.</p>
+            <button type="button" id="parse-demo-button">Parse urea.cif</button>
+            <pre class="live-demo-output" id="parse-demo-output">Click the button to run this example.</pre>
+        </section>
+
+        <section>
+            <h2>Using CrystalViewer &mdash; binding points for a custom GUI</h2>
+            <p>
+                <code>&lt;cifview-widget&gt;</code> is one reference implementation of a GUI around
+                <code>CrystalViewer</code>; you can build your own directly against the same public surface. The
+                relevant parts of <code>src/lib/widget.js</code> to read as a worked example are
+                <code>connectedCallback</code> (construct viewer, bind selection, load), <code>attributeChangedCallback</code>
+                (toggle filters), and <code>disconnectedCallback</code> (dispose).
+            </p>
+            <pre><code>import { CrystalViewer } from 'cifvis';
+
+const viewer = new CrystalViewer(container, {
+    renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
+});
+const result = await viewer.loadCIF(cifText);   // or viewer.loadCIF(cifText, 'blockName')
+if (!result.success) {
+    console.error(result.error);
+}</code></pre>
+            <p>For the full <code>options</code> schema (camera, selection, rendering, atoms, bonds, elements), see the <a href="./options-reference.html">Options Reference</a>.</p>
+
+            <h3>The GUI-facing surface</h3>
+            <table>
+                <tr><th>Member</th><th>Use</th></tr>
+                <tr><td><code>viewer.modifiers</code></td><td>Map of the six Filters (see below). Set <code>.mode</code>, then re-render.</td></tr>
+                <tr><td><code>viewer.cycleModifierMode(name)</code></td><td>Advances a filter to its next applicable mode and re-renders correctly &mdash; the simplest way to wire a toggle button.</td></tr>
+                <tr><td><code>viewer.numberModifierModes(name)</code></td><td>Number of applicable modes for the current structure; use it to decide whether to show a toggle at all.</td></tr>
+                <tr><td><code>viewer.updateStructure()</code></td><td>Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's <code>.mode</code>.</td></tr>
+                <tr><td><code>viewer.selections.onChange(callback)</code></td><td>The only event hook. Callback receives <code>[{type: 'atom'|'bond'|'hbond', data, color}]</code>.</td></tr>
+                <tr><td><code>viewer.selectAtoms(labels)</code></td><td>Programmatic selection by atom label.</td></tr>
+                <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
+                <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
+                <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>
+            </table>
+
+            <p>
+                Some filters need more than a re-render when their mode changes &mdash; growing symmetry or removing
+                atoms can change the structure's extent, so the camera/orientation needs to reset too. Each filter
+                exposes this via <code>requiresCameraUpdate</code> (currently true for <code>symmetry</code> and
+                <code>removeatoms</code>, false for the rest). <code>cycleModifierMode</code> already checks this for
+                you; if you're setting <code>.mode</code> directly instead, call <code>viewer.loadStructure()</code>
+                (no argument needed &mdash; it defaults to the viewer's current base structure) for filters where
+                <code>requiresCameraUpdate</code> is true, or <code>viewer.updateStructure()</code> otherwise:
+            </p>
+            <pre><code>viewer.modifiers.symmetry.mode = 'fragment';
+await viewer.loadStructure();   // requiresCameraUpdate === true for SymmetryGrower</code></pre>
+
+            <h3>Try it live</h3>
+            <p>A minimal custom GUI: plain buttons wired directly to <code>viewer.modifiers</code>, no widget involved.</p>
+            <div id="custom-gui-container">
+                <div class="custom-gui-buttons">
+                    <button type="button" id="custom-gui-hydrogen">Hydrogen mode</button>
+                    <button type="button" id="custom-gui-symmetry">Symmetry mode</button>
+                </div>
+            </div>
+            <p id="custom-gui-selection">Click an atom or bond in the viewer above to see selection data here.</p>
+        </section>
+
+        <section>
+            <h2>Understanding and using Filters</h2>
+            <p>
+                Every time the displayed structure needs to change, <code>CrystalViewer</code> runs the base structure
+                through six Filters (structure modifiers) in a fixed order, each one's output feeding the next:
+            </p>
+            <pre><code>removeatoms &rarr; addhydrogen &rarr; missingbonds &rarr; disorder &rarr; symmetry &rarr; hydrogen</code></pre>
+            <table>
+                <tr><th>Key in <code>viewer.modifiers</code></th><th>Class</th><th>Modes</th><th>Purpose</th></tr>
+                <tr><td><code>removeatoms</code></td><td><code>AtomLabelFilter</code></td><td><code>on</code>, <code>off</code></td><td>Strips explicitly excluded atoms (comma list, supports <code>"A1&gt;A10"</code> ranges).</td></tr>
+                <tr><td><code>addhydrogen</code></td><td><code>IsolatedHydrogenFixer</code></td><td><code>on</code>, <code>off</code></td><td>Bonds orphan hydrogen atoms to a nearby heavy atom.</td></tr>
+                <tr><td><code>missingbonds</code></td><td><code>BondGenerator</code></td><td><code>keep</code>, <code>add</code>, <code>replace</code>, <code>create</code>, <code>ignore</code></td><td>Generates bonds from interatomic distances when the CIF doesn't list them.</td></tr>
+                <tr><td><code>disorder</code></td><td><code>DisorderFilter</code></td><td><code>all</code>, <code>group&lt;rank&gt;of&lt;total&gt;</code></td><td>Shows only one disorder group (plus non-disordered atoms) at a time.</td></tr>
+                <tr><td><code>symmetry</code></td><td><code>SymmetryGrower</code></td><td><code>none</code>, <code>hbonds</code>, <code>fragment</code>, <code>fragment-hbonds</code>, <code>cell</code>, <code>fragment-cell</code></td><td>Grows one additional symmetry sphere via bonds, H-bonds, or the whole unit cell.</td></tr>
+                <tr><td><code>hydrogen</code></td><td><code>HydrogenFilter</code></td><td><code>none</code>, <code>constant</code>, <code>anisotropic</code></td><td>Controls hydrogen atom display (hidden, constant-radius sphere, or real ADP).</td></tr>
+            </table>
+
+            <h3>Via a viewer</h3>
+            <pre><code>viewer.modifiers.hydrogen.mode = 'constant';
+await viewer.updateStructure();</code></pre>
+
+            <h3>Standalone, without a viewer</h3>
+            <p>
+                <code>HydrogenFilter</code>, <code>DisorderFilter</code>, <code>SymmetryGrower</code>,
+                <code>AtomLabelFilter</code>, and <code>BondGenerator</code> are all exported from the package root, so
+                you can filter a <code>CrystalStructure</code> directly &mdash; useful for batch processing or
+                non-visual tooling:
+            </p>
+            <pre><code>import { CIF, CrystalStructure, SymmetryGrower } from 'cifvis';
+
+const cif = new CIF(cifText);
+const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+
+const grower = new SymmetryGrower('fragment');
+const grownStructure = grower.apply(structure);</code></pre>
+        </section>
+
+        <section>
+            <h2>Using CifVis structures in Three.js</h2>
+            <p>
+                <code>CrystalViewer</code> bundles a whole scene: camera, controls, lighting, selection, the filter
+                pipeline. If you already have your own Three.js scene and just want the molecule geometry,
+                <code>ORTEP3JsStructure</code> is the layer underneath <code>CrystalViewer</code> that does exactly
+                that &mdash; it turns a <code>CrystalStructure</code> into a plain <code>THREE.Group</code> of atoms,
+                bonds, and hydrogen bonds, with no scene/camera/renderer of its own.
+            </p>
+            <pre><code>import * as THREE from 'three';
+import { CIF, CrystalStructure, ORTEP3JsStructure } from 'cifvis';
+
+const cif = new CIF(cifText);
+const structure = CrystalStructure.fromCIF(cif.getBlock(0));
+
+const ortep = new ORTEP3JsStructure(structure);   // options merge over the same
+                                                   // defaults CrystalViewer uses
+const group = ortep.getGroup();                   // THREE.Group: atoms + bonds + hBonds
+
+const scene = new THREE.Scene();
+scene.add(group);
+// ...your own camera, renderer, lights, and controls
+</code></pre>
+            <ul class="feature-list">
+                <li><code>new ORTEP3JsStructure(crystalStructure, options)</code> builds the meshes immediately in the
+                constructor; <code>options</code> is the same shape as <code>CrystalViewer</code>'s constructor
+                options (<code>atomEllipsoidStyle</code>, <code>bondRadius</code>, <code>elementProperties</code>,
+                etc. &mdash; see the <a href="./options-reference.html">Options Reference</a>).</li>
+                <li><code>getGroup()</code> returns a fresh <code>THREE.Group</code> each call, containing every atom/bond/hbond mesh.</li>
+                <li><code>ortep.dispose()</code> frees the cached geometries/materials &mdash; call it when you're done with this structure (e.g. before building a new one), the same way <code>CrystalViewer.dispose()</code> does internally.</li>
+                <li>It only renders what you hand it &mdash; it does not run the Filters pipeline. Apply
+                <code>HydrogenFilter</code>, <code>SymmetryGrower</code>, etc. to your <code>CrystalStructure</code>
+                yourself first if you want filtered/grown output (see Filters above).</li>
+                <li>You still own the rest of the scene: camera, renderer, lighting, and orbit/selection controls
+                aren't provided. The materials use physically-based rendering (roughness/metalness), so at least one
+                light is needed for atoms/bonds to be visible &mdash; a simple <code>THREE.AmbientLight</code> plus a
+                <code>THREE.DirectionalLight</code> is enough to start.</li>
+            </ul>
+
+            <h3>Try it live</h3>
+            <p>A bare Three.js scene (own renderer, camera, light, and a simple drag-to-rotate handler) with no <code>CrystalViewer</code> involved &mdash; just <code>ORTEP3JsStructure</code>.</p>
+            <div id="threejs-demo-container" style="width:100%;aspect-ratio:16/9;border:1px solid var(--border-color);border-radius:5px;"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>CifVis &bull; <a href="https://github.com/niolon/cifvis" target="_blank">GitHub</a> &bull; Released under <a href="https://www.mozilla.org/en-US/MPL/2.0/" target="_blank">Mozilla Public License 2.0</a></p>
+    </footer>
+
+</body>
+</html>
