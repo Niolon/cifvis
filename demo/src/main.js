@@ -1,5 +1,6 @@
 import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
+import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 
 /**
@@ -171,7 +172,7 @@ function initializeDisorderButton() {
     disorderButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('disorder');
         if (result.success) {
-            disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
+            disorderButton.innerHTML = getDisorderIcon(SVG_ICONS['disorder'], viewer.modifiers.disorder.mode);
         }
     });
 }
@@ -216,7 +217,7 @@ function adaptButtons() {
     const hasDisorder = viewer.numberModifierModes('disorder') > 1;
     disorderButton.style.display = hasDisorder ? 'flex' : 'none';
     if (hasDisorder) {
-        disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
+        disorderButton.innerHTML = getDisorderIcon(SVG_ICONS['disorder'], viewer.modifiers.disorder.mode);
     }
 
     const symmetryButton = document.getElementById('symmetry-button');

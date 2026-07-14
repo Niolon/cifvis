@@ -4,6 +4,7 @@ export { CrystalStructure } from './lib/structure/crystal.js';
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { formatValueEsd } from './lib/formatting.js';
 export { tryToFixCifBlock } from './lib/fix-cif/base.js';
+export { getDisorderIcon, generateDisorderGroupIcon } from './lib/disorder-icons.js';
 export { 
     HydrogenFilter, DisorderFilter, SymmetryGrower, 
 } from './lib/structure/structure-modifiers/modes.js';

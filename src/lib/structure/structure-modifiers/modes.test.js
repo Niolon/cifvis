@@ -64,17 +64,18 @@ describe('DisorderFilter', () => {
         const filter = new DisorderFilter();
 
         const modes = filter.getApplicableModes(structure);
-        expect(modes).toContain(DisorderFilter.MODES.GROUP1);
-        expect(modes).not.toContain(DisorderFilter.MODES.GROUP2);
+        expect(modes).toContain(DisorderFilter.modeForGroup(1, 1));
+        expect(modes).not.toContain(DisorderFilter.modeForGroup(2, 1));
     });
 
-    test('handles group 2 disorder', () => {
+    test('names a single group by rank, not by its raw CIF group number', () => {
         const structure = MockStructure.createDefault({ disorderGroups: [3] }).build();
         const filter = new DisorderFilter();
 
+        // Only one group is present, so it is always rank 1 of 1, regardless
+        // of its raw CIF disorder_group value.
         const modes = filter.getApplicableModes(structure);
-        expect(modes).toContain(DisorderFilter.MODES.GROUP2);
-        expect(modes).not.toContain(DisorderFilter.MODES.GROUP1);
+        expect(modes).toEqual([DisorderFilter.MODES.ALL, DisorderFilter.modeForGroup(1, 1)]);
     });
 
     test('handles mixed disorder groups', () => {
@@ -82,32 +83,47 @@ describe('DisorderFilter', () => {
         const filter = new DisorderFilter();
 
         const modes = filter.getApplicableModes(structure);
-        expect(modes).toContain(DisorderFilter.MODES.GROUP1);
-        expect(modes).toContain(DisorderFilter.MODES.GROUP2);
+        expect(modes).toContain(DisorderFilter.modeForGroup(1, 2));
+        expect(modes).toContain(DisorderFilter.modeForGroup(2, 2));
     });
 
-    test('filters group 1 atoms in GROUP2 mode', () => {
+    test('handles an arbitrary number of disorder groups', () => {
+        const structure = MockStructure.createDefault({ disorderGroups: [1, 2, 3, 4, 5] }).build();
+        const filter = new DisorderFilter();
+
+        const modes = filter.getApplicableModes(structure);
+        expect(modes).toEqual([
+            DisorderFilter.MODES.ALL,
+            ...[1, 2, 3, 4, 5].map(rank => DisorderFilter.modeForGroup(rank, 5)),
+        ]);
+    });
+
+    test('filters atoms of other groups while keeping non-disordered atoms', () => {
         const structure = MockStructure.createDefault({
-            disorderGroups: [1, 2],
+            disorderGroups: [1, 2, 3],
             hasHydrogens: true,
         }).build();
-        const filter = new DisorderFilter(DisorderFilter.MODES.GROUP2);
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(2, 3));
 
         const filtered = filter.apply(structure);
         expect(filtered.atoms.some(atom => atom.disorderGroup === 1)).toBe(false);
+        expect(filtered.atoms.some(atom => atom.disorderGroup === 3)).toBe(false);
+        expect(filtered.atoms.some(atom => atom.disorderGroup === 2)).toBe(true);
+        expect(filtered.atoms.some(atom => atom.disorderGroup === 0)).toBe(true);
     });
 
-    test('filters bonds with group 1 atoms in GROUP2 mode', () => {
+    test('filters bonds with atoms outside the selected group', () => {
         const structure = MockStructure.createDefault({
             disorderGroups: [1, 3], // Create atoms A0 (group 1) and A1 (group 3)
         })
             .addBond('A0', 'A1') // Bond between groups 1 and 3
             .build();
 
-        const filter = new DisorderFilter(DisorderFilter.MODES.GROUP2);
+        // A1's group (raw value 3) is the higher of the two present groups, so rank 2 of 2.
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(2, 2));
         const filtered = filter.apply(structure);
 
-        // Check bond is filtered out when in GROUP2 mode (using atomId with |1_555 format)
+        // Check bond is filtered out since A0 (group 1, rank 1) is not visible in this mode
         expect(filtered.bonds.some(bond => bond.atom1Id === 'A0|1_555' || bond.atom2Id === 'A1|1_555',
         )).toBe(false);
     });
@@ -119,7 +135,7 @@ describe('DisorderFilter', () => {
             .addBond('A0', 'A1') // Bond between disorder groups 1 and 2
             .build();
 
-        const filter = new DisorderFilter(DisorderFilter.MODES.GROUP1);
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(1, 2));
         const filtered = filter.apply(structure);
 
         expect(filtered.bonds.some(bond => bond.atom1Id === 'A0|1_555' && bond.atom2Id === 'A1|1_555',
@@ -134,7 +150,7 @@ describe('DisorderFilter', () => {
             .addHBond('A0', 'H1', 'O1') // H-bond with disordered donor
             .build();
 
-        const filter = new DisorderFilter(DisorderFilter.MODES.GROUP2);
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(2, 2));
         const filtered = filter.apply(structure);
 
         expect(filtered.hBonds.some(hbond => hbond.donorAtomId === 'A0|1_555',
@@ -149,7 +165,7 @@ describe('DisorderFilter', () => {
             .addHBond('O1', 'A0', 'A1') // H-bond with disordered H and acceptor
             .build();
 
-        const filter = new DisorderFilter(DisorderFilter.MODES.GROUP1);
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(1, 2));
         const filtered = filter.apply(structure);
 
         expect(filtered.hBonds.some(hbond => hbond.hydrogenAtomId === 'A0|1_555' &&
@@ -158,9 +174,9 @@ describe('DisorderFilter', () => {
     });
 
     test.each([
-        [DisorderFilter.MODES.GROUP1, 'A1'],
-        [DisorderFilter.MODES.GROUP2, 'A0'],
-    ])('filters external h-bonds whose acceptor is removed in %s mode', (mode, acceptor) => {
+        [1, 'A1'],
+        [2, 'A0'],
+    ])('filters external h-bonds whose acceptor is removed in group%sof2 mode', (rank, acceptor) => {
         const structure = MockStructure.createDefault({
             hasHydrogens: true,
             disorderGroups: [1, 2],
@@ -168,10 +184,22 @@ describe('DisorderFilter', () => {
             .addHBond('O1', 'H1', acceptor, '2_555')
             .build();
 
-        const filtered = new DisorderFilter(mode).apply(structure);
+        const filtered = new DisorderFilter(DisorderFilter.modeForGroup(rank, 2)).apply(structure);
 
         expect(filtered.hBonds.some(hbond => hbond.acceptorAtomLabel === acceptor)).toBe(false);
         expect(() => growExternalHBonds(filtered)).not.toThrow();
+    });
+
+    test('rejects syntactically invalid modes', () => {
+        expect(() => new DisorderFilter('bogus')).toThrow('Invalid DisorderFilter mode');
+    });
+
+    test('falls back to ALL when the selected group is not present', () => {
+        const structure = MockStructure.createDefault({ disorderGroups: [1, 2] }).build();
+        const filter = new DisorderFilter(DisorderFilter.modeForGroup(5, 2));
+
+        filter.ensureValidMode(structure);
+        expect(filter.mode).toBe(DisorderFilter.MODES.ALL);
     });
 });
 

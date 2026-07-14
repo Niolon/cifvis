@@ -129,29 +129,79 @@ export class HydrogenFilter extends BaseFilter {
 }
 /**
  * Filters atoms, bonds, and h-bonds based on their disorder groups.
- * Can show all atoms, only disorder group 1, or only disorder groups > 1.
+ * Can show all atoms, or restrict the view to a single disorder group (plus
+ * any non-disordered atoms). The set of selectable groups is derived from the
+ * disorder groups actually present in a given structure, so any number of
+ * groups is supported.
+ *
+ * Group modes are named by rank and total count, e.g. "group1of3", rather
+ * than by the raw CIF disorder_group number. This keeps mode names (and the
+ * icons chosen for them) stable positionally: "group1of2"/"group2of2" always
+ * refer to the two-tone dedicated artwork, regardless of which disorder_group
+ * numbers actually appear in the CIF file.
  * @augments BaseFilter
  */
 
 export class DisorderFilter extends BaseFilter {
     static MODES = Object.freeze({
         ALL: 'all',
-        GROUP1: 'group1',
-        GROUP2: 'group2',
     });
 
-    static PREFERRED_FALLBACK_ORDER = [
-        DisorderFilter.MODES.ALL,
-        DisorderFilter.MODES.GROUP1,
-        DisorderFilter.MODES.GROUP2,
-    ];
+    static PREFERRED_FALLBACK_ORDER = [DisorderFilter.MODES.ALL];
+
+    /**
+     * Builds the mode string for a disorder group at a given rank
+     * @param {number} rank - 1-based position of the group among all groups present
+     * @param {number} total - Total number of disorder groups present
+     * @returns {string} Mode string, e.g. "group1of2"
+     */
+    static modeForGroup(rank, total) {
+        return `group${rank}of${total}`;
+    }
+
+    /**
+     * Extracts the rank and total encoded in a mode string
+     * @param {string} mode - Mode string
+     * @returns {{rank: number, total: number}|null} Parsed mode, or null if not a group mode
+     */
+    static parseGroupMode(mode) {
+        const match = /^group(\d+)of(\d+)$/.exec(mode);
+        return match ? { rank: Number(match[1]), total: Number(match[2]) } : null;
+    }
 
     /**
      * Creates a new disorder filter
-     * @param {DisorderFilter.MODES} [mode] - Initial filter mode
+     * @param {string} [mode] - Initial filter mode
      */
     constructor(mode = DisorderFilter.MODES.ALL) {
         super(DisorderFilter.MODES, mode, 'DisorderFilter', DisorderFilter.PREFERRED_FALLBACK_ORDER);
+        this._groupValuesByRank = [];
+    }
+
+    /**
+     * Gets the current mode
+     * @returns {string} Current mode
+     */
+    get mode() {
+        return this._mode;
+    }
+
+    /**
+     * Sets the current mode. Unlike the fixed-mode filters, the set of valid
+     * group modes depends on the structure last analyzed by getApplicableModes,
+     * so only the mode syntax ("all" or "group<rank>of<total>") is validated here.
+     * @param {string} value - New mode to set
+     * @throws {Error} If mode syntax is invalid
+     */
+    set mode(value) {
+        const usedMode = value.toLowerCase().replace(/_/g, '-');
+        if (usedMode !== DisorderFilter.MODES.ALL && DisorderFilter.parseGroupMode(usedMode) === null) {
+            throw new Error(
+                `Invalid DisorderFilter mode: "${value}". ` +
+                'Valid modes are: "all" or "group<rank>of<total>" (e.g. "group1of2").',
+            );
+        }
+        this._mode = usedMode;
     }
 
     /**
@@ -162,37 +212,24 @@ export class DisorderFilter extends BaseFilter {
     apply(structure) {
         this.ensureValidMode(structure);
 
+        const parsedMode = DisorderFilter.parseGroupMode(this.mode);
+        const selectedGroup = parsedMode ? this._groupValuesByRank[parsedMode.rank - 1] : null;
+        // Non-disordered atoms (group 0) are always shown alongside the selected group.
+        const isVisible = atom => selectedGroup === null ||
+            Number(atom.disorderGroup) === 0 || Number(atom.disorderGroup) === selectedGroup;
+
         // External bond endpoints identify symmetry images that are not present yet.
         // Disorder membership is a property of the asymmetric-unit atom and is unchanged
         // by symmetry, so resolve all references through their base labels here.
         const getAsymmetricAtom = atomId => structure.getAtomByLabel(atomId.split('|')[0]);
 
-        const filteredAtoms = structure.atoms.filter(atom => {
-            if (this.mode === DisorderFilter.MODES.GROUP1 && atom.disorderGroup > 1) {
-                return false;
-            }
-            if (this.mode === DisorderFilter.MODES.GROUP2 && atom.disorderGroup === 1) {
-                return false;
-            }
-            return true;
-        });
+        const filteredAtoms = structure.atoms.filter(isVisible);
 
         const filteredBonds = structure.bonds.filter(bond => {
             try {
                 const atom1 = getAsymmetricAtom(bond.atom1Id);
                 const atom2 = getAsymmetricAtom(bond.atom2Id);
-
-                if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                    (atom1.disorderGroup > 1 || atom2.disorderGroup > 1)) {
-                    return false;
-                }
-
-                if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                    (atom1.disorderGroup === 1 || atom2.disorderGroup === 1)) {
-                    return false;
-                }
-
-                return true;
+                return isVisible(atom1) && isVisible(atom2);
             } catch {
                 // Do not retain dangling connections after their atoms have been removed.
                 return false;
@@ -204,20 +241,7 @@ export class DisorderFilter extends BaseFilter {
                 const donor = getAsymmetricAtom(hbond.donorAtomId);
                 const hydrogen = getAsymmetricAtom(hbond.hydrogenAtomId);
                 const acceptor = getAsymmetricAtom(hbond.acceptorAtomId);
-
-                if (this.mode === DisorderFilter.MODES.GROUP1 &&
-                    (donor.disorderGroup > 1 || hydrogen.disorderGroup > 1 ||
-                        acceptor.disorderGroup > 1)) {
-                    return false;
-                }
-
-                if (this.mode === DisorderFilter.MODES.GROUP2 &&
-                    (donor.disorderGroup === 1 || hydrogen.disorderGroup === 1 ||
-                        acceptor.disorderGroup === 1)) {
-                    return false;
-                }
-
-                return true;
+                return isVisible(donor) && isVisible(hydrogen) && isVisible(acceptor);
             } catch {
                 return false;
             }
@@ -233,26 +257,28 @@ export class DisorderFilter extends BaseFilter {
     }
 
     /**
-     * Gets applicable modes based on presence of disorder groups
+     * Gets applicable modes based on the disorder groups present in the structure.
+     * As a side effect, refreshes this.MODES and the rank-to-group-value mapping
+     * to reflect those groups.
      * @param {CrystalStructure} structure - Structure to analyze
      * @returns {Array<string>} Array of applicable mode names
      */
     getApplicableModes(structure) {
-        const modes = [DisorderFilter.MODES.ALL];
-        const hasDisorder = structure.atoms.some(atom => atom.disorderGroup > 0);
+        const groups = [...new Set(
+            structure.atoms
+                .map(atom => Number(atom.disorderGroup))
+                .filter(group => group > 0),
+        )].sort((groupA, groupB) => groupA - groupB);
 
-        if (!hasDisorder) {
-            return modes;
-        }
+        this._groupValuesByRank = groups;
 
-        if (structure.atoms.some(atom => atom.disorderGroup === 1)) {
-            modes.push(DisorderFilter.MODES.GROUP1);
-        }
-        if (structure.atoms.some(atom => atom.disorderGroup > 1)) {
-            modes.push(DisorderFilter.MODES.GROUP2);
-        }
+        const modes = { ALL: DisorderFilter.MODES.ALL };
+        groups.forEach((_group, index) => {
+            modes[`GROUP${index + 1}`] = DisorderFilter.modeForGroup(index + 1, groups.length);
+        });
+        this.MODES = Object.freeze(modes);
 
-        return modes;
+        return Object.values(this.MODES);
     }
 }
 

@@ -2,6 +2,7 @@ import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
+import { getDisorderIcon } from './disorder-icons.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -309,25 +310,50 @@ export class CifViewWidget extends HTMLElement {
     addButton(container, type, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
-        const mode = this.viewer.modifiers[type].mode;
-        button.innerHTML = this.icons[type][mode];
         button.title = altText;
-        
+        this.renderButtonIcon(button, type, this.viewer.modifiers[type].mode, altText);
+
+        container.appendChild(button);
+
+        button.addEventListener('click', async () => {
+            const result = await this.viewer.cycleModifierMode(type);
+            if (result.success) {
+                this.renderButtonIcon(button, type, result.mode, altText);
+            }
+        });
+    }
+
+    /**
+     * Renders a modifier button's icon and re-applies the accessibility
+     * attributes (alt/role/aria-label) to the newly inserted SVG, since
+     * replacing innerHTML drops whatever was set on the previous element.
+     * @param {HTMLButtonElement} button - Button whose icon should be updated
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @param {string} altText - Accessible label for the icon
+     */
+    renderButtonIcon(button, type, mode, altText) {
+        button.innerHTML = this.getIcon(type, mode);
+
         const svgElement = button.querySelector('svg');
         if (svgElement) {
             svgElement.setAttribute('alt', altText);
             svgElement.setAttribute('role', 'img');
             svgElement.setAttribute('aria-label', altText);
         }
-        
-        container.appendChild(button);
+    }
 
-        button.addEventListener('click', async () => {
-            const result = await this.viewer.cycleModifierMode(type);
-            if (result.success) {
-                button.innerHTML = this.icons[type][result.mode];
-            }
-        });
+    /**
+     * Resolves the icon markup for a modifier mode.
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @returns {string} SVG markup for the icon
+     */
+    getIcon(type, mode) {
+        if (type === 'disorder') {
+            return getDisorderIcon(this.icons.disorder, mode);
+        }
+        return this.icons[type]?.[mode] || '';
     }
 
     async attributeChangedCallback(name, oldValue, newValue) {
