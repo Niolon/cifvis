@@ -1,6 +1,3 @@
-/** @typedef {CrystalStructure} CrystalStructure */
-/** @typedef {Bond} Bond */
-
 /**
  * Covalent radii for non-metals commonly involved in intermolecular contacts
  * reported through `_geom_bond` loops.
@@ -36,8 +33,8 @@ const NON_METAL_RADIUS_TOLERANCE = 1.6;
  *
  * Unknown lengths and metal coordination bonds are retained conservatively;
  * clearly non-covalent non-metal contacts and implausibly long entries are not.
- * @param {CrystalStructure} structure - Owning structure
- * @param {Bond} bond - Bond/contact to classify
+ * @param {import('./crystal.js').CrystalStructure} structure - Owning structure
+ * @param {import('./bonds.js').Bond} bond - Bond/contact to classify
  * @returns {boolean} Whether the row should define chemical connectivity
  */
 export function isChemicalBond(structure, bond) {
@@ -68,9 +65,9 @@ export function isChemicalBond(structure, bond) {
 
 /**
  * Returns the subset of CIF bond rows that define chemical connectivity.
- * @param {CrystalStructure} structure - Owning structure
- * @param {Bond[]} [bonds] - Rows to classify
- * @returns {Bond[]} Chemical graph edges
+ * @param {import('./crystal.js').CrystalStructure} structure - Owning structure
+ * @param {import('./bonds.js').Bond[]} [bonds] - Rows to classify
+ * @returns {import('./bonds.js').Bond[]} Chemical graph edges
  */
 export function chemicalBonds(structure, bonds = structure.bonds) {
     // CIF atom labels identify asymmetric-unit atoms. Build the same first-match
