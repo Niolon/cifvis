@@ -1,12 +1,25 @@
-import { create, all } from 'mathjs';
-import { 
-    calculateFractToCartMatrix, 
-    adpToMatrix, 
-    matrixToAdp, 
-    uCifToUCart, 
+import {
+    calculateFractToCartMatrix,
+    adpToMatrix,
+    matrixToAdp,
+    uCifToUCart,
 } from './fract-to-cart.js';
 
-const math = create(all);
+/**
+ * @param {object} result - math-lite Matrix
+ * @param {number[][]} expected - Plain array to compare against
+ * @returns {number} The maximum absolute elementwise difference
+ */
+function maxAbsDiff(result, expected) {
+    const resultArray = result.toArray();
+    let max = 0;
+    for (let i = 0; i < resultArray.length; i++) {
+        for (let j = 0; j < resultArray[i].length; j++) {
+            max = Math.max(max, Math.abs(resultArray[i][j] - expected[i][j]));
+        }
+    }
+    return max;
+}
 
 describe('calculateFractToCartMatrix', () => {
     test('calculates matrix for cubic cell', () => {
@@ -20,13 +33,13 @@ describe('calculateFractToCartMatrix', () => {
         };
         
         const result = calculateFractToCartMatrix(cellParams);
-        const expectedMatrix = math.matrix([
+        const expectedMatrix = [
             [10, 0, 0],
             [0, 10, 0],
             [0, 0, 10],
-        ]);
-        
-        expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-10);
+        ];
+
+        expect(maxAbsDiff(result, expectedMatrix)).toBeLessThan(1e-10);
     });
 
     test('calculates matrix for orthorhombic cell', () => {
@@ -40,13 +53,13 @@ describe('calculateFractToCartMatrix', () => {
         };
         
         const result = calculateFractToCartMatrix(cellParams);
-        const expectedMatrix = math.matrix([
+        const expectedMatrix = [
             [5, 0, 0],
             [0, 10, 0],
             [0, 0, 15],
-        ]);
-        
-        expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-10);
+        ];
+
+        expect(maxAbsDiff(result, expectedMatrix)).toBeLessThan(1e-10);
     });
 
     test('calculates matrix for monoclinic cell', () => {
@@ -61,13 +74,13 @@ describe('calculateFractToCartMatrix', () => {
         
         const result = calculateFractToCartMatrix(cellParams);
         // Values verified against published crystallographic software
-        const expectedMatrix = math.matrix([
+        const expectedMatrix = [
             [5, 0, -2.604723],
             [0, 10, 0],
             [0, 0, 14.772116],
-        ]);
-        
-        expect(math.max(math.abs(math.subtract(result, expectedMatrix)))).toBeLessThan(1e-6);
+        ];
+
+        expect(maxAbsDiff(result, expectedMatrix)).toBeLessThan(1e-6);
     });
 
     test('calculates matrix for triclinic cell', () => {
@@ -114,11 +127,11 @@ describe('adpToMatrix and matrixToAdp', () => {
 describe('uCifToUCart', () => {
     test('preserves ADPs for orthogonal systems', () => {
         // Test for cubic system
-        const cubicMatrix = math.matrix([
+        const cubicMatrix = [
             [10, 0, 0],
             [0, 10, 0],
             [0, 0, 10],
-        ]);
+        ];
         
         const adps = [0.01, 0.02, 0.03, 0.001, 0.002, 0.003];
         const cubicResult = uCifToUCart(cubicMatrix, adps);
@@ -129,11 +142,11 @@ describe('uCifToUCart', () => {
         });
 
         // Test for orthorhombic system
-        const orthoMatrix = math.matrix([
+        const orthoMatrix = [
             [5, 0, 0],
             [0, 8, 0],
             [0, 0, 12],
-        ]);
+        ];
         
         const orthoResult = uCifToUCart(orthoMatrix, adps);
         
@@ -144,11 +157,11 @@ describe('uCifToUCart', () => {
     });
 
     test('handles non-orthogonal transformation', () => {
-        const fractToCartMatrix = math.matrix([
+        const fractToCartMatrix = [
             [5, 0, -2.607837],
             [0, 10, 0],
             [0, 0, 14.781476],
-        ]);
+        ];
         
         const adps = [0.01, 0.02, 0.03, 0.001, 0.002, 0.003];
         const result = uCifToUCart(fractToCartMatrix, adps);

@@ -1,4 +1,4 @@
-import { math } from '../math.js';
+import * as math from '../math-lite.js';
 import { Atom, UnitCell } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';

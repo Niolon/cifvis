@@ -38,7 +38,6 @@
   "author": "Paul Niklas Ruth",
   "license": "MPL-2.0",
   "dependencies": {
-    "mathjs": "^15.2.0",
     "three": "^0.185.1"
   },
   "devDependencies": {
@@ -52,6 +51,7 @@
     "globals": "^17.7.0",
     "jsdoc": "^4.0.5",
     "jsdom": "^29.1.1",
+    "mathjs": "^15.2.0",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"
   }

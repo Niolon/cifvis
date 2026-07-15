@@ -1,4 +1,4 @@
-import { math } from '../math.js';
+import * as math from '../math-lite.js';
 import { uCifToUCart, adpToMatrix } from './fract-to-cart.js';
 import { UnitCell } from './crystal.js';
 import { CifBlock } from '../read-cif/base.js';

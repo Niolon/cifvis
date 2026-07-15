@@ -1,7 +1,7 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
-import { math } from '../../../math.js';
+import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
 import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from './../../applied-symmetry.js';

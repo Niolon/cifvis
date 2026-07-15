@@ -1,5 +1,3 @@
-import { create, all } from 'mathjs';
-
 import {
     CrystalStructure, UnitCell, Atom, inferElementFromLabel,
 } from './crystal.js';
@@ -7,8 +5,6 @@ import { Bond, HBond } from './bonds.js';
 import { FractPosition } from './position.js';
 import { UIsoADP, UAnisoADP } from './adp.js';
 import { CIF } from '../read-cif/base.js';
-
-const math = create(all);
 describe('inferElementFromLabel', () => {
     // Test normal atom labels
     test('handles common crystallographic naming patterns', () => {
@@ -411,35 +407,51 @@ _cell_angle_gamma -90
         let cell;
         let originalMatrix;
 
+        /**
+         * @param {object} m - math-lite Matrix
+         * @returns {number[][]} A deep-copied plain array
+         */
+        function cloneMatrix(m) {
+            return m.toArray().map(row => [...row]);
+        }
+        /**
+         * @param {object} a - math-lite Matrix
+         * @param {number[][]} b - Plain array to compare against
+         * @returns {boolean} True if `a` and `b` have identical contents
+         */
+        function matricesDeepEqual(a, b) {
+            return JSON.stringify(a.toArray()) === JSON.stringify(b);
+        }
+
         beforeEach(() => {
             cell = new UnitCell(10, 10, 10, 90, 90, 90);
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
         });
 
         test('updates matrix when changing lengths', () => {
             cell.a = 15;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
 
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.b = 12;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
 
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.c = 8;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
         });
 
         test('updates matrix when changing angles', () => {
             cell.alpha = 100;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
 
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.beta = 95;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
 
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.gamma = 120;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
         });
     });
 });

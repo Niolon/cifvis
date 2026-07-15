@@ -10,15 +10,13 @@ import { Bond, HBond } from '../structure/bonds.js';
 import { FractPosition } from '../structure/position.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
-import { create, all } from 'mathjs';
-
-const math = create(all);
+import { matrix as buildMatrix } from '../math-lite.js';
 
 describe('Transformation Functions', () => {
     describe('getThreeEllipsoidMatrix', () => {
         test('correctly converts mathjs matrix to THREE.Matrix4', () => {
             const mockUAnisoADP = {
-                getEllipsoidMatrix: vi.fn().mockReturnValue(math.matrix([
+                getEllipsoidMatrix: vi.fn().mockReturnValue(buildMatrix([
                     [0.1, 0.2, 0.3],
                     [0.4, 0.5, 0.6],
                     [0.7, 0.8, 0.9],
