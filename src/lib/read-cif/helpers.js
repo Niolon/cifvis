@@ -3,6 +3,8 @@
  * Parses a CIF value string into its numeric value and standard uncertainty (SU).
  * @param {string} entryString - The CIF value string to parse.
  * @param {boolean} splitSU - Whether to split standard uncertainty values into value and SU.
+ * @param {number} [cifVersion] - CIF format version (1 or 2). For CIF2 the token has already been
+ *   unquoted by the tokenizer, so quote-stripping and CIF1 backslash de-escaping are skipped.
  * @returns {object} Object containing:
  *   - value {number|string}: The parsed value (number for numeric values, string for text)
  *   - su {number|NaN}: The standard uncertainty if present and splitSU=true, NaN otherwise
@@ -13,7 +15,7 @@
  * parseValue("1.23E4(5)", true)      // Returns {value: 12300, su: 50}
  * parseValue("1.23e-4(2)", true)     // Returns {value: 0.000123, su: 0.0000002}
  */
-export function parseValue(entryString, splitSU = true) {
+export function parseValue(entryString, splitSU = true, cifVersion = 1) {
     // First try to match scientific notation with uncertainty
     const sciPattern = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)\((\d+)\)$/;
     const sciMatch = entryString.match(sciPattern);
@@ -82,6 +84,10 @@ export function parseValue(entryString, splitSU = true) {
 
     // Handle regular numbers and text
     if (isNaN(entryString)) {
+        if (cifVersion === 2) {
+            // CIF2 tokens arrive already unquoted; CIF2 has no backslash escaping.
+            return { value: entryString, su: NaN };
+        }
         if (/^".*"$/.test(entryString) || /^'.*'$/.test(entryString)) {
             return { value: entryString.slice(1, -1).replace(/\\([^\\])/g, '$1'), su: NaN };
         } else {

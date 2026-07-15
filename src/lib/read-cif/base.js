@@ -1,10 +1,45 @@
 import { parseMultiLineString, parseValue } from './helpers.js';
 import { CifLoop, resolveLoopNamingConflict } from './loop.js';
+import { detectCifVersion, stripBom } from './version.js';
+import { tokenizeCif2 } from './tokenizer.js';
+import { parseCif2Value } from './cif2-values.js';
+
+/**
+ * Splits a CIF2 token stream into per-block token slices at each top-level
+ * `data` token. Bracket depth is tracked so a `data`-looking token that only
+ * occurs inside a list/table cannot start a new block; triple-quoted and
+ * text-field content never yields a `data` token in the first place.
+ * @param {Array<object>} tokens - The whole-file CIF2 token stream.
+ * @returns {Array<Array<object>>} Array of block slices, each beginning with its `data` token.
+ */
+export function splitCif2Blocks(tokens) {
+    const blocks = [];
+    let current = null;
+    let depth = 0;
+
+    for (const token of tokens) {
+        if (token.type === 'listOpen' || token.type === 'tableOpen') {
+            depth++;
+        } else if (token.type === 'listClose' || token.type === 'tableClose') {
+            depth--;
+        }
+
+        if (token.type === 'data' && depth === 0) {
+            current = [token];
+            blocks.push(current);
+        } else if (current) {
+            current.push(token);
+        }
+    }
+
+    return blocks;
+}
 
 /**
  * Represents a CIF (Crystallographic Information File) parser.
  * @property {string} rawCifBlocks - Raw CIF blocks after initial multiline merging
  * @property {boolean} splitSU - Whether to split standard uncertainties into value and SU
+ * @property {number} version - Detected CIF format version (1 or 2)
  * @property {Array<CifBlock>|null} blocks - Parsed CIF blocks, created lazily when accessed
  */
 export class CIF {
@@ -16,7 +51,13 @@ export class CIF {
      */
     constructor(cifString, splitSU = true) {
         this.splitSU = splitSU;
-        this.rawCifBlocks = this.splitCifBlocks('\n\n' + cifString);
+        const cleanString = stripBom(cifString);
+        this.version = detectCifVersion(cleanString);
+        // CIF2 uses a token-based splitter (bracketed/triple-quoted values may contain
+        // `data_`-looking text); CIF1 keeps its original, untouched line-based splitter.
+        this.rawCifBlocks = this.version === 2
+            ? splitCif2Blocks(tokenizeCif2(cleanString))
+            : this.splitCifBlocks('\n\n' + cleanString);
         this.blocks = Array(this.rawCifBlocks.length).fill(null);
         this._blockNameMap = null;
     }
@@ -66,7 +107,7 @@ export class CIF {
             throw new Error(`Block index ${index} out of range. This CIF has ${this.rawCifBlocks.length} block(s).`);
         }
         if (!this.blocks[index]) {
-            this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU);
+            this.blocks[index] = new CifBlock(this.rawCifBlocks[index], this.splitSU, this.version);
         }
         return this.blocks[index];
     }
@@ -78,7 +119,7 @@ export class CIF {
     getAllBlocks() {
         for (let i = 0; i < this.blocks.length; i++) {
             if (!this.blocks[i]) {
-                this.blocks[i] = new CifBlock(this.rawCifBlocks[i], this.splitSU);
+                this.blocks[i] = new CifBlock(this.rawCifBlocks[i], this.splitSU, this.version);
             }
         }
         return this.blocks;
@@ -90,11 +131,21 @@ export class CIF {
         }
         
         this._blockNameMap = new Map();
-        
+
+        if (this.version === 2) {
+            // Each CIF2 block slice starts with its `data` token, which carries the block code.
+            this.rawCifBlocks.forEach((tokens, index) => {
+                if (tokens[0] && tokens[0].type === 'data') {
+                    this._blockNameMap.set(tokens[0].value, index);
+                }
+            });
+            return this._blockNameMap;
+        }
+
         // RegEx pattern to match the block name at the start of each block
         // Since the 'data_' prefix is already removed in splitCifBlocks
         const blockNameRegex = /^(\w+[\w.-]*)/;
-        
+
         this.rawCifBlocks.forEach((blockText, index) => {
             const match = blockNameRegex.exec(blockText.trim());
             if (match && match[1]) {
@@ -102,7 +153,7 @@ export class CIF {
                 this._blockNameMap.set(match[1], index);
             }
         });
-        
+
         return this._blockNameMap;
     }
 
@@ -129,21 +180,33 @@ export class CIF {
 
 /**
  * Represents a single data block within a CIF file.
- * @property {string} rawText - Raw text content of this block
+ * @property {string|null} rawText - Raw text content of this block (CIF1 blocks only)
+ * @property {Array<object>|null} tokens - CIF2 token slice for this block (CIF2 blocks only)
  * @property {boolean} splitSU - Whether to split standard uncertainties
- * @property {object | null} data - Parsed key-value pairs and loops, null until parse() is called
+ * @property {object | null} data - Parsed key-value pairs and loops, null until parse() is called.
+ *   Values are numbers, strings or {@link CifLoop} instances for CIF1 blocks; CIF2 blocks may
+ *   additionally hold `Array` values (CIF2 lists) and `Map` values (CIF2 tables), possibly nested.
+ * @property {number} version - CIF format version of this block (1 or 2)
  * @property {string|null} dataBlockName - Name of the data block (e.g., "data_crystal1")
  */
 export class CifBlock {
     /**
      * Creates a new CIF block instance.
      * @class
-     * @param {string} blockText - Raw text of the CIF block
+     * @param {string|Array<object>} blockContent - Raw block text (CIF1) or a CIF2 token slice (CIF2)
      * @param {boolean} [splitSU] - Whether to split standard uncertainties
+     * @param {number} [version] - CIF format version (1 or 2); defaults to 1 (CIF1)
      */
-    constructor(blockText, splitSU = true) {
-        this.rawText = blockText;
+    constructor(blockContent, splitSU = true, version = 1) {
         this.splitSU = splitSU;
+        this.version = version;
+        if (version === 2) {
+            this.tokens = blockContent;
+            this.rawText = null;
+        } else {
+            this.rawText = blockContent;
+            this.tokens = null;
+        }
         this.data = null;
         this.dataBlockName = null;
     }
@@ -153,7 +216,12 @@ export class CifBlock {
      */
     parse() {
         if (this.data !== null) {
-            return; 
+            return;
+        }
+
+        if (this.version === 2) {
+            this.parseV2();
+            return;
         }
 
         this.data = {};
@@ -218,6 +286,97 @@ export class CifBlock {
             i++;
         }
     }
+
+    /**
+     * Parses a CIF2 block from its token slice into structured data.
+     * Populates the same `this.data` model as {@link CifBlock#parse}, additionally
+     * supporting CIF2 list (`Array`) and table (`Map`) values. Save frames are
+     * skipped (out of scope for structure visualization).
+     * @private
+     */
+    parseV2() {
+        this.data = {};
+        const tokens = this.tokens;
+        this.dataBlockName = tokens[0] && tokens[0].type === 'data' ? tokens[0].value : null;
+
+        let i = 1;
+        let saveDepth = 0;
+        while (i < tokens.length) {
+            const token = tokens[i];
+
+            // Skip over save frames entirely (including any nesting).
+            if (token.type === 'save') {
+                saveDepth++;
+                i++;
+                continue;
+            }
+            if (token.type === 'saveEnd') {
+                if (saveDepth > 0) {
+                    saveDepth--;
+                }
+                i++;
+                continue;
+            }
+            if (saveDepth > 0 || token.type === 'global' || token.type === 'stop') {
+                i++;
+                continue;
+            }
+
+            if (token.type === 'tag') {
+                const parsed = parseCif2Value(tokens, i + 1, this.splitSU);
+                this.data[token.value] = parsed.value;
+                if (!isNaN(parsed.su)) {
+                    this.data[token.value + '_su'] = parsed.su;
+                }
+                i = parsed.nextPos;
+                continue;
+            }
+
+            if (token.type === 'loop') {
+                i = this.parseLoopV2(tokens, i);
+                continue;
+            }
+
+            // Nothing else is valid at block level; skip to stay robust.
+            i++;
+        }
+    }
+
+    /**
+     * Parses a single CIF2 `loop_` starting at the loop keyword and stores it,
+     * reusing the shared loop-naming and conflict-resolution logic.
+     * @param {Array<object>} tokens - The block's token slice.
+     * @param {number} start - Index of the `loop` token.
+     * @returns {number} Index of the first token after the loop.
+     * @private
+     */
+    parseLoopV2(tokens, start) {
+        let i = start + 1;
+        const headers = [];
+        while (i < tokens.length && tokens[i].type === 'tag') {
+            headers.push(tokens[i].value);
+            i++;
+        }
+
+        const cells = [];
+        while (i < tokens.length
+            && (tokens[i].type === 'value' || tokens[i].type === 'listOpen' || tokens[i].type === 'tableOpen')) {
+            const parsed = parseCif2Value(tokens, i, this.splitSU);
+            cells.push({ value: parsed.value, su: parsed.su });
+            i = parsed.nextPos;
+        }
+
+        const loop = CifLoop.fromTokens(headers, cells, this.splitSU);
+        if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
+            this.data[loop.getName()] = loop;
+        } else {
+            const result = resolveLoopNamingConflict(this.data[loop.getName()], loop, loop.getName());
+            this.data[result.newNames[0]] = result.newEntries[0];
+            this.data[result.newNames[1]] = result.newEntries[1];
+        }
+        return i;
+    }
+
     get dataBlockName() {
         if (!this._dataBlockName) {
             this.parse();

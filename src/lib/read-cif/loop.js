@@ -104,6 +104,24 @@ export class CifLoop {
     }
 
     /**
+     * Creates a CifLoop from a CIF2 token stream. The values have already been
+     * assembled into cells (each `{value, su}`, where `value` may be a scalar,
+     * an `Array` (CIF2 list) or a `Map` (CIF2 table)), so this bypasses the
+     * line-based CIF1 tokenizing entirely and feeds the cells straight into the
+     * shared column-distribution logic.
+     * @static
+     * @param {Array<string>} headers - Column header names (data names).
+     * @param {Array<{value: *, su: number}>} cells - Row-major parsed cell values.
+     * @param {boolean} splitSU - Whether to split standard uncertainties.
+     * @returns {CifLoop} New CifLoop instance backed by the pre-parsed cells.
+     */
+    static fromTokens(headers, cells, splitSU) {
+        const loop = new CifLoop(headers, [], 0, splitSU);
+        loop._cif2Cells = cells;
+        return loop;
+    }
+
+    /**
      * Parses loop content into structured data.
      * Processes headers and values, handling standard uncertainties if enabled.
      * Extracts multi-line strings and populates the data property with column values.
@@ -119,7 +137,7 @@ export class CifLoop {
         this.headers = [...this.headerLines];
         this.data = {};
 
-        const dataArray = this.dataLines.reduce((acc, line, i) => {
+        const dataArray = this._cif2Cells !== undefined ? this._cif2Cells : this.dataLines.reduce((acc, line, i) => {
             line = line.trim();
             if (!line.length) {
                 return acc;
