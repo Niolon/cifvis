@@ -1,9 +1,7 @@
 
 import { UnitCell } from './crystal.js';
 import { CifBlock } from '../read-cif/base.js';
-import { create, all } from 'mathjs';
-
-const math = create(all);
+import { math } from '../math.js';
 
 /**
  * Abstract base class for representing positions in 3D space

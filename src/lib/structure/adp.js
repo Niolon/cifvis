@@ -1,10 +1,7 @@
-import { create, all } from 'mathjs';
-
+import { math } from '../math.js';
 import { uCifToUCart, adpToMatrix } from './fract-to-cart.js';
 import { UnitCell } from './crystal.js';
 import { CifBlock } from '../read-cif/base.js';
-
-const math = create(all, {});
 
 /**
  * Represents isotropic atomic displacement parameters

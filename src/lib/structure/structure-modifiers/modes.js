@@ -2,7 +2,7 @@ import { Atom, CrystalStructure } from '../crystal.js';
 import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
-import { create, all } from 'mathjs';
+import { math } from '../../math.js';
 import { growFragment } from './growing/grow-fragment.js';
 import { growCell } from './growing/grow-cell.js';
 import { chemicalBonds } from '../bond-classification.js';
@@ -11,7 +11,7 @@ import {
     growExternalHBonds,
     reconcileHBondsByGeometry,
 } from './growing/grow-hbonds.js';
-export const math = create(all);
+export { math };
 
 /**
  * Filters atoms, bonds, and H-bonds involving hydrogen atoms from a structure.
