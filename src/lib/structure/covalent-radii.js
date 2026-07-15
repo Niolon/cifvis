@@ -111,7 +111,8 @@ export const COVALENT_RADII = Object.freeze({
 /**
  * Group 1 (alkali) and Group 2 (alkaline-earth) element symbols, excluding
  * hydrogen. Bonds involving these elements are predominantly ionic, so a
- * tighter tolerance is applied (see `S_BLOCK_TOLERANCE` in bond generation).
+ * tighter tolerance is applied (see `BondGenerator.getTolerance` in
+ * structure-modifiers/fixers.js).
  */
 export const S_BLOCK_ELEMENTS = Object.freeze(new Set([
     'Li', 'Na', 'K', 'Rb', 'Cs', 'Fr',
