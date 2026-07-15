@@ -1,21 +1,29 @@
 import { COVALENT_RADII } from './covalent-radii.js';
 
 /**
- * Covalent radii for non-metals commonly involved in intermolecular contacts
- * reported through `_geom_bond` loops, sourced from the shared Cordero (2008)
- * `COVALENT_RADII` table.
+ * Elements whose Cordero (2008) radius sum reliably distinguishes covalent
+ * bonds from non-bonded contacts in `_geom_bond` rows.
  *
- * Bonds involving metals are deliberately left to the CIF author because
- * coordination distances are not reliably classified by one radius sum.
+ * Metals are deliberately excluded: coordination distances are not reliably
+ * classified by one radius sum, so bonds involving them are left to the CIF
+ * author (see `nonMetalRadius` below).
  */
-const NON_METAL_ELEMENTS = ['H', 'D', 'B', 'C', 'N', 'O', 'F', 'Si', 'P', 'S', 'Cl', 'As', 'Se', 'Br', 'Te', 'I'];
-
-const NON_METAL_COVALENT_RADII = Object.freeze(
-    Object.fromEntries(NON_METAL_ELEMENTS.map(el => [el, COVALENT_RADII[el]])),
-);
+const NON_METAL_ELEMENTS = new Set([
+    'H', 'D', 'B', 'C', 'N', 'O', 'F', 'Si', 'P', 'S', 'Cl', 'As', 'Se', 'Br', 'Te', 'I',
+]);
 
 const MAX_CHEMICAL_BOND_LENGTH = 4;
 const NON_METAL_RADIUS_TOLERANCE = 1.6;
+
+/**
+ * Returns the covalent radius for an element if it's on the non-metal
+ * allowlist, or undefined otherwise (including for metals and unknown types).
+ * @param {string} atomType - Element symbol
+ * @returns {number|undefined} Covalent radius in Angstroms, or undefined
+ */
+function nonMetalRadius(atomType) {
+    return NON_METAL_ELEMENTS.has(atomType) ? COVALENT_RADII[atomType] : undefined;
+}
 
 /**
  * Determines whether a CIF `_geom_bond` row is suitable as an edge in the
@@ -44,8 +52,8 @@ export function isChemicalBond(structure, bond) {
         return true;
     }
 
-    const radius1 = NON_METAL_COVALENT_RADII[atom1.atomType];
-    const radius2 = NON_METAL_COVALENT_RADII[atom2.atomType];
+    const radius1 = nonMetalRadius(atom1.atomType);
+    const radius2 = nonMetalRadius(atom2.atomType);
     if (radius1 === undefined || radius2 === undefined) {
         return true;
     }
@@ -83,8 +91,8 @@ export function chemicalBonds(structure, bonds = structure.bonds) {
             return true;
         }
 
-        const radius1 = NON_METAL_COVALENT_RADII[atomType1];
-        const radius2 = NON_METAL_COVALENT_RADII[atomType2];
+        const radius1 = nonMetalRadius(atomType1);
+        const radius2 = nonMetalRadius(atomType2);
         if (radius1 === undefined || radius2 === undefined) {
             return true;
         }
