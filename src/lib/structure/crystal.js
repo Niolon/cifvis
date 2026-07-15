@@ -548,3 +548,18 @@ export class Atom {
         );
     }
 }
+
+/**
+ * Determines whether two atoms may be bonded given their disorder groups.
+ * Disorder group 0 (ordered/common) is compatible with any group; two
+ * distinct nonzero groups represent mutually-exclusive disorder alternatives
+ * and are never compatible.
+ * @param {Atom} atom1 - First atom
+ * @param {Atom} atom2 - Second atom
+ * @returns {boolean} Whether the two atoms' disorder groups allow a bond
+ */
+export function disorderGroupsCompatible(atom1, atom2) {
+    return atom1.disorderGroup === atom2.disorderGroup ||
+        atom1.disorderGroup === 0 ||
+        atom2.disorderGroup === 0;
+}

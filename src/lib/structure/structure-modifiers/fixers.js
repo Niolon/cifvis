@@ -1,6 +1,7 @@
 //import { atomLabelsMatch } from '../../fix-cif/reconcile-labels.js';
 import { Bond } from '../bonds.js';
-import { CrystalStructure, inferElementFromLabel } from '../crystal.js';
+import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } from '../crystal.js';
+import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
 import { BaseFilter } from './base.js';
 
 import { create, all } from 'mathjs';
@@ -175,13 +176,29 @@ export class BondGenerator extends BaseFilter {
      * Creates a new bond generator to generate bonds between atoms based on their atomic radii
      * @class
      * @param {object} elementProperties - Element properties containing atomic radii from structure-settings.js
-     * @param {number} toleranceFactor - How much longer than the sum of atomic radii a bond can be
+     * @param {number} tolerance - Additive tolerance in Angstroms added to the sum of atomic radii
      * @param {BondGenerator.MODES} [mode] - Initial operation mode
      */
-    constructor(elementProperties, toleranceFactor, mode = BondGenerator.MODES.KEEP) {
+    constructor(elementProperties, tolerance, mode = BondGenerator.MODES.KEEP) {
         super(BondGenerator.MODES, mode, 'BondGenerator', BondGenerator.PREFERRED_FALLBACK_ORDER);
         this.elementProperties = elementProperties;
-        this.toleranceFactor = toleranceFactor;
+        this.tolerance = tolerance;
+    }
+
+    /**
+     * Gets the additive tolerance for a pair of elements. Group 1/2 (s-block)
+     * elements form predominantly ionic bonds whose lengths deviate further
+     * from a simple covalent-radius sum, so CCDC/Mercury-style practice
+     * applies a tighter tolerance to them.
+     * @param {string} element1 - First element symbol
+     * @param {string} element2 - Second element symbol
+     * @returns {number} Additive tolerance in Angstroms
+     */
+    getTolerance(element1, element2) {
+        if (S_BLOCK_ELEMENTS.has(element1) || S_BLOCK_ELEMENTS.has(element2)) {
+            return Math.min(this.tolerance, 0.40);
+        }
+        return this.tolerance;
     }
 
     /**
@@ -199,11 +216,15 @@ export class BondGenerator extends BaseFilter {
             throw new Error(`Missing radius for element ${!radius1 ? element1 : element2}`);
         }
 
-        return (radius1 + radius2) * this.toleranceFactor;
+        return radius1 + radius2 + this.getTolerance(element1, element2);
     }
 
     /**
-     * Generates bonds between atoms based on their distances
+     * Generates bonds between atoms based on their distances. Candidate pairs
+     * are limited via a spatial grid (cell size = the largest possible bond
+     * distance among elements present) so only atoms in the same or
+     * neighboring cells are ever compared, instead of every pair in the
+     * structure.
      * @private
      * @param {CrystalStructure} structure - Structure to analyze
      * @param {object} elementProperties - Element property definitions
@@ -240,47 +261,98 @@ export class BondGenerator extends BaseFilter {
             }
         });
 
-        // Check distances between all atom pairs
+        // Bucket atoms into a uniform grid sized to the largest possible bond
+        // distance, so only same/neighboring-cell pairs need to be checked.
+        let maxPossibleDistance = 0;
+        for (const el1 of elementMap.values()) {
+            for (const el2 of elementMap.values()) {
+                maxPossibleDistance = Math.max(
+                    maxPossibleDistance,
+                    this.getMaxBondDistance(el1, el2, elementProperties),
+                );
+            }
+        }
+        const cellSize = maxPossibleDistance > 0 ? maxPossibleDistance : 1;
+
+        const cellKey = (ix, iy, iz) => `${ix},${iy},${iz}`;
+        const grid = new Map();
+        atoms.forEach((atom, index) => {
+            const pos = atomPositions.get(atom.uniqueId);
+            const ix = Math.floor(pos[0] / cellSize);
+            const iy = Math.floor(pos[1] / cellSize);
+            const iz = Math.floor(pos[2] / cellSize);
+            const key = cellKey(ix, iy, iz);
+            if (!grid.has(key)) {
+                grid.set(key, []);
+            }
+            grid.get(key).push(index);
+        });
+
+        // Check distances between atom pairs, restricted to same/neighboring
+        // grid cells. Only pairs with j > i are considered (as in the
+        // original full pairwise scan) so each unordered pair is checked once
+        // and generated bonds keep the atom1/atom2 ordering of the atoms array.
         for (let i = 0; i < atoms.length; i++) {
             const atom1 = atoms[i];
             const pos1 = atomPositions.get(atom1.uniqueId);
+            const ix = Math.floor(pos1[0] / cellSize);
+            const iy = Math.floor(pos1[1] / cellSize);
+            const iz = Math.floor(pos1[2] / cellSize);
 
-            for (let j = i + 1; j < atoms.length; j++) {
-                const atom2 = atoms[j];
-                const pos2 = atomPositions.get(atom2.uniqueId);
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        const neighbors = grid.get(cellKey(ix + dx, iy + dy, iz + dz));
+                        if (!neighbors) {
+                            continue;
+                        }
 
-                // Skip if either atom is hydrogen and we already have bonds
-                if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
-                    (bondedAtomIds.has(atom1.uniqueId) || bondedAtomIds.has(atom2.uniqueId))) {
-                    continue;
-                }
+                        for (const j of neighbors) {
+                            if (j <= i) {
+                                continue;
+                            }
+                            const atom2 = atoms[j];
 
-                const dx = pos1[0] - pos2[0];
-                const dy = pos1[1] - pos2[1];
-                const dz = pos1[2] - pos2[2];
-                const maxDistance = this.getMaxBondDistance(
-                    elementMap.get(atom1.atomType),
-                    elementMap.get(atom2.atomType),
-                    elementProperties,
-                );
+                            // Skip if either atom is hydrogen and we already have bonds
+                            if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
+                                (bondedAtomIds.has(atom1.uniqueId) || bondedAtomIds.has(atom2.uniqueId))) {
+                                continue;
+                            }
 
-                // A bond-length sphere is contained by this axis-aligned box.
-                // Reject distant pairs before invoking mathjs while retaining the
-                // exact historical norm calculation for all possible bonds.
-                if (Math.abs(dx) > maxDistance || Math.abs(dy) > maxDistance ||
-                    Math.abs(dz) > maxDistance) {
-                    continue;
-                }
-                const distance = math.norm([dx, dy, dz]);
+                            if (!disorderGroupsCompatible(atom1, atom2)) {
+                                continue;
+                            }
 
-                if (distance <= maxDistance && distance > 0.0001) {
-                    generatedBonds.add(new Bond(
-                        atom1.uniqueId,
-                        atom2.uniqueId,
-                        distance,
-                        null, // No standard uncertainty for generated bonds
-                        '.',
-                    ));
+                            const pos2 = atomPositions.get(atom2.uniqueId);
+                            const distX = pos1[0] - pos2[0];
+                            const distY = pos1[1] - pos2[1];
+                            const distZ = pos1[2] - pos2[2];
+                            const maxDistance = this.getMaxBondDistance(
+                                elementMap.get(atom1.atomType),
+                                elementMap.get(atom2.atomType),
+                                elementProperties,
+                            );
+
+                            // A bond-length sphere is contained by this axis-aligned box.
+                            // Reject distant pairs before invoking mathjs while retaining the
+                            // exact historical norm calculation for all possible bonds.
+                            if (Math.abs(distX) > maxDistance || Math.abs(distY) > maxDistance ||
+                                Math.abs(distZ) > maxDistance) {
+                                continue;
+                            }
+                            const distance = math.norm([distX, distY, distZ]);
+
+                            if (distance <= maxDistance && distance > 0.0001) {
+                                generatedBonds.add(new Bond(
+                                    atom1.uniqueId,
+                                    atom2.uniqueId,
+                                    distance,
+                                    null, // No standard uncertainty for generated bonds
+                                    '.',
+                                ));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -463,9 +535,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                 const previousAtom = structure.atoms[atomIndex - 1];
 
                 if (previousAtom.atomType !== 'H' &&
-                    (previousAtom.disorderGroup === atom.disorderGroup ||
-                        previousAtom.disorderGroup === 0 ||
-                        atom.disorderGroup === 0)) {
+                    disorderGroupsCompatible(previousAtom, atom)) {
 
                     const prevPos = previousAtom.position.toCartesian(structure.cell);
                     const prevPosition = [prevPos.x, prevPos.y, prevPos.z];
@@ -499,9 +569,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                     continue;
                 }
 
-                if (!(partner.disorderGroup === atom.disorderGroup ||
-                    partner.disorderGroup === 0 ||
-                    atom.disorderGroup === 0)) {
+                if (!disorderGroupsCompatible(partner, atom)) {
                     continue;
                 }
 
