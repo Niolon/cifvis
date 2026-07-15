@@ -1,28 +1,18 @@
+import { COVALENT_RADII } from './covalent-radii.js';
+
 /**
  * Covalent radii for non-metals commonly involved in intermolecular contacts
- * reported through `_geom_bond` loops.
+ * reported through `_geom_bond` loops, sourced from the shared Cordero (2008)
+ * `COVALENT_RADII` table.
  *
  * Bonds involving metals are deliberately left to the CIF author because
  * coordination distances are not reliably classified by one radius sum.
  */
-const NON_METAL_COVALENT_RADII = Object.freeze({
-    H: 0.31,
-    D: 0.31,
-    B: 0.85,
-    C: 0.76,
-    N: 0.71,
-    O: 0.66,
-    F: 0.57,
-    Si: 1.11,
-    P: 1.07,
-    S: 1.05,
-    Cl: 1.02,
-    As: 1.19,
-    Se: 1.20,
-    Br: 1.20,
-    Te: 1.38,
-    I: 1.39,
-});
+const NON_METAL_ELEMENTS = ['H', 'D', 'B', 'C', 'N', 'O', 'F', 'Si', 'P', 'S', 'Cl', 'As', 'Se', 'Br', 'Te', 'I'];
+
+const NON_METAL_COVALENT_RADII = Object.freeze(
+    Object.fromEntries(NON_METAL_ELEMENTS.map(el => [el, COVALENT_RADII[el]])),
+);
 
 const MAX_CHEMICAL_BOND_LENGTH = 4;
 const NON_METAL_RADIUS_TOLERANCE = 1.6;

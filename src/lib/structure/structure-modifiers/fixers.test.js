@@ -113,15 +113,15 @@ describe('BondGenerator', () => {
             'H': { radius: 0.31 },
         };
 
-        const toleranceFactor = 1.3;
+        const tolerance = 0.3;
 
-        generator = new BondGenerator(elementProperties, toleranceFactor);
+        generator = new BondGenerator(elementProperties, tolerance);
     });
 
     describe('getMaxBondDistance', () => {
         test('calculates correct distance for element pair', () => {
             const distance = generator.getMaxBondDistance('C', 'O', elementProperties);
-            expect(distance).toBeCloseTo((0.76 + 0.66) * 1.3);
+            expect(distance).toBeCloseTo(0.76 + 0.66 + 0.3);
         });
 
         test('throws error for unknown elements', () => {
@@ -130,10 +130,10 @@ describe('BondGenerator', () => {
             }).toThrow('Missing radius for element Xx');
         });
 
-        test('handles different tolerance factors', () => {
-            const strictGenerator = new BondGenerator(elementProperties, 1.1);
+        test('handles different tolerances', () => {
+            const strictGenerator = new BondGenerator(elementProperties, 0.1);
 
-            const looseGenerator = new BondGenerator(elementProperties, 1.5);
+            const looseGenerator = new BondGenerator(elementProperties, 0.6);
 
             const strictDistance = strictGenerator.getMaxBondDistance(
                 'C', 'O', elementProperties,
@@ -143,6 +143,22 @@ describe('BondGenerator', () => {
             );
 
             expect(looseDistance).toBeGreaterThan(strictDistance);
+        });
+
+        test('tightens tolerance to 0.40 for s-block element pairs', () => {
+            const naProperties = {
+                'Na': { radius: 1.66 },
+                'Cl': { radius: 1.02 },
+            };
+            const sBlockGenerator = new BondGenerator(naProperties, 0.45);
+
+            expect(sBlockGenerator.getMaxBondDistance('Na', 'Cl', naProperties))
+                .toBeCloseTo(1.66 + 1.02 + 0.40);
+        });
+
+        test('does not tighten tolerance below the configured value for non-s-block pairs', () => {
+            const distance = generator.getMaxBondDistance('C', 'O', elementProperties);
+            expect(distance).toBeCloseTo(0.76 + 0.66 + 0.3);
         });
     });
 
@@ -388,6 +404,65 @@ describe('BondGenerator', () => {
                 b.atom1Id === 'C1|1_555' && b.atom2Id === 'O1|2_555' && b.atom2SiteSymmetry === '2_555',
             );
             expect(symBond).toBeTruthy();
+        });
+
+        test('does not bond atoms in different nonzero disorder groups', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0, 1)
+                .addAtom('O1', 'O', 0.1, 0, 0, 2)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds.length).toBe(0);
+        });
+
+        test('bonds disorder-group-0 atoms to any group', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0, 0)
+                .addAtom('O1', 'O', 0.1, 0, 0, 2)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds.length).toBe(1);
+        });
+
+        test('bonds atoms in the same nonzero disorder group', () => {
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0, 0, 0, 1)
+                .addAtom('O1', 'O', 0.1, 0, 0, 1)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds.length).toBe(1);
+        });
+
+        test('grid-hashing finds the same bonds as a brute-force scan for atoms spread across cells', () => {
+            // Cell is large relative to bonding radii, so atoms placed across
+            // the fractional range fall into different spatial grid cells.
+            const structure = new MockStructure()
+                .addAtom('C1', 'C', 0.01, 0.01, 0.01)
+                .addAtom('O1', 'O', 0.02, 0.01, 0.01) // bonds to C1
+                .addAtom('C2', 'C', 0.5, 0.5, 0.5)
+                .addAtom('O2', 'O', 0.501, 0.5, 0.5) // bonds to C2
+                .addAtom('N1', 'N', 0.99, 0.99, 0.99)
+                .build();
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            const bondPairs = result.bonds
+                .map(b => [b.atom1Id, b.atom2Id].sort().join('-'))
+                .sort();
+            expect(bondPairs).toEqual([
+                'C1|1_555-O1|1_555',
+                'C2|1_555-O2|1_555',
+            ]);
         });
     });
 
