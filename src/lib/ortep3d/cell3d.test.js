@@ -29,14 +29,15 @@ describe('cell3d.js', () => {
         };
 
         defaultCellSettings = {
-            color: '#CCCCCC',
-            opacity: 0.5,
-            colorA: '#FF0000',
-            colorB: '#00FF00', 
-            colorC: '#0000FF',
-            headLengthMult: 0.1,
-            headWidthMult: 0.5,
-            lineWidth: 2,
+            boxColor: '#CCCCCC',
+            boxOpacity: 0.5,
+            boxLineWidth: 2,
+            arrowColorA: '#FF0000',
+            arrowColorB: '#00FF00',
+            arrowColorC: '#0000FF',
+            arrowHeadLengthMult: 0.1,
+            arrowHeadWidthMult: 0.5,
+            arrowCylinderRadius: 0.02,
         };
     });
 
@@ -154,8 +155,8 @@ describe('cell3d.js', () => {
             
             const customSettings = {
                 ...defaultCellSettings,
-                headLengthMult: 0.2,
-                headWidthMult: 0.6,
+                arrowHeadLengthMult: 0.2,
+                arrowHeadWidthMult: 0.6,
             };
             
             const result = createCell3D(smallCell, customSettings);
@@ -167,11 +168,11 @@ describe('cell3d.js', () => {
 
         test('uses default values for optional parameters', () => {
             const minimalSettings = {
-                color: '#FFFFFF',
-                opacity: 1.0,
-                colorA: '#FF0000',
-                colorB: '#00FF00',
-                colorC: '#0000FF',
+                boxColor: '#FFFFFF',
+                boxOpacity: 1.0,
+                arrowColorA: '#FF0000',
+                arrowColorB: '#00FF00',
+                arrowColorC: '#0000FF',
             };
             
             const result = createCell3D(mockUnitCell, minimalSettings);
@@ -248,8 +249,8 @@ describe('cell3d.js', () => {
             expect(transparentLine.material.transparent).toBe(true);
             expect(transparentLine.material.opacity).toBe(0.3);
             
-            // Test opaque case  
-            const opaqueSettings = { ...defaultCellSettings, opacity: 1.0 };
+            // Test opaque case
+            const opaqueSettings = { ...defaultCellSettings, boxOpacity: 1.0 };
             const opaqueResult = createCell3D(mockUnitCell, opaqueSettings);
             const opaqueWireframe = opaqueResult.children[0];
             const opaqueLine = opaqueWireframe.children[0];
@@ -261,22 +262,25 @@ describe('cell3d.js', () => {
         test('arrow colors are applied correctly', () => {
             const customColors = {
                 ...defaultCellSettings,
-                colorA: '#FF5733',
-                colorB: '#33FF57', 
-                colorC: '#3357FF',
+                arrowColorA: '#FF5733',
+                arrowColorB: '#33FF57',
+                arrowColorC: '#3357FF',
             };
             
             const result = createCell3D(mockUnitCell, customColors);
             const arrows = result.children.slice(1); // Skip wireframe
-            
-            // Note: Testing exact arrow colors requires access to the internal 
-            // createCylinderArrow function, which creates meshes with materials
-            // This is a structural test to ensure arrows are created
-            arrows.forEach(arrow => {
+
+            const expectedColors = [
+                customColors.arrowColorA,
+                customColors.arrowColorB,
+                customColors.arrowColorC,
+            ];
+            arrows.forEach((arrow, i) => {
                 expect(arrow.children).toHaveLength(2); // cylinder + cone
                 arrow.children.forEach(mesh => {
                     expect(mesh).toBeInstanceOf(THREE.Mesh);
                     expect(mesh.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+                    expect(mesh.material.color).toEqual(new THREE.Color(expectedColors[i]));
                 });
             });
         });
