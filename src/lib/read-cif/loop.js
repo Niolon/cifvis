@@ -1,4 +1,5 @@
 import { parseMultiLineString, parseValue } from './helpers.js';
+import { parseCif2Value } from './cif2-values.js';
 
 const STANDART_LOOP_NAMES = [
     '_space_group_symop_ssg',
@@ -104,20 +105,23 @@ export class CifLoop {
     }
 
     /**
-     * Creates a CifLoop from a CIF2 token stream. The values have already been
-     * assembled into cells (each `{value, su}`, where `value` may be a scalar,
-     * an `Array` (CIF2 list) or a `Map` (CIF2 table)), so this bypasses the
-     * line-based CIF1 tokenizing entirely and feeds the cells straight into the
-     * shared column-distribution logic.
+     * Creates a CifLoop from a CIF2 token stream. Cell values are located but
+     * not interpreted yet - `cellTokenRanges` only records each cell's
+     * `[start, end)` token range (see `skipCif2Value` in cif2-values.js),
+     * bypassing the line-based CIF1 tokenizing while still deferring the
+     * actual value parsing to `parse()`, on first `.get()`/`.getIndex()`,
+     * exactly like the CIF1 path does.
      * @static
      * @param {Array<string>} headers - Column header names (data names).
-     * @param {Array<{value: *, su: number}>} cells - Row-major parsed cell values.
+     * @param {Array<object>} tokens - The full CIF2 token stream `cellTokenRanges` indexes into.
+     * @param {Array<[number, number]>} cellTokenRanges - Row-major `[start, end)` token ranges, one per cell.
      * @param {boolean} splitSU - Whether to split standard uncertainties.
-     * @returns {CifLoop} New CifLoop instance backed by the pre-parsed cells.
+     * @returns {CifLoop} New CifLoop instance backed by the unparsed cell token ranges.
      */
-    static fromTokens(headers, cells, splitSU) {
+    static fromTokens(headers, tokens, cellTokenRanges, splitSU) {
         const loop = new CifLoop(headers, [], 0, splitSU);
-        loop._cif2Cells = cells;
+        loop._cif2Tokens = tokens;
+        loop._cif2CellTokenRanges = cellTokenRanges;
         return loop;
     }
 
@@ -137,26 +141,31 @@ export class CifLoop {
         this.headers = [...this.headerLines];
         this.data = {};
 
-        const dataArray = this._cif2Cells !== undefined ? this._cif2Cells : this.dataLines.reduce((acc, line, i) => {
-            line = line.trim();
-            if (!line.length) {
-                return acc;
-            }
-
-            if (line.startsWith(';')) {
-                const mult = parseMultiLineString(this.dataLines, i);
-                acc.push({ value: mult.value, su: NaN });
-                // Skip lines consumed by multiline string
-                for (let j = i; j < mult.endIndex + 1; j++) {
-                    this.dataLines[j] = '';
+        const dataArray = this._cif2CellTokenRanges !== undefined
+            ? this._cif2CellTokenRanges.map(([start]) => {
+                const parsed = parseCif2Value(this._cif2Tokens, start, this.splitSU);
+                return { value: parsed.value, su: parsed.su };
+            })
+            : this.dataLines.reduce((acc, line, i) => {
+                line = line.trim();
+                if (!line.length) {
+                    return acc;
                 }
-                return acc;
-            }
 
-            const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
-            return acc.concat(matches.map(match => parseValue(match[1] || match[2] || match[0], this.splitSU),
-            ));
-        }, []);
+                if (line.startsWith(';')) {
+                    const mult = parseMultiLineString(this.dataLines, i);
+                    acc.push({ value: mult.value, su: NaN });
+                    // Skip lines consumed by multiline string
+                    for (let j = i; j < mult.endIndex + 1; j++) {
+                        this.dataLines[j] = '';
+                    }
+                    return acc;
+                }
+
+                const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
+                return acc.concat(matches.map(match => parseValue(match[1] || match[2] || match[0], this.splitSU),
+                ));
+            }, []);
 
         const nEntries = this.headers.length;
 

@@ -2,7 +2,7 @@ import { parseMultiLineString, parseValue } from './helpers.js';
 import { CifLoop, resolveLoopNamingConflict } from './loop.js';
 import { detectCifVersion, stripBom } from './version.js';
 import { tokenizeCif2 } from './tokenizer.js';
-import { parseCif2Value } from './cif2-values.js';
+import { parseCif2Value, skipCif2Value } from './cif2-values.js';
 
 /**
  * Splits a CIF2 token stream into per-block token slices at each top-level
@@ -344,7 +344,13 @@ export class CifBlock {
 
     /**
      * Parses a single CIF2 `loop_` starting at the loop keyword and stores it,
-     * reusing the shared loop-naming and conflict-resolution logic.
+     * reusing the shared loop-naming and conflict-resolution logic. Cell
+     * values are only located (via {@link skipCif2Value}, a structural scan
+     * with no value interpretation), not parsed - actual parsing happens
+     * lazily in CifLoop.parse() on first .get()/.getIndex(), so a loop this
+     * caller never queries never pays {@link parseCif2Value}'s cost. This
+     * mirrors the CIF1 path, where CifLoop.fromLines() also defers value
+     * parsing until first access.
      * @param {Array<object>} tokens - The block's token slice.
      * @param {number} start - Index of the `loop` token.
      * @returns {number} Index of the first token after the loop.
@@ -358,15 +364,15 @@ export class CifBlock {
             i++;
         }
 
-        const cells = [];
+        const cellTokenRanges = [];
         while (i < tokens.length
             && (tokens[i].type === 'value' || tokens[i].type === 'listOpen' || tokens[i].type === 'tableOpen')) {
-            const parsed = parseCif2Value(tokens, i, this.splitSU);
-            cells.push({ value: parsed.value, su: parsed.su });
-            i = parsed.nextPos;
+            const cellStart = i;
+            i = skipCif2Value(tokens, i);
+            cellTokenRanges.push([cellStart, i]);
         }
 
-        const loop = CifLoop.fromTokens(headers, cells, this.splitSU);
+        const loop = CifLoop.fromTokens(headers, tokens, cellTokenRanges, this.splitSU);
         if (!Object.prototype.hasOwnProperty.call(this.data, loop.getName())) {
             this.data[loop.getName()] = loop;
         } else {
