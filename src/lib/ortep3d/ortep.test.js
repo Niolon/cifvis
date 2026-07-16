@@ -1857,8 +1857,8 @@ describe('ORTEPHBond', () => {
      * compute segment matrices first (to size the pool), then register them.
      * @param {number} targetSegmentLength - Approximate target length for dashed segments
      * @param {number} dashFraction - Fraction of segment that is solid
-     * @param {Function|null} getCartesianPosition - Cached atom-position resolver
-     * @param {Function|null} getRenderedAtom - Rendered atom resolver for surface trimming
+     * @param {function(string): THREE.Vector3|null} getCartesianPosition - Cached atom-position resolver
+     * @param {function(string): THREE.Object3D|null} getRenderedAtom - Rendered atom resolver for surface trimming
      * @returns {{hbond: ORTEPHBond, pool: InstancedPool}} Constructed h-bond and its pool
      */
     function buildHBond(targetSegmentLength, dashFraction, getCartesianPosition = null, getRenderedAtom = null) {

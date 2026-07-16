@@ -177,7 +177,7 @@ function startServer() {
 }
 
 /**
- * @param {*} value - Raw CSV field value
+ * @param {string|number|boolean|null|undefined} value - Raw CSV field value
  * @returns {string} CSV-safe representation
  */
 function csvField(value) {

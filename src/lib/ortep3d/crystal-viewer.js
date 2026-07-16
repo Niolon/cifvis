@@ -274,7 +274,8 @@ export class SelectionManager {
 
     /**
      * Registers a callback to be notified when selection changes.
-     * @param {Function} callback - Function called with updated selections
+     * @param {function(Array<{type: string, data: object, color: ?number}>): void} callback - Called
+     *  with the updated list of selections
      */
     onChange(callback) {
         this.selectionCallbacks.add(callback);

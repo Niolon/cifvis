@@ -254,8 +254,8 @@ export class CifLoop {
     /**
      * Gets column data for given keys, trying each key in turn.
      * @param {string|Array<string>} keys - Key or array of keys to try
-     * @param {*} [defaultValue] - Value to return if none of the keys are found
-     * @returns {Array} Column data for the first matching key
+     * @param {Array<string|number>} [defaultValue] - Value to return if none of the keys are found
+     * @returns {Array<string|number>} Column data for the first matching key
      * @throws {Error} If no keys found and no default value provided
      */
     get(keys, defaultValue = null) {
@@ -280,8 +280,8 @@ export class CifLoop {
      * Gets value at specific row index for one of the given keys.
      * @param {string|Array<string>} keys - Key or array of keys to try
      * @param {number} index - Row index (0-based)
-     * @param {*} [defaultValue] - Value to return if keys not found
-     * @returns {*} Value at the specified index
+     * @param {string|number} [defaultValue] - Value to return if keys not found
+     * @returns {string|number} Value at the specified index
      * @throws {Error} If index is out of bounds
      * @throws {Error} If none of the keys are found and no default value provided
      */

@@ -1946,8 +1946,8 @@ export class ORTEPBond extends ORTEPObject {
      * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
      * @param {THREE.BufferGeometry} baseBond - Bond geometry
      * @param {THREE.Material} baseBondMaterial - Bond material
-     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
-     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @param {function(string): THREE.Vector3} [getCartesianPosition] - Cached atom-position resolver
+     * @param {function(string): THREE.Object3D} [getRenderedAtom] - Rendered atom resolver for surface trimming
      * @param {object|null} [openStyle] - Optional opaque fill and outline setup
      */
     constructor(
@@ -2187,8 +2187,8 @@ export class ORTEPBondInstance extends PooledSelectableObject {
      * any instance is registered, and to register into it.
      * @param {Bond} bond - Bond data containing connected atoms
      * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
-     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
-     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @param {function(string): THREE.Vector3} [getCartesianPosition] - Cached atom-position resolver
+     * @param {function(string): THREE.Object3D} [getRenderedAtom] - Rendered atom resolver for surface trimming
      * @returns {THREE.Matrix4} World-space bond transform
      */
     static computeMatrix(bond, crystalStructure, getCartesianPosition = null, getRenderedAtom = null) {
@@ -2265,8 +2265,8 @@ export class ORTEPHBond extends PooledSelectableObject {
      * @param {CrystalStructure} crystalStructure - Parent structure
      * @param {number} targetSegmentLength - Approximate target length for dashed segments
      * @param {number} dashFraction - Fraction of segment that is solid
-     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
-     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @param {function(string): THREE.Vector3} [getCartesianPosition] - Cached atom-position resolver
+     * @param {function(string): THREE.Object3D} [getRenderedAtom] - Rendered atom resolver for surface trimming
      * @returns {THREE.Matrix4[]} One transform per dash segment
      */
     static computeSegmentMatrices(

@@ -397,8 +397,8 @@ export class CifBlock {
     /**
      * Gets a value from the CIF block, trying multiple possible keys.
      * @param {(string|Array<string>)} keys - Key or array of keys to try
-     * @param {*} [defaultValue] - Value to return if keys not found
-     * @returns {*} Found value or default value
+     * @param {(string|number|CifLoop)} [defaultValue] - Value to return if keys not found
+     * @returns {(string|number|CifLoop)} Found value or default value
      * @throws {Error} If no keys found and no default provided
      */
     get(keys, defaultValue=null) {

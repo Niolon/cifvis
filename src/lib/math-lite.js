@@ -7,6 +7,12 @@
 // plain array) so call sites did not need to change.
 
 /**
+ * A plain 1D vector, 2D nested-array matrix, or scalar leaf thereof - the
+ * only shapes this module's functions operate on.
+ * @typedef {number|NDArray[]} NDArray
+ */
+
+/**
  * Lightweight stand-in for mathjs's Matrix, wrapping a plain 1D or 2D array.
  */
 export class Matrix {
@@ -40,7 +46,8 @@ export class Matrix {
     }
 
     /**
-     * @param {Function} fn - Called with (value, index, matrix) per element
+     * @param {function(number, number[], Matrix): number} fn - Called with
+     *  (value, index, matrix) per element
      * @returns {Matrix} A new Matrix of the same shape
      */
     map(fn) {
@@ -55,8 +62,8 @@ export class Matrix {
 /**
  * Recursively unwraps Matrix instances (including ones nested inside plain
  * arrays) down to plain numbers/arrays.
- * @param {*} x - Matrix, plain array, or scalar
- * @returns {*} The equivalent plain array/scalar
+ * @param {Matrix|NDArray} x - Matrix, plain array, or scalar
+ * @returns {NDArray} The equivalent plain array/scalar
  */
 function raw(x) {
     if (x instanceof Matrix) {
@@ -71,19 +78,19 @@ function raw(x) {
 /**
  * Mirrors mathjs's array-vs-Matrix result polymorphism: wraps `result` in a
  * Matrix if any of `inputs` was itself a Matrix, otherwise returns it as-is.
- * @param {Array} inputs - The original (pre-`raw()`) operands
- * @param {*} result - The plain-array/scalar result to conditionally wrap
- * @returns {*} `result`, or `result` wrapped in a Matrix
+ * @param {Array<Matrix|NDArray>} inputs - The original (pre-`raw()`) operands
+ * @param {NDArray} result - The plain-array/scalar result to conditionally wrap
+ * @returns {Matrix|NDArray} `result`, or `result` wrapped in a Matrix
  */
 function wrapLike(inputs, result) {
     return inputs.some(x => x instanceof Matrix) ? new Matrix(result) : result;
 }
 
 /**
- * @param {*} a - First operand (plain array or scalar)
- * @param {*} b - Second operand, same shape as `a`
- * @param {Function} fn - Called on each pair of scalar leaves
- * @returns {*} The elementwise result, same shape as the inputs
+ * @param {NDArray} a - First operand (plain array or scalar)
+ * @param {NDArray} b - Second operand, same shape as `a`
+ * @param {function(number, number): (number|boolean)} fn - Called on each pair of scalar leaves
+ * @returns {NDArray} The elementwise result, same shape as the inputs
  */
 function elementwise(a, b, fn) {
     if (Array.isArray(a) && Array.isArray(b)) {
@@ -231,7 +238,7 @@ export function norm(v) {
 /**
  * @param {number} value - Numeric value, currently only degrees supported
  * @param {string} fromUnit - Must be `'deg'`
- * @returns {{toNumber: Function}} An object exposing `toNumber('rad')`
+ * @returns {{toNumber: function(string): number}} An object exposing `toNumber('rad')`
  * @throws {Error} If `fromUnit` is not `'deg'`
  */
 export function unit(value, fromUnit) {

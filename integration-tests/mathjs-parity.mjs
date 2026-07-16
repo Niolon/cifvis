@@ -4,6 +4,13 @@ import * as lite from '../src/lib/math-lite.js';
 const mj = create(all, {});
 
 let failures = 0;
+/**
+ * Compares two numbers or (nested) arrays of numbers for approximate equality and logs a failure.
+ * @param {number|Array} a - first value
+ * @param {number|Array} b - second value
+ * @param {number} tol - allowed absolute difference
+ * @param {string} label - label used in the failure message
+ */
 function approxEqual(a, b, tol = 1e-8, label = '') {
     const flatA = Array.isArray(a) ? a.flat(2) : [a];
     const flatB = Array.isArray(b) ? b.flat(2) : [b];
@@ -21,13 +28,25 @@ function approxEqual(a, b, tol = 1e-8, label = '') {
     }
 }
 
+/**
+ * Generates a random 3x3 matrix with entries in [-2, 2).
+ * @returns {number[][]} random 3x3 matrix
+ */
 function randMat3() {
     return [0, 1, 2].map(() => [0, 1, 2].map(() => Math.random() * 4 - 2));
 }
+/**
+ * Generates a random symmetric 3x3 matrix.
+ * @returns {number[][]} random symmetric 3x3 matrix
+ */
 function randSymMat3() {
     const m = randMat3();
     return m.map((row, i) => row.map((_, j) => (m[i][j] + m[j][i]) / 2));
 }
+/**
+ * Generates a random 3-vector with entries in [-2, 2).
+ * @returns {number[]} random 3-vector
+ */
 function randVec3() {
     return [Math.random() * 4 - 2, Math.random() * 4 - 2, Math.random() * 4 - 2];
 }

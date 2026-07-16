@@ -4,10 +4,13 @@ import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
 
-const CIFVIS_DIR = process.argv[2] || '/home/niklas/Documents/cifvis/cifvis';
 const COD_DIR = process.argv[3] || '/home/niklas/cod/cif';
 const SAMPLE_SIZE = parseInt(process.argv[4] || '300', 10);
 
+/**
+ * Picks a random sample of CIF file paths from the COD directory.
+ * @returns {string[]} sampled file paths
+ */
 function sampleFiles() {
     const raw = execSync(
         `find "${COD_DIR}" -maxdepth 4 -name "*.cif" | shuf -n ${SAMPLE_SIZE}`,
@@ -16,6 +19,10 @@ function sampleFiles() {
     return raw.split('\n').filter(Boolean);
 }
 
+/**
+ * Current high-resolution timestamp in milliseconds.
+ * @returns {number} timestamp in milliseconds
+ */
 function now() {
     return performance.now();
 }
@@ -62,11 +69,16 @@ for (const filePath of files) {
         stageTotals.structure.push(rec.structure);
         stageTotals.ortep.push(rec.ortep);
         stageTotals.total.push(rec.total);
-    } catch (err) {
+    } catch {
         failures++;
     }
 }
 
+/**
+ * Computes mean/p50/p90/p99/max summary statistics for a list of numbers.
+ * @param {number[]} arr - values to summarize
+ * @returns {{mean: number, p50: number, p90: number, p99: number, max: number}} summary stats
+ */
 function stats(arr) {
     const sorted = [...arr].sort((a, b) => a - b);
     const sum = sorted.reduce((a, b) => a + b, 0);
@@ -107,7 +119,8 @@ console.log('\nSlowest structures:');
 for (const r of slowest) {
     console.log(
         `  ${r.total.toFixed(1).padStart(8)}ms  atoms=${String(r.atomCount).padStart(5)}  ` +
-        `read=${r.read.toFixed(1)} parse=${r.parse.toFixed(1)} struct=${r.structure.toFixed(1)} ortep=${r.ortep.toFixed(1)}  ${r.file}`,
+        `read=${r.read.toFixed(1)} parse=${r.parse.toFixed(1)} struct=${r.structure.toFixed(1)} ` +
+        `ortep=${r.ortep.toFixed(1)}  ${r.file}`,
     );
 }
 

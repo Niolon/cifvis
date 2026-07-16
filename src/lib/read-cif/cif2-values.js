@@ -13,7 +13,7 @@ import { parseValue } from './helpers.js';
  * @param {Array<object>} tokens - The CIF2 token stream.
  * @param {number} pos - Index of the first token of the value.
  * @param {boolean} splitSU - Whether to split standard uncertainties.
- * @returns {{value: *, su: number, nextPos: number}} The parsed value, its
+ * @returns {{value: (string|number|Array|Map), su: number, nextPos: number}} The parsed value, its
  *   standard uncertainty (`NaN` for non-scalars or when absent), and the index
  *   of the first token after the value.
  * @throws {Error} If the token at `pos` cannot start a value.

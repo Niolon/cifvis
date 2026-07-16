@@ -16,6 +16,10 @@ import defaultSettings from '../src/lib/ortep3d/structure-settings.js';
 const COD_DIR = process.argv[2] || '/home/niklas/cod/cif';
 const SAMPLE_SIZE = parseInt(process.argv[3] || '400', 10);
 
+/**
+ * Picks a random sample of CIF file paths from the COD directory.
+ * @returns {string[]} sampled file paths
+ */
 function sampleFiles() {
     const raw = execSync(
         `find "${COD_DIR}" -maxdepth 4 -name "*.cif" | shuf -n ${SAMPLE_SIZE}`,
@@ -24,10 +28,18 @@ function sampleFiles() {
     return raw.split('\n').filter(Boolean);
 }
 
+/**
+ * Current high-resolution timestamp in milliseconds.
+ * @returns {number} timestamp in milliseconds
+ */
 function now() {
     return performance.now();
 }
 
+/**
+ * Builds a fresh set of the default structure modifiers used by the rendering pipeline.
+ * @returns {object} map of modifier name to modifier instance
+ */
 function buildModifiers() {
     return {
         removeatoms: new AtomLabelFilter(),
@@ -94,6 +106,11 @@ for (const filePath of files) {
     }
 }
 
+/**
+ * Computes mean/p50/p90/max summary statistics for a list of numbers.
+ * @param {number[]} arr - values to summarize
+ * @returns {{mean: number, p50: number, p90: number, max: number}|null} summary stats, or null if arr is empty
+ */
 function stats(arr) {
     if (arr.length === 0) {
         return null;
@@ -104,6 +121,11 @@ function stats(arr) {
     return { mean: sum / sorted.length, p50: pct(0.5), p90: pct(0.9), max: sorted[sorted.length - 1] };
 }
 
+/**
+ * Logs a timing report for a set of profiled structures.
+ * @param {string} label - heading describing this group of records
+ * @param {object[]} records - profiling records produced in the sampling loop above
+ */
 function report(label, records) {
     console.log(`\n=== ${label} (n=${records.length}) ===`);
     if (records.length === 0) {
