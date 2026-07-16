@@ -9,8 +9,8 @@
             aspect-ratio: 16 / 9;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/index.DqxHYrSV.js"></script>
-  <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.C2M--aom.css">
+  <script type="module" crossorigin src="/cifvis/assets/src.BeD7n3Y3.js"></script>
+  <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
     <nav class="docs-nav">
@@ -153,7 +153,7 @@ _cell.angle_gamma 90
                         src="../cif/disorder.cif"
                         caption="Non-disordered/PART 1 bonds are solid; PART 2 bonds are open"
                         disorder-mode="all"
-                        options='{"renderStyle":"2d"}'>
+                        options='{"renderStyle":"cutout-2d"}'>
                     </cifview-widget>
                 </div>
 
@@ -163,7 +163,7 @@ _cell.angle_gamma 90
                         src="../cif/disorder.cif"
                         caption="Non-disordered atoms plus the first disorder group only"
                         disorder-mode="group1of2"
-                        options='{"renderStyle":"2d"}'>
+                        options='{"renderStyle":"cutout-2d"}'>
                     </cifview-widget>
                 </div>
 
@@ -173,7 +173,7 @@ _cell.angle_gamma 90
                         src="../cif/disorder.cif"
                         caption="Non-disordered atoms plus the second disorder group only"
                         disorder-mode="group2of2"
-                        options='{"renderStyle":"2d"}'>
+                        options='{"renderStyle":"cutout-2d"}'>
                     </cifview-widget>
                 </div>
 
@@ -185,7 +185,7 @@ _cell.angle_gamma 90
                     <span class="example-label">Solid</span>
                     <cifview-widget
                         src="../cif/urea.cif"
-                        options='{"atomEllipsoidStyle":"solid"}'
+                        options='{"renderStyle":"solid-3d"}'
                         caption="Standard solid ellipsoids.">
                     </cifview-widget>
                 </div>
@@ -193,7 +193,7 @@ _cell.angle_gamma 90
                     <span class="example-label">Cutout</span>
                     <cifview-widget
                         src="../cif/urea.cif"
-                        options='{"atomEllipsoidStyle":"cutout"}'
+                        options='{"renderStyle":"cutout-3d"}'
                         caption="Camera-facing cutout with three hatched faces.">
                     </cifview-widget>
                 </div>
@@ -201,7 +201,7 @@ _cell.angle_gamma 90
                     <span class="example-label">2D</span>
                     <cifview-widget
                         src="../cif/urea.cif"
-                        options='{"renderStyle":"2d"}'
+                        options='{"renderStyle":"cutout-2d"}'
                         caption="Element-coloured publication style.">
                     </cifview-widget>
                 </div>

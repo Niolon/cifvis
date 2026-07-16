@@ -34,9 +34,9 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/docsUsing.DD5coMhg.js"></script>
-  <link rel="modulepreload" crossorigin href="/cifvis/assets/index.DqxHYrSV.js">
-  <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.C2M--aom.css">
+  <script type="module" crossorigin src="/cifvis/assets/docsUsing.BKrzlwJ9.js"></script>
+  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.BeD7n3Y3.js">
+  <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
     <nav class="docs-nav">
@@ -68,6 +68,24 @@
 const cif = new CIF(cifText);          // splitSU=true by default: "1.234(5)" -> {value, su}
 const block = cif.getBlock(0);          // or cif.getBlockByName('crystal_a')
 const structure = CrystalStructure.fromCIF(block);</code></pre>
+
+            <h3>CIF1 and CIF2</h3>
+            <p>
+                Both CIF1 and CIF2 files are supported. The format is detected automatically from the
+                <code>#\#CIF_2.0</code> magic code on the first line (a leading UTF-8 byte-order mark is tolerated);
+                anything else &mdash; including <code>#\#CIF_1.1</code> or no version comment &mdash; is parsed as CIF1.
+                <code>cif.version</code> reports the detected version (<code>1</code> or <code>2</code>). CIF1 files take the
+                original line-based parser unchanged, so there is no behaviour or performance change for them.
+            </p>
+            <p>
+                On the CIF2 path the extra value types map to native JavaScript values: a CIF2 <em>list</em>
+                (<code>[ 1 2 3 ]</code>) becomes an <code>Array</code>, a CIF2 <em>table</em>
+                (<code>{ 'a':1 'b':2 }</code>) becomes a <code>Map</code> (both can nest and can appear as loop cells), and
+                triple-quoted strings (<code>'''&hellip;'''</code>) become plain strings. Scalars, standard uncertainties and
+                <code>loop_</code> tables behave exactly as in CIF1, so <code>CrystalStructure.fromCIF</code> works unchanged.
+                Note: the optional CIF2 text-field line-folding and text-prefix protocols are not yet decoded &mdash; such
+                fields are returned verbatim.
+            </p>
 
             <h3><code>CIF</code></h3>
             <table>
@@ -244,7 +262,7 @@ scene.add(group);
             <ul class="feature-list">
                 <li><code>new ORTEP3JsStructure(crystalStructure, options)</code> builds the meshes immediately in the
                 constructor; <code>options</code> is the same shape as <code>CrystalViewer</code>'s constructor
-                options (<code>atomEllipsoidStyle</code>, <code>bondRadius</code>, <code>elementProperties</code>,
+                options (<code>renderStyle</code>, <code>bondRadius</code>, <code>elementProperties</code>,
                 etc. &mdash; see the <a href="./options-reference.html">Options Reference</a>).</li>
                 <li><code>getGroup()</code> returns a fresh <code>THREE.Group</code> each call, containing every atom/bond/hbond mesh.</li>
                 <li><code>ortep.dispose()</code> frees the cached geometries/materials &mdash; call it when you're done with this structure (e.g. before building a new one), the same way <code>CrystalViewer.dispose()</code> does internally.</li>
