@@ -3,6 +3,7 @@ import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const logsDir = join(scriptDir, 'logs', 'ortep-chunked');
@@ -254,7 +255,13 @@ async function main() {
         // Find and sort all CIF files
         let files = await findCIFFiles(resolvedPath);
         console.log(`Found ${files.length} CIF files total`);
-        
+
+        // Skip files already known (from COD's own manual-checks logs, or
+        // prior runs of this test) to be problematic
+        const beforeExclusion = files.length;
+        files = filterKnownBad(files);
+        console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+
         // Slice to requested range
         files = files.slice(startIndex, endIndex);
         console.log(`Processing ${files.length} files in requested range`);

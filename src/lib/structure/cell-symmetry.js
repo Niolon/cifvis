@@ -1,13 +1,10 @@
-import { create, all } from 'mathjs';
-
+import * as math from '../math-lite.js';
 import { Atom, UnitCell } from './crystal.js';
 import { FractPosition } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
 import { decodePositionCode, encodePositionCode } from './position-code.js';
 import { CifBlock } from '../read-cif/base.js';
-
-const math = create(all);
 
 /**
  * Formats a decimal number as a fraction with specified allowed denominators

@@ -21,24 +21,18 @@ function updateStatus(message, type = 'info') {
 }
 
 /**
- * Reads viewer style overrides from URL query parameters.
- * Supported flags: `?style=2d` for the publication-style 2D renderer and
- * `?octant=cut` for the cutaway ("cut octant") ellipsoid style. Either can
- * be combined, e.g. `?style=2d&octant=cut`.
+ * Reads a viewer render style override from the URL query string.
+ * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
+ * render styles (see structure-settings.js); unset/unrecognised falls back
+ * to the default.
  * @returns {object} CrystalViewer options derived from the URL
  */
 function getStyleOptionsFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    const options = {};
+    const style = params.get('style');
+    const validStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
 
-    if (params.get('style') === '2d') {
-        options.renderStyle = '2d';
-    }
-    if (params.get('octant') === 'cut') {
-        options.atomEllipsoidStyle = 'cutout';
-    }
-
-    return options;
+    return validStyles.includes(style) ? { renderStyle: style } : {};
 }
 
 // Initialize the viewer

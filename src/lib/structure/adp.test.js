@@ -1,10 +1,7 @@
-import { create, all } from 'mathjs';
-
+import { det } from '../math-lite.js';
 import { UIsoADP, UAnisoADP, ADPFactory } from './adp.js';
 import { UnitCell } from './crystal.js';
 import { CIF } from '../read-cif/base.js';
-
-const math = create(all);
 
 describe('ADPs', () => {
     test('UIsoADP stores single parameter', () => {
@@ -51,11 +48,11 @@ describe('ADPs', () => {
     
         beforeEach(() => {
             mockUnitCell = {
-                fractToCartMatrix: math.matrix([
+                fractToCartMatrix: [
                     [10, 0, 0],
                     [0, 10, 0],
                     [0, 0, 10],
-                ]),
+                ],
             };
         });
 
@@ -78,21 +75,21 @@ describe('ADPs', () => {
         test('normalizes eigenvectors when determinant ≠ 1', () => {
             const adp = new UAnisoADP(0.02, 0.01, 0.03, 0.005, 0.008, 0.002);
             const matrix = adp.getEllipsoidMatrix(mockUnitCell);
-            const det = math.det(matrix);
-      
-            expect(det).toBeGreaterThan(0.0);
+            const matrixDet = det(matrix);
+
+            expect(matrixDet).toBeGreaterThan(0.0);
 
             const mockUnitCell2 = {
-                fractToCartMatrix: math.matrix([
+                fractToCartMatrix: [
                     [0, 0, 10],
                     [0, 10, 0],
                     [10, 0, 0],
-                ]),
+                ],
             };
             const matrix2 = adp.getEllipsoidMatrix(mockUnitCell2);
-            const det2 = math.det(matrix2);
-      
-            expect(det2).toBeGreaterThan(0.0);
+            const matrixDet2 = det(matrix2);
+
+            expect(matrixDet2).toBeGreaterThan(0.0);
         });
 
         test('transforms diagonal ADPs correctly', () => {

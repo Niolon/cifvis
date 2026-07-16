@@ -107,6 +107,25 @@
         </section>
 
         <section>
+            <h2>Performance benchmarking</h2>
+            <p>
+                <code>benchmark/speed.mjs</code> loads real CIF files against the built library in headless Chrome
+                (via <code>playwright-core</code>) and reports parse/build time, render time, and WebGL draw-call
+                count per structure &mdash; self-contained, no external server required.
+            </p>
+            <pre><code>npm run bench -- path/to/structure.cif
+npm run bench -- path/to/cif/directory --limit 200
+npm run bench -- path/to/file-list.txt --out results.csv --render-mode constant</code></pre>
+            <p>
+                The target can be a single <code>.cif</code> file, a directory (searched recursively), or a text
+                file listing one path per line (optionally <code>path&lt;TAB&gt;size</code>). It builds
+                <code>dist/cifvis.alldeps.js</code> automatically if missing. Chrome's location is taken from
+                <code>--chrome</code> or the <code>CHROME_PATH</code> environment variable if the system default
+                isn't found.
+            </p>
+        </section>
+
+        <section>
             <h2>Full JSDoc</h2>
             <p>
                 Every exported class and function has a JSDoc comment, and <code>eslint-plugin-jsdoc</code> enforces

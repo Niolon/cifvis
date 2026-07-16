@@ -399,19 +399,11 @@ export class CrystalViewer {
                 `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
             );
         }
-        const validRenderStyles = ['standard', '2d'];
+        const validRenderStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
         if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
             throw new Error(
                 `Invalid render style: "${options.renderStyle}". ` +
                 `Must be one of: ${validRenderStyles.join(', ')}`,
-            );
-        }
-        const validAtomEllipsoidStyles = ['solid', 'cutout'];
-        if (options.atomEllipsoidStyle &&
-            !validAtomEllipsoidStyles.includes(options.atomEllipsoidStyle)) {
-            throw new Error(
-                `Invalid atom ellipsoid style: "${options.atomEllipsoidStyle}". ` +
-                `Must be one of: ${validAtomEllipsoidStyles.join(', ')}`,
             );
         }
 
@@ -433,7 +425,6 @@ export class CrystalViewer {
                 ...(options.interaction || {}),
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
-            atomEllipsoidStyle: options.atomEllipsoidStyle || defaultSettings.atomEllipsoidStyle,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
                 defaultSettings.atomCutawayStripeCount,
@@ -518,7 +509,7 @@ export class CrystalViewer {
         this.camera = this.cameraController.camera;
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
         this.resizeRendererToDisplaySize();

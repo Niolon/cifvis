@@ -14,6 +14,35 @@ const OCTANT_SIGNS = [
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
 
 /**
+ * Local transforms placing the three ADP rings on the ellipsoid's principal
+ * planes, relative to an untransformed atom at the origin. Identical for
+ * every anisotropic atom, which is what makes it possible to bake all three
+ * into a single merged geometry once, instead of building three separate
+ * ring meshes per atom.
+ * @type {THREE.Matrix4[]}
+ */
+const ADP_RING_LOCAL_MATRICES = [
+    new THREE.Matrix4().set(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ),
+    new THREE.Matrix4().set(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, -1.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ),
+    new THREE.Matrix4().set(
+        0.0, -1.0, 0.0, 0.0,
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ),
+];
+
+/**
  * Creates the hatched material used on the exposed principal planes of a
  * cutaway ellipsoid. CircleGeometry UVs keep the stripes horizontal on each
  * disc without adding extra geometry.
@@ -238,6 +267,19 @@ function checkForNaN(object3D) {
             console.log(obj.userData);
         }
 
+        if (obj.isInstancedMesh) {
+            const instanceMatrix = new THREE.Matrix4();
+            for (let i = 0; i < obj.count; i++) {
+                obj.getMatrixAt(i, instanceMatrix);
+                if (instanceMatrix.elements.some(isNaN)) {
+                    nanCounts.matrix++;
+                    console.log('instanceMatrix');
+                    console.log(instanceMatrix.elements);
+                    console.log(obj.userData);
+                }
+            }
+        }
+
         for (const child of obj.children) {
             checkObject(child);
         }
@@ -245,6 +287,63 @@ function checkForNaN(object3D) {
 
     checkObject(object3D);
     return nanCounts;
+}
+
+/**
+ * Fixed-size pool of InstancedMesh instances sharing one geometry/material
+ * pair, filled sequentially via register(). Used to collapse many identical
+ * per-object THREE.Mesh draw calls into a single instanced draw call.
+ */
+export class InstancedPool {
+    /**
+     * @param {THREE.BufferGeometry} geometry - Shared geometry for every instance
+     * @param {THREE.Material} material - Shared material for every instance
+     * @param {number} count - Maximum number of instances this pool can hold
+     */
+    constructor(geometry, material, count) {
+        this.mesh = new THREE.InstancedMesh(geometry, material, count);
+        this.mesh.userData = { selectable: false };
+        this.nextIndex = 0;
+    }
+
+    /**
+     * Registers a new instance transform, returning its stable index.
+     * @param {THREE.Matrix4} matrix - World-space instance transform
+     * @returns {number} Index assigned to this instance
+     */
+    register(matrix) {
+        const index = this.nextIndex++;
+        this.mesh.setMatrixAt(index, matrix);
+        return index;
+    }
+
+    /**
+     * Uploads all registered instance matrices to the GPU. Call once after
+     * every register() call for a given structure load.
+     */
+    finalize() {
+        this.mesh.instanceMatrix.needsUpdate = true;
+        this.mesh.computeBoundingSphere();
+    }
+
+    /**
+     * Hides an instance (used to visually replace it with a selection overlay).
+     * @param {number} index - Instance index to hide
+     */
+    hideInstance(index) {
+        this.mesh.setMatrixAt(index, new THREE.Matrix4().makeScale(0, 0, 0));
+        this.mesh.instanceMatrix.needsUpdate = true;
+    }
+
+    /**
+     * Restores a previously hidden instance to its real transform.
+     * @param {number} index - Instance index to restore
+     * @param {THREE.Matrix4} matrix - World-space instance transform
+     */
+    restoreInstance(index, matrix) {
+        this.mesh.setMatrixAt(index, matrix);
+        this.mesh.instanceMatrix.needsUpdate = true;
+    }
 }
 
 /**
@@ -369,8 +468,7 @@ export class GeometryMaterialCache {
             this.options.atomDetail,
         );
 
-        if (this.options.atomEllipsoidStyle === 'cutout' ||
-            this.options.renderStyle === '2d') {
+        if (this.options.renderStyle !== 'solid-3d') {
             const octantSections = Math.max(3, 2 ** this.options.atomDetail + 2);
             this.geometries.atomOctant = new THREE.SphereGeometry(
                 this.scaling,
@@ -382,14 +480,12 @@ export class GeometryMaterialCache {
                 Math.PI / 2,
             );
             this.geometries.emptyAtom = new THREE.BufferGeometry();
-            if (this.options.atomEllipsoidStyle === 'cutout' ||
-                this.options.renderStyle === '2d') {
-                this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
-            }
+            this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
         }
 
         // ADP ring geometry
         this.geometries.adpRing = this.createADPHalfTorus();
+        this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing);
 
         // Bond geometry
         this.geometries.bond = new THREE.CylinderGeometry(
@@ -417,7 +513,7 @@ export class GeometryMaterialCache {
      * @private
      */
     initializeMaterials() {
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             this.materials.bond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DBondColor,
             });
@@ -477,7 +573,7 @@ export class GeometryMaterialCache {
         }
         this.validateElementType(elementType);
 
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             const plotKey = `${elementType}_2d_materials`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
@@ -526,7 +622,7 @@ export class GeometryMaterialCache {
             });
 
             this.elementMaterials[key] = [atomMaterial, ringMaterial];
-            if (this.options.atomEllipsoidStyle === 'cutout') {
+            if (this.options.renderStyle === 'cutout-3d') {
                 this.elementMaterials[key].push(
                     createCutawayPlaneMaterial(elementProperty, this.options),
                 );
@@ -641,6 +737,24 @@ export class GeometryMaterialCache {
     }
 
     /**
+     * Bakes the three ADP ring placements (identical for every anisotropic
+     * atom, see ADP_RING_LOCAL_MATRICES) into one merged geometry, so an atom
+     * needs a single ring mesh instead of three.
+     * @param {THREE.BufferGeometry} baseADPRing - Single half-torus ring geometry
+     * @returns {THREE.BufferGeometry} Merged geometry with all three rings placed
+     */
+    createMergedADPRingSet(baseADPRing) {
+        const placedRings = ADP_RING_LOCAL_MATRICES.map(matrix => {
+            const ring = baseADPRing.clone();
+            ring.applyMatrix4(matrix);
+            return ring;
+        });
+        const merged = mergeGeometries(placedRings);
+        placedRings.forEach(ring => ring.dispose());
+        return merged;
+    }
+
+    /**
      * Cleans up all cached resources.
      */
     dispose() {
@@ -720,52 +834,148 @@ export class ORTEP3JsStructure {
         };
 
         // Create atoms
-        for (const atom of this.crystalStructure.atoms) {
-            const [atomMaterial, ringMaterial, cutawayMaterial] =
-                this.cache.getAtomMaterials(atom.atomType);
+        if (this.options.renderStyle !== 'solid-3d') {
+            // Cutout/2D styles toggle sub-geometry visibility per frame based
+            // on camera direction, which isn't a good fit for instancing, so
+            // they keep using one mesh per atom.
+            for (const atom of this.crystalStructure.atoms) {
+                const [atomMaterial, ringMaterial, cutawayMaterial] =
+                    this.cache.getAtomMaterials(atom.atomType);
 
-            let atom3D;
-            if (atom.adp instanceof UAnisoADP) {
-                atom3D = new ORTEPAniAtom(
-                    atom,
-                    this.crystalStructure.cell,
-                    this.cache.geometries.atom,
-                    atomMaterial,
-                    this.cache.geometries.adpRing,
-                    ringMaterial,
-                    this.options.atomEllipsoidStyle === 'cutout' ||
-                        this.options.renderStyle === '2d' ? {
+                let atom3D;
+                if (atom.adp instanceof UAnisoADP) {
+                    atom3D = new ORTEPAniAtom(
+                        atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        atomMaterial,
+                        this.cache.geometries.adpRingSet,
+                        ringMaterial,
+                        {
                             octantGeometry: this.cache.geometries.atomOctant,
                             emptyGeometry: this.cache.geometries.emptyAtom,
                             planeGeometry: this.cache.geometries.cutawayPlanes,
                             planeMaterial: cutawayMaterial,
                             hysteresis: this.options.atomCutawayHysteresis,
-                        } : null,
-                );
-            } else if (atom.adp instanceof UIsoADP) {
-                atom3D = new ORTEPIsoAtom(
-                    atom,
-                    this.crystalStructure.cell,
-                    this.cache.geometries.atom,
-                    atomMaterial,
-                );
-            } else {
-                atom3D = new ORTEPConstantAtom(
-                    atom,
-                    this.crystalStructure.cell,
-                    this.cache.geometries.atom,
-                    atomMaterial,
-                    this.options,
-                );
+                        },
+                    );
+                } else if (atom.adp instanceof UIsoADP) {
+                    atom3D = new ORTEPIsoAtom(
+                        atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        atomMaterial,
+                    );
+                } else {
+                    atom3D = new ORTEPConstantAtom(
+                        atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        atomMaterial,
+                        this.options,
+                    );
+                }
+                this.atoms3D.push(atom3D);
+                if (!renderedAtomsById.has(atom.uniqueId)) {
+                    renderedAtomsById.set(atom.uniqueId, atom3D);
+                }
             }
-            this.atoms3D.push(atom3D);
-            if (!renderedAtomsById.has(atom.uniqueId)) {
-                renderedAtomsById.set(atom.uniqueId, atom3D);
+        } else {
+            // Default style: atoms sharing a geometry/material pair (i.e.
+            // every atom of the same element) are batched into shared
+            // InstancedPools instead of getting one mesh each. Transforms are
+            // computed up front (pass 1) to size the pools before any
+            // instance is registered (pass 2), since InstancedMesh cannot
+            // grow after creation. Atoms with degenerate ADPs (NaN ellipsoid,
+            // non-positive variance) can't be represented by the shared
+            // geometry and fall back to the legacy per-mesh tetrahedron path.
+            if (!this.cache.geometries.atom.boundingSphere) {
+                this.cache.geometries.atom.computeBoundingSphere();
             }
+            const atomSurfaceRadius = this.cache.geometries.atom.boundingSphere.radius;
+
+            const atomCountByMaterial = new Map();
+            const ringCountByMaterial = new Map();
+            const perAtomPlan = [];
+
+            for (const atom of this.crystalStructure.atoms) {
+                const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
+
+                if (atom.adp instanceof UAnisoADP) {
+                    const { matrix, valid } = computeAniAtomTransform(atom, this.crystalStructure.cell);
+                    if (valid) {
+                        atomCountByMaterial.set(atomMaterial, (atomCountByMaterial.get(atomMaterial) || 0) + 1);
+                        ringCountByMaterial.set(ringMaterial, (ringCountByMaterial.get(ringMaterial) || 0) + 1);
+                        perAtomPlan.push({ atom, kind: 'ani', matrix, atomMaterial, ringMaterial });
+                    } else {
+                        perAtomPlan.push({ atom, kind: 'ani-fallback', atomMaterial, ringMaterial });
+                    }
+                } else if (atom.adp instanceof UIsoADP) {
+                    const { matrix, valid } = computeIsoAtomTransform(atom, this.crystalStructure.cell);
+                    if (valid) {
+                        atomCountByMaterial.set(atomMaterial, (atomCountByMaterial.get(atomMaterial) || 0) + 1);
+                        perAtomPlan.push({ atom, kind: 'iso', matrix, atomMaterial });
+                    } else {
+                        perAtomPlan.push({ atom, kind: 'iso-fallback', atomMaterial });
+                    }
+                } else {
+                    const matrix = computeConstantAtomTransform(atom, this.crystalStructure.cell, this.options);
+                    atomCountByMaterial.set(atomMaterial, (atomCountByMaterial.get(atomMaterial) || 0) + 1);
+                    perAtomPlan.push({ atom, kind: 'constant', matrix, atomMaterial });
+                }
+            }
+
+            const atomPools = new Map();
+            for (const [material, count] of atomCountByMaterial) {
+                atomPools.set(material, new InstancedPool(this.cache.geometries.atom, material, count));
+            }
+            const ringPools = new Map();
+            for (const [material, count] of ringCountByMaterial) {
+                ringPools.set(material, new InstancedPool(this.cache.geometries.adpRingSet, material, count));
+            }
+
+            for (const plan of perAtomPlan) {
+                let atom3D;
+                if (plan.kind === 'ani') {
+                    atom3D = new ORTEPAniAtomInstance(
+                        plan.atom,
+                        atomPools.get(plan.atomMaterial),
+                        plan.matrix,
+                        atomSurfaceRadius,
+                        ringPools.get(plan.ringMaterial),
+                    );
+                } else if (plan.kind === 'iso' || plan.kind === 'constant') {
+                    atom3D = new ORTEPAtomInstance(
+                        plan.atom, atomPools.get(plan.atomMaterial), plan.matrix, atomSurfaceRadius,
+                    );
+                } else if (plan.kind === 'ani-fallback') {
+                    atom3D = new ORTEPAniAtom(
+                        plan.atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        plan.atomMaterial,
+                        this.cache.geometries.adpRingSet,
+                        plan.ringMaterial,
+                        null,
+                    );
+                } else {
+                    atom3D = new ORTEPIsoAtom(
+                        plan.atom, this.crystalStructure.cell, this.cache.geometries.atom, plan.atomMaterial,
+                    );
+                }
+                this.atoms3D.push(atom3D);
+                if (!renderedAtomsById.has(plan.atom.uniqueId)) {
+                    renderedAtomsById.set(plan.atom.uniqueId, atom3D);
+                }
+            }
+
+            atomPools.forEach(pool => pool.finalize());
+            ringPools.forEach(pool => pool.finalize());
+            this.atomPools = atomPools;
+            this.ringPools = ringPools;
         }
 
-        const trimBondsToSurfaces = this.options.atomEllipsoidStyle === 'cutout' ||
-            this.options.renderStyle === '2d';
+        const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d';
         const getRenderedAtom = trimBondsToSurfaces ?
             atomId => renderedAtomsById.get(atomId) : null;
 
@@ -778,30 +988,66 @@ export class ORTEP3JsStructure {
                 return atom1Present && atom2Present;
             });
 
-        for (const bond of drawnBonds) {
-            try {
-                const atom1 = atomsById.get(bond.atom1Id);
-                const atom2 = atomsById.get(bond.atom2Id);
-                const isOpenDisorderBond = this.options.renderStyle === '2d' &&
-                    [atom1, atom2].some(atom => Number(atom.disorderGroup) > 1);
-                this.bonds3D.push(new ORTEPBond(
-                    bond,
-                    this.crystalStructure,
-                    this.cache.geometries.bond,
-                    isOpenDisorderBond ?
-                        this.cache.materials.openBond : this.cache.materials.bond,
-                    getCartesianPosition,
-                    getRenderedAtom,
-                    isOpenDisorderBond ? {
-                        outlineMaterial: this.cache.materials.openBondOutline,
-                        innerScale: this.options.plot2DOpenBondInnerScale,
-                    } : null,
-                ));
-            } catch (e) {
-                if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
-                    throw e;
+        if (this.options.renderStyle === 'cutout-2d') {
+            // The 2D publication style needs per-bond open/closed material
+            // choice and an outline mesh, so it keeps using individual
+            // meshes rather than a shared InstancedPool.
+            for (const bond of drawnBonds) {
+                try {
+                    const atom1 = atomsById.get(bond.atom1Id);
+                    const atom2 = atomsById.get(bond.atom2Id);
+                    const isOpenDisorderBond = [atom1, atom2].some(atom => Number(atom.disorderGroup) > 1);
+                    this.bonds3D.push(new ORTEPBond(
+                        bond,
+                        this.crystalStructure,
+                        this.cache.geometries.bond,
+                        isOpenDisorderBond ?
+                            this.cache.materials.openBond : this.cache.materials.bond,
+                        getCartesianPosition,
+                        getRenderedAtom,
+                        isOpenDisorderBond ? {
+                            outlineMaterial: this.cache.materials.openBondOutline,
+                            innerScale: this.options.plot2DOpenBondInnerScale,
+                        } : null,
+                    ));
+                } catch (e) {
+                    if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
+                        throw e;
+                    }
                 }
             }
+        } else {
+            // All regular bonds share one geometry/material, so they can be
+            // batched into a single InstancedMesh. Transforms are computed up
+            // front (pass 1) to size the pool before any instance is
+            // registered (pass 2), since InstancedMesh cannot grow after creation.
+            const bondMatricesByBond = [];
+            for (const bond of drawnBonds) {
+                try {
+                    const matrix = ORTEPBondInstance.computeMatrix(
+                        bond,
+                        this.crystalStructure,
+                        getCartesianPosition,
+                        getRenderedAtom,
+                    );
+                    bondMatricesByBond.push([bond, matrix]);
+                } catch (e) {
+                    if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
+                        throw e;
+                    }
+                }
+            }
+
+            this.bondPool = bondMatricesByBond.length > 0 ? new InstancedPool(
+                this.cache.geometries.bond,
+                this.cache.materials.bond,
+                bondMatricesByBond.length,
+            ) : null;
+
+            for (const [bond, matrix] of bondMatricesByBond) {
+                this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix));
+            }
+            this.bondPool?.finalize();
         }
 
         // Handle hydrogen bonds
@@ -814,24 +1060,41 @@ export class ORTEP3JsStructure {
                 return present;
             });
 
+        // All dash segments across all h-bonds share one geometry/material, so
+        // they can be batched into a single InstancedMesh. Segment matrices are
+        // computed up front (pass 1) to size the pool before any instance is
+        // registered (pass 2), since InstancedMesh cannot grow after creation.
+        const hbondSegmentsByBond = [];
+        let totalHBondSegments = 0;
         for (const hbond of drawnHBonds) {
             try {
-                this.hBonds3D.push(new ORTEPHBond(
+                const segmentMatrices = ORTEPHBond.computeSegmentMatrices(
                     hbond,
                     this.crystalStructure,
-                    this.cache.geometries.hbond,
-                    this.cache.materials.hbond,
                     this.options.hbondDashSegmentLength,
                     this.options.hbondDashFraction,
                     getCartesianPosition,
                     getRenderedAtom,
-                ));
+                );
+                hbondSegmentsByBond.push([hbond, segmentMatrices]);
+                totalHBondSegments += segmentMatrices.length;
             } catch (e) {
                 if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
                     throw e;
                 }
             }
         }
+
+        this.hbondPool = totalHBondSegments > 0 ? new InstancedPool(
+            this.cache.geometries.hbond,
+            this.cache.materials.hbond,
+            totalHBondSegments,
+        ) : null;
+
+        for (const [hbond, segmentMatrices] of hbondSegmentsByBond) {
+            this.hBonds3D.push(new ORTEPHBond(hbond, this.hbondPool, segmentMatrices));
+        }
+        this.hbondPool?.finalize();
     }
 
     /**
@@ -841,14 +1104,30 @@ export class ORTEP3JsStructure {
     getGroup() {
         const group = new THREE.Group();
 
+        if (this.atomPools) {
+            for (const pool of this.atomPools.values()) {
+                group.add(pool.mesh);
+            }
+        }
+        if (this.ringPools) {
+            for (const pool of this.ringPools.values()) {
+                group.add(pool.mesh);
+            }
+        }
         for (const atom3D of this.atoms3D) {
             group.add(atom3D);
         }
 
+        if (this.bondPool) {
+            group.add(this.bondPool.mesh);
+        }
         for (const bond3D of this.bonds3D) {
             group.add(bond3D);
         }
 
+        if (this.hbondPool) {
+            group.add(this.hbondPool.mesh);
+        }
         for (const hBond3D of this.hBonds3D) {
             group.add(hBond3D);
         }
@@ -1063,7 +1342,8 @@ export class ORTEPAniAtom extends ORTEPAtom {
      * @param {UnitCell} unitCell - Unit cell parameters
      * @param {THREE.BufferGeometry} baseAtom - Base atom geometry
      * @param {THREE.Material} atomMaterial - Atom material
-     * @param {THREE.BufferGeometry} baseADPRing - ADP ring geometry
+     * @param {THREE.BufferGeometry} baseADPRingSet - Merged 3-ring geometry (see
+     *   GeometryMaterialCache.createMergedADPRingSet)
      * @param {THREE.Material} ADPRingMaterial - ADP ring material
      * @param {object|null} cutaway - Optional cutaway geometries and settings
      */
@@ -1072,12 +1352,12 @@ export class ORTEPAniAtom extends ORTEPAtom {
         unitCell,
         baseAtom,
         atomMaterial,
-        baseADPRing,
+        baseADPRingSet,
         ADPRingMaterial,
         cutaway = null,
     ) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        if ([atom.adp.u11, atom.adp.u3, atom.adp.u33].some(val => val <= 0)) {
+        if ([atom.adp.u11, atom.adp.u22, atom.adp.u33].some(val => val <= 0)) {
             this.geometry = new THREE.TetrahedronGeometry(0.8);
             if (this.plot2DOutline) {
                 this.plot2DOutline.geometry = this.geometry;
@@ -1095,12 +1375,13 @@ export class ORTEPAniAtom extends ORTEPAtom {
                 if (cutaway) {
                     this.setupCutaway(cutaway, atomMaterial);
                 }
-                for (const matrix of this.adpRingMatrices) {
-                    const ringMesh = new THREE.Mesh(baseADPRing, ADPRingMaterial);
-                    ringMesh.applyMatrix4(matrix);
-                    ringMesh.userData.selectable = false;
-                    this.add(ringMesh);
-                }
+                // The three ring placements are baked into baseADPRingSet
+                // already (see ADP_RING_LOCAL_MATRICES), so one mesh renders
+                // all three rings instead of three separate meshes.
+                const ringMesh = new THREE.Mesh(baseADPRingSet, ADPRingMaterial);
+                ringMesh.userData.selectable = false;
+                this.add(ringMesh);
+                this.ringMesh = ringMesh;
 
                 this.applyMatrix4(ellipsoidMatrix);
             }
@@ -1298,26 +1579,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
      * @returns {THREE.Matrix4[]} Array of matrices for the three orthogonal planes
      */
     get adpRingMatrices() {
-        return [
-            new THREE.Matrix4().set(
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ),
-            new THREE.Matrix4().set(
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, -1.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ),
-            new THREE.Matrix4().set(
-                0.0, -1.0, 0.0, 0.0,
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ),
-        ];
+        return ADP_RING_LOCAL_MATRICES.map(matrix => matrix.clone());
     }
 }
 
@@ -1376,6 +1638,299 @@ export class ORTEPConstantAtom extends ORTEPAtom {
         this.scale.multiplyScalar(
             options.atomConstantRadiusMultiplier * options.elementProperties[elementType].radius,
         );
+    }
+}
+
+/**
+ * Computes the instance transform for an anisotropic atom in the default
+ * (non-cutout, non-2D) render style, without creating any rendering
+ * resources. Mirrors the validity checks in the ORTEPAniAtom constructor:
+ * atoms with degenerate ADPs are not representable as an ellipsoid and must
+ * fall back to the legacy tetrahedron-mesh path instead of being pooled.
+ * @param {Atom} atom - Atom with anisotropic displacement parameters
+ * @param {UnitCell} unitCell - Unit cell parameters
+ * @returns {{matrix: THREE.Matrix4|null, valid: boolean}} Computed transform
+ *   and whether the ADP was well-formed enough to use it
+ */
+function computeAniAtomTransform(atom, unitCell) {
+    if ([atom.adp.u11, atom.adp.u3, atom.adp.u33].some(val => val <= 0)) {
+        return { matrix: null, valid: false };
+    }
+    const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
+    if (ellipsoidMatrix.toArray().includes(NaN)) {
+        return { matrix: null, valid: false };
+    }
+    const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
+    return { matrix: ellipsoidMatrix.setPosition(position), valid: true };
+}
+
+/**
+ * Computes the instance transform for an isotropic atom in the default
+ * (non-cutout, non-2D) render style. Mirrors ORTEPIsoAtom's validity check:
+ * a non-positive uiso falls back to the legacy tetrahedron-mesh path.
+ * @param {Atom} atom - Atom with isotropic displacement parameters
+ * @param {UnitCell} unitCell - Unit cell parameters
+ * @returns {{matrix: THREE.Matrix4|null, valid: boolean}} Computed transform
+ *   and whether uiso was usable
+ */
+function computeIsoAtomTransform(atom, unitCell) {
+    if (atom.adp.uiso <= 0.0) {
+        return { matrix: null, valid: false };
+    }
+    const scale = Math.sqrt(atom.adp.uiso);
+    const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
+    return { matrix: new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(position), valid: true };
+}
+
+/**
+ * Computes the instance transform for a constant-radius atom. Mirrors
+ * ORTEPConstantAtom's element-lookup and error behaviour exactly.
+ * @param {Atom} atom - Input atom data
+ * @param {UnitCell} unitCell - Unit cell parameters
+ * @param {object} options - Must contain elementProperties for atom type
+ * @returns {THREE.Matrix4} Computed transform
+ * @throws {Error} If element properties not found
+ */
+function computeConstantAtomTransform(atom, unitCell, options) {
+    let elementType = atom.atomType;
+    try {
+        if (!options.elementProperties[elementType]) {
+            elementType = inferElementFromLabel(atom.atomType);
+        }
+    } catch {
+        throw new Error(`Element properties not found for atom type: '${atom.atomType}'`);
+    }
+    const scale = options.atomConstantRadiusMultiplier * options.elementProperties[elementType].radius;
+    const position = new THREE.Vector3(...atom.position.toCartesian(unitCell));
+    return new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(position);
+}
+
+/**
+ * Abstract base for scene-graph objects whose rendered geometry lives in one
+ * or more shared InstancedPool instances rather than in a mesh of their own.
+ * Subclasses populate `this.segments` (an array of `{pool, matrix, index}`)
+ * and get raycasting and hide-instance-and-overlay-mesh selection handling
+ * for free.
+ * @abstract
+ * @augments THREE.Object3D
+ */
+export class PooledSelectableObject extends THREE.Object3D {
+    /**
+     * @throws {TypeError} If instantiated directly (abstract class)
+     */
+    constructor() {
+        if (new.target === PooledSelectableObject) {
+            throw new TypeError('PooledSelectableObject is an abstract class and cannot be instantiated directly.');
+        }
+        super();
+        this._selectionColor = null;
+        this.marker = null;
+        this.matrixAutoUpdate = false;
+        this.segments = [];
+    }
+
+    get selectionColor() {
+        return this._selectionColor;
+    }
+
+    /**
+     * Creates material for selection highlighting.
+     * @param {number} color - Color in hex format
+     * @returns {THREE.Material} Selection highlight material
+     */
+    createSelectionMaterial(color) {
+        return new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.BackSide,
+        });
+    }
+
+    /**
+     * Redirects raycasting to test each segment's instance transform against
+     * its pool's geometry, reporting this object as the hit.
+     * @param {THREE.Raycaster} raycaster - Raycaster performing the hit test
+     * @param {object[]} intersects - Array receiving ray intersections
+     */
+    raycast(raycaster, intersects) {
+        const localIntersects = [];
+        // A real (throwaway) Mesh is required here rather than a duck-typed
+        // {geometry, material, matrixWorld} object: Mesh.raycast() calls
+        // this._computeIntersections(...) internally, which only exists on
+        // THREE.Mesh.prototype, not on a plain object passed via .call().
+        const scratchMesh = new THREE.Mesh();
+        scratchMesh.matrixAutoUpdate = false;
+        for (const segment of this.segments) {
+            scratchMesh.geometry = segment.pool.mesh.geometry;
+            scratchMesh.material = segment.pool.mesh.material;
+            scratchMesh.matrixWorld.multiplyMatrices(this.matrixWorld, segment.matrix);
+            scratchMesh.raycast(raycaster, localIntersects);
+        }
+        if (localIntersects.length > 0) {
+            localIntersects.sort((a, b) => a.distance - b.distance);
+            intersects.push({ ...localIntersects[0], object: this });
+        }
+    }
+
+    /**
+     * Handles selection: hides the pooled instances and replaces them with
+     * individually highlighted meshes, plus a selection marker.
+     * @param {number} color - Selection color in hex format
+     * @param {object} options - Selection options
+     */
+    select(color, options) {
+        this._selectionColor = color;
+
+        this.highlightMeshes = this.segments.map(segment => {
+            const highlightMaterial = segment.pool.mesh.material.clone();
+            highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
+            segment.pool.hideInstance(segment.index);
+            const mesh = new THREE.Mesh(segment.pool.mesh.geometry, highlightMaterial);
+            mesh.applyMatrix4(segment.matrix);
+            mesh.userData = { ...this.userData, selectable: false };
+            this.add(mesh);
+            return mesh;
+        });
+
+        const marker = this.createSelectionMarker(color, options);
+        this.add(marker);
+        this.marker = marker;
+    }
+
+    /**
+     * Handles deselection: restores the pooled instances and removes the
+     * highlighted meshes and marker.
+     */
+    deselect() {
+        this._selectionColor = null;
+
+        this.segments.forEach(segment => segment.pool.restoreInstance(segment.index, segment.matrix));
+
+        if (this.highlightMeshes) {
+            this.highlightMeshes.forEach(mesh => {
+                this.remove(mesh);
+                mesh.material.dispose();
+            });
+            this.highlightMeshes = null;
+        }
+        if (this.marker) {
+            this.remove(this.marker);
+            this.marker.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                    child.material?.dispose();
+                }
+            });
+            this.marker = null;
+        }
+    }
+
+    /**
+     * Creates visual marker for selection.
+     * @abstract
+     * @param {number} _color - Selection color in hex format
+     * @param {object} _options - Selection options
+     * @throws {Error} If not implemented by subclass
+     */
+    createSelectionMarker(_color, _options) {
+        throw new Error('createSelectionMarker needs to be implemented in a subclass');
+    }
+
+    /**
+     * Cleans up selection-related resources. Pool geometry/material are
+     * cache-owned and disposed via GeometryMaterialCache.dispose().
+     */
+    dispose() {
+        if (this.marker) {
+            this.deselect();
+        }
+    }
+}
+
+/**
+ * Base class for atom visualisations in the default (non-cutout, non-2D)
+ * render style. Registers into a shared per-element InstancedPool instead of
+ * owning its own mesh.
+ * @augments PooledSelectableObject
+ */
+export class ORTEPAtomInstance extends PooledSelectableObject {
+    /**
+     * @param {Atom} atom - Input atom data
+     * @param {InstancedPool} pool - Shared per-element atom body pool
+     * @param {THREE.Matrix4} matrix - Precomputed body transform
+     * @param {number} surfaceRadius - Untransformed bounding-sphere radius of the atom geometry
+     */
+    constructor(atom, pool, matrix, surfaceRadius) {
+        super();
+        this.userData = {
+            type: 'atom',
+            atomData: atom,
+            selectable: true,
+        };
+        this.segments = [{ pool, matrix, index: pool.register(matrix) }];
+        this.surfaceRadius = surfaceRadius;
+    }
+
+    /**
+     * Finds the distance from this atom's centre to its rendered surface in a
+     * structure-space direction.
+     * @param {THREE.Vector3} direction - Direction from the atom centre
+     * @returns {number} Distance to the atom surface
+     */
+    getSurfaceDistanceAlong(direction) {
+        if (direction.lengthSq() === 0 || this.surfaceRadius === 0) {
+            return 0;
+        }
+        const matrix = this.segments[0].matrix;
+        const inverseTransform = matrix.clone().setPosition(0, 0, 0).invert();
+        const localDirection = direction.clone().normalize().applyMatrix4(inverseTransform);
+        const localLength = localDirection.length();
+        return Number.isFinite(localLength) && localLength > 0 ?
+            this.surfaceRadius / localLength : 0;
+    }
+
+    /**
+     * Creates visual marker for selection of atoms.
+     * @param {number} color - Selection color in hex format
+     * @param {object} options - Selection options containing visualization parameters
+     * @returns {THREE.Mesh} Selection marker mesh
+     */
+    createSelectionMarker(color, options) {
+        const segment = this.segments[0];
+        const outlineMesh = new THREE.Mesh(segment.pool.mesh.geometry, this.createSelectionMaterial(color));
+        outlineMesh.applyMatrix4(segment.matrix);
+        outlineMesh.scale.multiplyScalar(options.selection.markerMult);
+        outlineMesh.userData.selectable = false;
+        return outlineMesh;
+    }
+}
+
+/**
+ * Class for anisotropic atoms in the default (non-cutout, non-2D) render
+ * style. In addition to the pooled atom body, registers one instance into a
+ * shared per-element ADP ring pool - using the exact same transform as the
+ * body, since the three ring placements are already baked into the merged
+ * ring geometry (see GeometryMaterialCache.createMergedADPRingSet). The ring
+ * instance is intentionally excluded from `segments` (and therefore from
+ * raycasting/selection): rings have always been non-selectable and
+ * unaffected by selection highlighting, matching the legacy ORTEPAniAtom
+ * behaviour where only the atom body's material changes on selection.
+ * @augments ORTEPAtomInstance
+ */
+export class ORTEPAniAtomInstance extends ORTEPAtomInstance {
+    /**
+     * @param {Atom} atom - Input atom data with anisotropic displacement parameters
+     * @param {InstancedPool} pool - Shared per-element atom body pool
+     * @param {THREE.Matrix4} matrix - Precomputed ellipsoid transform
+     * @param {number} surfaceRadius - Untransformed bounding-sphere radius of the atom geometry
+     * @param {InstancedPool|null} ringPool - Shared per-element ADP ring pool
+     */
+    constructor(atom, pool, matrix, surfaceRadius, ringPool) {
+        super(atom, pool, matrix, surfaceRadius);
+        if (ringPool) {
+            this.ringPool = ringPool;
+            this.ringIndex = ringPool.register(matrix);
+        }
     }
 }
 
@@ -1620,39 +2175,108 @@ export class ORTEPGroupObject extends THREE.Group {
 }
 
 /**
+ * Class for chemical bond visualization in the default (non-2D) render
+ * style. Registers into a shared InstancedPool instead of owning its own
+ * mesh, since every regular bond shares one geometry and one material.
+ * @augments PooledSelectableObject
+ */
+export class ORTEPBondInstance extends PooledSelectableObject {
+    /**
+     * Computes a bond's world-space transform, without creating any
+     * rendering resources. Used both to size the shared InstancedPool before
+     * any instance is registered, and to register into it.
+     * @param {Bond} bond - Bond data containing connected atoms
+     * @param {CrystalStructure} crystalStructure - Parent structure containing atom information
+     * @param {Function} [getCartesianPosition] - Cached atom-position resolver
+     * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @returns {THREE.Matrix4} World-space bond transform
+     */
+    static computeMatrix(bond, crystalStructure, getCartesianPosition = null, getRenderedAtom = null) {
+        let atom1position;
+        let atom2position;
+        if (getCartesianPosition) {
+            atom1position = getCartesianPosition(bond.atom1Id);
+            atom2position = getCartesianPosition(bond.atom2Id);
+        } else {
+            const bondAtom1 = crystalStructure.getAtomById(bond.atom1Id);
+            const bondAtom2 = crystalStructure.getAtomById(bond.atom2Id);
+            atom1position = new THREE.Vector3(...bondAtom1.position.toCartesian(crystalStructure.cell));
+            atom2position = new THREE.Vector3(...bondAtom2.position.toCartesian(crystalStructure.cell));
+        }
+        if (getRenderedAtom) {
+            [atom1position, atom2position] = trimBondToAtomSurfaces(
+                atom1position,
+                atom2position,
+                getRenderedAtom(bond.atom1Id),
+                getRenderedAtom(bond.atom2Id),
+            );
+        }
+        return calcBondTransform(atom1position, atom2position);
+    }
+
+    /**
+     * Creates a new bond visualisation, registering it into the shared bond InstancedPool.
+     * @param {Bond} bond - Bond data
+     * @param {InstancedPool} pool - Shared pool for all regular bonds
+     * @param {THREE.Matrix4} matrix - Precomputed bond transform
+     */
+    constructor(bond, pool, matrix) {
+        super();
+        this.userData = {
+            type: 'bond',
+            bondData: bond,
+            selectable: true,
+            isOpenDisorderBond: false,
+        };
+        this.segments = [{ pool, matrix, index: pool.register(matrix) }];
+    }
+
+    /**
+     * Creates visual marker for selection of bonds.
+     * @param {number} color - Selection color in hex format
+     * @param {object} options - Selection options containing visualization parameters
+     * @returns {THREE.Mesh} Selection marker mesh
+     */
+    createSelectionMarker(color, options) {
+        const segment = this.segments[0];
+        const outlineMesh = new THREE.Mesh(segment.pool.mesh.geometry, this.createSelectionMaterial(color));
+        outlineMesh.applyMatrix4(segment.matrix);
+        outlineMesh.scale.x *= options.selection.bondMarkerMult;
+        outlineMesh.scale.z *= options.selection.bondMarkerMult;
+        outlineMesh.userData.selectable = false;
+        return outlineMesh;
+    }
+}
+
+/**
  * Class for hydrogen bond visualization.
  * Represents hydrogen bonds as dashed lines between donor and acceptor atoms.
- * @augments ORTEPGroupObject
+ * All dash segments across every h-bond in a structure share one geometry and
+ * material, so they are rendered as instances of a single shared InstancedPool
+ * rather than as individual meshes.
+ * @augments PooledSelectableObject
  */
-export class ORTEPHBond extends ORTEPGroupObject {
+export class ORTEPHBond extends PooledSelectableObject {
     /**
-     * Creates a new hydrogen bond visualization.
+     * Computes the world-space transform of every dash segment for an h-bond,
+     * without creating any rendering resources. Used both to size the shared
+     * InstancedPool before any instance is registered, and to register into it.
      * @param {HBond} hbond - H-bond data
      * @param {CrystalStructure} crystalStructure - Parent structure
-     * @param {THREE.BufferGeometry} baseHBond - H-bond geometry
-     * @param {THREE.Material} baseHBondMaterial - H-bond material
      * @param {number} targetSegmentLength - Approximate target length for dashed segments
      * @param {number} dashFraction - Fraction of segment that is solid
      * @param {Function} [getCartesianPosition] - Cached atom-position resolver
      * @param {Function} [getRenderedAtom] - Rendered atom resolver for surface trimming
+     * @returns {THREE.Matrix4[]} One transform per dash segment
      */
-    constructor(
+    static computeSegmentMatrices(
         hbond,
         crystalStructure,
-        baseHBond,
-        baseHBondMaterial,
         targetSegmentLength,
         dashFraction,
         getCartesianPosition = null,
         getRenderedAtom = null,
     ) {
-        super();
-        this.userData = {
-            type: 'hbond',
-            hbondData: hbond,
-            selectable: true,
-        };
-
         let hydrogenPosition;
         let acceptorPosition;
         if (getCartesianPosition) {
@@ -1674,41 +2298,43 @@ export class ORTEPHBond extends ORTEPGroupObject {
             );
         }
 
-        this.createDashedBondSegments(
-            hydrogenPosition, acceptorPosition,
-            baseHBond, baseHBondMaterial,
-            targetSegmentLength, dashFraction,
-        );
-    }
-
-    /**
-     * Creates dashed line segments for hydrogen bond visualization.
-     * @private
-     * @param {THREE.Vector3} start - Start position
-     * @param {THREE.Vector3} end - End position
-     * @param {THREE.BufferGeometry} baseHBond - Base H-bond geometry
-     * @param {THREE.Material} material - H-bond material
-     * @param {number} targetLength - approximate target segment length
-     * @param {number} dashFraction - Fraction of segment that is solid
-     */
-    createDashedBondSegments(start, end, baseHBond, material, targetLength, dashFraction) {
-        const totalLength = start.distanceTo(end);
-        const numSegments = Math.max(1, Math.floor(totalLength / targetLength));
+        const totalLength = hydrogenPosition.distanceTo(acceptorPosition);
+        const numSegments = Math.max(1, Math.floor(totalLength / targetSegmentLength));
         const segmentLength = totalLength / numSegments;
         const dashLength = segmentLength * dashFraction;
 
+        const matrices = [];
         for (let i = 0; i < numSegments; i++) {
             const startFraction = i / numSegments;
             const endFraction = startFraction + (dashLength / totalLength);
 
-            const segStart = new THREE.Vector3().lerpVectors(start, end, startFraction);
-            const segEnd = new THREE.Vector3().lerpVectors(start, end, endFraction);
-
-            const segmentMesh = new THREE.Mesh(baseHBond, material.clone());
-            segmentMesh.applyMatrix4(calcBondTransform(segStart, segEnd));
-            segmentMesh.userData = this.userData;
-            this.add(segmentMesh);
+            const segStart = new THREE.Vector3().lerpVectors(hydrogenPosition, acceptorPosition, startFraction);
+            const segEnd = new THREE.Vector3().lerpVectors(hydrogenPosition, acceptorPosition, endFraction);
+            matrices.push(calcBondTransform(segStart, segEnd));
         }
+        return matrices;
+    }
+
+    /**
+     * Creates a new hydrogen bond visualisation, registering its dash segments
+     * into the shared h-bond InstancedPool.
+     * @param {HBond} hbond - H-bond data
+     * @param {InstancedPool} pool - Shared pool for all h-bond dash segments
+     * @param {THREE.Matrix4[]} segmentMatrices - Precomputed per-segment transforms
+     */
+    constructor(hbond, pool, segmentMatrices) {
+        super();
+        this.userData = {
+            type: 'hbond',
+            hbondData: hbond,
+            selectable: true,
+        };
+        this.pool = pool;
+        this.segments = segmentMatrices.map(matrix => ({
+            pool,
+            matrix,
+            index: pool.register(matrix),
+        }));
     }
 
     /**
@@ -1721,8 +2347,8 @@ export class ORTEPHBond extends ORTEPGroupObject {
         const markerGroup = new THREE.Group();
         const material = this.createSelectionMaterial(color);
 
-        this.children.forEach(segment => {
-            const markerMesh = new THREE.Mesh(segment.geometry, material);
+        this.segments.forEach(segment => {
+            const markerMesh = new THREE.Mesh(segment.pool.mesh.geometry, material);
             markerMesh.applyMatrix4(segment.matrix);
             markerMesh.scale.x *= options.selection.bondMarkerMult;
             markerMesh.scale.y *= 0.8 * options.selection.bondMarkerMult;

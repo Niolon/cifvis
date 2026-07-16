@@ -3,9 +3,7 @@ import { Bond } from '../bonds.js';
 import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } from '../crystal.js';
 import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
 import { BaseFilter } from './base.js';
-
-import { create, all } from 'mathjs';
-const math = create(all);
+import * as math from '../../math-lite.js';
 
 /**
  * Filter that removes specified atoms and their connected bonds from a structure,

@@ -93,3 +93,63 @@ function parseTable(tokens, pos, splitSU) {
     }
     return { value: table, su: NaN, nextPos: i + 1 };
 }
+
+/**
+ * Finds the end of a single CIF2 value's tokens (scalar, list, or table)
+ * without interpreting its content - no {@link parseValue} calls, no
+ * standard-uncertainty parsing, no Array/Map construction. Used to walk past
+ * loop cells whose value is never actually read, so that cost is paid lazily
+ * (inside {@link parseCif2Value}, called from CifLoop.parse()) only for
+ * loops a caller actually queries via .get()/.getIndex(), mirroring CIF1's
+ * existing lazy CifLoop behavior.
+ * @param {Array<object>} tokens - The CIF2 token stream.
+ * @param {number} pos - Index of the first token of the value.
+ * @returns {number} The index of the first token after the value.
+ * @throws {Error} If the token at `pos` cannot start a value, or a list/table is unterminated.
+ */
+export function skipCif2Value(tokens, pos) {
+    const token = tokens[pos];
+    if (!token) {
+        throw new Error('Unexpected end of CIF2 value stream');
+    }
+
+    switch (token.type) {
+        case 'value':
+            return pos + 1;
+        case 'listOpen':
+        case 'tableOpen': {
+            // Both containers are flat bracket-depth scans at the token
+            // level: nesting is handled by tracking a stack of open
+            // container types, without recursing into or interpreting entry
+            // values. A stack (rather than a plain depth counter) is
+            // required so mismatched nesting like `[ ... }` is rejected
+            // instead of being accepted as balanced.
+            const CLOSE_FOR_OPEN = { listOpen: 'listClose', tableOpen: 'tableClose' };
+            const stack = [token.type];
+            let i = pos + 1;
+            while (i < tokens.length && stack.length > 0) {
+                const type = tokens[i].type;
+                if (type === 'listOpen' || type === 'tableOpen') {
+                    stack.push(type);
+                } else if (type === 'listClose' || type === 'tableClose') {
+                    const expected = CLOSE_FOR_OPEN[stack[stack.length - 1]];
+                    if (type !== expected) {
+                        throw new Error(
+                            `Mismatched CIF2 container: expected '${expected}' but found '${type}'`,
+                        );
+                    }
+                    stack.pop();
+                }
+                i++;
+            }
+            if (stack.length > 0) {
+                throw new Error(
+                    token.type === 'listOpen' ? 'Unterminated CIF2 list value' : 'Unterminated CIF2 table value',
+                );
+            }
+            return i;
+        }
+        default:
+            throw new Error(`Unexpected token '${token.type}' where a CIF2 value was expected`);
+    }
+}

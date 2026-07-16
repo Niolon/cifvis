@@ -155,9 +155,18 @@ export default {
     },
 
     'renderMode': 'onDemand',
-    'renderStyle': 'standard',
+    // 'solid-3d': shared-geometry ellipsoids, the default and only style
+    //   eligible for InstancedMesh batching.
+    // 'cutout-3d': ellipsoids with a missing camera-facing octant, exposing
+    //   the interior cutaway planes.
+    // 'cutout-2d': hatched, outlined publication-style renderer (element
+    //   colours retained); always cutaway, like 'cutout-3d', but with hatch
+    //   materials instead of solid ones.
+    'renderStyle': 'solid-3d',
 
-    // monochrome publication-style renderer
+    // 'cutout-2d' publication-style renderer settings (outline/hatch colours
+    // below are neutral defaults; atom/ring hatch colours still follow
+    // per-element colours, see GeometryMaterialCache.getAtomMaterials)
     'plot2DBackground': '#ffffff',
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
@@ -178,7 +187,6 @@ export default {
 
     // atom visualisation Settings
     'atomDetail': 3,
-    'atomEllipsoidStyle': 'solid',
     'atomCutawayHysteresis': 0.025,
     'atomCutawayStripeCount': 7,
     'atomCutawayStripeWidth': 0.5,

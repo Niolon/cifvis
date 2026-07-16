@@ -1,12 +1,11 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
 import { Bond, HBond } from '../../bonds.js';
-import { create, all } from 'mathjs';
+import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
 import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from './../../applied-symmetry.js';
 
-const math = create(all, {});
 const MAX_DISPLAYED_BOND_LENGTH = 4;
 
 /**

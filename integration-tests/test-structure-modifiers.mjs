@@ -2,10 +2,11 @@ import { readFileSync, appendFileSync, writeFileSync, mkdirSync, existsSync } fr
 import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { 
+import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/index.nobrowser.js';
+import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -457,10 +458,15 @@ async function main() {
             }
         });
 
-        const files = await findCIFFiles(resolvedPath);
+        let files = await findCIFFiles(resolvedPath);
         console.log(`Found ${files.length} CIF files`);
         logMessage(`Found ${files.length} CIF files`);
-        
+
+        const beforeExclusion = files.length;
+        files = filterKnownBad(files);
+        console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+        logMessage(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+
         let processedIndex = 0;
         while (processedIndex < files.length) {
             processedIndex = await processBatch(files, processedIndex);

@@ -20,10 +20,9 @@ import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
 import { FractPosition } from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
-import { create, all } from 'mathjs';
+import { matrix } from '../../../math-lite.js';
 import { readFileSync } from 'node:fs';
 import { CIF } from '../../../read-cif/base.js';
-const math = create(all, {});
 
 /**
  * Helper to create an atom with proper AppliedSymmetry object
@@ -96,7 +95,7 @@ describe('growCell basic functions', () => {
 
     describe('getSymmetryCentre', () => {
         test('calculates center for identity operation', () => {
-            const startCentre = math.matrix([0.1, 0.2, 0.3]);
+            const startCentre = matrix([0.1, 0.2, 0.3]);
             const identityOp = symmetry.symmetryOperations[0]; // x,y,z
 
             const centre = getSymmetryCentre(startCentre, identityOp);
@@ -108,7 +107,7 @@ describe('growCell basic functions', () => {
         });
 
         test('calculates center for c-glide plane', () => {
-            const startCentre = math.matrix([0.1, 0.2, 0.3]);
+            const startCentre = matrix([0.1, 0.2, 0.3]);
             const glidePlaneOp = symmetry.symmetryOperations[1]; // x,-y,z+1/2
 
             const centre = getSymmetryCentre(startCentre, glidePlaneOp);
@@ -393,7 +392,7 @@ describe('Individual growing functions', () => {
                     new Atom('O1', 'O', new FractPosition(0.8, 0.9, 0.1)),
                 ],
                 symmString: '1_555',
-                groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                groupCentre: matrix([0.45, 0.55, 0.2]),
             };
 
             // Set up object tracker
@@ -720,7 +719,7 @@ describe('Individual growing functions', () => {
                         new Bond('C1', 'C2', 1.4, 0.02, '.'),
                     ],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                    groupCentre: matrix([0.45, 0.55, 0.2]),
                 };
             });
 
@@ -841,7 +840,7 @@ describe('Individual growing functions', () => {
                         new Bond('O1', 'S1', 1.8, 0.02, '3_666'), // External bond
                     ],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                    groupCentre: matrix([0.45, 0.55, 0.2]),
                 };
             });
 
@@ -951,7 +950,7 @@ describe('Individual growing functions', () => {
                         new HBond('N1', 'H2', 'O2', 1.1, 0.02, 1.9, 0.03, 2.9, 0.04, 178, 2, '.'),
                     ],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                    groupCentre: matrix([0.45, 0.55, 0.2]),
                 };
             });
 
@@ -1078,7 +1077,7 @@ describe('Individual growing functions', () => {
                         new HBond('O2', 'H2', 'S1', 1.1, 0.02, 1.9, 0.03, 2.9, 0.04, 178, 2, '3_666'),
                     ],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.45, 0.55, 0.2]),
+                    groupCentre: matrix([0.45, 0.55, 0.2]),
                 };
             });
 
@@ -1206,7 +1205,7 @@ describe('Individual growing functions', () => {
                     internalHBonds: [],
                     externalHBonds: [],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.1, 0.2, 0.3]),
+                    groupCentre: matrix([0.1, 0.2, 0.3]),
                 };
 
                 // Call both bond growing functions
@@ -1230,7 +1229,7 @@ describe('Individual growing functions', () => {
                     internalHBonds: [new HBond('C1', 'H1', 'O1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.')],
                     externalHBonds: [new HBond('C1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '2_555')],
                     symmString: '1_555',
-                    groupCentre: math.matrix([0.1, 0.2, 0.3]),
+                    groupCentre: matrix([0.1, 0.2, 0.3]),
                 };
 
                 // All functions should use the same mapped atom
