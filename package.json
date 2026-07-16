@@ -32,7 +32,8 @@
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "docs": "jsdoc -c jsdoc.json"
+    "docs": "jsdoc -c jsdoc.json",
+    "bench": "node benchmark/speed.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",
@@ -52,6 +53,7 @@
     "jsdoc": "^4.0.5",
     "jsdom": "^29.1.1",
     "mathjs": "^15.2.0",
+    "playwright-core": "^1.61.1",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"
   }

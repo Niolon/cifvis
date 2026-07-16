@@ -14,6 +14,9 @@ jsdoc-out/
 cod/
 integration-tests/logs/
 
+# benchmark output
+benchmark/results.csv
+
 # Development environment
 .env
 .env.local
