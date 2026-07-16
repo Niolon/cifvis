@@ -589,6 +589,24 @@ describe('ORTEP3JsStructure', () => {
             expect(intersects[0].object.userData.atomData.label).toBe('C1');
         });
 
+        test('routes an anisotropic atom with non-positive u22 to the legacy tetrahedron ' +
+            'fallback instead of pooling it (regression: computeAniAtomTransform used to read the ' +
+            'nonexistent atom.adp.u3 instead of u22, so this case was silently pooled as if valid)', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3),
+                    new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003)),
+            ];
+            const degenerateStructure = new CrystalStructure(cell, atoms);
+
+            const ortep = new ORTEP3JsStructure(degenerateStructure);
+
+            expect(ortep.atoms3D).toHaveLength(1);
+            expect(ortep.atoms3D[0]).toBeInstanceOf(ORTEPAniAtom);
+            expect(ortep.atoms3D[0]).not.toBeInstanceOf(ORTEPAniAtomInstance);
+            expect(ortep.atoms3D[0].geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        });
+
         test('exposes cutaway atoms for camera-facing updates', () => {
             structure.dispose();
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
@@ -918,6 +936,26 @@ describe('ORTEPAtom and subclasses', () => {
             );
 
             // Should fall back to tetrahedron geometry
+            expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        });
+
+        test('falls back to tetrahedron geometry for a non-positive u22 ' +
+            '(regression: the validity check used to read the nonexistent atom.adp.u3 instead of u22, ' +
+            'so undefined <= 0 was always false and this case slipped through undetected)', () => {
+            const negativeU22Atom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.1, 0.2, 0.3),
+                new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003),
+            );
+
+            const ortepAtom = new ORTEPAniAtom(
+                negativeU22Atom,
+                mockUnitCell,
+                mockGeometry,
+                mockMaterial,
+            );
+
             expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
         });
 

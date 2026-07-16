@@ -119,19 +119,30 @@ export function skipCif2Value(tokens, pos) {
         case 'listOpen':
         case 'tableOpen': {
             // Both containers are flat bracket-depth scans at the token
-            // level: nesting is handled by counting *Open/*Close tokens,
-            // without recursing into or interpreting entry values.
-            let depth = 1;
+            // level: nesting is handled by tracking a stack of open
+            // container types, without recursing into or interpreting entry
+            // values. A stack (rather than a plain depth counter) is
+            // required so mismatched nesting like `[ ... }` is rejected
+            // instead of being accepted as balanced.
+            const CLOSE_FOR_OPEN = { listOpen: 'listClose', tableOpen: 'tableClose' };
+            const stack = [token.type];
             let i = pos + 1;
-            while (i < tokens.length && depth > 0) {
-                if (tokens[i].type === 'listOpen' || tokens[i].type === 'tableOpen') {
-                    depth++;
-                } else if (tokens[i].type === 'listClose' || tokens[i].type === 'tableClose') {
-                    depth--;
+            while (i < tokens.length && stack.length > 0) {
+                const type = tokens[i].type;
+                if (type === 'listOpen' || type === 'tableOpen') {
+                    stack.push(type);
+                } else if (type === 'listClose' || type === 'tableClose') {
+                    const expected = CLOSE_FOR_OPEN[stack[stack.length - 1]];
+                    if (type !== expected) {
+                        throw new Error(
+                            `Mismatched CIF2 container: expected '${expected}' but found '${type}'`,
+                        );
+                    }
+                    stack.pop();
                 }
                 i++;
             }
-            if (depth > 0) {
+            if (stack.length > 0) {
                 throw new Error(
                     token.type === 'listOpen' ? 'Unterminated CIF2 list value' : 'Unterminated CIF2 table value',
                 );

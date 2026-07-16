@@ -1357,7 +1357,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
         cutaway = null,
     ) {
         super(atom, unitCell, baseAtom, atomMaterial);
-        if ([atom.adp.u11, atom.adp.u3, atom.adp.u33].some(val => val <= 0)) {
+        if ([atom.adp.u11, atom.adp.u22, atom.adp.u33].some(val => val <= 0)) {
             this.geometry = new THREE.TetrahedronGeometry(0.8);
             if (this.plot2DOutline) {
                 this.plot2DOutline.geometry = this.geometry;
