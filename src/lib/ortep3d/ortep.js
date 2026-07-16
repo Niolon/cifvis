@@ -468,8 +468,7 @@ export class GeometryMaterialCache {
             this.options.atomDetail,
         );
 
-        if (this.options.atomEllipsoidStyle === 'cutout' ||
-            this.options.renderStyle === '2d') {
+        if (this.options.renderStyle !== 'solid-3d') {
             const octantSections = Math.max(3, 2 ** this.options.atomDetail + 2);
             this.geometries.atomOctant = new THREE.SphereGeometry(
                 this.scaling,
@@ -481,10 +480,7 @@ export class GeometryMaterialCache {
                 Math.PI / 2,
             );
             this.geometries.emptyAtom = new THREE.BufferGeometry();
-            if (this.options.atomEllipsoidStyle === 'cutout' ||
-                this.options.renderStyle === '2d') {
-                this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
-            }
+            this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
         }
 
         // ADP ring geometry
@@ -517,7 +513,7 @@ export class GeometryMaterialCache {
      * @private
      */
     initializeMaterials() {
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             this.materials.bond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DBondColor,
             });
@@ -577,7 +573,7 @@ export class GeometryMaterialCache {
         }
         this.validateElementType(elementType);
 
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             const plotKey = `${elementType}_2d_materials`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
@@ -626,7 +622,7 @@ export class GeometryMaterialCache {
             });
 
             this.elementMaterials[key] = [atomMaterial, ringMaterial];
-            if (this.options.atomEllipsoidStyle === 'cutout') {
+            if (this.options.renderStyle === 'cutout-3d') {
                 this.elementMaterials[key].push(
                     createCutawayPlaneMaterial(elementProperty, this.options),
                 );
@@ -838,7 +834,7 @@ export class ORTEP3JsStructure {
         };
 
         // Create atoms
-        if (this.options.atomEllipsoidStyle === 'cutout' || this.options.renderStyle === '2d') {
+        if (this.options.renderStyle !== 'solid-3d') {
             // Cutout/2D styles toggle sub-geometry visibility per frame based
             // on camera direction, which isn't a good fit for instancing, so
             // they keep using one mesh per atom.
@@ -979,8 +975,7 @@ export class ORTEP3JsStructure {
             this.ringPools = ringPools;
         }
 
-        const trimBondsToSurfaces = this.options.atomEllipsoidStyle === 'cutout' ||
-            this.options.renderStyle === '2d';
+        const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d';
         const getRenderedAtom = trimBondsToSurfaces ?
             atomId => renderedAtomsById.get(atomId) : null;
 
@@ -993,7 +988,7 @@ export class ORTEP3JsStructure {
                 return atom1Present && atom2Present;
             });
 
-        if (this.options.renderStyle === '2d') {
+        if (this.options.renderStyle === 'cutout-2d') {
             // The 2D publication style needs per-bond open/closed material
             // choice and an outline mesh, so it keeps using individual
             // meshes rather than a shared InstancedPool.

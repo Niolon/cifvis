@@ -153,7 +153,7 @@ describe('GeometryMaterialCache', () => {
         });
 
         test('creates shared cutaway geometries when requested', () => {
-            const cutawayCache = new GeometryMaterialCache({ atomEllipsoidStyle: 'cutout' });
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [, , planeMaterial] = cutawayCache.getAtomMaterials('C');
 
             expect(cutawayCache.geometries.atomOctant).toBeInstanceOf(THREE.SphereGeometry);
@@ -165,7 +165,7 @@ describe('GeometryMaterialCache', () => {
         });
 
         test('aligns each cutaway plane stripe direction to a different principal axis', () => {
-            const cutawayCache = new GeometryMaterialCache({ atomEllipsoidStyle: 'cutout' });
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const geometry = cutawayCache.geometries.cutawayPlanes;
             const positions = geometry.getAttribute('position');
             const uv = geometry.getAttribute('uv');
@@ -314,7 +314,7 @@ describe('GeometryMaterialCache', () => {
         });
 
         test('creates element-coloured materials for the 2D plot style', () => {
-            const plotCache = new GeometryMaterialCache({ renderStyle: '2d' });
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
             const [carbon, carbonRing, carbonHatch] = plotCache.getAtomMaterials('C');
             const [oxygen, oxygenRing, oxygenHatch] = plotCache.getAtomMaterials('O');
 
@@ -592,7 +592,7 @@ describe('ORTEP3JsStructure', () => {
         test('exposes cutaway atoms for camera-facing updates', () => {
             structure.dispose();
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
-                atomEllipsoidStyle: 'cutout',
+                renderStyle: 'cutout-3d',
             });
 
             const group = structure.getGroup();
@@ -603,7 +603,7 @@ describe('ORTEP3JsStructure', () => {
         test('creates a surface-trimmed, camera-facing 2D plot structure', () => {
             structure.dispose();
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
-                renderStyle: '2d',
+                renderStyle: 'cutout-2d',
             });
             const group = structure.getGroup();
             const anisotropicAtom = structure.atoms3D[2];
@@ -649,7 +649,7 @@ describe('ORTEP3JsStructure', () => {
             ];
             structure = new ORTEP3JsStructure(
                 new CrystalStructure(cell, atoms, bonds),
-                { renderStyle: '2d' },
+                { renderStyle: 'cutout-2d' },
             );
 
             const [nonDisordered, part1, part2] = structure.atoms3D;
@@ -953,7 +953,7 @@ describe('ORTEPAtom and subclasses', () => {
         });
 
         test('creates eight shared octants and keeps one facing octant hidden', () => {
-            const cutawayCache = new GeometryMaterialCache({ atomEllipsoidStyle: 'cutout' });
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [atomMaterial, ringMaterial, planeMaterial] =
                 cutawayCache.getAtomMaterials('C');
             const ortepAtom = new ORTEPAniAtom(
@@ -997,7 +997,7 @@ describe('ORTEPAtom and subclasses', () => {
         });
 
         test('keeps cutaway selection marker synchronized with the missing octant', () => {
-            const cutawayCache = new GeometryMaterialCache({ atomEllipsoidStyle: 'cutout' });
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [atomMaterial, ringMaterial, planeMaterial] =
                 cutawayCache.getAtomMaterials('C');
             const ortepAtom = new ORTEPAniAtom(
@@ -1031,7 +1031,7 @@ describe('ORTEPAtom and subclasses', () => {
         });
 
         test('redirects cutaway child raycasts to the selectable atom', () => {
-            const cutawayCache = new GeometryMaterialCache({ atomEllipsoidStyle: 'cutout' });
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [atomMaterial, ringMaterial, planeMaterial] =
                 cutawayCache.getAtomMaterials('C');
             const ortepAtom = new ORTEPAniAtom(

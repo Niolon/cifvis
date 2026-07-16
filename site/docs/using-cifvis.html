@@ -260,7 +260,7 @@ scene.add(group);
             <ul class="feature-list">
                 <li><code>new ORTEP3JsStructure(crystalStructure, options)</code> builds the meshes immediately in the
                 constructor; <code>options</code> is the same shape as <code>CrystalViewer</code>'s constructor
-                options (<code>atomEllipsoidStyle</code>, <code>bondRadius</code>, <code>elementProperties</code>,
+                options (<code>renderStyle</code>, <code>bondRadius</code>, <code>elementProperties</code>,
                 etc. &mdash; see the <a href="./options-reference.html">Options Reference</a>).</li>
                 <li><code>getGroup()</code> returns a fresh <code>THREE.Group</code> each call, containing every atom/bond/hbond mesh.</li>
                 <li><code>ortep.dispose()</code> frees the cached geometries/materials &mdash; call it when you're done with this structure (e.g. before building a new one), the same way <code>CrystalViewer.dispose()</code> does internally.</li>
