@@ -1,4 +1,5 @@
 import { parseMultiLineString, parseValue } from './helpers.js';
+import { parseCif2Value } from './cif2-values.js';
 
 const STANDART_LOOP_NAMES = [
     '_space_group_symop_ssg',
@@ -104,6 +105,27 @@ export class CifLoop {
     }
 
     /**
+     * Creates a CifLoop from a CIF2 token stream. Cell values are located but
+     * not interpreted yet - `cellTokenRanges` only records each cell's
+     * `[start, end)` token range (see `skipCif2Value` in cif2-values.js),
+     * bypassing the line-based CIF1 tokenizing while still deferring the
+     * actual value parsing to `parse()`, on first `.get()`/`.getIndex()`,
+     * exactly like the CIF1 path does.
+     * @static
+     * @param {Array<string>} headers - Column header names (data names).
+     * @param {Array<object>} tokens - The full CIF2 token stream `cellTokenRanges` indexes into.
+     * @param {Array<[number, number]>} cellTokenRanges - Row-major `[start, end)` token ranges, one per cell.
+     * @param {boolean} splitSU - Whether to split standard uncertainties.
+     * @returns {CifLoop} New CifLoop instance backed by the unparsed cell token ranges.
+     */
+    static fromTokens(headers, tokens, cellTokenRanges, splitSU) {
+        const loop = new CifLoop(headers, [], 0, splitSU);
+        loop._cif2Tokens = tokens;
+        loop._cif2CellTokenRanges = cellTokenRanges;
+        return loop;
+    }
+
+    /**
      * Parses loop content into structured data.
      * Processes headers and values, handling standard uncertainties if enabled.
      * Extracts multi-line strings and populates the data property with column values.
@@ -119,26 +141,31 @@ export class CifLoop {
         this.headers = [...this.headerLines];
         this.data = {};
 
-        const dataArray = this.dataLines.reduce((acc, line, i) => {
-            line = line.trim();
-            if (!line.length) {
-                return acc;
-            }
-
-            if (line.startsWith(';')) {
-                const mult = parseMultiLineString(this.dataLines, i);
-                acc.push({ value: mult.value, su: NaN });
-                // Skip lines consumed by multiline string
-                for (let j = i; j < mult.endIndex + 1; j++) {
-                    this.dataLines[j] = '';
+        const dataArray = this._cif2CellTokenRanges !== undefined
+            ? this._cif2CellTokenRanges.map(([start]) => {
+                const parsed = parseCif2Value(this._cif2Tokens, start, this.splitSU);
+                return { value: parsed.value, su: parsed.su };
+            })
+            : this.dataLines.reduce((acc, line, i) => {
+                line = line.trim();
+                if (!line.length) {
+                    return acc;
                 }
-                return acc;
-            }
 
-            const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
-            return acc.concat(matches.map(match => parseValue(match[1] || match[2] || match[0], this.splitSU),
-            ));
-        }, []);
+                if (line.startsWith(';')) {
+                    const mult = parseMultiLineString(this.dataLines, i);
+                    acc.push({ value: mult.value, su: NaN });
+                    // Skip lines consumed by multiline string
+                    for (let j = i; j < mult.endIndex + 1; j++) {
+                        this.dataLines[j] = '';
+                    }
+                    return acc;
+                }
+
+                const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
+                return acc.concat(matches.map(match => parseValue(match[1] || match[2] || match[0], this.splitSU),
+                ));
+            }, []);
 
         const nEntries = this.headers.length;
 
@@ -227,8 +254,8 @@ export class CifLoop {
     /**
      * Gets column data for given keys, trying each key in turn.
      * @param {string|Array<string>} keys - Key or array of keys to try
-     * @param {*} [defaultValue] - Value to return if none of the keys are found
-     * @returns {Array} Column data for the first matching key
+     * @param {Array<string|number>} [defaultValue] - Value to return if none of the keys are found
+     * @returns {Array<string|number>} Column data for the first matching key
      * @throws {Error} If no keys found and no default value provided
      */
     get(keys, defaultValue = null) {
@@ -253,8 +280,8 @@ export class CifLoop {
      * Gets value at specific row index for one of the given keys.
      * @param {string|Array<string>} keys - Key or array of keys to try
      * @param {number} index - Row index (0-based)
-     * @param {*} [defaultValue] - Value to return if keys not found
-     * @returns {*} Value at the specified index
+     * @param {string|number} [defaultValue] - Value to return if keys not found
+     * @returns {string|number} Value at the specified index
      * @throws {Error} If index is out of bounds
      * @throws {Error} If none of the keys are found and no default value provided
      */

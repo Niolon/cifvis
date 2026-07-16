@@ -1,5 +1,6 @@
 import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
+import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 
 /**
@@ -19,8 +20,23 @@ function updateStatus(message, type = 'info') {
     }
 }
 
+/**
+ * Reads a viewer render style override from the URL query string.
+ * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
+ * render styles (see structure-settings.js); unset/unrecognised falls back
+ * to the default.
+ * @returns {object} CrystalViewer options derived from the URL
+ */
+function getStyleOptionsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const style = params.get('style');
+    const validStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
+
+    return validStyles.includes(style) ? { renderStyle: style } : {};
+}
+
 // Initialize the viewer
-const viewer = new CrystalViewer(document.body);
+const viewer = new CrystalViewer(document.body, getStyleOptionsFromUrl());
 viewer.animate();
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
@@ -171,7 +187,7 @@ function initializeDisorderButton() {
     disorderButton.addEventListener('click', async () => {
         const result = await viewer.cycleModifierMode('disorder');
         if (result.success) {
-            disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
+            disorderButton.innerHTML = getDisorderIcon(SVG_ICONS['disorder'], viewer.modifiers.disorder.mode);
         }
     });
 }
@@ -216,7 +232,7 @@ function adaptButtons() {
     const hasDisorder = viewer.numberModifierModes('disorder') > 1;
     disorderButton.style.display = hasDisorder ? 'flex' : 'none';
     if (hasDisorder) {
-        disorderButton.innerHTML = SVG_ICONS['disorder'][viewer.modifiers.disorder.mode];
+        disorderButton.innerHTML = getDisorderIcon(SVG_ICONS['disorder'], viewer.modifiers.disorder.mode);
     }
 
     const symmetryButton = document.getElementById('symmetry-button');

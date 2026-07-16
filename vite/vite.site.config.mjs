@@ -8,8 +8,12 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: resolve(__dirname, '../demo/index.html'),
-                widget: resolve(__dirname, '../demo/widget.html'),
+                main: resolve(__dirname, '../site/index.html'),
+                docsIndex: resolve(__dirname, '../site/docs/index.html'),
+                docsWidget: resolve(__dirname, '../site/docs/widget-usage.html'),
+                docsOptions: resolve(__dirname, '../site/docs/options-reference.html'),
+                docsUsing: resolve(__dirname, '../site/docs/using-cifvis.html'),
+                docsDeveloping: resolve(__dirname, '../site/docs/developing-cifvis.html'),
             },
             output: {
                 inlineDynamicImports: false,
@@ -25,8 +29,8 @@ export default defineConfig({
         outDir: '../dist',
     },
     // Specify the root directory for file resolution
-    root: resolve(__dirname, '../demo'),
+    root: resolve(__dirname, '../site'),
     // Specify the public directory path (relative to root)
-    publicDir: resolve(__dirname, '../demo/public'),
+    publicDir: resolve(__dirname, '../site/public'),
     watch: true,
 });

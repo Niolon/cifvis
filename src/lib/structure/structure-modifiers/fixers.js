@@ -1,9 +1,9 @@
+//import { atomLabelsMatch } from '../../fix-cif/reconcile-labels.js';
 import { Bond } from '../bonds.js';
-import { CrystalStructure, inferElementFromLabel } from '../crystal.js';
+import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } from '../crystal.js';
+import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
 import { BaseFilter } from './base.js';
-
-import { create, all } from 'mathjs';
-const math = create(all);
+import * as math from '../../math-lite.js';
 
 /**
  * Filter that removes specified atoms and their connected bonds from a structure,
@@ -39,7 +39,7 @@ export class AtomLabelFilter extends BaseFilter {
      */
     _parseRangeExpression(rangeExpr, allLabels) {
         const [startLabel, endLabel] = rangeExpr.split('>').map(label => label.trim());
-        
+
         if (!startLabel || !endLabel) {
             console.warn(`Invalid range expression: ${rangeExpr}`);
             return [];
@@ -52,10 +52,10 @@ export class AtomLabelFilter extends BaseFilter {
         if (!allLabels.includes(endLabel)) {
             throw new Error(`Range filtering included unknown end label: ${endLabel}`);
         }
-             
+
         const startIndex = allLabels.indexOf(startLabel);
         const endIndex = allLabels.indexOf(endLabel);
-        
+
         return allLabels.slice(startIndex, endIndex + 1);
     }
 
@@ -65,13 +65,13 @@ export class AtomLabelFilter extends BaseFilter {
      */
     setFilteredLabels(labels) {
         let labelArray = [];
-        
+
         if (typeof labels === 'string') {
             labelArray = labels.split(',').map(label => label.trim()).filter(label => label);
         } else if (Array.isArray(labels)) {
             labelArray = labels;
         }
-        
+
         this.filteredLabels = new Set(labelArray);
     }
 
@@ -84,7 +84,7 @@ export class AtomLabelFilter extends BaseFilter {
     _expandRanges(structure) {
         const allLabels = structure.atoms.map(atom => atom.label);
         const expandedLabels = new Set();
-        
+
         for (const label of this.filteredLabels) {
             if (label.includes('>') && !allLabels.includes(label)) {
                 // This is a range expression
@@ -95,7 +95,7 @@ export class AtomLabelFilter extends BaseFilter {
                 expandedLabels.add(label);
             }
         }
-        
+
         return expandedLabels;
     }
 
@@ -110,21 +110,25 @@ export class AtomLabelFilter extends BaseFilter {
         }
 
         const expandedLabels = this._expandRanges(structure);
-        
-        const filteredAtoms = structure.atoms.filter(atom => 
+
+        const filteredAtoms = structure.atoms.filter(atom =>
             !expandedLabels.has(atom.label),
         );
 
-        const filteredBonds = structure.bonds.filter(bond => 
-            !expandedLabels.has(bond.atom1Label) && 
-            !expandedLabels.has(bond.atom2Label),
-        );
+        const filteredBonds = structure.bonds.filter(bond => {
+            const atom1 = structure.getAtomById(bond.atom1Id);
+            const atom2 = structure.getAtomById(bond.atom2Id);
+            return !expandedLabels.has(atom1.label) && !expandedLabels.has(atom2.label);
+        });
 
-        const filteredHBonds = structure.hBonds.filter(hBond => 
-            !expandedLabels.has(hBond.donorAtomLabel) &&
-            !expandedLabels.has(hBond.hydrogenAtomLabel) &&
-            !expandedLabels.has(hBond.acceptorAtomLabel),
-        );
+        const filteredHBonds = structure.hBonds.filter(hBond => {
+            const donor = structure.getAtomById(hBond.donorAtomId);
+            const hydrogen = structure.getAtomById(hBond.hydrogenAtomId);
+            const acceptor = structure.getAtomById(hBond.acceptorAtomId);
+            return !expandedLabels.has(donor.label) &&
+                !expandedLabels.has(hydrogen.label) &&
+                !expandedLabels.has(acceptor.label);
+        });
 
         return new CrystalStructure(
             structure.cell,
@@ -170,13 +174,29 @@ export class BondGenerator extends BaseFilter {
      * Creates a new bond generator to generate bonds between atoms based on their atomic radii
      * @class
      * @param {object} elementProperties - Element properties containing atomic radii from structure-settings.js
-     * @param {number} toleranceFactor - How much longer than the sum of atomic radii a bond can be
+     * @param {number} tolerance - Additive tolerance in Angstroms added to the sum of atomic radii
      * @param {BondGenerator.MODES} [mode] - Initial operation mode
      */
-    constructor(elementProperties, toleranceFactor, mode = BondGenerator.MODES.KEEP) {
+    constructor(elementProperties, tolerance, mode = BondGenerator.MODES.KEEP) {
         super(BondGenerator.MODES, mode, 'BondGenerator', BondGenerator.PREFERRED_FALLBACK_ORDER);
         this.elementProperties = elementProperties;
-        this.toleranceFactor = toleranceFactor;
+        this.tolerance = tolerance;
+    }
+
+    /**
+     * Gets the additive tolerance for a pair of elements. Group 1/2 (s-block)
+     * elements form predominantly ionic bonds whose lengths deviate further
+     * from a simple covalent-radius sum, so CCDC/Mercury-style practice
+     * applies a tighter tolerance to them.
+     * @param {string} element1 - First element symbol
+     * @param {string} element2 - Second element symbol
+     * @returns {number} Additive tolerance in Angstroms
+     */
+    getTolerance(element1, element2) {
+        if (S_BLOCK_ELEMENTS.has(element1) || S_BLOCK_ELEMENTS.has(element2)) {
+            return Math.min(this.tolerance, 0.40);
+        }
+        return this.tolerance;
     }
 
     /**
@@ -194,11 +214,15 @@ export class BondGenerator extends BaseFilter {
             throw new Error(`Missing radius for element ${!radius1 ? element1 : element2}`);
         }
 
-        return (radius1 + radius2) * this.toleranceFactor;
+        return radius1 + radius2 + this.getTolerance(element1, element2);
     }
 
     /**
-     * Generates bonds between atoms based on their distances
+     * Generates bonds between atoms based on their distances. Candidate pairs
+     * are limited via a spatial grid (cell size = the largest possible bond
+     * distance among elements present) so only atoms in the same or
+     * neighboring cells are ever compared, instead of every pair in the
+     * structure.
      * @private
      * @param {CrystalStructure} structure - Structure to analyze
      * @param {object} elementProperties - Element property definitions
@@ -208,13 +232,21 @@ export class BondGenerator extends BaseFilter {
         const generatedBonds = new Set();
         const { cell, atoms } = structure;
 
-        // Create a map of atom positions for faster lookup
+        // Prepare pairwise data once. The previous implementation allocated a
+        // mathjs vector and matrix-backed norm for every atom pair.
         const atomPositions = new Map();
         const elementMap = new Map();
+        const bondedAtomIds = new Set();
+        for (const bond of structure.bonds) {
+            bondedAtomIds.add(bond.atom1Id);
+            bondedAtomIds.add(bond.atom2Id);
+        }
 
         atoms.forEach(atom => {
             const cartPos = atom.position.toCartesian(cell);
-            atomPositions.set(atom.label, [cartPos.x, cartPos.y, cartPos.z]);
+            // Preserve the established behavior for duplicate atom IDs: the last
+            // position in the structure is the one used for every matching ID.
+            atomPositions.set(atom.uniqueId, [cartPos.x, cartPos.y, cartPos.z]);
             if (Object.prototype.hasOwnProperty.call(elementProperties, atom.atomType)
                 && !elementMap.has(atom.atomType)) {
                 elementMap.set(atom.atomType, atom.atomType);
@@ -227,39 +259,98 @@ export class BondGenerator extends BaseFilter {
             }
         });
 
-        // Check distances between all atom pairs
+        // Bucket atoms into a uniform grid sized to the largest possible bond
+        // distance, so only same/neighboring-cell pairs need to be checked.
+        let maxPossibleDistance = 0;
+        for (const el1 of elementMap.values()) {
+            for (const el2 of elementMap.values()) {
+                maxPossibleDistance = Math.max(
+                    maxPossibleDistance,
+                    this.getMaxBondDistance(el1, el2, elementProperties),
+                );
+            }
+        }
+        const cellSize = maxPossibleDistance > 0 ? maxPossibleDistance : 1;
+
+        const cellKey = (ix, iy, iz) => `${ix},${iy},${iz}`;
+        const grid = new Map();
+        atoms.forEach((atom, index) => {
+            const pos = atomPositions.get(atom.uniqueId);
+            const ix = Math.floor(pos[0] / cellSize);
+            const iy = Math.floor(pos[1] / cellSize);
+            const iz = Math.floor(pos[2] / cellSize);
+            const key = cellKey(ix, iy, iz);
+            if (!grid.has(key)) {
+                grid.set(key, []);
+            }
+            grid.get(key).push(index);
+        });
+
+        // Check distances between atom pairs, restricted to same/neighboring
+        // grid cells. Only pairs with j > i are considered (as in the
+        // original full pairwise scan) so each unordered pair is checked once
+        // and generated bonds keep the atom1/atom2 ordering of the atoms array.
         for (let i = 0; i < atoms.length; i++) {
             const atom1 = atoms[i];
-            const pos1 = atomPositions.get(atom1.label);
+            const pos1 = atomPositions.get(atom1.uniqueId);
+            const ix = Math.floor(pos1[0] / cellSize);
+            const iy = Math.floor(pos1[1] / cellSize);
+            const iz = Math.floor(pos1[2] / cellSize);
 
-            for (let j = i + 1; j < atoms.length; j++) {
-                const atom2 = atoms[j];
-                const pos2 = atomPositions.get(atom2.label);
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        const neighbors = grid.get(cellKey(ix + dx, iy + dy, iz + dz));
+                        if (!neighbors) {
+                            continue;
+                        }
 
-                // Skip if either atom is hydrogen and we already have bonds
-                if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
-                    structure.bonds.some(bond => bond.atom1Label === atom1.label || bond.atom1Label === atom2.label ||
-                        bond.atom2Label === atom1.label || bond.atom2Label === atom2.label)) {
-                    continue;
-                }
+                        for (const j of neighbors) {
+                            if (j <= i) {
+                                continue;
+                            }
+                            const atom2 = atoms[j];
 
-                // Calculate distance using mathjs
-                const diff = math.subtract(pos1, pos2);
-                const distance = math.norm(diff);
-                const maxDistance = this.getMaxBondDistance(
-                    elementMap.get(atom1.atomType),
-                    elementMap.get(atom2.atomType),
-                    elementProperties,
-                );
+                            // Skip if either atom is hydrogen and we already have bonds
+                            if ((atom1.atomType === 'H' || atom2.atomType === 'H') &&
+                                (bondedAtomIds.has(atom1.uniqueId) || bondedAtomIds.has(atom2.uniqueId))) {
+                                continue;
+                            }
 
-                if (distance <= maxDistance && distance > 0.0001) {
-                    generatedBonds.add(new Bond(
-                        atom1.label,
-                        atom2.label,
-                        distance,
-                        null, // No standard uncertainty for generated bonds
-                        '.',
-                    ));
+                            if (!disorderGroupsCompatible(atom1, atom2)) {
+                                continue;
+                            }
+
+                            const pos2 = atomPositions.get(atom2.uniqueId);
+                            const distX = pos1[0] - pos2[0];
+                            const distY = pos1[1] - pos2[1];
+                            const distZ = pos1[2] - pos2[2];
+                            const maxDistance = this.getMaxBondDistance(
+                                elementMap.get(atom1.atomType),
+                                elementMap.get(atom2.atomType),
+                                elementProperties,
+                            );
+
+                            // A bond-length sphere is contained by this axis-aligned box.
+                            // Reject distant pairs before invoking mathjs while retaining the
+                            // exact historical norm calculation for all possible bonds.
+                            if (Math.abs(distX) > maxDistance || Math.abs(distY) > maxDistance ||
+                                Math.abs(distZ) > maxDistance) {
+                                continue;
+                            }
+                            const distance = math.norm([distX, distY, distZ]);
+
+                            if (distance <= maxDistance && distance > 0.0001) {
+                                generatedBonds.add(new Bond(
+                                    atom1.uniqueId,
+                                    atom2.uniqueId,
+                                    distance,
+                                    null, // No standard uncertainty for generated bonds
+                                    '.',
+                                ));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -383,14 +474,14 @@ export class IsolatedHydrogenFixer extends BaseFilter {
 
         // Find all isolated hydrogen atoms
         const isolatedHydrogenAtoms = this.findIsolatedHydrogenAtoms(structure);
-        
+
         if (isolatedHydrogenAtoms.length === 0) {
             return structure;
         }
 
         // Create new bonds for isolated hydrogen atoms
         const newBonds = this.createBondsForIsolatedHydrogens(structure, isolatedHydrogenAtoms);
-        
+
         // Return structure with additional bonds
         return new CrystalStructure(
             structure.cell,
@@ -407,13 +498,15 @@ export class IsolatedHydrogenFixer extends BaseFilter {
      * @returns {Array<object>} Array of isolated hydrogen atoms with their indices
      */
     findIsolatedHydrogenAtoms(structure) {
-        const isolatedHydrogenAtoms = [];
+        const atomsInBonds = new Set();
+        structure.bonds.forEach(b => {
+            atomsInBonds.add(b.atom1Id);
+            atomsInBonds.add(b.atom2Id);
+        });
 
-        // Find connected groups with only a single hydrogen atom
-        structure.connectedGroups.forEach(group => {
-            if (group.atoms.length === 1 && group.atoms[0].atomType === 'H') {
-                const atom = group.atoms[0];
-                const atomIndex = structure.atoms.findIndex(a => a.label === atom.label);
+        const isolatedHydrogenAtoms = [];
+        structure.atoms.forEach((atom, atomIndex) => {
+            if (!atomsInBonds.has(atom.uniqueId) && atom.atomType === 'H') {
                 isolatedHydrogenAtoms.push({ atom, atomIndex });
             }
         });
@@ -434,27 +527,25 @@ export class IsolatedHydrogenFixer extends BaseFilter {
             // Convert hydrogen position to Cartesian coordinates
             const cartPos = atom.position.toCartesian(structure.cell);
             const hydrogenPosition = [cartPos.x, cartPos.y, cartPos.z];
-            
+
             // Try to bond with the previous atom first (common case)
             if (atomIndex > 0) {
                 const previousAtom = structure.atoms[atomIndex - 1];
-                
-                if (previousAtom.atomType !== 'H' && 
-                    (previousAtom.disorderGroup === atom.disorderGroup || 
-                     previousAtom.disorderGroup === 0 || 
-                     atom.disorderGroup === 0)) {
-                    
+
+                if (previousAtom.atomType !== 'H' &&
+                    disorderGroupsCompatible(previousAtom, atom)) {
+
                     const prevPos = previousAtom.position.toCartesian(structure.cell);
                     const prevPosition = [prevPos.x, prevPos.y, prevPos.z];
-                    
+
                     const diff = math.subtract(hydrogenPosition, prevPosition);
                     const distance = math.norm(diff);
-                    
+
                     if (distance <= this.maxBondDistance) {
                         // Create a bond to the previous atom
                         newBonds.push(new Bond(
-                            previousAtom.label,
-                            atom.label,
+                            previousAtom.uniqueId,
+                            atom.uniqueId,
                             distance,
                             null,
                             '.',
@@ -464,34 +555,32 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                     }
                 }
             }
-            
+
             // If no bond with previous atom, check others in reverse order
             let foundBond = false;
-            
+
             // Check atoms before hydrogen (in reverse)
             for (let i = atomIndex - 1; i >= 0 && !foundBond; i--) {
                 const partner = structure.atoms[i];
-                
+
                 if (partner.atomType === 'H') {
-                    continue; 
+                    continue;
                 }
-                
-                if (!(partner.disorderGroup === atom.disorderGroup || 
-                      partner.disorderGroup === 0 || 
-                      atom.disorderGroup === 0)) {
-                    continue; 
+
+                if (!disorderGroupsCompatible(partner, atom)) {
+                    continue;
                 }
-                
+
                 const partnerPos = partner.position.toCartesian(structure.cell);
                 const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
-                
+
                 const diff = math.subtract(hydrogenPosition, partnerPosition);
                 const distance = math.norm(diff);
-                
+
                 if (distance <= this.maxBondDistance) {
                     newBonds.push(new Bond(
-                        partner.label,
-                        atom.label,
+                        partner.uniqueId,
+                        atom.uniqueId,
                         distance,
                         null,
                         '.',
@@ -499,32 +588,32 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                     foundBond = true;
                 }
             }
-            
+
             // Only check atoms after hydrogen if no bond found yet
             if (!foundBond && atomIndex < structure.atoms.length - 1) {
                 for (let i = atomIndex + 1; i < structure.atoms.length && !foundBond; i++) {
                     const partner = structure.atoms[i];
-                    
+
                     if (partner.atomType === 'H') {
-                        continue; 
+                        continue;
                     }
-                    
-                    if (!(partner.disorderGroup === atom.disorderGroup || 
-                          partner.disorderGroup === 0 || 
-                          atom.disorderGroup === 0)) {
-                        continue; 
+
+                    if (!(partner.disorderGroup === atom.disorderGroup ||
+                        partner.disorderGroup === 0 ||
+                        atom.disorderGroup === 0)) {
+                        continue;
                     }
-                    
+
                     const partnerPos = partner.position.toCartesian(structure.cell);
                     const partnerPosition = [partnerPos.x, partnerPos.y, partnerPos.z];
-                    
+
                     const diff = math.subtract(hydrogenPosition, partnerPosition);
                     const distance = math.norm(diff);
-                    
+
                     if (distance <= this.maxBondDistance) {
                         newBonds.push(new Bond(
-                            partner.label,
-                            atom.label,
+                            partner.uniqueId,
+                            atom.uniqueId,
                             distance,
                             null,
                             '.',
@@ -534,7 +623,7 @@ export class IsolatedHydrogenFixer extends BaseFilter {
                 }
             }
         });
-        
+
         return newBonds;
     }
 
@@ -548,19 +637,17 @@ export class IsolatedHydrogenFixer extends BaseFilter {
         if (structure.bonds.length === 0) {
             return [IsolatedHydrogenFixer.MODES.OFF];
         }
-        
+
         // Check if there are isolated hydrogen atoms
-        const hasIsolatedHydrogens = structure.connectedGroups.some(group => 
-            group.atoms.length === 1 && group.atoms[0].atomType === 'H',
-        );
-        
+        const hasIsolatedHydrogens = this.findIsolatedHydrogenAtoms(structure).length > 0;
+
         if (hasIsolatedHydrogens) {
             return [
                 IsolatedHydrogenFixer.MODES.ON,
                 //IsolatedHydrogenFixer.MODES.OFF,
             ];
         }
-        
+
         return [IsolatedHydrogenFixer.MODES.OFF];
     }
 }

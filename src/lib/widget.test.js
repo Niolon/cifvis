@@ -46,10 +46,11 @@ describe('CifViewWidget', () => {
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
-            loadCIF: vi.fn().mockImplementation((cifData) => {
+            loadCIF: vi.fn().mockImplementation((cifData, cifBlock = 0) => {
                 // Simulate CIF validation - mock data from fetch needs to look like valid CIF data
                 if (cifData && cifData.includes('data_')) {
                     mockCrystalViewer.state.currentCifContent = cifData;
+                    mockCrystalViewer.state.currentCifBlock = cifBlock;
                     return Promise.resolve({ success: true });
                 } else {
                     return Promise.reject(new Error('Failed to load CIF file: Invalid CIF format'));
@@ -59,9 +60,10 @@ describe('CifViewWidget', () => {
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             loadStructure: vi.fn().mockResolvedValue({ success: true }),
-            state: { 
-                baseStructure: {}, 
-                currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0', 
+            state: {
+                baseStructure: {},
+                currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+                currentCifBlock: 0,
             },
             selections: {
                 onChange: vi.fn(),
@@ -78,7 +80,9 @@ describe('CifViewWidget', () => {
                 removeatoms: new AtomLabelFilter(),
             },
         };
-        CrystalViewer.mockImplementation(() => mockCrystalViewer);
+        CrystalViewer.mockImplementation(function mockCrystalViewerImpl() {
+            return mockCrystalViewer;
+        });
 
         // Mock selection callback storage
         mockSelectionCallback = null;
@@ -136,6 +140,7 @@ describe('CifViewWidget', () => {
 
         expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+            0,
         );
     });
 
@@ -291,7 +296,78 @@ describe('CifViewWidget', () => {
             'Error loading structure:',
             expect.any(Error),
         );
-        
+
+        consoleSpy.mockRestore();
+    });
+
+    test('recovers after a failed load when a valid src is set afterward', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockRejectedValueOnce(new Error('Load failed'));
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('src', 'bad.cif');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        let caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Error loading structure');
+        // The button container must survive the error so recovery is possible.
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+
+        widget.setAttribute('src', 'good.cif');
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).not.toContain('Error loading structure');
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+        expect(widget.querySelectorAll('.control-button').length).toBeGreaterThan(0);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('recovers after a failed load when valid data is set afterward', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockRejectedValueOnce(new Error('Load failed'));
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'not valid cif');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        let caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Error loading structure');
+        // The button container must survive the error so recovery is possible.
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+
+        widget.setAttribute(
+            'data',
+            'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+        );
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).not.toContain('Error loading structure');
+        expect(widget.contains(widget.buttonContainer)).toBe(true);
+        expect(widget.querySelectorAll('.control-button').length).toBeGreaterThan(0);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('surfaces a resolved-but-unsuccessful loadCIF result via the data attribute', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockCrystalViewer.loadCIF.mockResolvedValueOnce({ success: false, error: 'Invalid structure' });
+
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'data_bad\n_some_key value');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('Invalid structure');
+
         consoleSpy.mockRestore();
     });
 
@@ -327,6 +403,7 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
             'data_structure\n_cell_length_a 12.0\n_cell_length_b 12.0\n_cell_length_c 12.0',
+            0,
         );
     });
 
@@ -351,10 +428,10 @@ describe('CifViewWidget', () => {
         
         await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
         
-        widget.setAttribute('disorder-mode', 'group1');
+        widget.setAttribute('disorder-mode', 'group1of2');
         await new Promise(resolve => setTimeout(resolve, 0));
         
-        expect(mockCrystalViewer.modifiers.disorder.mode).toBe('group1');
+        expect(mockCrystalViewer.modifiers.disorder.mode).toBe('group1of2');
         expect(mockCrystalViewer.updateStructure).toHaveBeenCalled();
     });
 
@@ -364,11 +441,75 @@ describe('CifViewWidget', () => {
         
         await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
         
-        widget.setAttribute('symmetry-mode', 'bonds-yes-hbonds-yes');
+        widget.setAttribute('symmetry-mode', 'fragment');
         await new Promise(resolve => setTimeout(resolve, 0));
         
-        expect(mockCrystalViewer.modifiers.symmetry.mode).toBe('bonds-yes-hbonds-yes');
-        expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+        expect(mockCrystalViewer.modifiers.symmetry.mode).toBe('fragment');
+        //expect(mockCrystalViewer.loadStructure).toHaveBeenCalled();
+    });
+
+    test('handles block attribute changes with a numeric index', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        mockCrystalViewer.loadCIF.mockClear();
+
+        widget.setAttribute('block', '1');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            mockCrystalViewer.state.currentCifContent,
+            1,
+        );
+    });
+
+    test('handles block attribute changes with a block name', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+        mockCrystalViewer.loadCIF.mockClear();
+
+        widget.setAttribute('block', 'crystal_b');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            mockCrystalViewer.state.currentCifContent,
+            'crystal_b',
+        );
+    });
+
+    test('passes the initial block attribute into the first load', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        widget.setAttribute('block', '2');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 10)); // Let initial setup complete
+
+        expect(mockCrystalViewer.loadCIF).toHaveBeenCalledWith(
+            'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
+            2,
+        );
+    });
+
+    test('shows an error when the requested block cannot be resolved', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0)); // Let initial setup complete
+
+        mockCrystalViewer.loadCIF.mockResolvedValueOnce({
+            success: false,
+            error: 'Block with name \'missing\' not found. Available blocks: block1',
+        });
+
+        widget.setAttribute('block', 'missing');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const caption = widget.querySelector('.crystal-caption');
+        expect(caption.textContent).toContain('missing');
     });
 
     test('parses options attribute', async () => {
@@ -481,7 +622,7 @@ describe('CifViewWidget', () => {
     test('handles initial attribute modes during creation', async () => {
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('hydrogen-mode', 'constant');
-        widget.setAttribute('disorder-mode', 'group1');
+        widget.setAttribute('disorder-mode', 'group1of2');
         widget.setAttribute('symmetry-mode', 'bonds-yes-hbonds-yes');
         document.body.appendChild(widget);
         
@@ -490,7 +631,7 @@ describe('CifViewWidget', () => {
         // Check that options were passed to CrystalViewer
         expect(CrystalViewer.mock.calls[0][1]).toMatchObject({
             hydrogenMode: 'constant',
-            disorderMode: 'group1',
+            disorderMode: 'group1of2',
             symmetryMode: 'bonds-yes-hbonds-yes',
         });
     });

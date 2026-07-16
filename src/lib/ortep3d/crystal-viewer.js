@@ -9,6 +9,7 @@ import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../struct
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/structure-modifiers/modes.js';
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 import { createCameraController } from './camera-controllers.js';
+import { createCell3D } from './cell3d.js';
 
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
@@ -45,6 +46,13 @@ export class SelectionManager {
         // Clear old visual selections since the objects no longer exist
         this.selectedObjects.clear();
 
+        // With no stored selection there is nothing to reconcile. This is the
+        // normal initial-display path and avoids two full scene traversals.
+        if (this.selectedData.size === 0) {
+            this.notifyCallbacks();
+            return;
+        }
+
         // Collect all available data in current structure
         const availableData = new Set();
         container.traverse((object) => {
@@ -58,7 +66,7 @@ export class SelectionManager {
 
         // Remove any stored data that doesn't exist in current structure
         this.selectedData = new Set(
-            Array.from(this.selectedData).filter(stored => 
+            Array.from(this.selectedData).filter(stored =>
                 availableData.has(JSON.stringify({
                     type: stored.type,
                     ...this.getDataWithoutColor(stored),
@@ -99,27 +107,28 @@ export class SelectionManager {
      */
     getObjectDescriptorData(object) {
         if (!object.userData) {
-            return null; 
+            return null;
         }
-        
+
         switch (object.userData.type) {
             case 'atom':
                 return {
                     type: 'atom',
+                    id: object.userData.atomData.uniqueId,
                     label: object.userData.atomData.label,
                 };
             case 'bond':
                 return {
                     type: 'bond',
-                    atom1: object.userData.bondData.atom1Label,
-                    atom2: object.userData.bondData.atom2Label,
+                    atom1: object.userData.bondData.atom1Id,
+                    atom2: object.userData.bondData.atom2Id,
                 };
             case 'hbond':
                 return {
                     type: 'hbond',
-                    donor: object.userData.hbondData.donorAtomLabel,
-                    hydrogen: object.userData.hbondData.hydrogenAtomLabel,
-                    acceptor: object.userData.hbondData.acceptorAtomLabel,
+                    donor: object.userData.hbondData.donorAtomId,
+                    hydrogen: object.userData.hbondData.hydrogenAtomId,
+                    acceptor: object.userData.hbondData.acceptorAtomId,
                 };
             default:
                 return null;
@@ -133,7 +142,7 @@ export class SelectionManager {
      */
     hasMatchingData(data) {
         if (!data) {
-            return false; 
+            return false;
         }
 
         return Array.from(this.selectedData).some(stored => this.matchData(stored, data));
@@ -159,11 +168,11 @@ export class SelectionManager {
         this.selectedData.forEach(data => {
             colorCounts.set(data.color, (colorCounts.get(data.color) || 0) + 1);
         });
-        
+
         let color = this.options.selection.markerColors.find(c => !colorCounts.has(c));
         if (!color) {
             const minCount = Math.min(...colorCounts.values());
-            color = this.options.selection.markerColors.find(c => 
+            color = this.options.selection.markerColors.find(c =>
                 colorCounts.get(c) === minCount,
             );
         }
@@ -186,7 +195,7 @@ export class SelectionManager {
 
         const data = this.getObjectDescriptorData(object);
         if (!data) {
-            return null; 
+            return null;
         }
 
         let color;
@@ -214,19 +223,19 @@ export class SelectionManager {
      */
     matchData(data1, data2) {
         if (data1.type !== data2.type) {
-            return false; 
+            return false;
         }
 
         switch (data1.type) {
             case 'atom':
-                return data1.label === data2.label;
+                return data1.id === data2.id;
             case 'bond':
                 return (data1.atom1 === data2.atom1 && data1.atom2 === data2.atom2) ||
-                       (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
+                    (data1.atom1 === data2.atom2 && data1.atom2 === data2.atom1);
             case 'hbond':
                 return data1.donor === data2.donor &&
-                       data1.hydrogen === data2.hydrogen &&
-                       data1.acceptor === data2.acceptor;
+                    data1.hydrogen === data2.hydrogen &&
+                    data1.acceptor === data2.acceptor;
             default:
                 return false;
         }
@@ -265,7 +274,8 @@ export class SelectionManager {
 
     /**
      * Registers a callback to be notified when selection changes.
-     * @param {Function} callback - Function called with updated selections
+     * @param {function(Array<{type: string, data: object, color: ?number}>): void} callback - Called
+     *  with the updated list of selections
      */
     onChange(callback) {
         this.selectionCallbacks.add(callback);
@@ -278,8 +288,8 @@ export class SelectionManager {
     notifyCallbacks() {
         const selections = Array.from(this.selectedObjects).map(object => ({
             type: object.userData.type,
-            data: object.userData.type === 'hbond' ? object.userData.hbondData : 
-                object.userData.type === 'bond' ? object.userData.bondData : 
+            data: object.userData.type === 'hbond' ? object.userData.hbondData :
+                object.userData.type === 'bond' ? object.userData.bondData :
                     object.userData.atomData,
             color: object.selectionColor,
         }));
@@ -295,14 +305,14 @@ export class SelectionManager {
         if (mode !== 'single' && mode !== 'multiple') {
             throw new Error('Selection mode must be either "single" or "multiple"');
         }
-        
+
         this.options.mode = mode;
-        
+
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
             const lastSelected = selectedObjects[selectedObjects.length - 1];
             const lastData = this.getObjectDescriptorData(lastSelected);
-            
+
             this.clear();
             if (lastData) {
                 this.add(lastSelected);
@@ -318,6 +328,28 @@ export class SelectionManager {
     dispose() {
         this.clear();
         this.selectionCallbacks.clear();
+    }
+
+    /**
+     * Selects atoms matching the provided labels.
+     * @param {string[]} atomLabels - Labels of atoms to select
+     * @param {THREE.Object3D} container - Container with selectable objects
+     */
+    selectAtoms(atomLabels, container) {
+        const labelsSet = new Set(atomLabels);
+        container.traverse((object) => {
+            if (object.userData?.type === 'atom' &&
+                object.userData?.selectable &&
+                labelsSet.has(object.userData.atomData.label)) {
+
+                const data = this.getObjectDescriptorData(object);
+                if (!this.hasMatchingData(data)) {
+                    this.add(object);
+                    this.selectedData.add({ ...data, color: object.selectionColor });
+                }
+            }
+        });
+        this.notifyCallbacks();
     }
 }
 
@@ -359,7 +391,7 @@ export class CrystalViewer {
      * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
      * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
      * see ./structure-settings.js for the default values
-     * @throws {Error} If an invalid render mode is provided
+     * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
         const validRenderModes = ['constant', 'onDemand'];
@@ -368,13 +400,22 @@ export class CrystalViewer {
                 `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
             );
         }
+        const validRenderStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
+        if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
+            throw new Error(
+                `Invalid render style: "${options.renderStyle}". ` +
+                `Must be one of: ${validRenderStyles.join(', ')}`,
+            );
+        }
 
         this.container = container;
+        const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
         this.options = {
             camera: {
                 ...defaultSettings.camera,
-                initialPosition: new THREE.Vector3(...defaultSettings.camera.initialPosition),
                 ...(options.camera || {}),
+                initialPosition: initialPosition.isVector3 ?
+                    initialPosition.clone() : new THREE.Vector3(...initialPosition),
             },
             selection: {
                 ...defaultSettings.selection,
@@ -385,6 +426,11 @@ export class CrystalViewer {
                 ...(options.interaction || {}),
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
+            atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
+            atomCutawayStripeCount: options.atomCutawayStripeCount ??
+                defaultSettings.atomCutawayStripeCount,
+            atomCutawayStripeWidth: options.atomCutawayStripeWidth ??
+                defaultSettings.atomCutawayStripeWidth,
             atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
             atomColorMetalness: options.atomColorMetalness || defaultSettings.atomColorMetalness,
             atomADPRingWidthFactor: options.atomADPRingWidthFactor || defaultSettings.atomADPRingWidthFactor,
@@ -395,7 +441,7 @@ export class CrystalViewer {
             bondColor: options.bondColor || defaultSettings.bondColor,
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
-            bondGrowToleranceFactor: options.bondGrowToleranceFactor || defaultSettings.bondGrowToleranceFactor,
+            bondGrowTolerance: options.bondGrowTolerance ?? defaultSettings.bondGrowTolerance,
             elementProperties: {
                 ...defaultSettings.elementProperties,
                 ...options.elementProperties,
@@ -404,12 +450,27 @@ export class CrystalViewer {
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             renderMode: options.renderMode || defaultSettings.renderMode,
+            renderStyle: options.renderStyle || defaultSettings.renderStyle,
+            plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
+            plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
+            plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
+            plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
+                defaultSettings.plot2DOpenBondInnerScale,
+            plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
+            plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
+            plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
+            cell: {
+                ...defaultSettings.cell,
+                ...options.cell,
+            },
         };
-  
+
         this.state = {
             isDragging: false,
             currentCifContent: null,
+            currentCifBlock: null,
             currentStructure: null,
             currentFloor: null,
             baseStructure: null,
@@ -422,7 +483,7 @@ export class CrystalViewer {
             addhydrogen: new IsolatedHydrogenFixer(),
             missingbonds: new BondGenerator(
                 this.options.elementProperties,
-                this.options.bondGrowToleranceFactor,
+                this.options.bondGrowTolerance,
             ),
             disorder: new DisorderFilter(this.options.disorderMode),
             symmetry: new SymmetryGrower(this.options.symmetryMode),
@@ -447,14 +508,17 @@ export class CrystalViewer {
 
         this.cameraController = createCameraController(this.container, this.options);
         this.camera = this.cameraController.camera;
-        
+
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        this.resizeRendererToDisplaySize();;
+        if (this.options.renderStyle === 'cutout-2d') {
+            this.renderer.setClearColor(this.options.plot2DBackground, 1);
+        }
+        this.resizeRendererToDisplaySize();
         this.container.appendChild(this.renderer.domElement);
-             
+
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
-        
+
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);
@@ -464,11 +528,14 @@ export class CrystalViewer {
      * Loads a crystal structure from CIF text.
      * This is the main entry point for displaying a new structure.
      * @param {string} cifText - CIF format text content
-     * @param {number} [cifBlockIndex] - Index of the CIF block to load (for multi-block CIFs)
+     * @param {number|string} [cifBlock] - Index or name of the CIF block to load (for multi-block CIFs)
      * @returns {Promise<object>} Result object with:
      * - success: Boolean indicating if loading succeeded
      * - error: Error message if loading failed
-     * 
+     *
+     * On success, `cifText` and `cifBlock` are persisted to `this.state.currentCifContent` /
+     * `this.state.currentCifBlock` so a later reload (e.g. after an options change) can reuse them.
+     *
      * Example:
      * ```
      * const result = await viewer.loadCIF(cifContent);
@@ -479,20 +546,26 @@ export class CrystalViewer {
      * }
      * ```
      */
-    async loadCIF(cifText, cifBlockIndex=0) {
+    async loadCIF(cifText, cifBlock = 0) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
         }
         try {
             const cif = new CIF(cifText);
+            let block;
+            try {
+                block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
             let structure;
             try {
-                structure = CrystalStructure.fromCIF(cif.getBlock(cifBlockIndex));
+                structure = CrystalStructure.fromCIF(block);
             } catch (e) {
                 if (!this.options.fixCifErrors) {
-                    try{ 
-                        const maybeFixedCifBlock = tryToFixCifBlock(cif.getBlock(cifBlockIndex));
+                    try {
+                        const maybeFixedCifBlock = tryToFixCifBlock(block);
                         structure = CrystalStructure.fromCIF(maybeFixedCifBlock);
                     } catch {
                         // throw original error as it should be more informative
@@ -502,8 +575,11 @@ export class CrystalViewer {
                     throw e;
                 }
             }
-            await this.loadStructure(structure);            
-    
+            await this.loadStructure(structure);
+
+            this.state.currentCifContent = cifText;
+            this.state.currentCifBlock = cifBlock;
+
             return { success: true };
         } catch (error) {
             console.error('Error loading structure:', error);
@@ -513,14 +589,16 @@ export class CrystalViewer {
 
     /**
      * Initializes a new structure in the viewer with proper orientation.
-     * @param {CrystalStructure} structure - crystal structure to load
+     * @param {CrystalStructure} [structure] - Crystal structure to load. Defaults to the
+     * viewer's current base structure, so callers can use this to reset the camera/orientation
+     * for a modifier change without having to thread the structure through themselves.
      * @returns {Promise<object>} Object indicating success
      * @private
      */
-    async loadStructure(structure) {
+    async loadStructure(structure = this.state.baseStructure) {
         this.state.baseStructure = structure;
         this.selections.clear();
-        
+
         // Complete reset of molecule container
         this.moleculeContainer.position.set(0, 0, 0);
         this.moleculeContainer.rotation.set(0, 0, 0);
@@ -528,23 +606,23 @@ export class CrystalViewer {
         this.moleculeContainer.updateMatrix();
         this.moleculeContainer.matrixAutoUpdate = true;  // Enable auto updates for new transformations
         this.moleculeContainer.updateMatrixWorld(true);
-        
+
         // Reset camera target and position
         this.cameraTarget.set(0, 0, 0);
         this.camera.position.copy(this.options.camera.initialPosition);
         this.camera.lookAt(this.cameraTarget);
-        
+
         // Reset structure center
         this.state.structureCenter.set(0, 0, 0);
-        
+
         this.update3DOrtep();
-        
+
         // Calculate initial rotation
         const rotation = structureOrientationMatrix(this.state.currentStructure);
         if (this.container.clientHeight > this.container.clientWidth) {
             rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
         }
-        
+
         if (rotation) {
             this.moleculeContainer.setRotationFromMatrix(rotation);
             this.moleculeContainer.updateMatrix();
@@ -553,7 +631,7 @@ export class CrystalViewer {
         // Calculate center from rotated structure for proper bounding box
         const extent = new THREE.Box3().setFromObject(this.moleculeContainer);
         extent.getCenter(this.state.structureCenter);
-        
+
         this.moleculeContainer.position.sub(this.state.structureCenter);
 
         this.updateCamera();
@@ -572,11 +650,11 @@ export class CrystalViewer {
         try {
             const currentRotation = this.moleculeContainer.matrix.clone();
             this.update3DOrtep();
-            
+
             // Restore rotation
             this.moleculeContainer.matrix.copy(currentRotation);
             this.moleculeContainer.matrixAutoUpdate = false;
-            
+
             this.requestRender();
             return { success: true };
         } catch (error) {
@@ -592,8 +670,15 @@ export class CrystalViewer {
     update3DOrtep() {
         this.removeStructure();
         let structure = this.state.baseStructure;
+        let drawCell = false;
         for (const modifier of Object.values(this.modifiers)) {
             structure = modifier.apply(structure);
+            drawCell = drawCell || modifier.drawCell;
+        }
+
+        if (drawCell) {
+            const cell3D = createCell3D(structure.cell, this.options.cell);
+            this.moleculeContainer.add(cell3D);
         }
 
         const ortep = new ORTEP3JsStructure(structure, this.options);
@@ -620,10 +705,10 @@ export class CrystalViewer {
     removeStructure() {
         this.moleculeContainer.traverse((object) => {
             if (object.geometry) {
-                object.geometry.dispose(); 
+                object.geometry.dispose();
             }
             if (object.material) {
-                object.material.dispose(); 
+                object.material.dispose();
             }
         });
         this.moleculeContainer.clear();
@@ -677,7 +762,7 @@ export class CrystalViewer {
      */
     numberModifierModes(modifierName) {
         if (!this.state.baseStructure) {
-            return false; 
+            return false;
         }
         const atomfilteredStructure = this.modifiers.removeatoms.apply(this.state.baseStructure);
 
@@ -692,10 +777,28 @@ export class CrystalViewer {
      */
     animate() {
         if (this.options.renderMode === 'constant' || this.needsRender) {
+            this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
+    }
+
+    /**
+     * Keeps cutaway ellipsoids open towards the camera as the structure rotates.
+     * @private
+     */
+    updateCameraFacingOctants() {
+        const cameraFacingAtoms = this.state.currentStructure?.cameraFacingAtoms;
+        if (!cameraFacingAtoms?.length) {
+            return;
+        }
+
+        this.camera.updateMatrixWorld();
+        this.moleculeContainer.updateMatrixWorld(true);
+        cameraFacingAtoms.forEach(atom => {
+            atom.updateCutawayOctant(this.camera);
+        });
     }
 
     /**
@@ -719,16 +822,16 @@ export class CrystalViewer {
         const pixelRatio = window.devicePixelRatio || 1;
         const width = Math.floor(this.container.clientWidth * pixelRatio);
         const height = Math.floor(this.container.clientHeight * pixelRatio);
-        
+
         const needResize = canvas.width !== width || canvas.height !== height;
         if (needResize) {
             // Set the internal pixel dimensions (renderer buffer size)
             this.renderer.setSize(width, height, false);
-            
+
             // Explicitly set the CSS dimensions to match the container
             canvas.style.width = `${this.container.clientWidth}px`;
             canvas.style.height = `${this.container.clientHeight}px`;
-            
+
             // Update the renderer's viewport
             this.renderer.setViewport(0, 0, width, height);
         }
@@ -763,7 +866,7 @@ export class CrystalViewer {
      */
     dispose() {
         this.controls.dispose();
-        
+
         this.scene.traverse((object) => {
             if (object.geometry) {
                 object.geometry.dispose();

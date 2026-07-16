@@ -1,7 +1,5 @@
 import * as THREE from 'three';
-import { create, all } from 'mathjs';
-
-const math = create(all, {});
+import * as math from '../math-lite.js';
 
 /**
  * Calculates the normal vector to the best-fit (mean) plane through a set of 3D points

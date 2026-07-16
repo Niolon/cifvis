@@ -293,7 +293,8 @@ class OrthographicCameraController extends AbstractCameraController {
     pan(delta) {
         // For orthographic, pan amount is proportional to visible size
         const size = this.camera.top;
-        const moveX = -delta.x * size * 1.41;
+        const aspect = this.camera.right / this.camera.top;
+        const moveX = -delta.x * size * aspect;
         const moveY = -delta.y * size;
         
         // Extract camera basis vectors

@@ -1,6 +1,4 @@
-import { create, all } from 'mathjs';
-
-const math = create(all, {});
+import * as math from '../math-lite.js';
 
 /**
  * Calculates the transformation matrix for converting fractional to cartesian coordinates.

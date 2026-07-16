@@ -1,6 +1,17 @@
 # CifVis - Crystal Structure Visualisation
 
-A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/widget.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/docs/widget-usage.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+
+## Documentation
+
+The [full documentation hub](https://niolon.github.io/cifvis/docs/index.html) (also under `site/docs/` in this repo) covers:
+
+- [Developing with CifVis](https://niolon.github.io/cifvis/docs/using-cifvis.html) &mdash; parsing CIF files (Blocks, entries, Loops), driving `CrystalViewer` directly to build a custom GUI, using Filters, and using CifVis structures in your own Three.js scene.
+- [Widget Usage](https://niolon.github.io/cifvis/docs/widget-usage.html) &mdash; the `<cifview-widget>` component: attributes, display modes, and styling it (light DOM, CSS custom properties).
+- [Options Reference](https://niolon.github.io/cifvis/docs/options-reference.html) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
+- [Developing CifVis](https://niolon.github.io/cifvis/docs/developing-cifvis.html) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
+
+For the full generated API reference (every exported class/method), run `npm run docs` to build it locally at `jsdoc-out/index.html`.
 
 ## Features
 
@@ -21,7 +32,7 @@ npm install cifvis
 ```
 
 ### Web Component
-For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/widget.html).
+For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/docs/widget-usage.html).
 
 ```html
 <cifview-widget 
@@ -81,8 +92,14 @@ const viewer = new CrystalViewer(container, {
     rotationSpeed: 5,
     clickThreshold: 200
   },
+  atomCutawayStripeCount: 7, // Horizontal hatch lines across each cutaway disc
+  atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
+  renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)
+  plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
+  plot2DStripeCount: 7,
+  plot2DStripeWidth: 0.18,
   hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'
-  disorderMode: 'all',     // 'all', 'group1', 'group2'
+  disorderMode: 'all',     // 'all', 'group1of2', 'group2of2', ... "group<rank>of<total>" per disorder group in the structure
   symmetryMode: 'bonds-no-hbonds-no' // See symmetry modes below
 });
 ```

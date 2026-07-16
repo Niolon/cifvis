@@ -8,10 +8,14 @@ dist/
 build/
 out/
 src/lib/generated/
+jsdoc-out/
 
 # integration testing directory
 cod/
 integration-tests/logs/
+
+# benchmark output
+benchmark/results.csv
 
 # Development environment
 .env
@@ -51,8 +55,3 @@ coverage/
 .vite/
 *.local
 .nvmrc
-
-# Nix Shell
-shell.nix
-flake.lock
-flake.nix

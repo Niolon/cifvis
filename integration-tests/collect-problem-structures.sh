@@ -34,6 +34,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         filename=$(basename "$filepath")
         basename="${filename%.cif}"
         cp "$filepath" "$PROBLEM_DIR/structerr_$basename.cif"
+    elif [[ $line =~ "Modifier Error in "(/[^\"]+\.cif) ]]; then
+        filepath="${BASH_REMATCH[1]}"
+        filename=$(basename "$filepath")
+        basename="${filename%.cif}"
+        cp "$filepath" "$PROBLEM_DIR/moderr_$basename.cif"
     fi
 done < "integration-tests/logs/modifier-test-errors.log"
 

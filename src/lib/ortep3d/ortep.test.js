@@ -2,30 +2,30 @@ import * as THREE from 'three';
 import {
     ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
-    ORTEPBond,
+    ORTEPAtomInstance, ORTEPAniAtomInstance,
+    ORTEPBond, ORTEPBondInstance, PooledSelectableObject, create2DPlotHatchMaterial, createCutawayPlaneMaterial,
+    trimBondToAtomSurfaces, InstancedPool,
 } from './ortep.js';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { Bond, HBond } from '../structure/bonds.js';
 import { FractPosition } from '../structure/position.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
-import { create, all } from 'mathjs';
-
-const math = create(all);
+import { matrix as buildMatrix } from '../math-lite.js';
 
 describe('Transformation Functions', () => {
     describe('getThreeEllipsoidMatrix', () => {
         test('correctly converts mathjs matrix to THREE.Matrix4', () => {
             const mockUAnisoADP = {
-                getEllipsoidMatrix: vi.fn().mockReturnValue(math.matrix([
+                getEllipsoidMatrix: vi.fn().mockReturnValue(buildMatrix([
                     [0.1, 0.2, 0.3],
                     [0.4, 0.5, 0.6],
                     [0.7, 0.8, 0.9],
                 ])),
             };
-            
+
             const matrix = getThreeEllipsoidMatrix(mockUAnisoADP, {});
-            
+
             expect(matrix).toBeInstanceOf(THREE.Matrix4);
             expect(matrix.elements).toEqual([
                 0.1, 0.4, 0.7, 0,
@@ -40,13 +40,13 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for vertical bond', () => {
             const pos1 = new THREE.Vector3(0, -1, 0);
             const pos2 = new THREE.Vector3(0, 1, 0);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
 
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(1);
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(2);
             expect(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix).length()).toBeCloseTo(1);
-            
+
             // Check position (should be at midpoint)
             expect(matrix.elements[12]).toBeCloseTo(0); // x
             expect(matrix.elements[13]).toBeCloseTo(0); // y
@@ -56,13 +56,13 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for vertical bond not centred on zero', () => {
             const pos1 = new THREE.Vector3(0, 0, 0);
             const pos2 = new THREE.Vector3(0, 2, 0);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
-            
+
             expect(new THREE.Vector3(1, 0, 0).applyMatrix4(matrix).length()).toBeCloseTo(Math.sqrt(2));
             expect(new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length()).toBeCloseTo(3);
             expect(new THREE.Vector3(0, 0, 1).applyMatrix4(matrix).length()).toBeCloseTo(Math.sqrt(2));
-            
+
             // Check position (should be at midpoint)
             expect(matrix.elements[12]).toBeCloseTo(0); // x
             expect(matrix.elements[13]).toBeCloseTo(1); // y
@@ -72,14 +72,14 @@ describe('Transformation Functions', () => {
         test('creates correct transformation for diagonal bond', () => {
             const pos1 = new THREE.Vector3(0.5, 0.5, 0.5);
             const pos2 = new THREE.Vector3(-0.5, -0.5, -0.5);
-            
+
             const matrix = calcBondTransform(pos1, pos2);
-            
+
             // Check length preservation
             const bondLength = pos1.distanceTo(pos2);
             const transformedLength = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix).length();
             expect(transformedLength).toBeCloseTo(bondLength);
-            
+
             // Check midpoint position
             const expectedMidpoint = pos1.clone().add(pos2).multiplyScalar(0.5);
             expect(matrix.elements[12]).toBeCloseTo(expectedMidpoint.x);
@@ -94,11 +94,41 @@ describe('Transformation Functions', () => {
             );
         });
     });
+
+    describe('trimBondToAtomSurfaces', () => {
+        test('moves each endpoint by its directional surface distance', () => {
+            const start = new THREE.Vector3(0, 0, 0);
+            const end = new THREE.Vector3(2, 0, 0);
+            const atom1 = { getSurfaceDistanceAlong: vi.fn().mockReturnValue(0.25) };
+            const atom2 = { getSurfaceDistanceAlong: vi.fn().mockReturnValue(0.5) };
+
+            const [trimmedStart, trimmedEnd] = trimBondToAtomSurfaces(
+                start, end, atom1, atom2,
+            );
+
+            expect(trimmedStart.toArray()).toEqual([0.25, 0, 0]);
+            expect(trimmedEnd.toArray()).toEqual([1.5, 0, 0]);
+            expect(start.toArray()).toEqual([0, 0, 0]);
+            expect(end.toArray()).toEqual([2, 0, 0]);
+        });
+
+        test('leaves endpoints unchanged without rendered atoms', () => {
+            const start = new THREE.Vector3(0, 0, 0);
+            const end = new THREE.Vector3(1, 0, 0);
+
+            const [trimmedStart, trimmedEnd] = trimBondToAtomSurfaces(
+                start, end, null, null,
+            );
+
+            expect(trimmedStart.equals(start)).toBe(true);
+            expect(trimmedEnd.equals(end)).toBe(true);
+        });
+    });
 });
 
 describe('GeometryMaterialCache', () => {
     let cache;
-    
+
     beforeEach(() => {
         cache = new GeometryMaterialCache();
     });
@@ -111,8 +141,57 @@ describe('GeometryMaterialCache', () => {
         test('creates default geometries', () => {
             expect(cache.geometries.atom).toBeInstanceOf(THREE.BufferGeometry);
             expect(cache.geometries.adpRing).toBeInstanceOf(THREE.BufferGeometry);
+            expect(cache.geometries.adpRingSet).toBeInstanceOf(THREE.BufferGeometry);
             expect(cache.geometries.bond).toBeInstanceOf(THREE.BufferGeometry);
             expect(cache.geometries.hbond).toBeInstanceOf(THREE.BufferGeometry);
+        });
+
+        test('adpRingSet vertex count is three times the single ring', () => {
+            const singleCount = cache.geometries.adpRing.attributes.position.count;
+            const mergedCount = cache.geometries.adpRingSet.attributes.position.count;
+            expect(mergedCount).toBe(singleCount * 3);
+        });
+
+        test('creates shared cutaway geometries when requested', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [, , planeMaterial] = cutawayCache.getAtomMaterials('C');
+
+            expect(cutawayCache.geometries.atomOctant).toBeInstanceOf(THREE.SphereGeometry);
+            expect(cutawayCache.geometries.emptyAtom).toBeInstanceOf(THREE.BufferGeometry);
+            expect(cutawayCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+            expect(planeMaterial.userData.cutawayStripes.width).toBe(0.5);
+
+            cutawayCache.dispose();
+        });
+
+        test('aligns each cutaway plane stripe direction to a different principal axis', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const geometry = cutawayCache.geometries.cutawayPlanes;
+            const positions = geometry.getAttribute('position');
+            const uv = geometry.getAttribute('uv');
+            const planeVertexCount = positions.count / 3;
+            const coordinateGetters = [
+                index => positions.getX(index),
+                index => positions.getY(index),
+                index => positions.getZ(index),
+            ];
+            const stripeGradientAxes = [0, 1, 2].map(planeIndex => {
+                const start = planeIndex * planeVertexCount;
+                const end = start + planeVertexCount;
+                const covariance = coordinateGetters.map(getCoordinate => {
+                    let value = 0;
+                    for (let index = start; index < end; index++) {
+                        value += getCoordinate(index) * (uv.getY(index) - 0.5);
+                    }
+                    return Math.abs(value);
+                });
+                return covariance.indexOf(Math.max(...covariance));
+            });
+
+            // UV gradients Y, X and Z yield lines along principal axes X, Z and Y.
+            expect(stripeGradientAxes).toEqual([1, 0, 2]);
+
+            cutawayCache.dispose();
         });
 
         test('creates default materials', () => {
@@ -133,7 +212,7 @@ describe('GeometryMaterialCache', () => {
             expect(customCache.options.atomDetail).toBe(4);
             expect(customCache.options.bondRadius).toBe(0.0001);
             expect(customCache.options.bondColor).toBe('#ff0000');
-            
+
             // Should preserve default options not overridden
             expect(customCache.options.bondSections).toBe(defaultSettings.bondSections);
         });
@@ -194,18 +273,103 @@ describe('GeometryMaterialCache', () => {
 
         test('applies correct material properties', () => {
             const [atomMaterial, ringMaterial] = cache.getAtomMaterials('C');
-            
+
             expect(atomMaterial.roughness).toBe(cache.options.atomColorRoughness);
             expect(atomMaterial.metalness).toBe(cache.options.atomColorMetalness);
             expect(ringMaterial.roughness).toBe(cache.options.atomColorRoughness);
             expect(ringMaterial.metalness).toBe(cache.options.atomColorMetalness);
+        });
+
+        test('creates atom-coloured horizontal stripes for cutaway planes', () => {
+            const material = createCutawayPlaneMaterial(
+                { atomColor: '#ff0000', ringColor: '#ffffff' },
+                {
+                    atomColorRoughness: 0.4,
+                    atomColorMetalness: 0.5,
+                    atomCutawayStripeCount: 6,
+                    atomCutawayStripeWidth: 0.2,
+                },
+            );
+            const shader = {
+                uniforms: {},
+                vertexShader: '#include <uv_pars_vertex>\n#include <uv_vertex>',
+                fragmentShader: '#include <common>\n#include <color_fragment>',
+            };
+
+            material.onBeforeCompile(shader);
+
+            expect(material).toBeInstanceOf(THREE.MeshStandardMaterial);
+            expect(material.color.getHexString()).toBe('ffffff');
+            expect(material.userData.cutawayStripes.color.getHexString()).toBe('ff0000');
+            expect(material.userData.cutawayStripes).toMatchObject({ count: 6, width: 0.2 });
+            expect(shader.uniforms.cutawayStripeCount.value).toBe(6);
+            expect(shader.uniforms.cutawayStripeHalfWidth.value).toBe(0.1);
+            expect(shader.vertexShader).toContain('vCutawayUv = uv');
+            expect(shader.fragmentShader).toContain('vCutawayUv.y * cutawayStripeCount');
+            expect(shader.fragmentShader).toContain('fwidth(cutawayStripeCoordinate)');
+            expect(shader.fragmentShader).not.toContain('fwidth(cutawayStripePhase)');
+            expect(shader.fragmentShader).toContain('diffuseColor.rgb = mix');
+
+            material.dispose();
+        });
+
+        test('creates element-coloured materials for the 2D plot style', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [carbon, carbonRing, carbonHatch] = plotCache.getAtomMaterials('C');
+            const [oxygen, oxygenRing, oxygenHatch] = plotCache.getAtomMaterials('O');
+
+            expect(carbon).toBeInstanceOf(THREE.MeshBasicMaterial);
+            expect(carbon.color.getHexString()).toBe('ffffff');
+            expect(oxygen.color.getHexString()).toBe('ffffff');
+            expect(carbonRing.color.getHexString()).toBe('000000');
+            expect(oxygenRing.color.getHexString()).toBe('ff0d0d');
+            expect(carbonHatch.userData.plot2DHatch.color.getHexString()).toBe('000000');
+            expect(oxygenHatch.userData.plot2DHatch.color.getHexString()).toBe('ff0d0d');
+            expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
+            expect(plotCache.materials.openBond.color.getHexString()).toBe('ffffff');
+            expect(plotCache.materials.openBond.transparent).toBe(false);
+            expect(plotCache.materials.openBond.depthWrite).toBe(true);
+            expect(plotCache.materials.openBondOutline.color.getHexString()).toBe('000000');
+            expect(plotCache.materials.openBondOutline.side).toBe(THREE.BackSide);
+            expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+
+            plotCache.dispose();
+        });
+
+        test('injects antialiased stripes into the 2D hatch material', () => {
+            const material = create2DPlotHatchMaterial(
+                {
+                    plot2DAtomColor: '#ffffff',
+                    plot2DLineColor: '#000000',
+                    plot2DStripeCount: 8,
+                    plot2DStripeWidth: 0.25,
+                },
+                '#3050f8',
+            );
+            const shader = {
+                uniforms: {},
+                vertexShader: '#include <uv_pars_vertex>\n#include <uv_vertex>',
+                fragmentShader: '#include <common>\n#include <color_fragment>',
+            };
+
+            material.onBeforeCompile(shader);
+
+            expect(shader.uniforms.plot2DStripeColor.value.getHexString()).toBe('3050f8');
+            expect(shader.uniforms.plot2DStripeCount.value).toBe(8);
+            expect(shader.uniforms.plot2DStripeHalfWidth.value).toBe(0.125);
+            expect(shader.vertexShader).toContain('vPlot2DUv = uv');
+            expect(shader.fragmentShader).toContain('vPlot2DUv.y * plot2DStripeCount');
+            expect(shader.fragmentShader).toContain('fwidth(plot2DStripeCoordinate)');
+            expect(shader.fragmentShader).not.toContain('fwidth(plot2DStripePhase)');
+
+            material.dispose();
         });
     });
 
     describe('ADP ring geometry', () => {
         test('creates valid ADP ring geometry', () => {
             const ring = cache.createADPHalfTorus();
-            
+
             expect(ring).toBeInstanceOf(THREE.BufferGeometry);
             expect(ring.attributes.position).toBeDefined();
             expect(ring.attributes.normal).toBeDefined();
@@ -216,7 +380,7 @@ describe('GeometryMaterialCache', () => {
             const ring = cache.createADPHalfTorus();
             const positions = ring.attributes.position.array;
             const indices = ring.index.array;
-            
+
             // Check that each triangle has at least one vertex outside the scaling radius
             for (let i = 0; i < indices.length; i += 3) {
                 const vertices = [
@@ -230,10 +394,10 @@ describe('GeometryMaterialCache', () => {
                         positions[idx + 2] * positions[idx + 2],
                     ),
                 }));
-                
+
                 expect(vertices.some(v => v.distance >= cache.scaling)).toBe(true);
             }
-            
+
             // Additionally verify that we have vertices both inside and outside
             // to ensure we're actually creating a connection to the sphere
             const distances = [];
@@ -245,7 +409,7 @@ describe('GeometryMaterialCache', () => {
                 );
                 distances.push(distance);
             }
-            
+
             expect(distances.some(d => d >= cache.scaling)).toBe(true);
             expect(distances.some(d => d < cache.scaling)).toBe(true);
         });
@@ -254,24 +418,24 @@ describe('GeometryMaterialCache', () => {
             const ring = cache.createADPHalfTorus();
             const matrix = new THREE.Matrix4();
             ring.computeBoundingBox();
-            
+
             // Should be rotated around X axis by PI/2
-            matrix.makeRotationX(-Math.PI/2);
+            matrix.makeRotationX(-Math.PI / 2);
             ring.applyMatrix4(matrix);
             ring.computeBoundingBox();
-            
+
             // After un-rotating, the ring should be primarily in the XY plane
             const { min, max } = ring.boundingBox;
             const zRange = max.z - min.z;
             const xyRange = Math.max(max.x - min.x, max.y - min.y);
-            
+
             expect(zRange).toBeLessThan(xyRange);
         });
     });
 
     describe('resource disposal', () => {
         let disposeSpy;
-        
+
         beforeEach(() => {
             disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
         });
@@ -282,25 +446,25 @@ describe('GeometryMaterialCache', () => {
 
         test('disposes all geometries', () => {
             cache.dispose();
-            
-            // We should have 4 geometries: atom, adpRing, bond, and hbond
-            expect(disposeSpy).toHaveBeenCalledTimes(4);
+
+            // We should have 5 geometries: atom, adpRing, adpRingSet, bond, and hbond
+            expect(disposeSpy).toHaveBeenCalledTimes(5);
         });
 
         test('disposes all materials', () => {
             // Create some materials first
             cache.getAtomMaterials('C');
             cache.getAtomMaterials('O');
-            
+
             const materialDisposeSpy = vi.spyOn(THREE.Material.prototype, 'dispose');
-            
+
             cache.dispose();
-            
+
             // Should dispose base materials and element materials
             const expectedCalls = 2 + // Base materials (bond, hbond)
-                                4;  // Element materials (2 elements × 2 materials each)
+                4;  // Element materials (2 elements × 2 materials each)
             expect(materialDisposeSpy).toHaveBeenCalledTimes(expectedCalls);
-            
+
             materialDisposeSpy.mockRestore();
         });
 
@@ -314,7 +478,7 @@ describe('GeometryMaterialCache', () => {
 describe('ORTEP3JsStructure', () => {
     let structure;
     let mockCrystalStructure;
-    
+
     beforeEach(() => {
         // Create a mock crystal structure with minimal data
         const cell = new UnitCell(10, 10, 10, 90, 90, 90);
@@ -322,16 +486,16 @@ describe('ORTEP3JsStructure', () => {
             new Atom('C1', 'C', new FractPosition(0, 0, 0)),
             new Atom('O1', 'O', new FractPosition(0.5, 0.5, 0.5),
                 new UIsoADP(0.02)),
-            new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1), 
+            new Atom('H1', 'H', new FractPosition(0.1, 0.1, 0.1),
                 new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0)),
         ];
         const bonds = [
-            new Bond('C1', 'O1', 1.5, 0.01),
+            new Bond('C1', 'O1', 1.5, 0.01, '.'),
         ];
         const hbonds = [
-            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1),
+            new HBond('O1', 'H1', 'C1', 1.0, 0.01, 2.0, 0.02, 2.8, 0.03, 175, 1, '.'),
         ];
-        
+
         mockCrystalStructure = new CrystalStructure(cell, atoms, bonds, hbonds);
     });
 
@@ -345,13 +509,13 @@ describe('ORTEP3JsStructure', () => {
         test('updates single property while preserving others', () => {
             const originalAtomColor = defaultSettings.elementProperties.C.atomColor;
             const newRingColor = '#00ff00';
-            
+
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
                     'C': { ringColor: newRingColor },
                 },
             });
-            
+
             expect(structure.options.elementProperties.C.atomColor).toBe(originalAtomColor);
             expect(structure.options.elementProperties.C.ringColor).toBe(newRingColor);
         });
@@ -368,13 +532,13 @@ describe('ORTEP3JsStructure', () => {
 
         test('preserves other elements when updating one', () => {
             const originalOxygenProps = { ...defaultSettings.elementProperties.O };
-            
+
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
                 elementProperties: {
                     'C': { ringColor: '#00ff00' },
                 },
             });
-            
+
             expect(structure.options.elementProperties.O).toEqual(originalOxygenProps);
         });
     });
@@ -393,7 +557,144 @@ describe('ORTEP3JsStructure', () => {
         test('creates group with correct structure', () => {
             const group = structure.getGroup();
             expect(group).toBeInstanceOf(THREE.Group);
-            expect(group.children).toHaveLength(5); // 3 atoms + 1 bond + 1 hbond
+            // 3 per-element atom InstancedMesh pools (C, O, H) + 1 per-element
+            // ring pool (H is the only anisotropic atom) + 3 atom descriptors
+            // + 1 shared bond pool + 1 bond descriptor
+            // + 1 shared hbond pool + 1 hbond descriptor
+            expect(group.children).toHaveLength(11);
+        });
+
+        test('a real Raycaster hits a pooled atom instance (regression: raycast against a ' +
+            'duck-typed {geometry,material,matrixWorld} object throws in current three.js, ' +
+            'since Mesh.raycast() internally calls this._computeIntersections)', () => {
+            const group = structure.getGroup();
+            group.updateMatrixWorld(true);
+
+            // C1 sits at the origin (FractPosition(0,0,0) in a cubic cell).
+            const raycaster = new THREE.Raycaster(
+                new THREE.Vector3(0, 0, 10),
+                new THREE.Vector3(0, 0, -1),
+            );
+            const selectable = [];
+            group.traverse(obj => {
+                if (obj.userData?.selectable) {
+                    selectable.push(obj);
+                }
+            });
+
+            expect(() => raycaster.intersectObjects(selectable)).not.toThrow();
+            const intersects = raycaster.intersectObjects(selectable)
+                .filter(i => i.object.userData?.selectable);
+            expect(intersects.length).toBeGreaterThan(0);
+            expect(intersects[0].object.userData.atomData.label).toBe('C1');
+        });
+
+        test('routes an anisotropic atom with non-positive u22 to the legacy tetrahedron ' +
+            'fallback instead of pooling it (regression: computeAniAtomTransform used to read the ' +
+            'nonexistent atom.adp.u3 instead of u22, so this case was silently pooled as if valid)', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3),
+                    new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003)),
+            ];
+            const degenerateStructure = new CrystalStructure(cell, atoms);
+
+            const ortep = new ORTEP3JsStructure(degenerateStructure);
+
+            expect(ortep.atoms3D).toHaveLength(1);
+            expect(ortep.atoms3D[0]).toBeInstanceOf(ORTEPAniAtom);
+            expect(ortep.atoms3D[0]).not.toBeInstanceOf(ORTEPAniAtomInstance);
+            expect(ortep.atoms3D[0].geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        });
+
+        test('exposes cutaway atoms for camera-facing updates', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                renderStyle: 'cutout-3d',
+            });
+
+            const group = structure.getGroup();
+            expect(group.cutawayAtoms).toHaveLength(1);
+            expect(group.cutawayAtoms[0].userData.atomData.label).toBe('H1');
+        });
+
+        test('creates a surface-trimmed, camera-facing 2D plot structure', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                renderStyle: 'cutout-2d',
+            });
+            const group = structure.getGroup();
+            const anisotropicAtom = structure.atoms3D[2];
+
+            expect(group.cameraFacingAtoms).toEqual([anisotropicAtom]);
+            expect(anisotropicAtom.isCutaway).toBe(true);
+            expect(anisotropicAtom.cutawayOctants).toHaveLength(8);
+            expect(anisotropicAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            expect(anisotropicAtom.cutawayOutlines).toHaveLength(8);
+            expect(anisotropicAtom.cutawayOutlines.filter(outline => outline.visible)).toHaveLength(7);
+            expect(anisotropicAtom.cutawayPlanes.material.userData.plot2DHatch).toBeDefined();
+            expect(structure.bonds3D[0].material).toBeInstanceOf(THREE.MeshBasicMaterial);
+        });
+
+        test('renders PART 2 bonds with opaque white centres in the 2D plot', () => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom(
+                    'C0',
+                    'C',
+                    new FractPosition(0, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                ),
+                new Atom(
+                    'C1',
+                    'C',
+                    new FractPosition(0.25, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                    1,
+                ),
+                new Atom(
+                    'C2',
+                    'C',
+                    new FractPosition(0.5, 0, 0),
+                    new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+                    2,
+                ),
+            ];
+            const bonds = [
+                new Bond('C0', 'C1'),
+                new Bond('C0', 'C2'),
+            ];
+            structure = new ORTEP3JsStructure(
+                new CrystalStructure(cell, atoms, bonds),
+                { renderStyle: 'cutout-2d' },
+            );
+
+            const [nonDisordered, part1, part2] = structure.atoms3D;
+            const [closedBond, openBond] = structure.bonds3D;
+            const group = structure.getGroup();
+
+            expect(nonDisordered.isCutaway).toBe(true);
+            expect(part1.isCutaway).toBe(true);
+            expect(part2.isCutaway).toBe(true);
+            expect(group.cameraFacingAtoms).toEqual([nonDisordered, part1, part2]);
+
+            expect(closedBond.userData.isOpenDisorderBond).toBe(false);
+            expect(closedBond.material.color.getHexString()).toBe('000000');
+            expect(closedBond.openBondOutline).toBeUndefined();
+
+            expect(openBond.userData.isOpenDisorderBond).toBe(true);
+            expect(openBond.material.color.getHexString()).toBe('ffffff');
+            expect(openBond.material.transparent).toBe(false);
+            expect(openBond.material.opacity).toBe(1);
+            expect(openBond.material.depthWrite).toBe(true);
+            expect(openBond.openBondOutline).toBeInstanceOf(THREE.Mesh);
+            expect(openBond.openBondOutline.material.color.getHexString()).toBe('000000');
+            expect(openBond.openBondOutline.material.side).toBe(THREE.BackSide);
+            expect(openBond.scale.x).toBeCloseTo(0.5);
+            expect(openBond.scale.z).toBeCloseTo(0.5);
+            expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
+            expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
         });
     });
 
@@ -455,9 +756,9 @@ describe('ORTEPObject', () => {
     test('properly disposes resources', () => {
         const geometrySpy = vi.spyOn(object.geometry, 'dispose');
         const materialSpy = vi.spyOn(object.material, 'dispose');
-        
+
         object.dispose();
-        
+
         expect(geometrySpy).toHaveBeenCalled();
         expect(materialSpy).toHaveBeenCalled();
     });
@@ -532,7 +833,7 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with basic properties', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             expect(ortepAtom.geometry).toBe(mockGeometry);
             expect(ortepAtom.material).toBe(mockMaterial);
             expect(ortepAtom.userData.type).toBe('atom');
@@ -542,18 +843,30 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('correctly transforms fractional to cartesian coordinates', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Calculate expected cartesian position
             const cartPos = mockAtom.position.toCartesian(mockUnitCell);
-            
+
             expect(ortepAtom.position.x).toBeCloseTo(cartPos.x);
             expect(ortepAtom.position.y).toBeCloseTo(cartPos.y);
             expect(ortepAtom.position.z).toBeCloseTo(cartPos.z);
         });
 
+        test('calculates direction-dependent distances to a scaled atom surface', () => {
+            const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
+            ortepAtom.scale.set(2, 1, 0.5);
+            mockGeometry.computeBoundingSphere();
+            const radius = mockGeometry.boundingSphere.radius;
+
+            expect(ortepAtom.getSurfaceDistanceAlong(new THREE.Vector3(1, 0, 0)))
+                .toBeCloseTo(2 * radius);
+            expect(ortepAtom.getSurfaceDistanceAlong(new THREE.Vector3(0, 0, 1)))
+                .toBeCloseTo(0.5 * radius);
+        });
+
         test('handles selection and deselection correctly', () => {
             const ortepAtom = new ORTEPAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Test selection
             ortepAtom.select(0xff0000, mockOptions);
             expect(ortepAtom.selectionColor).toBe(0xff0000);
@@ -583,25 +896,27 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with anisotropic properties', () => {
             const ortepAtom = new ORTEPAniAtom(
-                mockAtom, 
-                mockUnitCell, 
-                mockGeometry, 
+                mockAtom,
+                mockUnitCell,
+                mockGeometry,
                 mockMaterial,
                 mockADPRing,
                 mockRingMaterial,
             );
-            
+
             expect(ortepAtom.geometry).toBe(mockGeometry);
             expect(ortepAtom.material).toBe(mockMaterial);
-            expect(ortepAtom.children.length).toBe(3); // 3 ADP rings
-            
-            // Verify rings were created correctly
-            ortepAtom.children.forEach(ring => {
-                expect(ring).toBeInstanceOf(THREE.Mesh);
-                expect(ring.geometry).toBe(mockADPRing);
-                expect(ring.material).toBe(mockRingMaterial);
-                expect(ring.userData.selectable).toBe(false);
-            });
+            // The three ring placements are baked into the passed-in ring
+            // geometry (see GeometryMaterialCache.createMergedADPRingSet), so
+            // a single mesh renders all three rings.
+            expect(ortepAtom.children.length).toBe(1);
+
+            const ring = ortepAtom.children[0];
+            expect(ring).toBeInstanceOf(THREE.Mesh);
+            expect(ring.geometry).toBe(mockADPRing);
+            expect(ring.material).toBe(mockRingMaterial);
+            expect(ring.userData.selectable).toBe(false);
+            expect(ortepAtom.ringMesh).toBe(ring);
         });
 
         test('handles invalid ADP matrices gracefully', () => {
@@ -612,15 +927,35 @@ describe('ORTEPAtom and subclasses', () => {
                 new FractPosition(0.1, 0.2, 0.3),
                 new UAnisoADP(NaN, 0.02, 0.03, 0.001, 0.002, 0.003),
             );
-            
+
             const ortepAtom = new ORTEPAniAtom(
                 invalidAtom,
                 mockUnitCell,
                 mockGeometry,
                 mockMaterial,
             );
-            
+
             // Should fall back to tetrahedron geometry
+            expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        });
+
+        test('falls back to tetrahedron geometry for a non-positive u22 ' +
+            '(regression: the validity check used to read the nonexistent atom.adp.u3 instead of u22, ' +
+            'so undefined <= 0 was always false and this case slipped through undetected)', () => {
+            const negativeU22Atom = new Atom(
+                'C1',
+                'C',
+                new FractPosition(0.1, 0.2, 0.3),
+                new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003),
+            );
+
+            const ortepAtom = new ORTEPAniAtom(
+                negativeU22Atom,
+                mockUnitCell,
+                mockGeometry,
+                mockMaterial,
+            );
+
             expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
         });
 
@@ -633,12 +968,12 @@ describe('ORTEPAtom and subclasses', () => {
                 mockADPRing,
                 mockRingMaterial,
             );
-            
+
             const matrices = ortepAtom.adpRingMatrices;
-            
+
             // Check we have 3 matrices
             expect(matrices).toHaveLength(3);
-            
+
             // Verify each matrix is orthogonal
             matrices.forEach(matrix => {
                 const elements = matrix.elements;
@@ -654,6 +989,118 @@ describe('ORTEPAtom and subclasses', () => {
                 }
             });
         });
+
+        test('creates eight shared octants and keeps one facing octant hidden', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    hysteresis: 0.025,
+                },
+            );
+
+            expect(ortepAtom.isCutaway).toBe(true);
+            expect(ortepAtom.cutawayOctants).toHaveLength(8);
+            expect(new Set(ortepAtom.cutawayOctants.map(octant => octant.geometry)).size).toBe(1);
+            expect(ortepAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            expect(ortepAtom.cutawayPlanes.geometry).toBe(cutawayCache.geometries.cutawayPlanes);
+
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+            camera.position.set(7, 11, 13);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateMatrixWorld(true);
+            ortepAtom.updateCutawayOctant(camera);
+            const firstMissingOctant = ortepAtom.missingOctantIndex;
+
+            camera.position.multiplyScalar(-1);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateCutawayOctant(camera);
+
+            expect(ortepAtom.missingOctantIndex).not.toBe(firstMissingOctant);
+            expect(ortepAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            cutawayCache.dispose();
+        });
+
+        test('keeps cutaway selection marker synchronized with the missing octant', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    hysteresis: 0.025,
+                },
+            );
+
+            ortepAtom.select(0xff0000, mockOptions);
+            expect(ortepAtom.marker.cutawayOctants.filter(octant => octant.visible))
+                .toHaveLength(7);
+            expect(ortepAtom.cutawayOctants.every(octant => octant.material === ortepAtom.material))
+                .toBe(true);
+
+            ortepAtom.setMissingOctant(0);
+            expect(ortepAtom.marker.cutawayOctants[0].visible).toBe(false);
+            ortepAtom.deselect();
+            expect(ortepAtom.cutawayOctants.every(octant => octant.material === atomMaterial))
+                .toBe(true);
+            cutawayCache.dispose();
+        });
+
+        test('redirects cutaway child raycasts to the selectable atom', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    hysteresis: 0.025,
+                },
+            );
+            ortepAtom.updateMatrixWorld(true);
+
+            const origin = ortepAtom.localToWorld(new THREE.Vector3(-5, -5, -5));
+            const target = ortepAtom.localToWorld(new THREE.Vector3(0, 0, 0));
+            const raycaster = new THREE.Raycaster(
+                origin,
+                target.sub(origin).normalize(),
+            );
+            const intersects = raycaster.intersectObject(ortepAtom);
+
+            expect(intersects.length).toBeGreaterThan(0);
+            expect(intersects[0].object).toBe(ortepAtom);
+            cutawayCache.dispose();
+        });
     });
 
     describe('ORTEPIsoAtom', () => {
@@ -668,7 +1115,7 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with correct scaling based on Uiso', () => {
             const ortepAtom = new ORTEPIsoAtom(mockAtom, mockUnitCell, mockGeometry, mockMaterial);
-            
+
             // Scale should be based on sqrt(Uiso)
             const expectedScale = Math.sqrt(mockAtom.adp.uiso);
             expect(ortepAtom.scale.x).toBeCloseTo(expectedScale);
@@ -682,7 +1129,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'C',
                 new FractPosition(0.1, 0.2, 0.3),
             );
-            
+
             expect(() => new ORTEPIsoAtom(
                 invalidAtom,
                 mockUnitCell,
@@ -703,15 +1150,15 @@ describe('ORTEPAtom and subclasses', () => {
 
         test('constructs with correct scaling based on element radius and multiplier', () => {
             const ortepAtom = new ORTEPConstantAtom(
-                mockAtom, 
-                mockUnitCell, 
-                mockGeometry, 
+                mockAtom,
+                mockUnitCell,
+                mockGeometry,
                 mockMaterial,
                 mockOptions,
             );
-            
-            const expectedScale = mockOptions.atomConstantRadiusMultiplier * 
-                                mockOptions.elementProperties[mockAtom.atomType].radius;
+
+            const expectedScale = mockOptions.atomConstantRadiusMultiplier *
+                mockOptions.elementProperties[mockAtom.atomType].radius;
             expect(ortepAtom.scale.x).toBeCloseTo(expectedScale);
             expect(ortepAtom.scale.y).toBeCloseTo(expectedScale);
             expect(ortepAtom.scale.z).toBeCloseTo(expectedScale);
@@ -723,7 +1170,7 @@ describe('ORTEPAtom and subclasses', () => {
                 'X',  // Unknown element
                 new FractPosition(0.1, 0.2, 0.3),
             );
-            
+
             expect(() => new ORTEPConstantAtom(
                 unknownAtom,
                 mockUnitCell,
@@ -741,6 +1188,110 @@ describe('ORTEPAtom and subclasses', () => {
                 mockMaterial,
             )).toThrow('Element properties not found for atom type: \'C\'');
         });
+    });
+});
+
+describe('ORTEPAtomInstance and ORTEPAniAtomInstance', () => {
+    let mockAtom;
+    let mockGeometry;
+    let mockMaterial;
+    let mockRingMaterial;
+    let mockOptions;
+    let pool;
+    let ringPool;
+
+    beforeEach(() => {
+        mockAtom = new Atom('C1', 'C', new FractPosition(0.1, 0.2, 0.3));
+        mockGeometry = new THREE.IcosahedronGeometry(1, 1);
+        mockMaterial = new THREE.MeshStandardMaterial();
+        mockRingMaterial = new THREE.MeshStandardMaterial();
+        mockOptions = {
+            selection: {
+                markerMult: 1.3,
+                bondMarkerMult: 1.7,
+                highlightEmissive: 0xaaaaaa,
+            },
+        };
+        pool = new InstancedPool(mockGeometry, mockMaterial, 1);
+        ringPool = new InstancedPool(mockGeometry, mockRingMaterial, 1);
+    });
+
+    afterEach(() => {
+        mockGeometry.dispose();
+        mockMaterial.dispose();
+        mockRingMaterial.dispose();
+    });
+
+    test('is a PooledSelectableObject and registers one instance', () => {
+        const matrix = new THREE.Matrix4().makeScale(2, 2, 2).setPosition(1, 2, 3);
+        const atomInstance = new ORTEPAtomInstance(mockAtom, pool, matrix, 1);
+        pool.finalize();
+
+        expect(atomInstance).toBeInstanceOf(PooledSelectableObject);
+        expect(atomInstance.userData.type).toBe('atom');
+        expect(atomInstance.userData.atomData).toBe(mockAtom);
+        expect(atomInstance.userData.selectable).toBe(true);
+        expect(atomInstance.segments).toHaveLength(1);
+        expect(atomInstance.segments[0].pool).toBe(pool);
+
+        const stored = new THREE.Matrix4();
+        pool.mesh.getMatrixAt(0, stored);
+        stored.elements.forEach((value, i) => expect(value).toBeCloseTo(matrix.elements[i], 6));
+    });
+
+    test('computes surface distance from its registered matrix', () => {
+        const matrix = new THREE.Matrix4().makeScale(2, 2, 2).setPosition(5, 0, 0);
+        const atomInstance = new ORTEPAtomInstance(mockAtom, pool, matrix, 1);
+        pool.finalize();
+
+        // Uniform scale of 2 on a unit-radius surface puts the surface at distance 2.
+        const distance = atomInstance.getSurfaceDistanceAlong(new THREE.Vector3(1, 0, 0));
+        expect(distance).toBeCloseTo(2, 5);
+    });
+
+    test('select()/deselect() hides and restores the pooled instance', () => {
+        const matrix = new THREE.Matrix4().makeScale(1, 1, 1).setPosition(1, 2, 3);
+        const atomInstance = new ORTEPAtomInstance(mockAtom, pool, matrix, 1);
+        pool.finalize();
+
+        atomInstance.select(0xff0000, mockOptions);
+        expect(atomInstance.highlightMeshes).toHaveLength(1);
+        expect(atomInstance.marker).not.toBeNull();
+        expect(atomInstance.marker.scale.x).toBe(mockOptions.selection.markerMult);
+
+        atomInstance.deselect();
+        expect(atomInstance.highlightMeshes).toBeNull();
+        expect(atomInstance.marker).toBeNull();
+        const restored = new THREE.Matrix4();
+        pool.mesh.getMatrixAt(0, restored);
+        restored.elements.forEach((value, i) => expect(value).toBeCloseTo(matrix.elements[i], 6));
+    });
+
+    test('ORTEPAniAtomInstance registers a matching instance in the ring pool, excluded from selection', () => {
+        const aniAtom = new Atom(
+            'H1', 'H', new FractPosition(0.1, 0.2, 0.3),
+            new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0),
+        );
+        const matrix = new THREE.Matrix4().makeScale(1, 1, 1).setPosition(1, 2, 3);
+        const atomInstance = new ORTEPAniAtomInstance(aniAtom, pool, matrix, 1, ringPool);
+        pool.finalize();
+        ringPool.finalize();
+
+        // The ring instance is registered but intentionally not part of
+        // `segments`, since rings have always been non-selectable and
+        // unaffected by selection highlighting.
+        expect(atomInstance.segments).toHaveLength(1);
+        expect(atomInstance.ringPool).toBe(ringPool);
+        expect(atomInstance.ringIndex).toBe(0);
+
+        const ringStored = new THREE.Matrix4();
+        ringPool.mesh.getMatrixAt(0, ringStored);
+        ringStored.elements.forEach((value, i) => expect(value).toBeCloseTo(matrix.elements[i], 6));
+
+        atomInstance.select(0xff0000, mockOptions);
+        const ringAfterSelect = new THREE.Matrix4();
+        ringPool.mesh.getMatrixAt(0, ringAfterSelect);
+        ringAfterSelect.elements.forEach((value, i) => expect(value).toBeCloseTo(matrix.elements[i], 6));
     });
 });
 
@@ -867,6 +1418,27 @@ describe('ORTEPBond', () => {
         expect(dotProduct).toBeCloseTo(1, 5);
     });
 
+    test('trims a bond to rendered atom surfaces when a resolver is provided', () => {
+        const pos1 = new THREE.Vector3(...mockAtom1.position.toCartesian(mockUnitCell));
+        const pos2 = new THREE.Vector3(...mockAtom2.position.toCartesian(mockUnitCell));
+        const renderedAtoms = new Map([
+            [mockAtom1.uniqueId, { getSurfaceDistanceAlong: () => 0.2 }],
+            [mockAtom2.uniqueId, { getSurfaceDistanceAlong: () => 0.3 }],
+        ]);
+        const ortepBond = new ORTEPBond(
+            mockBond,
+            mockCrystalStructure,
+            mockGeometry,
+            mockMaterial,
+            null,
+            atomId => renderedAtoms.get(atomId),
+        );
+        const scale = new THREE.Vector3();
+        ortepBond.matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+
+        expect(scale.y).toBeCloseTo(pos1.distanceTo(pos2) - 0.5);
+    });
+
     test('throws error when atoms not found in structure', () => {
         const invalidBond = new Bond(
             'X1',  // Non-existent atom
@@ -880,7 +1452,7 @@ describe('ORTEPBond', () => {
             mockCrystalStructure,
             mockGeometry,
             mockMaterial,
-        )).toThrow('Could not find atom with label: X1');
+        )).toThrow('Could not find atom with ID: X1');
     });
 
     test('creates correctly scaled selection marker', () => {
@@ -936,11 +1508,122 @@ describe('ORTEPBond', () => {
     });
 });
 
+describe('ORTEPBondInstance', () => {
+    let mockBond;
+    let mockCrystalStructure;
+    let mockGeometry;
+    let mockMaterial;
+    let mockAtom1;
+    let mockAtom2;
+    let mockUnitCell;
+    let mockOptions;
+    let pool;
+
+    beforeEach(() => {
+        mockUnitCell = new UnitCell(10, 10, 10, 90, 90, 90);
+        mockGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+        mockMaterial = new THREE.MeshStandardMaterial();
+        mockOptions = {
+            selection: {
+                markerMult: 1.3,
+                bondMarkerMult: 1.7,
+                highlightEmissive: 0xaaaaaa,
+            },
+        };
+
+        mockAtom1 = new Atom('C1', 'C', new FractPosition(0, 0, 0));
+        mockAtom2 = new Atom('O1', 'O', new FractPosition(0.1, 0.1, 0.1));
+        mockBond = new Bond('C1', 'O1', 1.5, 0.01);
+        mockCrystalStructure = new CrystalStructure(mockUnitCell, [mockAtom1, mockAtom2]);
+        pool = new InstancedPool(mockGeometry, mockMaterial, 1);
+    });
+
+    afterEach(() => {
+        mockGeometry.dispose();
+        mockMaterial.dispose();
+    });
+
+    /**
+     * Builds an ORTEPBondInstance the way ORTEP3JsStructure.createStructure()
+     * does for the default (non-2D) render style.
+     * @returns {ORTEPBondInstance} Constructed bond instance
+     */
+    function buildBondInstance() {
+        const matrix = ORTEPBondInstance.computeMatrix(mockBond, mockCrystalStructure);
+        const bondInstance = new ORTEPBondInstance(mockBond, pool, matrix);
+        pool.finalize();
+        return bondInstance;
+    }
+
+    test('is a PooledSelectableObject', () => {
+        expect(buildBondInstance()).toBeInstanceOf(PooledSelectableObject);
+    });
+
+    test('constructs with correct properties and registers exactly one instance', () => {
+        const bondInstance = buildBondInstance();
+
+        expect(bondInstance.userData.type).toBe('bond');
+        expect(bondInstance.userData.bondData).toBe(mockBond);
+        expect(bondInstance.userData.selectable).toBe(true);
+        expect(bondInstance.userData.isOpenDisorderBond).toBe(false);
+        expect(bondInstance.segments).toHaveLength(1);
+        expect(bondInstance.segments[0].pool).toBe(pool);
+    });
+
+    test('registers the same transform calcBondTransform would produce', () => {
+        const bondInstance = buildBondInstance();
+
+        const pos1 = new THREE.Vector3(...mockAtom1.position.toCartesian(mockUnitCell));
+        const pos2 = new THREE.Vector3(...mockAtom2.position.toCartesian(mockUnitCell));
+        const expected = calcBondTransform(pos1, pos2);
+
+        expect(bondInstance.segments[0].matrix.elements).toEqual(expected.elements);
+
+        const stored = new THREE.Matrix4();
+        pool.mesh.getMatrixAt(0, stored);
+        stored.elements.forEach((value, i) => {
+            expect(value).toBeCloseTo(expected.elements[i], 6);
+        });
+    });
+
+    test('select() hides the pooled instance and creates a highlight mesh, deselect() restores it', () => {
+        const bondInstance = buildBondInstance();
+        const originalMatrix = bondInstance.segments[0].matrix.clone();
+
+        bondInstance.select(0xff0000, mockOptions);
+        expect(bondInstance.highlightMeshes).toHaveLength(1);
+        expect(bondInstance.marker).not.toBeNull();
+        const hiddenStored = new THREE.Matrix4();
+        pool.mesh.getMatrixAt(0, hiddenStored);
+        expect(hiddenStored.elements).toEqual(new THREE.Matrix4().makeScale(0, 0, 0).elements);
+
+        bondInstance.deselect();
+        expect(bondInstance.highlightMeshes).toBeNull();
+        expect(bondInstance.marker).toBeNull();
+        const restoredStored = new THREE.Matrix4();
+        pool.mesh.getMatrixAt(0, restoredStored);
+        restoredStored.elements.forEach((value, i) => {
+            expect(value).toBeCloseTo(originalMatrix.elements[i], 6);
+        });
+    });
+
+    test('creates a correctly scaled selection marker', () => {
+        const bondInstance = buildBondInstance();
+        const marker = bondInstance.createSelectionMarker(0xff0000, mockOptions);
+
+        expect(marker).toBeInstanceOf(THREE.Mesh);
+        expect(marker.scale.x).toBe(mockOptions.selection.bondMarkerMult);
+        expect(marker.scale.z).toBe(mockOptions.selection.bondMarkerMult);
+        expect(marker.userData.selectable).toBe(false);
+        expect(marker.material.color.getHex()).toBe(0xff0000);
+    });
+});
+
 class TestORTEPGroupObject extends ORTEPGroupObject {
     createSelectionMarker(color, _options) {
         const marker = new THREE.Group();
         const material = this.createSelectionMaterial(color);
-        
+
         this.children.forEach(child => {
             if (child instanceof THREE.Mesh) {
                 const markerMesh = new THREE.Mesh(child.geometry, material);
@@ -999,7 +1682,7 @@ describe('ORTEPGroupObject', () => {
 
     test('throws error when createSelectionMarker not implemented', () => {
         // Create minimal concrete subclass without implementing createSelectionMarker
-        class MinimalGroup extends ORTEPGroupObject {}
+        class MinimalGroup extends ORTEPGroupObject { }
         const minimalGroup = new MinimalGroup();
 
         expect(() => {
@@ -1010,23 +1693,23 @@ describe('ORTEPGroupObject', () => {
     test('redirects raycasting from children to group', () => {
         const raycaster = new THREE.Raycaster();
         const intersects = [];
-        
+
         // Position raycaster to hit child1
         raycaster.ray.origin.set(0, 0, -5);
         raycaster.ray.direction.set(0, 0, 1);
-        
+
         child1.raycast(raycaster, intersects);
-        
+
         expect(intersects.length).toBe(1);
         expect(intersects[0].object).toBe(group);
     });
 
     test('handles selection for all children', () => {
         group.select(0xff0000, mockOptions);
-        
+
         expect(group.selectionColor).toBe(0xff0000);
         expect(group.marker).toBeTruthy();
-        
+
         const nonMarkerChildren = group.children.filter(child => child !== group.marker);
         nonMarkerChildren.forEach(child => {
             expect(child.originalMaterial).toBeTruthy();
@@ -1035,23 +1718,23 @@ describe('ORTEPGroupObject', () => {
 
     test('handles deselection for all children', () => {
         const originalMaterials = group.children.map(child => child.material);
-        
+
         group.select(0xff0000, mockOptions);
         group.deselect();
-        
+
         expect(group.selectionColor).toBeNull();
         expect(group.marker).toBeNull();
-        
+
         // Check each child has its original material restored
         group.children.forEach((child, index) => {
             expect(child.material).toBe(originalMaterials[index]);
-            expect(child.originalMaterial).toBeNull(); 
+            expect(child.originalMaterial).toBeNull();
         });
     });
 
     test('deselecting a deselected object is handled gracefully', () => {
         const originalMaterials = group.children.map(child => child.material);
-        
+
         // Deselect without selecting first
         expect(() => {
             group.deselect();
@@ -1059,7 +1742,7 @@ describe('ORTEPGroupObject', () => {
 
         expect(group.selectionColor).toBeNull();
         expect(group.marker).toBeNull();
-        
+
         // Verify children still have their original materials
         group.children.forEach((child, index) => {
             expect(child.material).toBe(originalMaterials[index]);
@@ -1069,31 +1752,31 @@ describe('ORTEPGroupObject', () => {
 
     test('properly disposes all resources when selected', () => {
         group.select(0xff0000, mockOptions); // Select first
-        
+
         const geometrySpies = group.children
             .filter(child => child instanceof THREE.Mesh)
             .map(child => vi.spyOn(child.geometry, 'dispose'));
         const materialSpies = group.children
             .filter(child => child instanceof THREE.Mesh)
             .map(child => vi.spyOn(child.material, 'dispose'));
-        
+
         group.dispose();
-        
+
         geometrySpies.forEach(spy => expect(spy).toHaveBeenCalled());
         materialSpies.forEach(spy => expect(spy).toHaveBeenCalled());
     });
 
     test('properly disposes all resources when not selected', () => {
-        const geometrySpies = group.children.map(child => 
+        const geometrySpies = group.children.map(child =>
             vi.spyOn(child.geometry, 'dispose'),
         );
-        const materialSpies = group.children.map(child => 
+        const materialSpies = group.children.map(child =>
             vi.spyOn(child.material, 'dispose'),
         );
-        
+
         // Dispose without ever selecting
         group.dispose();
-        
+
         geometrySpies.forEach(spy => expect(spy).toHaveBeenCalled());
         materialSpies.forEach(spy => expect(spy).toHaveBeenCalled());
         expect(group.children).toHaveLength(0);
@@ -1169,15 +1852,32 @@ describe('ORTEPHBond', () => {
         mockMaterial.dispose();
     });
 
-    test('constructs with correct properties', () => {
-        const hbond = new ORTEPHBond(
+    /**
+     * Builds an ORTEPHBond the way ORTEP3JsStructure.createStructure() does:
+     * compute segment matrices first (to size the pool), then register them.
+     * @param {number} targetSegmentLength - Approximate target length for dashed segments
+     * @param {number} dashFraction - Fraction of segment that is solid
+     * @param {function(string): THREE.Vector3|null} getCartesianPosition - Cached atom-position resolver
+     * @param {function(string): THREE.Object3D|null} getRenderedAtom - Rendered atom resolver for surface trimming
+     * @returns {{hbond: ORTEPHBond, pool: InstancedPool}} Constructed h-bond and its pool
+     */
+    function buildHBond(targetSegmentLength, dashFraction, getCartesianPosition = null, getRenderedAtom = null) {
+        const segmentMatrices = ORTEPHBond.computeSegmentMatrices(
             mockHBond,
             mockCrystalStructure,
-            mockGeometry,
-            mockMaterial,
-            0.3,  // targetSegmentLength
-            0.6,   // dashFraction
+            targetSegmentLength,
+            dashFraction,
+            getCartesianPosition,
+            getRenderedAtom,
         );
+        const pool = new InstancedPool(mockGeometry, mockMaterial, segmentMatrices.length);
+        const hbond = new ORTEPHBond(mockHBond, pool, segmentMatrices);
+        pool.finalize();
+        return { hbond, pool };
+    }
+
+    test('constructs with correct properties', () => {
+        const { hbond } = buildHBond(0.3, 0.6);
 
         expect(hbond.userData.type).toBe('hbond');
         expect(hbond.userData.hbondData).toBe(mockHBond);
@@ -1186,14 +1886,7 @@ describe('ORTEPHBond', () => {
 
     test('creates correct number of dash segments', () => {
         const targetSegmentLength = 0.3;
-        const hbond = new ORTEPHBond(
-            mockHBond,
-            mockCrystalStructure,
-            mockGeometry,
-            mockMaterial,
-            targetSegmentLength,
-            0.6,
-        );
+        const { hbond } = buildHBond(targetSegmentLength, 0.6);
 
         // Calculate expected number of segments
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
@@ -1201,38 +1894,43 @@ describe('ORTEPHBond', () => {
         const totalLength = hydrogenPos.distanceTo(acceptorPos);
         const expectedSegments = Math.max(1, Math.floor(totalLength / targetSegmentLength));
 
-        expect(hbond.children.length).toBe(expectedSegments);
+        expect(hbond.segments.length).toBe(expectedSegments);
+    });
+
+    test('trims hydrogen bonds to rendered atom surfaces', () => {
+        const renderedAtoms = new Map([
+            [mockHydrogen.uniqueId, { getSurfaceDistanceAlong: () => 0.1 }],
+            [mockAcceptor.uniqueId, { getSurfaceDistanceAlong: () => 0.2 }],
+        ]);
+        const { hbond } = buildHBond(0.3, 0.6, null, atomId => renderedAtoms.get(atomId));
+
+        // The untrimmed 1.0 Å span produces three segments; trimming it to
+        // 0.7 Å leaves two.
+        expect(hbond.segments).toHaveLength(2);
     });
 
     test('positions dash segments correctly', () => {
         const targetSegmentLength = 0.3;
         const dashFraction = 0.6;
-        const hbond = new ORTEPHBond(
-            mockHBond,
-            mockCrystalStructure,
-            mockGeometry,
-            mockMaterial,
-            targetSegmentLength,
-            dashFraction,
-        );
+        const { hbond } = buildHBond(targetSegmentLength, dashFraction);
 
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
         const acceptorPos = new THREE.Vector3(...mockAcceptor.position.toCartesian(mockUnitCell));
         const direction = acceptorPos.clone().sub(hydrogenPos).normalize();
 
         // Check each segment's position and orientation
-        hbond.children.forEach(segment => {
+        hbond.segments.forEach(segment => {
             const segmentPosition = new THREE.Vector3();
-            segment.getWorldPosition(segmentPosition);
-            
+            const quaternion = new THREE.Quaternion();
+            segment.matrix.decompose(segmentPosition, quaternion, new THREE.Vector3());
+
             // Verify segment is on the line between H and A
             const segmentDirection = segmentPosition.clone().sub(hydrogenPos).normalize();
             expect(segmentDirection.dot(direction)).toBeCloseTo(1, 5);
 
             // Verify segment is oriented correctly
             const upVector = new THREE.Vector3(0, 1, 0);
-            segment.getWorldQuaternion(new THREE.Quaternion()).normalize();
-            const segmentUp = upVector.clone().applyQuaternion(segment.quaternion).normalize();
+            const segmentUp = upVector.clone().applyQuaternion(quaternion).normalize();
             expect(segmentUp.dot(direction)).toBeCloseTo(1, 5);
         });
     });
@@ -1240,14 +1938,7 @@ describe('ORTEPHBond', () => {
     test('segments have correct length based on dashFraction', () => {
         const targetSegmentLength = 0.3;
         const dashFraction = 0.6;
-        const hbond = new ORTEPHBond(
-            mockHBond,
-            mockCrystalStructure,
-            mockGeometry,
-            mockMaterial,
-            targetSegmentLength,
-            dashFraction,
-        );
+        const { hbond } = buildHBond(targetSegmentLength, dashFraction);
 
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
         const acceptorPos = new THREE.Vector3(...mockAcceptor.position.toCartesian(mockUnitCell));
@@ -1256,7 +1947,7 @@ describe('ORTEPHBond', () => {
         const segmentLength = totalLength / numSegments;
         const expectedDashLength = segmentLength * dashFraction;
 
-        hbond.children.forEach(segment => {
+        hbond.segments.forEach(segment => {
             const scale = new THREE.Vector3();
             segment.matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
             expect(scale.y).toBeCloseTo(expectedDashLength);
@@ -1264,25 +1955,43 @@ describe('ORTEPHBond', () => {
     });
 
     test('creates correctly scaled selection markers for all segments', () => {
-        const hbond = new ORTEPHBond(
-            mockHBond,
-            mockCrystalStructure,
-            mockGeometry,
-            mockMaterial,
-            0.3,
-            0.6,
-        );
+        const { hbond } = buildHBond(0.3, 0.6);
 
         const marker = hbond.createSelectionMarker(0xff0000, mockOptions);
 
         expect(marker).toBeInstanceOf(THREE.Group);
-        expect(marker.children.length).toBe(hbond.children.length);
+        expect(marker.children.length).toBe(hbond.segments.length);
 
         marker.children.forEach(markerSegment => {
             expect(markerSegment.scale.x).toBe(mockOptions.selection.bondMarkerMult);
             expect(markerSegment.scale.z).toBe(mockOptions.selection.bondMarkerMult);
             expect(markerSegment.userData.selectable).toBe(false);
             expect(markerSegment.material.color.getHex()).toBe(0xff0000);
+        });
+    });
+
+    test('select() hides pooled instances and restores them on deselect()', () => {
+        const { hbond, pool } = buildHBond(0.3, 0.6);
+        const originalMatrices = hbond.segments.map(segment => segment.matrix.clone());
+
+        hbond.select(0xff0000, mockOptions);
+        expect(hbond.highlightMeshes).toHaveLength(hbond.segments.length);
+        hbond.segments.forEach(segment => {
+            const stored = new THREE.Matrix4();
+            pool.mesh.getMatrixAt(segment.index, stored);
+            expect(stored.elements).toEqual(new THREE.Matrix4().makeScale(0, 0, 0).elements);
+        });
+
+        hbond.deselect();
+        expect(hbond.highlightMeshes).toBeNull();
+        hbond.segments.forEach((segment, i) => {
+            const stored = new THREE.Matrix4();
+            pool.mesh.getMatrixAt(segment.index, stored);
+            // InstancedMesh stores matrices in a Float32Array, so compare with
+            // float32 precision rather than exact double equality.
+            stored.elements.forEach((value, j) => {
+                expect(value).toBeCloseTo(originalMatrices[i].elements[j], 6);
+            });
         });
     });
 });

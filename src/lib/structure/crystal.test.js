@@ -1,14 +1,10 @@
-import { create, all } from 'mathjs';
-
-import { 
-    CrystalStructure, UnitCell, Atom, inferElementFromLabel, 
+import {
+    CrystalStructure, UnitCell, Atom, inferElementFromLabel,
 } from './crystal.js';
 import { Bond, HBond } from './bonds.js';
 import { FractPosition } from './position.js';
 import { UIsoADP, UAnisoADP } from './adp.js';
 import { CIF } from '../read-cif/base.js';
-
-const math = create(all);
 describe('inferElementFromLabel', () => {
     // Test normal atom labels
     test('handles common crystallographic naming patterns', () => {
@@ -45,9 +41,9 @@ describe('inferElementFromLabel', () => {
     test('correctly identifies two-letter elements', () => {
         const testCases = [
             'He', 'Li', 'Be', 'Na', 'Mg', 'Al', 'Si', 'Cl', 'Fe', 'Co',
-            'Ni', 'Cu', 'Zn', 'Ag', 'Au', 
+            'Ni', 'Cu', 'Zn', 'Ag', 'Au',
         ];
-        
+
         testCases.forEach((element) => {
             expect(inferElementFromLabel(`${element}1`)).toBe(element);
             expect(inferElementFromLabel(element.toUpperCase())).toBe(element);
@@ -140,16 +136,16 @@ data_test
  _geom_hbond_angle_DHA
  O1 H1 C1 1.0 2.0 2.8 175
  `;
- 
+
         const cif = new CIF(cifText);
         const structure = CrystalStructure.fromCIF(cif.getBlock(0));
- 
+
         expect(structure.atoms).toHaveLength(3);
         expect(structure.bonds).toHaveLength(1);
         expect(structure.hBonds).toHaveLength(1);
         expect(structure.atoms[0].label).toBe('C1');
-        expect(structure.bonds[0].atom1Label).toBe('C1');
-        expect(structure.hBonds[0].donorAtomLabel).toBe('O1');
+        expect(structure.bonds[0].atom1Id).toBe('C1|1_555');
+        expect(structure.hBonds[0].donorAtomId).toBe('O1|1_555');
     });
 
     test('fromCIF filters out dummy atoms', () => {
@@ -209,7 +205,7 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         expect(groups).toHaveLength(2);
         expect(groups[0].atoms).toHaveLength(3);
@@ -240,7 +236,7 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds
         // Group 2: P1 alone (unconnected)
@@ -272,7 +268,7 @@ C4 C 0 0 0 .`;
             new Atom('C2', 'C', new FractPosition(0.3, 0.3, 0.3)),
             new Atom('H1', 'H', new FractPosition(0.3, 0.4, 0.5)),
         ];
-    
+
         // Test cases:
         // 1. New group: C1-O1 bond
         // 2. Add to existing: O1-N1 bond 
@@ -290,16 +286,16 @@ C4 C 0 0 0 .`;
         ];
 
         const structure = new CrystalStructure(cell, atoms, bonds, hbonds);
-        const groups = structure.connectedGroups;
+        const groups = structure.calculateConnectedGroups();
 
         expect(groups).toHaveLength(1);
         const group = groups[0];
         expect(group.atoms.length).toBe(5);
         expect(group.bonds.length).toBe(5);
-        atoms.forEach(atom => 
+        atoms.forEach(atom =>
             expect(group.atoms.includes(atom)).toBe(true),
         );
-    });  
+    });
 });
 
 describe('UnitCell', () => {
@@ -308,7 +304,7 @@ describe('UnitCell', () => {
         expect(cell.a).toBe(10);
         expect(cell.fractToCartMatrix).toBeDefined();
     });
-    
+
     test('fromCIF creates correct cell', () => {
         const cifText = `
 data_test
@@ -321,7 +317,7 @@ _cell_angle_gamma 90
 `;
         const cif = new CIF(cifText);
         const cell = UnitCell.fromCIF(cif.getBlock(0));
-    
+
         expect(cell.a).toBe(10);
         expect(cell.b).toBe(15);
         expect(cell.c).toBe(20);
@@ -362,84 +358,100 @@ _cell_angle_gamma -90
         );
 
     });
-    
+
     describe('parameter validation', () => {
         let cell;
-        
+
         beforeEach(() => {
             cell = new UnitCell(10, 10, 10, 90, 90, 90);
         });
-    
+
         test('validates cell lengths', () => {
             expect(() => {
-                cell.a = 0; 
+                cell.a = 0;
             }).toThrow('Cell parameter \'a\' must be positive');
             expect(() => {
-                cell.b = -1; 
+                cell.b = -1;
             }).toThrow('Cell parameter \'b\' must be positive');
             expect(() => {
-                cell.c = -5; 
+                cell.c = -5;
             }).toThrow('Cell parameter \'c\' must be positive');
         });
-    
+
         test('validates angles', () => {
             expect(() => {
-                cell.alpha = 0; 
+                cell.alpha = 0;
             }).toThrow('Angle alpha must be between 0 and 180 degrees');
             expect(() => {
-                cell.beta = 180; 
+                cell.beta = 180;
             }).toThrow('Angle beta must be between 0 and 180 degrees');
             expect(() => {
-                cell.gamma = -1; 
+                cell.gamma = -1;
             }).toThrow('Angle gamma must be between 0 and 180 degrees');
             expect(() => {
-                cell.alpha = 200; 
+                cell.alpha = 200;
             }).toThrow('Angle alpha must be between 0 and 180 degrees');
         });
-    
+
         test('allows valid parameters', () => {
             expect(() => {
-                cell.a = 15; 
+                cell.a = 15;
             }).not.toThrow();
             expect(() => {
-                cell.alpha = 120; 
+                cell.alpha = 120;
             }).not.toThrow();
         });
     });
-    
+
     describe('fractToCartMatrix updates', () => {
         let cell;
         let originalMatrix;
-        
+
+        /**
+         * @param {object} m - math-lite Matrix
+         * @returns {number[][]} A deep-copied plain array
+         */
+        function cloneMatrix(m) {
+            return m.toArray().map(row => [...row]);
+        }
+        /**
+         * @param {object} a - math-lite Matrix
+         * @param {number[][]} b - Plain array to compare against
+         * @returns {boolean} True if `a` and `b` have identical contents
+         */
+        function matricesDeepEqual(a, b) {
+            return JSON.stringify(a.toArray()) === JSON.stringify(b);
+        }
+
         beforeEach(() => {
             cell = new UnitCell(10, 10, 10, 90, 90, 90);
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
         });
-    
+
         test('updates matrix when changing lengths', () => {
             cell.a = 15;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
-          
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.b = 12;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
-          
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.c = 8;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
         });
-    
+
         test('updates matrix when changing angles', () => {
             cell.alpha = 100;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
-          
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.beta = 95;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
-          
-            originalMatrix = math.clone(cell.fractToCartMatrix);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+
+            originalMatrix = cloneMatrix(cell.fractToCartMatrix);
             cell.gamma = 120;
-            expect(math.deepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
+            expect(matricesDeepEqual(cell.fractToCartMatrix, originalMatrix)).toBe(false);
         });
     });
 });
@@ -712,18 +724,18 @@ _atom_site_fract_x
 _atom_site_fract_y
 _atom_site_fract_z
 C1 C 0 0 0`;
- 
+
         const cif = new CIF(cifText);
         const block = cif.getBlock(0);
- 
+
         // Test creation with index
         const atomFromIndex = Atom.fromCIF(block, 0);
         expect(atomFromIndex.label).toBe('C1');
- 
+
         // Test creation with label
         const atomFromLabel = Atom.fromCIF(block, null, 'C1');
         expect(atomFromLabel.label).toBe('C1');
- 
+
         // Test error when both missing
         expect(() => Atom.fromCIF(block)).toThrow('either atomIndex or atomLabel need to be provided');
     });

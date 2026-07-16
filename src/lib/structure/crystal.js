@@ -18,7 +18,7 @@ export function inferElementFromLabel(label) {
 
     // Standardize to uppercase for matching
     const upperLabel = label.toUpperCase();
-    
+
     // List of all two-letter elements for matching
     const TWO_LETTER_ELEMENTS = [
         'HE', 'LI', 'BE', 'NE', 'NA', 'MG', 'AL', 'SI', 'CL', 'AR',
@@ -35,18 +35,18 @@ export function inferElementFromLabel(label) {
     // First try: Match two-letter elements
     const twoLetterPattern = new RegExp(`^(${TWO_LETTER_ELEMENTS.join('|')})`);
     const twoLetterMatch = upperLabel.match(twoLetterPattern);
-    
+
     if (twoLetterMatch) {
         return formatElementSymbol(twoLetterMatch[1]);
     }
-    
+
     // Second try: Match single-letter elements
     const oneLetterMatch = upperLabel.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
-    
+
     if (oneLetterMatch) {
         return formatElementSymbol(oneLetterMatch[1]);
     }
-    
+
     throw new Error(`Could not infer element type from atom label: ${label}`);
 }
 
@@ -74,12 +74,11 @@ export class CrystalStructure {
      * @param {HBond[]} [hBonds] - Array of hydrogen bonds
      * @param {CellSymmetry} [symmetry] - Crystal symmetry information
      */
-    constructor(unitCell, atoms, bonds=[], hBonds=[], symmetry=null) {
+    constructor(unitCell, atoms, bonds = [], hBonds = [], symmetry = null) {
         this.cell = unitCell;
         this.atoms = atoms;
         this.bonds = bonds;
         this.hBonds = hBonds;
-        this.recalculateConnectedGroups();
         this.symmetry = symmetry ? symmetry : new CellSymmetry('None', 0, [new SymmetryOperation('x,y,z')]);
     }
 
@@ -90,10 +89,10 @@ export class CrystalStructure {
      */
     static fromCIF(cifBlock) {
         const cell = UnitCell.fromCIF(cifBlock);
-        
+
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
-        
+
         const atoms = Array.from({ length: labels.length }, (_, i) => {
             try {
                 return Atom.fromCIF(cifBlock, i);
@@ -131,6 +130,31 @@ export class CrystalStructure {
     }
 
     /**
+     * Finds an atom by its unique ID
+     * @param {string} atomId - Unique atom identifier (label|symmetry)
+     * @returns {Atom} Found atom
+     * @throws {Error} If atom with ID not found
+     */
+    getAtomById(atomId) {
+        for (const atom of this.atoms) {
+            if (atom.uniqueId === atomId) {
+                return atom;
+            }
+        }
+        // Fallback: try matching by label if no pipe is present (legacy support)
+        if (!atomId.includes('|')) {
+            for (const atom of this.atoms) {
+                if (atom.label === atomId && !atom.appliedSymmetry) {
+                    return atom;
+                }
+            }
+        }
+
+        const availableIds = this.atoms.map(atom => atom.uniqueId).join(', ');
+        throw new Error(`Could not find atom with ID: ${atomId}, available are: ${availableIds}`);
+    }
+
+    /**
      * Finds an atom by its label 
      * @param {string} atomLabel - Unique atom identifier
      * @returns {Atom} Found atom
@@ -149,16 +173,35 @@ export class CrystalStructure {
     /**
      * Groups atoms connected by bonds or H-bonds, excluding symmetry relationships
      * from the provided atoms and bonds
+     * @returns {Array} Array of connected groups, each containing atoms, bonds, and H-bonds
+     * @throws {Error} If atom with label not found
      */
-    recalculateConnectedGroups() {
-        // Map to track which atoms have been assigned to a group
+    calculateConnectedGroups() {
+        // Resolve bond endpoints through one snapshot index. Calling getAtomById
+        // for every endpoint scans the complete atom array and repeatedly builds
+        // symmetry-qualified IDs, which dominates growth for large cells.
+        const atomsById = new Map();
+        const identityAtomsByLabel = new Map();
+        for (const atom of this.atoms) {
+            const atomId = atom.uniqueId;
+            if (!atomsById.has(atomId)) {
+                atomsById.set(atomId, atom);
+            }
+            if (!atom.appliedSymmetry && !identityAtomsByLabel.has(atom.label)) {
+                identityAtomsByLabel.set(atom.label, atom);
+            }
+        }
+        const resolveAtom = atomId => atomsById.get(atomId) ||
+            (!atomId.includes('|') ? identityAtomsByLabel.get(atomId) : undefined);
+
+        // Map to track which atoms have been assigned to a group (keyed by uniqueId)
         const atomGroupMap = new Map();
         const groups = [];
-        
+
         // Helper function to get or create group for an atom
         const getAtomGroup = (atom) => {
-            if (atomGroupMap.has(atom.label)) {
-                return atomGroupMap.get(atom.label);
+            if (atomGroupMap.has(atom.uniqueId)) {
+                return atomGroupMap.get(atom.uniqueId);
             }
             const newGroup = {
                 atoms: new Set(),
@@ -171,40 +214,48 @@ export class CrystalStructure {
 
         // Process regular bonds first
         for (const bond of this.bonds) {
-            const atom1 = this.getAtomByLabel(bond.atom1Label);
-            const atom2 = this.getAtomByLabel(bond.atom2Label);
+            // Use IDs if available, fall back to labels for backward compatibility or initial load
+            const atom1Id = bond.atom1Id || bond.atom1Label;
+            const atom2Id = bond.atom2Id || bond.atom2Label;
+
+            const atom1 = resolveAtom(atom1Id);
+            const atom2 = resolveAtom(atom2Id);
+            if (!atom1 || !atom2) {
+                // If atoms are missing (e.g. symmetry atoms not yet grown), skip this bond
+                continue;
+            }
 
             // Skip bonds to symmetry equivalent positions for initial grouping
             if (bond.atom2SiteSymmetry !== '.' && bond.atom2SiteSymmetry !== null) {
                 continue;
             }
 
-            const group1 = atomGroupMap.get(atom1.label);
-            const group2 = atomGroupMap.get(atom2.label);
+            const group1 = atomGroupMap.get(atom1.uniqueId);
+            const group2 = atomGroupMap.get(atom2.uniqueId);
 
             const targetGroup = group1 || group2;
 
             if (!targetGroup) {
-            // Create new group
+                // Create new group
                 const newGroup = getAtomGroup(atom1);
                 newGroup.atoms.add(atom1);
                 newGroup.atoms.add(atom2);
                 newGroup.bonds.add(bond);
-                atomGroupMap.set(atom1.label, newGroup);
-                atomGroupMap.set(atom2.label, newGroup);
+                atomGroupMap.set(atom1.uniqueId, newGroup);
+                atomGroupMap.set(atom2.uniqueId, newGroup);
             } else {
                 // Add atoms to existing group
                 targetGroup.atoms.add(atom1);
                 targetGroup.atoms.add(atom2);
                 targetGroup.bonds.add(bond);
-                atomGroupMap.set(atom1.label, targetGroup);
-                atomGroupMap.set(atom2.label, targetGroup);
-                
+                atomGroupMap.set(atom1.uniqueId, targetGroup);
+                atomGroupMap.set(atom2.uniqueId, targetGroup);
+
                 if (group1 && group2 && group1 !== group2) {
                     // Merge groups if both exist and are different
                     for (const atom of group2.atoms) {
                         group1.atoms.add(atom);
-                        atomGroupMap.set(atom.label, group1);
+                        atomGroupMap.set(atom.uniqueId, group1);
                     }
                     for (const bond of group2.bonds) {
                         group1.bonds.add(bond);
@@ -216,10 +267,14 @@ export class CrystalStructure {
 
         // Process hydrogen bonds
         for (const hbond of this.hBonds) {
-            const donorAtom = this.getAtomByLabel(hbond.donorAtomLabel);
-            ///const hydrogenAtom = this.getAtomByLabel(hbond.hydrogenAtomLabel);
-            const acceptorAtom = this.getAtomByLabel(hbond.acceptorAtomLabel);
+            const donorId = hbond.donorAtomId || hbond.donorAtomLabel;
+            const acceptorId = hbond.acceptorAtomId || hbond.acceptorAtomLabel;
 
+            const donorAtom = resolveAtom(donorId);
+            const acceptorAtom = resolveAtom(acceptorId);
+            if (!donorAtom || !acceptorAtom) {
+                continue;
+            }
             // Skip hbonds to symmetry equivalent positions for initial grouping
             if (hbond.acceptorAtomSymmetry !== '.' && hbond.acceptorAtomSymmetry !== null) {
                 continue;
@@ -229,15 +284,24 @@ export class CrystalStructure {
             const donorGroup = getAtomGroup(donorAtom);
             donorGroup.hBonds.add(hbond);
 
-            if (atomGroupMap.has(acceptorAtom.label)) {
+            if (atomGroupMap.has(acceptorAtom.uniqueId)) {
                 const acceptorGroup = getAtomGroup(acceptorAtom);
                 acceptorGroup.hBonds.add(hbond);
             }
 
         }
+        // Atom IDs are normally unique, but malformed/legacy structures can
+        // contain distinct atom objects with the same ID. Preserve the existing
+        // object-identity behavior while avoiding groups.some() for every atom.
+        const groupedAtoms = new Set();
+        for (const group of groups) {
+            for (const atom of group.atoms) {
+                groupedAtoms.add(atom);
+            }
+        }
         const unboundAtoms = this.atoms
-            .filter(atom => !groups.some(g => g.atoms.has(atom)));
-        
+            .filter(atom => !groupedAtoms.has(atom));
+
         unboundAtoms.forEach(atom => {
             const newGroup = {
                 atoms: new Set([atom]),
@@ -247,7 +311,7 @@ export class CrystalStructure {
             groups.push(newGroup);
         });
         // Convert Sets to Arrays for easier handling
-        this.connectedGroups = groups.map(group => ({
+        return groups.map(group => ({
             atoms: Array.from(group.atoms),
             bonds: Array.from(group.bonds),
             hBonds: Array.from(group.hBonds),
@@ -276,7 +340,7 @@ export class UnitCell {
         this._alpha = alpha;
         this._beta = beta;
         this._gamma = gamma;
-        
+
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
 
@@ -325,11 +389,11 @@ export class UnitCell {
 
         return new UnitCell(...cellParameters);
     }
- 
+
     get a() {
         return this._a;
     }
- 
+
     set a(value) {
         if (value <= 0) {
             throw new Error('Cell parameter \'a\' must be positive');
@@ -337,11 +401,11 @@ export class UnitCell {
         this._a = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
- 
+
     get b() {
         return this._b;
     }
- 
+
     set b(value) {
         if (value <= 0) {
             throw new Error('Cell parameter \'b\' must be positive');
@@ -349,11 +413,11 @@ export class UnitCell {
         this._b = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
- 
+
     get c() {
         return this._c;
     }
- 
+
     set c(value) {
         if (value <= 0) {
             throw new Error('Cell parameter \'c\' must be positive');
@@ -361,11 +425,11 @@ export class UnitCell {
         this._c = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
- 
+
     get alpha() {
         return this._alpha;
     }
- 
+
     set alpha(value) {
         if (value <= 0 || value >= 180) {
             throw new Error('Angle alpha must be between 0 and 180 degrees');
@@ -373,11 +437,11 @@ export class UnitCell {
         this._alpha = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
- 
+
     get beta() {
         return this._beta;
     }
- 
+
     set beta(value) {
         if (value <= 0 || value >= 180) {
             throw new Error('Angle beta must be between 0 and 180 degrees');
@@ -385,11 +449,11 @@ export class UnitCell {
         this._beta = value;
         this.fractToCartMatrix = calculateFractToCartMatrix(this);
     }
- 
+
     get gamma() {
         return this._gamma;
     }
- 
+
     set gamma(value) {
         if (value <= 0 || value >= 180) {
             throw new Error('Angle gamma must be between 0 and 180 degrees');
@@ -403,12 +467,20 @@ export class UnitCell {
  * Represents an atom in a crystal structure
  */
 export class Atom {
-    constructor(label, atomType, position, adp=null, disorderGroup=0) {
+    constructor(label, atomType, position, adp = null, disorderGroup = 0, appliedSymmetry = null) {
         this.label = String(label);
         this.atomType = atomType;
         this.position = position;
         this.adp = adp;
         this.disorderGroup = disorderGroup;
+        this.appliedSymmetry = appliedSymmetry;
+    }
+
+    get uniqueId() {
+        if (this.appliedSymmetry) {
+            return `${this.label}|${this.appliedSymmetry.key}`;
+        }
+        return `${this.label}|1_555`;
     }
 
     /**
@@ -420,19 +492,19 @@ export class Atom {
      * @returns {Atom} New atom instance
      * @throws {Error} If neither index nor label provided
      */
-    static fromCIF(cifBlock, atomIndex=null, atomLabel=null) {
+    static fromCIF(cifBlock, atomIndex = null, atomLabel = null) {
         const atomSite = cifBlock.get('_atom_site');
         const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
-        
+
         let index = atomIndex;
         if (atomIndex === null && atomLabel) {
             index = labels.indexOf(atomLabel);
         } else if (atomIndex === null) {
             throw new Error('either atomIndex or atomLabel need to be provided');
         }
-        
+
         const label = labels[index];
-        
+
         // Check if dummy atom
         const invalidValues = ['.', '?'];
         if (invalidValues.includes(label)) {
@@ -458,7 +530,7 @@ export class Atom {
         }
 
         const position = PositionFactory.fromCIF(cifBlock, index);
-        
+
         const adp = ADPFactory.fromCIF(cifBlock, index);
 
         const disorderGroup = atomSite.getIndex(
@@ -466,14 +538,28 @@ export class Atom {
             index,
             '.',
         );
-        
+
         return new Atom(
             label,
             atomType,
             position,
-            adp, 
+            adp,
             disorderGroup === '.' ? 0 : disorderGroup,
         );
-    }   
+    }
 }
 
+/**
+ * Determines whether two atoms may be bonded given their disorder groups.
+ * Disorder group 0 (ordered/common) is compatible with any group; two
+ * distinct nonzero groups represent mutually-exclusive disorder alternatives
+ * and are never compatible.
+ * @param {Atom} atom1 - First atom
+ * @param {Atom} atom2 - Second atom
+ * @returns {boolean} Whether the two atoms' disorder groups allow a bond
+ */
+export function disorderGroupsCompatible(atom1, atom2) {
+    return atom1.disorderGroup === atom2.disorderGroup ||
+        atom1.disorderGroup === 0 ||
+        atom2.disorderGroup === 0;
+}

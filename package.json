@@ -1,6 +1,6 @@
 {
   "name": "cifvis",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "",
   "main": "./src/index.js",
   "type": "module",
@@ -17,11 +17,12 @@
   "scripts": {
     "generate-svg-icons": "node scripts/generate-svg-icons.js",
     "prebuild": "npm run generate-svg-icons",
-    "dev": "vite --config vite/vite.config.mjs serve ./demo",
+    "dev": "vite --config vite/vite.config.mjs serve ./site",
     "build": "vite build --config vite/vite.config.mjs",
     "build:alldeps": "vite build --config vite/vite.alldeps.config.mjs",
-    "build:demo": "vite build --config vite/vite.demo.config.mjs",
+    "build:site": "vite build --config vite/vite.site.config.mjs",
     "prepublishOnly": "npm run build",
+    "pretest": "npm run generate-svg-icons",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -32,42 +33,29 @@
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "husky",
-    "docs": "jsdoc -r ./src/lib"
+    "docs": "jsdoc -c jsdoc.json",
+    "bench": "node benchmark/speed.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",
   "license": "MPL-2.0",
   "dependencies": {
-    "mathjs": "^14.1.0",
-    "three": "^0.172.0"
+    "three": "^0.185.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.20.0",
-    "@typescript-eslint/utils": "^8.25.0",
-    "@vitest/coverage-v8": "^3.0.7",
-    "@vitest/eslint-plugin": "^1.1.32-beta.3",
-    "eslint": "^9.20.0",
-    "eslint-plugin-jsdoc": "^50.6.3",
-    "eslint-plugin-vitest": "^0.3.19",
-    "gh-pages": "^6.1.1",
-    "globals": "^15.14.0",
-    "husky": "^9.1.7",
-    "jsdoc": "^4.0.4",
-    "jsdom": "^24.0.0",
-    "lint-staged": "^15.4.3",
-    "vite": "^6.0.11",
-    "vitest": "^3.0.7"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{js,mjs}": [
-      "eslint --fix",
-      "git add"
-    ]
+    "@eslint/js": "^9.39.5",
+    "@typescript-eslint/utils": "^8.64.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/eslint-plugin": "^1.6.23",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsdoc": "^63.0.13",
+    "gh-pages": "^6.3.0",
+    "globals": "^17.7.0",
+    "jsdoc": "^4.0.5",
+    "jsdom": "^29.1.1",
+    "mathjs": "^15.2.0",
+    "playwright-core": "^1.61.1",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
   }
 }

@@ -7,7 +7,7 @@ import { CrystalStructure } from '../crystal.js';
 export class BaseFilter {
     /**
      * Creates a new filter
-     * @param {[key: string]} modes - Dictionary of valid modes
+     * @param {{[key: string]: string}} modes - Dictionary of valid modes
      * @param {string} defaultMode - Initial mode to use
      * @param {string} filterName - Name of the filter for error messages
      * @param {Array<string>} fallBackOrder - Ordering of modes that are tried out if the current one is invalid
@@ -25,6 +25,10 @@ export class BaseFilter {
     }
 
     get requiresCameraUpdate() {
+        return false;
+    }
+
+    get drawCell() {
         return false;
     }
 

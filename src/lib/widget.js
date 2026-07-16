@@ -2,6 +2,7 @@ import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
+import { getDisorderIcon } from './disorder-icons.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -10,22 +11,22 @@ const defaultStyles = `
     font-family: system-ui, -apple-system, sans-serif;
     height: 100%;
     position: relative;
-    background: #fafafa;
-    border-radius: 8px;
+    background: var(--cifvis-bg, #fafafa);
+    border-radius: var(--cifvis-radius, 8px);
     overflow: hidden;
   }
-  
+
   cifview-widget .crystal-container {
     flex: 1;
     min-height: 0;
     position: relative;
   }
-  
+
   cifview-widget .crystal-caption {
     padding: 12px 16px;
-    background: #ffffff;
-    border-top: 1px solid #eaeaea;
-    color: #333;
+    background: var(--cifvis-caption-bg, #ffffff);
+    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);
+    color: var(--cifvis-caption-color, #333);
     font-size: 14px;
     line-height: 1.5;
   }
@@ -43,8 +44,8 @@ const defaultStyles = `
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--cifvis-button-radius, 8px);
+    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -55,7 +56,7 @@ const defaultStyles = `
   }
 
   cifview-widget .control-button:hover {
-    background: #ffffff;
+    background: var(--cifvis-button-hover-bg, #ffffff);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
   }
 
@@ -69,7 +70,7 @@ export class CifViewWidget extends HTMLElement {
     static get observedAttributes() {
         return [
             'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
-            'symmetry-mode',
+            'symmetry-mode', 'block',
         ];
     }
 
@@ -130,11 +131,25 @@ export class CifViewWidget extends HTMLElement {
         // Load structure first to determine which buttons to show
         const src = this.getAttribute('src');
         const data = this.getAttribute('data');
+        const blockSelector = this.resolveBlockSelector(this.getAttribute('block'));
         if (src) {
-            await this.loadFromUrl(src); 
+            await this.loadFromUrl(src, blockSelector);
         } else if (data) {
-            await this.loadFromString(data); 
+            await this.loadFromString(data, blockSelector);
         }
+    }
+
+    /**
+     * Resolves the raw `block` attribute value into a selector for CrystalViewer.loadCIF.
+     * A value made up entirely of digits is treated as a block index, otherwise as a block name.
+     * @param {string|null} rawValue - Raw attribute value
+     * @returns {number|string} Block index (default 0) or block name
+     */
+    resolveBlockSelector(rawValue) {
+        if (!rawValue) {
+            return 0;
+        }
+        return /^\d+$/.test(rawValue) ? Number(rawValue) : rawValue;
     }
 
     parseOptions() {
@@ -295,25 +310,50 @@ export class CifViewWidget extends HTMLElement {
     addButton(container, type, altText) {
         const button = document.createElement('button');
         button.className = `control-button ${type}-button`;
-        const mode = this.viewer.modifiers[type].mode;
-        button.innerHTML = this.icons[type][mode];
         button.title = altText;
-        
+        this.renderButtonIcon(button, type, this.viewer.modifiers[type].mode, altText);
+
+        container.appendChild(button);
+
+        button.addEventListener('click', async () => {
+            const result = await this.viewer.cycleModifierMode(type);
+            if (result.success) {
+                this.renderButtonIcon(button, type, result.mode, altText);
+            }
+        });
+    }
+
+    /**
+     * Renders a modifier button's icon and re-applies the accessibility
+     * attributes (alt/role/aria-label) to the newly inserted SVG, since
+     * replacing innerHTML drops whatever was set on the previous element.
+     * @param {HTMLButtonElement} button - Button whose icon should be updated
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @param {string} altText - Accessible label for the icon
+     */
+    renderButtonIcon(button, type, mode, altText) {
+        button.innerHTML = this.getIcon(type, mode);
+
         const svgElement = button.querySelector('svg');
         if (svgElement) {
             svgElement.setAttribute('alt', altText);
             svgElement.setAttribute('role', 'img');
             svgElement.setAttribute('aria-label', altText);
         }
-        
-        container.appendChild(button);
+    }
 
-        button.addEventListener('click', async () => {
-            const result = await this.viewer.cycleModifierMode(type);
-            if (result.success) {
-                button.innerHTML = this.icons[type][result.mode];
-            }
-        });
+    /**
+     * Resolves the icon markup for a modifier mode.
+     * @param {string} type - Modifier category, e.g. "disorder"
+     * @param {string} mode - Mode name within that category
+     * @returns {string} SVG markup for the icon
+     */
+    getIcon(type, mode) {
+        if (type === 'disorder') {
+            return getDisorderIcon(this.icons.disorder, mode);
+        }
+        return this.icons[type]?.[mode] || '';
     }
 
     async attributeChangedCallback(name, oldValue, newValue) {
@@ -329,12 +369,12 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'src':
                 if (newValue) {
-                    await this.loadFromUrl(newValue); 
+                    await this.loadFromUrl(newValue, this.resolveBlockSelector(this.getAttribute('block')));
                 }
                 break;
             case 'data':
                 if (newValue) {
-                    await this.loadFromString(newValue); 
+                    await this.loadFromString(newValue, this.resolveBlockSelector(this.getAttribute('block')));
                 }
                 break;
             case 'icons':
@@ -342,7 +382,10 @@ export class CifViewWidget extends HTMLElement {
                 break;
             case 'filtered-atoms':
                 await this.updateFilteredAtoms();
-                await this.viewer.updateStructure();
+                // AtomLabelFilter.requiresCameraUpdate is true: removing/restoring atoms can
+                // change the structure's extent, so reset the camera/orientation like
+                // cycleModifierMode does, instead of updateStructure()'s preserve-rotation path.
+                await this.viewer.loadStructure();
                 break;
             case 'options':
                 this.parseOptions();
@@ -350,6 +393,7 @@ export class CifViewWidget extends HTMLElement {
                 if (this.viewer) {
                     const container = this.querySelector('.crystal-container');
                     const currentCifContent = this.viewer.state.currentCifContent;
+                    const currentCifBlock = this.viewer.state.currentCifBlock;
 
                     this.viewer.dispose();
                     this.viewer = new CrystalViewer(container, this.userOptions);
@@ -357,14 +401,27 @@ export class CifViewWidget extends HTMLElement {
                         this.selections = selections;
                         this.updateCaption();
                     });
-                    
+
                     // Reload structure if we already had one
                     if (currentCifContent) {
-                        await this.viewer.loadCIF(currentCifContent);
+                        await this.viewer.loadCIF(currentCifContent, currentCifBlock ?? 0);
                         this.setupButtons();
                     }
                 }
                 break;
+            case 'block': {
+                const cifText = this.viewer.state.currentCifContent;
+                if (cifText) {
+                    this.resetLoadState();
+                    const result = await this.viewer.loadCIF(cifText, this.resolveBlockSelector(newValue));
+                    if (result.success) {
+                        this.setupButtons();
+                    } else {
+                        this.createErrorDiv(new Error(result.error));
+                    }
+                }
+                break;
+            }
             case 'hydrogen-mode':
                 if (this.viewer.modifiers.hydrogen) {
                     this.viewer.modifiers.hydrogen.mode = newValue;
@@ -382,6 +439,9 @@ export class CifViewWidget extends HTMLElement {
             case 'symmetry-mode':
                 if (this.viewer.modifiers.symmetry) {
                     this.viewer.modifiers.symmetry.mode = newValue;
+                    // SymmetryGrower.requiresCameraUpdate is true: called with no argument,
+                    // loadStructure() defaults to the current base structure and resets the
+                    // camera/orientation, like cycleModifierMode does for this modifier.
                     await this.viewer.loadStructure();
                     this.setupButtons();
                 }
@@ -389,27 +449,38 @@ export class CifViewWidget extends HTMLElement {
         }
     }
 
-    async loadFromUrl(url) {
+    /**
+     * Clears any lingering error state (overlay + error caption) left over from a
+     * previous failed load, so a new load attempt starts from a clean slate.
+     */
+    resetLoadState() {
+        this.clearErrorDiv();
+        this.baseCaption = this.getAttribute('caption') || this.defaultCaption;
+        this.updateCaption();
+    }
+
+    async loadFromUrl(url, blockSelector = 0) {
+        this.resetLoadState();
         try {
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 throw new Error(`Failed to load CIF file: ${response.status} ${response.statusText}`);
             }
-            
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('text/html')) {
                 throw new Error('Received no or invalid content for src.');
             }
-            
+
             const text = await response.text();
-            
+
             if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
                 throw new Error('Received no or invalid content for src.');
             }
-            
-            const result = await this.viewer.loadCIF(text);
-            
+
+            const result = await this.viewer.loadCIF(text, blockSelector);
+
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
             } else {
@@ -417,13 +488,19 @@ export class CifViewWidget extends HTMLElement {
             }
         } catch (error) {
             this.createErrorDiv(error);
-        }    
+        }
     }
-    
-    async loadFromString(data) {
+
+    async loadFromString(data, blockSelector = 0) {
+        this.resetLoadState();
         try {
-            await this.viewer.loadCIF(data);
-            this.setupButtons();  // Setup buttons after loading
+            const result = await this.viewer.loadCIF(data, blockSelector);
+
+            if (result.success) {
+                this.setupButtons();  // Setup buttons after loading
+            } else {
+                throw new Error(result.error || 'Unknown Error');
+            }
         } catch (error) {
             this.createErrorDiv(error);
         }
@@ -431,25 +508,26 @@ export class CifViewWidget extends HTMLElement {
 
     createErrorDiv(error) {
         console.error('Error loading structure:', error);
-            
+
         // Sanitize error message
         const sanitizedMessage = this.sanitizeHTML(error.message);
-        
+
         // Update caption to show sanitized error message
         this.baseCaption = `Error loading structure: ${sanitizedMessage}`;
         this.updateCaption();
-        
-        // Optional: Create an error display in the viewer area
+
+        // Overlay an error display on top of the viewer area without touching its
+        // existing children (the WebGL canvas and button container must survive so
+        // a later successful load can recover without recreating the viewer).
         if (this.viewer) {
             const container = this.querySelector('.crystal-container');
             if (container) {
-                // Clear the container
-                while (container.firstChild) {
-                    container.firstChild.remove();
-                }
-                
-                // Add error message
+                this.clearErrorDiv();
+
                 const errorDiv = document.createElement('div');
+                errorDiv.style.position = 'absolute';
+                errorDiv.style.inset = '0';
+                errorDiv.style.zIndex = '2000';
                 errorDiv.style.display = 'flex';
                 errorDiv.style.justifyContent = 'center';
                 errorDiv.style.alignItems = 'center';
@@ -457,25 +535,34 @@ export class CifViewWidget extends HTMLElement {
                 errorDiv.style.padding = '20px';
                 errorDiv.style.textAlign = 'center';
                 errorDiv.style.color = '#d32f2f';
-                
+                errorDiv.style.background = '#fafafa';
+
                 // Create elements programmatically instead of using innerHTML
                 const contentDiv = document.createElement('div');
-                
+
                 const heading = document.createElement('h3');
                 heading.textContent = 'Error Loading Structure';
                 contentDiv.appendChild(heading);
-                
+
                 const messagePara = document.createElement('p');
                 messagePara.textContent = sanitizedMessage;
                 contentDiv.appendChild(messagePara);
-                
+
                 const helpPara = document.createElement('p');
                 helpPara.textContent = 'Please check that the file exists and is a valid CIF file.';
                 contentDiv.appendChild(helpPara);
-                
+
                 errorDiv.appendChild(contentDiv);
                 container.appendChild(errorDiv);
+                this.errorDiv = errorDiv;
             }
+        }
+    }
+
+    clearErrorDiv() {
+        if (this.errorDiv) {
+            this.errorDiv.remove();
+            this.errorDiv = null;
         }
     }
     

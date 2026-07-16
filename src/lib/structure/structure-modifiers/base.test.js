@@ -22,13 +22,14 @@ export class MockStructure {
             this.structure = baseStructure;
         } else {
             const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            // Operations for P2_1/m (No. 11), unique axis b, origin at -1
             const symmetryOps = [
                 new SymmetryOperation('x,y,z'),
-                new SymmetryOperation('-x,y+1/2,-z'),
-                new SymmetryOperation('-x+1/2,y,-z+1/2'),
-                new SymmetryOperation('x+1/2,-y+1/2,z'),
+                new SymmetryOperation('-x, y+1/2, -z'),
+                new SymmetryOperation('-x,-y,-z'),
+                new SymmetryOperation('x, -y+1/2, z'),
             ];
-            const symmetry = new CellSymmetry('Test', 1, symmetryOps);
+            const symmetry = new CellSymmetry('P 21/m', 11, symmetryOps);
 
             this.structure = new CrystalStructure(cell, [], [], [], symmetry);
         }
@@ -125,8 +126,14 @@ export class MockStructure {
      * @returns {MockStructure} - This structure instance for chaining
      */
     addBond(atom1Label, atom2Label, symmetry = '.', length = 1.5, su = 0.01) {
+        // Create IDs in the new uniqueId format: Label|Symmetry
+        // atom1 is always from the ASU (identity symmetry 1_555)
+        const atom1Id = `${atom1Label}|1_555`;
+        // atom2 uses the provided symmetry code, or 1_555 for internal bonds
+        const atom2Symmetry = symmetry === '.' ? '1_555' : symmetry;
+        const atom2Id = `${atom2Label}|${atom2Symmetry}`;
         this.structure.bonds.push(
-            new Bond(atom1Label, atom2Label, length, su, symmetry),
+            new Bond(atom1Id, atom2Id, length, su, symmetry),
         );
         return this;
     }
@@ -149,14 +156,21 @@ export class MockStructure {
      * @returns {MockStructure} - This structure instance for chaining
      */
     addHBond(donor, hydrogen, acceptor, symmetry = '.', {
-        dhDist = 1.0, dhDistSU = 0.01, haDist = 2.0, haDistSU = 0.02, 
+        dhDist = 1.0, dhDistSU = 0.01, haDist = 2.0, haDistSU = 0.02,
         daDist = 2.8, daDistSU = 0.03, angle = 175, angleSU = 1,
     } = {}) {
+        // Create IDs in the new uniqueId format: Label|Symmetry
+        // donor and hydrogen are always from the ASU (identity symmetry 1_555)
+        const donorId = `${donor}|1_555`;
+        const hydrogenId = `${hydrogen}|1_555`;
+        // acceptor uses the provided symmetry code, or 1_555 for internal H-bonds
+        const acceptorSymmetry = symmetry === '.' ? '1_555' : symmetry;
+        const acceptorId = `${acceptor}|${acceptorSymmetry}`;
         this.structure.hBonds.push(
             new HBond(
-                donor,
-                hydrogen,
-                acceptor,
+                donorId,
+                hydrogenId,
+                acceptorId,
                 dhDist,
                 dhDistSU,
                 haDist,
@@ -172,36 +186,41 @@ export class MockStructure {
     }
 
     /**
-     * Finalizes and validates the mock structure
-     * Verifies that all references to atoms exist and recalculates connected groups
+     * Finalizes and validates the mock structure, verifies that all references to atoms exist
      * @returns {CrystalStructure} - The completed crystal structure
      * @throws {Error} If referenced atoms don't exist
      */
     build() {
         const atomLabels = new Set(this.structure.atoms.map(atom => atom.label));
 
+        // Helper to extract base label from uniqueId (e.g., 'C1|1_555' -> 'C1')
+        const getBaseLabel = (id) => id.split('|')[0];
+
         for (const bond of this.structure.bonds) {
-            if (!atomLabels.has(bond.atom1Label)) {
-                throw new Error(`Bond references non-existent atom ${bond.atom1Label}`);
+            const atom1Label = getBaseLabel(bond.atom1Id);
+            const atom2Label = getBaseLabel(bond.atom2Id);
+            if (!atomLabels.has(atom1Label)) {
+                throw new Error(`Bond references non-existent atom ${atom1Label}`);
             }
-            if (bond.atom2SiteSymmetry === '.' && !atomLabels.has(bond.atom2Label)) {
-                throw new Error(`Bond references non-existent atom ${bond.atom2Label}`);
+            if (bond.atom2SiteSymmetry === '.' && !atomLabels.has(atom2Label)) {
+                throw new Error(`Bond references non-existent atom ${atom2Label}`);
             }
         }
 
         for (const hbond of this.structure.hBonds) {
-            if (!atomLabels.has(hbond.donorAtomLabel)) {
-                throw new Error(`H-bond references non-existent donor atom ${hbond.donorAtomLabel}`);
+            const donorLabel = getBaseLabel(hbond.donorAtomId);
+            const hydrogenLabel = getBaseLabel(hbond.hydrogenAtomId);
+            const acceptorLabel = getBaseLabel(hbond.acceptorAtomId);
+            if (!atomLabels.has(donorLabel)) {
+                throw new Error(`H-bond references non-existent donor atom ${donorLabel}`);
             }
-            if (!atomLabels.has(hbond.hydrogenAtomLabel)) {
-                throw new Error(`H-bond references non-existent hydrogen atom ${hbond.hydrogenAtomLabel}`);
+            if (!atomLabels.has(hydrogenLabel)) {
+                throw new Error(`H-bond references non-existent hydrogen atom ${hydrogenLabel}`);
             }
-            if (hbond.acceptorAtomSymmetry === '.' && !atomLabels.has(hbond.acceptorAtomLabel)) {
-                throw new Error(`H-bond references non-existent acceptor atom ${hbond.acceptorAtomLabel}`);
+            if (hbond.acceptorAtomSymmetry === '.' && !atomLabels.has(acceptorLabel)) {
+                throw new Error(`H-bond references non-existent acceptor atom ${acceptorLabel}`);
             }
         }
-        this.structure.recalculateConnectedGroups();
-
         return this.structure;
     }
 }
@@ -225,11 +244,11 @@ export function checkSymmetryGrowth(grown, {
 
     const errors = [];
 
-    // Check for required atoms
+    // Check for required atoms (using uniqueId with | separator)
     const missingAtoms = [];
     for (const atomLabel of atomLabels) {
         for (const symm of checkSymmetries) {
-            if (!grown.atoms.some(a => a.label === `${atomLabel}@${symm}`)) {
+            if (!grown.atoms.some(a => a.uniqueId === `${atomLabel}|${symm}`)) {
                 missingAtoms.push([atomLabel, symm]);
             }
         }
@@ -238,11 +257,11 @@ export function checkSymmetryGrowth(grown, {
         errors.push(`Missing atoms: ${JSON.stringify(missingAtoms)}`);
     }
 
-    // Check for excluded atoms
+    // Check for excluded atoms (using uniqueId with | separator)
     const unexpectedAtoms = [];
     for (const atomLabel of atomLabels) {
         for (const symm of excludeSymmetries) {
-            if (grown.atoms.some(a => a.label === `${atomLabel}@${symm}`)) {
+            if (grown.atoms.some(a => a.uniqueId === `${atomLabel}|${symm}`)) {
                 unexpectedAtoms.push([atomLabel, symm]);
             }
         }
@@ -251,16 +270,16 @@ export function checkSymmetryGrowth(grown, {
         errors.push(`Unexpected atoms found: ${JSON.stringify(unexpectedAtoms)}`);
     }
 
-    // Check for required bonds
+    // Check for required bonds (using atom1Id/atom2Id with | separator)
     const missingBonds = [];
     for (const [atom1, atom2] of bondPairs) {
         for (const symm of checkSymmetries) {
-            const atom1Label = `${atom1}@${symm}`;
-            const atom2Label = `${atom2}@${symm}`;
-            if (!grown.bonds.some(b => (b.atom1Label === atom1Label && b.atom2Label === atom2Label) ||
-                (b.atom1Label === atom2Label && b.atom2Label === atom1Label),
+            const atom1Id = `${atom1}|${symm}`;
+            const atom2Id = `${atom2}|${symm}`;
+            if (!grown.bonds.some(b => (b.atom1Id === atom1Id && b.atom2Id === atom2Id) ||
+                (b.atom1Id === atom2Id && b.atom2Id === atom1Id),
             )) {
-                missingBonds.push([atom1Label, atom2Label]);
+                missingBonds.push([atom1Id, atom2Id]);
             }
         }
     }
@@ -268,18 +287,18 @@ export function checkSymmetryGrowth(grown, {
         errors.push(`Missing bonds: ${JSON.stringify(missingBonds)}`);
     }
 
-    // Check for required hydrogen bonds
+    // Check for required hydrogen bonds (using atomId with | separator)
     const missingHBonds = [];
     for (const [donor, hydrogen, acceptor] of hbondTriples) {
         for (const symm of checkSymmetries) {
-            const donorLabel = `${donor}@${symm}`;
-            const hydrogenLabel = `${hydrogen}@${symm}`;
-            const acceptorLabel = `${acceptor}@${symm}`;
-            if (!grown.hBonds.some(hb => hb.donorAtomLabel === donorLabel &&
-                hb.hydrogenAtomLabel === hydrogenLabel &&
-                hb.acceptorAtomLabel === acceptorLabel,
+            const donorId = `${donor}|${symm}`;
+            const hydrogenId = `${hydrogen}|${symm}`;
+            const acceptorId = `${acceptor}|${symm}`;
+            if (!grown.hBonds.some(hb => hb.donorAtomId === donorId &&
+                hb.hydrogenAtomId === hydrogenId &&
+                hb.acceptorAtomId === acceptorId,
             )) {
-                missingHBonds.push([donorLabel, hydrogenLabel, acceptorLabel]);
+                missingHBonds.push([donorId, hydrogenId, acceptorId]);
             }
         }
     }
