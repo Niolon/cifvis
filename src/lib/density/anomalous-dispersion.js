@@ -1,12 +1,6 @@
 /* eslint-disable jsdoc/require-jsdoc, jsdoc/require-param */
-import { CIF } from '../read-cif/base.js';
-import { Atom, UnitCell } from '../structure/crystal.js';
-import { CellSymmetry } from '../structure/cell-symmetry.js';
-import { UAnisoADP, UIsoADP } from '../structure/adp.js';
-import { FractPosition } from '../structure/position.js';
-import * as math from '../math-lite.js';
+import { createStructureFactorModel } from './structure-factor-model.js';
 
-const TWO_PI = 2 * Math.PI;
 const ELEMENTS = (
     'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni ' +
     'Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe ' +
@@ -152,21 +146,6 @@ function loopColumn(loop, names, defaultValue = null) {
     }
 }
 
-function scalar(block, names) {
-    for (const name of names) {
-        try {
-            const value = block.get(name, null);
-            const number = finiteNumber(value);
-            if (number !== null) {
-                return number;
-            }
-        } catch {
-            // Try the next spelling.
-        }
-    }
-    return null;
-}
-
 function dispersionRows(block, categoryNames, labelNames) {
     const loop = optionalLoop(block, categoryNames);
     const labels = loopColumn(loop, labelNames);
@@ -220,75 +199,6 @@ function mergeValue(primary, secondary) {
     };
 }
 
-function cellMatches(first, second) {
-    for (const parameter of ['a', 'b', 'c']) {
-        if (Math.abs(first[parameter] - second[parameter]) / Math.max(1, first[parameter]) > 1e-3) {
-            return false;
-        }
-    }
-    for (const parameter of ['alpha', 'beta', 'gamma']) {
-        if (Math.abs(first[parameter] - second[parameter]) > 1e-2) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function displacementParameters(atom, cell, cartesianRotation) {
-    if (atom.adp instanceof UIsoADP) {
-        return { isotropic: atom.adp.uiso };
-    }
-    if (atom.adp instanceof UAnisoADP) {
-        const [u11, u22, u33, u12, u13, u23] = atom.adp.getUCart(cell);
-        const uCartesian = [
-            [u11, u12, u13],
-            [u12, u22, u23],
-            [u13, u23, u33],
-        ];
-        const transformed = math.multiply(
-            math.multiply(cartesianRotation, uCartesian),
-            math.transpose(cartesianRotation),
-        );
-        return { anisotropic: [
-            transformed[0][0],
-            transformed[1][1],
-            transformed[2][2],
-            transformed[0][1],
-            transformed[0][2],
-            transformed[1][2],
-        ] };
-    }
-    return null;
-}
-
-function displacementFactor(parameters, reciprocal, reciprocalLengthSquared) {
-    if (!parameters) {
-        return 1;
-    }
-    if (parameters.isotropic !== undefined) {
-        return Math.exp(-2 * Math.PI ** 2 * parameters.isotropic * reciprocalLengthSquared);
-    }
-    if (parameters.anisotropic) {
-        const [u11, u22, u33, u12, u13, u23] = parameters.anisotropic;
-        const [x, y, z] = reciprocal;
-        const quadratic = u11 * x * x + u22 * y * y + u33 * z * z +
-            2 * u12 * x * y + 2 * u13 * x * z + 2 * u23 * y * z;
-        return Math.exp(-2 * Math.PI ** 2 * quadratic);
-    }
-    return 1;
-}
-
-function fractionalKey(position) {
-    const coordinates = Array.isArray(position)
-        ? position
-        : [position.x, position.y, position.z];
-    return coordinates.map(value => {
-        const wrapped = ((value % 1) + 1) % 1;
-        const normalized = Math.abs(wrapped - 1) < 1e-8 ? 0 : wrapped;
-        return Math.round(normalized * 1e8);
-    }).join(',');
-}
-
 function resolveDispersion(typeSymbol, label, siteValues, typeValues, internal, options) {
     const element = normalizeElement(typeSymbol);
     const configured = configuredValue(options, typeSymbol, element);
@@ -314,143 +224,46 @@ function resolveDispersion(typeSymbol, label, siteValues, typeValues, internal, 
  * @returns {{coefficientAt:function(number,number,number):object, metadata:object}} Correction model.
  */
 export function createAnomalousDispersionCorrection(cifText, cifBlock = 0, options = {}, expectedCell = null) {
-    if (typeof cifText !== 'string' || cifText.length === 0) {
-        throw new Error('Anomalous-dispersion correction requires the coordinate CIF text');
-    }
-    const cif = new CIF(cifText);
-    const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
-    const cell = UnitCell.fromCIF(block);
-    if (expectedCell && !cellMatches(cell, expectedCell)) {
-        throw new Error('Anomalous-dispersion coordinate CIF cell does not match the reflection cell');
-    }
-    const wavelength = scalar(block, [
-        '_diffrn_radiation_wavelength.wavelength',
-        '_diffrn_radiation.wavelength',
-        '_diffrn_radiation_wavelength',
-    ]) ?? finiteNumber(options.wavelength);
-    const internal = configuredTable(options, wavelength);
-    const siteValues = dispersionRows(
-        block,
-        ['_atom_site_dispersion'],
-        ['_atom_site_dispersion.label', '_atom_site_dispersion_label'],
-    );
-    const typeValues = dispersionRows(
-        block,
-        ['_atom_type', '_atom_type_scat'],
-        ['_atom_type.symbol', '_atom_type_symbol'],
-    );
-    const atomSite = block.get('_atom_site');
-    const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
-    const occupancies = atomSite.get(
-        ['_atom_site.occupancy', '_atom_site_occupancy'],
-        Array(labels.length).fill(1),
-    );
-    const symmetry = CellSymmetry.fromCIF(block);
-    const atoms = [];
-    const sourceCounts = {};
-    for (let index = 0; index < labels.length; index++) {
-        let atom;
-        try {
-            atom = Atom.fromCIF(block, index);
-        } catch (error) {
-            if (error.message.includes('Dummy atom')) {
-                continue;
-            }
-            throw error;
-        }
-        const dispersion = resolveDispersion(
-            atom.atomType,
-            atom.label,
-            siteValues,
-            typeValues,
-            internal,
-            options,
-        );
-        sourceCounts[dispersion.source] = (sourceCounts[dispersion.source] ?? 0) + 1;
-        const occupancy = finiteNumber(occupancies[index]);
-        atoms.push({
-            atom,
-            occupancy: occupancy ?? 1,
-            real: dispersion.real,
-            imaginary: dispersion.imaginary,
-        });
-    }
-    const directTransform = cell.fractToCartMatrix.toArray();
-    const inverseDirectTransform = math.inv(directTransform);
-    const reciprocalTransformResult = math.transpose(inverseDirectTransform);
-    const reciprocalTransform = Array.isArray(reciprocalTransformResult)
-        ? reciprocalTransformResult
-        : reciprocalTransformResult.toArray();
-    const expandedAtoms = [];
-    const symmetryTransforms = symmetry.symmetryOperations.map(operation => ({
-        operation,
-        cartesianRotation: math.multiply(
-            math.multiply(directTransform, operation.rotMatrix),
-            inverseDirectTransform,
-        ),
-    }));
-    for (const modelAtom of atoms) {
-        const seen = new Set();
-        const atomPosition = modelAtom.atom.position instanceof FractPosition
-            ? [modelAtom.atom.position.x, modelAtom.atom.position.y, modelAtom.atom.position.z]
-            : math.multiply(inverseDirectTransform, [
-                modelAtom.atom.position.x,
-                modelAtom.atom.position.y,
-                modelAtom.atom.position.z,
-            ]);
-        for (const transform of symmetryTransforms) {
-            const position = transform.operation.applyToPoint(atomPosition);
-            const key = fractionalKey(position);
-            if (seen.has(key)) {
-                continue;
-            }
-            seen.add(key);
-            expandedAtoms.push({
-                position,
-                occupancy: modelAtom.occupancy,
-                real: modelAtom.real,
-                imaginary: modelAtom.imaginary,
-                displacement: displacementParameters(
-                    modelAtom.atom,
-                    cell,
-                    transform.cartesianRotation,
-                ),
-            });
-        }
-    }
-
-    return {
-        coefficientAt(h, k, l) {
-            const reciprocal = reciprocalTransform.map(row =>
-                row[0] * h + row[1] * k + row[2] * l,
+    let internal;
+    let siteValues;
+    let typeValues;
+    const model = createStructureFactorModel(cifText, cifBlock, {
+        expectedCell,
+        wavelength: options.wavelength,
+        resolveAtom({ atom, block, wavelength }) {
+            internal ??= configuredTable(options, wavelength);
+            siteValues ??= dispersionRows(
+                block,
+                ['_atom_site_dispersion'],
+                ['_atom_site_dispersion.label', '_atom_site_dispersion_label'],
             );
-            const reciprocalLengthSquared = reciprocal[0] ** 2 +
-                reciprocal[1] ** 2 + reciprocal[2] ** 2;
-            let real = 0;
-            let imaginary = 0;
-            for (const atom of expandedAtoms) {
-                const phase = TWO_PI * (
-                    h * atom.position[0] + k * atom.position[1] + l * atom.position[2]
-                );
-                const scale = atom.occupancy * displacementFactor(
-                    atom.displacement,
-                    reciprocal,
-                    reciprocalLengthSquared,
-                );
-                const cosine = Math.cos(phase);
-                const sine = Math.sin(phase);
-                real += scale * (atom.real * cosine - atom.imaginary * sine);
-                imaginary += scale * (atom.real * sine + atom.imaginary * cosine);
-            }
-            return { real, imaginary };
+            typeValues ??= dispersionRows(
+                block,
+                ['_atom_type', '_atom_type_scat'],
+                ['_atom_type.symbol', '_atom_type_symbol'],
+            );
+            const dispersion = resolveDispersion(
+                atom.atomType,
+                atom.label,
+                siteValues,
+                typeValues,
+                internal,
+                options,
+            );
+            return {
+                source: dispersion.source,
+                scatteringAt() {
+                    return { real: dispersion.real, imaginary: dispersion.imaginary };
+                },
+            };
         },
+    });
+    return {
+        ...model,
         metadata: {
+            ...model.metadata,
             enabled: true,
-            wavelength,
             internalTable: internal?.key ?? null,
-            atomCount: atoms.length,
-            expandedAtomCount: expandedAtoms.length,
-            sourceCounts,
         },
     };
 }

@@ -174,6 +174,38 @@ anomalous contribution. For amplitude/phase columns the correction acts on the
 complex coefficient constructed from the supplied phase; an amplitude alone
 does not contain enough information for an exact complex correction.
 
+#### IAM structure factors
+
+The same symmetry, occupancy, and ADP atom sum is available as an independent
+atom model calculator:
+
+```javascript
+import { createIAMStructureFactorCalculator } from 'cifvis/nobrowser';
+
+const calculator = createIAMStructureFactorCalculator(coordinateCif, 0, {
+  includeAnomalous: true, // default; false gives normal scattering only
+});
+
+const coefficient = calculator.coefficientAt(1, 2, 3);
+// { real, imaginary }
+
+const reflections = calculator.calculate([[1, 2, 3], { h: -1, k: -2, l: -3 }]);
+// Each result adds amplitude and phase in degrees.
+```
+
+The normal factor is evaluated as
+`f0(s) = sum(ai exp(-bi s^2)) + c`, with `s = sin(theta) / wavelength`.
+Complete CIF `_atom_type_scat_Cromer_Mann_*` rows take precedence over
+configured `cromerMann` values and the internal neutral-atom H-Cf table.
+Anomalous terms use site CIF values first, then type CIF values, configured
+`dispersionValues`, and finally the wavelength-selected Cu/Mo table. Missing
+anomalous terms are zero; missing normal factors are an error.
+
+`calculateIAMStructureFactors(cif, reflections, options)` is the one-shot
+equivalent. Run `npm run bench:iam -- structure.cif` to time model construction
+and reflection calculation; when the CIF embeds an FCF, the benchmark also
+reports agreement with its `_refln_F_squared_calc` values.
+
 
 
 ### API Reference

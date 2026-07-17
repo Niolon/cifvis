@@ -5,6 +5,12 @@ export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { formatValueEsd } from './lib/formatting.js';
 export { DifferenceDensityMap } from './lib/density/difference-density.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
+export {
+    calculateIAMStructureFactors,
+    createIAMStructureFactorCalculator,
+    evaluateCromerMann,
+    lookupCromerMann,
+} from './lib/density/iam-structure-factors.js';
 export { tryToFixCifBlock } from './lib/fix-cif/base.js';
 export { getDisorderIcon, generateDisorderGroupIcon } from './lib/disorder-icons.js';
 export { 
