@@ -79,6 +79,7 @@ describe('CifViewWidget', () => {
             },
             onDifferenceDensityUpdate: vi.fn(),
             updateDifferenceDensityOptions: vi.fn(),
+            setDifferenceDensityVisibility: vi.fn(),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -226,12 +227,14 @@ describe('CifViewWidget', () => {
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('caption', 'Test Structure');
         document.body.appendChild(widget);
-        mockCrystalViewer.state.differenceDensityGroup = {
-            visible: true,
-            userData: { level: 0.12345, sigmaLevel: 3 },
-        };
 
-        mockDensityCallback({ type: 'update' });
+        mockDensityCallback({
+            type: 'complete',
+            available: true,
+            visible: true,
+            level: 0.12345,
+            sigmaLevel: 3,
+        });
 
         const level = widget.querySelector('.density-level');
         expect(level.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
@@ -242,11 +245,29 @@ describe('CifViewWidget', () => {
             .toBe('Test Structure');
 
         level.click();
-        expect(mockCrystalViewer.updateDifferenceDensityOptions)
-            .toHaveBeenCalledWith({ visible: false });
+        expect(mockCrystalViewer.setDifferenceDensityVisibility).toHaveBeenCalledWith(false);
 
-        mockCrystalViewer.state.differenceDensityGroup = null;
         mockDensityCallback({ type: 'cleared' });
+        expect(widget.querySelector('.density-level')).toBeNull();
+    });
+
+    test('shows density progress in the compact control while loading', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({ type: 'started' });
+        let button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
+        expect(button.querySelector('.density-value').textContent).toBe('…');
+        expect(button.classList.contains('density-loading')).toBe(true);
+        expect(button.getAttribute('aria-busy')).toBe('true');
+
+        mockDensityCallback({ type: 'update', stepIndex: 1, totalSteps: 3 });
+        button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-value').textContent).toBe('2/3');
+        expect(button.title).toContain('step 2 of 3');
+
+        mockDensityCallback({ type: 'error', error: 'Failed' });
         expect(widget.querySelector('.density-level')).toBeNull();
     });
 

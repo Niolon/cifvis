@@ -727,9 +727,15 @@ export class CrystalViewer {
             }
             // Density data belongs to a specific coordinate model/cell. A new
             // coordinate CIF must never inherit the previous FCF implicitly.
+            const hadDifferenceDensity = Boolean(
+                this.state.differenceDensityMap || this.state.differenceDensityGroup,
+            );
             this.cancelDifferenceDensityLoad('Coordinate structure changed');
             this.removeDifferenceDensity3D();
             this.state.differenceDensityMap = null;
+            if (hadDifferenceDensity) {
+                this.notifyDifferenceDensityUpdate({ type: 'cleared' });
+            }
             await this.loadStructure(structure);
 
             this.state.currentCifContent = cifText;
@@ -793,7 +799,12 @@ export class CrystalViewer {
             ...definedOptions(options),
         };
         const loadId = ++this.differenceDensityLoadSequence;
-        this.notifyDifferenceDensityUpdate({ type: 'started', loadId });
+        this.notifyDifferenceDensityUpdate({
+            type: 'started',
+            loadId,
+            visible: this.options.differenceDensity.visible,
+            sigmaLevel: this.options.differenceDensity.sigmaLevel,
+        });
 
         if (this.options.differenceDensity.useWorker && typeof Worker !== 'undefined') {
             return this.loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId);
@@ -802,8 +813,9 @@ export class CrystalViewer {
     }
 
     /**
-     * Subscribes to progressive density events (`started`, `update`, `complete`,
-     * `error`, and `cancelled`).
+     * Subscribes to density events (`started`, `update`, `complete`, `display`,
+     * `visibility`, `cleared`, `error`, and `cancelled`). Display-bearing events
+     * expose level/visibility fields so UIs need not inspect renderer state.
      * @param {function(object): void} callback - Update listener.
      * @returns {function(): void} Function that removes the listener.
      */
@@ -1029,6 +1041,7 @@ export class CrystalViewer {
             message.surfaceResolutionFraction ?? 1;
         this.updateDifferenceDensity3D(this.state.displayStructure);
         const surfaceStatistics = this.state.differenceDensityGroup?.userData ?? {};
+        const display = this.differenceDensityDisplayState();
         this.requestRender();
         this.notifyDifferenceDensityUpdate({
             type: 'update',
@@ -1070,6 +1083,7 @@ export class CrystalViewer {
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
+            ...display,
         });
     }
 
@@ -1134,6 +1148,20 @@ export class CrystalViewer {
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
+            ...this.differenceDensityDisplayState(),
+        };
+    }
+
+    /** @returns {object} Renderer-independent density state exposed to UI listeners. */
+    differenceDensityDisplayState() {
+        const surface = this.state.differenceDensityGroup?.userData;
+        return {
+            available: Number.isFinite(surface?.level),
+            visible: this.state.differenceDensityGroup?.visible !== false,
+            level: Number.isFinite(surface?.level) ? surface.level : null,
+            sigmaLevel: Number.isFinite(surface?.sigmaLevel)
+                ? surface.sigmaLevel
+                : this.options.differenceDensity.sigmaLevel,
         };
     }
 
@@ -1184,6 +1212,10 @@ export class CrystalViewer {
         if (this.state.differenceDensityMap && this.state.displayStructure) {
             this.updateDifferenceDensity3D(this.state.displayStructure);
             this.requestRender();
+            this.notifyDifferenceDensityUpdate({
+                type: 'display',
+                ...this.differenceDensityDisplayState(),
+            });
         }
         return { success: true };
     }

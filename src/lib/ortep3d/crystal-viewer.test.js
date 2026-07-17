@@ -257,9 +257,15 @@ describe('CrystalViewer progressive difference-density events', () => {
                     userData: {
                         polygonCount: this.state.differenceDensitySurfaceResolutionFraction * 1000,
                         resolution: this.state.differenceDensitySurfaceResolutionFraction * 64,
+                        level: 0.15,
+                        sigmaLevel: 3,
                     },
+                    visible: true,
                 };
             }),
+            differenceDensityDisplayState() {
+                return CrystalViewer.prototype.differenceDensityDisplayState.call(this);
+            },
             requestRender: vi.fn(),
             notifyDifferenceDensityUpdate: vi.fn(),
         };
@@ -280,8 +286,24 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(viewer.state.differenceDensityMap).toBe(densityMap);
         expect(viewer.notifyDifferenceDensityUpdate.mock.calls.map(call => call[0]))
             .toMatchObject([
-                { surfaceResolution: 32, polygonCount: 500, dimensions: [64, 128, 64] },
-                { surfaceResolution: 64, polygonCount: 1000, dimensions: [64, 128, 64] },
+                {
+                    surfaceResolution: 32,
+                    polygonCount: 500,
+                    dimensions: [64, 128, 64],
+                    available: true,
+                    visible: true,
+                    level: 0.15,
+                    sigmaLevel: 3,
+                },
+                {
+                    surfaceResolution: 64,
+                    polygonCount: 1000,
+                    dimensions: [64, 128, 64],
+                    available: true,
+                    visible: true,
+                    level: 0.15,
+                    sigmaLevel: 3,
+                },
             ]);
     });
 

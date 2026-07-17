@@ -2,6 +2,10 @@ import { CIF, CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
+import {
+    createDifferenceDensityDisplayState,
+    reduceDifferenceDensityDisplayState,
+} from '../../src/lib/density/difference-density-display-state.js';
 
 /**
  * Updates the status message displayed to the user
@@ -18,6 +22,13 @@ function updateStatus(message, type = 'info') {
             statusElement.className = statusElement.className.replace('show', '');
         }, 2000);
     }
+}
+
+/** Hides the transient playground status box. */
+function clearStatus() {
+    const statusElement = document.getElementById('status-message');
+    statusElement.textContent = '';
+    statusElement.className = '';
 }
 
 /**
@@ -69,16 +80,16 @@ function getViewerOptionsFromUrl() {
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
 viewer.animate();
+let densityDisplay = createDifferenceDensityDisplayState();
 
 /** @returns {{level:number, full:string}|null} Formatted density contour description. */
 function currentDensityLevelText() {
-    const density = viewer.state.differenceDensityGroup?.userData;
-    if (!Number.isFinite(density?.level)) {
+    if (!Number.isFinite(densityDisplay.level)) {
         return null;
     }
-    const level = Number(density.level.toPrecision(3));
-    const sigma = Number.isFinite(density.sigmaLevel)
-        ? ` · ${Number(density.sigmaLevel.toPrecision(3))}σ`
+    const level = Number(densityDisplay.level.toPrecision(3));
+    const sigma = Number.isFinite(densityDisplay.sigmaLevel)
+        ? ` · ${Number(densityDisplay.sigmaLevel.toPrecision(3))}σ`
         : '';
     return {
         level,
@@ -89,37 +100,40 @@ function currentDensityLevelText() {
 /** Keeps the playground's lower-right density badge synchronized. */
 function updateDensityLevelDisplay() {
     const element = document.getElementById('density-level');
-    const density = viewer.state.differenceDensityGroup;
     const labels = currentDensityLevelText();
-    element.hidden = labels === null;
+    const loading = densityDisplay.loading;
+    element.hidden = labels === null && !loading;
     element.replaceChildren();
-    if (labels) {
+    if (labels || loading) {
         const unit = document.createElement('span');
         unit.className = 'density-unit';
         unit.textContent = 'Δρ/eÅ⁻³';
         const value = document.createElement('span');
         value.className = 'density-value';
-        value.textContent = `±${labels.level}`;
+        value.textContent = loading
+            ? densityDisplay.totalSteps
+                ? `${densityDisplay.stepIndex + 1}/${densityDisplay.totalSteps}`
+                : '…'
+            : `±${labels.level}`;
         element.append(unit, value);
     }
-    const visible = density?.visible !== false;
+    element.classList.toggle('density-loading', loading);
+    element.setAttribute('aria-busy', String(loading));
+    const visible = densityDisplay.visible;
     element.setAttribute('aria-pressed', String(visible));
-    element.title = labels
-        ? `${visible ? 'Hide' : 'Show'} difference density (${labels.full})`
-        : '';
+    element.title = loading
+        ? densityDisplay.totalSteps
+            ? `Calculating difference density: step ${densityDisplay.stepIndex + 1} ` +
+                `of ${densityDisplay.totalSteps}`
+            : 'Calculating difference density'
+        : labels
+            ? `${visible ? 'Hide' : 'Show'} difference density (${labels.full})`
+            : '';
 }
 
 viewer.onDifferenceDensityUpdate(update => {
+    densityDisplay = reduceDifferenceDensityDisplayState(densityDisplay, update);
     updateDensityLevelDisplay();
-    if (update.type === 'update' && !update.final) {
-        updateStatus(
-            `Refining density surface: step ${update.stepIndex + 1}/${update.totalSteps} ` +
-            `(${update.surfaceResolution}³ surface grid, ` +
-            `${update.polygonCount.toLocaleString()} polygons; ` +
-            `${update.dimensions.join('×')} density grid, all reflections)`,
-            'info',
-        );
-    }
 });
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
@@ -235,6 +249,8 @@ function configurePlaygroundBlocks(cifText) {
  */
 async function loadPlaygroundCif(cifText, cifBlock = 0) {
     const loadSequence = ++playgroundLoadSequence;
+    densityDisplay = createDifferenceDensityDisplayState();
+    updateDensityLevelDisplay();
     const calculateDensity = hasSupportedReflectionData(cifText, cifBlock);
     const result = await viewer.loadCIF(cifText, cifBlock, {
         differenceDensity: calculateDensity,
@@ -254,7 +270,7 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
         return;
     }
 
-    updateStatus('Structure loaded; calculating difference density in worker...', 'info');
+    clearStatus();
     const density = await result.differenceDensity;
     if (loadSequence !== playgroundLoadSequence || density.cancelled) {
         return;
@@ -264,17 +280,7 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
         return;
     }
 
-    const source = density.densitySource === 'cif-iam' ? 'observed CIF + IAM' : 'FCF coefficients';
-    const extinction = density.extinctionCorrection?.enabled
-        ? `, EXTI ${density.extinctionCorrection.coefficient}`
-        : '';
-    updateStatus(
-        `Difference density loaded from ${source} ` +
-        `(${density.reflectionCount.toLocaleString()} reflections${extinction}, ` +
-        `${density.dimensions.join('×')} grid, ` +
-        `${density.polygonCount.toLocaleString()} polygons)`,
-        'success',
-    );
+    clearStatus();
 }
 
 /**
@@ -349,9 +355,8 @@ function initializeBlockSelector() {
 /** Makes the compact density-level readout double as its visibility toggle. */
 function initializeDensityLevelButton() {
     document.getElementById('density-level').addEventListener('click', () => {
-        const density = viewer.state.differenceDensityGroup;
-        if (density) {
-            viewer.updateDifferenceDensityOptions({ visible: density.visible === false });
+        if (densityDisplay.available) {
+            viewer.setDifferenceDensityVisibility(!densityDisplay.visible);
         }
     });
 }
@@ -396,15 +401,6 @@ function initializeSymmetryButton() {
         const result = await viewer.cycleModifierMode('symmetry');
         if (result.success) {
             symmetryButton.innerHTML = SVG_ICONS['symmetry'][viewer.modifiers.symmetry.mode];
-            const density = viewer.state.differenceDensityGroup?.userData;
-            if (density) {
-                updateStatus(
-                    `Density surface: ${density.polygonCount.toLocaleString()} polygons; ` +
-                    `${density.reusedRegionCount}/${density.displayedRegionCount} regions reused; ` +
-                    `${density.generationTimeMs.toFixed(1)} ms`,
-                    'success',
-                );
-            }
         }
     });
 }

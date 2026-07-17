@@ -187,7 +187,7 @@ if (!result.success) {
                 <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
-                <tr><td><code>viewer.onDifferenceDensityUpdate(callback)</code></td><td>Subscribes to <code>started</code>, <code>update</code>, <code>complete</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
+                <tr><td><code>viewer.onDifferenceDensityUpdate(callback)</code></td><td>Subscribes to <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
                 <tr><td><code>viewer.updateDifferenceDensityOptions(options)</code></td><td>Changes contours/appearance while retaining the Fourier grid. A visibility-only update does not rebuild surfaces.</td></tr>
                 <tr><td><code>viewer.setDifferenceDensityVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without reflection, FFT, or marching-cubes work.</td></tr>
                 <tr><td><code>viewer.clearDifferenceDensity()</code></td><td>Discards the current map and surface meshes.</td></tr>
@@ -252,6 +252,13 @@ viewer.setDifferenceDensityVisibility(false); // instant: retains map + meshes
 viewer.setDifferenceDensityVisibility(true);
 viewer.clearDifferenceDensity();
 stop();</code></pre>
+            <p>
+                UI code should treat these events as the public boundary. Progress events include
+                <code>stepIndex</code>/<code>totalSteps</code>; display-bearing events include <code>available</code>,
+                <code>visible</code>, <code>level</code>, and <code>sigmaLevel</code>. The <code>display</code> event reports
+                contour or appearance changes. A UI therefore does not need to inspect renderer groups, map objects,
+                or other fields under <code>viewer.state</code>.
+            </p>
 
             <h3>Custom quantum-crystallographic coefficients</h3>
             <p>

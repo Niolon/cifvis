@@ -3,6 +3,10 @@ import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
 import { getDisorderIcon } from './disorder-icons.js';
+import {
+    createDifferenceDensityDisplayState,
+    reduceDifferenceDensityDisplayState,
+} from './density/difference-density-display-state.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -56,6 +60,19 @@ const defaultStyles = `
   cifview-widget .control-button.density-level[aria-pressed="false"] {
     opacity: 0.55;
     text-decoration: line-through;
+  }
+
+  cifview-widget .control-button.density-level.density-loading {
+    cursor: wait;
+  }
+
+  cifview-widget .density-level.density-loading .density-value {
+    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes cifvis-density-loading-pulse {
+    from { opacity: 0.35; }
+    to { opacity: 1; }
   }
 
   cifview-widget .button-container {
@@ -116,6 +133,7 @@ export class CifViewWidget extends HTMLElement {
         this.selections = [];
         this.customIcons = null;
         this.userOptions = {};
+        this.differenceDensityDisplay = createDifferenceDensityDisplayState();
         this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
     }
 
@@ -180,7 +198,11 @@ export class CifViewWidget extends HTMLElement {
     /** Connects caption updates to the current viewer instance. */
     connectViewerEvents() {
         this.stopDifferenceDensityUpdates?.();
-        this.stopDifferenceDensityUpdates = this.viewer.onDifferenceDensityUpdate?.(() => {
+        this.stopDifferenceDensityUpdates = this.viewer.onDifferenceDensityUpdate?.(update => {
+            this.differenceDensityDisplay = reduceDifferenceDensityDisplayState(
+                this.differenceDensityDisplay,
+                update,
+            );
             this.updateDensityButton();
             this.updateCaption();
         }) ?? null;
@@ -306,31 +328,45 @@ export class CifViewWidget extends HTMLElement {
     /** Adds or updates the compact density-level visibility control. */
     updateDensityButton() {
         this.buttonContainer?.querySelector('.density-level')?.remove();
-        const group = this.viewer?.state?.differenceDensityGroup;
-        const density = group?.userData;
-        if (!this.buttonContainer || !Number.isFinite(density?.level)) {
+        const density = this.differenceDensityDisplay;
+        const loading = density.loading;
+        if (!this.buttonContainer || (!density.available && !loading)) {
             return;
         }
-        const level = Number(density.level.toPrecision(3));
+        const level = Number.isFinite(density.level)
+            ? Number(density.level.toPrecision(3))
+            : null;
         const sigma = Number.isFinite(density.sigmaLevel)
             ? ` · ${Number(density.sigmaLevel.toPrecision(3))}σ`
             : '';
-        const visible = group.visible !== false;
+        const visible = density.visible;
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'control-button density-level';
+        button.className = `control-button density-level${loading ? ' density-loading' : ''}`;
         const unit = document.createElement('span');
         unit.className = 'density-unit';
         unit.textContent = 'Δρ/eÅ⁻³';
         const value = document.createElement('span');
         value.className = 'density-value';
-        value.textContent = `±${level}`;
+        value.textContent = loading
+            ? density.totalSteps
+                ? `${density.stepIndex + 1}/${density.totalSteps}`
+                : '…'
+            : `±${level}`;
         button.append(unit, value);
         button.setAttribute('aria-pressed', String(visible));
-        button.title = `${visible ? 'Hide' : 'Show'} difference density ` +
-            `(Δρ ±${level} e Å⁻³${sigma})`;
+        button.setAttribute('aria-busy', String(loading));
+        button.title = loading
+            ? density.totalSteps
+                ? 'Calculating difference density: step ' +
+                    `${density.stepIndex + 1} of ${density.totalSteps}`
+                : 'Calculating difference density'
+            : `${visible ? 'Hide' : 'Show'} difference density ` +
+                `(Δρ ±${level} e Å⁻³${sigma})`;
         button.addEventListener('click', () => {
-            this.viewer.updateDifferenceDensityOptions({ visible: group.visible === false });
+            if (density.available) {
+                this.viewer.setDifferenceDensityVisibility(!density.visible);
+            }
         });
         this.buttonContainer.appendChild(button);
     }

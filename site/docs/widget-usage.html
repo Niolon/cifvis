@@ -132,10 +132,11 @@ _cell.angle_gamma 90
             <p>
                 The coordinate structure appears first; reflection parsing, IAM calculation, FFT, and progressive
                 surface generation then run in a worker by default, with a main-thread fallback where workers are not
-                available. Once a map exists, a button appears beside the ordinary display controls. Its first row
-                reads <code>&Delta;&rho;/e&Aring;&sup3;</code> and its second row shows the positive/negative contour magnitude.
-                Clicking it hides or restores the retained surfaces without recalculating the map. It is not shown
-                when no density has been loaded.
+                available. As soon as calculation starts, a button appears beside the ordinary display controls and
+                shows the progressive step instead of opening a large status box. Its first row reads
+                <code>&Delta;&rho;/e&Aring;&sup3;</code>; once complete, its second row changes to the positive/negative contour
+                magnitude. Clicking it hides or restores the retained surfaces without recalculating the map. It is
+                not shown when no density is loading or available.
             </p>
             <p>
                 Standard difference maps use green/red wireframes by default; custom coefficient loops are treated as

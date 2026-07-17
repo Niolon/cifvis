@@ -110,6 +110,19 @@ html, body {
     text-decoration: line-through;
 }
 
+#density-level.density-loading {
+    cursor: wait;
+}
+
+#density-level.density-loading .density-value {
+    animation: density-loading-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes density-loading-pulse {
+    from { opacity: 0.35; }
+    to { opacity: 1; }
+}
+
 .selection-container {
     position: absolute;
     top: 20px;
