@@ -263,6 +263,11 @@
                             <td>Object</td>
                             <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID.</td>
                         </tr>
+                        <tr class="option-row" data-keywords="atom labels placement mode complete omit callout">
+                            <td><span class="option-code">atomLabels.placementMode</span></td>
+                            <td>String</td>
+                            <td><code>auto-omit</code> rejects confusing crossings and may omit labels; <code>complete</code> searches farther and adds edge callouts, allowing bond/leader crossings when needed. A viewport which cannot fit non-overlapping text can still omit labels. <span class="default-value">Default: "auto-omit"</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="atom labels font size family weight">
                             <td><span class="option-code">atomLabels.fontSize / fontWeight / fontFamily</span></td>
                             <td>Number / Number / String</td>
@@ -287,6 +292,26 @@
                             <td><span class="option-code">atomLabels.maxVisible</span></td>
                             <td>Number</td>
                             <td>Maximum labels attempted; excess labels are reported as hidden. <span class="default-value">Default: Infinity</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels worker asynchronous performance thread">
+                            <td><span class="option-code">atomLabels.useWorker</span></td>
+                            <td>Boolean</td>
+                            <td>Runs collision placement in a Web Worker after the structure's first paint. Unsupported or failed workers fall back to the main thread. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels interaction throttle deferred hide performance">
+                            <td><span class="option-code">atomLabels.layoutThrottleMs / interactionLabelLimit / hideLabelsDuringDeferredLayout</span></td>
+                            <td>Number / Number / Boolean</td>
+                            <td>Controls relayout during interaction. Complete or large layouts are hidden and recomputed after dragging by default. <span class="default-value">Defaults: 32, 300, true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels complete callout lanes columns spacing">
+                            <td><span class="option-code">atomLabels.calloutColumns / calloutColumnGap / calloutRowGap</span></td>
+                            <td>Number</td>
+                            <td>Viewport-edge lane count and spacing used by <code>complete</code> placement. <span class="default-value">Defaults: 3, 8, 4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels spatial index cell performance">
+                            <td><span class="option-code">atomLabels.spatialCellSize</span></td>
+                            <td>Number</td>
+                            <td>Uniform screen-space collision-index cell size in CSS pixels. <span class="default-value">Default: 64</span></td>
                         </tr>
                     </table>
                 </div>

@@ -347,8 +347,13 @@ _cell.angle_gamma 90
     atom-labels='["C1", {"id":"O1", "text":"O(carbonyl)", "priority":10}]'&gt;
 &lt;/cifview-widget&gt;</code></pre>
             <p>The shorthand values <code>all</code>, <code>non-hydrogen</code>, and <code>none</code> are also
-                accepted. Collision-free placement is preferred over completeness, so labels are omitted when the
-                viewport has no valid position.</p>
+                accepted. The default <code>auto-omit</code> placement prefers a clear figure and omits labels when
+                needed. Set <code>options.atomLabels.placementMode</code> to <code>complete</code> for longer searches
+                and viewport-edge callouts which may cross bonds. Text never overlaps other text or atoms, so an
+                overfull viewport can still omit labels.</p>
+            <p>Label collision placement runs after the structure is painted and uses a Web Worker when available.
+                During rotation an old label frame is cleared immediately, avoiding after-images while the fresh
+                layout is calculated.</p>
         </section>
 
         <section>

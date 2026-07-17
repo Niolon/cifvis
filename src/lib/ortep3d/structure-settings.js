@@ -189,6 +189,7 @@ export default {
     // retain their current appearance and rendering cost.
     'atomLabels': {
         'show': 'none',
+        'placementMode': 'auto-omit',
         'text': {},
         'fontSize': 14,
         'fontWeight': 500,
@@ -206,6 +207,17 @@ export default {
         'fallbackDistance': 18,
         'ringPenalty': 1000,
         'movementPenalty': 80,
+        'spatialCellSize': 64,
+        'useWorker': true,
+        'layoutThrottleMs': 32,
+        'interactionLabelLimit': 300,
+        'hideLabelsDuringDeferredLayout': true,
+        'calloutColumns': 3,
+        'calloutColumnGap': 8,
+        'calloutRowGap': 4,
+        'calloutSearchLimit': 64,
+        'calloutChoiceLimit': 4,
+        'leaderBondCrossingPenalty': 25,
         'maxVisible': Infinity,
     },
 

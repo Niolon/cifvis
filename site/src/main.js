@@ -23,7 +23,8 @@ function updateStatus(message, type = 'info') {
 /**
  * Reads viewer overrides from the URL query string.
  * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
- * render styles. `?labels=all|non-hydrogen|none` controls atom labels.
+ * render styles. `?labels=all|non-hydrogen|none` controls atom labels and
+ * `?label-mode=auto-omit|complete` chooses their placement policy.
  * Unset or unrecognised values fall back to their defaults.
  * @returns {object} CrystalViewer options derived from the URL
  */
@@ -33,13 +34,19 @@ function getViewerOptionsFromUrl() {
     const validStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
     const labels = params.get('labels');
     const validLabelModes = ['all', 'non-hydrogen', 'none'];
+    const labelPlacement = params.get('label-mode');
+    const validLabelPlacements = ['auto-omit', 'complete'];
     const options = {};
 
     if (validStyles.includes(style)) {
         options.renderStyle = style;
     }
     if (validLabelModes.includes(labels)) {
-        options.atomLabels = { show: labels };
+        options.atomLabels = {
+            show: labels,
+            placementMode: validLabelPlacements.includes(labelPlacement) ?
+                labelPlacement : 'auto-omit',
+        };
     }
     return options;
 }

@@ -153,12 +153,19 @@ try {
 
 const viewer = new CrystalViewer(container, {
     renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
+    atomLabels: {
+        show: 'non-hydrogen',
+        placementMode: 'auto-omit', // use 'complete' to prefer long/edge callouts
+    },
 });
 const result = await viewer.loadCIF(cifText);   // or viewer.loadCIF(cifText, 'blockName')
 if (!result.success) {
     console.error(result.error);
 }</code></pre>
-            <p>For the full <code>options</code> schema (camera, selection, rendering, atoms, bonds, elements), see the <a href="./options-reference.html">Options Reference</a>.</p>
+            <p>The structure is painted before label layout begins. Collision placement uses a Web Worker when
+                available, and stale label frames are cleared during rotation rather than ghosting over the new pose.
+                For the full <code>options</code> schema (camera, selection, rendering, atoms, bonds, elements), see
+                the <a href="./options-reference.html">Options Reference</a>.</p>
 
             <h3>The GUI-facing surface</h3>
             <table>

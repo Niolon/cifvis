@@ -1,6 +1,35 @@
 import * as THREE from 'three';
 import { chemicalBonds } from '../structure/bond-classification.js';
 import { layoutAtomLabels } from './atom-label-layout.js';
+import AtomLabelWorker from './atom-label-worker.js?worker&inline';
+
+const layoutOptionKeys = [
+    'atomPadding',
+    'calloutChoiceLimit',
+    'calloutColumnGap',
+    'calloutColumns',
+    'calloutRowGap',
+    'calloutSearchLimit',
+    'fallbackDistance',
+    'labelPadding',
+    'leaderBondCrossingPenalty',
+    'leaderWidth',
+    'maxVisible',
+    'movementPenalty',
+    'placementMode',
+    'ringPenalty',
+    'spatialCellSize',
+    'viewportPadding',
+];
+
+/**
+ * Copies only structured-clone-safe solver options into a worker request.
+ * @param {object} options - Complete atom-label options
+ * @returns {object} Collision-layout options
+ */
+function pickLayoutOptions(options) {
+    return Object.fromEntries(layoutOptionKeys.map(key => [key, options[key]]));
+}
 
 /**
  * Normalizes the public label selection option.
@@ -125,8 +154,27 @@ export class AtomLabelManager {
         this.options = viewer.options.atomLabels;
         this.previousPlacements = new Map();
         this.layout = { placed: [], hidden: [] };
-        this.rings = [];
+        this.rings = null;
         this.displayStructure = null;
+        this.bondNeighbours = new Map();
+        this.measurementCache = new Map();
+        this.lastLayoutTime = 0;
+        this.forceNextLayout = true;
+        this.lastMoleculeMatrix = null;
+        this.lastCameraMatrix = null;
+        this.lastProjectionMatrix = null;
+        this.lastViewport = null;
+        this.layoutRevision = 0;
+        this.lastLayoutRevision = 0;
+        this.nextWorkerRequestId = 1;
+        this.worker = null;
+        this.workerUnavailable = false;
+        this.pendingLayout = null;
+        this.layoutQueued = false;
+        this.layoutWaiters = [];
+        this.scheduledFrame = null;
+        this.disposed = false;
+        this.lastExecutionMode = 'none';
 
         this.canvas = document.createElement('canvas');
         this.canvas.className = 'cifvis-atom-labels';
@@ -149,12 +197,147 @@ export class AtomLabelManager {
     setOptions(options) {
         this.options = options;
         this.previousPlacements.clear();
+        this.measurementCache.clear();
+        this.invalidateLayout();
     }
 
     setStructure(structure) {
         this.displayStructure = structure;
-        this.rings = findSmallRings(structure);
+        this.rings = null;
+        this.bondNeighbours.clear();
         this.previousPlacements.clear();
+        this.invalidateLayout();
+    }
+
+    prepareTopology() {
+        if (this.rings !== null) {
+            return;
+        }
+        this.rings = findSmallRings(this.displayStructure);
+        this.bondNeighbours = new Map(
+            this.displayStructure.atoms.map(atom => [atom.uniqueId, new Set()]),
+        );
+        for (const bond of this.displayStructure.bonds) {
+            if (this.bondNeighbours.has(bond.atom1Id) && this.bondNeighbours.has(bond.atom2Id)) {
+                this.bondNeighbours.get(bond.atom1Id).add(bond.atom2Id);
+                this.bondNeighbours.get(bond.atom2Id).add(bond.atom1Id);
+            }
+        }
+    }
+
+    invalidateLayout() {
+        this.forceNextLayout = true;
+        this.layoutRevision++;
+    }
+
+    /**
+     * Schedules label preparation after the current browser paint. Repeated
+     * render requests collapse into one layout and no worker backlog is built.
+     */
+    scheduleUpdate() {
+        if (this.disposed) {
+            return;
+        }
+        this.clearStaleFrame();
+        if (this.pendingLayout) {
+            this.layoutQueued = true;
+            return;
+        }
+        if (this.scheduledFrame !== null) {
+            return;
+        }
+        this.scheduledFrame = requestAnimationFrame(() => {
+            this.scheduledFrame = null;
+            void this.update();
+        });
+    }
+
+    /**
+     * Removes labels drawn for an old camera or molecule pose immediately.
+     * Waiting for an asynchronous replacement here would leave a visible
+     * after-image during rotation.
+     */
+    clearStaleFrame() {
+        if (!this.context || this.layout.placed.length === 0 ||
+            !this.lastMoleculeMatrix || !this.lastCameraMatrix ||
+            !this.lastProjectionMatrix) {
+            return;
+        }
+        const width = this.viewer.container.clientWidth;
+        const height = this.viewer.container.clientHeight;
+        const transformChanged = this.lastViewport?.width !== width ||
+            this.lastViewport?.height !== height ||
+            this.lastLayoutRevision !== this.layoutRevision ||
+            !this.lastMoleculeMatrix.equals(this.viewer.moleculeContainer.matrixWorld) ||
+            !this.lastCameraMatrix.equals(this.viewer.camera.matrixWorld) ||
+            !this.lastProjectionMatrix.equals(this.viewer.camera.projectionMatrix);
+        if (!transformChanged) {
+            return;
+        }
+        const dpr = window.devicePixelRatio || 1;
+        this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.context.clearRect(0, 0, width, height);
+    }
+
+    transformsUnchanged(width, height) {
+        return !this.forceNextLayout && this.lastViewport?.width === width &&
+            this.lastViewport?.height === height &&
+            this.lastMoleculeMatrix?.equals(this.viewer.moleculeContainer.matrixWorld) &&
+            this.lastCameraMatrix?.equals(this.viewer.camera.matrixWorld) &&
+            this.lastProjectionMatrix?.equals(this.viewer.camera.projectionMatrix);
+    }
+
+    rememberTransforms(width, height) {
+        this.lastViewport = { width, height };
+        this.lastMoleculeMatrix = this.viewer.moleculeContainer.matrixWorld.clone();
+        this.lastCameraMatrix = this.viewer.camera.matrixWorld.clone();
+        this.lastProjectionMatrix = this.viewer.camera.projectionMatrix.clone();
+        this.forceNextLayout = false;
+    }
+
+    captureLayoutState(width, height) {
+        return {
+            width,
+            height,
+            revision: this.layoutRevision,
+            moleculeMatrix: this.viewer.moleculeContainer.matrixWorld.clone(),
+            cameraMatrix: this.viewer.camera.matrixWorld.clone(),
+            projectionMatrix: this.viewer.camera.projectionMatrix.clone(),
+        };
+    }
+
+    layoutStateIsCurrent(state) {
+        return state.revision === this.layoutRevision &&
+            state.width === this.viewer.container.clientWidth &&
+            state.height === this.viewer.container.clientHeight &&
+            state.moleculeMatrix.equals(this.viewer.moleculeContainer.matrixWorld) &&
+            state.cameraMatrix.equals(this.viewer.camera.matrixWorld) &&
+            state.projectionMatrix.equals(this.viewer.camera.projectionMatrix);
+    }
+
+    getWorker() {
+        if (this.options.useWorker === false || this.workerUnavailable ||
+            typeof Worker === 'undefined') {
+            return null;
+        }
+        if (this.worker) {
+            return this.worker;
+        }
+        try {
+            this.worker = new AtomLabelWorker({
+                name: 'cifvis-atom-label-layout',
+            });
+            this.worker.onmessage = event => this.handleWorkerMessage(event.data);
+            this.worker.onerror = event => {
+                event.preventDefault?.();
+                this.handleWorkerFailure(new Error(event.message || 'Atom-label worker failed'));
+            };
+            return this.worker;
+        } catch (error) {
+            this.workerUnavailable = true;
+            console.warn('Atom-label worker unavailable; using main-thread layout.', error);
+            return null;
+        }
     }
 
     resize() {
@@ -275,14 +458,9 @@ export class AtomLabelManager {
 
     preferredDirection(atom, projectedAnchors) {
         const centre = projectedAnchors.get(atom.uniqueId);
-        const neighbours = [];
-        for (const bond of this.displayStructure.bonds) {
-            const otherId = bond.atom1Id === atom.uniqueId ? bond.atom2Id :
-                bond.atom2Id === atom.uniqueId ? bond.atom1Id : null;
-            if (otherId && projectedAnchors.has(otherId)) {
-                neighbours.push(projectedAnchors.get(otherId));
-            }
-        }
+        const neighbours = [...(this.bondNeighbours.get(atom.uniqueId) || [])]
+            .map(id => projectedAnchors.get(id))
+            .filter(Boolean);
         let x = 0;
         let y = 0;
         for (const neighbour of neighbours) {
@@ -309,24 +487,55 @@ export class AtomLabelManager {
             .filter(polygon => polygon.every(Boolean) && polygonArea(polygon) >= 25);
     }
 
+    /**
+     * Projects and measures labels, then delegates collision placement to a
+     * worker when available.
+     * @returns {Promise<object>} The accepted current layout
+     */
     update() {
         if (!this.context) {
-            return;
+            return Promise.resolve(this.layout);
+        }
+        if (this.pendingLayout) {
+            this.layoutQueued = true;
+            return new Promise(resolve => this.layoutWaiters.push(resolve));
         }
         this.resize();
         const width = this.viewer.container.clientWidth;
         const height = this.viewer.container.clientHeight;
-        const dpr = window.devicePixelRatio || 1;
-        this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
-        this.context.clearRect(0, 0, width, height);
-
-        const requests = this.resolveRequests();
-        if (requests.length === 0) {
-            this.layout = { placed: [], hidden: [] };
-            return;
-        }
         this.viewer.camera.updateMatrixWorld();
         this.viewer.moleculeContainer.updateMatrixWorld(true);
+        const now = performance.now();
+        const interacting = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning;
+        const requests = this.resolveRequests();
+        const deferUntilInteractionEnds = interacting &&
+            (this.options.placementMode === 'complete' ||
+                requests.length > this.options.interactionLabelLimit);
+        if (deferUntilInteractionEnds) {
+            if (this.options.hideLabelsDuringDeferredLayout) {
+                this.canvas.style.visibility = 'hidden';
+            }
+            return Promise.resolve(this.layout);
+        }
+        this.canvas.style.visibility = 'visible';
+        if (this.transformsUnchanged(width, height)) {
+            return Promise.resolve(this.layout);
+        }
+        if (interacting && !this.forceNextLayout &&
+            now - this.lastLayoutTime < this.options.layoutThrottleMs) {
+            return Promise.resolve(this.layout);
+        }
+        this.lastLayoutTime = now;
+        const dpr = window.devicePixelRatio || 1;
+        this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (requests.length === 0) {
+            this.layout = { placed: [], hidden: [] };
+            this.context.clearRect(0, 0, width, height);
+            this.rememberTransforms(width, height);
+            return Promise.resolve(this.layout);
+        }
+        this.prepareTopology();
         const projectedAnchors = this.projectAnchors();
         const font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
         this.context.font = font;
@@ -338,14 +547,19 @@ export class AtomLabelManager {
             if (!anchor || anchor.z < -1 || anchor.z > 1) {
                 return null;
             }
-            const metrics = this.context.measureText(request.text);
+            const measurementKey = `${font}\u0000${request.text}`;
+            let measuredWidth = this.measurementCache.get(measurementKey);
+            if (measuredWidth === undefined) {
+                measuredWidth = this.context.measureText(request.text).width;
+                this.measurementCache.set(measurementKey, measuredWidth);
+            }
             return {
                 id: request.atom.uniqueId,
                 text: request.text,
                 x: anchor.x,
                 y: anchor.y,
                 radius: anchor.radius,
-                width: metrics.width,
+                width: measuredWidth,
                 height: this.options.fontSize * 1.2,
                 priority: request.priority,
                 preferredDirection: this.preferredDirection(request.atom, projectedAnchors),
@@ -353,18 +567,120 @@ export class AtomLabelManager {
         }).filter(Boolean);
         const obstacles = [...projectedAnchors.values()]
             .filter(anchor => anchor.z >= -1 && anchor.z <= 1)
-            .map(anchor => ({ ...anchor, radius: anchor.radius + this.options.atomPadding }));
-
-        this.layout = layoutAtomLabels(
+            .map(anchor => ({
+                id: anchor.id,
+                x: anchor.x,
+                y: anchor.y,
+                radius: anchor.radius + this.options.atomPadding,
+            }));
+        const input = {
             labels,
-            obstacles,
-            this.projectBonds(projectedAnchors),
-            this.projectRings(projectedAnchors),
-            { width, height },
-            this.options,
-            this.previousPlacements,
+            atoms: obstacles,
+            bonds: this.projectBonds(projectedAnchors),
+            rings: this.projectRings(projectedAnchors)
+                .map(polygon => polygon.map(point => ({ x: point.x, y: point.y }))),
+            viewport: { width, height },
+            options: pickLayoutOptions(this.options),
+            previousPlacements: [...this.previousPlacements.entries()],
+        };
+        const state = this.captureLayoutState(width, height);
+        const worker = this.getWorker();
+        if (!worker) {
+            const layout = this.calculateLayout(input);
+            this.lastExecutionMode = this.workerUnavailable ?
+                'main-thread-fallback' : 'main-thread';
+            this.applyLayout(layout, state);
+            return Promise.resolve(layout);
+        }
+
+        const id = this.nextWorkerRequestId++;
+        this.pendingLayout = { id, input, state };
+        const result = new Promise(resolve => this.layoutWaiters.push(resolve));
+        worker.postMessage({ id, ...input });
+        return result;
+    }
+
+    calculateLayout(input) {
+        return layoutAtomLabels(
+            input.labels,
+            input.atoms,
+            input.bonds,
+            input.rings,
+            input.viewport,
+            input.options,
+            new Map(input.previousPlacements),
         );
-        this.previousPlacements = new Map(this.layout.placed.map(label => [label.id, label]));
+    }
+
+    handleWorkerMessage(message) {
+        if (!this.pendingLayout || message.id !== this.pendingLayout.id) {
+            return;
+        }
+        if (message.error) {
+            this.handleWorkerFailure(new Error(message.error));
+            return;
+        }
+
+        const { state } = this.pendingLayout;
+        this.pendingLayout = null;
+        const stale = this.layoutQueued || !this.layoutStateIsCurrent(state);
+        this.layoutQueued = false;
+        if (stale) {
+            this.forceNextLayout = true;
+            this.scheduleUpdate();
+            return;
+        }
+        this.applyLayout(message.layout, state);
+        this.lastExecutionMode = 'worker';
+        this.resolveLayoutWaiters(message.layout);
+    }
+
+    handleWorkerFailure(error) {
+        const pending = this.pendingLayout;
+        this.pendingLayout = null;
+        this.layoutQueued = false;
+        this.worker?.terminate();
+        this.worker = null;
+        this.workerUnavailable = true;
+        if (!pending || this.disposed) {
+            this.resolveLayoutWaiters(this.layout);
+            return;
+        }
+        console.warn('Atom-label worker failed; using main-thread layout.', error);
+        if (this.layoutStateIsCurrent(pending.state)) {
+            const layout = this.calculateLayout(pending.input);
+            this.lastExecutionMode = 'main-thread-fallback';
+            this.applyLayout(layout, pending.state);
+            this.resolveLayoutWaiters(layout);
+        } else {
+            this.forceNextLayout = true;
+            this.scheduleUpdate();
+        }
+    }
+
+    resolveLayoutWaiters(layout) {
+        const waiters = this.layoutWaiters.splice(0);
+        for (const resolve of waiters) {
+            resolve(layout);
+        }
+    }
+
+    applyLayout(layout, state) {
+        this.layout = layout;
+        this.previousPlacements = new Map(layout.placed.map(label => [label.id, label]));
+        this.lastViewport = { width: state.width, height: state.height };
+        this.lastMoleculeMatrix = state.moleculeMatrix;
+        this.lastCameraMatrix = state.cameraMatrix;
+        this.lastProjectionMatrix = state.projectionMatrix;
+        this.lastLayoutRevision = state.revision;
+        this.forceNextLayout = false;
+        const dpr = window.devicePixelRatio || 1;
+        this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.context.clearRect(0, 0, state.width, state.height);
+        this.context.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+        this.context.textAlign = 'center';
+        this.context.textBaseline = 'middle';
+        this.canvas.style.visibility = 'visible';
         this.draw();
     }
 
@@ -392,11 +708,21 @@ export class AtomLabelManager {
     }
 
     dispose() {
+        this.disposed = true;
+        if (this.scheduledFrame !== null) {
+            cancelAnimationFrame(this.scheduledFrame);
+            this.scheduledFrame = null;
+        }
+        this.worker?.terminate();
+        this.worker = null;
+        this.pendingLayout = null;
+        this.resolveLayoutWaiters(this.layout);
         this.canvas.remove();
         if (this.changedContainerPosition) {
             this.viewer.container.style.position = this.previousContainerPosition;
         }
         this.previousPlacements.clear();
+        this.measurementCache.clear();
         this.viewer = null;
     }
 }

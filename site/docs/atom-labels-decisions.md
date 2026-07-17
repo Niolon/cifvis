@@ -1,4 +1,4 @@
-# Atom labels: prototype decisions and compromises
+# Atom labels: implementation decisions and compromises
 
 This document records the assumptions made while adding atom labels as a first-class CifVis feature. It describes the current implementation, not an idealized future design.
 
@@ -36,13 +36,18 @@ All displayed atom footprints are obstacles, not just atoms which themselves hav
 
 ## Placement strategy
 
-- Sixteen angular candidates are generated close to each atom, followed by sixteen farther candidates.
+Two placement policies are supported:
+
+- `auto-omit` is the default. It uses short local leaders, rejects leaders which cross bonds, and omits a label rather than produce a confusing figure.
+- `complete` searches twice as far from the atom and then uses ordered callout lanes at the left and right viewport edges. Its leader lines may cross bonds and other leaders. Label text still may not cover atoms, bonds, or other labels, so a physically overfull viewport can still report `viewport-capacity`; "complete" means completeness is preferred, not that an impossible packing is forced.
+
+- Sixteen angular candidates are generated at each search distance: two distances in `auto-omit`, four in `complete`.
 - The preferred direction points away from the projected bonded neighbours. Terminal atoms therefore label away from their bond; atoms in ordinary rings normally label outward.
 - Isolated atoms and geometrically balanced atoms use a deterministic direction derived from their unique ID.
 - Candidates outside the viewport, overlapping an atom, or overlapping an already placed label are rejected.
 - Candidate rectangles intersecting a projected covalent- or hydrogen-bond corridor are rejected.
 - Farther candidates receive an automatic leader line.
-- Leader lines crossing bonds, atoms other than their anchor, placed labels, or other leader lines are rejected.
+- In `auto-omit`, leader lines crossing bonds, atoms other than their anchor, placed labels, or other leader lines are rejected. `complete` relaxes bond and leader crossings but never lets a leader pass through an unrelated atom or label.
 - Explicit priority is considered first; equal-priority labels use atom ID ordering for deterministic output.
 - Previous-frame direction is included in the score to reduce jumping while rotating.
 - If no candidate is valid, the label is reported as hidden with reason `no-space`. The implementation does not violate the no-overlap rule to force every label onto the figure.
@@ -69,12 +74,31 @@ Planarity is not currently calculated. Applying the penalty only to the projecte
 
 ## Interaction and performance
 
-- Layout runs only on frames the viewer already renders in `onDemand` mode.
-- Text measurement and full placement currently run again on each requested frame. Previous placement is used for stability but measurement and projection caches have not yet been added.
-- Collision checks are linear scans, not a spatial index. This is appropriate for a prototype and moderate publication figures but is not intended for thousands of labels.
+- The WebGL structure is rendered first. Label preparation is scheduled for the following animation frame so the browser can present the structure before label work begins.
+- Three.js projection and canvas text measurement remain on the main thread. The DOM-free collision solver runs in a self-contained inline Web Worker by default. `useWorker: false` is an escape hatch, and worker creation/runtime failures fall back to the main thread.
+- Only one worker request may be in flight. Camera changes are coalesced rather than queued, and results for obsolete transforms, viewports, structures, or options are discarded.
+- Whenever the camera or molecule pose changes, the old label canvas is cleared immediately. This clean sweep deliberately shows a temporarily label-free rotating structure instead of leaving labels ghosted at their previous coordinates.
+- `complete` layouts and layouts above `interactionLabelLimit` are deferred while dragging. The overlay is hidden by default and one fresh layout is requested when interaction ends. Smaller `auto-omit` layouts may update during interaction, bounded by `layoutThrottleMs`.
+- Text widths are cached by font and string. Bond adjacency is cached per displayed structure. Atom, bond, ring, placed-label, and leader collision queries use a uniform screen-space spatial hash.
+- Layout runs only on frames the viewer already renders in `onDemand` mode. Unchanged transform/projection state reuses the accepted layout.
 - `maxVisible` bounds the number of attempted labels. Labels excluded by this limit are reported with reason `max-visible`.
-- Ring topology is recalculated only when the displayed structure changes; ring polygons are projected each frame.
+- Label-only ring topology and bond-neighbour caches are built lazily after the first structure paint and only when labels are enabled. They are recalculated when the displayed structure changes; ring polygons are projected for each accepted pose.
 - The overlay follows device-pixel ratio while layout remains in CSS pixels.
+
+### Presentation-fixture stress check
+
+A July 2026 headless-Chrome check used a 1200×900 viewport, `cutout-2d`, `show: "all"`, `auto-omit`, and three forced cold end-to-end label updates per structure. The figures include projection, worker messaging, placement, and drawing. They are development-machine observations, not stable CI thresholds:
+
+| Presentation fixture | Displayed atoms | Post-modifier bonds | Placed / hidden | Median layout |
+| --- | ---: | ---: | ---: | ---: |
+| `capsaicin.cif` | 22 | 22 | 22 / 0 | 2.0 ms |
+| `fullerene.cif` | 237 | 297 | 83 / 154 | 21.6 ms |
+| `large_nobonds.cif` | 1,701 | 3,775 | 60 / 1,641 | 203.5 ms |
+| `large_bonds.cif` | 1,701 | 3,787 | 60 / 1,641 | 178.6 ms |
+
+`large_nobonds.cif` has thousands of post-modifier bonds because the normal missing-bond generator is part of the displayed-structure pipeline. Spatial indexing substantially reduces total computation, but a cold layout for 1,701 requested labels still takes much longer than a frame. The worker and interaction deferral therefore improve responsiveness and time-to-first-structure without pretending that the labels themselves are immediately available.
+
+Run the persistent harness with `npm run bench:labels`; pass `-- --mode complete`, a CIF path/directory, or the documented sizing and iteration flags to change the workload. With no paths it discovers the four sibling `cifvis_presentation` fixtures above.
 
 ## Lifecycle decisions
 
@@ -87,7 +111,7 @@ Planarity is not currently calculated. Applying the penalty only to the projecte
 ## Known follow-up work
 
 1. Add bounded local repair/backtracking so crowded layouts hide fewer labels.
-2. Cache text metrics and add a screen-space spatial index.
+2. Move projection off the main thread only if a compact camera/anchor representation proves faster than its serialization overhead; canvas text measurement must remain browser-dependent or use precomputed metrics.
 3. Calculate exact projected ellipsoid footprints if the conservative circles prove too wasteful.
 4. Sample perspective bond thickness at more than the midpoint if this approximation proves visible.
 5. Add an export API which composites WebGL and labels.

@@ -408,6 +408,14 @@ export class CrystalViewer {
                 `Must be one of: ${validRenderStyles.join(', ')}`,
             );
         }
+        const validLabelPlacementModes = ['auto-omit', 'complete'];
+        if (options.atomLabels?.placementMode &&
+            !validLabelPlacementModes.includes(options.atomLabels.placementMode)) {
+            throw new Error(
+                `Invalid atom label placement mode: "${options.atomLabels.placementMode}". ` +
+                `Must be one of: ${validLabelPlacementModes.join(', ')}`,
+            );
+        }
 
         this.container = container;
         const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
@@ -798,7 +806,7 @@ export class CrystalViewer {
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
-            this.atomLabelManager.update();
+            this.atomLabelManager.scheduleUpdate();
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
@@ -890,6 +898,12 @@ export class CrystalViewer {
      * @param {object} options - Partial atom-label options
      */
     updateAtomLabelOptions(options) {
+        if (options.placementMode && !['auto-omit', 'complete'].includes(options.placementMode)) {
+            throw new Error(
+                `Invalid atom label placement mode: "${options.placementMode}". ` +
+                'Must be one of: auto-omit, complete',
+            );
+        }
         this.options.atomLabels = {
             ...this.options.atomLabels,
             ...options,

@@ -314,6 +314,8 @@ export class ViewerControls {
             
             this.state.isDragging = false;
             this.state.pinchStartDistance = 0;  // Reset pinch distance when ending gesture
+            this.viewer.atomLabelManager?.invalidateLayout();
+            this.viewer.requestRender();
         }
     }
 
@@ -383,6 +385,8 @@ export class ViewerControls {
     handleMouseUp() {
         this.state.isDragging = false;
         this.state.isPanning = false;
+        this.viewer.atomLabelManager?.invalidateLayout();
+        this.viewer.requestRender();
     }
 
     /**
