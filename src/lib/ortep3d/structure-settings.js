@@ -186,6 +186,15 @@ export default {
     'differenceDensity': {
         'useWorker': true,
         'useSymmetry': true,
+        // Structure construction always completes first. When enabled, density
+        // parsing/calculation is scheduled afterwards in the density worker.
+        'autoLoad': false,
+        // auto first tries explicit FCF coefficients and then CIF observations
+        // plus an IAM Fcalc. The individual modes can be forced for diagnostics.
+        'inputMode': 'auto',
+        'reflections': {},
+        'iam': {},
+        'intensityScale': null,
         // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
         // columns can provide amplitudes/phases or direct A/B coefficients.
         'coefficientColumns': null,

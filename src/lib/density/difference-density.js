@@ -4,6 +4,8 @@ import { UnitCell } from '../structure/crystal.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
 import * as math from '../math-lite.js';
 import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
+import { createIAMStructureFactorCalculator } from './iam-structure-factors.js';
+import { readReflectionIntensities } from './reflection-intensities.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -386,6 +388,159 @@ function expandReflectionCoefficients(
     return coefficients;
 }
 
+/** @returns {object} Dataset with reciprocal lengths and common metadata. */
+function finalizeDifferenceDensityDataset(dataset, symmetry) {
+    if (dataset.coefficients.size === 0) {
+        throw new Error('Reflection source contains no usable difference-map coefficients');
+    }
+    const reciprocalTransform = math.transpose(math.inv(dataset.cell.fractToCartMatrix));
+    let maximumReciprocalLength = 0;
+    for (const coefficient of dataset.coefficients.values()) {
+        const reciprocal = math.multiply(
+            reciprocalTransform,
+            [coefficient.h, coefficient.k, coefficient.l],
+        );
+        coefficient.reciprocalLength = math.norm(reciprocal);
+        maximumReciprocalLength = Math.max(maximumReciprocalLength, coefficient.reciprocalLength);
+    }
+    return {
+        ...dataset,
+        maximumReciprocalLength,
+        symmetryOperations: symmetry.symmetryOperations.map(operation => ({
+            rotation: operation.rotMatrix.map(row => [...row]),
+            translation: [...operation.transVector],
+        })),
+    };
+}
+
+/** @returns {object} Positive scale fit and fit diagnostics. */
+function fitObservedIntensityScale(observations, calculated, configuredScale) {
+    const explicit = Number(configuredScale);
+    if (Number.isFinite(explicit) && explicit > 0) {
+        return { scale: explicit, fittedReflectionCount: 0, explicit: true };
+    }
+    let numerator = 0;
+    let denominator = 0;
+    let fittedReflectionCount = 0;
+    for (let index = 0; index < observations.length; index++) {
+        const observation = observations[index];
+        const calculatedSquared = calculated[index].amplitude ** 2;
+        if (!(observation.intensity > 0 && calculatedSquared > 0)) {
+            continue;
+        }
+        const weight = observation.sigma > 0 ? 1 / observation.sigma ** 2 : 1;
+        numerator += weight * observation.intensity * calculatedSquared;
+        denominator += weight * observation.intensity ** 2;
+        fittedReflectionCount++;
+    }
+    const scale = numerator / denominator;
+    if (!(Number.isFinite(scale) && scale > 0 && fittedReflectionCount > 0)) {
+        throw new Error('Could not fit a positive intensity scale against the IAM calculation');
+    }
+    return { scale, fittedReflectionCount, explicit: false };
+}
+
+/**
+ * Creates Fo-Fc coefficients from any supported observed-reflection source and
+ * an IAM calculation from the coordinate CIF.
+ * @param {string} cifText - CIF containing the observed reflections.
+ * @param {number|string} cifBlock - Reflection cell/symmetry block.
+ * @param {object} options - IAM, reflection-reading, and scale options.
+ * @returns {object} Difference-density dataset.
+ */
+export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options = {}) {
+    const cif = new CIF(cifText);
+    const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
+    const cell = UnitCell.fromCIF(block);
+    const symmetry = CellSymmetry.fromCIF(block);
+    const observed = readReflectionIntensities(cifText, cifBlock, options.reflections ?? {});
+    const coordinateCifText = options.coordinateCifText ?? cifText;
+    const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
+    const calculator = createIAMStructureFactorCalculator(
+        coordinateCifText,
+        coordinateCifBlock,
+        { ...options.iam, expectedCell: cell },
+    );
+    const calculated = calculator.calculate(observed.reflections);
+    const fitted = fitObservedIntensityScale(observed.reflections, calculated, options.intensityScale);
+    let negativeIntensityCount = 0;
+    let scaleResidualNumerator = 0;
+    let scaleResidualDenominator = 0;
+    const coefficientAt = index => {
+        const observation = observed.reflections[index];
+        const fCalculated = calculated[index];
+        const scaledIntensity = fitted.scale * observation.intensity;
+        if (scaledIntensity < 0) {
+            negativeIntensityCount++;
+        }
+        const observedAmplitude = Math.sqrt(Math.max(0, scaledIntensity));
+        const differenceAmplitude = observedAmplitude - fCalculated.amplitude;
+        const phase = Math.atan2(fCalculated.imaginary, fCalculated.real);
+        scaleResidualNumerator += Math.abs(scaledIntensity - fCalculated.amplitude ** 2);
+        scaleResidualDenominator += fCalculated.amplitude ** 2;
+        return {
+            real: differenceAmplitude * Math.cos(phase),
+            imaginary: differenceAmplitude * Math.sin(phase),
+        };
+    };
+    const h = observed.reflections.map(reflection => reflection.h);
+    const k = observed.reflections.map(reflection => reflection.k);
+    const l = observed.reflections.map(reflection => reflection.l);
+    const coefficients = expandReflectionCoefficients(h, k, l, coefficientAt, symmetry, true);
+    return finalizeDifferenceDensityDataset({
+        cell,
+        coefficients,
+        reflectionCount: observed.reflections.length,
+        coefficientMode: 'fo-fc-iam-phase',
+        omitF000: true,
+        anomalousDispersion: {
+            enabled: calculator.metadata.includeAnomalous,
+            target: 'both',
+            source: 'iam',
+        },
+        densitySource: 'cif-iam',
+        intensityScale: fitted.scale,
+        intensityScaleExplicit: fitted.explicit,
+        scaleFittedReflectionCount: fitted.fittedReflectionCount,
+        scaleR1: scaleResidualDenominator > 0
+            ? scaleResidualNumerator / scaleResidualDenominator
+            : null,
+        negativeIntensityCount,
+        observations: observed.metadata,
+        iam: calculator.metadata,
+    }, symmetry);
+}
+
+/**
+ * Parses an explicit FCF coefficient source or falls back to CIF observations
+ * plus IAM Fcalc when no usable coefficient loop exists.
+ * @param {string} text - FCF or coordinate/reflection CIF text.
+ * @param {number|string} block - CIF block.
+ * @param {object} options - Source selection and parser options.
+ * @returns {object} Difference-density dataset.
+ */
+export function parseDifferenceDensitySource(text, block = 0, options = {}) {
+    const inputMode = options.inputMode ?? 'auto';
+    if (!['auto', 'fcf', 'cif-iam'].includes(inputMode)) {
+        throw new Error('Difference-density inputMode must be "auto", "fcf", or "cif-iam"');
+    }
+    if (inputMode !== 'cif-iam') {
+        try {
+            return parseDifferenceDensityDataset(
+                text,
+                block,
+                options.coefficientColumns ?? null,
+                options.anomalousDispersion ?? null,
+            );
+        } catch (error) {
+            if (inputMode === 'fcf' || options.coefficientColumns) {
+                throw error;
+            }
+        }
+    }
+    return createCifDifferenceDensityDataset(text, block, options);
+}
+
 /** Performs an in-place radix-2 complex FFT on one line. */
 function fftLine(real, imaginary, inverse = false) {
     const length = real.length;
@@ -638,6 +793,9 @@ export function parseDifferenceDensityDataset(
         coefficientReader = {
             mode: 'fo-fc-common-phase',
             componentCount: 2,
+            defaultAnomalousTarget: measuredSquared !== null && calculatedSquared !== null
+                ? 'both'
+                : 'first',
             valueColumns: [phase, measuredSquared ?? measured, calculated ?? calculatedSquared],
             coefficientAt(index) {
                 const observedAmplitude = measuredSquared !== null
@@ -706,13 +864,14 @@ export function parseDifferenceDensityDataset(
                 phaseCheck,
             };
         } else {
+            const correctionTarget = options.target ?? coefficientReader.defaultAnomalousTarget ?? 'first';
             const correction = createAnomalousDispersionCorrection(
                 options.cifText,
                 options.cifBlock ?? 0,
                 options,
                 cell,
             );
-            const scale = anomalousCorrectionScale(options.target, coefficientReader.componentCount);
+            const scale = anomalousCorrectionScale(correctionTarget, coefficientReader.componentCount);
             coefficientAt = index => {
                 const coefficient = coefficientReader.coefficientAt(index);
                 const anomalous = correction.coefficientAt(
@@ -730,7 +889,7 @@ export function parseDifferenceDensityDataset(
                 requested: true,
                 generator,
                 phaseCheck,
-                target: options.target ?? 'first',
+                target: correctionTarget,
                 correctionScale: scale,
             };
         }
@@ -743,34 +902,15 @@ export function parseDifferenceDensityDataset(
         symmetry,
         omitF000,
     );
-    if (coefficients.size === 0) {
-        throw new Error('FCF contains no usable difference-map coefficients');
-    }
-
-    const reciprocalTransform = math.transpose(math.inv(cell.fractToCartMatrix));
-    let maximumReciprocalLength = 0;
-    for (const coefficient of coefficients.values()) {
-        const reciprocal = math.multiply(
-            reciprocalTransform,
-            [coefficient.h, coefficient.k, coefficient.l],
-        );
-        coefficient.reciprocalLength = math.norm(reciprocal);
-        maximumReciprocalLength = Math.max(maximumReciprocalLength, coefficient.reciprocalLength);
-    }
-
-    return {
+    return finalizeDifferenceDensityDataset({
         cell,
         coefficients,
         reflectionCount: h.length,
         coefficientMode: coefficientReader.mode,
         omitF000,
         anomalousDispersion: anomalousMetadata,
-        maximumReciprocalLength,
-        symmetryOperations: symmetry.symmetryOperations.map(operation => ({
-            rotation: operation.rotMatrix.map(row => [...row]),
-            translation: [...operation.transVector],
-        })),
-    };
+        densitySource: 'fcf',
+    }, symmetry);
 }
 
 /**
@@ -809,6 +949,14 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         coefficientMode: dataset.coefficientMode,
         omitF000: dataset.omitF000,
         anomalousDispersion: dataset.anomalousDispersion,
+        densitySource: dataset.densitySource,
+        intensityScale: dataset.intensityScale,
+        intensityScaleExplicit: dataset.intensityScaleExplicit,
+        scaleFittedReflectionCount: dataset.scaleFittedReflectionCount,
+        scaleR1: dataset.scaleR1,
+        negativeIntensityCount: dataset.negativeIntensityCount,
+        observations: dataset.observations,
+        iam: dataset.iam,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,
@@ -881,6 +1029,19 @@ export class DifferenceDensityMap {
                 coefficientColumns,
                 anomalousDispersion,
             ),
+        );
+    }
+
+    /**
+     * Calculates an Fo-Fc map from observed CIF intensities and an IAM model.
+     * @param {string} cifText - CIF containing coordinates and observed reflections.
+     * @param {number|string} [cifBlock] - CIF block index or name.
+     * @param {object} [options] - Reflection, IAM, and intensity-scale options.
+     * @returns {DifferenceDensityMap} Calculated difference-density map.
+     */
+    static fromReflectionCIF(cifText, cifBlock = 0, options = {}) {
+        return calculateDifferenceDensityMap(
+            createCifDifferenceDensityDataset(cifText, cifBlock, options),
         );
     }
 }

@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import {
     calculateDifferenceDensityMap,
+    createCifDifferenceDensityDataset,
     DifferenceDensityMap,
     parseDifferenceDensityDataset,
+    parseDifferenceDensitySource,
 } from './difference-density.js';
 
 const P1_FCF = `data_test
@@ -55,6 +57,35 @@ loop_
  _refln_B_second
  0 0 0 10 2 0 0 0 10 0 2 0
  1 0 0 4 1 60 0 90 5 2 1 -1
+`;
+
+const CIF_WITH_OBSERVED_INTENSITIES = `data_observed
+loop_
+ _space_group_symop_operation_xyz
+ 'x,y,z'
+_cell_length_a 10
+_cell_length_b 10
+_cell_length_c 10
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+ _atom_site_U_iso_or_equiv
+ C1 C 0 0 0 1 0
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_F_squared_meas
+ _refln_F_squared_sigma
+ 1 0 0 100 2
+ 2 0 0 25 1
 `;
 
 /**
@@ -117,6 +148,40 @@ describe('DifferenceDensityMap', () => {
             expect(oversampled.sample(fractionalX, 0, 0))
                 .toBeCloseTo(regular.sample(fractionalX, 0, 0), 6);
         }
+    });
+
+    test('constructs a scaled IAM-phased Fo-Fc map from a reflection CIF', () => {
+        const dataset = createCifDifferenceDensityDataset(CIF_WITH_OBSERVED_INTENSITIES);
+        const map = calculateDifferenceDensityMap(dataset);
+
+        expect(dataset).toMatchObject({
+            densitySource: 'cif-iam',
+            coefficientMode: 'fo-fc-iam-phase',
+            reflectionCount: 2,
+            observations: { source: 'refln', alreadyMerged: true },
+            iam: { model: 'IAM' },
+        });
+        expect(dataset.intensityScale).toBeGreaterThan(0);
+        expect(dataset.scaleFittedReflectionCount).toBe(2);
+        expect(dataset.scaleR1).toBeGreaterThan(0);
+        expect(map.densitySource).toBe('cif-iam');
+        expect(map.sigma).toBeGreaterThan(0);
+        expect([...map.values].every(Number.isFinite)).toBe(true);
+
+        const staticMap = DifferenceDensityMap.fromReflectionCIF(CIF_WITH_OBSERVED_INTENSITIES);
+        expect(staticMap.densitySource).toBe('cif-iam');
+        expect(staticMap.reflectionCount).toBe(2);
+    });
+
+    test('automatically falls back from absent FCF phases to CIF observations plus IAM', () => {
+        const automatic = parseDifferenceDensitySource(CIF_WITH_OBSERVED_INTENSITIES);
+
+        expect(automatic.densitySource).toBe('cif-iam');
+        expect(() => parseDifferenceDensitySource(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { inputMode: 'fcf' },
+        )).toThrow(/phase_calc/);
     });
 
     test('supports custom amplitudes with one common phase', () => {

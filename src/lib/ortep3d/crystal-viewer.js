@@ -14,7 +14,7 @@ import { AtomLabelManager } from './atom-label-manager.js';
 import {
     calculateDifferenceDensityMap,
     DifferenceDensityMap,
-    parseDifferenceDensityDataset,
+    parseDifferenceDensitySource,
 } from '../density/difference-density.js';
 import {
     differenceDensitySurfaceResolution,
@@ -671,6 +671,7 @@ export class CrystalViewer {
      * This is the main entry point for displaying a new structure.
      * @param {string} cifText - CIF format text content
      * @param {number|string} [cifBlock] - Index or name of the CIF block to load (for multi-block CIFs)
+     * @param {object} [options] - Per-load options; differenceDensity enables deferred automatic density.
      * @returns {Promise<object>} Result object with:
      * - success: Boolean indicating if loading succeeded
      * - error: Error message if loading failed
@@ -688,7 +689,7 @@ export class CrystalViewer {
      * }
      * ```
      */
-    async loadCIF(cifText, cifBlock = 0) {
+    async loadCIF(cifText, cifBlock = 0, options = {}) {
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
@@ -727,7 +728,29 @@ export class CrystalViewer {
             this.state.currentCifContent = cifText;
             this.state.currentCifBlock = cifBlock;
 
-            return { success: true };
+            const densityRequest = options.differenceDensity ??
+                this.options.differenceDensity.autoLoad;
+            if (!densityRequest) {
+                return { success: true };
+            }
+            const densityOptions = densityRequest === true ? {} : densityRequest;
+            if (typeof densityOptions !== 'object' || Array.isArray(densityOptions)) {
+                return {
+                    success: false,
+                    error: 'loadCIF differenceDensity must be true, false, or an options object',
+                };
+            }
+            // Structure installation and its initial render are complete before
+            // density work is even scheduled. In browsers, all reflection/IAM/
+            // FFT work then stays inside the dedicated density worker.
+            const differenceDensity = new Promise(resolve => setTimeout(() => {
+                if (this.state.currentCifContent !== cifText || this.state.currentCifBlock !== cifBlock) {
+                    resolve({ success: false, cancelled: true, error: 'Coordinate structure changed' });
+                    return;
+                }
+                this.loadDifferenceDensity(cifText, cifBlock, densityOptions).then(resolve);
+            }, 0));
+            return { success: true, differenceDensityStarted: true, differenceDensity };
         } catch (error) {
             console.error('Error loading structure:', error);
             return { success: false, error: error.message };
@@ -865,8 +888,7 @@ export class CrystalViewer {
                 loadId,
                 fcfText,
                 fcfBlock,
-                coefficientColumns: this.options.differenceDensity.coefficientColumns,
-                anomalousDispersion: this.differenceDensityAnomalousDispersionOptions(),
+                datasetOptions: this.differenceDensityDatasetOptions(),
                 steps: this.options.differenceDensity.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -885,11 +907,10 @@ export class CrystalViewer {
      */
     async loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId) {
         try {
-            const dataset = parseDifferenceDensityDataset(
+            const dataset = parseDifferenceDensitySource(
                 fcfText,
                 fcfBlock,
-                this.options.differenceDensity.coefficientColumns,
-                this.differenceDensityAnomalousDispersionOptions(),
+                this.differenceDensityDatasetOptions(),
             );
             const steps = this.normalizedDifferenceDensitySteps();
             const finalOversampling = Math.max(
@@ -960,6 +981,20 @@ export class CrystalViewer {
         };
     }
 
+    /** @returns {object} Worker-safe coefficient or CIF/IAM dataset options. */
+    differenceDensityDatasetOptions() {
+        return {
+            inputMode: this.options.differenceDensity.inputMode,
+            coefficientColumns: this.options.differenceDensity.coefficientColumns,
+            anomalousDispersion: this.differenceDensityAnomalousDispersionOptions(),
+            coordinateCifText: this.state.currentCifContent,
+            coordinateCifBlock: this.state.currentCifBlock,
+            reflections: this.options.differenceDensity.reflections,
+            iam: this.options.differenceDensity.iam,
+            intensityScale: this.options.differenceDensity.intensityScale,
+        };
+    }
+
     /** @returns {number[]} Valid ordered surface-resolution fractions. */
     normalizedDifferenceDensitySteps() {
         const steps = (Array.isArray(this.options.differenceDensity.progressiveSteps)
@@ -1018,6 +1053,11 @@ export class CrystalViewer {
             coefficientMode: densityMap.coefficientMode,
             omitF000: densityMap.omitF000,
             anomalousDispersion: densityMap.anomalousDispersion,
+            densitySource: densityMap.densitySource,
+            intensityScale: densityMap.intensityScale,
+            scaleR1: densityMap.scaleR1,
+            observations: densityMap.observations,
+            iam: densityMap.iam,
             sigma: densityMap.sigma,
             minimum: densityMap.minimum,
             maximum: densityMap.maximum,
@@ -1073,6 +1113,11 @@ export class CrystalViewer {
             coefficientMode: densityMap.coefficientMode,
             omitF000: densityMap.omitF000,
             anomalousDispersion: densityMap.anomalousDispersion,
+            densitySource: densityMap.densitySource,
+            intensityScale: densityMap.intensityScale,
+            scaleR1: densityMap.scaleR1,
+            observations: densityMap.observations,
+            iam: densityMap.iam,
             dimensions: [...densityMap.dimensions],
             gridOversampling: densityMap.gridOversampling,
             sigma: densityMap.sigma,

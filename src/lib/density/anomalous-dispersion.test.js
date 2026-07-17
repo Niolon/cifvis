@@ -60,6 +60,27 @@ loop_
  1 0 0 5 2 1 -1
 `;
 
+const FCF4_CIF = `data_reflections
+_computing_structure_refinement 'olex2.refine 1.5'
+loop_
+ _space_group_symop_operation_xyz
+ 'x,y,z'
+_cell_length_a 1
+_cell_length_b 1
+_cell_length_c 1
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_phase_calc
+ _refln_F_squared_meas
+ _refln_F_squared_calc
+ 1 0 0 0 25 4
+`;
+
 /**
  * @param {number} positivePhase - Calculated phase for h.
  * @param {number} negativePhase - Calculated phase for -h.
@@ -186,6 +207,28 @@ describe('anomalous dispersion correction', () => {
         expect(second.imaginary).toBeCloseTo(3.5, 12);
         expect(both.real).toBeCloseTo(4, 12);
         expect(both.imaginary).toBeCloseTo(3, 12);
+    });
+
+    test('corrects both anomalous operands by default for FCF4 Fo-squared and Fc-squared', () => {
+        const coordinateCif = MODEL_CIF.replace(
+            'C1 C 0 0 0 0.5 0.1',
+            'C1 C 0 0 0 1 0',
+        );
+        const dataset = parseDifferenceDensityDataset(
+            FCF4_CIF,
+            0,
+            null,
+            { cifText: coordinateCif },
+        );
+        const coefficient = dataset.coefficients.get('1,0,0');
+
+        expect(coefficient.real).toBeCloseTo(3, 12);
+        expect(coefficient.imaginary).toBeCloseTo(0, 12);
+        expect(dataset.anomalousDispersion).toMatchObject({
+            enabled: true,
+            target: 'both',
+            correctionScale: 0,
+        });
     });
 
     test('uses CIF type values before the wavelength-selected internal table', () => {

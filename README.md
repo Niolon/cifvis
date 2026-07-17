@@ -77,6 +77,29 @@ For a comprehensive list of options and the use of the widget, look at the inter
 </script>
 ```
 
+When coordinates and observed reflections are in the same CIF, the viewer can
+calculate IAM phases and an Fo-Fc map automatically:
+
+```javascript
+const viewer = new CrystalViewer(document.getElementById('viewer'), {
+  differenceDensity: { autoLoad: true },
+});
+
+const loaded = await viewer.loadCIF(cifContent);
+// The structure is installed and can render before density processing starts.
+const density = await loaded.differenceDensity;
+```
+
+Alternatively, enable it for one load with
+`viewer.loadCIF(cifContent, 0, { differenceDensity: true })`. Automatic loading
+is off by default, so normal structure loads do not start a worker or parse any
+reflections. When enabled in a browser, reflection extraction and merging, IAM
+structure factors, scale fitting, FFT, and progressive map calculation all run
+in the dedicated density worker after structure construction. `inputMode:
+'auto'` uses explicit FCF coefficients when available and otherwise constructs
+the coefficients from the CIF observations and IAM calculation; use `'fcf'` or
+`'cif-iam'` to force either path.
+
 #### Custom and deformation-density coefficients
 
 Quantum-crystallographic reflection loops can select arbitrary columns through
@@ -128,7 +151,7 @@ await viewer.loadDifferenceDensity(reflectionCif, 0, {
     b: ['_refln_B_experimental', '_refln_B_theoretical'],
   },
   anomalousDispersion: {
-    target: 'first', // default: correct F1 before forming F1 - F2
+    target: 'first', // custom columns: correct F1 before forming F1 - F2
   },
 });
 ```
@@ -147,6 +170,13 @@ Set `anomalousDispersion: false` (the default) to disable correction entirely.
 When retaining an anomalous-dispersion configuration for custom deformation
 coefficients, `anomalousDispersion: { phaseDetection: false }` explicitly
 disables both phase classification and correction for that load.
+
+For the built-in FCF4 Fo-Fc reader, measured and calculated F-squared values
+both contain the anomalous contribution, so `target: 'both'` is the automatic
+default. The correction therefore cancels in the final difference coefficient,
+while its phase classification and metadata still record that both operands
+were treated consistently. Custom coefficient layouts retain `target: 'first'`
+as their default and can override it explicitly.
 
 The calculation includes site occupancies, isotropic or anisotropic ADPs, all
 space-group mates, and special positions. Dispersion factors are resolved in
@@ -205,6 +235,44 @@ anomalous terms are zero; missing normal factors are an error.
 equivalent. Run `npm run bench:iam -- structure.cif` to time model construction
 and reflection calculation; when the CIF embeds an FCF, the benchmark also
 reports agreement with its `_refln_F_squared_calc` values.
+
+#### Observed reflection intensities
+
+Observed intensities can be normalized for direct comparison with IAM
+structure factors:
+
+```javascript
+import {
+  createIAMStructureFactorCalculator,
+  readReflectionIntensities,
+} from 'cifvis/nobrowser';
+
+const observed = readReflectionIntensities(coordinateCif);
+const calculated = createIAMStructureFactorCalculator(coordinateCif)
+  .calculate(observed.reflections);
+```
+
+The reader first uses an already merged `_refln` loop, including an embedded
+`_iucr_refine_fcf_details` FCF when present. It accepts measured intensity,
+F-squared, or F columns and converts amplitudes to intensity when necessary.
+If no merged data are available, it reads `_diffrn_refln_intensity_net` with
+its `_u`/`_sigma` uncertainty, or a fixed-width `_shelx_hkl_file` multiline
+entry. SHELX zero terminators are not treated as observations.
+
+Raw `_diffrn_refln` and SHELX observations are filtered using the full
+space-group general-position phase sum, so centering, screw-axis, and glide
+systematic absences are removed before merging. Remaining equivalents use
+inverse-variance weights. Friedel pairs are merged by default; set
+`mergeFriedel: false` when anomalous differences must be retained. For source
+diagnostics, `source` can force `refln`, `diffrn_refln`, or `shelx_hkl_file`.
+The result metadata reports input/output counts, invalid rows, removed
+systematic absences, and whether the source was already merged.
+
+For a non-viewer calculation, `DifferenceDensityMap.fromReflectionCIF(cif)`
+performs the complete observed-intensity/IAM calculation. The fitted positive
+intensity scale maps observed intensities onto IAM `|Fc|^2`; negative measured
+intensities are retained during merging and contribute zero observed amplitude
+when the final `Fo-Fc` coefficient is formed.
 
 
 

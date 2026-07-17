@@ -1,7 +1,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 import {
     calculateDifferenceDensityMap,
-    parseDifferenceDensityDataset,
+    parseDifferenceDensitySource,
 } from './difference-density.js';
 
 const continuationResolvers = new Map();
@@ -35,6 +35,14 @@ function mapPayload(map) {
         coefficientMode: map.coefficientMode,
         omitF000: map.omitF000,
         anomalousDispersion: map.anomalousDispersion,
+        densitySource: map.densitySource,
+        intensityScale: map.intensityScale,
+        intensityScaleExplicit: map.intensityScaleExplicit,
+        scaleFittedReflectionCount: map.scaleFittedReflectionCount,
+        scaleR1: map.scaleR1,
+        negativeIntensityCount: map.negativeIntensityCount,
+        observations: map.observations,
+        iam: map.iam,
         symmetryOperations: map.symmetryOperations,
         resolutionFraction: map.resolutionFraction,
         gridOversampling: map.gridOversampling,
@@ -56,11 +64,10 @@ function waitForContinuation(loadId, stepIndex) {
 async function calculateProgressively(message) {
     const started = performance.now();
     try {
-        const dataset = parseDifferenceDensityDataset(
+        const dataset = parseDifferenceDensitySource(
             message.fcfText,
             message.fcfBlock,
-            message.coefficientColumns,
-            message.anomalousDispersion,
+            message.datasetOptions,
         );
         const steps = normalizedSteps(message.steps);
         const finalOversampling = Math.max(1, Number(message.gridOversampling) || 1);

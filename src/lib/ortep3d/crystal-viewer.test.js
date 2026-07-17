@@ -1,6 +1,26 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CrystalViewer } from './crystal-viewer.js';
 
+const MINIMAL_CIF_WITH_STRUCTURE = `data_structure
+loop_
+ _space_group_symop_operation_xyz
+ 'x,y,z'
+_cell_length_a 10
+_cell_length_b 10
+_cell_length_c 10
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_U_iso_or_equiv
+ C1 C 0 0 0 0
+`;
+
 describe('CrystalViewer rendering option validation', () => {
     test('rejects an invalid render style before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, { renderStyle: 'print' })).toThrow(
@@ -114,6 +134,61 @@ describe('CrystalViewer atom-label runtime option validation', () => {
 });
 
 describe('CrystalViewer progressive difference-density events', () => {
+    test('does not start density work during an ordinary structure load', async () => {
+        const viewer = {
+            state: { differenceDensityMap: null },
+            options: {
+                fixCifErrors: false,
+                differenceDensity: { autoLoad: false },
+            },
+            cancelDifferenceDensityLoad: vi.fn(),
+            removeDifferenceDensity3D: vi.fn(),
+            loadStructure: vi.fn(async structure => {
+                viewer.state.baseStructure = structure;
+            }),
+            loadDifferenceDensity: vi.fn(),
+        };
+
+        const result = await CrystalViewer.prototype.loadCIF.call(
+            viewer,
+            MINIMAL_CIF_WITH_STRUCTURE,
+        );
+
+        expect(result).toEqual({ success: true });
+        expect(viewer.loadDifferenceDensity).not.toHaveBeenCalled();
+    });
+
+    test('installs the structure before scheduling automatic density work', async () => {
+        const order = [];
+        const viewer = {
+            state: { differenceDensityMap: null },
+            options: {
+                fixCifErrors: false,
+                differenceDensity: { autoLoad: true },
+            },
+            cancelDifferenceDensityLoad: vi.fn(),
+            removeDifferenceDensity3D: vi.fn(),
+            loadStructure: vi.fn(async structure => {
+                order.push('structure');
+                viewer.state.baseStructure = structure;
+            }),
+            loadDifferenceDensity: vi.fn(async () => {
+                order.push('density');
+                return { success: true };
+            }),
+        };
+
+        const result = await CrystalViewer.prototype.loadCIF.call(
+            viewer,
+            MINIMAL_CIF_WITH_STRUCTURE,
+        );
+
+        expect(result).toMatchObject({ success: true, differenceDensityStarted: true });
+        expect(order).toEqual(['structure']);
+        expect(await result.differenceDensity).toEqual({ success: true });
+        expect(order).toEqual(['structure', 'density']);
+    });
+
     test('subscribes and unsubscribes update listeners', () => {
         const viewer = { differenceDensityUpdateCallbacks: new Set() };
         const updates = [];
