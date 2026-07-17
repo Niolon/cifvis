@@ -1,38 +1,12 @@
 /* eslint-disable jsdoc/require-jsdoc */
 import { CIF } from '../read-cif/base.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
-import * as math from '../math-lite.js';
-
-const TWO_PI = 2 * Math.PI;
-const SYMMETRY_KERNELS = new WeakMap();
-
-function finiteNumber(value) {
-    if (value === null || value === undefined || value === '.' || value === '?') {
-        return null;
-    }
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-}
-
-function loopColumn(loop, names, defaultValue = null) {
-    if (!loop) {
-        return defaultValue;
-    }
-    try {
-        return loop.get(names, defaultValue);
-    } catch {
-        return defaultValue;
-    }
-}
-
-function optionalLoop(block, name) {
-    try {
-        const loop = block.get(name, null);
-        return loop && typeof loop.get === 'function' ? loop : null;
-    } catch {
-        return null;
-    }
-}
+import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
+import {
+    canonicalReflectionIndex,
+    compareReflectionIndices,
+    isGeneralPositionSystematicAbsence,
+} from './reciprocal-symmetry.js';
 
 function blockOrder(cif, selectedBlock) {
     return [selectedBlock, ...cif.getAllBlocks().filter(block => block !== selectedBlock)];
@@ -196,47 +170,6 @@ function embeddedReflectionLoops(block) {
     return result;
 }
 
-function multiplyIndex(matrix, reflection) {
-    return matrix.map(row => {
-        const value = row[0] * reflection[0] + row[1] * reflection[1] + row[2] * reflection[2];
-        const rounded = Math.round(value);
-        return Object.is(rounded, -0) ? 0 : rounded;
-    });
-}
-
-function symmetryKernel(symmetry) {
-    let kernel = SYMMETRY_KERNELS.get(symmetry);
-    if (!kernel) {
-        kernel = symmetry.symmetryOperations.map(operation => ({
-            reciprocalRotation: math.transpose(math.inv(operation.rotMatrix)),
-            positionReciprocalRotation: math.transpose(operation.rotMatrix),
-            translation: operation.transVector,
-        }));
-        SYMMETRY_KERNELS.set(symmetry, kernel);
-    }
-    return kernel;
-}
-
-function compareIndices(first, second) {
-    for (let index = 0; index < 3; index++) {
-        if (first[index] !== second[index]) {
-            return first[index] - second[index];
-        }
-    }
-    return 0;
-}
-
-function canonicalIndex(h, k, l, symmetry, mergeFriedel) {
-    const equivalents = symmetryKernel(symmetry).map(operation =>
-        multiplyIndex(operation.reciprocalRotation, [h, k, l]),
-    );
-    if (mergeFriedel) {
-        equivalents.push(...equivalents.map(indices => indices.map(value => value === 0 ? 0 : -value)));
-    }
-    equivalents.sort(compareIndices);
-    return equivalents[0];
-}
-
 /**
  * Tests whether the general-position phase sum is zero for a reflection.
  * @param {number} h - Miller h.
@@ -247,24 +180,7 @@ function canonicalIndex(h, k, l, symmetry, mergeFriedel) {
  * @returns {boolean} Whether the reflection is systematically absent.
  */
 export function isSystematicAbsence(h, k, l, symmetry, tolerance = 1e-8) {
-    if (h === 0 && k === 0 && l === 0) {
-        return false;
-    }
-    const sums = new Map();
-    for (const operation of symmetryKernel(symmetry)) {
-        const transformed = multiplyIndex(operation.positionReciprocalRotation, [h, k, l]);
-        const key = transformed.join(',');
-        const phase = TWO_PI * (
-            h * operation.translation[0] +
-            k * operation.translation[1] +
-            l * operation.translation[2]
-        );
-        const sum = sums.get(key) ?? { real: 0, imaginary: 0 };
-        sum.real += Math.cos(phase);
-        sum.imaginary += Math.sin(phase);
-        sums.set(key, sum);
-    }
-    return [...sums.values()].every(sum => Math.hypot(sum.real, sum.imaginary) <= tolerance);
+    return isGeneralPositionSystematicAbsence(h, k, l, symmetry, tolerance);
 }
 
 /**
@@ -302,7 +218,7 @@ export function mergeReflectionIntensities(reflections, symmetry, options = {}) 
         }
         let canonical = canonicalCache.get(inputKey);
         if (!canonical) {
-            canonical = canonicalIndex(
+            canonical = canonicalReflectionIndex(
                 reflection.h,
                 reflection.k,
                 reflection.l,
@@ -351,7 +267,7 @@ export function mergeReflectionIntensities(reflections, symmetry, options = {}) 
             multiplicity: group.observations.length,
         };
     });
-    merged.sort((first, second) => compareIndices(
+    merged.sort((first, second) => compareReflectionIndices(
         [first.h, first.k, first.l],
         [second.h, second.k, second.l],
     ));
@@ -374,16 +290,24 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
     const allowSource = source => requestedSource === 'auto' || requestedSource === source;
 
     if (allowSource('refln')) {
-        const direct = blocks.map(block => optionalLoop(block, '_refln')).find(Boolean);
-        const embedded = direct ? null : blocks.flatMap(embeddedReflectionLoops)[0];
-        const loop = direct ?? embedded;
-        if (loop) {
+        const candidates = [
+            ...blocks.map(block => optionalLoop(block, '_refln')).filter(Boolean).map(loop => ({
+                loop,
+                source: 'refln',
+            })),
+            ...blocks.flatMap(embeddedReflectionLoops).map(loop => ({
+                loop,
+                source: 'embedded-refln',
+            })),
+        ];
+        let unsupportedError = null;
+        for (const candidate of candidates) {
             try {
-                const parsed = mergedLoopRows(loop);
+                const parsed = mergedLoopRows(candidate.loop);
                 return {
                     reflections: parsed.rows.map(row => ({ ...row, multiplicity: 1 })),
                     metadata: {
-                        source: embedded ? 'embedded-refln' : 'refln',
+                        source: candidate.source,
                         valueKind: parsed.valueKind,
                         alreadyMerged: true,
                         inputCount: parsed.rows.length + parsed.invalidCount,
@@ -394,10 +318,14 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
                     },
                 };
             } catch (error) {
-                if (requestedSource !== 'auto' || !error.message.includes('contains no measured')) {
+                if (!error.message.includes('contains no measured')) {
                     throw error;
                 }
+                unsupportedError = error;
             }
+        }
+        if (requestedSource === 'refln' && unsupportedError) {
+            throw unsupportedError;
         }
     }
 

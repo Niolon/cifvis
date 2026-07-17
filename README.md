@@ -107,6 +107,12 @@ Quantum-crystallographic reflection loops can select arbitrary columns through
 single phase is shared; two phases form the full complex difference
 `F1 exp(i phi1) - F2 exp(i phi2)`.
 
+Any explicitly configured or self-described custom coefficient loop is treated
+as a deformation density. Its default positive/negative colors are light blue
+(`#4FC3F7`) and orange (`#FF9800`), distinct from the green/red defaults used
+for standard FCF and IAM Fo-Fc difference maps. All four colors remain
+individually configurable.
+
 ```javascript
 await viewer.loadDifferenceDensity(reflectionCif, 0, {
   coefficientColumns: {

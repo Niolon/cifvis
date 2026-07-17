@@ -1,5 +1,6 @@
 /* eslint-disable jsdoc/require-jsdoc, jsdoc/require-param */
 import { createStructureFactorModel } from './structure-factor-model.js';
+import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 
 const ELEMENTS = (
     'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni ' +
@@ -73,11 +74,6 @@ const INTERNAL_TABLES = Object.fromEntries(Object.entries(INTERNAL_TABLE_DATA).m
     }];
 }));
 
-function finiteNumber(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-}
-
 function normalizeElement(typeSymbol) {
     const match = String(typeSymbol).trim().match(/^([A-Za-z]{1,2})/);
     if (!match) {
@@ -119,31 +115,6 @@ export function lookupAnomalousDispersion(typeSymbol, wavelength, options = {}) 
     const table = configuredTable(options, finiteNumber(wavelength));
     const value = element && table?.values.get(element);
     return value ? { ...value, table: table.key, wavelength: table.wavelength } : null;
-}
-
-function optionalLoop(block, names) {
-    for (const name of names) {
-        try {
-            const value = block.get(name);
-            if (value && typeof value.get === 'function') {
-                return value;
-            }
-        } catch {
-            // Try the next category alias.
-        }
-    }
-    return null;
-}
-
-function loopColumn(loop, names, defaultValue = null) {
-    if (!loop) {
-        return defaultValue;
-    }
-    try {
-        return loop.get(names, defaultValue);
-    } catch {
-        return defaultValue;
-    }
 }
 
 function dispersionRows(block, categoryNames, labelNames) {
@@ -230,6 +201,7 @@ export function createAnomalousDispersionCorrection(cifText, cifBlock = 0, optio
     const model = createStructureFactorModel(cifText, cifBlock, {
         expectedCell,
         wavelength: options.wavelength,
+        structureModel: options.structureModel,
         resolveAtom({ atom, block, wavelength }) {
             internal ??= configuredTable(options, wavelength);
             siteValues ??= dispersionRows(

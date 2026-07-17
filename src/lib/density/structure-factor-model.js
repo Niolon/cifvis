@@ -1,45 +1,17 @@
-/* eslint-disable jsdoc/require-jsdoc */
+/* eslint-disable jsdoc/require-jsdoc, jsdoc/require-param -- compact model helpers */
 import { CIF } from '../read-cif/base.js';
 import { Atom, UnitCell } from '../structure/crystal.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { FractPosition } from '../structure/position.js';
 import * as math from '../math-lite.js';
+import { cellsMatch as cellMatches } from './cell-matching.js';
+import { finiteNumber, numericScalar } from './cif-values.js';
 
 const TWO_PI = 2 * Math.PI;
 
-export function finiteNumber(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-}
-
-export function cellMatches(first, second) {
-    for (const parameter of ['a', 'b', 'c']) {
-        if (Math.abs(first[parameter] - second[parameter]) / Math.max(1, first[parameter]) > 1e-3) {
-            return false;
-        }
-    }
-    for (const parameter of ['alpha', 'beta', 'gamma']) {
-        if (Math.abs(first[parameter] - second[parameter]) > 1e-2) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function scalar(block, names) {
-    for (const name of names) {
-        try {
-            const number = finiteNumber(block.get(name, null));
-            if (number !== null) {
-                return number;
-            }
-        } catch {
-            // Try the next spelling.
-        }
-    }
-    return null;
-}
+export { finiteNumber } from './cif-values.js';
+export { cellMatches };
 
 function displacementParameters(atom, cell, cartesianRotation) {
     if (atom.adp instanceof UIsoADP) {
@@ -93,6 +65,99 @@ function reflectionIndices(reflection) {
     return [reflection.h, reflection.k, reflection.l];
 }
 
+/** @returns {object|null} Plain displacement data safe for structured cloning. */
+function serializeAdp(adp) {
+    if (adp instanceof UIsoADP) {
+        return { type: 'Uiso', values: [adp.uiso] };
+    }
+    if (adp instanceof UAnisoADP) {
+        return {
+            type: 'Uani',
+            values: [adp.u11, adp.u22, adp.u33, adp.u12, adp.u13, adp.u23],
+        };
+    }
+    return null;
+}
+
+/** @returns {UIsoADP|UAnisoADP|null} Reconstructed displacement object. */
+function deserializeAdp(adp) {
+    if (adp?.type === 'Uiso') {
+        return new UIsoADP(adp.values[0]);
+    }
+    if (adp?.type === 'Uani') {
+        return new UAnisoADP(...adp.values);
+    }
+    return null;
+}
+
+/** @returns {boolean} Whether an ADP has a materially negative Cartesian eigenvalue. */
+function isNpdAdp(adp, cell) {
+    if (adp instanceof UIsoADP) {
+        return adp.uiso < -1e-10;
+    }
+    if (!(adp instanceof UAnisoADP)) {
+        return false;
+    }
+    const matrix = adp.getUCart(cell);
+    const symmetric = [
+        [matrix[0], matrix[3], matrix[4]],
+        [matrix[3], matrix[1], matrix[5]],
+        [matrix[4], matrix[5], matrix[2]],
+    ];
+    return math.eigs(symmetric).eigenvectors.some(entry => entry.value < -1e-10);
+}
+
+/**
+ * Captures the already constructed/repaired coordinate model for worker use.
+ * Occupancies remain sourced from the atom-site loop because display Atom
+ * objects intentionally do not carry refinement-only site metadata.
+ * @returns {object} Structured-clone-safe structure-factor input.
+ */
+export function createStructureFactorModelInput(structure, block) {
+    const atomSite = block.get('_atom_site');
+    const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
+    const occupancies = atomSite.get(
+        ['_atom_site.occupancy', '_atom_site_occupancy'],
+        Array(labels.length).fill(1),
+    );
+    const occupancyByLabel = new Map(labels.map((label, index) => [
+        String(label),
+        finiteNumber(occupancies[index]) ?? 1,
+    ]));
+    const inverseDirectTransform = math.inv(structure.cell.fractToCartMatrix);
+    const atoms = structure.atoms.map(atom => {
+        const position = atom.position instanceof FractPosition
+            ? [atom.position.x, atom.position.y, atom.position.z]
+            : math.multiply(inverseDirectTransform, [
+                atom.position.x,
+                atom.position.y,
+                atom.position.z,
+            ]);
+        return {
+            label: atom.label,
+            atomType: atom.atomType,
+            position: Array.isArray(position) ? position : position.toArray(),
+            adp: serializeAdp(atom.adp),
+            occupancy: occupancyByLabel.get(String(atom.label)) ?? 1,
+        };
+    });
+    return {
+        cell: Object.fromEntries(
+            ['a', 'b', 'c', 'alpha', 'beta', 'gamma'].map(name => [name, structure.cell[name]]),
+        ),
+        atoms,
+        symmetryOperations: structure.symmetry.symmetryOperations.map(operation => ({
+            rotation: operation.rotMatrix.map(row => [...row]),
+            translation: [...operation.transVector],
+        })),
+        wavelength: numericScalar(block, [
+            '_diffrn_radiation_wavelength.wavelength',
+            '_diffrn_radiation.wavelength',
+            '_diffrn_radiation_wavelength',
+        ]),
+    };
+}
+
 /**
  * Builds a symmetry-expanded atom sum with occupancy and displacement factors.
  * The supplied resolver provides the reflection-dependent complex scattering
@@ -113,34 +178,58 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
     }
     const cif = new CIF(cifText);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
-    const cell = UnitCell.fromCIF(block);
+    const input = options.structureModel ?? null;
+    const cell = input
+        ? new UnitCell(
+            input.cell.a,
+            input.cell.b,
+            input.cell.c,
+            input.cell.alpha,
+            input.cell.beta,
+            input.cell.gamma,
+        )
+        : UnitCell.fromCIF(block);
     if (options.expectedCell && !cellMatches(cell, options.expectedCell)) {
         throw new Error('Structure-factor coordinate CIF cell does not match the reflection cell');
     }
-    const wavelength = scalar(block, [
+    const wavelength = input?.wavelength ?? numericScalar(block, [
         '_diffrn_radiation_wavelength.wavelength',
         '_diffrn_radiation.wavelength',
         '_diffrn_radiation_wavelength',
     ]) ?? finiteNumber(options.wavelength);
-    const atomSite = block.get('_atom_site');
-    const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
-    const occupancies = atomSite.get(
-        ['_atom_site.occupancy', '_atom_site_occupancy'],
-        Array(labels.length).fill(1),
-    );
+    const sourceAtoms = input?.atoms ?? (() => {
+        const atomSite = block.get('_atom_site');
+        const labels = atomSite.get(['_atom_site.label', '_atom_site_label']);
+        const occupancies = atomSite.get(
+            ['_atom_site.occupancy', '_atom_site_occupancy'],
+            Array(labels.length).fill(1),
+        );
+        return labels.map((label, index) => ({ label, index, occupancy: occupancies[index] }));
+    })();
     const atoms = [];
     const sourceCounts = {};
-    for (let index = 0; index < labels.length; index++) {
+    for (let sourceIndex = 0; sourceIndex < sourceAtoms.length; sourceIndex++) {
+        const sourceAtom = sourceAtoms[sourceIndex];
         let atom;
-        try {
-            atom = Atom.fromCIF(block, index);
-        } catch (error) {
-            if (error.message.includes('Dummy atom')) {
-                continue;
+        const atomIndex = sourceAtom.index ?? sourceIndex;
+        if (input) {
+            atom = new Atom(
+                sourceAtom.label,
+                sourceAtom.atomType,
+                new FractPosition(...sourceAtom.position),
+                deserializeAdp(sourceAtom.adp),
+            );
+        } else {
+            try {
+                atom = Atom.fromCIF(block, atomIndex);
+            } catch (error) {
+                if (error.message.includes('Dummy atom')) {
+                    continue;
+                }
+                throw error;
             }
-            throw error;
         }
-        const resolved = options.resolveAtom({ atom, index, block, wavelength });
+        const resolved = options.resolveAtom({ atom, index: atomIndex, block, wavelength });
         if (!resolved || typeof resolved.scatteringAt !== 'function') {
             throw new Error(`No scattering-factor model for atom ${atom.label} (${atom.atomType})`);
         }
@@ -148,7 +237,7 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         sourceCounts[source] = (sourceCounts[source] ?? 0) + 1;
         atoms.push({
             atom,
-            occupancy: finiteNumber(occupancies[index]) ?? 1,
+            occupancy: finiteNumber(sourceAtom.occupancy) ?? 1,
             scatteringAt: resolved.scatteringAt,
         });
     }
@@ -159,11 +248,18 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
     const reciprocalTransform = Array.isArray(reciprocalResult)
         ? reciprocalResult
         : reciprocalResult.toArray();
-    const symmetry = CellSymmetry.fromCIF(block);
-    const transforms = symmetry.symmetryOperations.map(operation => ({
-        operation,
+    const symmetryOperations = input?.symmetryOperations ??
+        CellSymmetry.fromCIF(block).symmetryOperations.map(operation => ({
+            rotation: operation.rotMatrix,
+            translation: operation.transVector,
+        }));
+    const transforms = symmetryOperations.map(operation => ({
+        operation: {
+            rotation: operation.rotation,
+            translation: operation.translation,
+        },
         cartesianRotation: math.multiply(
-            math.multiply(directTransform, operation.rotMatrix),
+            math.multiply(directTransform, operation.rotation),
             inverseDirectTransform,
         ),
     }));
@@ -178,7 +274,13 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                 modelAtom.atom.position.z,
             ]);
         for (const transform of transforms) {
-            const transformedPosition = transform.operation.applyToPoint(position);
+            const transformedResult = math.add(
+                math.multiply(transform.operation.rotation, position),
+                transform.operation.translation,
+            );
+            const transformedPosition = Array.isArray(transformedResult)
+                ? transformedResult
+                : transformedResult.toArray();
             const key = fractionalKey(transformedPosition);
             if (seen.has(key)) {
                 continue;
@@ -196,6 +298,9 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             });
         }
     }
+    const npdAdpLabels = atoms
+        .filter(modelAtom => isNpdAdp(modelAtom.atom.adp, cell))
+        .map(modelAtom => modelAtom.atom.label);
 
     function coefficientAt(h, k, l) {
         const reciprocal = reciprocalTransform.map(row => row[0] * h + row[1] * k + row[2] * l);
@@ -238,6 +343,8 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             atomCount: atoms.length,
             expandedAtomCount: expandedAtoms.length,
             sourceCounts,
+            npdAdpCount: npdAdpLabels.length,
+            npdAdpLabels,
         },
     };
 }

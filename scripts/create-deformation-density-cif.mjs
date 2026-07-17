@@ -99,6 +99,7 @@ _cifvis_difference_density_k '_cifvis_deformation_refln.index_k'
 _cifvis_difference_density_l '_cifvis_deformation_refln.index_l'
 _cifvis_difference_density_a '_cifvis_deformation_refln.difference_a'
 _cifvis_difference_density_b '_cifvis_deformation_refln.difference_b'
+_cifvis_difference_density_kind deformation
 
 loop_
  _cifvis_deformation_refln.index_h

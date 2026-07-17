@@ -100,108 +100,25 @@ export function connectedDifferenceDensityRegions(structure, radius, connectionM
     return Array.from(regionsByRoot.values());
 }
 
-/** @returns {boolean} Whether a contour can pass through two overlapping atom masks. */
-function overlapContainsContour(
-    first,
-    second,
-    radius,
-    densityMap,
-    cartesianToFractional,
-    level,
-    sign,
-) {
-    const minimum = first.map((value, axis) => Math.max(value - radius, second[axis] - radius));
-    const maximum = first.map((value, axis) => Math.min(value + radius, second[axis] + radius));
-    if (minimum.some((value, axis) => value > maximum[axis])) {
-        return false;
-    }
-    const sampleCount = 9;
-    const radiusSquared = radius ** 2;
-    for (let z = 0; z < sampleCount; z++) {
-        const cartesianZ = minimum[2] + (maximum[2] - minimum[2]) * z / (sampleCount - 1);
-        for (let y = 0; y < sampleCount; y++) {
-            const cartesianY = minimum[1] + (maximum[1] - minimum[1]) * y / (sampleCount - 1);
-            for (let x = 0; x < sampleCount; x++) {
-                const point = [
-                    minimum[0] + (maximum[0] - minimum[0]) * x / (sampleCount - 1),
-                    cartesianY,
-                    cartesianZ,
-                ];
-                if (distanceSquared(point, first) > radiusSquared ||
-                    distanceSquared(point, second) > radiusSquared) {
-                    continue;
-                }
-                const fractional = cartesianCoordinates(cartesianToFractional, point);
-                const value = densityMap.sample(...fractional);
-                if ((sign !== 'negative' && value >= level) ||
-                    (sign !== 'positive' && value <= -level)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
 /**
- * Groups masks only when the requested contour can traverse their overlap.
- * This is the seam-safety test used by symmetry reuse: active overlaps are
- * tessellated together, whereas inactive overlaps cannot contain a shared
- * contour and are safe to generate independently.
+ * Groups every geometrically intersecting clipping mask. The density is not
+ * sampled to decide connectivity: even an arbitrarily thin contour bridge is
+ * therefore polygonized in one field and cannot acquire an internal seam.
  * @param {object} structure - Displayed CrystalStructure.
  * @param {number} radius - Density clipping radius in Angstrom.
- * @param {object} densityMap - Periodic difference-density map.
- * @param {number} level - Positive absolute contour level.
+ * @param {object} _densityMap - Periodic difference-density map (unused by design).
+ * @param {number} _level - Positive absolute contour level (unused by design).
+ * @param {string} _sign - Contour sign (unused by design).
  * @returns {Array<{atoms: object[]}>} Contour-connected atom-mask regions.
  */
 export function contourConnectedDifferenceDensityRegions(
     structure,
     radius,
-    densityMap,
-    level,
-    sign = 'both',
+    _densityMap,
+    _level,
+    _sign = 'both',
 ) {
-    const atoms = structure?.atoms ?? [];
-    if (atoms.length === 0) {
-        return [];
-    }
-    const matrix = structure.cell.fractToCartMatrix.toArray();
-    const inverseMatrix = plainArray(math.inv(matrix));
-    const coordinates = atoms.map(atom => cartesianCoordinates(
-        matrix,
-        [atom.position.x, atom.position.y, atom.position.z],
-    ));
-    const parents = atoms.map((_, index) => index);
-    const overlapDistanceSquared = (2 * radius) ** 2;
-    for (let first = 0; first < atoms.length; first++) {
-        for (let second = first + 1; second < atoms.length; second++) {
-            const separationSquared = distanceSquared(coordinates[first], coordinates[second]);
-            if (separationSquared > overlapDistanceSquared) {
-                continue;
-            }
-            if (separationSquared <= POSITION_TOLERANCE_ANGSTROM ** 2 || overlapContainsContour(
-                coordinates[first],
-                coordinates[second],
-                radius,
-                densityMap,
-                inverseMatrix,
-                level,
-                sign,
-            )) {
-                joinRoots(parents, first, second);
-            }
-        }
-    }
-
-    const regionsByRoot = new Map();
-    for (let index = 0; index < atoms.length; index++) {
-        const root = findRoot(parents, index);
-        if (!regionsByRoot.has(root)) {
-            regionsByRoot.set(root, { atoms: [] });
-        }
-        regionsByRoot.get(root).atoms.push(atoms[index]);
-    }
-    return Array.from(regionsByRoot.values());
+    return connectedDifferenceDensityRegions(structure, radius);
 }
 
 /** @returns {string} Fast rejection signature for symmetry matching. */
@@ -502,7 +419,11 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
     const generatedRegionCount = plans.reduce((sum, plan) => sum + plan.classes.length, 0);
     const reusedRegionCount = displayedRegionCount - generatedRegionCount;
     if (reusedRegionCount === 0) {
-        return createDifferenceDensitySurfaces(densityMap, structure, usedOptions);
+        const group = createDifferenceDensitySurfaces(densityMap, structure, usedOptions);
+        for (const plan of plans) {
+            group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
+        }
+        return group;
     }
 
     const planningTimeMs = performance.now() - started;

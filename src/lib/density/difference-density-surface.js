@@ -2,20 +2,9 @@
 import * as THREE from 'three';
 import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 import * as math from '../math-lite.js';
+import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
 
-export const DEFAULT_DIFFERENCE_DENSITY_OPTIONS = Object.freeze({
-    visible: true,
-    sigmaLevel: 3,
-    radius: 1.5,
-    resolution: 48,
-    gridSpacing: 0.15,
-    maxResolution: 96,
-    positiveColor: '#36b566',
-    negativeColor: '#d94b64',
-    opacity: 0.55,
-    wireframe: true,
-    maxPolyCount: 100000,
-});
+export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
 
 /** @returns {number[]} Cartesian coordinates for a fractional point. */
 function cartesianCoordinates(matrix, x, y, z) {

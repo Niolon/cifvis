@@ -184,48 +184,23 @@ export default {
     // Difference-electron-density maps are loaded separately from the
     // coordinate CIF and remain opt-in.
     'differenceDensity': {
-        'useWorker': true,
-        'useSymmetry': true,
+        ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS,
         // Structure construction always completes first. When enabled, density
         // parsing/calculation is scheduled afterwards in the density worker.
-        'autoLoad': false,
         // auto first tries explicit FCF coefficients and then CIF observations
         // plus an IAM Fcalc. The individual modes can be forced for diagnostics.
-        'inputMode': 'auto',
-        'reflections': {},
-        'iam': {},
-        'intensityScale': null,
         // Correct raw observed intensities using a reported SHELXL EXTI model.
         // Set false for deliberately uncorrected/custom observed amplitudes.
-        'extinctionCorrection': 'auto',
         // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
         // columns can provide amplitudes/phases or direct A/B coefficients.
-        'coefficientColumns': null,
         // Detect an uncorrected anomalous contribution from inversion/Friedel
         // constraints, with Olex metadata as fallback. Coordinate-CIF f'/f''
         // values take precedence over internal tables.
-        'anomalousDispersion': false,
         // All reflections are used from the start. The normal grid gives a
         // quick first display; the worker then replaces it with the final
         // oversampled grid before refining only the surface tessellation.
-        'reciprocalResolution': 1,
-        'initialGridOversampling': 1,
-        'gridOversampling': 2,
-        'progressiveSteps': [0.5, 0.75, 1],
-        'visible': true,
-        'sigmaLevel': 3,
-        'radius': 1.5,
         // Final surface resolution grows with physical draw size to maintain
         // approximately this spacing, bounded by resolution/maxResolution.
-        'resolution': 64,
-        'gridSpacing': 0.15,
-        'maxResolution': 96,
-        'stitchTolerance': 1e-4,
-        'positiveColor': '#36b566',
-        'negativeColor': '#d94b64',
-        'opacity': 0.55,
-        'wireframe': true,
-        'maxPolyCount': 100000,
     },
 
     'bondGrowTolerance': 0.45,
@@ -321,3 +296,4 @@ export default {
 
     'elementProperties': elementProperties,
 };
+import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from '../density/difference-density-options.js';

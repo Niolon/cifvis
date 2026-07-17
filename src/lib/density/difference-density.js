@@ -7,8 +7,17 @@ import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
 import { createIAMStructureFactorCalculator } from './iam-structure-factors.js';
 import { readReflectionIntensities } from './reflection-intensities.js';
 import { createShelxlExtinctionCorrection } from './extinction-correction.js';
+import { multiplyReflectionIndex, reciprocalSymmetryKernel } from './reciprocal-symmetry.js';
 
 const TWO_PI = 2 * Math.PI;
+
+/** Signals that a CIF block does not advertise explicit Fourier coefficients. */
+class UnsupportedCoefficientSourceError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'UnsupportedCoefficientSourceError';
+    }
+}
 
 /** @returns {number} Smallest power of two not less than value. */
 function nextPowerOfTwo(value) {
@@ -315,18 +324,6 @@ function friedelPairPhaseCheck(
     };
 }
 
-/** @returns {number[]} Reciprocal index transformed by a direct-space rotation. */
-function transformReflectionIndex(rotation, h, k, l) {
-    const reciprocalRotation = math.transpose(math.inv(rotation));
-    return math.multiply(reciprocalRotation, [h, k, l]).map(value => {
-        const rounded = Math.round(value);
-        if (Math.abs(value - rounded) > 1e-6) {
-            throw new Error(`Symmetry operation produced a non-integral reflection index: ${value}`);
-        }
-        return rounded;
-    });
-}
-
 /** Accumulates one possibly symmetry-duplicated complex coefficient. */
 function addCoefficient(coefficients, h, k, l, real, imaginary) {
     const key = `${h},${k},${l}`;
@@ -360,8 +357,12 @@ function expandReflectionCoefficients(
             continue;
         }
 
-        for (const operation of symmetry.symmetryOperations) {
-            const [equivH, equivK, equivL] = transformReflectionIndex(operation.rotMatrix, h, k, l);
+        for (const kernel of reciprocalSymmetryKernel(symmetry)) {
+            const operation = kernel.operation;
+            const [equivH, equivK, equivL] = multiplyReflectionIndex(
+                kernel.reciprocalRotation,
+                [h, k, l],
+            );
             const phaseShift = TWO_PI * (
                 equivH * operation.transVector[0] +
                 equivK * operation.transVector[1] +
@@ -459,13 +460,21 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const cell = UnitCell.fromCIF(block);
     const symmetry = CellSymmetry.fromCIF(block);
-    const observed = readReflectionIntensities(cifText, cifBlock, options.reflections ?? {});
+    // Difference-electron densities default to normal scattering. If anomalous
+    // IAM terms are explicitly requested, retain unmerged Friedel observations
+    // unless the caller deliberately selects another policy.
+    const iamOptions = { includeAnomalous: false, ...options.iam };
+    const reflectionOptions = { ...options.reflections };
+    if (reflectionOptions.mergeFriedel === undefined) {
+        reflectionOptions.mergeFriedel = iamOptions.includeAnomalous === false;
+    }
+    const observed = readReflectionIntensities(cifText, cifBlock, reflectionOptions);
     const coordinateCifText = options.coordinateCifText ?? cifText;
     const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
     const calculator = createIAMStructureFactorCalculator(
         coordinateCifText,
         coordinateCifBlock,
-        { ...options.iam, expectedCell: cell },
+        { ...iamOptions, expectedCell: cell, structureModel: options.structureModel },
     );
     const calculated = calculator.calculate(observed.reflections);
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
@@ -538,6 +547,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             source: 'iam',
         },
         densitySource: 'cif-iam',
+        densityKind: 'difference',
         intensityScale: fitted.scale,
         intensityScaleExplicit: fitted.explicit,
         scaleFittedReflectionCount: fitted.fittedReflectionCount,
@@ -547,6 +557,10 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         negativeIntensityCount,
         observations: observed.metadata,
         iam: calculator.metadata,
+        reflectionPolicy: {
+            mergeFriedel: observed.metadata.mergeFriedel,
+            includeAnomalous: calculator.metadata.includeAnomalous,
+        },
         extinctionCorrection: extinction.metadata,
     }, symmetry);
 }
@@ -566,7 +580,7 @@ function selfDescribedCoefficientColumns(text, blockSelector) {
         const a = value('_cifvis_difference_density_a');
         const b = value('_cifvis_difference_density_b');
         if ([loop, h, k, l, a, b].every(item => typeof item === 'string' && item.length > 0)) {
-            return { loop, h, k, l, a, b, omitF000: false };
+            return { loop, h, k, l, a, b, omitF000: false, densityKind: 'deformation' };
         }
     } catch {
         // Ordinary CIFs have no cifvis self-description; use normal source detection.
@@ -598,7 +612,10 @@ export function parseDifferenceDensitySource(text, block = 0, options = {}) {
                 options.anomalousDispersion ?? null,
             );
         } catch (error) {
-            if (inputMode === 'fcf' || coefficientColumns) {
+            if (
+                inputMode === 'fcf' || coefficientColumns ||
+                !(error instanceof UnsupportedCoefficientSourceError)
+            ) {
                 throw error;
             }
         }
@@ -796,7 +813,15 @@ export function parseDifferenceDensityDataset(
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const cell = UnitCell.fromCIF(block);
     const symmetry = CellSymmetry.fromCIF(block);
-    const loop = block.get(coefficientColumns?.loop ?? '_refln');
+    let loop;
+    try {
+        loop = block.get(coefficientColumns?.loop ?? '_refln');
+    } catch (error) {
+        if (!coefficientColumns) {
+            throw new UnsupportedCoefficientSourceError(error.message);
+        }
+        throw error;
+    }
 
     const h = reflectionColumn(
         loop,
@@ -836,7 +861,9 @@ export function parseDifferenceDensityDataset(
         omitF000 = coefficientColumns.omitF000 ?? false;
     } else {
         if (calculatedPhases === null) {
-            throw new Error('None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop');
+            throw new UnsupportedCoefficientSourceError(
+                'None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop',
+            );
         }
         const phase = calculatedPhases;
         const measuredSquared = reflectionColumn(
@@ -853,10 +880,14 @@ export function parseDifferenceDensityDataset(
             : null;
 
         if (measuredSquared === null && measured === null) {
-            throw new Error('FCF contains neither measured F nor measured F-squared values');
+            throw new UnsupportedCoefficientSourceError(
+                'FCF contains neither measured F nor measured F-squared values',
+            );
         }
         if (calculated === null && calculatedSquared === null) {
-            throw new Error('FCF contains neither calculated F nor calculated F-squared values');
+            throw new UnsupportedCoefficientSourceError(
+                'FCF contains neither calculated F nor calculated F-squared values',
+            );
         }
         coefficientReader = {
             mode: 'fo-fc-common-phase',
@@ -978,6 +1009,7 @@ export function parseDifferenceDensityDataset(
         omitF000,
         anomalousDispersion: anomalousMetadata,
         densitySource: 'fcf',
+        densityKind: coefficientColumns ? 'deformation' : 'difference',
     }, symmetry);
 }
 
@@ -1018,6 +1050,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         omitF000: dataset.omitF000,
         anomalousDispersion: dataset.anomalousDispersion,
         densitySource: dataset.densitySource,
+        densityKind: dataset.densityKind,
         intensityScale: dataset.intensityScale,
         intensityScaleExplicit: dataset.intensityScaleExplicit,
         scaleFittedReflectionCount: dataset.scaleFittedReflectionCount,
@@ -1025,6 +1058,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         negativeIntensityCount: dataset.negativeIntensityCount,
         observations: dataset.observations,
         iam: dataset.iam,
+        reflectionPolicy: dataset.reflectionPolicy,
         extinctionCorrection: dataset.extinctionCorrection,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
@@ -1047,6 +1081,41 @@ export class DifferenceDensityMap {
         this.dimensions = dimensions;
         this.values = values;
         Object.assign(this, statistics);
+    }
+
+    /** @returns {object} Structured-clone-safe map data for a worker message. */
+    toPayload() {
+        const { cell, dimensions, values, ...statistics } = this;
+        return {
+            cell: {
+                a: cell.a,
+                b: cell.b,
+                c: cell.c,
+                alpha: cell.alpha,
+                beta: cell.beta,
+                gamma: cell.gamma,
+            },
+            dimensions,
+            values,
+            ...statistics,
+        };
+    }
+
+    /**
+     * @param {object} payload - Structured worker map data.
+     * @returns {DifferenceDensityMap} Reconstructed periodic map.
+     */
+    static fromPayload(payload) {
+        const cell = new UnitCell(
+            payload.cell.a,
+            payload.cell.b,
+            payload.cell.c,
+            payload.cell.alpha,
+            payload.cell.beta,
+            payload.cell.gamma,
+        );
+        const { cell: _cell, dimensions, values, ...statistics } = payload;
+        return new DifferenceDensityMap(cell, dimensions, values, statistics);
     }
 
     /**

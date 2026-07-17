@@ -9,6 +9,7 @@ import {
     differenceDensitySurfaceResolution,
 } from './difference-density-surface.js';
 import { CrystalViewer } from '../ortep3d/crystal-viewer.js';
+import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
 
 /** @returns {CrystalStructure} Minimal structure with one atom at fractional x. */
 function structureAt(x) {
@@ -115,5 +116,29 @@ describe('difference-density surfaces', () => {
         expect(viewer.state.differenceDensityGroup).not.toBe(originalGroup);
         expect(viewer.state.differenceDensityGroup.userData.bounds.minimum[0])
             .toBeCloseTo(originalMinimum + 1);
+    });
+
+    test('viewer gives custom deformation coefficients their distinct default colors', () => {
+        const viewer = {
+            state: {
+                differenceDensityMap: { ...densityMap, densityKind: 'deformation' },
+                differenceDensityGroup: null,
+                differenceDensitySurfaceResolutionFraction: 1,
+            },
+            options: { differenceDensity: { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, resolution: 8 } },
+            moleculeContainer: new THREE.Group(),
+            removeDifferenceDensity3D() {
+                return CrystalViewer.prototype.removeDifferenceDensity3D.call(this);
+            },
+        };
+
+        CrystalViewer.prototype.updateDifferenceDensity3D.call(viewer, structureAt(0.5));
+
+        const colors = Object.fromEntries(viewer.state.differenceDensityGroup.children.map(
+            child => [child.userData.sign, `#${child.material.color.getHexString().toUpperCase()}`],
+        ));
+        expect(colors).toEqual({ positive: '#4FC3F7', negative: '#FF9800' });
+        expect(colors.positive).not.toBe(DEFAULT_DIFFERENCE_DENSITY_OPTIONS.positiveColor);
+        expect(colors.negative).not.toBe(DEFAULT_DIFFERENCE_DENSITY_OPTIONS.negativeColor);
     });
 });

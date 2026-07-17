@@ -1,34 +1,5 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact crystallographic helpers */
 import * as math from '../math-lite.js';
-import { finiteNumber } from './structure-factor-model.js';
-
-function scalar(block, names) {
-    for (const name of names) {
-        try {
-            const value = finiteNumber(block.get(name, null));
-            if (value !== null) {
-                return value;
-            }
-        } catch {
-            // Try the next dictionary spelling.
-        }
-    }
-    return null;
-}
-
-function text(block, names) {
-    for (const name of names) {
-        try {
-            const value = block.get(name, null);
-            if (typeof value === 'string' && value.trim()) {
-                return value;
-            }
-        } catch {
-            // Try the next dictionary spelling.
-        }
-    }
-    return null;
-}
+import { finiteNumber, numericScalar, textScalar } from './cif-values.js';
 
 /**
  * SHELXL isotropic extinction factor applied to an Fc amplitude.
@@ -97,7 +68,7 @@ export function createShelxlExtinctionCorrection(
 
     const configured = typeof option === 'number' ? option : option?.coefficient;
     const configuredCoefficient = finiteNumber(configured);
-    const cifCoefficient = scalar(block, [
+    const cifCoefficient = numericScalar(block, [
         '_refine_ls.extinction_coef',
         '_refine_ls_extinction_coef',
     ]);
@@ -113,11 +84,11 @@ export function createShelxlExtinctionCorrection(
         return noCorrection('zero-coefficient', { coefficient, source });
     }
 
-    const method = text(block, [
+    const method = textScalar(block, [
         '_refine_ls.extinction_method',
         '_refine_ls_extinction_method',
     ]);
-    const expression = text(block, [
+    const expression = textScalar(block, [
         '_refine_ls.extinction_expression',
         '_refine_ls_extinction_expression',
     ]);

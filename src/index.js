@@ -4,10 +4,12 @@ export { CrystalStructure } from './lib/structure/crystal.js';
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { formatValueEsd } from './lib/formatting.js';
 export {
+    calculateDifferenceDensityMap,
     createCifDifferenceDensityDataset,
     DifferenceDensityMap,
     parseDifferenceDensitySource,
 } from './lib/density/difference-density.js';
+export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './lib/density/difference-density-options.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
 export {
     calculateIAMStructureFactors,

@@ -8,6 +8,10 @@ import {
     lookupCromerMann,
 } from './iam-structure-factors.js';
 import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
+import { CIF } from '../read-cif/base.js';
+import { CrystalStructure } from '../structure/crystal.js';
+import { UIsoADP } from '../structure/adp.js';
+import { createStructureFactorModelInput } from './structure-factor-model.js';
 
 function modelCif({
     position = '0 0 0',
@@ -150,6 +154,48 @@ describe('IAM structure factors', () => {
 
         expect(fullCoefficient.real - normalCoefficient.real).toBeCloseTo(correction.real, 12);
         expect(fullCoefficient.imaginary - normalCoefficient.imaginary).toBeCloseTo(correction.imaginary, 12);
+    });
+
+    test('uses an already built structure snapshot instead of reparsing its ADP', () => {
+        const cif = modelCif({ uiso: 0.01 });
+        const block = new CIF(cif).getBlock(0);
+        const structure = CrystalStructure.fromCIF(block);
+        structure.atoms[0].adp = new UIsoADP(0.2);
+        const structureModel = createStructureFactorModelInput(structure, block);
+        const calculator = createIAMStructureFactorCalculator(cif, 0, {
+            includeAnomalous: false,
+            structureModel,
+        });
+        const coefficient = calculator.coefficientAt(1, 0, 0);
+        const f0 = evaluateCromerMann(lookupCromerMann('C'), 0.1 ** 2 / 4);
+
+        expect(coefficient.real).toBeCloseTo(
+            f0 * Math.exp(-2 * Math.PI ** 2 * 0.2 * 0.1 ** 2),
+            12,
+        );
+    });
+
+    test('reports but preserves negative displacement parameters', () => {
+        const cif = modelCif({ uiso: 0.01 });
+        const block = new CIF(cif).getBlock(0);
+        const structure = CrystalStructure.fromCIF(block);
+        structure.atoms[0].adp = new UIsoADP(-0.1);
+        const structureModel = createStructureFactorModelInput(structure, block);
+        const calculator = createIAMStructureFactorCalculator(cif, 0, {
+            includeAnomalous: false,
+            structureModel,
+        });
+        const coefficient = calculator.coefficientAt(1, 0, 0);
+        const f0 = evaluateCromerMann(lookupCromerMann('C'), 0.1 ** 2 / 4);
+
+        expect(calculator.metadata).toMatchObject({
+            npdAdpCount: 1,
+            npdAdpLabels: ['C1'],
+        });
+        expect(coefficient.real).toBeCloseTo(
+            f0 * Math.exp(2 * Math.PI ** 2 * 0.1 * 0.1 ** 2),
+            12,
+        );
     });
 
     test('reproduces bundled SHELXL IAM F squared values', () => {

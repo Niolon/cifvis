@@ -147,6 +147,7 @@ describe('DifferenceDensityMap', () => {
         const map = DifferenceDensityMap.fromCIF(P1_FCF);
 
         expect(map.reflectionCount).toBe(1);
+        expect(map.densityKind).toBe('difference');
         expect(map.coefficientCount).toBe(2);
         expect(map.dimensions).toEqual([4, 2, 2]);
         expect(map.sample(0, 0, 0)).toBeCloseTo(2, 6);
@@ -229,11 +230,25 @@ describe('DifferenceDensityMap', () => {
         )).toThrow(/phase_calc/);
     });
 
+    test('does not hide malformed advertised FCF coefficients behind IAM fallback', () => {
+        const malformed = CIF_WITH_OBSERVED_INTENSITIES.replace(
+            ' _refln_F_squared_sigma\n',
+            ' _refln_F_squared_sigma\n _refln_F_calc\n _refln_phase_calc\n',
+        ).replace(
+            ' 1 0 0 100 2\n 2 0 0 25 1',
+            ' 1 0 0 100 2 8 invalid\n 2 0 0 25 1 4 invalid',
+        );
+
+        expect(() => parseDifferenceDensitySource(malformed))
+            .toThrow(/no usable difference-map coefficients/);
+    });
+
     test('automatically selects a self-described cifvis custom coefficient loop', () => {
         const dataset = parseDifferenceDensitySource(SELF_DESCRIBED_CUSTOM_COEFFICIENT_FCF);
 
         expect(dataset.coefficientMode).toBe('a-b');
         expect(dataset.densitySource).toBe('fcf');
+        expect(dataset.densityKind).toBe('deformation');
         expect(dataset.coefficients.get('1,0,0')).toMatchObject({ real: 5, imaginary: 2 });
     });
 
@@ -332,6 +347,7 @@ describe('DifferenceDensityMap', () => {
         });
 
         expect(dataset.maximumReciprocalLength).toBeGreaterThan(0);
+        expect(dataset.densityKind).toBe('deformation');
         expect(Number.isFinite(dataset.maximumReciprocalLength)).toBe(true);
         expect([...calculateDifferenceDensityMap(dataset).values].every(Number.isFinite)).toBe(true);
     });

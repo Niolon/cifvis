@@ -26,6 +26,28 @@ ${reflections}
 const P21_OPERATIONS = ['\'x,y,z\'', '\'-x,y+1/2,-z\''];
 
 describe('reflection intensity input', () => {
+    test('continues past an unrelated _refln loop to a usable later block', () => {
+        const text = `${cifWithReflections(`loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_status
+ 0 0 1 o
+`)}
+data_observations
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_F_squared_meas
+ 1 0 0 25
+`;
+
+        const result = readReflectionIntensities(text);
+
+        expect(result.metadata.source).toBe('refln');
+        expect(result.reflections).toMatchObject([{ h: 1, k: 0, l: 0, intensity: 25 }]);
+    });
     test('preserves an already merged refln loop without remerging or absence filtering', () => {
         const cif = cifWithReflections(`loop_
  _refln_index_h

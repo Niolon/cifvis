@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CIF } from '../read-cif/base.js';
-import { CrystalStructure, UnitCell } from '../structure/crystal.js';
+import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
@@ -12,7 +12,6 @@ import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
 import { AtomLabelManager } from './atom-label-manager.js';
 import {
-    calculateDifferenceDensityMap,
     DifferenceDensityMap,
     parseDifferenceDensitySource,
 } from '../density/difference-density.js';
@@ -23,6 +22,12 @@ import {
     createSymmetryAwareDifferenceDensitySurfaces,
 } from '../density/difference-density-symmetry.js';
 import DifferenceDensityWorker from '../density/difference-density-worker.js?worker';
+import { createStructureFactorModelInput } from '../density/structure-factor-model.js';
+import {
+    createDifferenceDensityProgression,
+    normalizeDifferenceDensitySteps,
+} from '../density/difference-density-progress.js';
+import { assertCellsMatch } from '../density/cell-matching.js';
 
 const VALID_ATOM_LABEL_PLACEMENT_MODES = [
     'auto-omit',
@@ -612,12 +617,14 @@ export class CrystalViewer {
             differenceDensityGroup: null,
             differenceDensityResolutionFraction: 1,
             differenceDensitySurfaceResolutionFraction: 1,
+            currentStructureFactorModel: null,
         };
 
         this.differenceDensityUpdateCallbacks = new Set();
         this.differenceDensityLoadSequence = 0;
         this.differenceDensityWorker = null;
         this.differenceDensityPendingResolve = null;
+        this.differenceDensityMainThreadLoadId = null;
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
@@ -708,8 +715,8 @@ export class CrystalViewer {
             } catch (e) {
                 if (!this.options.fixCifErrors) {
                     try {
-                        const maybeFixedCifBlock = tryToFixCifBlock(block);
-                        structure = CrystalStructure.fromCIF(maybeFixedCifBlock);
+                        tryToFixCifBlock(block);
+                        structure = CrystalStructure.fromCIF(block);
                     } catch {
                         // throw original error as it should be more informative
                         throw e;
@@ -727,6 +734,10 @@ export class CrystalViewer {
 
             this.state.currentCifContent = cifText;
             this.state.currentCifBlock = cifBlock;
+            this.state.currentStructureFactorModel = createStructureFactorModelInput(
+                structure,
+                block,
+            );
 
             const densityRequest = options.differenceDensity ??
                 this.options.differenceDensity.autoLoad;
@@ -906,39 +917,26 @@ export class CrystalViewer {
      * @private
      */
     async loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId) {
+        this.differenceDensityMainThreadLoadId = loadId;
         try {
             const dataset = parseDifferenceDensitySource(
                 fcfText,
                 fcfBlock,
                 this.differenceDensityDatasetOptions(),
             );
-            const steps = this.normalizedDifferenceDensitySteps();
-            const finalOversampling = Math.max(
-                1,
-                Number(this.options.differenceDensity.gridOversampling) || 1,
-            );
-            const initialOversampling = steps.length === 1
-                ? finalOversampling
-                : Math.min(
-                    finalOversampling,
-                    Math.max(
-                        1,
-                        Number(this.options.differenceDensity.initialGridOversampling) || 1,
-                    ),
-                );
-            let densityMap = calculateDifferenceDensityMap(
-                dataset,
-                this.options.differenceDensity.reciprocalResolution,
-                initialOversampling,
-            );
+            const progression = createDifferenceDensityProgression(dataset, {
+                steps: this.options.differenceDensity.progressiveSteps,
+                reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
+                initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
+                gridOversampling: this.options.differenceDensity.gridOversampling,
+            });
+            const steps = progression.steps;
+            let densityMap;
             for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-                if (stepIndex === 1 && initialOversampling !== finalOversampling) {
-                    densityMap = calculateDifferenceDensityMap(
-                        dataset,
-                        this.options.differenceDensity.reciprocalResolution,
-                        finalOversampling,
-                    );
+                if (loadId !== this.differenceDensityLoadSequence) {
+                    return { success: false, cancelled: true, error: 'Difference-density load cancelled' };
                 }
+                densityMap = progression.mapAt(stepIndex).map;
                 const message = {
                     loadId,
                     stepIndex,
@@ -955,9 +953,16 @@ export class CrystalViewer {
             this.notifyDifferenceDensityUpdate({ type: 'complete', loadId, ...result });
             return result;
         } catch (error) {
+            if (loadId !== this.differenceDensityLoadSequence) {
+                return { success: false, cancelled: true, error: 'Difference-density load cancelled' };
+            }
             console.error('Error loading difference density:', error);
             this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
             return { success: false, error: error.message };
+        } finally {
+            if (this.differenceDensityMainThreadLoadId === loadId) {
+                this.differenceDensityMainThreadLoadId = null;
+            }
         }
     }
 
@@ -978,6 +983,7 @@ export class CrystalViewer {
             ...(option === true ? {} : option),
             cifText: this.state.currentCifContent,
             cifBlock: this.state.currentCifBlock,
+            structureModel: this.state.currentStructureFactorModel,
         };
     }
 
@@ -989,6 +995,7 @@ export class CrystalViewer {
             anomalousDispersion: this.differenceDensityAnomalousDispersionOptions(),
             coordinateCifText: this.state.currentCifContent,
             coordinateCifBlock: this.state.currentCifBlock,
+            structureModel: this.state.currentStructureFactorModel,
             reflections: this.options.differenceDensity.reflections,
             iam: this.options.differenceDensity.iam,
             intensityScale: this.options.differenceDensity.intensityScale,
@@ -998,15 +1005,7 @@ export class CrystalViewer {
 
     /** @returns {number[]} Valid ordered surface-resolution fractions. */
     normalizedDifferenceDensitySteps() {
-        const steps = (Array.isArray(this.options.differenceDensity.progressiveSteps)
-            ? this.options.differenceDensity.progressiveSteps : [1])
-            .map(Number)
-            .filter(step => Number.isFinite(step) && step > 0 && step <= 1)
-            .sort((a, b) => a - b);
-        if (!steps.includes(1)) {
-            steps.push(1);
-        }
-        return [...new Set(steps)];
+        return normalizeDifferenceDensitySteps(this.options.differenceDensity.progressiveSteps);
     }
 
     /**
@@ -1014,16 +1013,7 @@ export class CrystalViewer {
      * @returns {DifferenceDensityMap} Map reconstructed from a worker payload.
      */
     differenceDensityMapFromPayload(payload) {
-        const cell = new UnitCell(
-            payload.cell.a,
-            payload.cell.b,
-            payload.cell.c,
-            payload.cell.alpha,
-            payload.cell.beta,
-            payload.cell.gamma,
-        );
-        const { cell: _cell, dimensions, values, ...statistics } = payload;
-        return new DifferenceDensityMap(cell, dimensions, values, statistics);
+        return DifferenceDensityMap.fromPayload(payload);
     }
 
     /**
@@ -1055,10 +1045,12 @@ export class CrystalViewer {
             omitF000: densityMap.omitF000,
             anomalousDispersion: densityMap.anomalousDispersion,
             densitySource: densityMap.densitySource,
+            densityKind: densityMap.densityKind,
             intensityScale: densityMap.intensityScale,
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
             iam: densityMap.iam,
+            reflectionPolicy: densityMap.reflectionPolicy,
             extinctionCorrection: densityMap.extinctionCorrection,
             sigma: densityMap.sigma,
             minimum: densityMap.minimum,
@@ -1116,10 +1108,12 @@ export class CrystalViewer {
             omitF000: densityMap.omitF000,
             anomalousDispersion: densityMap.anomalousDispersion,
             densitySource: densityMap.densitySource,
+            densityKind: densityMap.densityKind,
             intensityScale: densityMap.intensityScale,
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
             iam: densityMap.iam,
+            reflectionPolicy: densityMap.reflectionPolicy,
             extinctionCorrection: densityMap.extinctionCorrection,
             dimensions: [...densityMap.dimensions],
             gridOversampling: densityMap.gridOversampling,
@@ -1155,10 +1149,15 @@ export class CrystalViewer {
      * @param {string} reason - Public cancellation reason.
      */
     cancelDifferenceDensityLoad(reason = 'Difference-density load cancelled') {
-        if (!this.differenceDensityWorker && !this.differenceDensityPendingResolve) {
+        const mainThreadActive = this.differenceDensityMainThreadLoadId !== null;
+        if (!this.differenceDensityWorker && !this.differenceDensityPendingResolve && !mainThreadActive) {
             return;
         }
-        const loadId = this.differenceDensityLoadSequence;
+        const loadId = this.differenceDensityMainThreadLoadId ?? this.differenceDensityLoadSequence;
+        if (mainThreadActive) {
+            this.differenceDensityLoadSequence++;
+            this.differenceDensityMainThreadLoadId = null;
+        }
         this.differenceDensityWorker?.terminate();
         this.differenceDensityWorker = null;
         const resolve = this.differenceDensityPendingResolve;
@@ -1202,19 +1201,7 @@ export class CrystalViewer {
      * @private
      */
     validateDifferenceDensityCell(densityCell, structureCell) {
-        const lengths = ['a', 'b', 'c'];
-        const angles = ['alpha', 'beta', 'gamma'];
-        for (const parameter of lengths) {
-            const scale = Math.max(Math.abs(structureCell[parameter]), 1);
-            if (Math.abs(densityCell[parameter] - structureCell[parameter]) / scale > 1e-3) {
-                throw new Error(`FCF unit cell does not match the structure (${parameter})`);
-            }
-        }
-        for (const parameter of angles) {
-            if (Math.abs(densityCell[parameter] - structureCell[parameter]) > 0.05) {
-                throw new Error(`FCF unit cell does not match the structure (${parameter})`);
-            }
-        }
+        assertCellsMatch(densityCell, structureCell, 'FCF');
     }
 
     /**
@@ -1336,11 +1323,18 @@ export class CrystalViewer {
             structure,
             this.options.differenceDensity,
         );
+        const kindColors = this.state.differenceDensityMap.densityKind === 'deformation'
+            ? {
+                positiveColor: this.options.differenceDensity.deformationPositiveColor,
+                negativeColor: this.options.differenceDensity.deformationNegativeColor,
+            }
+            : {};
         const group = createSymmetryAwareDifferenceDensitySurfaces(
             this.state.differenceDensityMap,
             structure,
             {
                 ...this.options.differenceDensity,
+                ...kindColors,
                 resolution: Math.max(
                     8,
                     Math.round(

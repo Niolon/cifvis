@@ -1,7 +1,8 @@
 /* eslint-disable jsdoc/require-jsdoc */
 import { evaluateCromerMann, lookupCromerMann } from './cromer-mann.js';
 import { lookupAnomalousDispersion } from './anomalous-dispersion.js';
-import { createStructureFactorModel, finiteNumber } from './structure-factor-model.js';
+import { createStructureFactorModel } from './structure-factor-model.js';
+import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 
 const ELEMENTS = (
     'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni ' +
@@ -24,31 +25,6 @@ function normalizeElement(typeSymbol) {
     }
     const element = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase();
     return ELEMENTS.includes(element) ? element : null;
-}
-
-function optionalLoop(block, names) {
-    for (const name of names) {
-        try {
-            const value = block.get(name);
-            if (value && typeof value.get === 'function') {
-                return value;
-            }
-        } catch {
-            // Try the next category alias.
-        }
-    }
-    return null;
-}
-
-function loopColumn(loop, names, defaultValue = null) {
-    if (!loop) {
-        return defaultValue;
-    }
-    try {
-        return loop.get(names, defaultValue);
-    } catch {
-        return defaultValue;
-    }
 }
 
 function coefficientsByType(block) {
@@ -153,6 +129,7 @@ export function createIAMStructureFactorCalculator(cifText, cifBlock = 0, option
     const model = createStructureFactorModel(cifText, cifBlock, {
         expectedCell: options.expectedCell,
         wavelength: options.wavelength,
+        structureModel: options.structureModel,
         resolveAtom({ atom, block, wavelength }) {
             cromerMannValues ??= coefficientsByType(block);
             typeDispersion ??= dispersionByLabel(
