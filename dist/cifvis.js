@@ -1,7 +1,7 @@
 import * as e from "three";
-import { BufferAttribute as t, BufferGeometry as n } from "three";
+import { BufferAttribute as t, BufferGeometry as n, Color as r, DynamicDrawUsage as i, Mesh as a, Sphere as o, Vector3 as s } from "three";
 //#region src/lib/read-cif/helpers.js
-function r(e, t = !0, n = 1) {
+function c(e, t = !0, n = 1) {
 	let r = e.match(/^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)\((\d+)\)$/);
 	if (t && r) {
 		let [, e, t, n, i] = r, a = e === "-" ? -1 : 1, o = parseFloat(t), s = parseInt(n), c = t.includes(".") ? t.split(".")[1].length : 0, l = Number(a * o * 10 ** s), u = s - c, d = Number(parseInt(i) * 10 ** u);
@@ -52,41 +52,43 @@ function r(e, t = !0, n = 1) {
 		su: NaN
 	};
 }
-function i(e, t) {
-	let n = [e[t].slice(1)], r = e.slice(t + 1), i = r.findIndex((e) => e.startsWith(";")), a = n.concat(r.slice(0, i)), o = a.findIndex((e) => e.trim() !== ""), s = a.findLastIndex((e) => e.trim !== "");
+function l(e, t) {
+	let n = [e[t].slice(1)], r = e.slice(t + 1), i = r.findIndex((e) => e.startsWith(";"));
+	i === -1 && console.warn(`Unterminated CIF multiline text field starting at input line ${t + 1}; treating end of file as the closing semicolon.`);
+	let a = i === -1 ? r.length : i, o = n.concat(r.slice(0, a)), s = o.findIndex((e) => e.trim() !== ""), c = o.findLastIndex((e) => e.trim() !== "");
 	return {
-		value: a.slice(o, s + 1).join("\n"),
-		endIndex: t + i + 1
+		value: s === -1 ? "" : o.slice(s, c + 1).join("\n"),
+		endIndex: i === -1 ? e.length - 1 : t + i + 1
 	};
 }
 //#endregion
 //#region src/lib/read-cif/cif2-values.js
-function a(e, t, n) {
-	let i = e[t];
-	if (!i) throw Error("Unexpected end of CIF2 value stream");
-	switch (i.type) {
+function u(e, t, n) {
+	let r = e[t];
+	if (!r) throw Error("Unexpected end of CIF2 value stream");
+	switch (r.type) {
 		case "value": {
-			if (i.quoted) return {
-				value: i.value,
+			if (r.quoted) return {
+				value: r.value,
 				su: NaN,
 				nextPos: t + 1
 			};
-			let e = r(i.value, n, 2);
+			let e = c(r.value, n, 2);
 			return {
 				value: e.value,
 				su: e.su,
 				nextPos: t + 1
 			};
 		}
-		case "listOpen": return o(e, t, n);
-		case "tableOpen": return s(e, t, n);
-		default: throw Error(`Unexpected token '${i.type}' where a CIF2 value was expected`);
+		case "listOpen": return d(e, t, n);
+		case "tableOpen": return f(e, t, n);
+		default: throw Error(`Unexpected token '${r.type}' where a CIF2 value was expected`);
 	}
 }
-function o(e, t, n) {
+function d(e, t, n) {
 	let r = [], i = t + 1;
 	for (; e[i] && e[i].type !== "listClose";) {
-		let t = a(e, i, n);
+		let t = u(e, i, n);
 		r.push(t.value), i = t.nextPos;
 	}
 	if (!e[i]) throw Error("Unterminated CIF2 list value");
@@ -96,14 +98,14 @@ function o(e, t, n) {
 		nextPos: i + 1
 	};
 }
-function s(e, t, n) {
+function f(e, t, n) {
 	let r = /* @__PURE__ */ new Map(), i = t + 1;
 	for (; e[i] && e[i].type !== "tableClose";) {
 		let t = e[i];
 		if (t.type !== "value") throw Error("CIF2 table key must be a quoted string");
 		if (!e[i + 1] || e[i + 1].type !== "colon") throw Error(`CIF2 table entry for key '${t.value}' is missing its colon`);
-		let o = a(e, i + 2, n);
-		r.set(t.value, o.value), i = o.nextPos;
+		let a = u(e, i + 2, n);
+		r.set(t.value, a.value), i = a.nextPos;
 	}
 	if (!e[i]) throw Error("Unterminated CIF2 table value");
 	return {
@@ -112,7 +114,7 @@ function s(e, t, n) {
 		nextPos: i + 1
 	};
 }
-function c(e, t) {
+function p(e, t) {
 	let n = e[t];
 	if (!n) throw Error("Unexpected end of CIF2 value stream");
 	switch (n.type) {
@@ -141,7 +143,7 @@ function c(e, t) {
 }
 //#endregion
 //#region src/lib/read-cif/loop.js
-var l = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equiv._geom_bond._geom_hbond._geom_angle._geom_torsion._diffrn_refln._refln._atom_site_fourier_wave_vector._atom_site_moment_fourier_param._atom_site_moment_special_func._atom_site_moment._atom_site_rotation._atom_site_displace_Fourier._atom_site_displace_special_func._atom_site_occ_Fourier._atom_site_occ_special_func._atom_site_phason._atom_site_rot_Fourier_param._atom_site_rot_Fourier._atom_site_rot_special_func._atom_site_U_Fourier._atom_site_anharm_gc_c._atom_site_anharm_gc_d._atom_site_aniso._atom_site".split("."), u = class e {
+var m = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equiv._geom_bond._geom_hbond._geom_angle._geom_torsion._diffrn_refln._refln._atom_site_fourier_wave_vector._atom_site_moment_fourier_param._atom_site_moment_special_func._atom_site_moment._atom_site_rotation._atom_site_displace_Fourier._atom_site_displace_special_func._atom_site_occ_Fourier._atom_site_occ_special_func._atom_site_phason._atom_site_rot_Fourier_param._atom_site_rot_Fourier._atom_site_rot_special_func._atom_site_U_Fourier._atom_site_anharm_gc_c._atom_site_anharm_gc_d._atom_site_aniso._atom_site".split("."), h = class e {
 	constructor(e, t, n, r, i = null) {
 		this.splitSU = r, this.headerLines = e, this.dataLines = t, this.endIndex = n, this.headers = null, this.data = null, this.name = null, i ? this.name = i : this.name = this.findCommonStart();
 	}
@@ -163,7 +165,7 @@ var l = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equ
 		let e = this._cif2CellTokenRanges === void 0 ? this.dataLines.reduce((e, t, n) => {
 			if (t = t.trim(), !t.length) return e;
 			if (t.startsWith(";")) {
-				let t = i(this.dataLines, n);
+				let t = l(this.dataLines, n);
 				e.push({
 					value: t.value,
 					su: NaN
@@ -171,10 +173,10 @@ var l = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equ
 				for (let e = n; e < t.endIndex + 1; e++) this.dataLines[e] = "";
 				return e;
 			}
-			let a = Array.from(t.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
-			return e.concat(a.map((e) => r(e[1] || e[2] || e[0], this.splitSU)));
+			let r = Array.from(t.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
+			return e.concat(r.map((e) => c(e[1] || e[2] || e[0], this.splitSU)));
 		}, []) : this._cif2CellTokenRanges.map(([e]) => {
-			let t = a(this._cif2Tokens, e, this.splitSU);
+			let t = u(this._cif2Tokens, e, this.splitSU);
 			return {
 				value: t.value,
 				su: t.su
@@ -191,7 +193,7 @@ var l = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equ
 	}
 	findCommonStart(e = !0) {
 		if (e) {
-			for (let e of l) if (this.headerLines.filter((t) => t.toLowerCase().startsWith(e.toLowerCase())).length >= this.headerLines.length / 2) return e;
+			for (let e of m) if (this.headerLines.filter((t) => t.toLowerCase().startsWith(e.toLowerCase())).length >= this.headerLines.length / 2) return e;
 		}
 		let t = this.headerLines.map((e) => e.split("."));
 		if (t[0].length > 1) {
@@ -239,30 +241,30 @@ var l = /* @__PURE__ */ "_space_group_symop_ssg._space_group_symop._symmetry_equ
 		return this.endIndex;
 	}
 };
-function d(e) {
+function g(e) {
 	return e && typeof e.getHeaders == "function";
 }
-function f(e) {
+function _(e) {
 	return e.getHeaders()[0].split("_").filter((e) => e.length > 0);
 }
-function p(e, t, n) {
-	let r = d(e) ? e : t, i = n.split("_").filter((e) => e.length > 0), a = f(r), o = "_" + i.join("_") + "_" + a[i.length];
-	return d(e) ? [o, n] : [n, o];
+function v(e, t, n) {
+	let r = g(e) ? e : t, i = n.split("_").filter((e) => e.length > 0), a = _(r), o = "_" + i.join("_") + "_" + a[i.length];
+	return g(e) ? [o, n] : [n, o];
 }
-function m(e, t) {
+function y(e, t) {
 	let n = e.findCommonStart(!1), r = t.findCommonStart(!1);
 	return n.length === r.length ? null : [n, r];
 }
-function h(e, t, n) {
-	let r = n.split("_").filter((e) => e.length > 0), i = f(e), a = f(t);
+function b(e, t, n) {
+	let r = n.split("_").filter((e) => e.length > 0), i = _(e), a = _(t);
 	return i.length >= a.length ? [n + "_" + i[r.length], n] : [n, n + "_" + a[r.length]];
 }
-function g(e, t, n) {
+function x(e, t, n) {
 	let r;
-	r = !d(e) || !d(t) ? p(e, t, n) : m(e, t) || h(e, t, n);
+	r = !g(e) || !g(t) ? v(e, t, n) : y(e, t) || b(e, t, n);
 	let i = [e, t];
 	return i.forEach((e, t) => {
-		d(e) && (e.name = r[t]);
+		g(e) && (e.name = r[t]);
 	}), {
 		newNames: r,
 		newEntries: i
@@ -270,27 +272,27 @@ function g(e, t, n) {
 }
 //#endregion
 //#region src/lib/read-cif/version.js
-function _(e) {
+function S(e) {
 	return e.charCodeAt(0) === 65279 ? e.slice(1) : e;
 }
-function v(e) {
-	let t = _(e);
+function C(e) {
+	let t = S(e);
 	return /^#\\#CIF_2\.0/.test(t) ? 2 : 1;
 }
 //#endregion
 //#region src/lib/read-cif/tokenizer.js
-var y = /* @__PURE__ */ new Set([
+var w = /* @__PURE__ */ new Set([
 	" ",
 	"	",
 	"\r",
 	"\n"
-]), b = /* @__PURE__ */ new Set([
+]), T = /* @__PURE__ */ new Set([
 	"[",
 	"]",
 	"{",
 	"}"
 ]);
-function x(e, t, n, r) {
+function E(e, t, n, r) {
 	if (e[t + 1] === n && e[t + 2] === n) {
 		let i = n + n + n, a = e.indexOf(i, t + 3);
 		if (a === -1) throw Error(`Unterminated triple-quoted string starting on line ${r}`);
@@ -298,7 +300,7 @@ function x(e, t, n, r) {
 		return {
 			value: o,
 			next: a + 3,
-			newlines: C(o)
+			newlines: O(o)
 		};
 	}
 	let i = e.indexOf(n, t + 1), a = e.indexOf("\n", t + 1);
@@ -309,22 +311,22 @@ function x(e, t, n, r) {
 		newlines: 0
 	};
 }
-function S(e, t, n) {
+function D(e, t, n) {
 	let r = e.indexOf("\n;", t);
 	if (r === -1) throw Error(`Unterminated text field starting on line ${n}`);
 	let i = e.slice(t + 1, r);
 	return i.startsWith("\n") && (i = i.slice(1)), {
 		value: i,
 		next: r + 2,
-		newlines: C(e.slice(t, r + 2))
+		newlines: O(e.slice(t, r + 2))
 	};
 }
-function C(e) {
+function O(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) e[n] === "\n" && t++;
 	return t;
 }
-function w(e, t) {
+function k(e, t) {
 	let n = e.toLowerCase();
 	return n === "loop_" ? {
 		type: "loop",
@@ -357,7 +359,7 @@ function w(e, t) {
 		line: t
 	};
 }
-function T(e) {
+function A(e) {
 	let t = e.replace(/\r\n?/g, "\n"), n = [], r = t.length, i = 0, a = 1, o = !0;
 	for (; i < r;) {
 		let e = t[i];
@@ -365,7 +367,7 @@ function T(e) {
 			i++, a++, o = !0;
 			continue;
 		}
-		if (y.has(e)) {
+		if (w.has(e)) {
 			i++, o = !1;
 			continue;
 		}
@@ -374,7 +376,7 @@ function T(e) {
 			continue;
 		}
 		if (e === ";" && o) {
-			let e = S(t, i, a);
+			let e = D(t, i, a);
 			n.push({
 				type: "value",
 				value: e.value,
@@ -383,7 +385,7 @@ function T(e) {
 			}), i = e.next, a += e.newlines, o = !1;
 			continue;
 		}
-		if (b.has(e)) {
+		if (T.has(e)) {
 			let t = {
 				"[": "listOpen",
 				"]": "listClose",
@@ -397,7 +399,7 @@ function T(e) {
 			continue;
 		}
 		if (e === "'" || e === "\"") {
-			let r = x(t, i, e, a);
+			let r = E(t, i, e, a);
 			n.push({
 				type: "value",
 				value: r.value,
@@ -410,23 +412,23 @@ function T(e) {
 			continue;
 		}
 		let s = i;
-		for (; i < r && !y.has(t[i]) && !b.has(t[i]);) i++;
-		n.push(w(t.slice(s, i), a)), o = !1;
+		for (; i < r && !w.has(t[i]) && !T.has(t[i]);) i++;
+		n.push(k(t.slice(s, i), a)), o = !1;
 	}
 	return n;
 }
 //#endregion
 //#region src/lib/read-cif/base.js
-function E(e) {
+function ee(e) {
 	let t = [], n = null, r = 0;
 	for (let i of e) i.type === "listOpen" || i.type === "tableOpen" ? r++ : (i.type === "listClose" || i.type === "tableClose") && r--, i.type === "data" && r === 0 ? (n = [i], t.push(n)) : n && n.push(i);
 	return t;
 }
-var D = class {
+var j = class {
 	constructor(e, t = !0) {
 		this.splitSU = t;
-		let n = _(e);
-		this.version = v(n), this.rawCifBlocks = this.version === 2 ? E(T(n)) : this.splitCifBlocks("\n\n" + n), this.blocks = Array(this.rawCifBlocks.length).fill(null), this._blockNameMap = null;
+		let n = S(e);
+		this.version = C(n), this.rawCifBlocks = this.version === 2 ? ee(A(n)) : this.splitCifBlocks("\n\n" + n), this.blocks = Array(this.rawCifBlocks.length).fill(null), this._blockNameMap = null;
 	}
 	splitCifBlocks(e) {
 		let t = [], n = e.replaceAll("\r\n", "\n").split(/\r?\ndata_/).slice(1), r = 0;
@@ -439,10 +441,10 @@ var D = class {
 	}
 	getBlock(e = 0) {
 		if (e < 0 || e >= this.rawCifBlocks.length) throw Error(`Block index ${e} out of range. This CIF has ${this.rawCifBlocks.length} block(s).`);
-		return this.blocks[e] || (this.blocks[e] = new O(this.rawCifBlocks[e], this.splitSU, this.version)), this.blocks[e];
+		return this.blocks[e] || (this.blocks[e] = new te(this.rawCifBlocks[e], this.splitSU, this.version)), this.blocks[e];
 	}
 	getAllBlocks() {
-		for (let e = 0; e < this.blocks.length; e++) this.blocks[e] || (this.blocks[e] = new O(this.rawCifBlocks[e], this.splitSU, this.version));
+		for (let e = 0; e < this.blocks.length; e++) this.blocks[e] || (this.blocks[e] = new te(this.rawCifBlocks[e], this.splitSU, this.version));
 		return this.blocks;
 	}
 	_extractBlockNames() {
@@ -464,7 +466,7 @@ var D = class {
 		if (t === void 0) throw Error(`Block with name '${e}' not found. Available blocks: ${this.getBlockNames().join(", ")}`);
 		return this.getBlock(t);
 	}
-}, O = class {
+}, te = class {
 	constructor(e, t = !0, n = 1) {
 		this.splitSU = t, this.version = n, n === 2 ? (this.tokens = e, this.rawText = null) : (this.rawText = e, this.tokens = null), this.data = null, this.dataBlockName = null;
 	}
@@ -480,15 +482,15 @@ var D = class {
 		let t = 1;
 		for (; t < e.length;) {
 			if (t + 1 < e.length && e[t + 1].startsWith(";")) {
-				let n = i(e, t + 1);
+				let n = l(e, t + 1);
 				this.data[e[t]] = n.value, t = n.endIndex + 1;
 				continue;
 			}
 			if (e[t].trim().startsWith("loop_")) {
-				let n = u.fromLines(e.slice(t), this.splitSU);
+				let n = h.fromLines(e.slice(t), this.splitSU);
 				if (!Object.prototype.hasOwnProperty.call(this.data, n.getName())) this.data[n.getName()] = n;
 				else {
-					let e = g(this.data[n.getName()], n, n.getName());
+					let e = x(this.data[n.getName()], n, n.getName());
 					this.data[e.newNames[0]] = e.newEntries[0], this.data[e.newNames[1]] = e.newEntries[1];
 				}
 				t += n.getEndIndex();
@@ -499,13 +501,13 @@ var D = class {
 				t++;
 				continue;
 			}
-			let a = n.match(/^(_\S+)\s+(.*)$/);
-			if (a) {
-				let e = a[1], t = r(a[2], this.splitSU);
+			let r = n.match(/^(_\S+)\s+(.*)$/);
+			if (r) {
+				let e = r[1], t = c(r[2], this.splitSU);
 				this.data[e] = t.value, isNaN(t.su) || (this.data[e + "_su"] = t.su);
 			} else if (n.startsWith("_") && !e[t + 1].startsWith("_")) {
-				let i = n, a = r(e[t + 1].trim(), this.splitSU);
-				this.data[i] = a.value, isNaN(a.su) || (this.data[i + "_su"] = a.su), t++;
+				let r = n, i = c(e[t + 1].trim(), this.splitSU);
+				this.data[r] = i.value, isNaN(i.su) || (this.data[r + "_su"] = i.su), t++;
 			} else throw Error("Could not parse line " + String(t) + ": " + e[t]);
 			t++;
 		}
@@ -530,7 +532,7 @@ var D = class {
 				continue;
 			}
 			if (r.type === "tag") {
-				let n = a(e, t + 1, this.splitSU);
+				let n = u(e, t + 1, this.splitSU);
 				this.data[r.value] = n.value, isNaN(n.su) || (this.data[r.value + "_su"] = n.su), t = n.nextPos;
 				continue;
 			}
@@ -547,12 +549,12 @@ var D = class {
 		let i = [];
 		for (; n < e.length && (e[n].type === "value" || e[n].type === "listOpen" || e[n].type === "tableOpen");) {
 			let t = n;
-			n = c(e, n), i.push([t, n]);
+			n = p(e, n), i.push([t, n]);
 		}
-		let a = u.fromTokens(r, e, i, this.splitSU);
+		let a = h.fromTokens(r, e, i, this.splitSU);
 		if (!Object.prototype.hasOwnProperty.call(this.data, a.getName())) this.data[a.getName()] = a;
 		else {
-			let e = g(this.data[a.getName()], a, a.getName());
+			let e = x(this.data[a.getName()], a, a.getName());
 			this.data[e.newNames[0]] = e.newEntries[0], this.data[e.newNames[1]] = e.newEntries[1];
 		}
 		return n;
@@ -573,7 +575,7 @@ var D = class {
 		if (t !== null) return t;
 		throw Error(`None of the keys [${n.join(", ")}] found in CIF block`);
 	}
-}, k = class e {
+}, M = class e {
 	constructor(e) {
 		this._data = e;
 	}
@@ -591,46 +593,46 @@ var D = class {
 		return new e(n);
 	}
 };
-function A(e) {
-	return e instanceof k ? A(e.toArray()) : Array.isArray(e) ? e.map(A) : e;
-}
-function j(e, t) {
-	return e.some((e) => e instanceof k) ? new k(t) : t;
-}
-function M(e, t, n) {
-	return Array.isArray(e) && Array.isArray(t) ? e.map((e, r) => M(e, t[r], n)) : n(e, t);
-}
 function N(e) {
-	return new k(A(e));
+	return e instanceof M ? N(e.toArray()) : Array.isArray(e) ? e.map(N) : e;
 }
 function P(e, t) {
-	let n = A(e), r = A(t), i;
+	return e.some((e) => e instanceof M) ? new M(t) : t;
+}
+function ne(e, t, n) {
+	return Array.isArray(e) && Array.isArray(t) ? e.map((e, r) => ne(e, t[r], n)) : n(e, t);
+}
+function F(e) {
+	return new M(N(e));
+}
+function I(e, t) {
+	let n = N(e), r = N(t), i;
 	if (typeof r == "number") i = Array.isArray(n[0]) ? n.map((e) => e.map((e) => e * r)) : n.map((e) => e * r);
 	else if (typeof n == "number") i = Array.isArray(r[0]) ? r.map((e) => e.map((e) => e * n)) : r.map((e) => e * n);
 	else if (Array.isArray(n[0]) && Array.isArray(r[0])) i = n.map((e, t) => e.map((i, a) => e.reduce((e, i, o) => e + n[t][o] * r[o][a], 0)));
 	else if (Array.isArray(n[0])) i = n.map((e) => e.reduce((e, t, n) => e + t * r[n], 0));
 	else throw Error("multiply: unsupported operand shapes");
-	return j([e, t], i);
+	return P([e, t], i);
 }
-function ee(e, t) {
-	return j([e, t], M(A(e), A(t), (e, t) => e + t));
+function re(e, t) {
+	return P([e, t], ne(N(e), N(t), (e, t) => e + t));
 }
-function te(e, t) {
-	return j([e, t], M(A(e), A(t), (e, t) => e - t));
+function ie(e, t) {
+	return P([e, t], ne(N(e), N(t), (e, t) => e - t));
 }
-function F(e) {
-	let t = A(e), n = t[0].map((e, n) => t.map((e) => e[n]));
-	return j([e], n);
+function L(e) {
+	let t = N(e), n = t[0].map((e, n) => t.map((e) => e[n]));
+	return P([e], n);
 }
-function ne(e) {
-	let t = A(e);
+function ae(e) {
+	let t = N(e);
 	if (t.length !== 3) throw Error("det: only 3x3 matrices are supported");
 	return t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1]) - t[0][1] * (t[1][0] * t[2][2] - t[1][2] * t[2][0]) + t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0]);
 }
-function re(e) {
-	let t = A(e);
+function R(e) {
+	let t = N(e);
 	if (t.length !== 3) throw Error("inv: only 3x3 matrices are supported");
-	let n = ne(t);
+	let n = ae(t);
 	if (n === 0) throw Error("inv: matrix is singular");
 	let r = [
 		[
@@ -649,39 +651,39 @@ function re(e) {
 			t[0][0] * t[1][1] - t[0][1] * t[1][0]
 		]
 	], i = r.map((e, t) => e.map((e, i) => r[i][t] / n));
-	return j([e], i);
+	return P([e], i);
 }
-function ie(e) {
-	let t = A(e), n = t.length, r = Array.from({ length: n }, (e, r) => Array.from({ length: n }, (e, n) => r === n ? t[r] : 0));
-	return j([e], r);
+function oe(e) {
+	let t = N(e), n = t.length, r = Array.from({ length: n }, (e, r) => Array.from({ length: n }, (e, n) => r === n ? t[r] : 0));
+	return P([e], r);
 }
-function I(e) {
-	let t = A(e);
+function se(e) {
+	let t = N(e);
 	return Math.sqrt(t.reduce((e, t) => e + t * t, 0));
 }
-function ae(e, t) {
+function ce(e, t) {
 	if (t !== "deg") throw Error(`unit: unsupported unit '${t}'`);
 	return { toNumber(t) {
 		if (t !== "rad") throw Error(`unit: unsupported conversion to '${t}'`);
 		return e * Math.PI / 180;
 	} };
 }
-function oe(e) {
+function le(e) {
 	return Array.from({ length: e }, (t, n) => Array.from({ length: e }, (e, t) => +(n === t)));
 }
-function se(e) {
+function ue(e) {
 	return Array(e).fill(0);
 }
-function ce(e) {
-	let t = A(e), n = Array.isArray(t[0]) ? t.map((e) => [...e]) : [...t];
-	return j([e], n);
+function de(e) {
+	let t = N(e), n = Array.isArray(t[0]) ? t.map((e) => [...e]) : [...t];
+	return P([e], n);
 }
-function le(e, t) {
-	return M(A(e), A(t), (e, t) => e === t);
+function fe(e, t) {
+	return ne(N(e), N(t), (e, t) => e === t);
 }
-var ue = Math.abs, de = (e) => Math.min(...A(e));
-function fe(e) {
-	let t = e.map((e) => [...e]), n = oe(3);
+var pe = Math.abs, me = (e) => Math.min(...N(e));
+function he(e) {
+	let t = e.map((e) => [...e]), n = le(3);
 	for (let e = 0; e < 100; e++) {
 		let e = 0;
 		for (let n = 0; n < 3; n++) for (let r = n + 1; r < 3; r++) e += t[n][r] * t[n][r];
@@ -714,21 +716,21 @@ function fe(e) {
 		])
 	};
 }
-function pe(e) {
-	let { eigenvalues: t, eigenvectors: n } = fe(A(e));
+function ge(e) {
+	let { eigenvalues: t, eigenvectors: n } = he(N(e));
 	return {
 		values: t,
 		eigenvectors: t.map((e, t) => ({
 			value: e,
-			vector: new k(n[t])
+			vector: new M(n[t])
 		}))
 	};
 }
 //#endregion
 //#region src/lib/structure/fract-to-cart.js
-function L(e) {
-	let t = ae(e.alpha, "deg").toNumber("rad"), n = ae(e.beta, "deg").toNumber("rad"), r = ae(e.gamma, "deg").toNumber("rad"), i = Math.cos(t), a = Math.cos(n), o = Math.cos(r), s = Math.sin(r), c = Math.sqrt(1 - i * i - a * a - o * o + 2 * i * a * o);
-	return N([
+function _e(e) {
+	let t = ce(e.alpha, "deg").toNumber("rad"), n = ce(e.beta, "deg").toNumber("rad"), r = ce(e.gamma, "deg").toNumber("rad"), i = Math.cos(t), a = Math.cos(n), o = Math.cos(r), s = Math.sin(r), c = Math.sqrt(1 - i * i - a * a - o * o + 2 * i * a * o);
+	return F([
 		[
 			e.a,
 			e.b * o,
@@ -746,8 +748,8 @@ function L(e) {
 		]
 	]);
 }
-function me(e) {
-	return N([
+function ve(e) {
+	return F([
 		[
 			e[0],
 			e[3],
@@ -765,8 +767,8 @@ function me(e) {
 		]
 	]);
 }
-function he(e) {
-	let t = N(e);
+function ye(e) {
+	let t = F(e);
 	return [
 		t.get([0, 0]),
 		t.get([1, 1]),
@@ -776,13 +778,13 @@ function he(e) {
 		t.get([1, 2])
 	];
 }
-function ge(e, t) {
-	let n = N(e), r = ie(N(F(F(re(n))).toArray().map((e) => I(e))));
-	return he(P(P(n, P(P(r, me(t)), F(r))), F(n)));
+function be(e, t) {
+	let n = F(e), r = oe(F(L(L(R(n))).toArray().map((e) => se(e))));
+	return ye(I(I(n, I(I(r, ve(t)), L(r))), L(n)));
 }
 //#endregion
 //#region src/lib/structure/position.js
-var _e = class e {
+var xe = class e {
 	#e;
 	constructor(t, n, r) {
 		if (new.target === e) throw TypeError("BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition");
@@ -821,31 +823,31 @@ var _e = class e {
 	toCartesian(e) {
 		throw Error("toCartesian must be implemented by subclass");
 	}
-}, ve = class extends _e {
+}, Se = class extends xe {
 	constructor(e, t, n) {
 		super(e, t, n);
 	}
 	toCartesian(e) {
-		return new ye(...P(e.fractToCartMatrix, N([
+		return new Ce(...I(e.fractToCartMatrix, F([
 			this.x,
 			this.y,
 			this.z
 		])).toArray());
 	}
-}, ye = class extends _e {
+}, Ce = class extends xe {
 	constructor(e, t, n) {
 		super(e, t, n);
 	}
 	toCartesian(e) {
 		return this;
 	}
-}, be = class {
+}, we = class {
 	static fromCIF(e, t) {
 		let n = !1, r = e.get("_atom_site"), i = [".", "?"];
 		if (String(r.getIndex(["_atom_site.calc_flag", "_atom_site_calc_flag"], t, "")).toLowerCase() === "dum") throw Error("Dummy atom: calc_flag is dum");
 		try {
 			let e = r.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], t), a = r.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], t), o = r.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], t);
-			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new ve(e, a, o);
+			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new Se(e, a, o);
 			n = !0;
 		} catch {}
 		try {
@@ -862,19 +864,19 @@ var _e = class e {
 				"_atom_site.cartn_z",
 				"_atom_site_Cartn_z"
 			], t);
-			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new ye(e, a, o);
+			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new Ce(e, a, o);
 			n = !0;
 		} catch {}
 		throw Error(n ? "Dummy atom: Invalid position" : "Invalid position: No valid fractional or Cartesian coordinates found");
 	}
-}, R = class e {
+}, z = class e {
 	constructor(e) {
 		this.uiso = e;
 	}
 	static fromBiso(t) {
 		return new e(t / (8 * Math.PI * Math.PI));
 	}
-}, z = class e {
+}, B = class e {
 	constructor(e, t, n, r, i, a) {
 		this.u11 = e, this.u22 = t, this.u33 = n, this.u12 = r, this.u13 = i, this.u23 = a;
 	}
@@ -883,7 +885,7 @@ var _e = class e {
 		return new e(t * s, n * s, r * s, i * s, a * s, o * s);
 	}
 	getUCart(e) {
-		return ge(e.fractToCartMatrix, [
+		return be(e.fractToCartMatrix, [
 			this.u11,
 			this.u22,
 			this.u33,
@@ -893,10 +895,10 @@ var _e = class e {
 		]);
 	}
 	getEllipsoidMatrix(e) {
-		let { eigenvectors: t } = pe(me(this.getUCart(e))), n = F(N(t.map((e) => e.vector))), r = N(t.map((e) => e.value > 0 ? e.value : NaN)), i = ne(n), a = ie(r.map(Math.sqrt)), o;
-		return o = ue(i - 1) > 1e-10 ? P(P(n, 1 / i), a) : P(n, a), N(o);
+		let { eigenvectors: t } = ge(ve(this.getUCart(e))), n = L(F(t.map((e) => e.vector))), r = F(t.map((e) => e.value > 0 ? e.value : NaN)), i = ae(n), a = oe(r.map(Math.sqrt)), o;
+		return o = pe(i - 1) > 1e-10 ? I(I(n, 1 / i), a) : I(n, a), F(o);
 	}
-}, xe = class e {
+}, Te = class e {
 	static fromCIF(t, n) {
 		let r = t.get("_atom_site"), i = r.getIndex(["_atom_site.label", "_atom_site_label"], n), a = r.getIndex([
 			"_atom_site.adp_type",
@@ -951,7 +953,7 @@ var _e = class e {
 			s,
 			c,
 			l
-		].some(isNaN) ? null : new z(i, a, o, s, c, l);
+		].some(isNaN) ? null : new B(i, a, o, s, c, l);
 	}
 	static createBani(e, t) {
 		let n;
@@ -970,12 +972,12 @@ var _e = class e {
 			s,
 			c,
 			l
-		].some(isNaN) ? null : z.fromBani(i, a, o, s, c, l);
+		].some(isNaN) ? null : B.fromBani(i, a, o, s, c, l);
 	}
 	static createUiso(e, t) {
 		try {
 			let n = e.get("_atom_site").getIndex(["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"], t, NaN);
-			return isNaN(n) ? null : new R(n);
+			return isNaN(n) ? null : new z(n);
 		} catch {
 			return null;
 		}
@@ -983,7 +985,7 @@ var _e = class e {
 	static createBiso(e, t) {
 		try {
 			let n = e.get("_atom_site").getIndex(["_atom_site.b_iso_or_equiv", "_atom_site_B_iso_or_equiv"], t, NaN);
-			return isNaN(n) ? null : R.fromBiso(n);
+			return isNaN(n) ? null : z.fromBiso(n);
 		} catch {
 			return null;
 		}
@@ -991,12 +993,12 @@ var _e = class e {
 };
 //#endregion
 //#region src/lib/structure/position-code.js
-function Se(e) {
+function Ee(e) {
 	if (e == null || e === "." || e === "?") return ".";
 	let t = String(e).trim();
 	return t === "" || t === "." || t === "?" ? "." : t.includes("_") ? t : `${t}_555`;
 }
-function Ce(e) {
+function De(e) {
 	if (e == null) throw Error(`Invalid symmetry position code: ${e}`);
 	let t = String(e).trim();
 	if (t === "") throw Error("Invalid empty symmetry position code");
@@ -1020,7 +1022,7 @@ function Ce(e) {
 	};
 	throw Error(`Invalid symmetry position code ${t}; expected "<id>_abc" or "<id>_[x,y,z]"`);
 }
-function we(e, t) {
+function Oe(e, t) {
 	let n = String(e);
 	if (!n || n.includes("_")) throw Error(`Invalid symmetry operation ID: ${e}`);
 	if (!Array.isArray(t) || t.length !== 3 || !t.every(Number.isInteger)) throw Error(`Invalid symmetry translation: ${t}`);
@@ -1029,7 +1031,7 @@ function we(e, t) {
 }
 //#endregion
 //#region src/lib/structure/cell-symmetry.js
-function Te(e) {
+function ke(e) {
 	if (Math.abs(e) < .0021) return "";
 	let t = [
 		2,
@@ -1044,7 +1046,7 @@ function Te(e) {
 	}
 	return n + r.toString();
 }
-var Ee = class e {
+var Ae = class e {
 	constructor(e) {
 		let { matrix: t, vector: n } = this.parseSymmetryInstruction(e);
 		this.rotMatrix = t, this.transVector = n;
@@ -1105,16 +1107,16 @@ var Ee = class e {
 		return new e(r);
 	}
 	applyToPoint(e) {
-		let t = ee(P(this.rotMatrix, e), this.transVector);
+		let t = re(I(this.rotMatrix, e), this.transVector);
 		return Array.isArray(t) ? t : t.toArray();
 	}
 	applyToAtom(e) {
-		let t = new ve(...ee(P(this.rotMatrix, [
+		let t = new Se(...re(I(this.rotMatrix, [
 			e.position.x,
 			e.position.y,
 			e.position.z
 		]), this.transVector)), n = null;
-		if (e.adp && e.adp instanceof z) {
+		if (e.adp && e.adp instanceof B) {
 			let t = [
 				[
 					e.adp.u11,
@@ -1131,47 +1133,47 @@ var Ee = class e {
 					e.adp.u23,
 					e.adp.u33
 				]
-			], r = this.rotMatrix, i = F(r), a = P(P(r, t), i);
-			n = new z(a[0][0], a[1][1], a[2][2], a[0][1], a[0][2], a[1][2]);
-		} else e.adp && e.adp instanceof R && (n = new R(e.adp.uiso));
-		return new Fe(e.label, e.atomType, t, n, e.disorderGroup);
+			], r = this.rotMatrix, i = L(r), a = I(I(r, t), i);
+			n = new B(a[0][0], a[1][1], a[2][2], a[0][1], a[0][2], a[1][2]);
+		} else e.adp && e.adp instanceof z && (n = new z(e.adp.uiso));
+		return new ze(e.label, e.atomType, t, n, e.disorderGroup);
 	}
 	applyToAtoms(e) {
 		return e.map((e) => this.applyToAtom(e));
 	}
 	copy() {
 		let t = new e("x,y,z");
-		return t.rotMatrix = ce(this.rotMatrix), t.transVector = ce(this.transVector), t;
+		return t.rotMatrix = de(this.rotMatrix), t.transVector = de(this.transVector), t;
 	}
 	toSymmetryString(e = null) {
 		let t = [
 			"x",
 			"y",
 			"z"
-		], n = [], r = e ? ee(this.transVector, e) : this.transVector;
+		], n = [], r = e ? re(this.transVector, e) : this.transVector;
 		for (let e = 0; e < 3; e++) {
 			let i = "", a = [];
 			for (let n = 0; n < 3; n++) {
 				let r = this.rotMatrix[e][n];
 				if (Math.abs(r) > 1e-10) if (Math.abs(Math.abs(r) - 1) < 1e-10) a.push(r > 0 ? t[n] : `-${t[n]}`);
 				else {
-					let e = Te(Math.abs(r));
+					let e = ke(Math.abs(r));
 					a.push(r > 0 ? `${e}${t[n]}` : `-${e}${t[n]}`);
 				}
 			}
 			if (i = a.join("+"), i === "" && (i = "0"), Math.abs(r[e]) > 1e-10) {
-				let t = Te(Math.abs(r[e])), n = r[e] < 0 ? `-${t}` : t;
+				let t = ke(Math.abs(r[e])), n = r[e] < 0 ? `-${t}` : t;
 				i = i === "0" ? n : i.startsWith("-") ? `${n}${i}` : `${n}+${i}`;
 			}
 			n.push(i);
 		}
 		return n.join(",");
 	}
-}, De = class e {
+}, je = class e {
 	constructor(e, t, n, r = null) {
 		this.spaceGroupName = e, this.spaceGroupNumber = t, this.symmetryOperations = n, this.operationIds = r || new Map(n.map((e, t) => [(t + 1).toString(), t])), this.identitySymOpId = Array.from(this.operationIds.entries()).find(([e, t]) => {
 			let n = this.symmetryOperations[t];
-			return le(n.rotMatrix, oe(3)) && le(n.transVector, se(3));
+			return fe(n.rotMatrix, le(3)) && fe(n.transVector, ue(3));
 		})?.[0], this._combineSymmetryCodesCache = /* @__PURE__ */ new Map(), this._rotationMatrixIndex = /* @__PURE__ */ new Map(), this._buildRotationIndex();
 	}
 	_buildRotationIndex() {
@@ -1200,7 +1202,7 @@ var Ee = class e {
 		return this.symmetryOperations.map((t) => t.applyToPoint(e));
 	}
 	parsePositionCode(e) {
-		let { id: t, translation: n } = Ce(e), r = this.operationIds.get(t);
+		let { id: t, translation: n } = De(e), r = this.operationIds.get(t);
 		if (r === void 0) throw Error(`Invalid symmetry operation ID in string ${e}: ${t}, expecting string format "<symOpId>_abc". ID entry in present symOp loop?`);
 		return {
 			symOp: this.symmetryOperations[r],
@@ -1265,7 +1267,7 @@ var Ee = class e {
 					t = n;
 					break;
 				}
-				let i = r.map((e) => Math.round(e)), a = we(t, i);
+				let i = r.map((e) => Math.round(e)), a = Oe(t, i);
 				return this._combineSymmetryCodesCache.set(n, a), a;
 			}
 		}
@@ -1276,12 +1278,12 @@ var Ee = class e {
 			n[0] + t.transVector[0],
 			n[1] + t.transVector[1],
 			n[2] + t.transVector[2]
-		], i = re(t.rotMatrix), a = this._multiplyMatrixVector3x3(i, r.map((e) => -e)), o = this._rotationMatrixIndex.get(this._matrixToKey(i));
+		], i = R(t.rotMatrix), a = this._multiplyMatrixVector3x3(i, r.map((e) => -e)), o = this._rotationMatrixIndex.get(this._matrixToKey(i));
 		if (o) for (let e of o) {
 			let t = this.symmetryOperations[e], n = a.map((e, n) => e - t.transVector[n]);
 			if (!n.every((e) => Math.abs(e - Math.round(e)) < 1e-5)) continue;
 			let r = Array.from(this.operationIds.entries()).find(([, t]) => t === e)?.[0];
-			return we(r, n.map((e) => Math.round(e)));
+			return Oe(r, n.map((e) => Math.round(e)));
 		}
 		throw Error(`No inverse symmetry operation found for position code: ${e}`);
 	}
@@ -1320,7 +1322,7 @@ var Ee = class e {
 			"_symmetry_equiv.pos_as_xyz",
 			"_symmetry_equiv_pos_as_xyz"
 		], !1);
-		if (i && !(i instanceof u)) return new e(n, r, [new Ee(i)]);
+		if (i && !(i instanceof h)) return new e(n, r, [new Ae(i)]);
 		if (i || console.warn(Object.keys(t).filter((e) => e.includes("sym"))), i) {
 			let t = i.get([
 				"_space_group_symop.operation_xyz",
@@ -1337,56 +1339,56 @@ var Ee = class e {
 				]);
 				a = new Map(e.map((e, t) => [e.toString(), t]));
 			} catch {}
-			let o = t.map((e) => new Ee(e));
+			let o = t.map((e) => new Ae(e));
 			return new e(n, r, o, a);
-		} else return console.warn("No symmetry operations found in CIF block, will use P1"), new e("Unknown", 0, [new Ee("x,y,z")]);
+		} else return console.warn("No symmetry operations found in CIF block, will use P1"), new e("Unknown", 0, [new Ae("x,y,z")]);
 	}
 };
 //#endregion
 //#region src/lib/structure/bonds.js
-function Oe(e) {
+function Me(e) {
 	return String(e).split("|")[0];
 }
-function ke(e, t = "1_555") {
+function Ne(e, t = "1_555") {
 	let n = String(e);
 	return n.includes("|") ? n : `${n}|${t}`;
 }
-var B = class e {
+var V = class e {
 	constructor(e, t, n = null, r = null, i = null) {
-		let a = Se(i);
-		this.atom1Id = ke(e), this.atom2Id = ke(t, a === "." ? "1_555" : a), this.bondLength = n, this.bondLengthSU = r, this.atom2SiteSymmetry = a;
+		let a = Ee(i);
+		this.atom1Id = Ne(e), this.atom2Id = Ne(t, a === "." ? "1_555" : a), this.bondLength = n, this.bondLengthSU = r, this.atom2SiteSymmetry = a;
 	}
 	get atom1Label() {
-		return Oe(this.atom1Id);
+		return Me(this.atom1Id);
 	}
 	get atom2Label() {
-		return Oe(this.atom2Id);
+		return Me(this.atom2Id);
 	}
 	static fromCIF(t, n) {
 		let r = t.get("_geom_bond"), i = r.getIndex(["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], n, "."), a = r.getIndex(["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"], n, !1);
-		a && a === i && (i = "."), i = Se(i);
+		a && a === i && (i = "."), i = Ee(i);
 		let o = `${r.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], n)}|1_555`, s = r.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], n), c = i === "?" ? "." : i, l = `${s}|${c === "." ? "1_555" : c}`;
 		return new e(o, l, r.getIndex(["_geom_bond.distance", "_geom_bond_distance"], n), r.getIndex(["_geom_bond.distance_su", "_geom_bond_distance_su"], n, NaN), c);
 	}
-}, V = class e {
+}, H = class e {
 	constructor(e, t, n, r, i, a, o, s, c, l, u, d) {
-		let f = Se(d);
-		this.donorAtomId = ke(e), this.hydrogenAtomId = ke(t), this.acceptorAtomId = ke(n, f === "." ? "1_555" : f), this.donorHydrogenDistance = r, this.donorHydrogenDistanceSU = i, this.acceptorHydrogenDistance = a, this.acceptorHydrogenDistanceSU = o, this.donorAcceptorDistance = s, this.donorAcceptorDistanceSU = c, this.hBondAngle = l, this.hBondAngleSU = u, this.acceptorAtomSymmetry = f;
+		let f = Ee(d);
+		this.donorAtomId = Ne(e), this.hydrogenAtomId = Ne(t), this.acceptorAtomId = Ne(n, f === "." ? "1_555" : f), this.donorHydrogenDistance = r, this.donorHydrogenDistanceSU = i, this.acceptorHydrogenDistance = a, this.acceptorHydrogenDistanceSU = o, this.donorAcceptorDistance = s, this.donorAcceptorDistanceSU = c, this.hBondAngle = l, this.hBondAngleSU = u, this.acceptorAtomSymmetry = f;
 	}
 	get donorAtomLabel() {
-		return Oe(this.donorAtomId);
+		return Me(this.donorAtomId);
 	}
 	get hydrogenAtomLabel() {
-		return Oe(this.hydrogenAtomId);
+		return Me(this.hydrogenAtomId);
 	}
 	get acceptorAtomLabel() {
-		return Oe(this.acceptorAtomId);
+		return Me(this.acceptorAtomId);
 	}
 	static fromCIF(t, n) {
-		let r = t.get("_geom_hbond"), i = r.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], n, "."), a = `${r.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], n)}|1_555`, o = `${r.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], n)}|1_555`, s = r.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], n), c = Se(i), l = `${s}|${c === "." ? "1_555" : c}`;
+		let r = t.get("_geom_hbond"), i = r.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], n, "."), a = `${r.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], n)}|1_555`, o = `${r.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], n)}|1_555`, s = r.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], n), c = Ee(i), l = `${s}|${c === "." ? "1_555" : c}`;
 		return new e(a, o, l, r.getIndex(["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], n, NaN), r.getIndex(["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], n, NaN), r.getIndex(["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], n, NaN), r.getIndex(["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], n, NaN), r.getIndex(["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], n, NaN), r.getIndex(["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], n, NaN), r.getIndex(["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], n, NaN), r.getIndex(["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], n, NaN), c);
 	}
-}, Ae = class {
+}, Pe = class {
 	constructor() {
 		this.atomLabelErrors = [], this.symmetryErrors = [];
 	}
@@ -1403,13 +1405,13 @@ var B = class e {
 		let n = "";
 		return this.atomLabelErrors.length !== 0 && (n += "Unknown atom label(s). Known labels are \n", n += e.map((e) => e.label).join(", "), n += "\n", n += this.atomLabelErrors.join("\n")), this.symmetryErrors.length !== 0 && (n.length !== 0 && (n += "\n"), n += "Unknown symmetry ID(s) or String format. Expected format is <id>_abc. ", n += "Known IDs are:\n", n += Array.from(t.operationIds.keys()).join(", "), n += "\n", n += this.symmetryErrors.join("\n")), n;
 	}
-}, je = class e {
+}, Fe = class e {
 	static createBonds(t, n) {
 		try {
 			let r = t.get("_geom_bond"), i = r.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, a = [];
 			for (let o = 0; o < i; o++) {
 				let i = r.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], o), s = r.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], o);
-				e.isValidBondPair(i, s, n) && a.push(B.fromCIF(t, o));
+				e.isValidBondPair(i, s, n) && a.push(V.fromCIF(t, o));
 			}
 			return a;
 		} catch {
@@ -1422,12 +1424,12 @@ var B = class e {
 		let i = r.get(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]).length, a = [];
 		for (let o = 0; o < i; o++) {
 			let i = r.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], o, "?"), s = r.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], o, "?"), c = r.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], o, "?");
-			e.isValidHBondTriplet(i, s, c, n) && a.push(V.fromCIF(t, o));
+			e.isValidHBondTriplet(i, s, c, n) && a.push(H.fromCIF(t, o));
 		}
 		return a;
 	}
 	static validateBonds(e, t, n) {
-		let r = new Ae(), i = new Set(t.map((e) => e.label));
+		let r = new Pe(), i = new Set(t.map((e) => e.label));
 		for (let t of e) {
 			let e = [], a = t.atom1Id.split("|")[0], o = t.atom2Id.split("|")[0];
 			if (i.has(a) || e.push(a), i.has(o) || e.push(o), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in bond: ${t.atom1Label} - ${t.atom2Label}, non-existent atom(s): ${e.join(", ")}`), t.atom2SiteSymmetry && t.atom2SiteSymmetry !== ".") try {
@@ -1439,7 +1441,7 @@ var B = class e {
 		return r;
 	}
 	static validateHBonds(e, t, n) {
-		let r = new Ae(), i = new Set(t.map((e) => e.label));
+		let r = new Pe(), i = new Set(t.map((e) => e.label));
 		for (let t of e) {
 			let e = [], a = t.donorAtomId.split("|")[0], o = t.hydrogenAtomId.split("|")[0], s = t.acceptorAtomId.split("|")[0];
 			if (i.has(a) || e.push(a), i.has(o) || e.push(o), i.has(s) || e.push(s), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in H-bond: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, non-existent atom(s): ${e.join(", ")}`), t.acceptorAtomSymmetry && t.acceptorAtomSymmetry !== ".") try {
@@ -1464,32 +1466,32 @@ var B = class e {
 };
 //#endregion
 //#region src/lib/structure/crystal.js
-function Me(e) {
+function Ie(e) {
 	if (!e || typeof e != "string") throw Error(`Invalid atom label: ${e}`);
 	let t = e.toUpperCase(), n = RegExp(`^(${(/* @__PURE__ */ "HE.LI.BE.NE.NA.MG.AL.SI.CL.AR.CA.SC.TI.CR.MN.FE.CO.NI.CU.ZN.GA.GE.AS.SE.BR.KR.RB.SR.ZR.NB.MO.TC.RU.RH.PD.AG.CD.IN.SN.SB.TE.XE.CS.BA.LA.CE.PR.ND.PM.SM.EU.GD.TB.DY.HO.ER.TM.YB.LU.HF.TA.RE.OS.IR.PT.AU.HG.TL.PB.BI.PO.AT.RN.FR.RA.AC.TH.PA.NP.PU.AM.CM".split(".")).join("|")})`), r = t.match(n);
-	if (r) return Ne(r[1]);
+	if (r) return Le(r[1]);
 	let i = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
-	if (i) return Ne(i[1]);
+	if (i) return Le(i[1]);
 	throw Error(`Could not infer element type from atom label: ${e}`);
 }
-function Ne(e) {
+function Le(e) {
 	return e.length === 1 ? e : e[0] + e[1].toLowerCase();
 }
-var H = class e {
+var U = class e {
 	constructor(e, t, n = [], r = [], i = null) {
-		this.cell = e, this.atoms = t, this.bonds = n, this.hBonds = r, this.symmetry = i || new De("None", 0, [new Ee("x,y,z")]);
+		this.cell = e, this.atoms = t, this.bonds = n, this.hBonds = r, this.symmetry = i || new je("None", 0, [new Ae("x,y,z")]);
 	}
 	static fromCIF(t) {
-		let n = Pe.fromCIF(t), r = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), i = Array.from({ length: r.length }, (e, n) => {
+		let n = Re.fromCIF(t), r = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), i = Array.from({ length: r.length }, (e, n) => {
 			try {
-				return Fe.fromCIF(t, n);
+				return ze.fromCIF(t, n);
 			} catch (e) {
 				if (e.message.includes("Dummy atom")) return null;
 				throw e;
 			}
 		}).filter((e) => e !== null);
 		if (i.length === 0) throw Error("The cif file contains no valid atoms.");
-		let a = new Set(i.map((e) => e.label)), o = je.createBonds(t, a), s = je.createHBonds(t, a), c = De.fromCIF(t), l = je.validateBonds(o, i, c), u = je.validateHBonds(s, i, c);
+		let a = new Set(i.map((e) => e.label)), o = Fe.createBonds(t, a), s = Fe.createHBonds(t, a), c = je.fromCIF(t), l = Fe.validateBonds(o, i, c), u = Fe.validateHBonds(s, i, c);
 		if (!l.isValid() || !u.isValid()) {
 			let e = "There were errors in the bond or H-bond creation\n", t = l.report(i, c), n = u.report(i, c);
 			throw t.length !== 0 && n.length !== 0 ? Error(e + t + "\n" + n) : Error(e + t + n);
@@ -1556,9 +1558,9 @@ var H = class e {
 			hBonds: Array.from(e.hBonds)
 		}));
 	}
-}, Pe = class e {
+}, Re = class e {
 	constructor(e, t, n, r, i, a) {
-		this._a = e, this._b = t, this._c = n, this._alpha = r, this._beta = i, this._gamma = a, this.fractToCartMatrix = L(this);
+		this._a = e, this._b = t, this._c = n, this._alpha = r, this._beta = i, this._gamma = a, this.fractToCartMatrix = _e(this);
 	}
 	static fromCIF(t) {
 		let n = [
@@ -1606,44 +1608,44 @@ var H = class e {
 	}
 	set a(e) {
 		if (e <= 0) throw Error("Cell parameter 'a' must be positive");
-		this._a = e, this.fractToCartMatrix = L(this);
+		this._a = e, this.fractToCartMatrix = _e(this);
 	}
 	get b() {
 		return this._b;
 	}
 	set b(e) {
 		if (e <= 0) throw Error("Cell parameter 'b' must be positive");
-		this._b = e, this.fractToCartMatrix = L(this);
+		this._b = e, this.fractToCartMatrix = _e(this);
 	}
 	get c() {
 		return this._c;
 	}
 	set c(e) {
 		if (e <= 0) throw Error("Cell parameter 'c' must be positive");
-		this._c = e, this.fractToCartMatrix = L(this);
+		this._c = e, this.fractToCartMatrix = _e(this);
 	}
 	get alpha() {
 		return this._alpha;
 	}
 	set alpha(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle alpha must be between 0 and 180 degrees");
-		this._alpha = e, this.fractToCartMatrix = L(this);
+		this._alpha = e, this.fractToCartMatrix = _e(this);
 	}
 	get beta() {
 		return this._beta;
 	}
 	set beta(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle beta must be between 0 and 180 degrees");
-		this._beta = e, this.fractToCartMatrix = L(this);
+		this._beta = e, this.fractToCartMatrix = _e(this);
 	}
 	get gamma() {
 		return this._gamma;
 	}
 	set gamma(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle gamma must be between 0 and 180 degrees");
-		this._gamma = e, this.fractToCartMatrix = L(this);
+		this._gamma = e, this.fractToCartMatrix = _e(this);
 	}
-}, Fe = class e {
+}, ze = class e {
 	constructor(e, t, n, r = null, i = 0, a = null) {
 		this.label = String(e), this.atomType = t, this.position = n, this.adp = r, this.disorderGroup = i, this.appliedSymmetry = a;
 	}
@@ -1658,17 +1660,17 @@ var H = class e {
 		if (c.includes(s)) throw Error("Dummy atom: Invalid label");
 		if (String(i.getIndex(["_atom_site.calc_flag", "_atom_site_calc_flag"], o, "")).toLowerCase() === "dum") throw Error("Dummy atom: calc_flag is dum");
 		let l = i.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], o, !1);
-		if (l ||= Me(s), c.includes(l)) throw Error("Dummy atom: Invalid atom type");
-		let u = be.fromCIF(t, o), d = xe.fromCIF(t, o), f = i.getIndex(["_atom_site.disorder_group", "_atom_site_disorder_group"], o, ".");
+		if (l ||= Ie(s), c.includes(l)) throw Error("Dummy atom: Invalid atom type");
+		let u = we.fromCIF(t, o), d = Te.fromCIF(t, o), f = i.getIndex(["_atom_site.disorder_group", "_atom_site_disorder_group"], o, ".");
 		return new e(s, l, u, d, f === "." ? 0 : f);
 	}
 };
-function Ie(e, t) {
+function Be(e, t) {
 	return e.disorderGroup === t.disorderGroup || e.disorderGroup === 0 || t.disorderGroup === 0;
 }
 //#endregion
 //#region node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
-function Le(e, t = !1) {
+function Ve(e, t = !1) {
 	let r = e[0].index !== null, i = new Set(Object.keys(e[0].attributes)), a = new Set(Object.keys(e[0].morphAttributes)), o = {}, s = {}, c = e[0].morphTargetsRelative, l = new n(), u = 0;
 	for (let n = 0; n < e.length; ++n) {
 		let d = e[n], f = 0;
@@ -1701,7 +1703,7 @@ function Le(e, t = !1) {
 		l.setIndex(n);
 	}
 	for (let e in o) {
-		let t = Re(o[e]);
+		let t = He(o[e]);
 		if (!t) return console.error("THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the " + e + " attribute."), null;
 		l.setAttribute(e, t);
 	}
@@ -1712,7 +1714,7 @@ function Le(e, t = !1) {
 			for (let n = 0; n < t; ++n) {
 				let t = [];
 				for (let r = 0; r < s[e].length; ++r) t.push(s[e][r][n]);
-				let r = Re(t);
+				let r = He(t);
 				if (!r) return console.error("THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the " + e + " morphAttribute."), null;
 				l.morphAttributes[e].push(r);
 			}
@@ -1720,7 +1722,7 @@ function Le(e, t = !1) {
 	}
 	return l;
 }
-function Re(e) {
+function He(e) {
 	let n, r, i, a = -1, o = 0;
 	for (let t = 0; t < e.length; ++t) {
 		let s = e[t];
@@ -1746,7 +1748,7 @@ function Re(e) {
 }
 //#endregion
 //#region src/lib/structure/covalent-radii.js
-var ze = Object.freeze({
+var Ue = Object.freeze({
 	H: .31,
 	D: .31,
 	He: .28,
@@ -1844,7 +1846,7 @@ var ze = Object.freeze({
 	Pu: 1.87,
 	Am: 1.8,
 	Cm: 1.69
-}), Be = Object.freeze(/* @__PURE__ */ new Set([
+}), We = Object.freeze(/* @__PURE__ */ new Set([
 	"Li",
 	"Na",
 	"K",
@@ -1857,10 +1859,443 @@ var ze = Object.freeze({
 	"Sr",
 	"Ba",
 	"Ra"
-])), Ve = Object.freeze({
+])), Ge = Object.freeze({
 	Bk: 1.65,
 	Cf: 1.81
-}), U = {
+}), Ke = Object.freeze({
+	useWorker: !0,
+	useSymmetry: !0,
+	autoLoad: !1,
+	inputMode: "auto",
+	reflections: Object.freeze({}),
+	iam: Object.freeze({}),
+	intensityScale: null,
+	extinctionCorrection: "auto",
+	coefficientColumns: null,
+	anomalousDispersion: !1,
+	reciprocalResolution: 1,
+	initialGridOversampling: 1,
+	gridOversampling: 2,
+	progressiveSteps: Object.freeze([
+		.5,
+		.75,
+		1
+	]),
+	visible: !0,
+	sigmaLevel: 3,
+	radius: 1.5,
+	resolution: 64,
+	gridSpacing: .15,
+	maxResolution: 96,
+	stitchTolerance: 1e-4,
+	positiveColor: "#36b566",
+	negativeColor: "#d94b64",
+	deformationPositiveColor: "#4FC3F7",
+	deformationNegativeColor: "#FF9800",
+	opacity: .55,
+	wireframe: !0,
+	maxPolyCount: 1e5
+}), qe = Object.fromEntries(Object.entries({
+	H: {
+		atomColor: "#ffffff",
+		ringColor: "#000000"
+	},
+	D: {
+		atomColor: "#ffffff",
+		ringColor: "#000000"
+	},
+	He: {
+		atomColor: "#d9ffff",
+		ringColor: "#000000"
+	},
+	Li: {
+		atomColor: "#cc80ff",
+		ringColor: "#000000"
+	},
+	Be: {
+		atomColor: "#c2ff00",
+		ringColor: "#000000"
+	},
+	B: {
+		atomColor: "#ffb5b5",
+		ringColor: "#000000"
+	},
+	C: {
+		atomColor: "#000000",
+		ringColor: "#ffffff"
+	},
+	N: {
+		atomColor: "#3050f8",
+		ringColor: "#ffffff"
+	},
+	O: {
+		atomColor: "#ff0d0d",
+		ringColor: "#ffffff"
+	},
+	F: {
+		atomColor: "#90e050",
+		ringColor: "#000000"
+	},
+	Ne: {
+		atomColor: "#b3e3f5",
+		ringColor: "#000000"
+	},
+	Na: {
+		atomColor: "#ab5cf2",
+		ringColor: "#ffffff"
+	},
+	Mg: {
+		atomColor: "#8aff00",
+		ringColor: "#000000"
+	},
+	Al: {
+		atomColor: "#bfa6a6",
+		ringColor: "#000000"
+	},
+	Si: {
+		atomColor: "#f0c8a0",
+		ringColor: "#000000"
+	},
+	P: {
+		atomColor: "#ff8000",
+		ringColor: "#000000"
+	},
+	S: {
+		atomColor: "#ffff30",
+		ringColor: "#000000"
+	},
+	Cl: {
+		atomColor: "#1ff01f",
+		ringColor: "#000000"
+	},
+	Ar: {
+		atomColor: "#80d1e3",
+		ringColor: "#000000"
+	},
+	K: {
+		atomColor: "#8f40d4",
+		ringColor: "#ffffff"
+	},
+	Ca: {
+		atomColor: "#3dff00",
+		ringColor: "#000000"
+	},
+	Sc: {
+		atomColor: "#e6e6e6",
+		ringColor: "#000000"
+	},
+	Ti: {
+		atomColor: "#bfc2c7",
+		ringColor: "#000000"
+	},
+	V: {
+		atomColor: "#a6a6ab",
+		ringColor: "#000000"
+	},
+	Cr: {
+		atomColor: "#8a99c7",
+		ringColor: "#000000"
+	},
+	Mn: {
+		atomColor: "#9c7ac7",
+		ringColor: "#000000"
+	},
+	Fe: {
+		atomColor: "#e06633",
+		ringColor: "#ffffff"
+	},
+	Co: {
+		atomColor: "#f090a0",
+		ringColor: "#000000"
+	},
+	Ni: {
+		atomColor: "#50d050",
+		ringColor: "#000000"
+	},
+	Cu: {
+		atomColor: "#c88033",
+		ringColor: "#000000"
+	},
+	Zn: {
+		atomColor: "#7d80b0",
+		ringColor: "#000000"
+	},
+	Ga: {
+		atomColor: "#c28f8f",
+		ringColor: "#000000"
+	},
+	Ge: {
+		atomColor: "#668f8f",
+		ringColor: "#000000"
+	},
+	As: {
+		atomColor: "#bd80e3",
+		ringColor: "#000000"
+	},
+	Se: {
+		atomColor: "#ffa100",
+		ringColor: "#000000"
+	},
+	Br: {
+		atomColor: "#a62929",
+		ringColor: "#ffffff"
+	},
+	Kr: {
+		atomColor: "#5cb8d1",
+		ringColor: "#000000"
+	},
+	Rb: {
+		atomColor: "#702eb0",
+		ringColor: "#ffffff"
+	},
+	Sr: {
+		atomColor: "#00ff00",
+		ringColor: "#000000"
+	},
+	Y: {
+		atomColor: "#94ffff",
+		ringColor: "#000000"
+	},
+	Zr: {
+		atomColor: "#94e0e0",
+		ringColor: "#000000"
+	},
+	Nb: {
+		atomColor: "#73c2c9",
+		ringColor: "#000000"
+	},
+	Mo: {
+		atomColor: "#54b5b5",
+		ringColor: "#000000"
+	},
+	Tc: {
+		atomColor: "#3b9e9e",
+		ringColor: "#000000"
+	},
+	Ru: {
+		atomColor: "#248f8f",
+		ringColor: "#000000"
+	},
+	Rh: {
+		atomColor: "#0a7d8c",
+		ringColor: "#000000"
+	},
+	Pd: {
+		atomColor: "#006985",
+		ringColor: "#ffffff"
+	},
+	Ag: {
+		atomColor: "#c0c0c0",
+		ringColor: "#000000"
+	},
+	Cd: {
+		atomColor: "#ffd98f",
+		ringColor: "#000000"
+	},
+	In: {
+		atomColor: "#a67573",
+		ringColor: "#000000"
+	},
+	Sn: {
+		atomColor: "#668080",
+		ringColor: "#000000"
+	},
+	Sb: {
+		atomColor: "#9e63b5",
+		ringColor: "#ffffff"
+	},
+	Te: {
+		atomColor: "#d47a00",
+		ringColor: "#000000"
+	},
+	I: {
+		atomColor: "#940094",
+		ringColor: "#ffffff"
+	},
+	Xe: {
+		atomColor: "#429eb0",
+		ringColor: "#000000"
+	},
+	Cs: {
+		atomColor: "#57178f",
+		ringColor: "#ffffff"
+	},
+	Ba: {
+		atomColor: "#00c900",
+		ringColor: "#000000"
+	},
+	La: {
+		atomColor: "#70d4ff",
+		ringColor: "#000000"
+	},
+	Ce: {
+		atomColor: "#ffffc7",
+		ringColor: "#000000"
+	},
+	Pr: {
+		atomColor: "#d9ffc7",
+		ringColor: "#000000"
+	},
+	Nd: {
+		atomColor: "#c7ffc7",
+		ringColor: "#000000"
+	},
+	Pm: {
+		atomColor: "#a3ffc7",
+		ringColor: "#000000"
+	},
+	Sm: {
+		atomColor: "#8fffc7",
+		ringColor: "#000000"
+	},
+	Eu: {
+		atomColor: "#61ffc7",
+		ringColor: "#000000"
+	},
+	Gd: {
+		atomColor: "#45ffc7",
+		ringColor: "#000000"
+	},
+	Tb: {
+		atomColor: "#30ffc7",
+		ringColor: "#000000"
+	},
+	Dy: {
+		atomColor: "#1fffc7",
+		ringColor: "#000000"
+	},
+	Ho: {
+		atomColor: "#00ff9c",
+		ringColor: "#000000"
+	},
+	Er: {
+		atomColor: "#00e675",
+		ringColor: "#000000"
+	},
+	Tm: {
+		atomColor: "#00d452",
+		ringColor: "#000000"
+	},
+	Yb: {
+		atomColor: "#00bf38",
+		ringColor: "#000000"
+	},
+	Lu: {
+		atomColor: "#00ab24",
+		ringColor: "#000000"
+	},
+	Hf: {
+		atomColor: "#4dc2ff",
+		ringColor: "#000000"
+	},
+	Ta: {
+		atomColor: "#4da6ff",
+		ringColor: "#000000"
+	},
+	W: {
+		atomColor: "#2194d6",
+		ringColor: "#000000"
+	},
+	Re: {
+		atomColor: "#267dab",
+		ringColor: "#000000"
+	},
+	Os: {
+		atomColor: "#266696",
+		ringColor: "#ffffff"
+	},
+	Ir: {
+		atomColor: "#175487",
+		ringColor: "#ffffff"
+	},
+	Pt: {
+		atomColor: "#d0d0e0",
+		ringColor: "#000000"
+	},
+	Au: {
+		atomColor: "#ffd123",
+		ringColor: "#000000"
+	},
+	Hg: {
+		atomColor: "#b8b8d0",
+		ringColor: "#000000"
+	},
+	Tl: {
+		atomColor: "#a6544d",
+		ringColor: "#ffffff"
+	},
+	Pb: {
+		atomColor: "#575961",
+		ringColor: "#ffffff"
+	},
+	Bi: {
+		atomColor: "#9e4fb5",
+		ringColor: "#ffffff"
+	},
+	Po: {
+		atomColor: "#ab5c00",
+		ringColor: "#ffffff"
+	},
+	At: {
+		atomColor: "#754f45",
+		ringColor: "#ffffff"
+	},
+	Rn: {
+		atomColor: "#428296",
+		ringColor: "#000000"
+	},
+	Fr: {
+		atomColor: "#420066",
+		ringColor: "#ffffff"
+	},
+	Ra: {
+		atomColor: "#007d00",
+		ringColor: "#000000"
+	},
+	Ac: {
+		atomColor: "#70abfa",
+		ringColor: "#000000"
+	},
+	Th: {
+		atomColor: "#00baff",
+		ringColor: "#000000"
+	},
+	Pa: {
+		atomColor: "#00a1ff",
+		ringColor: "#000000"
+	},
+	U: {
+		atomColor: "#008fff",
+		ringColor: "#000000"
+	},
+	Np: {
+		atomColor: "#0080ff",
+		ringColor: "#000000"
+	},
+	Pu: {
+		atomColor: "#006bff",
+		ringColor: "#ffffff"
+	},
+	Am: {
+		atomColor: "#545cf2",
+		ringColor: "#ffffff"
+	},
+	Cm: {
+		atomColor: "#785ce3",
+		ringColor: "#ffffff"
+	},
+	Bk: {
+		atomColor: "#8a4fe3",
+		ringColor: "#ffffff"
+	},
+	Cf: {
+		atomColor: "#a136d4",
+		ringColor: "#ffffff"
+	}
+}).map(([e, t]) => [e, {
+	radius: Ue[e] ?? Ge[e],
+	...t
+}])), W = {
 	camera: {
 		type: "orthographic",
 		minDistance: 1,
@@ -1921,6 +2356,7 @@ var ze = Object.freeze({
 	hydrogenMode: "none",
 	disorderMode: "all",
 	symmetryMode: "none",
+	differenceDensity: { ...Ke },
 	bondGrowTolerance: .45,
 	fixCifErrors: !1,
 	atomLabels: {
@@ -1999,408 +2435,8 @@ var ze = Object.freeze({
 		arrowHeadWidthMult: .25,
 		arrowCylinderRadius: .04
 	},
-	elementProperties: Object.fromEntries(Object.entries({
-		H: {
-			atomColor: "#ffffff",
-			ringColor: "#000000"
-		},
-		D: {
-			atomColor: "#ffffff",
-			ringColor: "#000000"
-		},
-		He: {
-			atomColor: "#d9ffff",
-			ringColor: "#000000"
-		},
-		Li: {
-			atomColor: "#cc80ff",
-			ringColor: "#000000"
-		},
-		Be: {
-			atomColor: "#c2ff00",
-			ringColor: "#000000"
-		},
-		B: {
-			atomColor: "#ffb5b5",
-			ringColor: "#000000"
-		},
-		C: {
-			atomColor: "#000000",
-			ringColor: "#ffffff"
-		},
-		N: {
-			atomColor: "#3050f8",
-			ringColor: "#ffffff"
-		},
-		O: {
-			atomColor: "#ff0d0d",
-			ringColor: "#ffffff"
-		},
-		F: {
-			atomColor: "#90e050",
-			ringColor: "#000000"
-		},
-		Ne: {
-			atomColor: "#b3e3f5",
-			ringColor: "#000000"
-		},
-		Na: {
-			atomColor: "#ab5cf2",
-			ringColor: "#ffffff"
-		},
-		Mg: {
-			atomColor: "#8aff00",
-			ringColor: "#000000"
-		},
-		Al: {
-			atomColor: "#bfa6a6",
-			ringColor: "#000000"
-		},
-		Si: {
-			atomColor: "#f0c8a0",
-			ringColor: "#000000"
-		},
-		P: {
-			atomColor: "#ff8000",
-			ringColor: "#000000"
-		},
-		S: {
-			atomColor: "#ffff30",
-			ringColor: "#000000"
-		},
-		Cl: {
-			atomColor: "#1ff01f",
-			ringColor: "#000000"
-		},
-		Ar: {
-			atomColor: "#80d1e3",
-			ringColor: "#000000"
-		},
-		K: {
-			atomColor: "#8f40d4",
-			ringColor: "#ffffff"
-		},
-		Ca: {
-			atomColor: "#3dff00",
-			ringColor: "#000000"
-		},
-		Sc: {
-			atomColor: "#e6e6e6",
-			ringColor: "#000000"
-		},
-		Ti: {
-			atomColor: "#bfc2c7",
-			ringColor: "#000000"
-		},
-		V: {
-			atomColor: "#a6a6ab",
-			ringColor: "#000000"
-		},
-		Cr: {
-			atomColor: "#8a99c7",
-			ringColor: "#000000"
-		},
-		Mn: {
-			atomColor: "#9c7ac7",
-			ringColor: "#000000"
-		},
-		Fe: {
-			atomColor: "#e06633",
-			ringColor: "#ffffff"
-		},
-		Co: {
-			atomColor: "#f090a0",
-			ringColor: "#000000"
-		},
-		Ni: {
-			atomColor: "#50d050",
-			ringColor: "#000000"
-		},
-		Cu: {
-			atomColor: "#c88033",
-			ringColor: "#000000"
-		},
-		Zn: {
-			atomColor: "#7d80b0",
-			ringColor: "#000000"
-		},
-		Ga: {
-			atomColor: "#c28f8f",
-			ringColor: "#000000"
-		},
-		Ge: {
-			atomColor: "#668f8f",
-			ringColor: "#000000"
-		},
-		As: {
-			atomColor: "#bd80e3",
-			ringColor: "#000000"
-		},
-		Se: {
-			atomColor: "#ffa100",
-			ringColor: "#000000"
-		},
-		Br: {
-			atomColor: "#a62929",
-			ringColor: "#ffffff"
-		},
-		Kr: {
-			atomColor: "#5cb8d1",
-			ringColor: "#000000"
-		},
-		Rb: {
-			atomColor: "#702eb0",
-			ringColor: "#ffffff"
-		},
-		Sr: {
-			atomColor: "#00ff00",
-			ringColor: "#000000"
-		},
-		Y: {
-			atomColor: "#94ffff",
-			ringColor: "#000000"
-		},
-		Zr: {
-			atomColor: "#94e0e0",
-			ringColor: "#000000"
-		},
-		Nb: {
-			atomColor: "#73c2c9",
-			ringColor: "#000000"
-		},
-		Mo: {
-			atomColor: "#54b5b5",
-			ringColor: "#000000"
-		},
-		Tc: {
-			atomColor: "#3b9e9e",
-			ringColor: "#000000"
-		},
-		Ru: {
-			atomColor: "#248f8f",
-			ringColor: "#000000"
-		},
-		Rh: {
-			atomColor: "#0a7d8c",
-			ringColor: "#000000"
-		},
-		Pd: {
-			atomColor: "#006985",
-			ringColor: "#ffffff"
-		},
-		Ag: {
-			atomColor: "#c0c0c0",
-			ringColor: "#000000"
-		},
-		Cd: {
-			atomColor: "#ffd98f",
-			ringColor: "#000000"
-		},
-		In: {
-			atomColor: "#a67573",
-			ringColor: "#000000"
-		},
-		Sn: {
-			atomColor: "#668080",
-			ringColor: "#000000"
-		},
-		Sb: {
-			atomColor: "#9e63b5",
-			ringColor: "#ffffff"
-		},
-		Te: {
-			atomColor: "#d47a00",
-			ringColor: "#000000"
-		},
-		I: {
-			atomColor: "#940094",
-			ringColor: "#ffffff"
-		},
-		Xe: {
-			atomColor: "#429eb0",
-			ringColor: "#000000"
-		},
-		Cs: {
-			atomColor: "#57178f",
-			ringColor: "#ffffff"
-		},
-		Ba: {
-			atomColor: "#00c900",
-			ringColor: "#000000"
-		},
-		La: {
-			atomColor: "#70d4ff",
-			ringColor: "#000000"
-		},
-		Ce: {
-			atomColor: "#ffffc7",
-			ringColor: "#000000"
-		},
-		Pr: {
-			atomColor: "#d9ffc7",
-			ringColor: "#000000"
-		},
-		Nd: {
-			atomColor: "#c7ffc7",
-			ringColor: "#000000"
-		},
-		Pm: {
-			atomColor: "#a3ffc7",
-			ringColor: "#000000"
-		},
-		Sm: {
-			atomColor: "#8fffc7",
-			ringColor: "#000000"
-		},
-		Eu: {
-			atomColor: "#61ffc7",
-			ringColor: "#000000"
-		},
-		Gd: {
-			atomColor: "#45ffc7",
-			ringColor: "#000000"
-		},
-		Tb: {
-			atomColor: "#30ffc7",
-			ringColor: "#000000"
-		},
-		Dy: {
-			atomColor: "#1fffc7",
-			ringColor: "#000000"
-		},
-		Ho: {
-			atomColor: "#00ff9c",
-			ringColor: "#000000"
-		},
-		Er: {
-			atomColor: "#00e675",
-			ringColor: "#000000"
-		},
-		Tm: {
-			atomColor: "#00d452",
-			ringColor: "#000000"
-		},
-		Yb: {
-			atomColor: "#00bf38",
-			ringColor: "#000000"
-		},
-		Lu: {
-			atomColor: "#00ab24",
-			ringColor: "#000000"
-		},
-		Hf: {
-			atomColor: "#4dc2ff",
-			ringColor: "#000000"
-		},
-		Ta: {
-			atomColor: "#4da6ff",
-			ringColor: "#000000"
-		},
-		W: {
-			atomColor: "#2194d6",
-			ringColor: "#000000"
-		},
-		Re: {
-			atomColor: "#267dab",
-			ringColor: "#000000"
-		},
-		Os: {
-			atomColor: "#266696",
-			ringColor: "#ffffff"
-		},
-		Ir: {
-			atomColor: "#175487",
-			ringColor: "#ffffff"
-		},
-		Pt: {
-			atomColor: "#d0d0e0",
-			ringColor: "#000000"
-		},
-		Au: {
-			atomColor: "#ffd123",
-			ringColor: "#000000"
-		},
-		Hg: {
-			atomColor: "#b8b8d0",
-			ringColor: "#000000"
-		},
-		Tl: {
-			atomColor: "#a6544d",
-			ringColor: "#ffffff"
-		},
-		Pb: {
-			atomColor: "#575961",
-			ringColor: "#ffffff"
-		},
-		Bi: {
-			atomColor: "#9e4fb5",
-			ringColor: "#ffffff"
-		},
-		Po: {
-			atomColor: "#ab5c00",
-			ringColor: "#ffffff"
-		},
-		At: {
-			atomColor: "#754f45",
-			ringColor: "#ffffff"
-		},
-		Rn: {
-			atomColor: "#428296",
-			ringColor: "#000000"
-		},
-		Fr: {
-			atomColor: "#420066",
-			ringColor: "#ffffff"
-		},
-		Ra: {
-			atomColor: "#007d00",
-			ringColor: "#000000"
-		},
-		Ac: {
-			atomColor: "#70abfa",
-			ringColor: "#000000"
-		},
-		Th: {
-			atomColor: "#00baff",
-			ringColor: "#000000"
-		},
-		Pa: {
-			atomColor: "#00a1ff",
-			ringColor: "#000000"
-		},
-		U: {
-			atomColor: "#008fff",
-			ringColor: "#000000"
-		},
-		Np: {
-			atomColor: "#0080ff",
-			ringColor: "#000000"
-		},
-		Pu: {
-			atomColor: "#006bff",
-			ringColor: "#ffffff"
-		},
-		Am: {
-			atomColor: "#545cf2",
-			ringColor: "#ffffff"
-		},
-		Cm: {
-			atomColor: "#785ce3",
-			ringColor: "#ffffff"
-		},
-		Bk: {
-			atomColor: "#8a4fe3",
-			ringColor: "#ffffff"
-		},
-		Cf: {
-			atomColor: "#a136d4",
-			ringColor: "#ffffff"
-		}
-	}).map(([e, t]) => [e, {
-		radius: ze[e] ?? Ve[e],
-		...t
-	}]))
-}, He = [
+	elementProperties: qe
+}, Je = [
 	[
 		-1,
 		-1,
@@ -2441,16 +2477,16 @@ var ze = Object.freeze({
 		1,
 		1
 	]
-], Ue = [
+], Ye = [
 	-1,
 	1,
 	1
-], We = [
+], Xe = [
 	new e.Matrix4().set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
 	new e.Matrix4().set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1),
 	new e.Matrix4().set(0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
 ];
-function Ge(t, n) {
+function Ze(t, n) {
 	let r = new e.Color(t.atomColor), i = Math.max(1, n.atomCutawayStripeCount), a = e.MathUtils.clamp(n.atomCutawayStripeWidth, .01, 1) / 2, o = new e.MeshStandardMaterial({
 		color: t.ringColor,
 		roughness: n.atomColorRoughness,
@@ -2465,7 +2501,7 @@ function Ge(t, n) {
 		e.uniforms.cutawayStripeColor = { value: r }, e.uniforms.cutawayStripeCount = { value: i }, e.uniforms.cutawayStripeHalfWidth = { value: a }, e.vertexShader = e.vertexShader.replace("#include <uv_pars_vertex>", "#include <uv_pars_vertex>\nvarying vec2 vCutawayUv;").replace("#include <uv_vertex>", "#include <uv_vertex>\nvCutawayUv = uv;"), e.fragmentShader = e.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 vCutawayUv;\nuniform vec3 cutawayStripeColor;\nuniform float cutawayStripeCount;\nuniform float cutawayStripeHalfWidth;").replace("#include <color_fragment>", "#include <color_fragment>\nfloat cutawayStripeCoordinate = vCutawayUv.y * cutawayStripeCount;\nfloat cutawayStripePhase = fract(cutawayStripeCoordinate);\nfloat cutawayStripeDistance = abs(cutawayStripePhase - 0.5);\nfloat cutawayStripeEdge = max(fwidth(cutawayStripeCoordinate), 0.001);\nfloat cutawayStripeMask = 1.0 - smoothstep(\n    cutawayStripeHalfWidth - cutawayStripeEdge,\n    cutawayStripeHalfWidth + cutawayStripeEdge,\n    cutawayStripeDistance\n);\ndiffuseColor.rgb = mix(\n    diffuseColor.rgb, cutawayStripeColor, cutawayStripeMask\n);");
 	}, o.customProgramCacheKey = () => "cutaway-horizontal-stripes-v1", o;
 }
-function Ke(t, n = t.plot2DLineColor) {
+function Qe(t, n = t.plot2DLineColor) {
 	let r = new e.Color(n), i = Math.max(1, t.plot2DStripeCount), a = e.MathUtils.clamp(t.plot2DStripeWidth, .01, 1) / 2, o = new e.MeshBasicMaterial({
 		color: t.plot2DAtomColor,
 		side: e.DoubleSide
@@ -2478,10 +2514,10 @@ function Ke(t, n = t.plot2DLineColor) {
 		e.uniforms.plot2DStripeColor = { value: r }, e.uniforms.plot2DStripeCount = { value: i }, e.uniforms.plot2DStripeHalfWidth = { value: a }, e.vertexShader = e.vertexShader.replace("#include <uv_pars_vertex>", "#include <uv_pars_vertex>\nvarying vec2 vPlot2DUv;").replace("#include <uv_vertex>", "#include <uv_vertex>\nvPlot2DUv = uv;"), e.fragmentShader = e.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 vPlot2DUv;\nuniform vec3 plot2DStripeColor;\nuniform float plot2DStripeCount;\nuniform float plot2DStripeHalfWidth;").replace("#include <color_fragment>", "#include <color_fragment>\nfloat plot2DStripeCoordinate = vPlot2DUv.y * plot2DStripeCount;\nfloat plot2DStripePhase = fract(plot2DStripeCoordinate);\nfloat plot2DStripeDistance = abs(plot2DStripePhase - 0.5);\nfloat plot2DStripeEdge = max(fwidth(plot2DStripeCoordinate), 0.001);\nfloat plot2DStripeMask = 1.0 - smoothstep(\n    plot2DStripeHalfWidth - plot2DStripeEdge,\n    plot2DStripeHalfWidth + plot2DStripeEdge,\n    plot2DStripeDistance\n);\ndiffuseColor.rgb = mix(\n    diffuseColor.rgb, plot2DStripeColor, plot2DStripeMask\n);");
 	}, o.customProgramCacheKey = () => "2d-plot-curved-octant-hatch-v1", o;
 }
-function qe(e, t) {
-	e.scale.set(t[0] / Ue[0], t[1] / Ue[1], t[2] / Ue[2]);
+function $e(e, t) {
+	e.scale.set(t[0] / Ye[0], t[1] / Ye[1], t[2] / Ye[2]);
 }
-function Je(e, t) {
+function et(e, t) {
 	let n = e.getAttribute("uv"), r = Math.cos(t), i = Math.sin(t);
 	for (let e = 0; e < n.count; e++) {
 		let t = n.getX(e) - .5, a = n.getY(e) - .5;
@@ -2489,7 +2525,7 @@ function Je(e, t) {
 	}
 	n.needsUpdate = !0;
 }
-function Ye(t) {
+function tt(t) {
 	let n = {
 		position: 0,
 		rotation: 0,
@@ -2518,7 +2554,7 @@ function Ye(t) {
 	}
 	return r(t), n;
 }
-var Xe = class {
+var nt = class {
 	constructor(t, n, r) {
 		this.mesh = new e.InstancedMesh(t, n, r), this.mesh.userData = { selectable: !1 }, this.nextIndex = 0;
 	}
@@ -2536,17 +2572,17 @@ var Xe = class {
 		this.mesh.setMatrixAt(e, t), this.mesh.instanceMatrix.needsUpdate = !0;
 	}
 };
-function Ze(t, n) {
+function rt(t, n) {
 	let r = t.getEllipsoidMatrix(n).toArray();
 	return new e.Matrix4(r[0][0], r[0][1], r[0][2], 0, r[1][0], r[1][1], r[1][2], 0, r[2][0], r[2][1], r[2][2], 0, 0, 0, 0, 1);
 }
-function Qe(t, n) {
+function it(t, n) {
 	let r = n.clone().sub(t), i = r.length();
 	if (i === 0) throw Error("Error in ORTEP Bond Creation. Trying to create a zero length bond.");
 	let a = r.divideScalar(i), o = new e.Vector3(0, 1, 0), s = new e.Vector3().crossVectors(a, o), c = -Math.acos(a.dot(o));
 	return new e.Matrix4().makeScale(1, i, 1).premultiply(new e.Matrix4().makeRotationAxis(s.normalize(), c)).setPosition(t.clone().add(n).multiplyScalar(.5));
 }
-function $e(e, t, n, r) {
+function at(e, t, n, r) {
 	let i = e.clone(), a = t.clone(), o = a.clone().sub(i), s = o.length();
 	if (s === 0 || !n || !r) return [i, a];
 	o.divideScalar(s);
@@ -2559,14 +2595,14 @@ function $e(e, t, n, r) {
 	}
 	return i.addScaledVector(o, c), a.addScaledVector(o, -l), [i, a];
 }
-var et = class {
+var ot = class {
 	constructor(e = {}) {
 		let t = e || {};
 		this.options = {
-			...U,
+			...W,
 			...t,
 			elementProperties: {
-				...U.elementProperties,
+				...W.elementProperties,
 				...t.elementProperties || {}
 			}
 		}, this.scaling = 1.5384, this.geometries = {}, this.materials = {}, this.elementMaterials = {}, this.initializeGeometries(), this.initializeMaterials();
@@ -2601,7 +2637,7 @@ var et = class {
 	}
 	getAtomMaterials(t) {
 		let n = t;
-		if (this.options.elementProperties[n] || (n = Me(t)), this.validateElementType(n), this.options.renderStyle === "cutout-2d") {
+		if (this.options.elementProperties[n] || (n = Ie(t)), this.validateElementType(n), this.options.renderStyle === "cutout-2d") {
 			let t = `${n}_2d_materials`;
 			if (!this.elementMaterials[t]) {
 				let r = this.options.elementProperties[n], i = ["H", "D"].includes(n) ? this.options.plot2DLineColor : r.atomColor, a = new e.MeshBasicMaterial({
@@ -2609,7 +2645,7 @@ var et = class {
 					side: e.BackSide
 				}), o = new e.MeshBasicMaterial({ color: this.options.plot2DAtomColor });
 				o.userData.plot2DOutlineMaterial = a, o.userData.plot2DOutlineScale = this.options.plot2DOutlineScale;
-				let s = new e.MeshBasicMaterial({ color: i }), c = Ke(this.options, i);
+				let s = new e.MeshBasicMaterial({ color: i }), c = Qe(this.options, i);
 				this.elementMaterials[t] = [
 					o,
 					s,
@@ -2630,7 +2666,7 @@ var et = class {
 				roughness: this.options.atomColorRoughness,
 				metalness: this.options.atomColorMetalness
 			});
-			this.elementMaterials[r] = [i, a], this.options.renderStyle === "cutout-3d" && this.elementMaterials[r].push(Ge(t, this.options));
+			this.elementMaterials[r] = [i, a], this.options.renderStyle === "cutout-3d" && this.elementMaterials[r].push(Ze(t, this.options));
 		}
 		return this.elementMaterials[r];
 	}
@@ -2658,8 +2694,8 @@ var et = class {
 	}
 	createCutawayPlanes(t) {
 		let n = new e.CircleGeometry(this.scaling, t), r = new e.CircleGeometry(this.scaling, t), i = new e.CircleGeometry(this.scaling, t);
-		Je(r, Math.PI / 2), Je(i, Math.PI / 2), r.rotateX(Math.PI / 2), i.rotateY(Math.PI / 2);
-		let a = Le([
+		et(r, Math.PI / 2), et(i, Math.PI / 2), r.rotateX(Math.PI / 2), i.rotateY(Math.PI / 2);
+		let a = Ve([
 			n,
 			r,
 			i
@@ -2667,10 +2703,10 @@ var et = class {
 		return n.dispose(), r.dispose(), i.dispose(), a;
 	}
 	createMergedADPRingSet(e) {
-		let t = We.map((t) => {
+		let t = Xe.map((t) => {
 			let n = e.clone();
 			return n.applyMatrix4(t), n;
-		}), n = Le(t);
+		}), n = Ve(t);
 		return t.forEach((e) => e.dispose()), n;
 	}
 	dispose() {
@@ -2678,19 +2714,19 @@ var et = class {
 			e.forEach((e) => e.dispose());
 		});
 	}
-}, tt = class {
+}, st = class {
 	constructor(e, t = {}) {
-		let n = t || {}, r = { ...U.elementProperties };
+		let n = t || {}, r = { ...W.elementProperties };
 		n.elementProperties && Object.entries(n.elementProperties).forEach(([e, t]) => {
 			r[e] = {
 				...r[e],
 				...t
 			};
 		}), this.options = {
-			...U,
+			...W,
 			...n,
 			elementProperties: r
-		}, this.crystalStructure = e, this.cache = new et(this.options), this.createStructure();
+		}, this.crystalStructure = e, this.cache = new ot(this.options), this.createStructure();
 	}
 	createStructure() {
 		this.atoms3D = [], this.bonds3D = [], this.hBonds3D = [];
@@ -2709,21 +2745,21 @@ var et = class {
 		};
 		if (this.options.renderStyle !== "solid-3d") for (let e of this.crystalStructure.atoms) {
 			let [t, n, r] = this.cache.getAtomMaterials(e.atomType), a;
-			a = e.adp instanceof z ? new it(e, this.crystalStructure.cell, this.cache.geometries.atom, t, this.cache.geometries.adpRingSet, n, {
+			a = e.adp instanceof B ? new ut(e, this.crystalStructure.cell, this.cache.geometries.atom, t, this.cache.geometries.adpRingSet, n, {
 				octantGeometry: this.cache.geometries.atomOctant,
 				emptyGeometry: this.cache.geometries.emptyAtom,
 				planeGeometry: this.cache.geometries.cutawayPlanes,
 				planeMaterial: r,
 				hysteresis: this.options.atomCutawayHysteresis
-			}) : e.adp instanceof R ? new at(e, this.crystalStructure.cell, this.cache.geometries.atom, t) : new ot(e, this.crystalStructure.cell, this.cache.geometries.atom, t, this.options), this.atoms3D.push(a), i.has(e.uniqueId) || i.set(e.uniqueId, a);
+			}) : e.adp instanceof z ? new dt(e, this.crystalStructure.cell, this.cache.geometries.atom, t) : new ft(e, this.crystalStructure.cell, this.cache.geometries.atom, t, this.options), this.atoms3D.push(a), i.has(e.uniqueId) || i.set(e.uniqueId, a);
 		}
 		else {
 			this.cache.geometries.atom.boundingSphere || this.cache.geometries.atom.computeBoundingSphere();
 			let e = this.cache.geometries.atom.boundingSphere.radius, t = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), r = [];
 			for (let e of this.crystalStructure.atoms) {
 				let [i, a] = this.cache.getAtomMaterials(e.atomType);
-				if (e.adp instanceof z) {
-					let { matrix: o, valid: s } = st(e, this.crystalStructure.cell);
+				if (e.adp instanceof B) {
+					let { matrix: o, valid: s } = pt(e, this.crystalStructure.cell);
 					s ? (t.set(i, (t.get(i) || 0) + 1), n.set(a, (n.get(a) || 0) + 1), r.push({
 						atom: e,
 						kind: "ani",
@@ -2736,8 +2772,8 @@ var et = class {
 						atomMaterial: i,
 						ringMaterial: a
 					});
-				} else if (e.adp instanceof R) {
-					let { matrix: n, valid: a } = ct(e, this.crystalStructure.cell);
+				} else if (e.adp instanceof z) {
+					let { matrix: n, valid: a } = mt(e, this.crystalStructure.cell);
 					a ? (t.set(i, (t.get(i) || 0) + 1), r.push({
 						atom: e,
 						kind: "iso",
@@ -2749,7 +2785,7 @@ var et = class {
 						atomMaterial: i
 					});
 				} else {
-					let n = lt(e, this.crystalStructure.cell, this.options);
+					let n = ht(e, this.crystalStructure.cell, this.options);
 					t.set(i, (t.get(i) || 0) + 1), r.push({
 						atom: e,
 						kind: "constant",
@@ -2759,12 +2795,12 @@ var et = class {
 				}
 			}
 			let a = /* @__PURE__ */ new Map();
-			for (let [e, n] of t) a.set(e, new Xe(this.cache.geometries.atom, e, n));
+			for (let [e, n] of t) a.set(e, new nt(this.cache.geometries.atom, e, n));
 			let o = /* @__PURE__ */ new Map();
-			for (let [e, t] of n) o.set(e, new Xe(this.cache.geometries.adpRingSet, e, t));
+			for (let [e, t] of n) o.set(e, new nt(this.cache.geometries.adpRingSet, e, t));
 			for (let t of r) {
 				let n;
-				n = t.kind === "ani" ? new ft(t.atom, a.get(t.atomMaterial), t.matrix, e, o.get(t.ringMaterial)) : t.kind === "iso" || t.kind === "constant" ? new dt(t.atom, a.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new it(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : new at(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), i.has(t.atom.uniqueId) || i.set(t.atom.uniqueId, n);
+				n = t.kind === "ani" ? new vt(t.atom, a.get(t.atomMaterial), t.matrix, e, o.get(t.ringMaterial)) : t.kind === "iso" || t.kind === "constant" ? new _t(t.atom, a.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new ut(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : new dt(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), i.has(t.atom.uniqueId) || i.set(t.atom.uniqueId, n);
 			}
 			a.forEach((e) => e.finalize()), o.forEach((e) => e.finalize()), this.atomPools = a, this.ringPools = o;
 		}
@@ -2774,7 +2810,7 @@ var et = class {
 		});
 		if (this.options.renderStyle === "cutout-2d") for (let e of s) try {
 			let t = [n.get(e.atom1Id), n.get(e.atom2Id)].some((e) => Number(e.disorderGroup) > 1);
-			this.bonds3D.push(new pt(e, this.crystalStructure, this.cache.geometries.bond, t ? this.cache.materials.openBond : this.cache.materials.bond, a, o, t ? {
+			this.bonds3D.push(new yt(e, this.crystalStructure, this.cache.geometries.bond, t ? this.cache.materials.openBond : this.cache.materials.bond, a, o, t ? {
 				outlineMaterial: this.cache.materials.openBondOutline,
 				innerScale: this.options.plot2DOpenBondInnerScale
 			} : null));
@@ -2784,24 +2820,24 @@ var et = class {
 		else {
 			let e = [];
 			for (let t of s) try {
-				let n = mt.computeMatrix(t, this.crystalStructure, a, o);
+				let n = bt.computeMatrix(t, this.crystalStructure, a, o);
 				e.push([t, n]);
 			} catch (e) {
 				if (e.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.") throw e;
 			}
-			this.bondPool = e.length > 0 ? new Xe(this.cache.geometries.bond, this.cache.materials.bond, e.length) : null;
-			for (let [t, n] of e) this.bonds3D.push(new mt(t, this.bondPool, n));
+			this.bondPool = e.length > 0 ? new nt(this.cache.geometries.bond, this.cache.materials.bond, e.length) : null;
+			for (let [t, n] of e) this.bonds3D.push(new bt(t, this.bondPool, n));
 			this.bondPool?.finalize();
 		}
 		let c = this.crystalStructure.hBonds.filter((e) => t.has(e.donorAtomId) && t.has(e.acceptorAtomId) && (!e.hydrogenAtomId || t.has(e.hydrogenAtomId))), l = [], u = 0;
 		for (let e of c) try {
-			let t = ht.computeSegmentMatrices(e, this.crystalStructure, this.options.hbondDashSegmentLength, this.options.hbondDashFraction, a, o);
+			let t = xt.computeSegmentMatrices(e, this.crystalStructure, this.options.hbondDashSegmentLength, this.options.hbondDashFraction, a, o);
 			l.push([e, t]), u += t.length;
 		} catch (e) {
 			if (e.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.") throw e;
 		}
-		this.hbondPool = u > 0 ? new Xe(this.cache.geometries.hbond, this.cache.materials.hbond, u) : null;
-		for (let [e, t] of l) this.hBonds3D.push(new ht(e, this.hbondPool, t));
+		this.hbondPool = u > 0 ? new nt(this.cache.geometries.hbond, this.cache.materials.hbond, u) : null;
+		for (let [e, t] of l) this.hBonds3D.push(new xt(e, this.hbondPool, t));
 		this.hbondPool?.finalize();
 	}
 	getGroup() {
@@ -2813,7 +2849,7 @@ var et = class {
 		for (let e of this.bonds3D) t.add(e);
 		this.hbondPool && t.add(this.hbondPool.mesh);
 		for (let e of this.hBonds3D) t.add(e);
-		return Ye(t), t.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), t.cameraFacingAtoms = t.cutawayAtoms, t.atomLabelAnchors = this.atoms3D.map((t) => {
+		return tt(t), t.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), t.cameraFacingAtoms = t.cutawayAtoms, t.atomLabelAnchors = this.atoms3D.map((t) => {
 			let n;
 			t.segments?.[0]?.matrix ? n = t.segments[0].matrix.clone() : (t.updateMatrix(), n = t.matrix.clone());
 			let r = new e.Vector3().setFromMatrixPosition(n), i = new e.Vector3();
@@ -2829,7 +2865,7 @@ var et = class {
 	dispose() {
 		this.cache.dispose();
 	}
-}, nt = class t extends e.Mesh {
+}, ct = class t extends e.Mesh {
 	constructor(e, n) {
 		if (new.target === t) throw TypeError("ORTEPObject is an abstract class and cannot be instantiated directly.");
 		super(e, n), this._selectionColor = null, this.marker = null;
@@ -2864,7 +2900,7 @@ var et = class {
 	dispose() {
 		this.deselect(), this.geometry?.dispose(), this.material?.dispose();
 	}
-}, rt = class extends nt {
+}, lt = class extends ct {
 	constructor(t, n, r, i) {
 		super(r, i), this.updateSurfaceRadius();
 		let a = i.userData.plot2DOutlineMaterial;
@@ -2895,7 +2931,7 @@ var et = class {
 		let r = new e.Mesh(this.geometry, this.createSelectionMaterial(t));
 		return r.scale.multiplyScalar(n.selection.markerMult), r.userData.selectable = !1, r;
 	}
-}, it = class extends rt {
+}, ut = class extends lt {
 	constructor(t, n, r, i, a, o, s = null) {
 		if (super(t, n, r, i), [
 			t.adp.u11,
@@ -2903,7 +2939,7 @@ var et = class {
 			t.adp.u33
 		].some((e) => e <= 0)) this.geometry = new e.TetrahedronGeometry(.8), this.plot2DOutline && (this.plot2DOutline.geometry = this.geometry), this.updateSurfaceRadius();
 		else {
-			let r = Ze(t.adp, n);
+			let r = rt(t.adp, n);
 			if (r.toArray().includes(NaN)) this.geometry = new e.TetrahedronGeometry(.8), this.plot2DOutline && (this.plot2DOutline.geometry = this.geometry), this.updateSurfaceRadius();
 			else {
 				s && this.setupCutaway(s, i);
@@ -2923,9 +2959,9 @@ var et = class {
 			1,
 			1,
 			1
-		], this.cutawayViewDirection = new e.Vector3(), this.cutawayWorldPosition = new e.Vector3(), this.cutawayInverseRotation = new e.Matrix4(), this.cutawayOctants = He.map((r, i) => {
+		], this.cutawayViewDirection = new e.Vector3(), this.cutawayWorldPosition = new e.Vector3(), this.cutawayInverseRotation = new e.Matrix4(), this.cutawayOctants = Je.map((r, i) => {
 			let a = new e.Mesh(t.octantGeometry, n);
-			return qe(a, r), a.userData = {
+			return $e(a, r), a.userData = {
 				selectable: !1,
 				type: "ellipsoid-octant",
 				octantIndex: i
@@ -2933,9 +2969,9 @@ var et = class {
 		}), this.plot2DOutline) {
 			this.remove(this.plot2DOutline);
 			let r = n.userData.plot2DOutlineMaterial, i = n.userData.plot2DOutlineScale;
-			this.cutawayOutlines = He.map((n, a) => {
+			this.cutawayOutlines = Je.map((n, a) => {
 				let o = new e.Mesh(t.octantGeometry, r);
-				return qe(o, n), o.scale.multiplyScalar(i), o.userData = {
+				return $e(o, n), o.scale.multiplyScalar(i), o.userData = {
 					selectable: !1,
 					type: "2d-ellipsoid-outline",
 					octantIndex: a
@@ -2973,9 +3009,9 @@ var et = class {
 	createSelectionMarker(t, n) {
 		if (!this.isCutaway) return super.createSelectionMarker(t, n);
 		let r = new e.Group(), i = this.createSelectionMaterial(t);
-		return r.cutawayOctants = He.map((t, n) => {
+		return r.cutawayOctants = Je.map((t, n) => {
 			let a = new e.Mesh(this.cutawayOctants[0].geometry, i);
-			return qe(a, t), a.visible = n !== this.missingOctantIndex, a.userData.selectable = !1, r.add(a), a;
+			return $e(a, t), a.visible = n !== this.missingOctantIndex, a.userData.selectable = !1, r.add(a), a;
 		}), r.material = i, r.scale.multiplyScalar(n.selection.markerMult), r.userData.selectable = !1, r;
 	}
 	select(e, t) {
@@ -3001,26 +3037,26 @@ var et = class {
 		}), !1;
 	}
 	get adpRingMatrices() {
-		return We.map((e) => e.clone());
+		return Xe.map((e) => e.clone());
 	}
-}, at = class extends rt {
+}, dt = class extends lt {
 	constructor(t, n, r, i) {
 		if (super(t, n, r, i), !t.adp || !("uiso" in t.adp)) throw Error("Atom must have isotropic displacement parameters (UIsoADP)");
 		t.adp.uiso <= 0 ? (this.geometry = new e.TetrahedronGeometry(1), this.updateSurfaceRadius()) : this.scale.multiplyScalar(Math.sqrt(t.adp.uiso));
 	}
-}, ot = class extends rt {
+}, ft = class extends lt {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r);
 		let a = e.atomType;
 		try {
-			i.elementProperties[a] || (a = Me(e.atomType));
+			i.elementProperties[a] || (a = Ie(e.atomType));
 		} catch {
 			throw Error(`Element properties not found for atom type: '${e.atomType}'`);
 		}
 		this.scale.multiplyScalar(i.atomConstantRadiusMultiplier * i.elementProperties[a].radius);
 	}
 };
-function st(t, n) {
+function pt(t, n) {
 	if ([
 		t.adp.u11,
 		t.adp.u3,
@@ -3029,7 +3065,7 @@ function st(t, n) {
 		matrix: null,
 		valid: !1
 	};
-	let r = Ze(t.adp, n);
+	let r = rt(t.adp, n);
 	if (r.toArray().includes(NaN)) return {
 		matrix: null,
 		valid: !1
@@ -3040,7 +3076,7 @@ function st(t, n) {
 		valid: !0
 	};
 }
-function ct(t, n) {
+function mt(t, n) {
 	if (t.adp.uiso <= 0) return {
 		matrix: null,
 		valid: !1
@@ -3051,17 +3087,17 @@ function ct(t, n) {
 		valid: !0
 	};
 }
-function lt(t, n, r) {
+function ht(t, n, r) {
 	let i = t.atomType;
 	try {
-		r.elementProperties[i] || (i = Me(t.atomType));
+		r.elementProperties[i] || (i = Ie(t.atomType));
 	} catch {
 		throw Error(`Element properties not found for atom type: '${t.atomType}'`);
 	}
 	let a = r.atomConstantRadiusMultiplier * r.elementProperties[i].radius, o = new e.Vector3(...t.position.toCartesian(n));
 	return new e.Matrix4().makeScale(a, a, a).setPosition(o);
 }
-var ut = class t extends e.Object3D {
+var gt = class t extends e.Object3D {
 	constructor() {
 		if (new.target === t) throw TypeError("PooledSelectableObject is an abstract class and cannot be instantiated directly.");
 		super(), this._selectionColor = null, this.marker = null, this.matrixAutoUpdate = !1, this.segments = [];
@@ -3112,7 +3148,7 @@ var ut = class t extends e.Object3D {
 	dispose() {
 		this.marker && this.deselect();
 	}
-}, dt = class extends ut {
+}, _t = class extends gt {
 	constructor(e, t, n, r) {
 		super(), this.userData = {
 			type: "atom",
@@ -3133,11 +3169,11 @@ var ut = class t extends e.Object3D {
 		let r = this.segments[0], i = new e.Mesh(r.pool.mesh.geometry, this.createSelectionMaterial(t));
 		return i.applyMatrix4(r.matrix), i.scale.multiplyScalar(n.selection.markerMult), i.userData.selectable = !1, i;
 	}
-}, ft = class extends dt {
+}, vt = class extends _t {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r), i && (this.ringPool = i, this.ringIndex = i.register(n));
 	}
-}, pt = class extends nt {
+}, yt = class extends ct {
 	constructor(t, n, r, i, a = null, o = null, s = null) {
 		super(r, i);
 		let c, l;
@@ -3146,8 +3182,8 @@ var ut = class t extends e.Object3D {
 			let r = n.getAtomById(t.atom1Id), i = n.getAtomById(t.atom2Id);
 			c = new e.Vector3(...r.position.toCartesian(n.cell)), l = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		o && ([c, l] = $e(c, l, o(t.atom1Id), o(t.atom2Id)));
-		let u = Qe(c, l);
+		o && ([c, l] = at(c, l, o(t.atom1Id), o(t.atom2Id)));
+		let u = it(c, l);
 		if (this.applyMatrix4(u), s) {
 			let t = e.MathUtils.clamp(s.innerScale, .05, .95);
 			this.scale.x *= t, this.scale.z *= t;
@@ -3170,7 +3206,7 @@ var ut = class t extends e.Object3D {
 	}
 };
 e.Group;
-var mt = class extends ut {
+var bt = class extends gt {
 	static computeMatrix(t, n, r = null, i = null) {
 		let a, o;
 		if (r) a = r(t.atom1Id), o = r(t.atom2Id);
@@ -3178,7 +3214,7 @@ var mt = class extends ut {
 			let r = n.getAtomById(t.atom1Id), i = n.getAtomById(t.atom2Id);
 			a = new e.Vector3(...r.position.toCartesian(n.cell)), o = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		return i && ([a, o] = $e(a, o, i(t.atom1Id), i(t.atom2Id))), Qe(a, o);
+		return i && ([a, o] = at(a, o, i(t.atom1Id), i(t.atom2Id))), it(a, o);
 	}
 	constructor(e, t, n) {
 		super(), this.userData = {
@@ -3196,7 +3232,7 @@ var mt = class extends ut {
 		let r = this.segments[0], i = new e.Mesh(r.pool.mesh.geometry, this.createSelectionMaterial(t));
 		return i.applyMatrix4(r.matrix), i.scale.x *= n.selection.bondMarkerMult, i.scale.z *= n.selection.bondMarkerMult, i.userData.selectable = !1, i;
 	}
-}, ht = class extends ut {
+}, xt = class extends gt {
 	static computeSegmentMatrices(t, n, r, i, a = null, o = null) {
 		let s, c;
 		if (a) s = a(t.hydrogenAtomId), c = a(t.acceptorAtomId);
@@ -3204,11 +3240,11 @@ var mt = class extends ut {
 			let r = n.getAtomById(t.hydrogenAtomId), i = n.getAtomById(t.acceptorAtomId);
 			s = new e.Vector3(...r.position.toCartesian(n.cell)), c = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		o && ([s, c] = $e(s, c, o(t.hydrogenAtomId), o(t.acceptorAtomId)));
+		o && ([s, c] = at(s, c, o(t.hydrogenAtomId), o(t.acceptorAtomId)));
 		let l = s.distanceTo(c), u = Math.max(1, Math.floor(l / r)), d = l / u * i, f = [];
 		for (let t = 0; t < u; t++) {
 			let n = t / u, r = n + d / l, i = new e.Vector3().lerpVectors(s, c, n), a = new e.Vector3().lerpVectors(s, c, r);
-			f.push(Qe(i, a));
+			f.push(it(i, a));
 		}
 		return f;
 	}
@@ -3233,34 +3269,1614 @@ var mt = class extends ut {
 };
 //#endregion
 //#region src/lib/formatting.js
-function gt(e, t, n = 4) {
-	if (!isFinite(1 / t)) return _t(e, n).toFixed(n);
+function St(e, t, n = 4) {
+	if (!isFinite(1 / t)) return Ct(e, n).toFixed(n);
 	let r = Math.floor(Math.log10(t));
 	t * 10 ** -r < 2 && --r;
-	let i = _t(e, -r);
+	let i = Ct(e, -r);
 	if (r < 0) {
 		let e = Math.round(t / 10 ** r);
 		return `${i.toFixed(-r)}(${e})`;
 	}
-	return `${i}(${_t(t, r)})`;
+	return `${i}(${Ct(t, r)})`;
 }
-function _t(e, t) {
+function Ct(e, t) {
 	let n = 10 ** t;
 	return Math.round(e * n) / n;
 }
 //#endregion
+//#region src/lib/density/cell-matching.js
+var wt = Object.freeze({
+	relativeLength: .001,
+	angleDegrees: .05
+});
+function Tt(e, t, n = wt) {
+	for (let r of [
+		"a",
+		"b",
+		"c"
+	]) {
+		let i = Math.max(Math.abs(t[r]), 1);
+		if (Math.abs(e[r] - t[r]) / i > n.relativeLength) return !1;
+	}
+	for (let r of [
+		"alpha",
+		"beta",
+		"gamma"
+	]) if (Math.abs(e[r] - t[r]) > n.angleDegrees) return !1;
+	return !0;
+}
+function Et(e, t, n = "Reflection") {
+	for (let r of [
+		"a",
+		"b",
+		"c"
+	]) {
+		let i = Math.max(Math.abs(t[r]), 1);
+		if (Math.abs(e[r] - t[r]) / i > wt.relativeLength) throw Error(`${n} unit cell does not match the structure (${r})`);
+	}
+	for (let r of [
+		"alpha",
+		"beta",
+		"gamma"
+	]) if (Math.abs(e[r] - t[r]) > wt.angleDegrees) throw Error(`${n} unit cell does not match the structure (${r})`);
+}
+//#endregion
+//#region src/lib/density/cif-values.js
+function G(e) {
+	if (e == null || e === !1 || e === "." || e === "?") return null;
+	let t = Number(e);
+	return Number.isFinite(t) ? t : null;
+}
+function Dt(e, t) {
+	for (let n of typeof t == "string" ? [t] : t) try {
+		let t = e.get(n, !1);
+		if (t && typeof t.get == "function") return t;
+	} catch {}
+	return null;
+}
+function K(e, t, n = null) {
+	if (!e) return n;
+	try {
+		return e.get(t, n !== null && n) || n;
+	} catch {
+		return n;
+	}
+}
+function Ot(e, t) {
+	for (let n of t) try {
+		let t = G(e.get(n));
+		if (t !== null) return t;
+	} catch {}
+	return null;
+}
+function kt(e, t) {
+	for (let n of t) try {
+		let t = e.get(n);
+		if (typeof t == "string" && t.trim()) return t;
+	} catch {}
+	return null;
+}
+//#endregion
+//#region src/lib/density/structure-factor-model.js
+var At = 2 * Math.PI;
+function jt(e, t, n) {
+	if (e.adp instanceof z) return { isotropic: e.adp.uiso };
+	if (e.adp instanceof B) {
+		let [r, i, a, o, s, c] = e.adp.getUCart(t), l = I(I(n, [
+			[
+				r,
+				o,
+				s
+			],
+			[
+				o,
+				i,
+				c
+			],
+			[
+				s,
+				c,
+				a
+			]
+		]), L(n));
+		return { anisotropic: [
+			l[0][0],
+			l[1][1],
+			l[2][2],
+			l[0][1],
+			l[0][2],
+			l[1][2]
+		] };
+	}
+	return null;
+}
+function Mt(e, t, n) {
+	if (!e) return 1;
+	if (e.isotropic !== void 0) return Math.exp(-2 * Math.PI ** 2 * e.isotropic * n);
+	let [r, i, a, o, s, c] = e.anisotropic, [l, u, d] = t, f = r * l * l + i * u * u + a * d * d + 2 * o * l * u + 2 * s * l * d + 2 * c * u * d;
+	return Math.exp(-2 * Math.PI ** 2 * f);
+}
+function Nt(e) {
+	return e.map((e) => {
+		let t = (e % 1 + 1) % 1, n = Math.abs(t - 1) < 1e-8 ? 0 : t;
+		return Math.round(n * 1e8);
+	}).join(",");
+}
+function Pt(e) {
+	return Array.isArray(e) ? e : [
+		e.h,
+		e.k,
+		e.l
+	];
+}
+function Ft(e) {
+	return e instanceof z ? {
+		type: "Uiso",
+		values: [e.uiso]
+	} : e instanceof B ? {
+		type: "Uani",
+		values: [
+			e.u11,
+			e.u22,
+			e.u33,
+			e.u12,
+			e.u13,
+			e.u23
+		]
+	} : null;
+}
+function It(e) {
+	return e?.type === "Uiso" ? new z(e.values[0]) : e?.type === "Uani" ? new B(...e.values) : null;
+}
+function Lt(e, t) {
+	if (e instanceof z) return e.uiso < -1e-10;
+	if (!(e instanceof B)) return !1;
+	let n = e.getUCart(t);
+	return ge([
+		[
+			n[0],
+			n[3],
+			n[4]
+		],
+		[
+			n[3],
+			n[1],
+			n[5]
+		],
+		[
+			n[4],
+			n[5],
+			n[2]
+		]
+	]).eigenvectors.some((e) => e.value < -1e-10);
+}
+function Rt(e, t) {
+	let n = t.get("_atom_site"), r = n.get(["_atom_site.label", "_atom_site_label"]), i = n.get(["_atom_site.occupancy", "_atom_site_occupancy"], Array(r.length).fill(1)), a = new Map(r.map((e, t) => [String(e), G(i[t]) ?? 1])), o = R(e.cell.fractToCartMatrix), s = e.atoms.map((e) => {
+		let t = e.position instanceof Se ? [
+			e.position.x,
+			e.position.y,
+			e.position.z
+		] : I(o, [
+			e.position.x,
+			e.position.y,
+			e.position.z
+		]);
+		return {
+			label: e.label,
+			atomType: e.atomType,
+			position: Array.isArray(t) ? t : t.toArray(),
+			adp: Ft(e.adp),
+			occupancy: a.get(String(e.label)) ?? 1
+		};
+	});
+	return {
+		cell: Object.fromEntries([
+			"a",
+			"b",
+			"c",
+			"alpha",
+			"beta",
+			"gamma"
+		].map((t) => [t, e.cell[t]])),
+		atoms: s,
+		symmetryOperations: e.symmetry.symmetryOperations.map((e) => ({
+			rotation: e.rotMatrix.map((e) => [...e]),
+			translation: [...e.transVector]
+		})),
+		wavelength: Ot(t, [
+			"_diffrn_radiation_wavelength.wavelength",
+			"_diffrn_radiation.wavelength",
+			"_diffrn_radiation_wavelength"
+		])
+	};
+}
+function zt(e, t = 0, n = {}) {
+	if (typeof e != "string" || e.length === 0) throw Error("Structure-factor calculation requires the coordinate CIF text");
+	if (typeof n.resolveAtom != "function") throw Error("Structure-factor calculation requires an atom factor resolver");
+	let r = new j(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = n.structureModel ?? null, o = a ? new Re(a.cell.a, a.cell.b, a.cell.c, a.cell.alpha, a.cell.beta, a.cell.gamma) : Re.fromCIF(i);
+	if (n.expectedCell && !Tt(o, n.expectedCell)) throw Error("Structure-factor coordinate CIF cell does not match the reflection cell");
+	let s = a?.wavelength ?? Ot(i, [
+		"_diffrn_radiation_wavelength.wavelength",
+		"_diffrn_radiation.wavelength",
+		"_diffrn_radiation_wavelength"
+	]) ?? G(n.wavelength), c = a?.atoms ?? (() => {
+		let e = i.get("_atom_site"), t = e.get(["_atom_site.label", "_atom_site_label"]), n = e.get(["_atom_site.occupancy", "_atom_site_occupancy"], Array(t.length).fill(1));
+		return t.map((e, t) => ({
+			label: e,
+			index: t,
+			occupancy: n[t]
+		}));
+	})(), l = [], u = {}, d = [], f = /* @__PURE__ */ new Map();
+	for (let e = 0; e < c.length; e++) {
+		let t = c[e], r, o = t.index ?? e;
+		if (a) r = new ze(t.label, t.atomType, new Se(...t.position), It(t.adp));
+		else try {
+			r = ze.fromCIF(i, o);
+		} catch (e) {
+			if (e.message.includes("Dummy atom")) continue;
+			throw e;
+		}
+		let p = n.resolveAtom({
+			atom: r,
+			index: o,
+			block: i,
+			wavelength: s
+		});
+		if (!p || typeof p.scatteringAt != "function") throw Error(`No scattering-factor model for atom ${r.label} (${r.atomType})`);
+		let m = p.source ?? "unknown";
+		u[m] = (u[m] ?? 0) + 1;
+		let h = p.scatteringKey ?? p.scatteringAt, g = f.get(h);
+		g === void 0 && (g = d.length, f.set(h, g), d.push({
+			scatteringAt: p.scatteringAt,
+			atoms: []
+		})), l.push({
+			atom: r,
+			occupancy: G(t.occupancy) ?? 1,
+			scatteringModelIndex: g
+		});
+	}
+	let p = o.fractToCartMatrix.toArray(), m = R(p), h = L(m), g = Array.isArray(h) ? h : h.toArray(), _ = (a?.symmetryOperations ?? je.fromCIF(i).symmetryOperations.map((e) => ({
+		rotation: e.rotMatrix,
+		translation: e.transVector
+	}))).map((e) => ({
+		operation: {
+			rotation: e.rotation,
+			translation: e.translation
+		},
+		cartesianRotation: I(I(p, e.rotation), m)
+	})), v = 0;
+	for (let e of l) {
+		let t = /* @__PURE__ */ new Set(), n = e.atom.position instanceof Se ? [
+			e.atom.position.x,
+			e.atom.position.y,
+			e.atom.position.z
+		] : I(m, [
+			e.atom.position.x,
+			e.atom.position.y,
+			e.atom.position.z
+		]);
+		for (let r of _) {
+			let i = re(I(r.operation.rotation, n), r.operation.translation), a = Array.isArray(i) ? i : i.toArray(), s = Nt(a);
+			if (t.has(s)) continue;
+			t.add(s);
+			let c = {
+				position: a,
+				occupancy: e.occupancy,
+				displacement: jt(e.atom, o, r.cartesianRotation)
+			};
+			v++, d[e.scatteringModelIndex].atoms.push(c);
+		}
+	}
+	let y = l.filter((e) => Lt(e.atom.adp, o)).map((e) => e.atom.label);
+	function b(e, t, n) {
+		let r = g.map((r) => r[0] * e + r[1] * t + r[2] * n), i = r.reduce((e, t) => e + t ** 2, 0), a = i / 4, o = 0, s = 0;
+		for (let c = 0; c < d.length; c++) {
+			let l = d[c], u = l.scatteringAt(a);
+			for (let a of l.atoms) {
+				let c = At * (e * a.position[0] + t * a.position[1] + n * a.position[2]), l = a.occupancy * Mt(a.displacement, r, i), d = Math.cos(c), f = Math.sin(c);
+				o += l * (u.real * d - u.imaginary * f), s += l * (u.real * f + u.imaginary * d);
+			}
+		}
+		return {
+			real: o,
+			imaginary: s
+		};
+	}
+	return {
+		coefficientAt: b,
+		calculate(e) {
+			return e.map((e) => {
+				let [t, n, r] = Pt(e), i = b(t, n, r);
+				return {
+					h: t,
+					k: n,
+					l: r,
+					...i,
+					amplitude: Math.hypot(i.real, i.imaginary),
+					phase: Math.atan2(i.imaginary, i.real) * 180 / Math.PI
+				};
+			});
+		},
+		metadata: {
+			wavelength: s,
+			atomCount: l.length,
+			expandedAtomCount: v,
+			scatteringModelCount: d.length,
+			sourceCounts: u,
+			npdAdpCount: y.length,
+			npdAdpLabels: y
+		}
+	};
+}
+//#endregion
+//#region src/lib/density/anomalous-dispersion.js
+var Bt = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Vt = Object.fromEntries(Object.entries({
+	mo: {
+		wavelength: .71073,
+		real: "0 0 0 0 0 .002 .004 .008 .014 .021 .03 .042 .056 .072 .09 .11 .132 .155 .179 .203 .226 .248 .267 .284 .295 .301 .299 .285 .263 .222 .163 .081 -.03 -.178 -.374 -.652 -1.044 -1.657 -2.951 -2.965 -2.197 -1.825 -1.59 -1.42 -1.287 -1.177 -1.085 -1.005 -.936 -.873 -.816 -.772 -.726 -.684 -.644 -.613 -.588 -.564 -.53 -.535 -.53 -.533 -.542 -.564 -.591 -.619 -.666 -.723 -.795 -.884 -.988 -1.118 -1.258 -1.421 -1.598 -1.816 -2.066 -2.352 -2.688 -3.084 -3.556 -4.133 -4.861 -5.924 -7.444 -8.862 -7.912 -7.62 -7.725 -8.127 -8.96 -10.673 -11.158 -9.725 -8.926 -8.416 -7.99 -7.683",
+		imaginary: "0 0 0 0 .001 .002 .003 .006 .01 .016 .025 .036 .052 .071 .095 .124 .159 .201 .25 .306 .372 .446 .53 .624 .729 .845 .973 1.113 1.266 1.431 1.609 1.801 2.007 2.223 2.456 2.713 2.973 3.264 3.542 .56 .621 .688 .759 .836 .919 1.007 1.101 1.202 1.31 1.424 1.546 1.675 1.812 1.958 2.119 2.282 2.452 2.632 2.845 3.018 3.225 3.442 3.669 3.904 4.151 4.41 4.678 4.958 5.248 5.548 5.858 6.185 6.523 6.872 7.232 7.605 7.99 8.388 8.798 9.223 9.659 10.102 10.559 11.042 9.961 10.403 7.754 8.105 8.472 8.87 9.284 9.654 4.148 4.33 4.511 4.697 4.908 5.107"
+	},
+	cu: {
+		wavelength: 1.54184,
+		real: "0 0 .001 .003 .008 .017 .029 .047 .069 .097 .129 .165 .204 .244 .283 .319 .348 .366 .365 .341 .285 .189 .035 -.198 -.568 -1.179 -2.464 -2.956 -2.019 -1.612 -1.354 -1.163 -1.011 -.879 -.767 -.665 -.574 -.465 -.386 -.314 -.248 -.191 -.145 -.105 -.077 -.059 -.06 -.079 -.126 -.194 -.287 -.418 -.579 -.783 -1.022 -1.334 -1.716 -2.17 -2.939 -3.431 -4.357 -5.696 -7.718 -9.242 -9.498 -10.423 -12.255 -9.733 -8.488 -7.701 -7.133 -6.715 -6.351 -6.048 -5.79 -5.581 -5.391 -5.233 -5.096 -4.99 -4.883 -4.818 -4.776 -4.756 -4.772 -4.787 -4.833 -4.898 -4.994 -5.091 -5.216 -5.359 -5.529 -5.712 -5.93 -6.176 -6.498 -6.798",
+		imaginary: "0 0 0 .001 .004 .009 .018 .032 .053 .083 .124 .177 .246 .33 .434 .557 .702 .872 1.066 1.286 1.533 1.807 2.11 2.443 2.808 3.204 3.608 .509 .589 .678 .777 .886 1.006 1.139 1.283 1.439 1.608 1.82 2.025 2.245 2.482 2.735 3.005 3.296 3.605 3.934 4.282 4.653 5.045 5.459 5.894 6.352 6.835 7.348 7.904 8.46 9.036 9.648 10.535 10.933 11.614 12.32 11.276 11.946 9.242 9.748 3.704 3.937 4.181 4.432 4.693 4.977 5.271 5.577 5.891 6.221 6.566 6.925 7.297 7.686 8.089 8.505 8.93 9.383 9.843 10.317 10.803 11.296 11.799 12.33 12.868 13.409 13.967 14.536 15.087 15.634 16.317 16.93"
+	}
+}).map(([e, t]) => {
+	let n = t.real.trim().split(/\s+/).map(Number), r = t.imaginary.trim().split(/\s+/).map(Number);
+	if (n.length !== Bt.length || r.length !== Bt.length) throw Error(`Invalid internal anomalous-dispersion table: ${e}`);
+	return [e, {
+		wavelength: t.wavelength,
+		values: new Map(Bt.map((e, t) => [e, {
+			real: n[t],
+			imaginary: r[t]
+		}]))
+	}];
+}));
+function Ht(e) {
+	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
+	if (!t) return null;
+	if (t[1].toUpperCase() === "D") return "H";
+	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
+	return Bt.includes(n) ? n : null;
+}
+function Ut(e, t) {
+	if (e.table !== void 0) {
+		let t = String(e.table).toLowerCase().replace(/[^a-z]/g, "").slice(0, 2), n = Vt[t];
+		if (!n) throw Error("Anomalous-dispersion table must be \"Cu\" or \"Mo\"");
+		return {
+			key: t,
+			...n
+		};
+	}
+	if (!Number.isFinite(t)) return null;
+	let n = G(e.wavelengthTolerance) ?? .005, r = Object.entries(Vt).find(([, e]) => Math.abs(e.wavelength - t) <= n);
+	return r ? {
+		key: r[0],
+		...r[1]
+	} : null;
+}
+function Wt(e, t, n = {}) {
+	let r = Ht(e), i = Ut(n, G(t)), a = r && i?.values.get(r);
+	return a ? {
+		...a,
+		table: i.key,
+		wavelength: i.wavelength
+	} : null;
+}
+function Gt(e, t, n) {
+	let r = Dt(e, t), i = K(r, n), a = K(r, [
+		"_atom_site_dispersion.real",
+		"_atom_site_dispersion_real",
+		"_atom_type_scat.dispersion_real",
+		"_atom_type_scat_dispersion_real"
+	]), o = K(r, [
+		"_atom_site_dispersion.imag",
+		"_atom_site_dispersion_imag",
+		"_atom_type_scat.dispersion_imag",
+		"_atom_type_scat_dispersion_imag"
+	]), s = /* @__PURE__ */ new Map();
+	if (!i || !a && !o) return s;
+	for (let e = 0; e < i.length; e++) s.set(String(i[e]), {
+		real: a ? G(a[e]) : null,
+		imaginary: o ? G(o[e]) : null
+	});
+	return s;
+}
+function Kt(e, t, n) {
+	let r = e.values ?? e.fallbackValues;
+	if (!r) return null;
+	let i = r[t] ?? r[n];
+	return Array.isArray(i) ? {
+		real: G(i[0]),
+		imaginary: G(i[1])
+	} : i && typeof i == "object" ? {
+		real: G(i.real ?? i.fPrime),
+		imaginary: G(i.imaginary ?? i.fDoublePrime)
+	} : null;
+}
+function qt(e, t) {
+	return !e && !t ? null : {
+		real: e?.real ?? t?.real ?? null,
+		imaginary: e?.imaginary ?? t?.imaginary ?? null
+	};
+}
+function Jt(e, t, n, r, i, a) {
+	let o = Ht(e), s = Kt(a, e, o), c = qt(s, o ? i?.values.get(o) : null), l = r.get(String(e)) ?? r.get(o), u = qt(n.get(String(t)), qt(l, c));
+	if (!u || u.real === null || u.imaginary === null) throw Error(`No complete anomalous-dispersion factors for atom ${t} (${e}); provide them in the CIF or select a supported internal table`);
+	let d = n.has(String(t)) ? "site-cif" : l ? "type-cif" : s ? "configured" : "internal";
+	return {
+		real: u.real,
+		imaginary: u.imaginary,
+		source: d
+	};
+}
+function Yt(e, t = 0, n = {}, r = null) {
+	let i, a, o, s = zt(e, t, {
+		expectedCell: r,
+		wavelength: n.wavelength,
+		structureModel: n.structureModel,
+		resolveAtom({ atom: e, block: t, wavelength: r }) {
+			i ??= Ut(n, r), a ??= Gt(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]), o ??= Gt(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]);
+			let s = Jt(e.atomType, e.label, a, o, i, n);
+			return {
+				source: s.source,
+				scatteringKey: `${s.real},${s.imaginary}`,
+				scatteringAt() {
+					return {
+						real: s.real,
+						imaginary: s.imaginary
+					};
+				}
+			};
+		}
+	});
+	return {
+		...s,
+		metadata: {
+			...s.metadata,
+			enabled: !0,
+			internalTable: i?.key ?? null
+		}
+	};
+}
+//#endregion
+//#region src/lib/density/cromer-mann.js
+var Xt = new Map("H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674".split("\n").map((e) => {
+	let [t, ...n] = e.trim().split(/\s+/);
+	if (n.length !== 9 || n.some((e) => !Number.isFinite(Number(e)))) throw Error(`Invalid internal Cromer-Mann coefficients for ${t}`);
+	return [t, n.map(Number)];
+}));
+function Zt(e) {
+	let t = Xt.get(e === "D" ? "H" : e);
+	return t ? [...t] : null;
+}
+function Qt(e, t) {
+	let n = e[8];
+	for (let r = 0; r < 4; r++) n += e[r] * Math.exp(-e[r + 4] * t);
+	return n;
+}
+//#endregion
+//#region src/lib/density/iam-structure-factors.js
+var $t = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), en = [
+	"a1",
+	"a2",
+	"a3",
+	"a4",
+	"b1",
+	"b2",
+	"b3",
+	"b4",
+	"c"
+];
+function tn(e) {
+	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
+	if (!t) return null;
+	if (t[1].toUpperCase() === "D") return "H";
+	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
+	return $t.includes(n) ? n : null;
+}
+function nn(e) {
+	let t = Dt(e, ["_atom_type", "_atom_type_scat"]), n = K(t, ["_atom_type.symbol", "_atom_type_symbol"]), r = en.map((e) => K(t, [
+		`_atom_type_scat.Cromer_Mann_${e}`,
+		`_atom_type_scat_Cromer_Mann_${e}`,
+		`_atom_type.scat_Cromer_Mann_${e}`
+	])), i = /* @__PURE__ */ new Map();
+	if (!n || r.some((e) => !e)) return i;
+	for (let e = 0; e < n.length; e++) {
+		let t = r.map((t) => G(t[e]));
+		if (t.every((e) => e !== null)) {
+			let r = String(n[e]);
+			i.set(r, t);
+			let a = tn(r);
+			a && !i.has(a) && i.set(a, t);
+		}
+	}
+	return i;
+}
+function rn(e, t, n) {
+	let r = Dt(e, t), i = K(r, n), a = K(r, [
+		"_atom_site_dispersion.real",
+		"_atom_site_dispersion_real",
+		"_atom_type_scat.dispersion_real",
+		"_atom_type_scat_dispersion_real"
+	]), o = K(r, [
+		"_atom_site_dispersion.imag",
+		"_atom_site_dispersion_imag",
+		"_atom_type_scat.dispersion_imag",
+		"_atom_type_scat_dispersion_imag"
+	]), s = /* @__PURE__ */ new Map();
+	if (!i || !a && !o) return s;
+	for (let e = 0; e < i.length; e++) s.set(String(i[e]), {
+		real: a ? G(a[e]) : null,
+		imaginary: o ? G(o[e]) : null
+	});
+	return s;
+}
+function an(e, t, n) {
+	let r = e.cromerMann?.[t] ?? e.cromerMann?.[n];
+	if (!Array.isArray(r) || r.length !== 9) return null;
+	let i = r.map(G);
+	return i.every((e) => e !== null) ? i : null;
+}
+function on(e, t, n) {
+	let r = e.dispersionValues?.[t] ?? e.dispersionValues?.[n];
+	return Array.isArray(r) ? {
+		real: G(r[0]),
+		imaginary: G(r[1])
+	} : r && typeof r == "object" ? {
+		real: G(r.real ?? r.fPrime),
+		imaginary: G(r.imaginary ?? r.fDoublePrime)
+	} : null;
+}
+function sn(e) {
+	return e?.real !== null && e?.real !== void 0 && e?.imaginary !== null && e?.imaginary !== void 0;
+}
+function cn(e, t) {
+	return {
+		real: e?.real ?? t?.real ?? null,
+		imaginary: e?.imaginary ?? t?.imaginary ?? null
+	};
+}
+function ln(e, t = 0, n = {}) {
+	let r, i, a, o = n.includeAnomalous !== !1, s = zt(e, t, {
+		expectedCell: n.expectedCell,
+		wavelength: n.wavelength,
+		structureModel: n.structureModel,
+		resolveAtom({ atom: e, block: t, wavelength: s }) {
+			r ??= nn(t), i ??= rn(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]), a ??= rn(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]);
+			let c = tn(e.atomType), l = r.get(e.atomType) ?? r.get(c), u = an(n, e.atomType, c), d = l ?? u ?? Zt(c);
+			if (!d) throw Error(`No Cromer-Mann coefficients for atom ${e.label} (${e.atomType})`);
+			let f = {
+				real: 0,
+				imaginary: 0
+			}, p = "disabled";
+			if (o) {
+				let t = a.get(e.label), r = i.get(e.atomType) ?? i.get(c), o = on(n, e.atomType, c), l = cn(t, cn(r, cn(o, Wt(c, s, n.anomalous ?? {}))));
+				sn(l) ? (f = l, p = t ? "site-cif" : r ? "type-cif" : o ? "configured" : "internal") : p = "zero";
+			}
+			return {
+				source: `${l ? "cif" : u ? "configured" : "internal"}/${p}`,
+				scatteringKey: JSON.stringify([
+					...d,
+					f.real,
+					f.imaginary
+				]),
+				scatteringAt(e) {
+					return {
+						real: Qt(d, e) + f.real,
+						imaginary: f.imaginary
+					};
+				}
+			};
+		}
+	});
+	return {
+		...s,
+		metadata: {
+			...s.metadata,
+			model: "IAM",
+			includeAnomalous: o
+		}
+	};
+}
+function un(e, t, n = {}) {
+	return ln(e, n.cifBlock ?? 0, n).calculate(t);
+}
+//#endregion
+//#region src/lib/density/reciprocal-symmetry.js
+var dn = 2 * Math.PI, fn = /* @__PURE__ */ new WeakMap();
+function pn(e, t, n = 1e-6) {
+	return e.map((e) => {
+		let r = e[0] * t[0] + e[1] * t[1] + e[2] * t[2], i = Math.round(r);
+		if (Math.abs(r - i) > n) throw Error(`Symmetry operation produced a non-integral reflection index: ${r}`);
+		return Object.is(i, -0) ? 0 : i;
+	});
+}
+function mn(e) {
+	let t = fn.get(e);
+	return t || (t = e.symmetryOperations.map((e) => ({
+		operation: e,
+		reciprocalRotation: L(R(e.rotMatrix)),
+		positionReciprocalRotation: L(e.rotMatrix),
+		translation: e.transVector
+	})), fn.set(e, t)), t;
+}
+function hn(e, t) {
+	for (let n = 0; n < 3; n++) if (e[n] !== t[n]) return e[n] - t[n];
+	return 0;
+}
+function gn(e, t, n, r, i = !0) {
+	let a = mn(r).map((r) => pn(r.reciprocalRotation, [
+		e,
+		t,
+		n
+	]));
+	return i && a.push(...a.map((e) => e.map((e) => e === 0 ? 0 : -e))), a.sort(hn), a[0];
+}
+function _n(e, t, n, r, i = 1e-8) {
+	if (e === 0 && t === 0 && n === 0) return !1;
+	let a = /* @__PURE__ */ new Map();
+	for (let i of mn(r)) {
+		let r = pn(i.positionReciprocalRotation, [
+			e,
+			t,
+			n
+		]).join(","), o = dn * (e * i.translation[0] + t * i.translation[1] + n * i.translation[2]), s = a.get(r) ?? {
+			real: 0,
+			imaginary: 0
+		};
+		s.real += Math.cos(o), s.imaginary += Math.sin(o), a.set(r, s);
+	}
+	return [...a.values()].every((e) => Math.hypot(e.real, e.imaginary) <= i);
+}
+//#endregion
+//#region src/lib/density/reflection-intensities.js
+function vn(e, t) {
+	return [t, ...e.getAllBlocks().filter((e) => e !== t)];
+}
+function yn(e, t, n) {
+	return [
+		e,
+		t,
+		n
+	].every((e) => Number.isInteger(e));
+}
+function bn(e, t, n, r, i = null) {
+	let a = [
+		e,
+		t,
+		n,
+		r
+	].map((e) => e?.length);
+	if (a.some((e) => e === void 0) || !a.every((e) => e === a[0])) throw Error("Reflection index and intensity columns must have the same row count");
+	if (i && i.length !== a[0]) throw Error("Reflection intensity and uncertainty columns must have the same row count");
+	let o = [], s = 0;
+	for (let c = 0; c < a[0]; c++) {
+		let a = G(e[c]), l = G(t[c]), u = G(n[c]), d = G(r[c]), f = i ? G(i[c]) : null;
+		if (!yn(a, l, u) || d === null || i && f === null) {
+			s++;
+			continue;
+		}
+		o.push({
+			h: a,
+			k: l,
+			l: u,
+			intensity: d,
+			sigma: f,
+			sourceIndex: c
+		});
+	}
+	return {
+		rows: o,
+		invalidCount: s
+	};
+}
+function xn(e) {
+	let t = K(e, ["_refln.index_h", "_refln_index_h"]), n = K(e, ["_refln.index_k", "_refln_index_k"]), r = K(e, ["_refln.index_l", "_refln_index_l"]), i = K(e, ["_refln.intensity_meas", "_refln_intensity_meas"]);
+	if (i) return {
+		...bn(t, n, r, i, K(e, [
+			"_refln.intensity_sigma",
+			"_refln_intensity_sigma",
+			"_refln.intensity_meas_su",
+			"_refln_intensity_meas_su"
+		])),
+		valueKind: "intensity"
+	};
+	let a = K(e, ["_refln.F_squared_meas", "_refln_F_squared_meas"]);
+	if (a) return {
+		...bn(t, n, r, a, K(e, [
+			"_refln.F_squared_sigma",
+			"_refln_F_squared_sigma",
+			"_refln.F_squared_meas_su",
+			"_refln_F_squared_meas_su"
+		])),
+		valueKind: "F-squared"
+	};
+	let o = K(e, ["_refln.F_meas", "_refln_F_meas"]);
+	if (o) {
+		let i = K(e, ["_refln.F_sigma", "_refln_F_sigma"]);
+		return {
+			...bn(t, n, r, o.map((e) => {
+				let t = G(e);
+				return t === null ? null : t ** 2;
+			}), i?.map((e, t) => {
+				let n = G(e), r = G(o[t]);
+				return n === null || r === null ? null : 2 * Math.abs(r) * n;
+			}) ?? null),
+			valueKind: "F-amplitude-squared"
+		};
+	}
+	throw Error("The _refln loop contains no measured intensity, F-squared, or F columns");
+}
+function Sn(e) {
+	let t = K(e, ["_diffrn_refln.index_h", "_diffrn_refln_index_h"]), n = K(e, ["_diffrn_refln.index_k", "_diffrn_refln_index_k"]), r = K(e, ["_diffrn_refln.index_l", "_diffrn_refln_index_l"]), i = K(e, [
+		"_diffrn_refln.intensity_net",
+		"_diffrn_refln_intensity_net",
+		"_diffrn_refln.intensity_meas",
+		"_diffrn_refln_intensity_meas"
+	]), a = K(e, [
+		"_diffrn_refln.intensity_u",
+		"_diffrn_refln_intensity_u",
+		"_diffrn_refln.intensity_sigma",
+		"_diffrn_refln_intensity_sigma",
+		"_diffrn_refln.intensity_net_su",
+		"_diffrn_refln_intensity_net_su"
+	]);
+	if (!i) throw Error("The _diffrn_refln loop contains no net measured intensity column");
+	return bn(t, n, r, i, a);
+}
+function Cn(e) {
+	let t = [
+		e.slice(0, 4),
+		e.slice(4, 8),
+		e.slice(8, 12),
+		e.slice(12, 20),
+		e.slice(20, 28),
+		e.slice(28, 32)
+	].map((e) => e.trim());
+	return t.slice(0, 5).some((e) => e.length === 0) ? null : t;
+}
+function wn(e) {
+	let t = [], n = 0;
+	for (let [r, i] of String(e).split(/\r?\n/).entries()) {
+		if (i.trim().length === 0) continue;
+		let [e, a, o, s, c] = i.trim().split(/\s+/).slice(0, 5).map(G);
+		if (!yn(e, a, o) || s === null || c === null) {
+			let t = Cn(i);
+			[e, a, o, s, c] = t ? t.slice(0, 5).map(G) : [
+				null,
+				null,
+				null,
+				null,
+				null
+			];
+		}
+		if (!yn(e, a, o) || s === null || c === null) {
+			n++;
+			continue;
+		}
+		if (e === 0 && a === 0 && o === 0 && s === 0 && c === 0) break;
+		t.push({
+			h: e,
+			k: a,
+			l: o,
+			intensity: s,
+			sigma: c,
+			sourceIndex: r
+		});
+	}
+	return {
+		rows: t,
+		invalidCount: n
+	};
+}
+function Tn(e) {
+	e.parse();
+	let t = Object.keys(e.data).find((e) => /shelx.*hkl_file/i.test(e));
+	return t ? e.data[t] : null;
+}
+function En(e) {
+	let t = [];
+	for (let n of ["_iucr_refine_fcf_details"]) {
+		let r;
+		try {
+			r = e.get(n);
+		} catch {
+			continue;
+		}
+		if (!(typeof r != "string" || !r.includes("data_"))) try {
+			for (let e of new j(r).getAllBlocks()) {
+				let n = Dt(e, "_refln");
+				n && t.push(n);
+			}
+		} catch {}
+	}
+	return t;
+}
+function Dn(e, t, n, r, i = 1e-8) {
+	return _n(e, t, n, r, i);
+}
+function On(e, t, n = {}) {
+	let r = n.mergeFriedel !== !1, i = n.removeSystematicAbsences !== !1, a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map(), c = 0;
+	for (let l of e) {
+		let e = `${l.h},${l.k},${l.l}`, u = o.get(e);
+		if (u === void 0 && (u = i && Dn(l.h, l.k, l.l, t, n.absenceTolerance), o.set(e, u)), u) {
+			c++;
+			continue;
+		}
+		let d = s.get(e);
+		d || (d = gn(l.h, l.k, l.l, t, r), s.set(e, d));
+		let [f, p, m] = d, h = `${f},${p},${m}`;
+		a.has(h) || a.set(h, {
+			h: f,
+			k: p,
+			l: m,
+			observations: []
+		}), a.get(h).observations.push(l);
+	}
+	let l = [...a.values()].map((e) => {
+		let t = e.observations.every((e) => e.sigma > 0), n, r;
+		if (t) {
+			let t = e.observations.reduce((e, t) => e + 1 / t.sigma ** 2, 0);
+			n = e.observations.reduce((e, t) => e + t.intensity / t.sigma ** 2, 0) / t, r = Math.sqrt(1 / t);
+		} else n = e.observations.reduce((e, t) => e + t.intensity, 0) / e.observations.length, r = e.observations.every((e) => e.sigma !== null) ? Math.sqrt(e.observations.reduce((e, t) => e + t.sigma ** 2, 0)) / e.observations.length : null;
+		return {
+			h: e.h,
+			k: e.k,
+			l: e.l,
+			intensity: n,
+			sigma: r,
+			multiplicity: e.observations.length
+		};
+	});
+	return l.sort((e, t) => hn([
+		e.h,
+		e.k,
+		e.l
+	], [
+		t.h,
+		t.k,
+		t.l
+	])), {
+		reflections: l,
+		systematicAbsenceCount: c
+	};
+}
+function kn(e, t = 0, n = {}) {
+	let r = new j(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = vn(r, i), o = n.source ?? "auto", s = (e) => o === "auto" || o === e;
+	if (s("refln")) {
+		let e = [...a.map((e) => Dt(e, "_refln")).filter(Boolean).map((e) => ({
+			loop: e,
+			source: "refln"
+		})), ...a.flatMap(En).map((e) => ({
+			loop: e,
+			source: "embedded-refln"
+		}))], t = null;
+		for (let n of e) try {
+			let e = xn(n.loop);
+			return {
+				reflections: e.rows.map((e) => ({
+					...e,
+					multiplicity: 1
+				})),
+				metadata: {
+					source: n.source,
+					valueKind: e.valueKind,
+					alreadyMerged: !0,
+					inputCount: e.rows.length + e.invalidCount,
+					outputCount: e.rows.length,
+					invalidCount: e.invalidCount,
+					systematicAbsenceCount: 0,
+					mergeFriedel: null
+				}
+			};
+		} catch (e) {
+			if (!e.message.includes("contains no measured")) throw e;
+			t = e;
+		}
+		if (o === "refln" && t) throw t;
+	}
+	let c, l;
+	if (s("diffrn_refln")) {
+		let e = a.map((e) => Dt(e, "_diffrn_refln")).find(Boolean);
+		e && (c = Sn(e), l = "diffrn_refln");
+	}
+	if (!c && s("shelx_hkl_file")) {
+		let e = a.map(Tn).find((e) => typeof e == "string");
+		e && (c = wn(e), l = "shelx_hkl_file");
+	}
+	if (!c) throw Error(`No usable reflection intensities found for source "${o}"`);
+	let u = je.fromCIF(i), d = On(c.rows, u, n);
+	return {
+		reflections: d.reflections,
+		metadata: {
+			source: l,
+			valueKind: "intensity",
+			alreadyMerged: !1,
+			inputCount: c.rows.length + c.invalidCount,
+			outputCount: d.reflections.length,
+			invalidCount: c.invalidCount,
+			systematicAbsenceCount: d.systematicAbsenceCount,
+			mergeFriedel: n.mergeFriedel !== !1
+		}
+	};
+}
+//#endregion
+//#region src/lib/density/extinction-correction.js
+function An(e, t, n, r) {
+	if (!(e > 0) || !(t > 0) || n === 0) return 1;
+	let i = r * t / 2;
+	if (!(i > 0 && i < 1)) throw Error(`Cannot apply SHELXL extinction at sin(theta)=${i}; check the radiation wavelength and reflection indices`);
+	let a = 2 * i * Math.sqrt(1 - i ** 2);
+	return (1 + .001 * n * e * r ** 3 / a) ** -.25;
+}
+function jn(e, t, n, r, i, a = !0) {
+	let o = (e, t = {}) => ({
+		factors: Array(r.length).fill(1),
+		metadata: {
+			enabled: !1,
+			model: "SHELXL-isotropic",
+			reason: e,
+			...t
+		}
+	});
+	if (a === !1) return o("disabled");
+	if (a !== !0 && typeof a != "number" && (typeof a != "object" || !a || Array.isArray(a))) throw Error("extinctionCorrection must be true, false, a coefficient, or an object");
+	let s = G(typeof a == "number" ? a : a?.coefficient), c = Ot(e, ["_refine_ls.extinction_coef", "_refine_ls_extinction_coef"]), l = s ?? c, u = s === null ? "cif" : "configured";
+	if (l === null) return o("not-reported");
+	if (l < 0) throw Error("SHELXL extinction coefficient must not be negative");
+	if (l === 0) return o("zero-coefficient", {
+		coefficient: l,
+		source: u
+	});
+	let d = kt(e, ["_refine_ls.extinction_method", "_refine_ls_extinction_method"]), f = kt(e, ["_refine_ls.extinction_expression", "_refine_ls_extinction_expression"]);
+	if (!(/shelxl/i.test(d ?? "") || /0\.001/i.test(f ?? "") && /sin\s*\(?\s*2/i.test(f ?? "")) && s === null) return o("unsupported-model", {
+		coefficient: l,
+		source: u,
+		method: d,
+		expression: f
+	});
+	let p = (typeof a == "object" ? G(a.wavelength) : null) ?? n;
+	if (!(p > 0)) throw Error("SHELXL extinction correction requires a positive radiation wavelength");
+	if (r.length !== i.length) throw Error("Extinction correction requires matching observed and calculated reflections");
+	let m = L(R(t.fractToCartMatrix)), h = r.map((e, t) => {
+		let n = se(I(m, [
+			e.h,
+			e.k,
+			e.l
+		]));
+		return An(i[t].amplitude ** 2, n, l, p);
+	}), g = h.reduce((e, t) => Math.min(e, t), 1);
+	return {
+		factors: h,
+		metadata: {
+			enabled: !0,
+			model: "SHELXL-isotropic",
+			coefficient: l,
+			wavelength: p,
+			source: u,
+			method: d,
+			expression: f,
+			correctedReflectionCount: h.filter((e) => e < 1).length,
+			minimumAmplitudeFactor: g,
+			maximumAmplitudeCorrection: 1 / g
+		}
+	};
+}
+//#endregion
+//#region src/lib/density/difference-density.js
+var Mn = 2 * Math.PI, Nn = class extends Error {
+	constructor(e) {
+		super(e), this.name = "UnsupportedCoefficientSourceError";
+	}
+};
+function Pn(e) {
+	let t = 1;
+	for (; t < e;) t *= 2;
+	return Math.max(2, t);
+}
+function Fn(e, t) {
+	return (e % t + t) % t;
+}
+function q(e, t, ...n) {
+	try {
+		return e.get(t);
+	} catch (e) {
+		if (n.length > 0) return n[0];
+		throw e;
+	}
+}
+function In(e) {
+	let t = e.map((e) => e.length);
+	if (t.some((e) => e !== t[0])) throw Error(`Reflection columns have inconsistent lengths: ${t.join(", ")}`);
+}
+function Ln(e, t) {
+	let n = typeof e == "string" ? [e] : e;
+	if (!Array.isArray(n) || n.length < 1 || n.length > 2 || n.some((e) => typeof e != "string" || e.length === 0)) throw Error(`${t} must name one or two CIF columns`);
+	return n;
+}
+function Rn(e, t, n) {
+	return Ln(t, n).map((t) => {
+		try {
+			return e.get(t);
+		} catch {
+			throw Error(`Custom density column not found: ${t}`);
+		}
+	});
+}
+function zn(e, t) {
+	let n = t.amplitudes ?? t.amplitudeColumns ?? t.amplitude, r = t.phases ?? t.phaseColumns ?? t.phase, i = t.aValues ?? t.a ?? t.A, a = t.bValues ?? t.b ?? t.B, o = n !== void 0 || r !== void 0, s = i !== void 0 || a !== void 0;
+	if (o === s) throw Error("Custom density columns must specify either amplitudes/phases or A/B values");
+	if (s) {
+		if (i === void 0 || a === void 0) throw Error("Custom density A and B columns must both be specified");
+		let t = Rn(e, i, "a"), n = Rn(e, a, "b");
+		if (t.length !== n.length) throw Error("Custom density A and B column counts must match");
+		return In([...t, ...n]), {
+			mode: t.length === 1 ? "a-b" : "a-b-difference",
+			componentCount: t.length,
+			valueColumns: [...t, ...n],
+			coefficientAt(e) {
+				return {
+					real: Number(t[0][e]) - (t[1] ? Number(t[1][e]) : 0),
+					imaginary: Number(n[0][e]) - (n[1] ? Number(n[1][e]) : 0)
+				};
+			}
+		};
+	}
+	if (n === void 0 || r === void 0) throw Error("Custom density amplitude and phase columns must both be specified");
+	let c = Rn(e, n, "amplitudes"), l = Rn(e, r, "phases");
+	if (l.length !== 1 && l.length !== c.length) throw Error("Use one common phase column or one phase column per amplitude");
+	In([...c, ...l]);
+	let u = t.phaseUnit === "radians" ? 1 : Math.PI / 180;
+	if (t.phaseUnit !== void 0 && !["degrees", "radians"].includes(t.phaseUnit)) throw Error("Custom density phaseUnit must be \"degrees\" or \"radians\"");
+	let d = l.length === c.length && l.length === 2;
+	return {
+		mode: c.length === 1 ? "amplitude-phase" : d ? "split-phase-difference" : "common-phase-difference",
+		componentCount: c.length,
+		valueColumns: [...c, ...l],
+		coefficientAt(e) {
+			if (!d) {
+				let t = Number(c[0][e]) - (c[1] ? Number(c[1][e]) : 0), n = Number(l[0][e]) * u;
+				return {
+					real: t * Math.cos(n),
+					imaginary: t * Math.sin(n)
+				};
+			}
+			let t = Number(l[0][e]) * u, n = Number(l[1][e]) * u;
+			return {
+				real: Number(c[0][e]) * Math.cos(t) - Number(c[1][e]) * Math.cos(n),
+				imaginary: Number(c[0][e]) * Math.sin(t) - Number(c[1][e]) * Math.sin(n)
+			};
+		}
+	};
+}
+function Bn(e, t) {
+	let n = e ?? "first";
+	if (![
+		"first",
+		"second",
+		"both",
+		"result"
+	].includes(n)) throw Error("Anomalous-dispersion target must be \"first\", \"second\", \"both\", or \"result\"");
+	if (n === "second") {
+		if (t < 2) throw Error("Cannot correct the second operand of a single coefficient set");
+		return 1;
+	}
+	return n === "both" && t > 1 ? 0 : -1;
+}
+function Vn(e, t) {
+	if (t.generator !== void 0 && t.generator !== "auto") {
+		let e = String(t.generator).toLowerCase();
+		if (!["olex", "shelxl"].includes(e)) throw Error("Anomalous-dispersion generator must be \"auto\", \"olex\", or \"shelxl\"");
+		return e;
+	}
+	let n = (t) => {
+		try {
+			return String(e.get(t, "")).toLowerCase();
+		} catch {
+			return "";
+		}
+	}, r = n("_computing_structure_refinement");
+	if (r.includes("olex2.refine") || r.includes("olex2_refine")) return "olex";
+	if (r.includes("shelxl")) return "shelxl";
+	let i = n("_audit_creation_method");
+	return i.includes("olex2.refine") || i.includes("olex2_refine") ? "olex" : i.includes("shelxl") ? "shelxl" : "unknown";
+}
+function Hn(e, t, n, r, i, a = .05) {
+	let o = e.symmetryOperations.find((e) => e.rotMatrix.every((e, t) => e.every((e, n) => Math.abs(e - (t === n ? -1 : 0)) < 1e-8)));
+	if (!o) return {
+		centrosymmetric: !1,
+		available: !1
+	};
+	if (!i) return {
+		centrosymmetric: !0,
+		available: !1
+	};
+	let s = 0, c = 0;
+	for (let e = 0; e < i.length; e++) {
+		let a = Number(i[e]), l = [
+			Number(t[e]),
+			Number(n[e]),
+			Number(r[e])
+		];
+		if (![a, ...l].every(Number.isFinite)) continue;
+		let u = 180 * (l[0] * o.transVector[0] + l[1] * o.transVector[1] + l[2] * o.transVector[2]), d = Math.abs(((a - u + 90) % 180 + 180) % 180 - 90);
+		c = Math.max(c, d), s++;
+	}
+	return {
+		centrosymmetric: !0,
+		method: "inversion-phases",
+		available: s > 0,
+		checkedCount: s,
+		toleranceDegrees: a,
+		maximumDeviationDegrees: c,
+		alreadyCorrected: s > 0 && c <= a,
+		needsCorrection: s > 0 && c > a
+	};
+}
+function Un(e, t, n, r, i, a = .05, o = 1e-4) {
+	if (!r) return {
+		centrosymmetric: !1,
+		method: "friedel-pair-phases",
+		available: !1
+	};
+	let s = /* @__PURE__ */ new Map(), c = 0;
+	for (let a = 0; a < r.length; a++) {
+		let o = [
+			Number(e[a]),
+			Number(t[a]),
+			Number(n[a])
+		], l = Number(r[a]), u = i ? Number(i[a]) : null;
+		[...o, l].every(Number.isFinite) && (Number.isFinite(u) && (c = Math.max(c, Math.abs(u))), s.set(o.join(","), {
+			indices: o,
+			phase: l,
+			amplitude: u
+		}));
+	}
+	let l = /* @__PURE__ */ new Set(), u = 0, d = 0, f = 0, p = c * 1e-4;
+	for (let [e, t] of s) {
+		if (l.has(e) || t.indices.every((e) => e === 0)) continue;
+		let n = t.indices.map((e) => -e).join(","), r = s.get(n);
+		if (!r || (l.add(e), l.add(n), c > 0 && (Math.abs(t.amplitude) < p || Math.abs(r.amplitude) < p))) continue;
+		let i = Math.abs(((t.phase + r.phase + 180) % 360 + 360) % 360 - 180);
+		d = Math.max(d, i), c > 0 && Number.isFinite(t.amplitude) && Number.isFinite(r.amplitude) && (f = Math.max(f, Math.abs(Math.abs(t.amplitude) - Math.abs(r.amplitude)) / c)), u++;
+	}
+	let m = u > 0 && d <= a && f <= o;
+	return {
+		centrosymmetric: !1,
+		method: "friedel-pair-phases",
+		available: u > 0,
+		checkedPairCount: u,
+		toleranceDegrees: a,
+		maximumDeviationDegrees: d,
+		amplitudeToleranceRelative: o,
+		maximumAmplitudeDeviationRelative: f,
+		alreadyCorrected: m,
+		needsCorrection: u > 0 && !m
+	};
+}
+function Wn(e, t, n, r, i, a) {
+	let o = `${t},${n},${r}`, s = e.get(o);
+	s ? (s.real += i, s.imaginary += a, s.count++) : e.set(o, {
+		h: t,
+		k: n,
+		l: r,
+		real: i,
+		imaginary: a,
+		count: 1
+	});
+}
+function Gn(e, t, n, r, i, a) {
+	let o = /* @__PURE__ */ new Map();
+	for (let a = 0; a < e.length; a++) {
+		let s = Number(e[a]), c = Number(t[a]), l = Number(n[a]), { real: u, imaginary: d } = r(a);
+		if ([
+			s,
+			c,
+			l,
+			u,
+			d
+		].every(Number.isFinite)) for (let e of mn(i)) {
+			let t = e.operation, [n, r, i] = pn(e.reciprocalRotation, [
+				s,
+				c,
+				l
+			]), a = Mn * (n * t.transVector[0] + r * t.transVector[1] + i * t.transVector[2]), f = Math.cos(a), p = Math.sin(a), m = u * f - d * p, h = u * p + d * f;
+			Wn(o, n, r, i, m, h), (n !== 0 || r !== 0 || i !== 0) && Wn(o, -n, -r, -i, m, -h);
+		}
+	}
+	a && o.delete("0,0,0");
+	for (let e of o.values()) e.real /= e.count, e.imaginary /= e.count;
+	return o;
+}
+function Kn(e, t) {
+	if (e.coefficients.size === 0) throw Error("Reflection source contains no usable difference-map coefficients");
+	let n = L(R(e.cell.fractToCartMatrix)), r = 0;
+	for (let t of e.coefficients.values()) t.reciprocalLength = se(I(n, [
+		t.h,
+		t.k,
+		t.l
+	])), r = Math.max(r, t.reciprocalLength);
+	return {
+		...e,
+		maximumReciprocalLength: r,
+		symmetryOperations: t.symmetryOperations.map((e) => ({
+			rotation: e.rotMatrix.map((e) => [...e]),
+			translation: [...e.transVector]
+		}))
+	};
+}
+function qn(e, t, n, r) {
+	let i = Number(n);
+	if (Number.isFinite(i) && i > 0) return {
+		scale: i,
+		fittedReflectionCount: 0,
+		explicit: !0
+	};
+	let a = 0, o = 0, s = 0;
+	for (let n = 0; n < e.length; n++) {
+		let i = e[n], c = t[n].amplitude ** 2 * r[n] ** 2;
+		if (!(i.intensity > 0 && c > 0)) continue;
+		let l = i.sigma > 0 ? 1 / i.sigma ** 2 : 1;
+		a += l * i.intensity * c, o += l * i.intensity ** 2, s++;
+	}
+	let c = a / o;
+	if (!(Number.isFinite(c) && c > 0 && s > 0)) throw Error("Could not fit a positive intensity scale against the IAM calculation");
+	return {
+		scale: c,
+		fittedReflectionCount: s,
+		explicit: !1
+	};
+}
+function Jn(e, t = 0, n = {}) {
+	let r = new j(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = Re.fromCIF(i), o = je.fromCIF(i), s = {
+		includeAnomalous: !1,
+		...n.iam
+	}, c = { ...n.reflections };
+	c.mergeFriedel === void 0 && (c.mergeFriedel = s.includeAnomalous === !1);
+	let l = kn(e, t, c), u = n.coordinateCifText ?? e, d = n.coordinateCifBlock ?? t, f = ln(u, d, {
+		...s,
+		expectedCell: a,
+		structureModel: n.structureModel
+	}), p = f.calculate(l.reflections), m = u === e ? r : new j(u), h = typeof d == "number" ? m.getBlock(d) : m.getBlockByName(d), g = n.extinctionCorrection ?? "auto";
+	if (![
+		"auto",
+		!0,
+		!1
+	].includes(g) && typeof g != "number" && (typeof g != "object" || !g || Array.isArray(g))) throw Error("extinctionCorrection must be \"auto\", true, false, a coefficient, or an object");
+	let _ = g === "auto" && l.metadata.source === "embedded-refln", v = jn(h, a, f.metadata.wavelength, l.reflections, p, _ ? !1 : g === "auto" || g);
+	_ && (v.metadata.reason = "embedded-fcf-already-corrected");
+	let y = qn(l.reflections, p, n.intensityScale, v.factors), b = 0, x = 0, S = 0;
+	return Kn({
+		cell: a,
+		coefficients: Gn(l.reflections.map((e) => e.h), l.reflections.map((e) => e.k), l.reflections.map((e) => e.l), (e) => {
+			let t = l.reflections[e], n = p[e], r = y.scale * t.intensity / v.factors[e] ** 2;
+			r < 0 && b++;
+			let i = Math.sqrt(Math.max(0, r)) - n.amplitude, a = Math.atan2(n.imaginary, n.real);
+			return x += Math.abs(r - n.amplitude ** 2), S += n.amplitude ** 2, {
+				real: i * Math.cos(a),
+				imaginary: i * Math.sin(a)
+			};
+		}, o, !0),
+		reflectionCount: l.reflections.length,
+		coefficientMode: "fo-fc-iam-phase",
+		omitF000: !0,
+		anomalousDispersion: {
+			enabled: f.metadata.includeAnomalous,
+			target: "both",
+			source: "iam"
+		},
+		densitySource: "cif-iam",
+		densityKind: "difference",
+		intensityScale: y.scale,
+		intensityScaleExplicit: y.explicit,
+		scaleFittedReflectionCount: y.fittedReflectionCount,
+		scaleR1: S > 0 ? x / S : null,
+		negativeIntensityCount: b,
+		observations: l.metadata,
+		iam: f.metadata,
+		reflectionPolicy: {
+			mergeFriedel: l.metadata.mergeFriedel,
+			includeAnomalous: f.metadata.includeAnomalous
+		},
+		extinctionCorrection: v.metadata
+	}, o);
+}
+function Yn(e, t) {
+	try {
+		let n = new j(e), r = typeof t == "number" ? n.getBlock(t) : n.getBlockByName(t), i = (e) => r.get(e, null), a = i("_cifvis_difference_density_loop"), o = i("_cifvis_difference_density_h"), s = i("_cifvis_difference_density_k"), c = i("_cifvis_difference_density_l"), l = i("_cifvis_difference_density_a"), u = i("_cifvis_difference_density_b");
+		if ([
+			a,
+			o,
+			s,
+			c,
+			l,
+			u
+		].every((e) => typeof e == "string" && e.length > 0)) return {
+			loop: a,
+			h: o,
+			k: s,
+			l: c,
+			a: l,
+			b: u,
+			omitF000: !1,
+			densityKind: "deformation"
+		};
+	} catch {}
+	return null;
+}
+function Xn(e, t = 0, n = {}) {
+	let r = n.inputMode ?? "auto";
+	if (![
+		"auto",
+		"fcf",
+		"cif-iam"
+	].includes(r)) throw Error("Difference-density inputMode must be \"auto\", \"fcf\", or \"cif-iam\"");
+	let i = n.coefficientColumns ?? Yn(e, t);
+	if (r !== "cif-iam") try {
+		return tr(e, t, i, n.anomalousDispersion ?? null);
+	} catch (e) {
+		if (r === "fcf" || i || !(e instanceof Nn)) throw e;
+	}
+	return Jn(e, t, n);
+}
+function Zn(e, t, n = !1) {
+	let r = e.length;
+	for (let n = 1, i = 0; n < r; n++) {
+		let a = r >> 1;
+		for (; i & a; a >>= 1) i ^= a;
+		i ^= a, n < i && ([e[n], e[i]] = [e[i], e[n]], [t[n], t[i]] = [t[i], t[n]]);
+	}
+	let i = n ? 1 : -1;
+	for (let n = 2; n <= r; n *= 2) {
+		let a = i * Mn / n, o = Math.cos(a), s = Math.sin(a);
+		for (let i = 0; i < r; i += n) {
+			let r = 1, a = 0, c = n / 2;
+			for (let n = 0; n < c; n++) {
+				let l = i + n, u = l + c, d = e[u] * r - t[u] * a, f = e[u] * a + t[u] * r, p = e[l], m = t[l];
+				e[l] = p + d, t[l] = m + f, e[u] = p - d, t[u] = m - f;
+				let h = r * o - a * s;
+				a = r * s + a * o, r = h;
+			}
+		}
+	}
+	if (n) for (let n = 0; n < r; n++) e[n] /= r, t[n] /= r;
+}
+function Qn(e, t, n, r) {
+	let [i, a, o] = n, s = n[r], c = new Float64Array(s), l = new Float64Array(s), u = (n) => {
+		for (let r = 0; r < s; r++) {
+			let i = n(r);
+			c[r] = e[i], l[r] = t[i];
+		}
+		Zn(c, l);
+		for (let r = 0; r < s; r++) {
+			let i = n(r);
+			e[i] = c[r], t[i] = l[r];
+		}
+	};
+	if (r === 0) for (let e = 0; e < o; e++) for (let t = 0; t < a; t++) {
+		let n = (e * a + t) * i;
+		u((e) => n + e);
+	}
+	else if (r === 1) for (let e = 0; e < o; e++) for (let t = 0; t < i; t++) u((n) => (e * a + n) * i + t);
+	else for (let e = 0; e < a; e++) for (let t = 0; t < i; t++) u((n) => (n * a + e) * i + t);
+}
+function $n(e) {
+	return Math.abs(ae(e.fractToCartMatrix));
+}
+function er(e, t, n = 1) {
+	let r = 0, i = 0, a = 0;
+	for (let { h: t, k: n, l: o } of e.values()) r = Math.max(r, Math.abs(t)), i = Math.max(i, Math.abs(n)), a = Math.max(a, Math.abs(o));
+	let o = [
+		Pn(2 * r + 1),
+		Pn(2 * i + 1),
+		Pn(2 * a + 1)
+	].map((e) => Pn(e * Math.max(1, n))), [s, c] = o, l = o[0] * o[1] * o[2], u = new Float64Array(l), d = new Float64Array(l);
+	for (let { h: t, k: n, l: r, real: i, imaginary: a } of e.values()) {
+		let e = (Fn(r, o[2]) * c + Fn(n, c)) * s + Fn(t, s);
+		u[e] = i, d[e] = a;
+	}
+	Qn(u, d, o, 0), Qn(u, d, o, 1), Qn(u, d, o, 2);
+	let f = $n(t), p = new Float32Array(l), m = 0, h = Infinity, g = -Infinity, _ = 0;
+	for (let e = 0; e < l; e++) {
+		let t = u[e] / f;
+		p[e] = t, m += t, h = Math.min(h, t), g = Math.max(g, t), _ = Math.max(_, Math.abs(d[e] / f));
+	}
+	let v = m / l, y = 0;
+	for (let e of p) y += (e - v) ** 2;
+	return {
+		dimensions: o,
+		values: p,
+		mean: v,
+		sigma: Math.sqrt(y / l),
+		minimum: h,
+		maximum: g,
+		maxImaginary: _,
+		volume: f
+	};
+}
+function tr(e, t = 0, n = null, r = null) {
+	let i = new j(e), a = typeof t == "number" ? i.getBlock(t) : i.getBlockByName(t), o = Re.fromCIF(a), s = je.fromCIF(a), c;
+	try {
+		c = a.get(n?.loop ?? "_refln");
+	} catch (e) {
+		throw n ? e : new Nn(e.message);
+	}
+	let l = q(c, n?.h ?? ["_refln.index_h", "_refln_index_h"]), u = q(c, n?.k ?? ["_refln.index_k", "_refln_index_k"]), d = q(c, n?.l ?? ["_refln.index_l", "_refln_index_l"]), f = q(c, ["_refln.phase_calc", "_refln_phase_calc"], null), p = q(c, ["_refln.F_calc", "_refln_F_calc"], null), m = p === null ? q(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null, h = p ?? m?.map((e) => Math.sqrt(Math.max(0, Number(e)))), g, _;
+	if (n) g = zn(c, n), _ = n.omitF000 ?? !1;
+	else {
+		if (f === null) throw new Nn("None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop");
+		let e = f, t = q(c, ["_refln.F_squared_meas", "_refln_F_squared_meas"], null), n = t === null ? q(c, ["_refln.F_meas", "_refln_F_meas"], null) : null, r = q(c, ["_refln.F_calc", "_refln_F_calc"], null), i = r === null ? q(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null;
+		if (t === null && n === null) throw new Nn("FCF contains neither measured F nor measured F-squared values");
+		if (r === null && i === null) throw new Nn("FCF contains neither calculated F nor calculated F-squared values");
+		g = {
+			mode: "fo-fc-common-phase",
+			componentCount: 2,
+			defaultAnomalousTarget: t !== null && i !== null ? "both" : "first",
+			valueColumns: [
+				e,
+				t ?? n,
+				r ?? i
+			],
+			coefficientAt(a) {
+				let o = t === null ? Math.max(0, Number(n[a])) : Math.sqrt(Math.max(0, Number(t[a]))), s = i === null ? Math.abs(Number(r[a])) : Math.sqrt(Math.max(0, Number(i[a]))), c = Number(e[a]) * Math.PI / 180, l = o - s;
+				return {
+					real: l * Math.cos(c),
+					imaginary: l * Math.sin(c)
+				};
+			}
+		}, _ = !0;
+	}
+	In([
+		l,
+		u,
+		d,
+		...g.valueColumns
+	]);
+	let v = g.coefficientAt, y = {
+		enabled: !1,
+		requested: !!r
+	};
+	if (r) {
+		let e = r === !0 ? {} : r;
+		if (typeof e != "object") throw Error("Anomalous-dispersion options must be true or an object");
+		let t = Vn(a, e), n;
+		if (e.phaseDetection === !1) n = {
+			available: !1,
+			disabled: !0
+		};
+		else {
+			let t = Hn(s, l, u, d, f, Number(e.phaseToleranceDegrees) || .05);
+			n = t.centrosymmetric ? t : Un(l, u, d, f, h, Number(e.phaseToleranceDegrees) || .05, Number(e.friedelAmplitudeToleranceRelative) || 1e-4);
+		}
+		let i = n.disabled ? "phase-detection-disabled" : n.alreadyCorrected ? "phases-already-corrected" : !n.available && t !== "olex" ? "exact-test-unavailable" : null;
+		if (i) y = {
+			enabled: !1,
+			requested: !0,
+			generator: t,
+			reason: i,
+			phaseCheck: n
+		};
+		else {
+			let r = e.target ?? g.defaultAnomalousTarget ?? "first", i = Yt(e.cifText, e.cifBlock ?? 0, e, o), a = Bn(r, g.componentCount);
+			v = (e) => {
+				let t = g.coefficientAt(e), n = i.coefficientAt(Number(l[e]), Number(u[e]), Number(d[e]));
+				return {
+					real: t.real + a * n.real,
+					imaginary: t.imaginary + a * n.imaginary
+				};
+			}, y = {
+				...i.metadata,
+				requested: !0,
+				generator: t,
+				phaseCheck: n,
+				target: r,
+				correctionScale: a
+			};
+		}
+	}
+	return Kn({
+		cell: o,
+		coefficients: Gn(l, u, d, v, s, _),
+		reflectionCount: l.length,
+		coefficientMode: g.mode,
+		omitF000: _,
+		anomalousDispersion: y,
+		densitySource: "fcf",
+		densityKind: n ? "deformation" : "difference"
+	}, s);
+}
+function nr(e, t = 1, n = 1) {
+	if (!(Number.isFinite(t) && t > 0 && t <= 1)) throw Error("Difference-density resolution fraction must be in the interval (0, 1]");
+	let r = e.maximumReciprocalLength * t, i = t === 1 ? e.coefficients : new Map(Array.from(e.coefficients.entries()).filter(([, e]) => e.reciprocalLength <= r + 1e-12));
+	if (i.size === 0) {
+		let t = Math.min(...Array.from(e.coefficients.values()).map((e) => e.reciprocalLength));
+		i = new Map(Array.from(e.coefficients.entries()).filter(([, e]) => e.reciprocalLength <= t + 1e-12));
+	}
+	if (!(Number.isFinite(n) && n >= 1)) throw Error("Difference-density grid oversampling must be at least 1");
+	let a = er(i, e.cell, n);
+	return new rr(e.cell, a.dimensions, a.values, {
+		reflectionCount: e.reflectionCount,
+		coefficientCount: i.size,
+		fullCoefficientCount: e.coefficients.size,
+		coefficientMode: e.coefficientMode,
+		omitF000: e.omitF000,
+		anomalousDispersion: e.anomalousDispersion,
+		densitySource: e.densitySource,
+		densityKind: e.densityKind,
+		intensityScale: e.intensityScale,
+		intensityScaleExplicit: e.intensityScaleExplicit,
+		scaleFittedReflectionCount: e.scaleFittedReflectionCount,
+		scaleR1: e.scaleR1,
+		negativeIntensityCount: e.negativeIntensityCount,
+		observations: e.observations,
+		iam: e.iam,
+		reflectionPolicy: e.reflectionPolicy,
+		extinctionCorrection: e.extinctionCorrection,
+		symmetryOperations: e.symmetryOperations,
+		resolutionFraction: t,
+		gridOversampling: n,
+		mean: a.mean,
+		sigma: a.sigma,
+		minimum: a.minimum,
+		maximum: a.maximum,
+		maxImaginary: a.maxImaginary,
+		volume: a.volume
+	});
+}
+var rr = class e {
+	constructor(e, t, n, r = {}) {
+		this.cell = e, this.dimensions = t, this.values = n, Object.assign(this, r);
+	}
+	toPayload() {
+		let { cell: e, dimensions: t, values: n, ...r } = this;
+		return {
+			cell: {
+				a: e.a,
+				b: e.b,
+				c: e.c,
+				alpha: e.alpha,
+				beta: e.beta,
+				gamma: e.gamma
+			},
+			dimensions: t,
+			values: n,
+			...r
+		};
+	}
+	static fromPayload(t) {
+		let n = new Re(t.cell.a, t.cell.b, t.cell.c, t.cell.alpha, t.cell.beta, t.cell.gamma), { cell: r, dimensions: i, values: a, ...o } = t;
+		return new e(n, i, a, o);
+	}
+	sample(e, t, n) {
+		let [r, i, a] = this.dimensions, o = [
+			e * r,
+			t * i,
+			n * a
+		], s = o.map(Math.floor), c = o.map((e, t) => e - s[t]), l = (e, t, n) => this.values[(Fn(n, a) * i + Fn(t, i)) * r + Fn(e, r)], u = l(s[0], s[1], s[2]), d = l(s[0] + 1, s[1], s[2]), f = l(s[0], s[1] + 1, s[2]), p = l(s[0] + 1, s[1] + 1, s[2]), m = l(s[0], s[1], s[2] + 1), h = l(s[0] + 1, s[1], s[2] + 1), g = l(s[0], s[1] + 1, s[2] + 1), _ = l(s[0] + 1, s[1] + 1, s[2] + 1), v = (e, t, n) => e + (t - e) * n, y = v(u, d, c[0]), b = v(f, p, c[0]), x = v(m, h, c[0]), S = v(g, _, c[0]);
+		return v(v(y, b, c[1]), v(x, S, c[1]), c[2]);
+	}
+	static fromCIF(e, t = 0, n = null, r = null) {
+		return nr(tr(e, t, n, r));
+	}
+	static fromReflectionCIF(e, t = 0, n = {}) {
+		return nr(Jn(e, t, n));
+	}
+};
+//#endregion
 //#region src/lib/fix-cif/reconcile-labels.js
-function vt(e, t = !0) {
+function ir(e, t = !0) {
 	if (!e || typeof e != "string") throw Error("Empty atom label");
 	let n = e.toUpperCase().replace(/[()[\]{}]/g, "");
 	if (t && (n = n.replace(/\^[a-zA-Z1-9]+$/, "").replace(/_[a-zA-Z1-9]+$/, "").replace(/_\$\d+$/, "")), n === "") throw Error(`Label "${e}" normalizes to empty string`);
 	return n;
 }
-function yt(e, t = !0) {
+function ar(e, t = !0) {
 	let n = /* @__PURE__ */ new Map();
 	e.forEach((e) => {
 		try {
-			let r = vt(e, t);
+			let r = ir(e, t);
 			n.has(r) || n.set(r, []), n.get(r).push(e);
 		} catch (e) {
 			console.warn(`Skipping invalid label: ${e.message}`);
@@ -3270,16 +4886,16 @@ function yt(e, t = !0) {
 	for (let [e, t] of n.entries()) t.length === 1 ? r.set(e, t[0]) : console.warn(`Multiple labels map to ${e}: ${t.join(", ")}. Skipping mapping.`);
 	return r;
 }
-function W(e, t, n, r = !0) {
-	let i = yt(n, r), a = e.get(t).map((e) => {
-		let t = vt(e, r);
+function or(e, t, n, r = !0) {
+	let i = ar(n, r), a = e.get(t).map((e) => {
+		let t = ir(e, r);
 		return i.has(t) ? i.get(t) : e;
 	});
 	e.data[t] = a;
 }
 //#endregion
 //#region src/lib/fix-cif/guess-symmetry.js
-function bt(e) {
+function sr(e) {
 	if (!e || e === ".") return ".";
 	let t = String(e).trim();
 	if (/^\d+_\d{3}$/.test(t)) return t;
@@ -3294,19 +4910,19 @@ function bt(e) {
 	}
 	return e;
 }
-function xt(e, t) {
-	let n = e.get(t).map((e) => bt(e));
+function cr(e, t) {
+	let n = e.get(t).map((e) => sr(e));
 	e.data[t] = n;
 }
 //#endregion
 //#region src/lib/fix-cif/base.js
-function G(e, t) {
+function J(e, t) {
 	for (let n of t) if (e.headerLines.includes(n)) return n;
 	return null;
 }
-function St(e, t) {
-	if (G(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
-	let n = G(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = G(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
+function lr(e, t) {
+	if (J(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
+	let n = J(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = J(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
 	if (!n || !r) return;
 	let i = e.get(n), a = e.get(r);
 	e.data[n] = i.map((e, t) => {
@@ -3314,52 +4930,52 @@ function St(e, t) {
 		return /^uani$/i.test(String(e)) && n ? "Uiso" : e;
 	});
 }
-function Ct(e, t = !0, n = !0, r = !0) {
+function ur(e, t = !0, n = !0, r = !0) {
 	let i, a;
 	if ((t || n) && (i = e.get("_atom_site"), a = i.get(["_atom_site.label", "_atom_site_label"])), t) {
 		let t = e.get("_atom_site_aniso", !1);
 		if (t) {
-			let e = G(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-			e ? W(t, e, a) : St(i, t);
+			let e = J(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+			e ? or(t, e, a) : lr(i, t);
 		}
 	}
 	if (n || r) {
 		let t = e.get("_geom_bond", !1);
-		if (t && (n && (W(t, G(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), W(t, G(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
-			let e = G(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
-			e && xt(t, e);
-			let n = G(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
-			n && xt(t, n);
+		if (t && (n && (or(t, J(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), or(t, J(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
+			let e = J(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
+			e && cr(t, e);
+			let n = J(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
+			n && cr(t, n);
 		}
 		let i = e.get("_geom_hbond", !1);
 		if (i) {
 			if (n) {
-				W(i, G(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
-				let e = G(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
-				e && W(i, e, a), W(i, G(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
+				or(i, J(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
+				let e = J(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
+				e && or(i, e, a), or(i, J(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
 			}
 			if (r) {
-				let e = G(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
-				e && xt(i, e);
+				let e = J(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
+				e && cr(i, e);
 			}
 		}
 	}
 }
 //#endregion
 //#region src/lib/disorder-icons.js
-function wt(e, t) {
+function dr(e, t) {
 	if (t === "all") return e.all;
 	if (e[t]) return e[t];
 	let n = /^group(\d+)of\d+$/.exec(t)?.[1];
-	return n ? Tt(e, n) : "";
+	return n ? fr(e, n) : "";
 }
-function Tt(e, t) {
+function fr(e, t) {
 	let n = e.all.replace(/#000000/g, "#8f8f8f"), r = String(t).length, i = `<text x="8.925192" y="8.925193" text-anchor="middle" dominant-baseline="central" font-size="${r <= 1 ? 9 : Math.max(9 - (r - 1) * 1.5, 5)}" font-family="system-ui, sans-serif" font-weight="bold" fill="#000000">${t}</text>`;
 	return n.replace("</svg>", `${i}</svg>`);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/base.js
-var K = class e {
+var pr = class e {
 	constructor(t, n, r, i = []) {
 		if (new.target === e) throw TypeError("Cannot instantiate BaseFilter directly");
 		this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(i), this.filterName = r, this._mode = null, this.mode = n;
@@ -3397,24 +5013,24 @@ var K = class e {
 };
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/util.js
-function q(e, t) {
+function Y(e, t) {
 	return `${e}|${t}`;
 }
-function J(e, t, n) {
+function X(e, t, n) {
 	let r = e.split("|"), i = r[0], a = `${n.identitySymOpId}_555`;
-	return r.length === 2 && (a = r[1]), q(i, n.combineSymmetryCodes(t, a));
+	return r.length === 2 && (a = r[1]), Y(i, n.combineSymmetryCodes(t, a));
 }
 //#endregion
 //#region src/lib/structure/applied-symmetry.js
-var Y = class e {
+var Z = class e {
 	constructor(e, t) {
 		this.id = e, this.translation = [...t], this._updateKey();
 	}
 	_updateKey() {
-		this.key = we(this.id, this.translation);
+		this.key = Oe(this.id, this.translation);
 	}
 	static fromString(t) {
-		let { id: n, translation: r } = Ce(t);
+		let { id: n, translation: r } = De(t);
 		return new e(n, r);
 	}
 	toString() {
@@ -3432,7 +5048,7 @@ var Y = class e {
 		let r = n.combineSymmetryCodes(t.key, this.key);
 		return e.fromString(r);
 	}
-}, Et = /* @__PURE__ */ new Set([
+}, mr = /* @__PURE__ */ new Set([
 	"H",
 	"D",
 	"B",
@@ -3449,33 +5065,33 @@ var Y = class e {
 	"Br",
 	"Te",
 	"I"
-]), Dt = 4, Ot = 1.6;
-function kt(e) {
-	return Et.has(e) ? ze[e] : void 0;
+]), hr = 4, gr = 1.6;
+function _r(e) {
+	return mr.has(e) ? Ue[e] : void 0;
 }
-function At(e, t = e.bonds) {
+function vr(e, t = e.bonds) {
 	let n = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) n.has(t.label) || n.set(t.label, t.atomType);
 	return t.filter((e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Dt) return !1;
+		if (e.bondLength > hr) return !1;
 		let t = n.get(e.atom1Label), r = n.get(e.atom2Label);
 		if (t === void 0 || r === void 0) return !0;
-		let i = kt(t), a = kt(r);
-		return i === void 0 || a === void 0 || e.bondLength <= Ot * (i + a);
+		let i = _r(t), a = _r(r);
+		return i === void 0 || a === void 0 || e.bondLength <= gr * (i + a);
 	});
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-fragment.js
-function X(e, t) {
+function Q(e, t) {
 	return e < t ? `${e}->${t}` : `${t}->${e}`;
 }
-function Z(e, t, n) {
+function $(e, t, n) {
 	return `${e}-${t}...${n}`;
 }
-var jt = class {
+var yr = class {
 	constructor(e, t) {
-		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? Y.fromString(t) : t;
+		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? Z.fromString(t) : t;
 	}
 	isTranslationalDuplicateOf(e) {
 		return this.groupIndex === e.groupIndex && this.appliedSymmetry.id === e.appliedSymmetry.id && (this.appliedSymmetry.translation[0] !== e.appliedSymmetry.translation[0] || this.appliedSymmetry.translation[1] !== e.appliedSymmetry.translation[1] || this.appliedSymmetry.translation[2] !== e.appliedSymmetry.translation[2]);
@@ -3483,20 +5099,20 @@ var jt = class {
 	getSymmetryString() {
 		return this.appliedSymmetry.toString();
 	}
-}, Mt = class {
+}, br = class {
 	constructor(e, t, n, r) {
-		this.originAtom = e.includes("|") ? e : q(e, "1_555"), this.targetAtom = t.includes("|") ? t : q(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
+		this.originAtom = e.includes("|") ? e : Y(e, "1_555"), this.targetAtom = t.includes("|") ? t : Y(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
 	}
-}, Nt = class {
+}, xr = class {
 	constructor(e, t, n, r, i, a) {
-		this.originIndex = e, this.originSymmetry = typeof t == "string" ? Y.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? Y.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
+		this.originIndex = e, this.originSymmetry = typeof t == "string" ? Z.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? Z.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
 	}
 	getKey() {
 		let e = this.originSymmetry.key, t = this.targetSymmetry.key;
 		return this.originIndex === this.targetIndex ? e < t ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}` : this.originIndex < this.targetIndex ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}`;
 	}
 };
-function Pt(e, t, n) {
+function Sr(e, t, n) {
 	let r = t.map(() => /* @__PURE__ */ new Map()), i = t.map(() => []);
 	return e.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 		let t = n.get(e.atom1Id) ?? n.get(e.atom1Label), a = e.atom2Id.split("|")[0], o = `${a}|1_555`, s = n.get(o) ?? n.get(a);
@@ -3504,19 +5120,19 @@ function Pt(e, t, n) {
 		let c = `${t}->${s}@.@${e.atom2SiteSymmetry}`;
 		if (r[t].has(c)) {
 			let n = r[t].get(c);
-			i[t][n].bonds.push(new Mt(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
+			i[t][n].bonds.push(new br(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
 		} else r[t].set(c, i[t].length), i[t].push({
 			targetIndex: s,
-			targetSymmetry: Y.fromString(e.atom2SiteSymmetry),
-			bonds: [new Mt(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
+			targetSymmetry: Z.fromString(e.atom2SiteSymmetry),
+			bonds: [new br(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
 		});
 	}), i;
 }
-function Ft(e, t) {
+function Cr(e, t) {
 	let n = [], r = /* @__PURE__ */ new Set();
 	return e.forEach((e, i) => {
 		for (let a of e) {
-			let e = new Nt(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
+			let e = new xr(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
 			r.has(o) || (n.push(e), r.add(o));
 		}
 	}), {
@@ -3524,13 +5140,13 @@ function Ft(e, t) {
 		processedConnections: r
 	};
 }
-function It(e, t, n, r, i) {
-	let a = [], o = [], s = new jt(e.targetIndex, e.targetSymmetry), c = r[e.targetIndex];
+function wr(e, t, n, r, i) {
+	let a = [], o = [], s = new yr(e.targetIndex, e.targetSymmetry), c = r[e.targetIndex];
 	for (let r of c) {
-		let s = (typeof r.targetSymmetry == "string" ? Y.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), c = new Nt(e.targetIndex, e.targetSymmetry, r.targetIndex, s, r.bonds, e.creationOriginIndex), l = c.getKey();
+		let s = (typeof r.targetSymmetry == "string" ? Z.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), c = new xr(e.targetIndex, e.targetSymmetry, r.targetIndex, s, r.bonds, e.creationOriginIndex), l = c.getKey();
 		if (i.has(l)) continue;
 		i.add(l);
-		let u = new jt(r.targetIndex, s);
+		let u = new yr(r.targetIndex, s);
 		n[e.creationOriginIndex].some((e) => u.isTranslationalDuplicateOf(e)) ? o.push(c) : a.push(c);
 	}
 	return {
@@ -3539,14 +5155,14 @@ function It(e, t, n, r, i) {
 		foundTranslations: o
 	};
 }
-function Lt(e, t) {
+function Tr(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	t.forEach((e, t) => {
 		e.atoms.forEach((e) => n.set(e.uniqueId, t));
 	});
-	let r = Y.fromString(e.symmetry.identitySymOpId + "_555"), i = Pt(e, t, n), { danglingConnections: a, processedConnections: o } = Ft(i, r), s = [], c = [], l = t.map(() => []);
+	let r = Z.fromString(e.symmetry.identitySymOpId + "_555"), i = Sr(e, t, n), { danglingConnections: a, processedConnections: o } = Cr(i, r), s = [], c = [], l = t.map(() => []);
 	t.forEach((e, t) => {
-		l[t].push(new jt(t, r));
+		l[t].push(new yr(t, r));
 	});
 	let u = 0, d = 0;
 	for (; d < a.length;) {
@@ -3554,7 +5170,7 @@ function Lt(e, t) {
 			console.error("Max iterations reached in createConnectivity. Possible infinite loop orvery complex structure.");
 			break;
 		}
-		let t = a[d++], n = It(t, e, l, i, o);
+		let t = a[d++], n = wr(t, e, l, i, o);
 		l[t.creationOriginIndex].push(n.newConnectedGroup), a.push(...n.newDanglingConnections), c.push(...n.foundTranslations), s.push(t);
 	}
 	return d < a.length && console.warn(`Connectivity processing stopped due to iteration limit. ${a.length - d} connections remain unprocessed.`), {
@@ -3563,7 +5179,7 @@ function Lt(e, t) {
 		discoveredGroups: l
 	};
 }
-function Rt(e) {
+function Er(e) {
 	let t = /* @__PURE__ */ new Set(), n = [];
 	return e.forEach((e) => {
 		t.add(`${e.originIndex}@.@${e.originSymmetry.key}`), t.add(`${e.targetIndex}@.@${e.targetSymmetry.key}`), e.connectingBonds.forEach((t) => {
@@ -3581,12 +5197,12 @@ function Rt(e) {
 		interGroupBonds: n
 	};
 }
-function zt(e, t, n, r) {
+function Dr(e, t, n, r) {
 	let i = t.map((e) => [[...e.atoms]]), a = /* @__PURE__ */ new Map(), o = [];
 	return e.forEach((e) => {
 		let [a, o] = e.split("@.@");
 		if (o === r) return;
-		let s = Number(a), c = t[s].atoms, l = n.symmetry.applySymmetry(o, c), u = Y.fromString(o);
+		let s = Number(a), c = t[s].atoms, l = n.symmetry.applySymmetry(o, c), u = Z.fromString(o);
 		l.forEach((e) => {
 			e.appliedSymmetry = u;
 		}), i[s].push(l);
@@ -3610,33 +5226,33 @@ function zt(e, t, n, r) {
 		newAtoms: o
 	};
 }
-function Bt(e, t, n, r, i, a) {
+function Or(e, t, n, r, i, a) {
 	let o = [];
 	e.forEach((e) => {
 		o.push(...e.bonds);
 	});
 	let s = /* @__PURE__ */ new Set();
 	return o.forEach((e) => {
-		s.add(X(e.atom1Id, e.atom2Id));
+		s.add(Q(e.atom1Id, e.atom2Id));
 	}), t.forEach((t) => {
 		let [n, i] = t.split("@.@");
 		i !== a && e[Number(n)].bonds.forEach((e) => {
-			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = q(t, i), c = q(n, i), l = r.get(a) || a, u = r.get(c) || c, d = X(l, u);
-			s.has(d) || (s.add(d), o.push(new B(l, u, e.bondLength, e.bondLengthSU, ".")));
+			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = Y(t, i), c = Y(n, i), l = r.get(a) || a, u = r.get(c) || c, d = Q(l, u);
+			s.has(d) || (s.add(d), o.push(new V(l, u, e.bondLength, e.bondLengthSU, ".")));
 		});
 	}), n.forEach((e) => {
-		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], c = n.split(/[|@]/)[0], l = e.originSymmetry || Y.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || Y.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? q(i, a) : q(i, l.key), f = u.key === a ? q(c, a) : q(c, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : q(p, a), g = m.includes("|") ? m : q(m, a), _ = X(h, g);
-		s.has(_) || (s.add(_), o.push(new B(h, g, e.bondLength, e.bondLengthSU, ".")));
+		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], c = n.split(/[|@]/)[0], l = e.originSymmetry || Z.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || Z.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? Y(i, a) : Y(i, l.key), f = u.key === a ? Y(c, a) : Y(c, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : Y(p, a), g = m.includes("|") ? m : Y(m, a), _ = Q(h, g);
+		s.has(_) || (s.add(_), o.push(new V(h, g, e.bondLength, e.bondLengthSU, ".")));
 	}), {
 		newBonds: o,
 		atomLabels: new Set(i.map((e) => e.uniqueId))
 	};
 }
-function Vt(e, t, n, r, i, a, o) {
+function kr(e, t, n, r, i, a, o) {
 	let s = [], c = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((e) => {
 		let t;
-		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Z(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Z(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
+		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? $(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${$(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
 	});
 	let l = t.map(() => []);
 	return e.hBonds.filter((e) => e.acceptorAtomSymmetry !== ".").forEach((e) => {
@@ -3647,41 +5263,41 @@ function Vt(e, t, n, r, i, a, o) {
 		if (u === o) return;
 		let d = Number(r);
 		t[d].hBonds.forEach((e) => {
-			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = q(t, u), o = q(n, u), l = q(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Z(d, f, p);
-			c.has(m) || (c.add(m), s.push(new V(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
+			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = Y(t, u), o = Y(n, u), l = Y(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = $(d, f, p);
+			c.has(m) || (c.add(m), s.push(new H(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
 		}), l[d].forEach((t) => {
-			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = q(n, u), l = q(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = q(m, p), g = i.get(h) || h, _, v;
-			a.has(g) ? (_ = new V(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Z(d, f, g)) : (_ = new V(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Z(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
+			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = Y(n, u), l = Y(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = Y(m, p), g = i.get(h) || h, _, v;
+			a.has(g) ? (_ = new H(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = $(d, f, g)) : (_ = new H(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${$(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
 		});
 	}), s;
 }
-function Ht(e, t, n, r) {
+function Ar(e, t, n, r) {
 	let i = [];
 	return e.forEach((e) => {
 		for (let t of e.connectingBonds) {
-			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = q(a, e.originSymmetry.key), c = q(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = X(l, u);
-			r.has(f) || (r.add(f), i.push(new B(l, u, t.bondLength, t.bondLengthSU, d)));
+			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = Y(a, e.originSymmetry.key), c = Y(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = Q(l, u);
+			r.has(f) || (r.add(f), i.push(new V(l, u, t.bondLength, t.bondLengthSU, d)));
 		}
 	}), i;
 }
-function Ut(e) {
-	let t = new H(e.cell, e.atoms, At(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
+function jr(e) {
+	let t = new U(e.cell, e.atoms, vr(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Lt(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Rt(a, e, i), { specialPositionAtoms: l, newAtoms: u } = zt(s, n, t, i), { newBonds: d, atomLabels: f } = Bt(n, s, c, l, u, i), p = Vt(t, n, r, s, l, f, i), m = Ht(o, t, l, new Set(d.map((e) => X(e.atom1Id, e.atom2Id))));
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Tr(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Er(a, e, i), { specialPositionAtoms: l, newAtoms: u } = Dr(s, n, t, i), { newBonds: d, atomLabels: f } = Or(n, s, c, l, u, i), p = kr(t, n, r, s, l, f, i), m = Ar(o, t, l, new Set(d.map((e) => Q(e.atom1Id, e.atom2Id))));
 	for (let e of m) d.push(e);
 	return {
-		grownStructure: new H(t.cell, [...t.atoms, ...u], d, p, t.symmetry),
+		grownStructure: new U(t.cell, [...t.atoms, ...u], d, p, t.symmetry),
 		specialPositionAtoms: l
 	};
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-cell.js
-var Wt = 4;
-function Gt(e, t) {
+var Mr = 4;
+function Nr(e, t) {
 	let n = /* @__PURE__ */ new Set([e.identitySymOpId]), r = /* @__PURE__ */ new Set();
 	for (let n of t) {
 		let t = e.combineSymmetryCodes(n + "_555", e.identitySymOpId + "_555");
@@ -3690,7 +5306,7 @@ function Gt(e, t) {
 	for (let [t] of e.operationIds) n.has(t) || r.has(t) || n.add(t);
 	return n;
 }
-function Kt(e) {
+function Pr(e) {
 	if (e.length === 0) return {
 		minX: 0,
 		maxX: 1,
@@ -3713,15 +5329,15 @@ function Kt(e) {
 		maxZ: o
 	};
 }
-function qt(e) {
-	let t = Kt(e);
-	return N([
+function Fr(e) {
+	let t = Pr(e);
+	return F([
 		(t.minX + t.maxX) / 2,
 		(t.minY + t.maxY) / 2,
 		(t.minZ + t.maxZ) / 2
 	]);
 }
-function Jt(e, t, n) {
+function Ir(e, t, n) {
 	let r = t.symmetry.identitySymOpId, i = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) t.appliedSymmetry ? i.add(t.appliedSymmetry.id) : i.add(r);
 	let a = new Set(e.atoms.map((e) => e.uniqueId));
@@ -3731,18 +5347,18 @@ function Jt(e, t, n) {
 	}
 	return Array.from(i);
 }
-function Yt(e, t = 1e-6) {
+function Lr(e, t = 1e-6) {
 	let { x: n, y: r, z: i } = e.position;
 	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
 }
-function Xt(e, t = 3) {
+function Rr(e, t = 3) {
 	let n = e.position.x.toFixed(t), r = e.position.y.toFixed(t), i = e.position.z.toFixed(t);
 	return `${e.label}_x${n}_y${r}_z${i}`;
 }
-function Zt(e, t, n) {
-	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = ee(ee(P(r.rotMatrix, N(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), l = t.split("_")[0], u = (t.split("_")[1] || "555").split("").map((e) => parseInt(e, 10)), d = `${u[0] - o}${u[1] - s}${u[2] - c}`;
+function zr(e, t, n) {
+	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = re(re(I(r.rotMatrix, F(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), l = t.split("_")[0], u = (t.split("_")[1] || "555").split("").map((e) => parseInt(e, 10)), d = `${u[0] - o}${u[1] - s}${u[2] - c}`;
 	return {
-		newCentre: te(a, N([
+		newCentre: ie(a, F([
 			o,
 			s,
 			c
@@ -3750,40 +5366,40 @@ function Zt(e, t, n) {
 		newString: `${l}_${d}`
 	};
 }
-function Qt(e, t, n, r, i) {
+function Br(e, t, n, r, i) {
 	let a = [], o = t.applySymmetry(n, e.atoms);
 	for (let s = 0; s < o.length; s++) {
 		let c = o[s], l = e.atoms[s], u = n;
-		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = Y.fromString(u);
+		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = Z.fromString(u);
 		let d = c.uniqueId;
-		if (i && !Yt(c)) {
+		if (i && !Lr(c)) {
 			let e = Math.floor(c.position.x), n = Math.floor(c.position.y), i = Math.floor(c.position.z);
 			c.position.x -= e, c.position.y -= n, c.position.z -= i, c.appliedSymmetry.translation[0] -= e, c.appliedSymmetry.translation[1] -= n, c.appliedSymmetry.translation[2] -= i, c.appliedSymmetry._updateKey();
 			let a = c.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
 			r.atomTranslations.set(d, [a, o]);
 		}
-		let f = c.uniqueId, p = Xt(c), m = r.atomMap.get(p);
+		let f = c.uniqueId, p = Rr(c), m = r.atomMap.get(p);
 		m ? r.specialPositionMap.set(f, m) : (r.atomMap.set(p, f), a.push(c));
 	}
 	return a;
 }
-function $t(e, t, n, r) {
+function Vr(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalBonds) {
-		let e = J(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = J(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
+		let e = X(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = X(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
 		if (o !== c) {
 			if (!r.atomTranslations.has(o) && !r.atomTranslations.has(c)) {
-				let e = X(o, c);
+				let e = Q(o, c);
 				if (!r.createdBonds.has(e)) {
-					let t = new B(o, c, a.bondLength, a.bondLengthSU, ".");
+					let t = new V(o, c, a.bondLength, a.bondLengthSU, ".");
 					i.push(t), r.createdBonds.add(e);
 				}
 			} else if (r.atomTranslations.has(o) && r.atomTranslations.has(c)) {
 				let [e, t] = r.atomTranslations.get(o), [n, s] = r.atomTranslations.get(c);
 				if (t === s) {
-					let t = X(e, n);
+					let t = Q(e, n);
 					if (!r.createdBonds.has(t)) {
-						let o = new B(e, n, a.bondLength, a.bondLengthSU, ".");
+						let o = new V(e, n, a.bondLength, a.bondLengthSU, ".");
 						i.push(o), r.createdBonds.add(t);
 					}
 				}
@@ -3792,26 +5408,26 @@ function $t(e, t, n, r) {
 	}
 	return i;
 }
-function en(e, t, n, r) {
+function Hr(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalHBonds) {
-		let e = r.specialPositionMap.get(J(a.donorAtomId, n, t)) || J(a.donorAtomId, n, t), o = r.specialPositionMap.get(J(a.hydrogenAtomId, n, t)) || J(a.hydrogenAtomId, n, t), s;
+		let e = r.specialPositionMap.get(X(a.donorAtomId, n, t)) || X(a.donorAtomId, n, t), o = r.specialPositionMap.get(X(a.hydrogenAtomId, n, t)) || X(a.hydrogenAtomId, n, t), s;
 		if (a.acceptorAtomSymmetry && a.acceptorAtomSymmetry !== ".") {
 			let e = `${a.acceptorAtomId.split("|")[0]}|${t.combineSymmetryCodes(n, a.acceptorAtomSymmetry)}`;
 			s = r.specialPositionMap.get(e) || e;
-		} else s = r.specialPositionMap.get(J(a.acceptorAtomId, n, t)) || J(a.acceptorAtomId, n, t);
+		} else s = r.specialPositionMap.get(X(a.acceptorAtomId, n, t)) || X(a.acceptorAtomId, n, t);
 		if (!r.atomTranslations.has(e) && !r.atomTranslations.has(o) && !r.atomTranslations.has(s)) {
-			let t = Z(e, o, s);
+			let t = $(e, o, s);
 			if (!r.createdHBonds.has(t)) {
-				let n = new V(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
+				let n = new H(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 				r.createdHBonds.add(t), i.push(n);
 			}
 		} else if (r.atomTranslations.has(e) && r.atomTranslations.has(o) && r.atomTranslations.has(s)) {
 			let [t, n] = r.atomTranslations.get(e), [c, l] = r.atomTranslations.get(o), [u, d] = r.atomTranslations.get(s);
 			if (n === l && l === d) {
-				let e = Z(t, c, u);
+				let e = $(t, c, u);
 				if (!r.createdHBonds.has(e)) {
-					let n = new V(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
+					let n = new H(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 					r.createdHBonds.add(e), i.push(n);
 				}
 			}
@@ -3819,28 +5435,28 @@ function en(e, t, n, r) {
 	}
 	return i;
 }
-function tn(e, t, n, r) {
+function Ur(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalBonds) {
-		let e = r.specialPositionMap.get(J(a.atom1Id, n, t)) || J(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
+		let e = r.specialPositionMap.get(X(a.atom1Id, n, t)) || X(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
 		if (r.atomTranslations.has(e)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e), o = t.combineSymmetryCodes(n, o);
 		}
 		let c = `${s}|${o}`;
 		c = r.specialPositionMap.get(c) || c;
-		let l = X(e, c);
+		let l = Q(e, c);
 		if (!r.createdBonds.has(l)) {
-			let t = new B(e, c, a.bondLength, a.bondLengthSU, o);
+			let t = new V(e, c, a.bondLength, a.bondLengthSU, o);
 			i.push(t), r.createdBonds.add(l);
 		}
 	}
 	return i;
 }
-function nn(e, t, n, r) {
+function Wr(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalHBonds) {
-		let e = r.specialPositionMap.get(J(a.donorAtomId, n, t)) || J(a.donorAtomId, n, t), o = r.specialPositionMap.get(J(a.hydrogenAtomId, n, t)) || J(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
+		let e = r.specialPositionMap.get(X(a.donorAtomId, n, t)) || X(a.donorAtomId, n, t), o = r.specialPositionMap.get(X(a.hydrogenAtomId, n, t)) || X(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
 		if (r.atomTranslations.has(e) && r.atomTranslations.has(o)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e);
@@ -3850,32 +5466,32 @@ function nn(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) || r.atomTranslations.has(o)) continue;
 		let c = `${a.acceptorAtomId.split("|")[0]}|${s}`;
 		if (e.split("|")[1] === s) continue;
-		let l = Z(e, o, c);
+		let l = $(e, o, c);
 		if (!r.createdHBonds.has(l)) {
-			let t = new V(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
+			let t = new H(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
 			i.push(t), r.createdHBonds.add(l);
 		}
 	}
 	return i;
 }
-function rn(e, t, n, r, i) {
-	let { newCentre: a, newString: o } = Zt(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function Gr(e, t, n, r, i) {
+	let { newCentre: a, newString: o } = zr(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: Qt(e, t, o, r, i),
-		internalBonds: $t(e, t, o, r),
-		internalHBonds: en(e, t, o, r),
-		externalBonds: tn(e, t, o, r),
-		externalHBonds: nn(e, t, o, r),
+		atoms: Br(e, t, o, r, i),
+		internalBonds: Vr(e, t, o, r),
+		internalHBonds: Hr(e, t, o, r),
+		externalBonds: Ur(e, t, o, r),
+		externalHBonds: Wr(e, t, o, r),
 		symmString: o,
 		groupCentre: a
 	};
 }
-function an(e, t = !0, n = null) {
+function Kr(e, t = !0, n = null) {
 	let r;
-	if (r = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new H(e.cell, [], [], [], e.symmetry);
+	if (r = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new U(e.cell, [], [], [], e.symmetry);
 	let i = e.calculateConnectedGroups(), a = i.map((t) => {
-		let n = Jt(t, e, r);
-		return Array.from(Gt(e.symmetry, n));
+		let n = Ir(t, e, r);
+		return Array.from(Nr(e.symmetry, n));
 	}), o = i.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), s = i.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), c = {
 		atomMap: /* @__PURE__ */ new Map(),
 		createdBonds: /* @__PURE__ */ new Set(),
@@ -3884,7 +5500,7 @@ function an(e, t = !0, n = null) {
 		atomTranslations: /* @__PURE__ */ new Map()
 	}, l = [];
 	for (let n = 0; n < i.length; n++) {
-		let r = i[n], u = a[n], d = qt(r.atoms), f = u[0], p = {
+		let r = i[n], u = a[n], d = Fr(r.atoms), f = u[0], p = {
 			atoms: r.atoms,
 			internalBonds: r.bonds,
 			internalHBonds: r.hBonds,
@@ -3894,23 +5510,23 @@ function an(e, t = !0, n = null) {
 			externalHBonds: s[n]
 		};
 		for (let n of u) {
-			let r = `${n}_555`, i = rn(p, e.symmetry, r, c, t);
+			let r = `${n}_555`, i = Gr(p, e.symmetry, r, c, t);
 			l.push(i);
 		}
 	}
 	let u = [...t ? [] : e.symmetry.applySymmetry(`${e.symmetry.identitySymOpId}_555`, e.atoms).map((t, n) => (t.appliedSymmetry = e.atoms[n].appliedSymmetry?.copy() || null, t)), ...l.flatMap((e) => e.atoms)], d = /* @__PURE__ */ new Map();
 	for (let e of u) d.has(e.uniqueId) || d.set(e.uniqueId, e);
-	let f = Array.from(d.values()), p = [...t ? [] : e.bonds.map((e) => new B(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...l.flatMap((e) => e.internalBonds)], m = [...t ? [] : e.hBonds.map((e) => new V(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...l.flatMap((e) => e.internalHBonds)], h = new Set(f.map((e) => e.uniqueId));
+	let f = Array.from(d.values()), p = [...t ? [] : e.bonds.map((e) => new V(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...l.flatMap((e) => e.internalBonds)], m = [...t ? [] : e.hBonds.map((e) => new H(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...l.flatMap((e) => e.internalHBonds)], h = new Set(f.map((e) => e.uniqueId));
 	l.forEach((e) => {
 		e.externalBonds.forEach((e) => {
 			let t = c.specialPositionMap.get(e.atom1Id) || e.atom1Id;
 			c.atomTranslations.has(t) && ([t] = c.atomTranslations.get(t));
 			let n = c.specialPositionMap.get(e.atom2Id) || e.atom2Id;
 			if (c.atomTranslations.has(n) && ([n] = c.atomTranslations.get(n)), h.has(t) && h.has(n) && t !== n) {
-				let r = new B(t, n, e.bondLength, e.bondLengthSU, ".");
+				let r = new V(t, n, e.bondLength, e.bondLengthSU, ".");
 				p.push(r);
 			} else if (h.has(t)) {
-				let n = new B(t, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry);
+				let n = new V(t, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry);
 				p.push(n);
 			}
 		}), e.externalHBonds.forEach((e) => {
@@ -3924,10 +5540,10 @@ function an(e, t = !0, n = null) {
 				t === n && r === n && (a = e);
 			}
 			if (h.has(n) && h.has(i) && h.has(a)) {
-				let t = new V(n, i, a, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".");
+				let t = new H(n, i, a, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".");
 				m.push(t);
 			} else if (h.has(n) && h.has(i)) {
-				let t = new V(n, i, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry);
+				let t = new H(n, i, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry);
 				m.push(t);
 			}
 		});
@@ -3937,7 +5553,7 @@ function an(e, t = !0, n = null) {
 		return n || (n = t.position.toCartesian(e.cell), _.set(t.uniqueId, n)), n;
 	}, y = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Wt) return !1;
+		if (e.bondLength > Mr) return !1;
 		let t = g.get(e.atom1Id), n = g.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
 		let r = v(t), i = v(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
@@ -3945,9 +5561,9 @@ function an(e, t = !0, n = null) {
 	}, b = p.filter((e) => {
 		let t = h.has(e.atom1Id), n = e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
 		return t && (h.has(e.atom2Id) || n) && y(e);
-	}), x = m.filter((e) => h.has(e.donorAtomId) && h.has(e.hydrogenAtomId)), S = b, C = new H(e.cell, f, S, x, e.symmetry), w = /* @__PURE__ */ new Map();
+	}), x = m.filter((e) => h.has(e.donorAtomId) && h.has(e.hydrogenAtomId)), S = b, C = new U(e.cell, f, S, x, e.symmetry), w = /* @__PURE__ */ new Map();
 	for (let e of C.calculateConnectedGroups()) {
-		let t = qt(e.atoms).toArray().map((e) => Math.floor(e));
+		let t = Fr(e.atoms).toArray().map((e) => Math.floor(e));
 		for (let n of e.atoms) {
 			let e = n.uniqueId;
 			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), w.set(e, n.uniqueId);
@@ -3955,7 +5571,7 @@ function an(e, t = !0, n = null) {
 	}
 	let T = [], E = /* @__PURE__ */ new Map(), D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map();
 	for (let e of f) {
-		let t = Xt(e), n = D.get(e.uniqueId) || E.get(t);
+		let t = Rr(e), n = D.get(e.uniqueId) || E.get(t);
 		n ? O.set(e.uniqueId, n) : (E.set(t, e.uniqueId), D.set(e.uniqueId, e.uniqueId), T.push(e));
 	}
 	for (let [e, t] of w) w.set(e, O.get(t) || t);
@@ -3963,20 +5579,20 @@ function an(e, t = !0, n = null) {
 	for (let e of b) {
 		let t = w.get(e.atom1Id) || e.atom1Id, n = w.get(e.atom2Id) || e.atom2Id;
 		if (t === n) continue;
-		let r = X(t, n);
+		let r = Q(t, n);
 		A.has(r) || (e.atom1Id = t, e.atom2Id = n, k.push(e), A.add(r));
 	}
-	let j = [], M = /* @__PURE__ */ new Set();
+	let ee = [], j = /* @__PURE__ */ new Set();
 	for (let e of x) {
 		e.donorAtomId = w.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = w.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = w.get(e.acceptorAtomId) || e.acceptorAtomId;
-		let t = Z(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
-		M.has(t) || (j.push(e), M.add(t));
+		let t = $(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
+		j.has(t) || (ee.push(e), j.add(t));
 	}
-	return new H(e.cell, T, k, j, e.symmetry);
+	return new U(e.cell, T, k, ee, e.symmetry);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
-function on(e, t) {
+function qr(e, t) {
 	let n = new Map(e.atoms.map((e) => [e.uniqueId, e])), r = /* @__PURE__ */ new Map();
 	for (let i of t) {
 		let t = n.get(i.atom1Id), a = n.get(i.atom2Id);
@@ -3993,7 +5609,7 @@ function on(e, t) {
 	}
 	return Array.from(r.values());
 }
-function sn(e) {
+function Jr(e) {
 	let t = new Map(e.atoms.map((e) => [e.uniqueId, e])), n = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) n.has(t.label) || n.set(t.label, []), n.get(t.label).push(t);
 	let r = (t, n) => {
@@ -4031,11 +5647,11 @@ function sn(e) {
 		}
 		if (!u) continue;
 		let m = `${u.donor.uniqueId}|${u.hydrogen.uniqueId}|${u.acceptor.uniqueId}`;
-		s.has(m) || (s.add(m), o.push(new V(u.donor.uniqueId, u.hydrogen.uniqueId, u.acceptor.uniqueId, i.donorHydrogenDistance, i.donorHydrogenDistanceSU, i.acceptorHydrogenDistance, i.acceptorHydrogenDistanceSU, i.donorAcceptorDistance, i.donorAcceptorDistanceSU, i.hBondAngle, i.hBondAngleSU, ".")));
+		s.has(m) || (s.add(m), o.push(new H(u.donor.uniqueId, u.hydrogen.uniqueId, u.acceptor.uniqueId, i.donorHydrogenDistance, i.donorHydrogenDistanceSU, i.acceptorHydrogenDistance, i.acceptorHydrogenDistanceSU, i.donorAcceptorDistance, i.donorAcceptorDistanceSU, i.hBondAngle, i.hBondAngleSU, ".")));
 	}
-	return new H(e.cell, e.atoms, e.bonds, o, e.symmetry);
+	return new U(e.cell, e.atoms, e.bonds, o, e.symmetry);
 }
-function cn(e, t = /* @__PURE__ */ new Map()) {
+function Yr(e, t = /* @__PURE__ */ new Map()) {
 	let n = e.calculateConnectedGroups(), r = (e) => t.get(e) || e, i = [], a = [], o = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((t) => {
 		if (t.acceptorAtomSymmetry === ".") a.push(t);
@@ -4068,35 +5684,35 @@ function cn(e, t = /* @__PURE__ */ new Map()) {
 		let o = n[t], f = e.symmetry.applySymmetry(i, o.atoms);
 		for (let t = 0; t < f.length; t++) {
 			let n = f[t], r = o.atoms[t], a = i;
-			r.appliedSymmetry && r.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (a = e.symmetry.combineSymmetryCodes(i, r.appliedSymmetry.key)), n.appliedSymmetry = Y.fromString(a), d.has(n.uniqueId) || (l.push(n), d.add(n.uniqueId));
+			r.appliedSymmetry && r.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (a = e.symmetry.combineSymmetryCodes(i, r.appliedSymmetry.key)), n.appliedSymmetry = Z.fromString(a), d.has(n.uniqueId) || (l.push(n), d.add(n.uniqueId));
 		}
 		o.bonds.filter(({ atom2SiteSymmetry: e }) => e === ".").forEach((t) => {
-			u.push(new B(J(t.atom1Id, i, e.symmetry), J(t.atom2Id, i, e.symmetry), t.bondLength, t.bondLengthSU, "."));
+			u.push(new V(X(t.atom1Id, i, e.symmetry), X(t.atom2Id, i, e.symmetry), t.bondLength, t.bondLengthSU, "."));
 		}), [...o.hBonds, ...s[t]].forEach((t) => {
 			if (t.acceptorAtomSymmetry === ".") {
-				m(new V(r(J(t.donorAtomId, i, e.symmetry)), r(J(t.hydrogenAtomId, i, e.symmetry)), r(J(t.acceptorAtomId, i, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+				m(new H(r(X(t.donorAtomId, i, e.symmetry)), r(X(t.hydrogenAtomId, i, e.symmetry)), r(X(t.acceptorAtomId, i, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 				return;
 			}
-			p.push(new V(r(J(t.donorAtomId, i, e.symmetry)), r(J(t.hydrogenAtomId, i, e.symmetry)), r(J(t.acceptorAtomId, i, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+			p.push(new H(r(X(t.donorAtomId, i, e.symmetry)), r(X(t.hydrogenAtomId, i, e.symmetry)), r(X(t.acceptorAtomId, i, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		});
 	};
 	for (let t of i) {
 		let i = t.acceptorAtomId.split("|")[0], a = t.acceptorAtomId.split("|")[0], o = n.findIndex((e) => e.atoms.some((e) => e.label === a));
 		if (o === -1) throw Error(`Cannot grow H-bond: acceptor atom ${a} is not in the structure`);
-		m(new V(r(t.donorAtomId), r(t.hydrogenAtomId), r(J(i, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+		m(new H(r(t.donorAtomId), r(t.hydrogenAtomId), r(X(i, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		let s = t.acceptorAtomSymmetry;
 		h(o, s);
 		let c = n.findIndex((e) => e.atoms.some((e) => e.uniqueId === t.donorAtomId));
 		if (c === -1) throw Error(`Cannot grow reciprocal H-bond: donor atom ${t.donorAtomId} is not in the structure`);
 		let l = e.symmetry.invertPositionCode(s);
-		h(c, l), m(new V(r(J(t.donorAtomId, l, e.symmetry)), r(J(t.hydrogenAtomId, l, e.symmetry)), `${i}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+		h(c, l), m(new H(r(X(t.donorAtomId, l, e.symmetry)), r(X(t.hydrogenAtomId, l, e.symmetry)), `${i}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 	}
 	for (let e of p) d.has(e.donorAtomId) && d.has(e.hydrogenAtomId) && d.has(e.acceptorAtomId) && m(e);
-	return new H(e.cell, l, u, a, e.symmetry);
+	return new U(e.cell, l, u, a, e.symmetry);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/modes.js
-var ln = class e extends K {
+var Xr = class e extends pr {
 	static MODES = Object.freeze({
 		NONE: "none",
 		CONSTANT: "constant",
@@ -4112,7 +5728,7 @@ var ln = class e extends K {
 	}
 	apply(t) {
 		if (this.ensureValidMode(t), this.mode === e.MODES.ANISOTROPIC) return t;
-		let n = t.atoms.filter((t) => t.atomType !== "H" || this.mode !== e.MODES.NONE).map((t) => new Fe(t.label, t.atomType, t.position, t.atomType === "H" && this.mode === e.MODES.CONSTANT ? null : t.adp, t.disorderGroup, t.appliedSymmetry)), r = t.bonds.filter((n) => {
+		let n = t.atoms.filter((t) => t.atomType !== "H" || this.mode !== e.MODES.NONE).map((t) => new ze(t.label, t.atomType, t.position, t.atomType === "H" && this.mode === e.MODES.CONSTANT ? null : t.adp, t.disorderGroup, t.appliedSymmetry)), r = t.bonds.filter((n) => {
 			if (this.mode === e.MODES.NONE) {
 				if (n.atom2SiteSymmetry !== ".") try {
 					let e = t.getAtomById(n.atom1Id), r = t.getAtomById(n.atom2Id);
@@ -4129,13 +5745,13 @@ var ln = class e extends K {
 			}
 			return !0;
 		}), i = this.mode === e.MODES.NONE ? [] : t.hBonds;
-		return new H(t.cell, n, r, i, t.symmetry);
+		return new U(t.cell, n, r, i, t.symmetry);
 	}
 	getApplicableModes(t) {
 		let n = [e.MODES.NONE];
-		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof z) && n.push(e.MODES.ANISOTROPIC), n) : n;
+		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof B) && n.push(e.MODES.ANISOTROPIC), n) : n;
 	}
-}, un = class e extends K {
+}, Zr = class e extends pr {
 	static MODES = Object.freeze({ ALL: "all" });
 	static PREFERRED_FALLBACK_ORDER = [e.MODES.ALL];
 	static modeForGroup(e, t) {
@@ -4176,7 +5792,7 @@ var ln = class e extends K {
 				return !1;
 			}
 		});
-		return new H(t.cell, o, s, c, t.symmetry);
+		return new U(t.cell, o, s, c, t.symmetry);
 	}
 	getApplicableModes(t) {
 		let n = [...new Set(t.atoms.map((e) => Number(e.disorderGroup)).filter((e) => e > 0))].sort((e, t) => e - t);
@@ -4186,7 +5802,7 @@ var ln = class e extends K {
 			r[`GROUP${i + 1}`] = e.modeForGroup(i + 1, n.length);
 		}), this.MODES = Object.freeze(r), Object.values(this.MODES);
 	}
-}, dn = class e extends K {
+}, Qr = class e extends pr {
 	static MODES = Object.freeze({
 		NONE: "none",
 		HBONDS: "hbonds",
@@ -4207,17 +5823,17 @@ var ln = class e extends K {
 	}
 	apply(t) {
 		this.ensureValidMode(t);
-		let n = this.mode === e.MODES.NONE ? t : new H(t.cell, t.atoms, At(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
+		let n = this.mode === e.MODES.NONE ? t : new U(t.cell, t.atoms, vr(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
 		if (this.mode === e.MODES.FRAGMENT || this.mode === e.MODES.FRAGMENT_HBONDS) {
-			let e = Ut(n);
+			let e = jr(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = an(n);
+		if (this.mode === e.MODES.CELL) n = Kr(n);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
-			let e = Ut(n);
-			r = e.specialPositionAtoms, n = an(e.grownStructure, !1, r), n = sn(n);
+			let e = jr(n);
+			r = e.specialPositionAtoms, n = Kr(e.grownStructure, !1, r), n = Jr(n);
 		}
-		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new H(n.cell, n.atoms, on(n, n.bonds), n.hBonds, n.symmetry)), n = cn(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new H(n.cell, n.atoms, on(n, n.bonds), n.hBonds, n.symmetry), n = sn(n))), n;
+		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, qr(n, n.bonds), n.hBonds, n.symmetry)), n = Yr(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, qr(n, n.bonds), n.hBonds, n.symmetry), n = Jr(n))), n;
 	}
 	getApplicableModes(t) {
 		let n = [
@@ -4229,7 +5845,7 @@ var ln = class e extends K {
 		let r = t.bonds.some((e) => e.atom2SiteSymmetry !== ".");
 		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n;
 	}
-}, fn = class e extends K {
+}, $r = class e extends pr {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -4266,12 +5882,12 @@ var ln = class e extends K {
 			let r = t.getAtomById(e.donorAtomId), i = t.getAtomById(e.hydrogenAtomId), a = t.getAtomById(e.acceptorAtomId);
 			return !n.has(r.label) && !n.has(i.label) && !n.has(a.label);
 		});
-		return new H(t.cell, r, i, a, t.symmetry);
+		return new U(t.cell, r, i, a, t.symmetry);
 	}
 	getApplicableModes() {
 		return Object.values(e.MODES);
 	}
-}, pn = class e extends K {
+}, ei = class e extends pr {
 	static MODES = Object.freeze({
 		KEEP: "keep",
 		ADD: "add",
@@ -4290,7 +5906,7 @@ var ln = class e extends K {
 		super(e.MODES, r, "BondGenerator", e.PREFERRED_FALLBACK_ORDER), this.elementProperties = t, this.tolerance = n;
 	}
 	getTolerance(e, t) {
-		return Be.has(e) || Be.has(t) ? Math.min(this.tolerance, .4) : this.tolerance;
+		return We.has(e) || We.has(t) ? Math.min(this.tolerance, .4) : this.tolerance;
 	}
 	getMaxBondDistance(e, t, n) {
 		let r = n[e]?.radius, i = n[t]?.radius;
@@ -4308,7 +5924,7 @@ var ln = class e extends K {
 				n.z
 			]), Object.prototype.hasOwnProperty.call(t, e.atomType) && !o.has(e.atomType)) o.set(e.atomType, e.atomType);
 			else if (!o.has(e.atomType)) try {
-				o.set(e.atomType, Me(e.atomType));
+				o.set(e.atomType, Ie(e.atomType));
 			} catch {
 				throw Error(`Missing radius for element ${e.atomType}`);
 			}
@@ -4327,15 +5943,15 @@ var ln = class e extends K {
 				if (_) for (let l of _) {
 					if (l <= e) continue;
 					let u = i[l];
-					if ((r.atomType === "H" || u.atomType === "H") && (s.has(r.uniqueId) || s.has(u.uniqueId)) || !Ie(r, u)) continue;
+					if ((r.atomType === "H" || u.atomType === "H") && (s.has(r.uniqueId) || s.has(u.uniqueId)) || !Be(r, u)) continue;
 					let d = a.get(u.uniqueId), f = c[0] - d[0], p = c[1] - d[1], m = c[2] - d[2], h = this.getMaxBondDistance(o.get(r.atomType), o.get(u.atomType), t);
 					if (Math.abs(f) > h || Math.abs(p) > h || Math.abs(m) > h) continue;
-					let g = I([
+					let g = se([
 						f,
 						p,
 						m
 					]);
-					g <= h && g > 1e-4 && n.add(new B(r.uniqueId, u.uniqueId, g, null, "."));
+					g <= h && g > 1e-4 && n.add(new V(r.uniqueId, u.uniqueId, g, null, "."));
 				}
 			}
 		}
@@ -4362,7 +5978,7 @@ var ln = class e extends K {
 				break;
 			default: return t;
 		}
-		return new H(t.cell, t.atoms, n, t.hBonds, t.symmetry);
+		return new U(t.cell, t.atoms, n, t.hBonds, t.symmetry);
 	}
 	getApplicableModes(t) {
 		return t.bonds.length > 0 ? [
@@ -4371,7 +5987,7 @@ var ln = class e extends K {
 			e.MODES.REPLACE
 		] : [e.MODES.CREATE, e.MODES.IGNORE];
 	}
-}, mn = class e extends K {
+}, ti = class e extends pr {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -4385,7 +6001,7 @@ var ln = class e extends K {
 		let n = this.findIsolatedHydrogenAtoms(t);
 		if (n.length === 0) return t;
 		let r = this.createBondsForIsolatedHydrogens(t, n);
-		return new H(t.cell, t.atoms, [...t.bonds, ...r], t.hBonds, t.symmetry);
+		return new U(t.cell, t.atoms, [...t.bonds, ...r], t.hBonds, t.symmetry);
 	}
 	findIsolatedHydrogenAtoms(e) {
 		let t = /* @__PURE__ */ new Set();
@@ -4410,14 +6026,14 @@ var ln = class e extends K {
 			];
 			if (r > 0) {
 				let i = e.atoms[r - 1];
-				if (i.atomType !== "H" && Ie(i, t)) {
-					let r = i.position.toCartesian(e.cell), o = I(te(a, [
+				if (i.atomType !== "H" && Be(i, t)) {
+					let r = i.position.toCartesian(e.cell), o = se(ie(a, [
 						r.x,
 						r.y,
 						r.z
 					]));
 					if (o <= this.maxBondDistance) {
-						n.push(new B(i.uniqueId, t.uniqueId, o, null, "."));
+						n.push(new V(i.uniqueId, t.uniqueId, o, null, "."));
 						return;
 					}
 				}
@@ -4425,23 +6041,23 @@ var ln = class e extends K {
 			let o = !1;
 			for (let i = r - 1; i >= 0 && !o; i--) {
 				let r = e.atoms[i];
-				if (r.atomType === "H" || !Ie(r, t)) continue;
-				let s = r.position.toCartesian(e.cell), c = I(te(a, [
+				if (r.atomType === "H" || !Be(r, t)) continue;
+				let s = r.position.toCartesian(e.cell), c = se(ie(a, [
 					s.x,
 					s.y,
 					s.z
 				]));
-				c <= this.maxBondDistance && (n.push(new B(r.uniqueId, t.uniqueId, c, null, ".")), o = !0);
+				c <= this.maxBondDistance && (n.push(new V(r.uniqueId, t.uniqueId, c, null, ".")), o = !0);
 			}
 			if (!o && r < e.atoms.length - 1) for (let i = r + 1; i < e.atoms.length && !o; i++) {
 				let r = e.atoms[i];
 				if (r.atomType === "H" || !(r.disorderGroup === t.disorderGroup || r.disorderGroup === 0 || t.disorderGroup === 0)) continue;
-				let s = r.position.toCartesian(e.cell), c = I(te(a, [
+				let s = r.position.toCartesian(e.cell), c = se(ie(a, [
 					s.x,
 					s.y,
 					s.z
 				]));
-				c <= this.maxBondDistance && (n.push(new B(r.uniqueId, t.uniqueId, c, null, ".")), o = !0);
+				c <= this.maxBondDistance && (n.push(new V(r.uniqueId, t.uniqueId, c, null, ".")), o = !0);
 			}
 		}), n;
 	}
@@ -4451,21 +6067,21 @@ var ln = class e extends K {
 };
 //#endregion
 //#region src/lib/ortep3d/staging.js
-function hn(t) {
+function ni(t) {
 	let n = new e.Vector3();
 	t.forEach((e) => n.add(e)), n.divideScalar(t.length);
 	let r = new e.Matrix3(), i = new e.Vector3();
 	t.forEach((e) => {
 		i.copy(e).sub(n), r.elements[0] += i.x * i.x, r.elements[1] += i.x * i.y, r.elements[2] += i.x * i.z, r.elements[3] += i.y * i.x, r.elements[4] += i.y * i.y, r.elements[5] += i.y * i.z, r.elements[6] += i.z * i.x, r.elements[7] += i.z * i.y, r.elements[8] += i.z * i.z;
 	});
-	let { values: a, eigenvectors: o } = pe(gn(r)), s = de(a);
+	let { values: a, eigenvectors: o } = ge(ri(r)), s = me(a);
 	if (s <= 0) return console.warn("Could not find a mean plane, expected?"), new e.Vector3(0, 1, 0);
 	let c = o.filter((e) => e.value === s)[0].vector, l = new e.Vector3(...c.toArray());
 	return l.normalize(), l;
 }
-function gn(e) {
+function ri(e) {
 	let t = e.elements;
-	return N([
+	return F([
 		[
 			t[0],
 			t[1],
@@ -4483,13 +6099,13 @@ function gn(e) {
 		]
 	]);
 }
-function _n(t) {
+function ii(t) {
 	let n = [], r = new e.Vector3();
 	if (t.traverse((e) => {
 		e.userData?.type === "atom" && (n.push(e.position.clone()), r.add(e.position));
 	}), n.length === 0) return null;
 	r.divideScalar(n.length);
-	let i = n.map((e) => e.sub(r)), a = hn(i), o = new e.Vector3(0, 0, 1), s = new e.Quaternion();
+	let i = n.map((e) => e.sub(r)), a = ni(i), o = new e.Vector3(0, 0, 1), s = new e.Quaternion();
 	s.setFromUnitVectors(a, o);
 	let c = new e.Matrix4();
 	c.makeRotationFromQuaternion(s);
@@ -4503,7 +6119,7 @@ function _n(t) {
 	let p = -Math.atan2(f.y, f.x), m = new e.Matrix4().makeRotationZ(p);
 	return c.premultiply(m), c.premultiply(new e.Matrix4().makeRotationX(Math.PI / 8)), c.premultiply(new e.Matrix4().makeRotationY(Math.PI / 48)), c;
 }
-function vn(t, n) {
+function ai(t, n) {
 	t.children = t.children.filter((t) => !(t instanceof e.Light));
 	let r = 6;
 	n.traverse((e) => {
@@ -4544,7 +6160,7 @@ function vn(t, n) {
 }
 //#endregion
 //#region src/lib/ortep3d/viewer-controls.js
-var yn = class {
+var oi = class {
 	constructor(t) {
 		this.viewer = t, this.state = {
 			isDragging: !1,
@@ -4689,7 +6305,7 @@ var yn = class {
 		let e = this.renderer.domElement, { wheel: t, mouseDown: n, mouseMove: r, mouseUp: i, click: a, contextMenu: o, touchStart: s, touchMove: c, touchEnd: l, resize: u } = this.boundHandlers;
 		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u);
 	}
-}, bn = class t {
+}, si = class t {
 	constructor(n, r) {
 		if (new.target === t) throw Error("AbstractCamera is an abstract class and cannot be instantiated directly");
 		this.container = n, this.options = r, this.cameraTarget = new e.Vector3(0, 0, 0), this.createCamera();
@@ -4712,7 +6328,7 @@ var yn = class {
 	reset() {
 		this.camera.position.copy(this.basePosition), this.camera.lookAt(this.cameraTarget);
 	}
-}, xn = class extends bn {
+}, ci = class extends si {
 	createCamera() {
 		return this.camera = new e.PerspectiveCamera(this.options.fov, this.container.clientWidth / this.container.clientHeight, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
 	}
@@ -4738,7 +6354,7 @@ var yn = class {
 		let t = this.options.fov;
 		this.container.clientWidth < this.container.clientHeight ? this.camera.fov = 2 * Math.atan(Math.tan(t * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = t, this.camera.updateProjectionMatrix();
 	}
-}, Sn = class extends bn {
+}, li = class extends si {
 	createCamera() {
 		let t = this.container.clientWidth / this.container.clientHeight, n = this.options.orthoSize || 5;
 		return this.camera = new e.OrthographicCamera(-n * t, n * t, n, -n, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
@@ -4768,21 +6384,21 @@ var yn = class {
 		this.camera.top = e, this.camera.bottom = -e, this.camera.left = -e * t, this.camera.right = e * t;
 	}
 };
-function Cn(e, t) {
+function ui(e, t) {
 	switch ((t.camera?.type || "perspective").toLowerCase()) {
-		case "orthographic": return new Sn(e, t.camera);
-		default: return new xn(e, t.camera);
+		case "orthographic": return new li(e, t.camera);
+		default: return new ci(e, t.camera);
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/cell3d.js
-function wn(t, n, r, i, a) {
+function di(t, n, r, i, a) {
 	let o = t.clone().normalize(), s = t.length() - r, c = new e.CylinderGeometry(a, a, s, 8), l = new e.MeshBasicMaterial({ color: n }), u = new e.Mesh(c, l), d = new e.ConeGeometry(i, r, 8), f = new e.MeshBasicMaterial({ color: n }), p = new e.Mesh(d, f), m = new e.Vector3(0, 1, 0), h = new e.Quaternion();
 	h.setFromUnitVectors(m, o), u.applyQuaternion(h), p.applyQuaternion(h), u.position.copy(o.clone().multiplyScalar(s / 2)), p.position.copy(o.clone().multiplyScalar(s + r / 2));
 	let g = new e.Group();
 	return g.add(u), g.add(p), g;
 }
-function Tn(t, n, r, i) {
+function fi(t, n, r, i) {
 	let a = new e.Group(), o = [
 		new e.Vector3(0, 0, 0),
 		new e.Vector3(1, 0, 0),
@@ -4816,12 +6432,12 @@ function Tn(t, n, r, i) {
 		a.add(i);
 	}), a;
 }
-function En(t, n) {
-	let { boxColor: r, boxOpacity: i, boxLineWidth: a, arrowColorA: o, arrowColorB: s, arrowColorC: c, arrowHeadLengthMult: l, arrowHeadWidthMult: u, arrowCylinderRadius: d } = n, f = new e.Group(), p = t.fractToCartMatrix.toArray(), m = new e.Matrix4(p[0][0], p[0][1], p[0][2], 0, p[1][0], p[1][1], p[1][2], 0, p[2][0], p[2][1], p[2][2], 0, 0, 0, 0, 1), h = Tn(m, r, i, a);
+function pi(t, n) {
+	let { boxColor: r, boxOpacity: i, boxLineWidth: a, arrowColorA: o, arrowColorB: s, arrowColorC: c, arrowHeadLengthMult: l, arrowHeadWidthMult: u, arrowCylinderRadius: d } = n, f = new e.Group(), p = t.fractToCartMatrix.toArray(), m = new e.Matrix4(p[0][0], p[0][1], p[0][2], 0, p[1][0], p[1][1], p[1][2], 0, p[2][0], p[2][1], p[2][2], 0, 0, 0, 0, 1), h = fi(m, r, i, a);
 	f.add(h);
 	let g = new e.Vector3(), _ = new e.Vector3(), v = new e.Vector3();
 	m.extractBasis(g, _, v);
-	let { a: y, b, c: x } = t, S = Math.max(y, b, x) * l, C = S * u, w = wn(g, o, S, C, d), T = wn(_, s, S, C, d), E = wn(v, c, S, C, d);
+	let { a: y, b, c: x } = t, S = Math.max(y, b, x) * l, C = S * u, w = di(g, o, S, C, d), T = di(_, s, S, C, d), E = di(v, c, S, C, d);
 	return f.add(w), f.add(T), f.add(E), f.name = "UnitCell", f.userData = {
 		selectable: !1,
 		cellParameters: {
@@ -4837,14 +6453,14 @@ function En(t, n) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-layout.js
-function Dn(e, t) {
+function mi(e, t) {
 	return e.left < t.right && e.right > t.left && e.top < t.bottom && e.bottom > t.top;
 }
-function On(e, t) {
+function hi(e, t) {
 	let n = Math.max(e.left, Math.min(t.x, e.right)), r = Math.max(e.top, Math.min(t.y, e.bottom)), i = t.x - n, a = t.y - r;
 	return i * i + a * a < t.radius * t.radius;
 }
-function kn(e, t) {
+function gi(e, t) {
 	let n = e.radius || 0, r = {
 		left: t.left - n,
 		right: t.right + n,
@@ -4871,16 +6487,16 @@ function kn(e, t) {
 	}
 	return !0;
 }
-function Q(e, t) {
+function _i(e, t) {
 	let n = t.x2 - t.x1, r = t.y2 - t.y1, i = n * n + r * r;
 	if (i === 0) return (e.x - t.x1) ** 2 + (e.y - t.y1) ** 2;
 	let a = Math.max(0, Math.min(1, ((e.x - t.x1) * n + (e.y - t.y1) * r) / i)), o = t.x1 + a * n, s = t.y1 + a * r;
 	return (e.x - o) ** 2 + (e.y - s) ** 2;
 }
-function An(e, t, n) {
+function vi(e, t, n) {
 	return (t.x - e.x) * (n.y - e.y) - (t.y - e.y) * (n.x - e.x);
 }
-function jn(e, t) {
+function yi(e, t) {
 	let n = {
 		x: e.x1,
 		y: e.y1
@@ -4893,7 +6509,7 @@ function jn(e, t) {
 	}, a = {
 		x: t.x2,
 		y: t.y2
-	}, o = An(n, r, i), s = An(n, r, a), c = An(i, a, n), l = An(i, a, r);
+	}, o = vi(n, r, i), s = vi(n, r, a), c = vi(i, a, n), l = vi(i, a, r);
 	return [
 		o,
 		s,
@@ -4901,24 +6517,24 @@ function jn(e, t) {
 		l
 	].every((e) => Math.abs(e) < 1e-9) ? Math.max(Math.min(e.x1, e.x2), Math.min(t.x1, t.x2)) <= Math.min(Math.max(e.x1, e.x2), Math.max(t.x1, t.x2)) && Math.max(Math.min(e.y1, e.y2), Math.min(t.y1, t.y2)) <= Math.min(Math.max(e.y1, e.y2), Math.max(t.y1, t.y2)) : o * s <= 0 && c * l <= 0;
 }
-function Mn(e, t) {
-	if (jn(e, t)) return !0;
+function bi(e, t) {
+	if (yi(e, t)) return !0;
 	let n = (e.radius || 0) + (t.radius || 0);
-	return Math.min(Q({
+	return Math.min(_i({
 		x: e.x1,
 		y: e.y1
-	}, t), Q({
+	}, t), _i({
 		x: e.x2,
 		y: e.y2
-	}, t), Q({
+	}, t), _i({
 		x: t.x1,
 		y: t.y1
-	}, e), Q({
+	}, e), _i({
 		x: t.x2,
 		y: t.y2
 	}, e)) <= n * n;
 }
-function $(e) {
+function xi(e) {
 	let t = e.radius || 0;
 	return {
 		left: Math.min(e.x1, e.x2) - t,
@@ -4927,7 +6543,7 @@ function $(e) {
 		bottom: Math.max(e.y1, e.y2) + t
 	};
 }
-function Nn(e) {
+function Si(e) {
 	return {
 		left: e.x - e.radius,
 		right: e.x + e.radius,
@@ -4935,7 +6551,7 @@ function Nn(e) {
 		bottom: e.y + e.radius
 	};
 }
-function Pn(e) {
+function Ci(e) {
 	return {
 		left: Math.min(...e.map((e) => e.x)),
 		right: Math.max(...e.map((e) => e.x)),
@@ -4943,8 +6559,8 @@ function Pn(e) {
 		bottom: Math.max(...e.map((e) => e.y))
 	};
 }
-function Fn(e, t) {
-	let n = [...e.map(Nn), ...t.map($)];
+function wi(e, t) {
+	let n = [...e.map(Si), ...t.map(xi)];
 	return n.length === 0 ? null : n.reduce((e, t) => ({
 		left: Math.min(e.left, t.left),
 		right: Math.max(e.right, t.right),
@@ -4952,7 +6568,7 @@ function Fn(e, t) {
 		bottom: Math.max(e.bottom, t.bottom)
 	}));
 }
-var In = class {
+var Ti = class {
 	constructor(e = 64) {
 		this.cellSize = e, this.cells = /* @__PURE__ */ new Map();
 	}
@@ -4977,7 +6593,7 @@ var In = class {
 		return [...t];
 	}
 };
-function Ln(e, t) {
+function Ei(e, t) {
 	let n = !1;
 	for (let r = 0, i = t.length - 1; r < t.length; i = r++) {
 		let a = t[r], o = t[i];
@@ -4985,14 +6601,14 @@ function Ln(e, t) {
 	}
 	return n;
 }
-var Rn = Array.from({ length: 16 }, (e, t) => {
+var Di = Array.from({ length: 16 }, (e, t) => {
 	let n = t * Math.PI / 8;
 	return {
 		x: Math.cos(n),
 		y: Math.sin(n)
 	};
 });
-function zn(e, t, n, r) {
+function Oi(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = Math.abs(t.x) * i + Math.abs(t.y) * a, s = e.radius + r.atomPadding + o + (n - 1) * r.fallbackDistance, c = e.x + t.x * s, l = e.y + t.y * s, u = r.labelPadding, d = n > 1 ? {
 		x1: e.x + t.x * (e.radius + r.atomPadding),
 		y1: e.y + t.y * (e.radius + r.atomPadding),
@@ -5017,18 +6633,18 @@ function zn(e, t, n, r) {
 		}
 	};
 }
-function Bn(e, t, n, r, i) {
+function ki(e, t, n, r, i) {
 	let a = t.preferredDirection || {
 		x: 1,
 		y: -1
 	}, o = (1 - (e.direction.x * a.x + e.direction.y * a.y)) * 50;
-	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Ln(e, t)) && (o += i.ringPenalty), r) {
+	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Ei(e, t)) && (o += i.ringPenalty), r) {
 		let t = e.direction.x * r.direction.x + e.direction.y * r.direction.y;
 		o += (1 - t) * i.movementPenalty;
 	}
 	return o;
 }
-function Vn(e, t, n, r) {
+function Ai(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = t - e.x, s = n - e.y, c = Math.hypot(o, s) || 1, l = {
 		x: o / c,
 		y: s / c
@@ -5057,42 +6673,42 @@ function Vn(e, t, n, r) {
 		}
 	};
 }
-function Hn(e) {
+function ji(e) {
 	return e.leaderSegment ? Math.hypot(e.leaderSegment.x2 - e.leaderSegment.x1, e.leaderSegment.y2 - e.leaderSegment.y1) : 0;
 }
-function Un(e, t) {
+function Mi(e, t) {
 	if (!Number.isFinite(e.z)) return null;
 	let n = Math.max(1, t.performanceNoSpaceCellSize ?? 24);
 	return [Math.floor(e.x / n), Math.floor(e.y / n)].join(":");
 }
-function Wn(e, t, n) {
+function Ni(e, t, n) {
 	return e.left >= n && e.top >= n && e.right <= t.width - n && e.bottom <= t.height - n;
 }
-function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
-	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new In(u), f = new In(u), p = new In(u), m = new In(u), h = new In(u);
-	t.forEach((e) => d.insert(e, Nn(e))), n.forEach((e) => f.insert(e, $(e))), r.forEach((e) => p.insert(e, Pn(e)));
-	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = Fn(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
+function Pi(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
+	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new Ti(u), f = new Ti(u), p = new Ti(u), m = new Ti(u), h = new Ti(u);
+	t.forEach((e) => d.insert(e, Si(e))), n.forEach((e) => f.insert(e, xi(e))), r.forEach((e) => p.insert(e, Ci(e)));
+	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = wi(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
 		if (C.has(e)) return C.get(e);
 		let n = !0;
-		if (Hn(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Wn(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => On(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => kn(t, e.rect)) && (n = !1), n && e.leaderSegment) {
-			let r = $(e.leaderSegment);
-			!b && f.query(r).some((t) => Mn(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && Q(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
+		if (ji(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Ni(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => hi(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => gi(t, e.rect)) && (n = !1), n && e.leaderSegment) {
+			let r = xi(e.leaderSegment);
+			!b && f.query(r).some((t) => bi(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && _i(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
 		}
 		return C.set(e, n), n;
 	}, E = (e, t) => {
 		if (!T(e, t)) return null;
-		let n = new Set(m.query(e.rect).filter((t) => Dn(e.rect, t.rect)));
-		if (h.query(e.rect).filter((t) => kn(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
-		let r = $(e.leaderSegment);
-		return m.query(r).filter((t) => kn(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Mn(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
+		let n = new Set(m.query(e.rect).filter((t) => mi(e.rect, t.rect)));
+		if (h.query(e.rect).filter((t) => gi(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
+		let r = xi(e.leaderSegment);
+		return m.query(r).filter((t) => gi(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => bi(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
 	}, D = (e, t) => E(e, t)?.size === 0, O = (e, t) => {
 		let n = {
 			...e,
 			...t
 		};
-		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, $(n.leaderSegment)), n;
+		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, xi(n.leaderSegment)), n;
 	}, k = (e) => {
-		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, $(e.leaderSegment));
+		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, xi(e.leaderSegment));
 	}, A = (e, t, n, r, i) => {
 		for (let a of t) {
 			if (i.remaining-- <= 0) return !1;
@@ -5112,9 +6728,9 @@ function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			k(c), O(o, o);
 		}
 		return !1;
-	}, j = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
+	}, ee = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
 	for (let e of y) {
-		let t = _ ? Un(e, a) : null, n = t === null ? void 0 : w.get(t);
+		let t = _ ? Mi(e, a) : null, n = t === null ? void 0 : w.get(t);
 		if (n !== void 0 && n < e.z - 1e-6) {
 			c.push({
 				id: e.id,
@@ -5124,9 +6740,9 @@ function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			continue;
 		}
 		let r = [], i = b ? Array.from({ length: Math.max(2, a.maximumCoverageDistanceSteps ?? 6) }, (e, t) => t + 1) : [1, 2];
-		for (let t of i) for (let n of Rn) {
-			let i = zn(e, n, t, a);
-			i.score = Bn(i, e, p.query({
+		for (let t of i) for (let n of Di) {
+			let i = Oi(e, n, t, a);
+			i.score = ki(i, e, p.query({
 				left: i.x,
 				right: i.x,
 				top: i.y,
@@ -5139,7 +6755,7 @@ function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 		else if (_ && t !== null && r.every((t) => !T(t, e))) {
 			let n = w.get(t);
 			(n === void 0 || e.z < n) && w.set(t, e.z), l.push(e);
-		} else if (!_ && j(e, r)) continue;
+		} else if (!_ && ee(e, r)) continue;
 		else l.push(e);
 	}
 	if (b && l.length > 0) {
@@ -5151,14 +6767,14 @@ function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			calloutSearch: for (let t of g) for (let c = 0; c < e; c++) for (let e of v) {
 				if (l >= a.calloutSearchLimit || s.length >= a.calloutChoiceLimit) break calloutSearch;
 				l++;
-				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Vn(o, m, t, a);
+				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Ai(o, m, t, a);
 				if (E(h, o) !== null) {
 					h.score = Math.hypot(m - o.x, t - o.y);
-					let e = $(h.leaderSegment);
-					h.score += f.query(e).filter((e) => Mn(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
+					let e = xi(h.leaderSegment);
+					h.score += f.query(e).filter((e) => bi(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
 				}
 			}
-			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => Hn(e) - Hn(t) || e.score - t.score);
+			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => ji(e) - ji(t) || e.score - t.score);
 			S.set(o.id, y), A(o, y, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) }) || c.push({
 				id: o.id,
 				text: o.text,
@@ -5183,22 +6799,22 @@ function Gn(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-worker.js?worker&inline
-var Kn = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", qn = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Kn], { type: "text/javascript;charset=utf-8" });
-function Jn(e) {
+var Fi = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", Ii = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Fi], { type: "text/javascript;charset=utf-8" });
+function Li(e) {
 	let t;
 	try {
-		if (t = qn && (self.URL || self.webkitURL).createObjectURL(qn), !t) throw "";
+		if (t = Ii && (self.URL || self.webkitURL).createObjectURL(Ii), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Kn), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Fi), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-manager.js
-var Yn = [
+var Ri = [
 	"atomPadding",
 	"autoPerformanceLabelThreshold",
 	"calloutChoiceLimit",
@@ -5224,19 +6840,19 @@ var Yn = [
 	"spatialCellSize",
 	"viewportPadding"
 ];
-function Xn(e) {
-	return Object.fromEntries(Yn.map((t) => [t, e[t]]));
+function zi(e) {
+	return Object.fromEntries(Ri.map((t) => [t, e[t]]));
 }
-function Zn(e) {
+function Bi(e) {
 	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
 }
-function Qn(e) {
+function Vi(e) {
 	return Array.isArray(e) ? e.map((e) => typeof e == "string" ? { id: e } : e).filter((e) => e && typeof e.id == "string") : [];
 }
-function $n(e, t) {
+function Hi(e, t) {
 	return e.includes("|") ? e === t.uniqueId : e === t.label;
 }
-function er(e) {
+function Ui(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) {
 		let r = (n + 1) % e.length;
@@ -5244,13 +6860,13 @@ function er(e) {
 	}
 	return Math.abs(t) / 2;
 }
-function tr(e, t) {
+function Wi(e, t) {
 	return e.z >= -1 && e.z <= 1 && e.x + e.radius >= 0 && e.x - e.radius <= t.width && e.y + e.radius >= 0 && e.y - e.radius <= t.height;
 }
-function nr(e) {
+function Gi(e) {
 	if (!e) return [];
 	let t = [...new Map(e.atoms.map((e) => [e.uniqueId, e])).keys()].sort(), n = new Map(t.map((e, t) => [e, t])), r = new Map(t.map((e) => [e, /* @__PURE__ */ new Set()]));
-	for (let t of At(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
+	for (let t of vr(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
 	let i = [], a = /* @__PURE__ */ new Set();
 	for (let e of t) {
 		let t = [e], o = new Set(t), s = (c) => {
@@ -5266,7 +6882,7 @@ function nr(e) {
 	}
 	return i;
 }
-var rr = class {
+var Ki = class {
 	constructor(e) {
 		this.viewer = e, this.options = e.options.atomLabels, this.previousPlacements = /* @__PURE__ */ new Map(), this.layout = {
 			placed: [],
@@ -5300,14 +6916,14 @@ var rr = class {
 		}), this.loadingIndicator.append(t, document.createTextNode("Laying out labels…")), e.container.appendChild(this.loadingIndicator);
 	}
 	setOptions(e) {
-		this.options = e, (!e.showLoadingIndicator || Zn(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.invalidateLayout();
+		this.options = e, (!e.showLoadingIndicator || Bi(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.invalidateLayout();
 	}
 	setStructure(e) {
 		this.endLoadingIndicator(), this.displayStructure = e, this.rings = null, this.bondNeighbours.clear(), this.previousPlacements.clear(), this.invalidateLayout();
 	}
 	prepareTopology() {
 		if (this.rings === null) {
-			this.rings = nr(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
+			this.rings = Gi(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
 			for (let e of this.displayStructure.bonds) this.bondNeighbours.has(e.atom1Id) && this.bondNeighbours.has(e.atom2Id) && (this.bondNeighbours.get(e.atom1Id).add(e.atom2Id), this.bondNeighbours.get(e.atom2Id).add(e.atom1Id));
 		}
 	}
@@ -5369,7 +6985,7 @@ var rr = class {
 		if (this.options.useWorker === !1 || this.workerUnavailable || typeof Worker > "u") return null;
 		if (this.worker) return this.worker;
 		try {
-			return this.worker = new Jn({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
+			return this.worker = new Li({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
 				e.preventDefault?.(), this.handleWorkerFailure(Error(e.message || "Atom-label worker failed"));
 			}, this.worker;
 		} catch (e) {
@@ -5381,7 +6997,7 @@ var rr = class {
 		(this.canvas.width !== r || this.canvas.height !== i) && (this.canvas.width = r, this.canvas.height = i, this.canvas.style.width = `${t}px`, this.canvas.style.height = `${n}px`);
 	}
 	resolveRequests() {
-		let e = this.displayStructure, t = Zn(this.options.show);
+		let e = this.displayStructure, t = Bi(this.options.show);
 		if (!e || t === "none") return [];
 		if (t === "all" || t === "non-hydrogen") return e.atoms.filter((e) => t === "all" || !["H", "D"].includes(e.atomType)).map((e) => ({
 			atom: e,
@@ -5391,9 +7007,9 @@ var rr = class {
 			...e,
 			text: String(e.text).slice(0, 200)
 		}));
-		let n = Qn(t), r = [];
+		let n = Vi(t), r = [];
 		for (let t of e.atoms) {
-			let e = n.find((e) => $n(e.id, t));
+			let e = n.find((e) => Hi(e.id, t));
 			if (!e) continue;
 			let i = e.text ?? this.options.text?.[t.uniqueId] ?? this.options.text?.[t.label] ?? t.label;
 			i !== null && String(i).length > 0 && r.push({
@@ -5471,7 +7087,7 @@ var rr = class {
 		};
 	}
 	projectRings(e) {
-		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && er(e) >= 25);
+		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && Ui(e) >= 25);
 	}
 	update() {
 		if (!this.context) return this.completeUpdate(this.layout);
@@ -5491,7 +7107,7 @@ var rr = class {
 		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
 		let o = this.projectAnchors(), s = i.filter((n) => {
 			let r = o.get(n.atom.uniqueId);
-			return r && tr(r, {
+			return r && Wi(r, {
 				width: e,
 				height: t
 			});
@@ -5535,7 +7151,7 @@ var rr = class {
 				width: e,
 				height: t
 			},
-			options: Xn(this.options),
+			options: zi(this.options),
 			previousPlacements: [...this.previousPlacements.entries()]
 		}, u = this.captureLayoutState(e, t), d = this.getWorker();
 		if (!d) {
@@ -5555,7 +7171,7 @@ var rr = class {
 		}), p;
 	}
 	calculateLayout(e) {
-		return Gn(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
+		return Pi(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
 	}
 	handleWorkerMessage(e) {
 		if (!this.pendingLayout || e.id !== this.pendingLayout.id) return;
@@ -5606,27 +7222,5038 @@ var rr = class {
 	dispose() {
 		this.disposed = !0, this.endLoadingIndicator(), this.scheduledFrame !== null && (cancelAnimationFrame(this.scheduledFrame), this.scheduledFrame = null), this.worker?.terminate(), this.worker = null, this.pendingLayout = null, this.resolveLayoutWaiters(this.layout), this.canvas.remove(), this.loadingIndicator.remove(), this.changedContainerPosition && (this.viewer.container.style.position = this.previousContainerPosition), this.previousPlacements.clear(), this.measurementCache.clear(), this.viewer = null;
 	}
-}, ir = [
+}, qi = class extends a {
+	constructor(e, a, c = !1, l = !1, u = 1e4) {
+		let d = new n();
+		super(d, a), this.isMarchingCubes = !0;
+		let f = this, p = /* @__PURE__ */ new Float32Array(36), m = /* @__PURE__ */ new Float32Array(36), h = /* @__PURE__ */ new Float32Array(36);
+		this.enableUvs = c, this.enableColors = l, this.init = function(e) {
+			this.resolution = e, this.isolation = 80, this.size = e, this.size2 = this.size * this.size, this.size3 = this.size2 * this.size, this.halfsize = this.size / 2, this.delta = 2 / this.size, this.yd = this.size, this.zd = this.size2, this.field = new Float32Array(this.size3), this.normal_cache = new Float32Array(this.size3 * 3), this.palette = new Float32Array(this.size3 * 3), this.count = 0;
+			let n = u * 3;
+			this.positionArray = new Float32Array(n * 3);
+			let r = new t(this.positionArray, 3);
+			r.setUsage(i), d.setAttribute("position", r), this.normalArray = new Float32Array(n * 3);
+			let a = new t(this.normalArray, 3);
+			if (a.setUsage(i), d.setAttribute("normal", a), this.enableUvs) {
+				this.uvArray = new Float32Array(n * 2);
+				let e = new t(this.uvArray, 2);
+				e.setUsage(i), d.setAttribute("uv", e);
+			}
+			if (this.enableColors) {
+				this.colorArray = new Float32Array(n * 3);
+				let e = new t(this.colorArray, 3);
+				e.setUsage(i), d.setAttribute("color", e);
+			}
+			d.boundingSphere = new o(new s(), 1);
+		};
+		function g(e, t, n) {
+			return e + (t - e) * n;
+		}
+		function _(e, t, n, r, i, a, o, s, c, l) {
+			let u = (n - o) / (s - o), d = f.normal_cache;
+			p[t + 0] = r + u * f.delta, p[t + 1] = i, p[t + 2] = a, m[t + 0] = g(d[e + 0], d[e + 3], u), m[t + 1] = g(d[e + 1], d[e + 4], u), m[t + 2] = g(d[e + 2], d[e + 5], u), h[t + 0] = g(f.palette[c * 3 + 0], f.palette[l * 3 + 0], u), h[t + 1] = g(f.palette[c * 3 + 1], f.palette[l * 3 + 1], u), h[t + 2] = g(f.palette[c * 3 + 2], f.palette[l * 3 + 2], u);
+		}
+		function v(e, t, n, r, i, a, o, s, c, l) {
+			let u = (n - o) / (s - o), d = f.normal_cache;
+			p[t + 0] = r, p[t + 1] = i + u * f.delta, p[t + 2] = a;
+			let _ = e + f.yd * 3;
+			m[t + 0] = g(d[e + 0], d[_ + 0], u), m[t + 1] = g(d[e + 1], d[_ + 1], u), m[t + 2] = g(d[e + 2], d[_ + 2], u), h[t + 0] = g(f.palette[c * 3 + 0], f.palette[l * 3 + 0], u), h[t + 1] = g(f.palette[c * 3 + 1], f.palette[l * 3 + 1], u), h[t + 2] = g(f.palette[c * 3 + 2], f.palette[l * 3 + 2], u);
+		}
+		function y(e, t, n, r, i, a, o, s, c, l) {
+			let u = (n - o) / (s - o), d = f.normal_cache;
+			p[t + 0] = r, p[t + 1] = i, p[t + 2] = a + u * f.delta;
+			let _ = e + f.zd * 3;
+			m[t + 0] = g(d[e + 0], d[_ + 0], u), m[t + 1] = g(d[e + 1], d[_ + 1], u), m[t + 2] = g(d[e + 2], d[_ + 2], u), h[t + 0] = g(f.palette[c * 3 + 0], f.palette[l * 3 + 0], u), h[t + 1] = g(f.palette[c * 3 + 1], f.palette[l * 3 + 1], u), h[t + 2] = g(f.palette[c * 3 + 2], f.palette[l * 3 + 2], u);
+		}
+		function b(e) {
+			let t = e * 3;
+			f.normal_cache[t] === 0 && (f.normal_cache[t + 0] = f.field[e - 1] - f.field[e + 1], f.normal_cache[t + 1] = f.field[e - f.yd] - f.field[e + f.yd], f.normal_cache[t + 2] = f.field[e - f.zd] - f.field[e + f.zd]);
+		}
+		function x(e, t, n, r, i) {
+			let a = r + 1, o = r + f.yd, s = r + f.zd, c = a + f.yd, l = a + f.zd, u = r + f.yd + f.zd, d = a + f.yd + f.zd, g = 0, x = f.field[r], C = f.field[a], w = f.field[o], T = f.field[c], E = f.field[s], D = f.field[l], O = f.field[u], k = f.field[d];
+			x < i && (g |= 1), C < i && (g |= 2), w < i && (g |= 8), T < i && (g |= 4), E < i && (g |= 16), D < i && (g |= 32), O < i && (g |= 128), k < i && (g |= 64);
+			let A = Ji[g];
+			if (A === 0) return 0;
+			let ee = f.delta, j = e + ee, te = t + ee, M = n + ee;
+			A & 1 && (b(r), b(a), _(r * 3, 0, i, e, t, n, x, C, r, a)), A & 2 && (b(a), b(c), v(a * 3, 3, i, j, t, n, C, T, a, c)), A & 4 && (b(o), b(c), _(o * 3, 6, i, e, te, n, w, T, o, c)), A & 8 && (b(r), b(o), v(r * 3, 9, i, e, t, n, x, w, r, o)), A & 16 && (b(s), b(l), _(s * 3, 12, i, e, t, M, E, D, s, l)), A & 32 && (b(l), b(d), v(l * 3, 15, i, j, t, M, D, k, l, d)), A & 64 && (b(u), b(d), _(u * 3, 18, i, e, te, M, O, k, u, d)), A & 128 && (b(s), b(u), v(s * 3, 21, i, e, t, M, E, O, s, u)), A & 256 && (b(r), b(s), y(r * 3, 24, i, e, t, n, x, E, r, s)), A & 512 && (b(a), b(l), y(a * 3, 27, i, j, t, n, C, D, a, l)), A & 1024 && (b(c), b(d), y(c * 3, 30, i, j, te, n, T, k, c, d)), A & 2048 && (b(o), b(u), y(o * 3, 33, i, e, te, n, w, O, o, u)), g <<= 4;
+			let N, P, ne, F = 0, I = 0;
+			for (; Yi[g + I] != -1;) N = g + I, P = N + 1, ne = N + 2, S(p, m, h, 3 * Yi[N], 3 * Yi[P], 3 * Yi[ne]), I += 3, F++;
+			return F;
+		}
+		function S(e, t, n, r, i, a) {
+			let o = f.count * 3;
+			if (f.positionArray[o + 0] = e[r], f.positionArray[o + 1] = e[r + 1], f.positionArray[o + 2] = e[r + 2], f.positionArray[o + 3] = e[i], f.positionArray[o + 4] = e[i + 1], f.positionArray[o + 5] = e[i + 2], f.positionArray[o + 6] = e[a], f.positionArray[o + 7] = e[a + 1], f.positionArray[o + 8] = e[a + 2], f.material.flatShading === !0) {
+				let e = (t[r + 0] + t[i + 0] + t[a + 0]) / 3, n = (t[r + 1] + t[i + 1] + t[a + 1]) / 3, s = (t[r + 2] + t[i + 2] + t[a + 2]) / 3;
+				f.normalArray[o + 0] = e, f.normalArray[o + 1] = n, f.normalArray[o + 2] = s, f.normalArray[o + 3] = e, f.normalArray[o + 4] = n, f.normalArray[o + 5] = s, f.normalArray[o + 6] = e, f.normalArray[o + 7] = n, f.normalArray[o + 8] = s;
+			} else f.normalArray[o + 0] = t[r + 0], f.normalArray[o + 1] = t[r + 1], f.normalArray[o + 2] = t[r + 2], f.normalArray[o + 3] = t[i + 0], f.normalArray[o + 4] = t[i + 1], f.normalArray[o + 5] = t[i + 2], f.normalArray[o + 6] = t[a + 0], f.normalArray[o + 7] = t[a + 1], f.normalArray[o + 8] = t[a + 2];
+			if (f.enableUvs) {
+				let t = f.count * 2;
+				f.uvArray[t + 0] = e[r + 0], f.uvArray[t + 1] = e[r + 2], f.uvArray[t + 2] = e[i + 0], f.uvArray[t + 3] = e[i + 2], f.uvArray[t + 4] = e[a + 0], f.uvArray[t + 5] = e[a + 2];
+			}
+			f.enableColors && (f.colorArray[o + 0] = n[r + 0], f.colorArray[o + 1] = n[r + 1], f.colorArray[o + 2] = n[r + 2], f.colorArray[o + 3] = n[i + 0], f.colorArray[o + 4] = n[i + 1], f.colorArray[o + 5] = n[i + 2], f.colorArray[o + 6] = n[a + 0], f.colorArray[o + 7] = n[a + 1], f.colorArray[o + 8] = n[a + 2]), f.count += 3;
+		}
+		this.addBall = function(e, t, n, i, a, o) {
+			let s = Math.sign(i);
+			i = Math.abs(i);
+			let c = o != null, l = new r(e, t, n);
+			if (c) try {
+				l = o instanceof r ? o : Array.isArray(o) ? new r(Math.min(Math.abs(o[0]), 1), Math.min(Math.abs(o[1]), 1), Math.min(Math.abs(o[2]), 1)) : new r(o);
+			} catch {
+				l = new r(e, t, n);
+			}
+			let u = this.size * Math.sqrt(i / a), d = n * this.size, f = t * this.size, p = e * this.size, m = Math.floor(d - u);
+			m < 1 && (m = 1);
+			let h = Math.floor(d + u);
+			h > this.size - 1 && (h = this.size - 1);
+			let g = Math.floor(f - u);
+			g < 1 && (g = 1);
+			let _ = Math.floor(f + u);
+			_ > this.size - 1 && (_ = this.size - 1);
+			let v = Math.floor(p - u);
+			v < 1 && (v = 1);
+			let y = Math.floor(p + u);
+			y > this.size - 1 && (y = this.size - 1);
+			let b, x, S, C, w, T, E, D, O, k, A;
+			for (S = m; S < h; S++) for (w = this.size2 * S, D = S / this.size - n, O = D * D, x = g; x < _; x++) for (C = w + this.size * x, E = x / this.size - t, k = E * E, b = v; b < y; b++) if (T = b / this.size - e, A = i / (1e-6 + T * T + k + O) - a, A > 0) {
+				this.field[C + b] += A * s;
+				let e = Math.sqrt((b - p) * (b - p) + (x - f) * (x - f) + (S - d) * (S - d)) / u, t = 1 - e * e * e * (e * (e * 6 - 15) + 10);
+				this.palette[(C + b) * 3 + 0] += l.r * t, this.palette[(C + b) * 3 + 1] += l.g * t, this.palette[(C + b) * 3 + 2] += l.b * t;
+			}
+		}, this.addPlaneX = function(e, t) {
+			let n = this.size, r = this.yd, i = this.zd, a = this.field, o, s, c, l, u, d, f, p = n * Math.sqrt(e / t);
+			for (p > n && (p = n), o = 0; o < p; o++) if (d = o / n, l = d * d, u = e / (1e-4 + l) - t, u > 0) for (s = 0; s < n; s++) for (f = o + s * r, c = 0; c < n; c++) a[i * c + f] += u;
+		}, this.addPlaneY = function(e, t) {
+			let n = this.size, r = this.yd, i = this.zd, a = this.field, o, s, c, l, u, d, f, p, m = n * Math.sqrt(e / t);
+			for (m > n && (m = n), s = 0; s < m; s++) if (d = s / n, l = d * d, u = e / (1e-4 + l) - t, u > 0) for (f = s * r, o = 0; o < n; o++) for (p = f + o, c = 0; c < n; c++) a[i * c + p] += u;
+		}, this.addPlaneZ = function(e, t) {
+			let n = this.size, r = this.yd, i = this.zd, a = this.field, o, s, c, l, u, d, f, p, m = n * Math.sqrt(e / t);
+			for (m > n && (m = n), c = 0; c < m; c++) if (d = c / n, l = d * d, u = e / (1e-4 + l) - t, u > 0) for (f = i * c, s = 0; s < n; s++) for (p = f + s * r, o = 0; o < n; o++) a[p + o] += u;
+		}, this.setCell = function(e, t, n, r) {
+			let i = this.size2 * n + this.size * t + e;
+			this.field[i] = r;
+		}, this.getCell = function(e, t, n) {
+			let r = this.size2 * n + this.size * t + e;
+			return this.field[r];
+		}, this.blur = function(e = 1) {
+			let t = this.field, n = t.slice(), r = this.size, i = this.size2;
+			for (let a = 0; a < r; a++) for (let o = 0; o < r; o++) for (let s = 0; s < r; s++) {
+				let c = i * s + r * o + a, l = n[c], u = 1;
+				for (let t = -1; t <= 1; t += 2) {
+					let c = t + a;
+					if (!(c < 0 || c >= r)) for (let t = -1; t <= 1; t += 2) {
+						let a = t + o;
+						if (!(a < 0 || a >= r)) for (let t = -1; t <= 1; t += 2) {
+							let o = t + s;
+							if (o < 0 || o >= r) continue;
+							let d = n[i * o + r * a + c];
+							u++, l += e * (d - l) / u;
+						}
+					}
+				}
+				t[c] = l;
+			}
+		}, this.reset = function() {
+			for (let e = 0; e < this.size3; e++) this.normal_cache[e * 3] = 0, this.field[e] = 0, this.palette[e * 3] = this.palette[e * 3 + 1] = this.palette[e * 3 + 2] = 0;
+		}, this.update = function() {
+			this.count = 0;
+			let e = this.size - 2;
+			for (let t = 1; t < e; t++) {
+				let n = this.size2 * t, r = (t - this.halfsize) / this.halfsize;
+				for (let t = 1; t < e; t++) {
+					let i = n + this.size * t, a = (t - this.halfsize) / this.halfsize;
+					for (let t = 1; t < e; t++) x((t - this.halfsize) / this.halfsize, a, r, i + t, this.isolation);
+				}
+			}
+			this.geometry.setDrawRange(0, this.count), d.getAttribute("position").needsUpdate = !0, d.getAttribute("normal").needsUpdate = !0, this.enableUvs && (d.getAttribute("uv").needsUpdate = !0), this.enableColors && (d.getAttribute("color").needsUpdate = !0), this.count / 3 > u && console.warn("THREE.MarchingCubes: Geometry buffers too small for rendering. Please create an instance with a higher poly count.");
+		}, this.init(e);
+	}
+}, Ji = new Int32Array([
+	0,
+	265,
+	515,
+	778,
+	1030,
+	1295,
+	1541,
+	1804,
+	2060,
+	2309,
+	2575,
+	2822,
+	3082,
+	3331,
+	3593,
+	3840,
+	400,
+	153,
+	915,
+	666,
+	1430,
+	1183,
+	1941,
+	1692,
+	2460,
+	2197,
+	2975,
+	2710,
+	3482,
+	3219,
+	3993,
+	3728,
+	560,
+	825,
+	51,
+	314,
+	1590,
+	1855,
+	1077,
+	1340,
+	2620,
+	2869,
+	2111,
+	2358,
+	3642,
+	3891,
+	3129,
+	3376,
+	928,
+	681,
+	419,
+	170,
+	1958,
+	1711,
+	1445,
+	1196,
+	2988,
+	2725,
+	2479,
+	2214,
+	4010,
+	3747,
+	3497,
+	3232,
+	1120,
+	1385,
+	1635,
+	1898,
+	102,
+	367,
+	613,
+	876,
+	3180,
+	3429,
+	3695,
+	3942,
+	2154,
+	2403,
+	2665,
+	2912,
+	1520,
+	1273,
+	2035,
+	1786,
+	502,
+	255,
+	1013,
+	764,
+	3580,
+	3317,
+	4095,
+	3830,
+	2554,
+	2291,
+	3065,
+	2800,
+	1616,
+	1881,
+	1107,
+	1370,
+	598,
+	863,
+	85,
+	348,
+	3676,
+	3925,
+	3167,
+	3414,
+	2650,
+	2899,
+	2137,
+	2384,
+	1984,
+	1737,
+	1475,
+	1226,
+	966,
+	719,
+	453,
+	204,
+	4044,
+	3781,
+	3535,
+	3270,
+	3018,
+	2755,
+	2505,
+	2240,
+	2240,
+	2505,
+	2755,
+	3018,
+	3270,
+	3535,
+	3781,
+	4044,
+	204,
+	453,
+	719,
+	966,
+	1226,
+	1475,
+	1737,
+	1984,
+	2384,
+	2137,
+	2899,
+	2650,
+	3414,
+	3167,
+	3925,
+	3676,
+	348,
+	85,
+	863,
+	598,
+	1370,
+	1107,
+	1881,
+	1616,
+	2800,
+	3065,
+	2291,
+	2554,
+	3830,
+	4095,
+	3317,
+	3580,
+	764,
+	1013,
+	255,
+	502,
+	1786,
+	2035,
+	1273,
+	1520,
+	2912,
+	2665,
+	2403,
+	2154,
+	3942,
+	3695,
+	3429,
+	3180,
+	876,
+	613,
+	367,
+	102,
+	1898,
+	1635,
+	1385,
+	1120,
+	3232,
+	3497,
+	3747,
+	4010,
+	2214,
+	2479,
+	2725,
+	2988,
+	1196,
+	1445,
+	1711,
+	1958,
+	170,
+	419,
+	681,
+	928,
+	3376,
+	3129,
+	3891,
+	3642,
+	2358,
+	2111,
+	2869,
+	2620,
+	1340,
+	1077,
+	1855,
+	1590,
+	314,
+	51,
+	825,
+	560,
+	3728,
+	3993,
+	3219,
+	3482,
+	2710,
+	2975,
+	2197,
+	2460,
+	1692,
+	1941,
+	1183,
+	1430,
+	666,
+	915,
+	153,
+	400,
+	3840,
+	3593,
+	3331,
+	3082,
+	2822,
+	2575,
+	2309,
+	2060,
+	1804,
+	1541,
+	1295,
+	1030,
+	778,
+	515,
+	265,
+	0
+]), Yi = new Int32Array([
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	8,
+	3,
+	9,
+	8,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	1,
+	2,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	2,
+	10,
+	0,
+	2,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	8,
+	3,
+	2,
+	10,
+	8,
+	10,
+	9,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	11,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	11,
+	2,
+	8,
+	11,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	9,
+	0,
+	2,
+	3,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	11,
+	2,
+	1,
+	9,
+	11,
+	9,
+	8,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	10,
+	1,
+	11,
+	10,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	10,
+	1,
+	0,
+	8,
+	10,
+	8,
+	11,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	9,
+	0,
+	3,
+	11,
+	9,
+	11,
+	10,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	8,
+	10,
+	10,
+	8,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	7,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	3,
+	0,
+	7,
+	3,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	8,
+	4,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	1,
+	9,
+	4,
+	7,
+	1,
+	7,
+	3,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	8,
+	4,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	4,
+	7,
+	3,
+	0,
+	4,
+	1,
+	2,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	2,
+	10,
+	9,
+	0,
+	2,
+	8,
+	4,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	10,
+	9,
+	2,
+	9,
+	7,
+	2,
+	7,
+	3,
+	7,
+	9,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	4,
+	7,
+	3,
+	11,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	4,
+	7,
+	11,
+	2,
+	4,
+	2,
+	0,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	0,
+	1,
+	8,
+	4,
+	7,
+	2,
+	3,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	7,
+	11,
+	9,
+	4,
+	11,
+	9,
+	11,
+	2,
+	9,
+	2,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	10,
+	1,
+	3,
+	11,
+	10,
+	7,
+	8,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	11,
+	10,
+	1,
+	4,
+	11,
+	1,
+	0,
+	4,
+	7,
+	11,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	7,
+	8,
+	9,
+	0,
+	11,
+	9,
+	11,
+	10,
+	11,
+	0,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	7,
+	11,
+	4,
+	11,
+	9,
+	9,
+	11,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	4,
+	0,
+	8,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	5,
+	4,
+	1,
+	5,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	5,
+	4,
+	8,
+	3,
+	5,
+	3,
+	1,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	9,
+	5,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	0,
+	8,
+	1,
+	2,
+	10,
+	4,
+	9,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	2,
+	10,
+	5,
+	4,
+	2,
+	4,
+	0,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	10,
+	5,
+	3,
+	2,
+	5,
+	3,
+	5,
+	4,
+	3,
+	4,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	4,
+	2,
+	3,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	11,
+	2,
+	0,
+	8,
+	11,
+	4,
+	9,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	5,
+	4,
+	0,
+	1,
+	5,
+	2,
+	3,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	1,
+	5,
+	2,
+	5,
+	8,
+	2,
+	8,
+	11,
+	4,
+	8,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	3,
+	11,
+	10,
+	1,
+	3,
+	9,
+	5,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	9,
+	5,
+	0,
+	8,
+	1,
+	8,
+	10,
+	1,
+	8,
+	11,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	4,
+	0,
+	5,
+	0,
+	11,
+	5,
+	11,
+	10,
+	11,
+	0,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	4,
+	8,
+	5,
+	8,
+	10,
+	10,
+	8,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	7,
+	8,
+	5,
+	7,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	3,
+	0,
+	9,
+	5,
+	3,
+	5,
+	7,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	7,
+	8,
+	0,
+	1,
+	7,
+	1,
+	5,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	5,
+	3,
+	3,
+	5,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	7,
+	8,
+	9,
+	5,
+	7,
+	10,
+	1,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	1,
+	2,
+	9,
+	5,
+	0,
+	5,
+	3,
+	0,
+	5,
+	7,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	0,
+	2,
+	8,
+	2,
+	5,
+	8,
+	5,
+	7,
+	10,
+	5,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	10,
+	5,
+	2,
+	5,
+	3,
+	3,
+	5,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	9,
+	5,
+	7,
+	8,
+	9,
+	3,
+	11,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	7,
+	9,
+	7,
+	2,
+	9,
+	2,
+	0,
+	2,
+	7,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	3,
+	11,
+	0,
+	1,
+	8,
+	1,
+	7,
+	8,
+	1,
+	5,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	2,
+	1,
+	11,
+	1,
+	7,
+	7,
+	1,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	8,
+	8,
+	5,
+	7,
+	10,
+	1,
+	3,
+	10,
+	3,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	7,
+	0,
+	5,
+	0,
+	9,
+	7,
+	11,
+	0,
+	1,
+	0,
+	10,
+	11,
+	10,
+	0,
+	-1,
+	11,
+	10,
+	0,
+	11,
+	0,
+	3,
+	10,
+	5,
+	0,
+	8,
+	0,
+	7,
+	5,
+	7,
+	0,
+	-1,
+	11,
+	10,
+	5,
+	7,
+	11,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	6,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	5,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	0,
+	1,
+	5,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	8,
+	3,
+	1,
+	9,
+	8,
+	5,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	6,
+	5,
+	2,
+	6,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	6,
+	5,
+	1,
+	2,
+	6,
+	3,
+	0,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	6,
+	5,
+	9,
+	0,
+	6,
+	0,
+	2,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	9,
+	8,
+	5,
+	8,
+	2,
+	5,
+	2,
+	6,
+	3,
+	2,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	3,
+	11,
+	10,
+	6,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	0,
+	8,
+	11,
+	2,
+	0,
+	10,
+	6,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	2,
+	3,
+	11,
+	5,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	10,
+	6,
+	1,
+	9,
+	2,
+	9,
+	11,
+	2,
+	9,
+	8,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	3,
+	11,
+	6,
+	5,
+	3,
+	5,
+	1,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	11,
+	0,
+	11,
+	5,
+	0,
+	5,
+	1,
+	5,
+	11,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	11,
+	6,
+	0,
+	3,
+	6,
+	0,
+	6,
+	5,
+	0,
+	5,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	5,
+	9,
+	6,
+	9,
+	11,
+	11,
+	9,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	10,
+	6,
+	4,
+	7,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	3,
+	0,
+	4,
+	7,
+	3,
+	6,
+	5,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	9,
+	0,
+	5,
+	10,
+	6,
+	8,
+	4,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	6,
+	5,
+	1,
+	9,
+	7,
+	1,
+	7,
+	3,
+	7,
+	9,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	1,
+	2,
+	6,
+	5,
+	1,
+	4,
+	7,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	5,
+	5,
+	2,
+	6,
+	3,
+	0,
+	4,
+	3,
+	4,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	4,
+	7,
+	9,
+	0,
+	5,
+	0,
+	6,
+	5,
+	0,
+	2,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	3,
+	9,
+	7,
+	9,
+	4,
+	3,
+	2,
+	9,
+	5,
+	9,
+	6,
+	2,
+	6,
+	9,
+	-1,
+	3,
+	11,
+	2,
+	7,
+	8,
+	4,
+	10,
+	6,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	10,
+	6,
+	4,
+	7,
+	2,
+	4,
+	2,
+	0,
+	2,
+	7,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	4,
+	7,
+	8,
+	2,
+	3,
+	11,
+	5,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	2,
+	1,
+	9,
+	11,
+	2,
+	9,
+	4,
+	11,
+	7,
+	11,
+	4,
+	5,
+	10,
+	6,
+	-1,
+	8,
+	4,
+	7,
+	3,
+	11,
+	5,
+	3,
+	5,
+	1,
+	5,
+	11,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	1,
+	11,
+	5,
+	11,
+	6,
+	1,
+	0,
+	11,
+	7,
+	11,
+	4,
+	0,
+	4,
+	11,
+	-1,
+	0,
+	5,
+	9,
+	0,
+	6,
+	5,
+	0,
+	3,
+	6,
+	11,
+	6,
+	3,
+	8,
+	4,
+	7,
+	-1,
+	6,
+	5,
+	9,
+	6,
+	9,
+	11,
+	4,
+	7,
+	9,
+	7,
+	11,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	4,
+	9,
+	6,
+	4,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	10,
+	6,
+	4,
+	9,
+	10,
+	0,
+	8,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	0,
+	1,
+	10,
+	6,
+	0,
+	6,
+	4,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	3,
+	1,
+	8,
+	1,
+	6,
+	8,
+	6,
+	4,
+	6,
+	1,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	4,
+	9,
+	1,
+	2,
+	4,
+	2,
+	6,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	0,
+	8,
+	1,
+	2,
+	9,
+	2,
+	4,
+	9,
+	2,
+	6,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	2,
+	4,
+	4,
+	2,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	3,
+	2,
+	8,
+	2,
+	4,
+	4,
+	2,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	4,
+	9,
+	10,
+	6,
+	4,
+	11,
+	2,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	2,
+	2,
+	8,
+	11,
+	4,
+	9,
+	10,
+	4,
+	10,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	11,
+	2,
+	0,
+	1,
+	6,
+	0,
+	6,
+	4,
+	6,
+	1,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	4,
+	1,
+	6,
+	1,
+	10,
+	4,
+	8,
+	1,
+	2,
+	1,
+	11,
+	8,
+	11,
+	1,
+	-1,
+	9,
+	6,
+	4,
+	9,
+	3,
+	6,
+	9,
+	1,
+	3,
+	11,
+	6,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	11,
+	1,
+	8,
+	1,
+	0,
+	11,
+	6,
+	1,
+	9,
+	1,
+	4,
+	6,
+	4,
+	1,
+	-1,
+	3,
+	11,
+	6,
+	3,
+	6,
+	0,
+	0,
+	6,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	4,
+	8,
+	11,
+	6,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	10,
+	6,
+	7,
+	8,
+	10,
+	8,
+	9,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	7,
+	3,
+	0,
+	10,
+	7,
+	0,
+	9,
+	10,
+	6,
+	7,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	6,
+	7,
+	1,
+	10,
+	7,
+	1,
+	7,
+	8,
+	1,
+	8,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	6,
+	7,
+	10,
+	7,
+	1,
+	1,
+	7,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	6,
+	1,
+	6,
+	8,
+	1,
+	8,
+	9,
+	8,
+	6,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	6,
+	9,
+	2,
+	9,
+	1,
+	6,
+	7,
+	9,
+	0,
+	9,
+	3,
+	7,
+	3,
+	9,
+	-1,
+	7,
+	8,
+	0,
+	7,
+	0,
+	6,
+	6,
+	0,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	3,
+	2,
+	6,
+	7,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	3,
+	11,
+	10,
+	6,
+	8,
+	10,
+	8,
+	9,
+	8,
+	6,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	0,
+	7,
+	2,
+	7,
+	11,
+	0,
+	9,
+	7,
+	6,
+	7,
+	10,
+	9,
+	10,
+	7,
+	-1,
+	1,
+	8,
+	0,
+	1,
+	7,
+	8,
+	1,
+	10,
+	7,
+	6,
+	7,
+	10,
+	2,
+	3,
+	11,
+	-1,
+	11,
+	2,
+	1,
+	11,
+	1,
+	7,
+	10,
+	6,
+	1,
+	6,
+	7,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	9,
+	6,
+	8,
+	6,
+	7,
+	9,
+	1,
+	6,
+	11,
+	6,
+	3,
+	1,
+	3,
+	6,
+	-1,
+	0,
+	9,
+	1,
+	11,
+	6,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	8,
+	0,
+	7,
+	0,
+	6,
+	3,
+	11,
+	0,
+	11,
+	6,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	11,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	6,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	0,
+	8,
+	11,
+	7,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	11,
+	7,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	1,
+	9,
+	8,
+	3,
+	1,
+	11,
+	7,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	1,
+	2,
+	6,
+	11,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	3,
+	0,
+	8,
+	6,
+	11,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	9,
+	0,
+	2,
+	10,
+	9,
+	6,
+	11,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	11,
+	7,
+	2,
+	10,
+	3,
+	10,
+	8,
+	3,
+	10,
+	9,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	2,
+	3,
+	6,
+	2,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	0,
+	8,
+	7,
+	6,
+	0,
+	6,
+	2,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	7,
+	6,
+	2,
+	3,
+	7,
+	0,
+	1,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	6,
+	2,
+	1,
+	8,
+	6,
+	1,
+	9,
+	8,
+	8,
+	7,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	7,
+	6,
+	10,
+	1,
+	7,
+	1,
+	3,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	7,
+	6,
+	1,
+	7,
+	10,
+	1,
+	8,
+	7,
+	1,
+	0,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	3,
+	7,
+	0,
+	7,
+	10,
+	0,
+	10,
+	9,
+	6,
+	10,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	6,
+	10,
+	7,
+	10,
+	8,
+	8,
+	10,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	8,
+	4,
+	11,
+	8,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	6,
+	11,
+	3,
+	0,
+	6,
+	0,
+	4,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	6,
+	11,
+	8,
+	4,
+	6,
+	9,
+	0,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	4,
+	6,
+	9,
+	6,
+	3,
+	9,
+	3,
+	1,
+	11,
+	3,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	8,
+	4,
+	6,
+	11,
+	8,
+	2,
+	10,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	3,
+	0,
+	11,
+	0,
+	6,
+	11,
+	0,
+	4,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	11,
+	8,
+	4,
+	6,
+	11,
+	0,
+	2,
+	9,
+	2,
+	10,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	9,
+	3,
+	10,
+	3,
+	2,
+	9,
+	4,
+	3,
+	11,
+	3,
+	6,
+	4,
+	6,
+	3,
+	-1,
+	8,
+	2,
+	3,
+	8,
+	4,
+	2,
+	4,
+	6,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	4,
+	2,
+	4,
+	6,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	9,
+	0,
+	2,
+	3,
+	4,
+	2,
+	4,
+	6,
+	4,
+	3,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	9,
+	4,
+	1,
+	4,
+	2,
+	2,
+	4,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	1,
+	3,
+	8,
+	6,
+	1,
+	8,
+	4,
+	6,
+	6,
+	10,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	1,
+	0,
+	10,
+	0,
+	6,
+	6,
+	0,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	6,
+	3,
+	4,
+	3,
+	8,
+	6,
+	10,
+	3,
+	0,
+	3,
+	9,
+	10,
+	9,
+	3,
+	-1,
+	10,
+	9,
+	4,
+	6,
+	10,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	9,
+	5,
+	7,
+	6,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	4,
+	9,
+	5,
+	11,
+	7,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	0,
+	1,
+	5,
+	4,
+	0,
+	7,
+	6,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	7,
+	6,
+	8,
+	3,
+	4,
+	3,
+	5,
+	4,
+	3,
+	1,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	4,
+	10,
+	1,
+	2,
+	7,
+	6,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	11,
+	7,
+	1,
+	2,
+	10,
+	0,
+	8,
+	3,
+	4,
+	9,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	6,
+	11,
+	5,
+	4,
+	10,
+	4,
+	2,
+	10,
+	4,
+	0,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	4,
+	8,
+	3,
+	5,
+	4,
+	3,
+	2,
+	5,
+	10,
+	5,
+	2,
+	11,
+	7,
+	6,
+	-1,
+	7,
+	2,
+	3,
+	7,
+	6,
+	2,
+	5,
+	4,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	4,
+	0,
+	8,
+	6,
+	0,
+	6,
+	2,
+	6,
+	8,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	6,
+	2,
+	3,
+	7,
+	6,
+	1,
+	5,
+	0,
+	5,
+	4,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	2,
+	8,
+	6,
+	8,
+	7,
+	2,
+	1,
+	8,
+	4,
+	8,
+	5,
+	1,
+	5,
+	8,
+	-1,
+	9,
+	5,
+	4,
+	10,
+	1,
+	6,
+	1,
+	7,
+	6,
+	1,
+	3,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	6,
+	10,
+	1,
+	7,
+	6,
+	1,
+	0,
+	7,
+	8,
+	7,
+	0,
+	9,
+	5,
+	4,
+	-1,
+	4,
+	0,
+	10,
+	4,
+	10,
+	5,
+	0,
+	3,
+	10,
+	6,
+	10,
+	7,
+	3,
+	7,
+	10,
+	-1,
+	7,
+	6,
+	10,
+	7,
+	10,
+	8,
+	5,
+	4,
+	10,
+	4,
+	8,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	9,
+	5,
+	6,
+	11,
+	9,
+	11,
+	8,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	6,
+	11,
+	0,
+	6,
+	3,
+	0,
+	5,
+	6,
+	0,
+	9,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	11,
+	8,
+	0,
+	5,
+	11,
+	0,
+	1,
+	5,
+	5,
+	6,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	6,
+	11,
+	3,
+	6,
+	3,
+	5,
+	5,
+	3,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	10,
+	9,
+	5,
+	11,
+	9,
+	11,
+	8,
+	11,
+	5,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	11,
+	3,
+	0,
+	6,
+	11,
+	0,
+	9,
+	6,
+	5,
+	6,
+	9,
+	1,
+	2,
+	10,
+	-1,
+	11,
+	8,
+	5,
+	11,
+	5,
+	6,
+	8,
+	0,
+	5,
+	10,
+	5,
+	2,
+	0,
+	2,
+	5,
+	-1,
+	6,
+	11,
+	3,
+	6,
+	3,
+	5,
+	2,
+	10,
+	3,
+	10,
+	5,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	8,
+	9,
+	5,
+	2,
+	8,
+	5,
+	6,
+	2,
+	3,
+	8,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	5,
+	6,
+	9,
+	6,
+	0,
+	0,
+	6,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	5,
+	8,
+	1,
+	8,
+	0,
+	5,
+	6,
+	8,
+	3,
+	8,
+	2,
+	6,
+	2,
+	8,
+	-1,
+	1,
+	5,
+	6,
+	2,
+	1,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	3,
+	6,
+	1,
+	6,
+	10,
+	3,
+	8,
+	6,
+	5,
+	6,
+	9,
+	8,
+	9,
+	6,
+	-1,
+	10,
+	1,
+	0,
+	10,
+	0,
+	6,
+	9,
+	5,
+	0,
+	5,
+	6,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	3,
+	8,
+	5,
+	6,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	5,
+	6,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	5,
+	10,
+	7,
+	5,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	5,
+	10,
+	11,
+	7,
+	5,
+	8,
+	3,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	11,
+	7,
+	5,
+	10,
+	11,
+	1,
+	9,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	7,
+	5,
+	10,
+	11,
+	7,
+	9,
+	8,
+	1,
+	8,
+	3,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	1,
+	2,
+	11,
+	7,
+	1,
+	7,
+	5,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	1,
+	2,
+	7,
+	1,
+	7,
+	5,
+	7,
+	2,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	7,
+	5,
+	9,
+	2,
+	7,
+	9,
+	0,
+	2,
+	2,
+	11,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	7,
+	5,
+	2,
+	7,
+	2,
+	11,
+	5,
+	9,
+	2,
+	3,
+	2,
+	8,
+	9,
+	8,
+	2,
+	-1,
+	2,
+	5,
+	10,
+	2,
+	3,
+	5,
+	3,
+	7,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	2,
+	0,
+	8,
+	5,
+	2,
+	8,
+	7,
+	5,
+	10,
+	2,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	0,
+	1,
+	5,
+	10,
+	3,
+	5,
+	3,
+	7,
+	3,
+	10,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	8,
+	2,
+	9,
+	2,
+	1,
+	8,
+	7,
+	2,
+	10,
+	2,
+	5,
+	7,
+	5,
+	2,
+	-1,
+	1,
+	3,
+	5,
+	3,
+	7,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	7,
+	0,
+	7,
+	1,
+	1,
+	7,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	0,
+	3,
+	9,
+	3,
+	5,
+	5,
+	3,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	8,
+	7,
+	5,
+	9,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	8,
+	4,
+	5,
+	10,
+	8,
+	10,
+	11,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	0,
+	4,
+	5,
+	11,
+	0,
+	5,
+	10,
+	11,
+	11,
+	3,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	9,
+	8,
+	4,
+	10,
+	8,
+	10,
+	11,
+	10,
+	4,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	10,
+	11,
+	4,
+	10,
+	4,
+	5,
+	11,
+	3,
+	4,
+	9,
+	4,
+	1,
+	3,
+	1,
+	4,
+	-1,
+	2,
+	5,
+	1,
+	2,
+	8,
+	5,
+	2,
+	11,
+	8,
+	4,
+	5,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	4,
+	11,
+	0,
+	11,
+	3,
+	4,
+	5,
+	11,
+	2,
+	11,
+	1,
+	5,
+	1,
+	11,
+	-1,
+	0,
+	2,
+	5,
+	0,
+	5,
+	9,
+	2,
+	11,
+	5,
+	4,
+	5,
+	8,
+	11,
+	8,
+	5,
+	-1,
+	9,
+	4,
+	5,
+	2,
+	11,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	5,
+	10,
+	3,
+	5,
+	2,
+	3,
+	4,
+	5,
+	3,
+	8,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	5,
+	10,
+	2,
+	5,
+	2,
+	4,
+	4,
+	2,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	10,
+	2,
+	3,
+	5,
+	10,
+	3,
+	8,
+	5,
+	4,
+	5,
+	8,
+	0,
+	1,
+	9,
+	-1,
+	5,
+	10,
+	2,
+	5,
+	2,
+	4,
+	1,
+	9,
+	2,
+	9,
+	4,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	4,
+	5,
+	8,
+	5,
+	3,
+	3,
+	5,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	4,
+	5,
+	1,
+	0,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	8,
+	4,
+	5,
+	8,
+	5,
+	3,
+	9,
+	0,
+	5,
+	0,
+	3,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	4,
+	5,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	11,
+	7,
+	4,
+	9,
+	11,
+	9,
+	10,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	8,
+	3,
+	4,
+	9,
+	7,
+	9,
+	11,
+	7,
+	9,
+	10,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	10,
+	11,
+	1,
+	11,
+	4,
+	1,
+	4,
+	0,
+	7,
+	4,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	1,
+	4,
+	3,
+	4,
+	8,
+	1,
+	10,
+	4,
+	7,
+	4,
+	11,
+	10,
+	11,
+	4,
+	-1,
+	4,
+	11,
+	7,
+	9,
+	11,
+	4,
+	9,
+	2,
+	11,
+	9,
+	1,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	7,
+	4,
+	9,
+	11,
+	7,
+	9,
+	1,
+	11,
+	2,
+	11,
+	1,
+	0,
+	8,
+	3,
+	-1,
+	11,
+	7,
+	4,
+	11,
+	4,
+	2,
+	2,
+	4,
+	0,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	11,
+	7,
+	4,
+	11,
+	4,
+	2,
+	8,
+	3,
+	4,
+	3,
+	2,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	9,
+	10,
+	2,
+	7,
+	9,
+	2,
+	3,
+	7,
+	7,
+	4,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	10,
+	7,
+	9,
+	7,
+	4,
+	10,
+	2,
+	7,
+	8,
+	7,
+	0,
+	2,
+	0,
+	7,
+	-1,
+	3,
+	7,
+	10,
+	3,
+	10,
+	2,
+	7,
+	4,
+	10,
+	1,
+	10,
+	0,
+	4,
+	0,
+	10,
+	-1,
+	1,
+	10,
+	2,
+	8,
+	7,
+	4,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	9,
+	1,
+	4,
+	1,
+	7,
+	7,
+	1,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	9,
+	1,
+	4,
+	1,
+	7,
+	0,
+	8,
+	1,
+	8,
+	7,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	0,
+	3,
+	7,
+	4,
+	3,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	4,
+	8,
+	7,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	10,
+	8,
+	10,
+	11,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	0,
+	9,
+	3,
+	9,
+	11,
+	11,
+	9,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	1,
+	10,
+	0,
+	10,
+	8,
+	8,
+	10,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	1,
+	10,
+	11,
+	3,
+	10,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	2,
+	11,
+	1,
+	11,
+	9,
+	9,
+	11,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	0,
+	9,
+	3,
+	9,
+	11,
+	1,
+	2,
+	9,
+	2,
+	11,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	2,
+	11,
+	8,
+	0,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	3,
+	2,
+	11,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	3,
+	8,
+	2,
+	8,
+	10,
+	10,
+	8,
+	9,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	9,
+	10,
+	2,
+	0,
+	9,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	2,
+	3,
+	8,
+	2,
+	8,
+	10,
+	0,
+	1,
+	8,
+	1,
+	10,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	10,
+	2,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	1,
+	3,
+	8,
+	9,
+	1,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	9,
+	1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	0,
+	3,
+	8,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1,
+	-1
+]);
+//#endregion
+//#region src/lib/density/difference-density-surface.js
+function Xi(e, t, n, r) {
+	return [
+		e[0][0] * t + e[0][1] * n + e[0][2] * r,
+		e[1][0] * t + e[1][1] * n + e[1][2] * r,
+		e[2][0] * t + e[2][1] * n + e[2][2] * r
+	];
+}
+function Zi(e, t) {
+	if (!e?.atoms?.length) return {
+		minimum: [
+			0,
+			0,
+			0
+		],
+		maximum: [
+			1,
+			1,
+			1
+		]
+	};
+	let n = R(e.cell.fractToCartMatrix).toArray().map((e) => t * Math.sqrt(e[0] ** 2 + e[1] ** 2 + e[2] ** 2)), r = [
+		Infinity,
+		Infinity,
+		Infinity
+	], i = [
+		-Infinity,
+		-Infinity,
+		-Infinity
+	];
+	for (let t of e.atoms) {
+		let e = [
+			t.position.x,
+			t.position.y,
+			t.position.z
+		];
+		for (let t = 0; t < 3; t++) r[t] = Math.min(r[t], e[t] - n[t]), i[t] = Math.max(i[t], e[t] + n[t]);
+	}
+	return {
+		minimum: r,
+		maximum: i
+	};
+}
+function Qi(e, t = {}) {
+	let n = {
+		...Ke,
+		...t
+	}, r = Math.max(8, Math.round(Number(n.resolution))), i = Math.max(r, Math.round(Number(n.maxResolution))), a = Number(n.gridSpacing);
+	if (!(Number.isFinite(a) && a > 0)) throw Error("Difference-density surface grid spacing must be a positive number");
+	if (!(Number.isFinite(i) && i >= 8)) throw Error("Difference-density maximum surface resolution must be at least 8");
+	let o = Zi(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
+	return Math.min(i, Math.max(r, l));
+}
+function $i(t, n) {
+	let r = t.fractToCartMatrix.toArray(), i = n.maximum.map((e, t) => e - n.minimum[t]), a = Xi(r, ...n.minimum.map((e, t) => e + i[t] / 2));
+	return new e.Matrix4().set(r[0][0] * i[0] / 2, r[0][1] * i[1] / 2, r[0][2] * i[2] / 2, a[0], r[1][0] * i[0] / 2, r[1][1] * i[1] / 2, r[1][2] * i[2] / 2, a[1], r[2][0] * i[0] / 2, r[2][1] * i[1] / 2, r[2][2] * i[2] / 2, a[2], 0, 0, 0, 1);
+}
+function ea(e, t, n) {
+	for (let r of t) {
+		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
+		if (t * t + i * i + a * a <= n) return !0;
+	}
+	return !1;
+}
+function ta(e, t, n, r, i) {
+	let a = new qi(e, t, !1, !1, n);
+	return a.name = r, a.isolation = i, a.frustumCulled = !1, a.userData = {
+		selectable: !1,
+		type: "difference-density",
+		sign: r.includes("Positive") ? "positive" : "negative"
+	}, a;
+}
+function na(t, n, r = {}) {
+	let i = performance.now(), a = {
+		...Ke,
+		...r
+	}, o = Math.max(8, Math.round(a.resolution)), s = a.level ?? a.sigmaLevel * t.sigma;
+	if (!(Number.isFinite(s) && s > 0)) throw Error("Difference-density contour level must be a positive finite number");
+	if (!(Number.isFinite(a.radius) && a.radius > 0)) throw Error("Difference-density radius must be a positive finite number");
+	let c = Zi(n, a.radius), l = a.sign ?? "both";
+	if (![
+		"positive",
+		"negative",
+		"both"
+	].includes(l)) throw Error("Difference-density surface sign must be \"positive\", \"negative\", or \"both\"");
+	let u = l !== "negative", d = l !== "positive", f = new e.MeshStandardMaterial({
+		color: a.positiveColor,
+		transparent: a.opacity < 1,
+		opacity: a.opacity,
+		wireframe: a.wireframe,
+		side: e.DoubleSide,
+		depthWrite: a.opacity >= 1,
+		roughness: .35,
+		metalness: 0
+	}), p = f.clone();
+	p.color.set(a.negativeColor);
+	let m = u ? ta(o, f, a.maxPolyCount, "PositiveDifferenceDensity", s) : null, h = d ? ta(o, p, a.maxPolyCount, "NegativeDifferenceDensity", s) : null;
+	m || f.dispose(), h || p.dispose();
+	let g = c.maximum.map((e, t) => e - c.minimum[t]), _ = o / 2, v = n.cell.fractToCartMatrix.toArray(), y = n.atoms.map((e) => Xi(v, e.position.x, e.position.y, e.position.z)), b = a.radius ** 2;
+	for (let e = 0; e < o; e++) {
+		let n = c.minimum[2] + ((e - _) / _ + 1) * g[2] / 2;
+		for (let r = 0; r < o; r++) {
+			let i = c.minimum[1] + ((r - _) / _ + 1) * g[1] / 2, a = (e * o + r) * o;
+			for (let e = 0; e < o; e++) {
+				let r = c.minimum[0] + ((e - _) / _ + 1) * g[0] / 2;
+				if (!ea(Xi(v, r, i, n), y, b)) continue;
+				let o = t.sample(r, i, n);
+				m && (m.field[a + e] = o), h && (h.field[a + e] = -o);
+			}
+		}
+	}
+	let x = performance.now();
+	m?.update(), h?.update();
+	let S = performance.now() - x, C = m ? m.geometry.drawRange.count / 3 : 0, w = h ? h.geometry.drawRange.count / 3 : 0, T = $i(n.cell, c), E = [m, h].filter(Boolean);
+	for (let e of E) e.matrix.copy(T), e.matrixAutoUpdate = !1;
+	let D = new e.Group();
+	D.name = "DifferenceDensity", D.visible = a.visible;
+	let O = performance.now() - i;
+	return D.userData = {
+		selectable: !1,
+		type: "difference-density",
+		bounds: c,
+		level: s,
+		sigmaLevel: s / t.sigma,
+		resolution: o,
+		positivePolygonCount: C,
+		negativePolygonCount: w,
+		polygonCount: C + w,
+		symmetryUsed: !1,
+		displayedRegionCount: 1,
+		generatedRegionCount: 1,
+		reusedRegionCount: 0,
+		marchingCubesPassCount: E.length,
+		stitched: !1,
+		stitchTimeMs: 0,
+		removedDuplicateTriangleCount: 0,
+		polygonizationTimeMs: S,
+		marchingCubesTimeMs: O,
+		generationTimeMs: O
+	}, D.add(...E), D;
+}
+//#endregion
+//#region src/lib/density/difference-density-symmetry.js
+var ra = 1e-4;
+function ia(e, t) {
+	return [
+		e[0][0] * t[0] + e[0][1] * t[1] + e[0][2] * t[2],
+		e[1][0] * t[0] + e[1][1] * t[1] + e[1][2] * t[2],
+		e[2][0] * t[0] + e[2][1] * t[1] + e[2][2] * t[2]
+	];
+}
+function aa(e, t) {
+	return e.reduce((e, n, r) => e + (n - t[r]) ** 2, 0);
+}
+function oa(e) {
+	return Array.isArray(e) ? e : e.toArray();
+}
+function sa(e, t) {
+	let n = e.fractToCartMatrix.toArray();
+	return Math.max(...t.maximum.map((e, r) => (e - t.minimum[r]) * Math.hypot(n[0][r], n[1][r], n[2][r])));
+}
+function ca(e, t) {
+	let n = t;
+	for (; e[n] !== n;) n = e[n];
+	for (; e[t] !== t;) {
+		let r = e[t];
+		e[t] = n, t = r;
+	}
+	return n;
+}
+function la(e, t, n) {
+	let r = ca(e, t), i = ca(e, n);
+	r !== i && (e[i] = r);
+}
+function ua(e, t, n = 0) {
+	let r = e?.atoms ?? [];
+	if (r.length === 0) return [];
+	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => ia(i, [
+		e.position.x,
+		e.position.y,
+		e.position.z
+	])), o = r.map((e, t) => t), s = (2 * t + n) ** 2;
+	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) aa(a[e], a[t]) <= s && la(o, e, t);
+	let c = /* @__PURE__ */ new Map();
+	for (let e = 0; e < r.length; e++) {
+		let t = ca(o, e);
+		c.has(t) || c.set(t, { atoms: [] }), c.get(t).atoms.push(r[e]);
+	}
+	return Array.from(c.values());
+}
+function da(e, t, n, r, i = "both") {
+	return ua(e, t);
+}
+function fa(e) {
+	return e.atoms.map((e) => `${e.label}\u0000${e.atomType}\u0000${e.disorderGroup}`).sort().join("");
+}
+function pa(e, t) {
+	return e.label === t.label && e.atomType === t.atomType && Number(e.disorderGroup) === Number(t.disorderGroup);
+}
+function ma(e, t, n) {
+	return oa(I(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
+}
+function ha(e, t, n, r) {
+	let i = e.atoms[0], a = ma(n, [
+		0,
+		0,
+		0
+	], [
+		i.position.x,
+		i.position.y,
+		i.position.z
+	]), o = t.atoms.filter((e) => pa(i, e));
+	for (let i of o) {
+		let o = [
+			i.position.x - a[0],
+			i.position.y - a[1],
+			i.position.z - a[2]
+		].map(Math.round), s = new Set(t.atoms.map((e, t) => t)), c = !0;
+		for (let i of e.atoms) {
+			let e = ia(r, ma(n, o, [
+				i.position.x,
+				i.position.y,
+				i.position.z
+			])), a = -1;
+			for (let n of s) {
+				let o = t.atoms[n];
+				if (pa(i, o) && aa(e, ia(r, [
+					o.position.x,
+					o.position.y,
+					o.position.z
+				])) <= ra ** 2) {
+					a = n;
+					break;
+				}
+			}
+			if (a === -1) {
+				c = !1;
+				break;
+			}
+			s.delete(a);
+		}
+		if (c && s.size === 0) return {
+			rotation: n.rotation,
+			translation: n.translation.map((e, t) => e + o[t])
+		};
+	}
+	return null;
+}
+function ga(e, t, n, r) {
+	if (e.atoms.length !== t.atoms.length || fa(e) !== fa(t)) return null;
+	let i = n.symmetryOperations ?? [{
+		rotation: [
+			[
+				1,
+				0,
+				0
+			],
+			[
+				0,
+				1,
+				0
+			],
+			[
+				0,
+				0,
+				1
+			]
+		],
+		translation: [
+			0,
+			0,
+			0
+		]
+	}];
+	for (let n of i) {
+		let i = ha(e, t, n, r);
+		if (i) return i;
+	}
+	return null;
+}
+function _a(t, n) {
+	let r = t.fractToCartMatrix.toArray(), i = oa(R(r)), a = oa(I(r, I(n.rotation, i))), o = ia(r, n.translation);
+	return {
+		determinant: ae(a),
+		matrix: new e.Matrix4().set(a[0][0], a[0][1], a[0][2], o[0], a[1][0], a[1][1], a[1][2], o[1], a[2][0], a[2][1], a[2][2], o[2], 0, 0, 0, 1)
+	};
+}
+function va(t, n = !1) {
+	let r = new e.BufferGeometry(), i = t.drawRange.count;
+	for (let [a, o] of Object.entries(t.attributes)) {
+		let t = o.array.slice(0, i * o.itemSize);
+		if (n) for (let e = 0; e < i; e += 3) for (let n = 0; n < o.itemSize; n++) {
+			let r = (e + 1) * o.itemSize + n, i = (e + 2) * o.itemSize + n;
+			[t[r], t[i]] = [t[i], t[r]];
+		}
+		r.setAttribute(a, new e.BufferAttribute(t, o.itemSize, o.normalized));
+	}
+	return r.setDrawRange(0, i), r.computeBoundingBox(), r.computeBoundingSphere(), r;
+}
+function ya(t, n) {
+	let r = [], i = [], a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Set(), s = 1 / Math.max(n, 2 ** -52), c = 0;
+	for (let e of t) {
+		let t = e.getAttribute("position");
+		for (let e = 0; e < t.count; e += 3) {
+			let n = [];
+			for (let i = 0; i < 3; i++) {
+				let o = e + i, c = [
+					t.getX(o),
+					t.getY(o),
+					t.getZ(o)
+				], l = c.map((e) => Math.round(e * s)).join(","), u = a.get(l);
+				u === void 0 && (u = r.length / 3, a.set(l, u), r.push(...c)), n.push(u);
+			}
+			if (new Set(n).size < 3) {
+				c++;
+				continue;
+			}
+			let l = [...n].sort((e, t) => e - t).join(",");
+			if (o.has(l)) {
+				c++;
+				continue;
+			}
+			o.add(l), i.push(...n);
+		}
+		e.dispose();
+	}
+	let l = new e.BufferGeometry();
+	l.setAttribute("position", new e.Float32BufferAttribute(r, 3));
+	let u = r.length / 3 > 65535 ? Uint32Array : Uint16Array;
+	return l.setIndex(new e.BufferAttribute(new u(i), 1)), l.setDrawRange(0, i.length), l.computeVertexNormals(), l.computeBoundingBox(), l.computeBoundingSphere(), {
+		geometry: l,
+		removedTriangles: c
+	};
+}
+function ba(e, t) {
+	return {
+		cell: e.cell,
+		atoms: t.atoms
+	};
+}
+function xa(e, t, n) {
+	let r = [];
+	for (let i of e) {
+		let e = null, a = null;
+		for (let o of r) {
+			let r = ga(o.representative, i, t, n);
+			if (r) {
+				e = o, a = r;
+				break;
+			}
+		}
+		e ? e.copies.push({
+			region: i,
+			transform: a
+		}) : r.push({
+			representative: i,
+			copies: [{
+				region: i,
+				transform: {
+					rotation: [
+						[
+							1,
+							0,
+							0
+						],
+						[
+							0,
+							1,
+							0
+						],
+						[
+							0,
+							0,
+							1
+						]
+					],
+					translation: [
+						0,
+						0,
+						0
+					]
+				}
+			}]
+		});
+	}
+	return r;
+}
+function Sa(t, n, r = {}) {
+	let i = {
+		...Ke,
+		...r
+	};
+	if (i.useSymmetry === !1 || !n?.atoms?.length) return na(t, n, i);
+	let a = performance.now(), o = Zi(n, i.radius), s = Math.max(8, Math.round(i.resolution)), c = sa(n.cell, o) / Math.max(1, s - 1), l = i.level ?? i.sigmaLevel * t.sigma, u = n.cell.fractToCartMatrix.toArray(), d = ["positive", "negative"].map((e) => {
+		let r = da(n, i.radius, t, l, e);
+		return {
+			sign: e,
+			regions: r,
+			classes: xa(r, t, u)
+		};
+	}), f = d.reduce((e, t) => e + t.regions.length, 0), p = d.reduce((e, t) => e + t.classes.length, 0), m = f - p;
+	if (m === 0) {
+		let e = na(t, n, i);
+		for (let t of d) e.userData[`${t.sign}DisplayedRegionCount`] = t.regions.length;
+		return e;
+	}
+	let h = performance.now() - a, g = new e.Group();
+	g.name = "DifferenceDensity", g.visible = i.visible;
+	let _ = 0, v = 0, y = 0, b = 0, x = 0, S = {
+		positive: [],
+		negative: []
+	}, C = {
+		positive: [],
+		negative: []
+	};
+	d.forEach((e) => {
+		e.classes.forEach((r) => {
+			let a = ba(n, r.representative), o = Zi(a, i.radius), l = Math.max(8, Math.min(s, Math.ceil(sa(n.cell, o) / c) + 1)), u = Math.max(2e3, Math.min(i.maxPolyCount, Math.ceil(i.maxPolyCount * (l / s) ** 2 * 2))), d = performance.now(), f = na(t, a, {
+				...i,
+				resolution: l,
+				maxPolyCount: u,
+				sign: e.sign
+			});
+			b += performance.now() - d, y += f.userData.polygonizationTimeMs;
+			let p = f.children[0], m = {
+				regular: va(p.geometry),
+				mirrored: null,
+				material: p.material,
+				matrix: p.matrix.clone()
+			};
+			C[e.sign].push(m.material), p.geometry.dispose(), r.copies.forEach((t) => {
+				let r = _a(n.cell, t.transform), i = m.regular;
+				r.determinant < 0 && (x++, m.mirrored ??= va(m.regular, !0), i = m.mirrored);
+				let a = i.clone();
+				a.applyMatrix4(r.matrix.clone().multiply(m.matrix)), a.deleteAttribute("normal"), S[e.sign].push(a);
+			}), m.regular.dispose(), m.mirrored?.dispose();
+		});
+	});
+	let w = performance.now(), T = 0;
+	for (let t of ["positive", "negative"]) {
+		let n = ya(S[t], i.stitchTolerance ?? 1e-4);
+		T += n.removedTriangles;
+		let r = C[t][0];
+		C[t].slice(1).forEach((e) => e.dispose());
+		let a = new e.Mesh(n.geometry, r);
+		a.name = `${t === "positive" ? "Positive" : "Negative"}DifferenceDensity`, a.userData = {
+			selectable: !1,
+			type: "difference-density",
+			sign: t
+		}, a.frustumCulled = !1, g.add(a);
+		let o = (n.geometry.getIndex()?.count ?? 0) / 3;
+		t === "positive" ? _ = o : v = o;
+	}
+	let E = performance.now() - w;
+	return g.userData = {
+		selectable: !1,
+		type: "difference-density",
+		bounds: o,
+		level: l,
+		sigmaLevel: l / t.sigma,
+		resolution: s,
+		positivePolygonCount: _,
+		negativePolygonCount: v,
+		polygonCount: _ + v,
+		symmetryUsed: !0,
+		displayedRegionCount: f,
+		generatedRegionCount: p,
+		positiveDisplayedRegionCount: d[0].regions.length,
+		positiveGeneratedRegionCount: d[0].classes.length,
+		negativeDisplayedRegionCount: d[1].regions.length,
+		negativeGeneratedRegionCount: d[1].classes.length,
+		reusedRegionCount: m,
+		marchingCubesPassCount: p,
+		stitched: !0,
+		stitchTolerance: i.stitchTolerance ?? 1e-4,
+		stitchTimeMs: E,
+		removedDuplicateTriangleCount: T,
+		improperTransformCount: x,
+		symmetryPlanningTimeMs: h,
+		polygonizationTimeMs: y,
+		marchingCubesTimeMs: b,
+		generationTimeMs: performance.now() - a
+	}, g;
+}
+//#endregion
+//#region src/lib/density/difference-density-worker.js?worker
+function Ca(e) {
+	return new Worker("/assets/difference-density-worker-HnYHm54H.js", { name: e?.name });
+}
+//#endregion
+//#region src/lib/density/difference-density-progress.js
+function wa(e) {
+	let t = (Array.isArray(e) ? e : [1]).map(Number).filter((e) => Number.isFinite(e) && e > 0 && e <= 1).sort((e, t) => e - t);
+	return t.includes(1) || t.push(1), [...new Set(t)];
+}
+function Ta(e, t = {}) {
+	let n = wa(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
+	return {
+		steps: n,
+		mapAt(t) {
+			let n = t === 0 ? a : t === 1 && a !== i ? i : null;
+			return n !== null && (o = nr(e, r, n)), {
+				map: o,
+				changed: n !== null
+			};
+		}
+	};
+}
+//#endregion
+//#region src/lib/ortep3d/crystal-viewer.js
+var Ea = [
 	"auto-omit",
 	"quality-omit",
 	"performance-omit",
 	"maximum-coverage"
-], ar = ["structure", "viewport"];
-function or(e) {
+], Da = ["structure", "viewport"];
+function Oa(e) {
 	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
 }
-function sr(e) {
-	if (e.placementMode !== void 0 && !ir.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${ir.join(", ")}`);
-	if (e.calloutPlacement !== void 0 && !ar.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${ar.join(", ")}`);
-	if (e.show !== void 0 && !or(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+function ka(e) {
+	if (e.placementMode !== void 0 && !Ea.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${Ea.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !Da.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${Da.join(", ")}`);
+	if (e.show !== void 0 && !Oa(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
 	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
 	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
 }
-function cr(e) {
+function Aa(e) {
 	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
 }
-var lr = class {
+var ja = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -5767,7 +12394,7 @@ var lr = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, ur = class {
+}, Ma = class {
 	constructor(t, n = {}) {
 		let r = ["constant", "onDemand"];
 		if (n.renderMode && !r.includes(n.renderMode)) throw Error(`Invalid render mode: "${n.renderMode}". Must be one of: ${r.join(", ")}`);
@@ -5777,74 +12404,78 @@ var lr = class {
 			"cutout-2d"
 		];
 		if (n.renderStyle && !i.includes(n.renderStyle)) throw Error(`Invalid render style: "${n.renderStyle}". Must be one of: ${i.join(", ")}`);
-		sr(n.atomLabels || {});
-		let a = cr(n.atomLabels || {});
+		ka(n.atomLabels || {});
+		let a = Aa(n.atomLabels || {});
 		this.container = t;
-		let o = n.camera?.initialPosition ?? U.camera.initialPosition;
+		let o = n.camera?.initialPosition ?? W.camera.initialPosition;
 		this.options = {
 			camera: {
-				...U.camera,
+				...W.camera,
 				...n.camera || {},
 				initialPosition: o.isVector3 ? o.clone() : new e.Vector3(...o)
 			},
 			selection: {
-				...U.selection,
+				...W.selection,
 				...n.selection || {}
 			},
 			interaction: {
-				...U.interaction,
+				...W.interaction,
 				...n.interaction || {}
 			},
 			atomLabels: {
-				...U.atomLabels,
+				...W.atomLabels,
 				...a,
 				text: {
-					...U.atomLabels.text,
+					...W.atomLabels.text,
 					...a.text || {}
 				}
 			},
-			atomDetail: n.atomDetail || U.atomDetail,
-			atomCutawayHysteresis: n.atomCutawayHysteresis ?? U.atomCutawayHysteresis,
-			atomCutawayStripeCount: n.atomCutawayStripeCount ?? U.atomCutawayStripeCount,
-			atomCutawayStripeWidth: n.atomCutawayStripeWidth ?? U.atomCutawayStripeWidth,
-			atomColorRoughness: n.atomColorRoughness || U.atomColorRoughness,
-			atomColorMetalness: n.atomColorMetalness || U.atomColorMetalness,
-			atomADPRingWidthFactor: n.atomADPRingWidthFactor || U.atomADPRingWidthFactor,
-			atomADPRingHeight: n.atomADPRingHeight || U.atomADPRingHeight,
-			atomADPRingSections: n.atomADPRingSections || U.atomADPRingSections,
-			bondRadius: n.bondRadius || U.bondRadius,
-			bondSections: n.bondSections || U.bondSections,
-			bondColor: n.bondColor || U.bondColor,
-			bondColorRoughness: n.bondColorRoughness || U.bondColorRoughness,
-			bondColorMetalness: n.bondColorMetalness || U.bondColorMetalness,
-			bondGrowTolerance: n.bondGrowTolerance ?? U.bondGrowTolerance,
-			hbondRadius: n.hbondRadius ?? U.hbondRadius,
-			hbondColor: n.hbondColor || U.hbondColor,
-			hbondColorRoughness: n.hbondColorRoughness ?? U.hbondColorRoughness,
-			hbondColorMetalness: n.hbondColorMetalness ?? U.hbondColorMetalness,
-			hbondDashSegmentLength: n.hbondDashSegmentLength ?? U.hbondDashSegmentLength,
-			hbondDashFraction: n.hbondDashFraction ?? U.hbondDashFraction,
+			atomDetail: n.atomDetail || W.atomDetail,
+			atomCutawayHysteresis: n.atomCutawayHysteresis ?? W.atomCutawayHysteresis,
+			atomCutawayStripeCount: n.atomCutawayStripeCount ?? W.atomCutawayStripeCount,
+			atomCutawayStripeWidth: n.atomCutawayStripeWidth ?? W.atomCutawayStripeWidth,
+			atomColorRoughness: n.atomColorRoughness || W.atomColorRoughness,
+			atomColorMetalness: n.atomColorMetalness || W.atomColorMetalness,
+			atomADPRingWidthFactor: n.atomADPRingWidthFactor || W.atomADPRingWidthFactor,
+			atomADPRingHeight: n.atomADPRingHeight || W.atomADPRingHeight,
+			atomADPRingSections: n.atomADPRingSections || W.atomADPRingSections,
+			bondRadius: n.bondRadius || W.bondRadius,
+			bondSections: n.bondSections || W.bondSections,
+			bondColor: n.bondColor || W.bondColor,
+			bondColorRoughness: n.bondColorRoughness || W.bondColorRoughness,
+			bondColorMetalness: n.bondColorMetalness || W.bondColorMetalness,
+			bondGrowTolerance: n.bondGrowTolerance ?? W.bondGrowTolerance,
+			hbondRadius: n.hbondRadius ?? W.hbondRadius,
+			hbondColor: n.hbondColor || W.hbondColor,
+			hbondColorRoughness: n.hbondColorRoughness ?? W.hbondColorRoughness,
+			hbondColorMetalness: n.hbondColorMetalness ?? W.hbondColorMetalness,
+			hbondDashSegmentLength: n.hbondDashSegmentLength ?? W.hbondDashSegmentLength,
+			hbondDashFraction: n.hbondDashFraction ?? W.hbondDashFraction,
 			elementProperties: {
-				...U.elementProperties,
+				...W.elementProperties,
 				...n.elementProperties
 			},
-			hydrogenMode: n.hydrogenMode || U.hydrogenMode,
-			disorderMode: n.disorderMode || U.disorderMode,
-			symmetryMode: n.symmetryMode || U.symmetryMode,
-			renderMode: n.renderMode || U.renderMode,
-			renderStyle: n.renderStyle || U.renderStyle,
-			plot2DBackground: n.plot2DBackground || U.plot2DBackground,
-			plot2DAtomColor: n.plot2DAtomColor || U.plot2DAtomColor,
-			plot2DLineColor: n.plot2DLineColor || U.plot2DLineColor,
-			plot2DBondColor: n.plot2DBondColor || U.plot2DBondColor,
-			plot2DOpenBondInnerScale: n.plot2DOpenBondInnerScale ?? U.plot2DOpenBondInnerScale,
-			plot2DStripeCount: n.plot2DStripeCount ?? U.plot2DStripeCount,
-			plot2DStripeWidth: n.plot2DStripeWidth ?? U.plot2DStripeWidth,
-			plot2DOutlineScale: n.plot2DOutlineScale ?? U.plot2DOutlineScale,
-			fixCifErrors: n.fixCifErrors || U.fixCifErrors,
+			hydrogenMode: n.hydrogenMode || W.hydrogenMode,
+			disorderMode: n.disorderMode || W.disorderMode,
+			symmetryMode: n.symmetryMode || W.symmetryMode,
+			renderMode: n.renderMode || W.renderMode,
+			renderStyle: n.renderStyle || W.renderStyle,
+			plot2DBackground: n.plot2DBackground || W.plot2DBackground,
+			plot2DAtomColor: n.plot2DAtomColor || W.plot2DAtomColor,
+			plot2DLineColor: n.plot2DLineColor || W.plot2DLineColor,
+			plot2DBondColor: n.plot2DBondColor || W.plot2DBondColor,
+			plot2DOpenBondInnerScale: n.plot2DOpenBondInnerScale ?? W.plot2DOpenBondInnerScale,
+			plot2DStripeCount: n.plot2DStripeCount ?? W.plot2DStripeCount,
+			plot2DStripeWidth: n.plot2DStripeWidth ?? W.plot2DStripeWidth,
+			plot2DOutlineScale: n.plot2DOutlineScale ?? W.plot2DOutlineScale,
+			fixCifErrors: n.fixCifErrors || W.fixCifErrors,
 			cell: {
-				...U.cell,
+				...W.cell,
 				...n.cell
+			},
+			differenceDensity: {
+				...W.differenceDensity,
+				...Aa(n.differenceDensity || {})
 			}
 		}, this.state = {
 			isDragging: !1,
@@ -5855,50 +12486,75 @@ var lr = class {
 			currentFloor: null,
 			baseStructure: null,
 			ortepObjects: /* @__PURE__ */ new Map(),
-			structureCenter: new e.Vector3()
-		}, this.modifiers = {
-			removeatoms: new fn(),
-			addhydrogen: new mn(),
-			missingbonds: new pn(this.options.elementProperties, this.options.bondGrowTolerance),
-			disorder: new un(this.options.disorderMode),
-			symmetry: new dn(this.options.symmetryMode),
-			hydrogen: new ln(this.options.hydrogenMode)
-		}, this.selections = new lr(this.options), this.setupScene(), this.atomLabelManager = new rr(this), this.controls = new yn(this), this.animate(), this.needsRender = !0;
+			structureCenter: new e.Vector3(),
+			differenceDensityMap: null,
+			differenceDensityGroup: null,
+			differenceDensityResolutionFraction: 1,
+			differenceDensitySurfaceResolutionFraction: 1,
+			currentStructureFactorModel: null
+		}, this.differenceDensityUpdateCallbacks = /* @__PURE__ */ new Set(), this.differenceDensityLoadSequence = 0, this.differenceDensityWorker = null, this.differenceDensityPendingResolve = null, this.differenceDensityMainThreadLoadId = null, this.modifiers = {
+			removeatoms: new $r(),
+			addhydrogen: new ti(),
+			missingbonds: new ei(this.options.elementProperties, this.options.bondGrowTolerance),
+			disorder: new Zr(this.options.disorderMode),
+			symmetry: new Qr(this.options.symmetryMode),
+			hydrogen: new Xr(this.options.hydrogenMode)
+		}, this.selections = new ja(this.options), this.setupScene(), this.atomLabelManager = new Ki(this), this.controls = new oi(this), this.animate(), this.needsRender = !0;
 	}
 	setupScene() {
-		this.scene = new e.Scene(), this.cameraController = Cn(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new e.WebGLRenderer({
+		this.scene = new e.Scene(), this.cameraController = ui(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new e.WebGLRenderer({
 			antialias: !0,
 			alpha: !0
 		}), this.options.renderStyle === "cutout-2d" && this.renderer.setClearColor(this.options.plot2DBackground, 1), this.resizeRendererToDisplaySize(), this.container.appendChild(this.renderer.domElement), this.moleculeContainer = new e.Group(), this.scene.add(this.moleculeContainer), this.camera.position.copy(this.options.camera.initialPosition), this.cameraTarget = new e.Vector3(0, 0, 0), this.camera.lookAt(this.cameraTarget);
 	}
-	async loadCIF(e, t = 0) {
+	async loadCIF(e, t = 0, n = {}) {
 		if (e === void 0) return console.error("Cannot load an empty text as CIF"), {
 			success: !1,
 			error: "Cannot load an empty text as CIF"
 		};
 		try {
-			let n = new D(e), r;
+			let r = new j(e), i;
 			try {
-				r = typeof t == "number" ? n.getBlock(t) : n.getBlockByName(t);
+				i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t);
 			} catch (e) {
 				return {
 					success: !1,
 					error: e.message
 				};
 			}
-			let i;
+			let a;
 			try {
-				i = H.fromCIF(r);
+				a = U.fromCIF(i);
 			} catch (e) {
 				if (this.options.fixCifErrors) throw e;
 				try {
-					let e = Ct(r);
-					i = H.fromCIF(e);
+					ur(i), a = U.fromCIF(i);
 				} catch {
 					throw e;
 				}
 			}
-			return await this.loadStructure(i), this.state.currentCifContent = e, this.state.currentCifBlock = t, { success: !0 };
+			this.cancelDifferenceDensityLoad("Coordinate structure changed"), this.removeDifferenceDensity3D(), this.state.differenceDensityMap = null, await this.loadStructure(a), this.state.currentCifContent = e, this.state.currentCifBlock = t, this.state.currentStructureFactorModel = Rt(a, i);
+			let o = n.differenceDensity ?? this.options.differenceDensity.autoLoad;
+			if (!o) return { success: !0 };
+			let s = o === !0 ? {} : o;
+			return typeof s != "object" || Array.isArray(s) ? {
+				success: !1,
+				error: "loadCIF differenceDensity must be true, false, or an options object"
+			} : {
+				success: !0,
+				differenceDensityStarted: !0,
+				differenceDensity: new Promise((n) => setTimeout(() => {
+					if (this.state.currentCifContent !== e || this.state.currentCifBlock !== t) {
+						n({
+							success: !1,
+							cancelled: !0,
+							error: "Coordinate structure changed"
+						});
+						return;
+					}
+					this.loadDifferenceDensity(e, t, s).then(n);
+				}, 0))
+			};
 		} catch (e) {
 			return console.error("Error loading structure:", e), {
 				success: !1,
@@ -5906,10 +12562,291 @@ var lr = class {
 			};
 		}
 	}
+	async loadDifferenceDensity(e, t = 0, n = {}) {
+		if (!this.state.baseStructure) return {
+			success: !1,
+			error: "Load a crystal structure before loading difference density"
+		};
+		if (e === void 0) return {
+			success: !1,
+			error: "Cannot load empty text as an FCF"
+		};
+		this.cancelDifferenceDensityLoad("Superseded by a new FCF load"), this.removeDifferenceDensity3D(), this.state.differenceDensityMap = null, this.options.differenceDensity = {
+			...this.options.differenceDensity,
+			...Aa(n)
+		};
+		let r = ++this.differenceDensityLoadSequence;
+		return this.notifyDifferenceDensityUpdate({
+			type: "started",
+			loadId: r
+		}), this.options.differenceDensity.useWorker && typeof Worker < "u" ? this.loadDifferenceDensityInWorker(e, t, r) : this.loadDifferenceDensityOnMainThread(e, t, r);
+	}
+	onDifferenceDensityUpdate(e) {
+		if (typeof e != "function") throw Error("Difference-density update callback must be a function");
+		return this.differenceDensityUpdateCallbacks.add(e), () => this.differenceDensityUpdateCallbacks.delete(e);
+	}
+	notifyDifferenceDensityUpdate(e) {
+		for (let t of this.differenceDensityUpdateCallbacks) try {
+			t(e);
+		} catch (e) {
+			console.error("Difference-density update callback failed:", e);
+		}
+	}
+	loadDifferenceDensityInWorker(e, t, n) {
+		return new Promise((r) => {
+			let i = new Ca();
+			this.differenceDensityWorker = i, this.differenceDensityPendingResolve = r;
+			let a = (e) => {
+				if (n !== this.differenceDensityLoadSequence) return;
+				let t = e?.message || String(e);
+				console.error("Error loading difference density:", e), this.notifyDifferenceDensityUpdate({
+					type: "error",
+					loadId: n,
+					error: t
+				}), this.finishDifferenceDensityWorker(), r({
+					success: !1,
+					error: t
+				});
+			};
+			i.addEventListener("error", a), i.addEventListener("message", (e) => {
+				let t = e.data;
+				if (!(t.loadId !== n || n !== this.differenceDensityLoadSequence)) {
+					if (t.type === "error") {
+						a(Error(t.error));
+						return;
+					}
+					if (t.type === "update") try {
+						let e = t.map ? this.differenceDensityMapFromPayload(t.map) : this.state.differenceDensityMap;
+						if (!e) throw Error("Density worker requested surface refinement before providing a grid");
+						if (this.applyProgressiveDifferenceDensityMap(e, t), t.final) {
+							let i = this.differenceDensityResult(e);
+							this.notifyDifferenceDensityUpdate({
+								...t,
+								...i,
+								type: "complete",
+								loadId: n
+							}), this.finishDifferenceDensityWorker(), r(i);
+						} else this.continueDensityWorkerAfterRender(i, n, t.stepIndex);
+					} catch (e) {
+						a(e);
+					}
+				}
+			}), i.postMessage({
+				type: "load",
+				loadId: n,
+				fcfText: e,
+				fcfBlock: t,
+				datasetOptions: this.differenceDensityDatasetOptions(),
+				steps: this.options.differenceDensity.progressiveSteps,
+				reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
+				initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
+				gridOversampling: this.options.differenceDensity.gridOversampling
+			});
+		});
+	}
+	async loadDifferenceDensityOnMainThread(e, t, n) {
+		this.differenceDensityMainThreadLoadId = n;
+		try {
+			let r = Ta(Xn(e, t, this.differenceDensityDatasetOptions()), {
+				steps: this.options.differenceDensity.progressiveSteps,
+				reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
+				initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
+				gridOversampling: this.options.differenceDensity.gridOversampling
+			}), i = r.steps, a;
+			for (let e = 0; e < i.length; e++) {
+				if (n !== this.differenceDensityLoadSequence) return {
+					success: !1,
+					cancelled: !0,
+					error: "Difference-density load cancelled"
+				};
+				a = r.mapAt(e).map;
+				let t = {
+					loadId: n,
+					stepIndex: e,
+					totalSteps: i.length,
+					final: e === i.length - 1,
+					surfaceResolutionFraction: i[e]
+				};
+				this.applyProgressiveDifferenceDensityMap(a, t), t.final || await new Promise((e) => setTimeout(e, 0));
+			}
+			let o = this.differenceDensityResult(a);
+			return this.notifyDifferenceDensityUpdate({
+				type: "complete",
+				loadId: n,
+				...o
+			}), o;
+		} catch (e) {
+			return n === this.differenceDensityLoadSequence ? (console.error("Error loading difference density:", e), this.notifyDifferenceDensityUpdate({
+				type: "error",
+				loadId: n,
+				error: e.message
+			}), {
+				success: !1,
+				error: e.message
+			}) : {
+				success: !1,
+				cancelled: !0,
+				error: "Difference-density load cancelled"
+			};
+		} finally {
+			this.differenceDensityMainThreadLoadId === n && (this.differenceDensityMainThreadLoadId = null);
+		}
+	}
+	differenceDensityAnomalousDispersionOptions() {
+		let e = this.options.differenceDensity.anomalousDispersion;
+		if (!e) return null;
+		if (e !== !0 && (typeof e != "object" || Array.isArray(e))) throw Error("differenceDensity.anomalousDispersion must be true, false, or an object");
+		return {
+			...e === !0 ? {} : e,
+			cifText: this.state.currentCifContent,
+			cifBlock: this.state.currentCifBlock,
+			structureModel: this.state.currentStructureFactorModel
+		};
+	}
+	differenceDensityDatasetOptions() {
+		return {
+			inputMode: this.options.differenceDensity.inputMode,
+			coefficientColumns: this.options.differenceDensity.coefficientColumns,
+			anomalousDispersion: this.differenceDensityAnomalousDispersionOptions(),
+			coordinateCifText: this.state.currentCifContent,
+			coordinateCifBlock: this.state.currentCifBlock,
+			structureModel: this.state.currentStructureFactorModel,
+			reflections: this.options.differenceDensity.reflections,
+			iam: this.options.differenceDensity.iam,
+			intensityScale: this.options.differenceDensity.intensityScale,
+			extinctionCorrection: this.options.differenceDensity.extinctionCorrection
+		};
+	}
+	normalizedDifferenceDensitySteps() {
+		return wa(this.options.differenceDensity.progressiveSteps);
+	}
+	differenceDensityMapFromPayload(e) {
+		return rr.fromPayload(e);
+	}
+	applyProgressiveDifferenceDensityMap(e, t) {
+		this.validateDifferenceDensityCell(e.cell, this.state.baseStructure.cell), this.state.differenceDensityMap = e, this.state.differenceDensityResolutionFraction = e.resolutionFraction, this.state.differenceDensitySurfaceResolutionFraction = t.surfaceResolutionFraction ?? 1, this.updateDifferenceDensity3D(this.state.displayStructure);
+		let n = this.state.differenceDensityGroup?.userData ?? {};
+		this.requestRender(), this.notifyDifferenceDensityUpdate({
+			type: "update",
+			...t,
+			progress: (t.stepIndex + 1) / t.totalSteps,
+			resolutionFraction: e.resolutionFraction,
+			gridOversampling: e.gridOversampling,
+			surfaceResolutionFraction: this.state.differenceDensitySurfaceResolutionFraction,
+			surfaceResolution: n.resolution ?? 0,
+			dimensions: [...e.dimensions],
+			reflectionCount: e.reflectionCount,
+			coefficientCount: e.coefficientCount,
+			coefficientMode: e.coefficientMode,
+			omitF000: e.omitF000,
+			anomalousDispersion: e.anomalousDispersion,
+			densitySource: e.densitySource,
+			densityKind: e.densityKind,
+			intensityScale: e.intensityScale,
+			scaleR1: e.scaleR1,
+			observations: e.observations,
+			iam: e.iam,
+			reflectionPolicy: e.reflectionPolicy,
+			extinctionCorrection: e.extinctionCorrection,
+			sigma: e.sigma,
+			minimum: e.minimum,
+			maximum: e.maximum,
+			polygonCount: n.polygonCount ?? 0,
+			positivePolygonCount: n.positivePolygonCount ?? 0,
+			negativePolygonCount: n.negativePolygonCount ?? 0,
+			symmetryUsed: n.symmetryUsed ?? !1,
+			displayedRegionCount: n.displayedRegionCount ?? 1,
+			generatedRegionCount: n.generatedRegionCount ?? 1,
+			reusedRegionCount: n.reusedRegionCount ?? 0,
+			marchingCubesPassCount: n.marchingCubesPassCount ?? 2,
+			marchingCubesTimeMs: n.marchingCubesTimeMs ?? n.generationTimeMs ?? 0,
+			polygonizationTimeMs: n.polygonizationTimeMs ?? 0,
+			stitched: n.stitched ?? !1,
+			stitchTimeMs: n.stitchTimeMs ?? 0,
+			removedDuplicateTriangleCount: n.removedDuplicateTriangleCount ?? 0
+		});
+	}
+	continueDensityWorkerAfterRender(e, t, n) {
+		let r = !1, i = () => {
+			r || e !== this.differenceDensityWorker || (r = !0, e.postMessage({
+				type: "continue",
+				loadId: t,
+				stepIndex: n
+			}));
+		};
+		typeof requestAnimationFrame == "function" && requestAnimationFrame(i), setTimeout(i, 100);
+	}
+	differenceDensityResult(e) {
+		let t = this.state.differenceDensityGroup?.userData ?? {};
+		return {
+			success: !0,
+			reflectionCount: e.reflectionCount,
+			coefficientCount: e.coefficientCount,
+			coefficientMode: e.coefficientMode,
+			omitF000: e.omitF000,
+			anomalousDispersion: e.anomalousDispersion,
+			densitySource: e.densitySource,
+			densityKind: e.densityKind,
+			intensityScale: e.intensityScale,
+			scaleR1: e.scaleR1,
+			observations: e.observations,
+			iam: e.iam,
+			reflectionPolicy: e.reflectionPolicy,
+			extinctionCorrection: e.extinctionCorrection,
+			dimensions: [...e.dimensions],
+			gridOversampling: e.gridOversampling,
+			sigma: e.sigma,
+			minimum: e.minimum,
+			maximum: e.maximum,
+			polygonCount: t.polygonCount ?? 0,
+			positivePolygonCount: t.positivePolygonCount ?? 0,
+			negativePolygonCount: t.negativePolygonCount ?? 0,
+			symmetryUsed: t.symmetryUsed ?? !1,
+			displayedRegionCount: t.displayedRegionCount ?? 1,
+			generatedRegionCount: t.generatedRegionCount ?? 1,
+			reusedRegionCount: t.reusedRegionCount ?? 0,
+			marchingCubesPassCount: t.marchingCubesPassCount ?? 2,
+			marchingCubesTimeMs: t.marchingCubesTimeMs ?? t.generationTimeMs ?? 0,
+			stitched: t.stitched ?? !1,
+			stitchTimeMs: t.stitchTimeMs ?? 0,
+			removedDuplicateTriangleCount: t.removedDuplicateTriangleCount ?? 0
+		};
+	}
+	finishDifferenceDensityWorker() {
+		this.differenceDensityWorker?.terminate(), this.differenceDensityWorker = null, this.differenceDensityPendingResolve = null;
+	}
+	cancelDifferenceDensityLoad(e = "Difference-density load cancelled") {
+		let t = this.differenceDensityMainThreadLoadId !== null;
+		if (!this.differenceDensityWorker && !this.differenceDensityPendingResolve && !t) return;
+		let n = this.differenceDensityMainThreadLoadId ?? this.differenceDensityLoadSequence;
+		t && (this.differenceDensityLoadSequence++, this.differenceDensityMainThreadLoadId = null), this.differenceDensityWorker?.terminate(), this.differenceDensityWorker = null;
+		let r = this.differenceDensityPendingResolve;
+		this.differenceDensityPendingResolve = null, r?.({
+			success: !1,
+			cancelled: !0,
+			error: e
+		}), this.notifyDifferenceDensityUpdate({
+			type: "cancelled",
+			loadId: n,
+			error: e
+		});
+	}
+	updateDifferenceDensityOptions(e = {}) {
+		return this.options.differenceDensity = {
+			...this.options.differenceDensity,
+			...Aa(e)
+		}, this.state.differenceDensityMap && this.state.displayStructure && (this.updateDifferenceDensity3D(this.state.displayStructure), this.requestRender()), { success: !0 };
+	}
+	clearDifferenceDensity() {
+		this.cancelDifferenceDensityLoad(), this.removeDifferenceDensity3D(), this.state.differenceDensityMap = null, this.state.differenceDensityResolutionFraction = 1, this.state.differenceDensitySurfaceResolutionFraction = 1, this.requestRender();
+	}
+	validateDifferenceDensityCell(e, t) {
+		Et(e, t, "FCF");
+	}
 	async loadStructure(t = this.state.baseStructure) {
 		this.state.baseStructure = t, this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-		let n = _n(this.state.currentStructure);
-		return this.container.clientHeight > this.container.clientWidth && n.premultiply(new e.Matrix4().makeRotationZ(Math.PI / 2)), n && (this.moleculeContainer.setRotationFromMatrix(n), this.moleculeContainer.updateMatrix()), new e.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), vn(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
+		let n = ii(this.state.currentStructure);
+		return this.container.clientHeight > this.container.clientWidth && n.premultiply(new e.Matrix4().makeRotationZ(Math.PI / 2)), n && (this.moleculeContainer.setRotationFromMatrix(n), this.moleculeContainer.updateMatrix()), new e.Box3().setFromObject(this.moleculeContainer).getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), ai(this.scene, this.state.currentStructure), this.requestRender(), { success: !0 };
 	}
 	async updateStructure() {
 		try {
@@ -5927,11 +12864,29 @@ var lr = class {
 		let e = this.state.baseStructure, t = !1;
 		for (let n of Object.values(this.modifiers)) e = n.apply(e), t ||= n.drawCell;
 		if (t) {
-			let t = En(e.cell, this.options.cell);
+			let t = pi(e.cell, this.options.cell);
 			this.moleculeContainer.add(t);
 		}
-		let n = new tt(e, this.options).getGroup();
-		this.moleculeContainer.add(n), this.state.currentStructure = n, this.state.displayStructure = e, this.atomLabelManager.setStructure(e), this.selections.pruneInvalidSelections(this.moleculeContainer);
+		let n = new st(e, this.options).getGroup();
+		this.moleculeContainer.add(n), this.state.currentStructure = n, this.state.displayStructure = e, this.updateDifferenceDensity3D(e), this.atomLabelManager.setStructure(e), this.selections.pruneInvalidSelections(this.moleculeContainer);
+	}
+	updateDifferenceDensity3D(e) {
+		if (this.removeDifferenceDensity3D(), !this.state.differenceDensityMap || !e) return;
+		let t = Qi(e, this.options.differenceDensity), n = this.state.differenceDensityMap.densityKind === "deformation" ? {
+			positiveColor: this.options.differenceDensity.deformationPositiveColor,
+			negativeColor: this.options.differenceDensity.deformationNegativeColor
+		} : {}, r = Sa(this.state.differenceDensityMap, e, {
+			...this.options.differenceDensity,
+			...n,
+			resolution: Math.max(8, Math.round(t * (this.state.differenceDensitySurfaceResolutionFraction ?? 1)))
+		});
+		this.moleculeContainer.add(r), this.state.differenceDensityGroup = r;
+	}
+	removeDifferenceDensity3D() {
+		let e = this.state.differenceDensityGroup;
+		e && (e.traverse((e) => {
+			e.geometry?.dispose(), e.material?.dispose();
+		}), e.removeFromParent(), this.state.differenceDensityGroup = null);
 	}
 	updateCamera() {
 		this.controls.handleResize(), this.cameraController.fitToStructure(this.moleculeContainer), this.requestRender();
@@ -5939,7 +12894,7 @@ var lr = class {
 	removeStructure() {
 		this.moleculeContainer.traverse((e) => {
 			e.geometry && e.geometry.dispose(), e.material && e.material.dispose();
-		}), this.moleculeContainer.clear();
+		}), this.moleculeContainer.clear(), this.state.differenceDensityGroup = null;
 	}
 	async cycleModifierMode(e) {
 		let t = this.modifiers[e], n = t.cycleMode(this.state.baseStructure), r;
@@ -5973,12 +12928,12 @@ var lr = class {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
 	setAtomLabels(e) {
-		if (!or(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		if (!Oa(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
 	}
 	updateAtomLabelOptions(e) {
-		sr(e);
-		let t = cr(e);
+		ka(e);
+		let t = Aa(e);
 		this.options.atomLabels = {
 			...this.options.atomLabels,
 			...t,
@@ -5999,7 +12954,7 @@ var lr = class {
 			e.geometry && e.geometry.dispose(), e.material && (Array.isArray(e.material) ? e.material.forEach((e) => e.dispose()) : e.material.dispose());
 		}), this.selections.dispose(), this.renderer.dispose(), this.renderer.domElement.parentNode && this.renderer.domElement.parentNode.removeChild(this.renderer.domElement), this.scene = null, this.camera = null, this.renderer = null, this.state = null, this.options = null;
 	}
-}, dr = {
+}, Na = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -6019,7 +12974,7 @@ var lr = class {
 		none: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path17-0\" style=\"color:#000000;fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.421606;-inkscape-stroke:none\" d=\"m 23.896827,18.870815 v 0.898 h 9.51437 v -0.898 z\" /><circle style=\"fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none\" id=\"path1-7-1\" cx=\"23.335804\" cy=\"19.319817\" r=\"2.3135188\" /><circle style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999\" id=\"path1-7-7-8\" cx=\"33.972233\" cy=\"19.319817\" r=\"2.3135188\" /><path style=\"fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none\" d=\"M 28.654019,10.932651 V 27.762155\" id=\"path7\" /></g></svg>"
 	},
 	upload: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\"><marker style=\"overflow:visible\" id=\"ArrowWide\" refX=\"0\" refY=\"0\" orient=\"auto-start-reverse\" arrow\" markerWidth=\"1\" markerHeight=\"1\" viewBox=\"0 0 1 1\" preserveAspectRatio=\"xMidYMid\"><path style=\"fill:none;stroke:context-stroke;stroke-width:1;stroke-linecap:butt\" d=\"M 3,-3 0,0 3,3\" transform=\"rotate(180,0.125,0)\" id=\"path1\" /></marker></defs><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><text xml:space=\"preserve\" style=\"font-size:7.05556px;fill:#e6e6e6;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none\" x=\"22.242813\" y=\"28.151989\" id=\"text2\"><tspan id=\"tspan2\" style=\"font-size:7.05556px;fill:#1a1a1a;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none\" x=\"22.242813\" y=\"28.151989\">CIF</tspan></text><path style=\"fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1\" d=\"m 20.714121,18.107197 v 3.07807 h 15.879794 v -3.07807\" id=\"path2\" /><path style=\"fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)\" d=\"M 28.654018,19.170064 V 11.045456\" id=\"path3\" /></g></svg>"
-}, fr = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", pr = class extends HTMLElement {
+}, Pa = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", Fa = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -6038,13 +12993,13 @@ var lr = class {
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = fr, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = Pa, document.head.appendChild(e);
 		}
 		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...dr,
+			...Na,
 			...this.customIcons
 		};
 	}
@@ -6055,7 +13010,7 @@ var lr = class {
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new ur(e, this.userOptions), this.viewer.selections.onChange((e) => {
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new Ma(e, this.userOptions), this.viewer.selections.onChange((e) => {
 			this.selections = e, this.updateCaption();
 		}), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
@@ -6074,7 +13029,7 @@ var lr = class {
 		}
 	}
 	mergeOptions(e) {
-		let t = { ...U };
+		let t = { ...W };
 		return Object.keys(e).forEach((n) => {
 			n === "elementProperties" ? (t.elementProperties = { ...t.elementProperties }, Object.keys(e.elementProperties || {}).forEach((n) => {
 				t.elementProperties[n] = {
@@ -6106,7 +13061,7 @@ var lr = class {
 			return;
 		}
 		this.userOptions.atomLabels = {
-			...this.userOptions.atomLabels || U.atomLabels,
+			...this.userOptions.atomLabels || W.atomLabels,
 			show: t
 		};
 	}
@@ -6161,7 +13116,7 @@ var lr = class {
 		i && (i.setAttribute("alt", r), i.setAttribute("role", "img"), i.setAttribute("aria-label", r));
 	}
 	getIcon(e, t) {
-		return e === "disorder" ? wt(this.icons.disorder, t) : this.icons[e]?.[t] || "";
+		return e === "disorder" ? dr(this.icons.disorder, t) : this.icons[e]?.[t] || "";
 	}
 	async attributeChangedCallback(e, t, n) {
 		if (this.viewer) switch (e) {
@@ -6196,7 +13151,7 @@ var lr = class {
 			case "options":
 				if (this.parseOptions(), this.parseInitialAtomLabels(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.viewer.dispose(), this.viewer = new ur(e, this.userOptions), this.viewer.selections.onChange((e) => {
+					this.viewer.dispose(), this.viewer = new Ma(e, this.userOptions), this.viewer.selections.onChange((e) => {
 						this.selections = e, this.updateCaption();
 					}), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons());
 				}
@@ -6282,7 +13237,7 @@ var lr = class {
 				let t = "#" + e.color.toString(16).padStart(6, "0"), n = "";
 				if (e.type === "atom") n = `${e.data.label} (${e.data.atomType})`;
 				else if (e.type === "bond") {
-					let t = gt(e.data.bondLength, e.data.bondLengthSU);
+					let t = St(e.data.bondLength, e.data.bondLengthSU);
 					n = `${e.data.atom1Label}-${e.data.atom2Label}: ${t} Å`;
 				} else e.type === "hbond" && (n = `${e.data.donorAtomLabel}→${e.data.acceptorAtomLabel}`);
 				return `<span style="color:${t}">${n}</span>`;
@@ -6298,9 +13253,9 @@ var lr = class {
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", pr);
+	window.customElements.define("cifview-widget", Fa);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { fn as AtomLabelFilter, pn as BondGenerator, D as CIF, pr as CifViewWidget, H as CrystalStructure, ur as CrystalViewer, un as DisorderFilter, ln as HydrogenFilter, tt as ORTEP3JsStructure, dn as SymmetryGrower, gt as formatValueEsd, Tt as generateDisorderGroupIcon, wt as getDisorderIcon, Ct as tryToFixCifBlock };
+export { $r as AtomLabelFilter, ei as BondGenerator, j as CIF, Fa as CifViewWidget, U as CrystalStructure, Ma as CrystalViewer, Ke as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, rr as DifferenceDensityMap, Zr as DisorderFilter, Xr as HydrogenFilter, st as ORTEP3JsStructure, Qr as SymmetryGrower, nr as calculateDifferenceDensityMap, un as calculateIAMStructureFactors, Jn as createCifDifferenceDensityDataset, ln as createIAMStructureFactorCalculator, Qt as evaluateCromerMann, St as formatValueEsd, fr as generateDisorderGroupIcon, dr as getDisorderIcon, Dn as isSystematicAbsence, Wt as lookupAnomalousDispersion, Zt as lookupCromerMann, On as mergeReflectionIntensities, Xn as parseDifferenceDensitySource, kn as readReflectionIntensities, ur as tryToFixCifBlock };
