@@ -110,13 +110,25 @@ export function parseMultiLineString(lines, startIndex) {
 
     const slice1 = lines.slice(startIndex + 1);
     const sliceEnd = slice1.findIndex(line => line.startsWith(';'));
-    const result = line1.concat(slice1.slice(0, sliceEnd));
+    // Some SHELX-generated CIFs leave a final _shelx_hkl_file text field open
+    // at EOF. Treat EOF as its terminator so the coordinate block remains
+    // usable and the reflection reader can consume the complete HKL payload.
+    if (sliceEnd === -1) {
+        console.warn(
+            `Unterminated CIF multiline text field starting at input line ${startIndex + 1}; ` +
+            'treating end of file as the closing semicolon.',
+        );
+    }
+    const contentEnd = sliceEnd === -1 ? slice1.length : sliceEnd;
+    const result = line1.concat(slice1.slice(0, contentEnd));
 
     const nonEmptySliceStart = result.findIndex(line => line.trim() !== '');
-    const nonEmptySliceEnd = result.findLastIndex(line => line.trim !== '');
+    const nonEmptySliceEnd = result.findLastIndex(line => line.trim() !== '');
 
     return {
-        value: result.slice(nonEmptySliceStart, nonEmptySliceEnd + 1).join('\n'),
-        endIndex: startIndex + sliceEnd + 1,
+        value: nonEmptySliceStart === -1
+            ? ''
+            : result.slice(nonEmptySliceStart, nonEmptySliceEnd + 1).join('\n'),
+        endIndex: sliceEnd === -1 ? lines.length - 1 : startIndex + sliceEnd + 1,
     };
 }

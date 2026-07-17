@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { parseValue, parseMultiLineString } from './helpers.js';
 
 describe('Parse Value Tests', () => {
@@ -85,5 +86,22 @@ describe('Parse MultiLine String Tests', () => {
             value: '',
             endIndex: 1,
         });
+    });
+
+    test('treats EOF as the terminator of an open final multiline string', () => {
+        const lines = [';', '   1   0   0  25.0  1.0', '   2   0   0  16.0  1.0'];
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            expect(parseMultiLineString(lines, 0)).toEqual({
+                value: '   1   0   0  25.0  1.0\n   2   0   0  16.0  1.0',
+                endIndex: 2,
+            });
+            expect(warning).toHaveBeenCalledExactlyOnceWith(
+                'Unterminated CIF multiline text field starting at input line 1; ' +
+                'treating end of file as the closing semicolon.',
+            );
+        } finally {
+            warning.mockRestore();
+        }
     });
 });
