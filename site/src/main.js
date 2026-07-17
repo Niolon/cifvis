@@ -21,22 +21,53 @@ function updateStatus(message, type = 'info') {
 }
 
 /**
- * Reads a viewer render style override from the URL query string.
+ * Reads viewer overrides from the URL query string.
  * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
- * render styles (see structure-settings.js); unset/unrecognised falls back
- * to the default.
+ * render styles. `?labels=all|non-hydrogen|none` controls atom labels and
+ * `?label-mode=auto-omit|quality-omit|performance-omit|maximum-coverage` chooses placement.
+ * `?label-callouts=structure|viewport` controls maximum-coverage callout spread.
+ * `?label-max-connector=<pixels>` sets a clamped connector-length ceiling.
+ * Unset or unrecognised values fall back to their defaults.
  * @returns {object} CrystalViewer options derived from the URL
  */
-function getStyleOptionsFromUrl() {
+function getViewerOptionsFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const style = params.get('style');
     const validStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
+    const labels = params.get('labels');
+    const validLabelModes = ['all', 'non-hydrogen', 'none'];
+    const labelPlacement = params.get('label-mode');
+    const validLabelPlacements = [
+        'auto-omit',
+        'quality-omit',
+        'performance-omit',
+        'maximum-coverage',
+    ];
+    const labelCallouts = params.get('label-callouts');
+    const validLabelCallouts = ['structure', 'viewport'];
+    const maximumConnector = Number(params.get('label-max-connector'));
+    const options = {};
 
-    return validStyles.includes(style) ? { renderStyle: style } : {};
+    if (validStyles.includes(style)) {
+        options.renderStyle = style;
+    }
+    if (validLabelModes.includes(labels)) {
+        options.atomLabels = {
+            show: labels,
+            placementMode: validLabelPlacements.includes(labelPlacement) ?
+                labelPlacement : 'auto-omit',
+            calloutPlacement: validLabelCallouts.includes(labelCallouts) ?
+                labelCallouts : 'structure',
+        };
+        if (Number.isFinite(maximumConnector) && maximumConnector > 0) {
+            options.atomLabels.maxConnectorLength = Math.max(20, Math.min(1000, maximumConnector));
+        }
+    }
+    return options;
 }
 
 // Initialize the viewer
-const viewer = new CrystalViewer(document.body, getStyleOptionsFromUrl());
+const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
 viewer.animate();
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');

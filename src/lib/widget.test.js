@@ -60,6 +60,8 @@ describe('CifViewWidget', () => {
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             loadStructure: vi.fn().mockResolvedValue({ success: true }),
+            setAtomLabels: vi.fn(),
+            clearAtomLabels: vi.fn(),
             state: {
                 baseStructure: {},
                 currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
@@ -634,6 +636,34 @@ describe('CifViewWidget', () => {
             disorderMode: 'group1of2',
             symmetryMode: 'bonds-yes-hbonds-yes',
         });
+    });
+
+    test('passes initial atom labels to the viewer options', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('atom-labels', JSON.stringify([
+            'C1',
+            { id: 'O1', text: 'O(carbonyl)', priority: 10 },
+        ]));
+        document.body.appendChild(widget);
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(CrystalViewer.mock.calls[0][1].atomLabels.show).toEqual([
+            'C1',
+            { id: 'O1', text: 'O(carbonyl)', priority: 10 },
+        ]);
+    });
+
+    test('updates atom labels without recreating the viewer', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        widget.setAttribute('atom-labels', '["C1","O1"]');
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(mockCrystalViewer.setAtomLabels).toHaveBeenCalledWith(['C1', 'O1']);
+        expect(CrystalViewer).toHaveBeenCalledTimes(1);
     });
 
     test('updates H-bond selection information in caption', async () => {

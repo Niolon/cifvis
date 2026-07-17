@@ -94,6 +94,13 @@ const viewer = new CrystalViewer(container, {
   },
   atomCutawayStripeCount: 7, // Horizontal hatch lines across each cutaway disc
   atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
+  atomLabels: {
+    show: ['C1', { id: 'O1', text: 'O(carbonyl)', priority: 10 }],
+    placementMode: 'auto-omit', // adaptive; or quality, performance, maximum coverage
+    calloutPlacement: 'structure', // compact; 'viewport' uses the full width
+    maxConnectorLength: 250, // optional hard CSS-pixel ceiling
+    fontSize: 14,
+  },
   renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)
   plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
   plot2DStripeCount: 7,
@@ -124,6 +131,9 @@ npm run build
 
 # build for production including dependencies
 npm run build:alldeps
+
+# benchmark atom-label layout (uses the shipped demo CIFs by default)
+npm run bench:labels
 ```
 
 ## Browser Support

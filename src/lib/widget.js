@@ -71,6 +71,7 @@ export class CifViewWidget extends HTMLElement {
         return [
             'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
             'symmetry-mode', 'block',
+            'atom-labels',
         ];
     }
 
@@ -101,6 +102,7 @@ export class CifViewWidget extends HTMLElement {
         // Parse options before creating the viewer
         this.parseOptions();
         this.parseInitialModes();
+        this.parseInitialAtomLabels();
         
         const container = document.createElement('div');
         container.className = 'crystal-container';
@@ -216,6 +218,26 @@ export class CifViewWidget extends HTMLElement {
         if (symmetryMode) {
             this.userOptions.symmetryMode = symmetryMode;
         }
+    }
+
+    parseInitialAtomLabels() {
+        const rawLabels = this.getAttribute('atom-labels');
+        if (!rawLabels) {
+            return;
+        }
+        let show = rawLabels;
+        if (!['all', 'none', 'non-hydrogen'].includes(rawLabels)) {
+            try {
+                show = JSON.parse(rawLabels);
+            } catch (error) {
+                console.warn('Failed to parse atom-labels:', error);
+                return;
+            }
+        }
+        this.userOptions.atomLabels = {
+            ...(this.userOptions.atomLabels || defaultSettings.atomLabels),
+            show,
+        };
     }
 
     clearButtons() {
@@ -387,8 +409,22 @@ export class CifViewWidget extends HTMLElement {
                 // cycleModifierMode does, instead of updateStructure()'s preserve-rotation path.
                 await this.viewer.loadStructure();
                 break;
+            case 'atom-labels':
+                if (newValue === null || newValue === '') {
+                    this.viewer.clearAtomLabels();
+                } else if (['all', 'none', 'non-hydrogen'].includes(newValue)) {
+                    this.viewer.setAtomLabels(newValue);
+                } else {
+                    try {
+                        this.viewer.setAtomLabels(JSON.parse(newValue));
+                    } catch (error) {
+                        console.warn('Failed to parse atom-labels:', error);
+                    }
+                }
+                break;
             case 'options':
                 this.parseOptions();
+                this.parseInitialAtomLabels();
                 // Recreate viewer with new options
                 if (this.viewer) {
                     const container = this.querySelector('.crystal-container');

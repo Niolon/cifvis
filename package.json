@@ -34,7 +34,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "docs": "jsdoc -c jsdoc.json",
-    "bench": "node benchmark/speed.mjs"
+    "bench": "node benchmark/speed.mjs",
+    "prebench:labels": "npm run build:alldeps",
+    "bench:labels": "node benchmark/labels.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

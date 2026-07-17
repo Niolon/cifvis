@@ -10,6 +10,105 @@ import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/str
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
+import { AtomLabelManager } from './atom-label-manager.js';
+
+const VALID_ATOM_LABEL_PLACEMENT_MODES = [
+    'auto-omit',
+    'quality-omit',
+    'performance-omit',
+    'maximum-coverage',
+];
+const VALID_ATOM_LABEL_CALLOUT_PLACEMENTS = ['structure', 'viewport'];
+
+/**
+ * @typedef {object} AtomLabelPlacement
+ * @property {string} id - Unique atom ID
+ * @property {string} text - Displayed label text
+ * @property {{left: number, right: number, top: number, bottom: number}} rect - Label bounds
+ * @property {{x1: number, y1: number, x2: number, y2: number, radius: number}|null} leaderSegment
+ * Screen-space connector, when one is needed
+ * @property {boolean} [isCallout] - Whether this is an outer callout placement
+ */
+
+/**
+ * @typedef {object} HiddenAtomLabel
+ * @property {string} id - Unique atom ID
+ * @property {string} text - Requested label text
+ * @property {'static-no-space'|'viewport-capacity'|'no-space'|'max-visible'} reason
+ * Why the label was omitted
+ */
+
+/**
+ * @typedef {object} AtomLabelLayout
+ * @property {AtomLabelPlacement[]} placed - Visible screen-space placements
+ * @property {HiddenAtomLabel[]} hidden - Omitted labels and their reasons
+ * @property {'none'|'quality-omit'|'performance-omit'|'maximum-coverage'} placementPolicy
+ * Effective placement policy
+ */
+
+/**
+ * Checks one public label-selection value.
+ * @param {unknown} show - Candidate label selection
+ * @returns {boolean} Whether the value matches the public API
+ */
+function isValidAtomLabelSelection(show) {
+    if (show === 'none' || show === 'all' || show === 'non-hydrogen') {
+        return true;
+    }
+    return Array.isArray(show) && show.every(item =>
+        typeof item === 'string' ||
+        (item !== null && typeof item === 'object' && typeof item.id === 'string'),
+    );
+}
+
+/**
+ * Validates atom-label options shared by construction and runtime updates.
+ * @param {object} options - Partial atom-label options
+ */
+function validateAtomLabelOptions(options) {
+    if (options.placementMode !== undefined &&
+        !VALID_ATOM_LABEL_PLACEMENT_MODES.includes(options.placementMode)) {
+        throw new Error(
+            `Invalid atom label placement mode: "${options.placementMode}". ` +
+            `Must be one of: ${VALID_ATOM_LABEL_PLACEMENT_MODES.join(', ')}`,
+        );
+    }
+    if (options.calloutPlacement !== undefined &&
+        !VALID_ATOM_LABEL_CALLOUT_PLACEMENTS.includes(options.calloutPlacement)) {
+        throw new Error(
+            `Invalid atom label callout placement: "${options.calloutPlacement}". ` +
+            `Must be one of: ${VALID_ATOM_LABEL_CALLOUT_PLACEMENTS.join(', ')}`,
+        );
+    }
+    if (options.show !== undefined && !isValidAtomLabelSelection(options.show)) {
+        throw new Error(
+            'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+        );
+    }
+    if (options.maxConnectorLength !== undefined &&
+        !(typeof options.maxConnectorLength === 'number' && options.maxConnectorLength > 0)) {
+        throw new Error('atomLabels.maxConnectorLength must be a positive number');
+    }
+    if (options.performanceNoSpaceCellSize !== undefined &&
+        !(typeof options.performanceNoSpaceCellSize === 'number' &&
+            options.performanceNoSpaceCellSize > 0)) {
+        throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
+    }
+    if (options.autoPerformanceLabelThreshold !== undefined &&
+        !(Number.isInteger(options.autoPerformanceLabelThreshold) &&
+            options.autoPerformanceLabelThreshold >= 0)) {
+        throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
+    }
+}
+
+/**
+ * Omits undefined partial values so they do not replace active defaults.
+ * @param {object} options - Partial options
+ * @returns {object} Defined option values
+ */
+function definedOptions(options) {
+    return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+}
 
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
@@ -407,6 +506,8 @@ export class CrystalViewer {
                 `Must be one of: ${validRenderStyles.join(', ')}`,
             );
         }
+        validateAtomLabelOptions(options.atomLabels || {});
+        const atomLabelOptions = definedOptions(options.atomLabels || {});
 
         this.container = container;
         const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
@@ -425,6 +526,14 @@ export class CrystalViewer {
                 ...defaultSettings.interaction,
                 ...(options.interaction || {}),
             },
+            atomLabels: {
+                ...defaultSettings.atomLabels,
+                ...atomLabelOptions,
+                text: {
+                    ...defaultSettings.atomLabels.text,
+                    ...(atomLabelOptions.text || {}),
+                },
+            },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
@@ -442,6 +551,12 @@ export class CrystalViewer {
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
             bondGrowTolerance: options.bondGrowTolerance ?? defaultSettings.bondGrowTolerance,
+            hbondRadius: options.hbondRadius ?? defaultSettings.hbondRadius,
+            hbondColor: options.hbondColor || defaultSettings.hbondColor,
+            hbondColorRoughness: options.hbondColorRoughness ?? defaultSettings.hbondColorRoughness,
+            hbondColorMetalness: options.hbondColorMetalness ?? defaultSettings.hbondColorMetalness,
+            hbondDashSegmentLength: options.hbondDashSegmentLength ?? defaultSettings.hbondDashSegmentLength,
+            hbondDashFraction: options.hbondDashFraction ?? defaultSettings.hbondDashFraction,
             elementProperties: {
                 ...defaultSettings.elementProperties,
                 ...options.elementProperties,
@@ -472,6 +587,7 @@ export class CrystalViewer {
             currentCifContent: null,
             currentCifBlock: null,
             currentStructure: null,
+            displayStructure: null,
             currentFloor: null,
             baseStructure: null,
             ortepObjects: new Map(),
@@ -493,6 +609,7 @@ export class CrystalViewer {
         this.selections = new SelectionManager(this.options);
 
         this.setupScene();
+        this.atomLabelManager = new AtomLabelManager(this);
         this.controls = new ViewerControls(this);
         this.animate();
         this.needsRender = true;
@@ -685,6 +802,8 @@ export class CrystalViewer {
         const ortep3DGroup = ortep.getGroup();
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
+        this.state.displayStructure = structure;
+        this.atomLabelManager.setStructure(structure);
         this.selections.pruneInvalidSelections(this.moleculeContainer);
     }
 
@@ -779,6 +898,7 @@ export class CrystalViewer {
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
+            this.atomLabelManager.scheduleUpdate();
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
@@ -854,6 +974,57 @@ export class CrystalViewer {
     }
 
     /**
+     * Replaces the set of atom labels displayed by the viewer.
+     * Plain labels such as `C1` match all displayed symmetry copies; a full
+     * unique ID such as `C1|2_555` matches only that atom instance.
+     * @param {'none'|'all'|'non-hydrogen'|Array<string|object>} show - Label selection
+     */
+    setAtomLabels(show) {
+        if (!isValidAtomLabelSelection(show)) {
+            throw new Error(
+                'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+            );
+        }
+        this.options.atomLabels.show = show;
+        this.atomLabelManager.setOptions(this.options.atomLabels);
+        this.requestRender();
+    }
+
+    /**
+     * Updates atom-label appearance or layout options without rebuilding the structure.
+     * @param {object} options - Partial atom-label options
+     */
+    updateAtomLabelOptions(options) {
+        validateAtomLabelOptions(options);
+        const nextOptions = definedOptions(options);
+        this.options.atomLabels = {
+            ...this.options.atomLabels,
+            ...nextOptions,
+            text: {
+                ...this.options.atomLabels.text,
+                ...(nextOptions.text || {}),
+            },
+        };
+        this.atomLabelManager.setOptions(this.options.atomLabels);
+        this.requestRender();
+    }
+
+    /**
+     * Hides all atom labels.
+     */
+    clearAtomLabels() {
+        this.setAtomLabels('none');
+    }
+
+    /**
+     * Returns the most recent screen-space label layout and omission reasons.
+     * @returns {AtomLabelLayout} Current layout
+     */
+    getAtomLabelLayout() {
+        return this.atomLabelManager.layout;
+    }
+
+    /**
      * Releases all resources used by the viewer.
      * Call this when the viewer is no longer needed to prevent memory leaks.
      * 
@@ -866,6 +1037,7 @@ export class CrystalViewer {
      */
     dispose() {
         this.controls.dispose();
+        this.atomLabelManager.dispose();
 
         this.scene.traverse((object) => {
             if (object.geometry) {
