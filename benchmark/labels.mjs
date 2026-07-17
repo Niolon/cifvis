@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Atom-label layout benchmark. With no positional paths it uses the larger
-// CIFs in the sibling cifvis_presentation checkout when available.
+// Atom-label layout benchmark. With no positional paths it uses the demo CIFs
+// shipped in site/public/cif, so the default is self-contained.
 //
 // Usage:
 //   npm run bench:labels
@@ -31,7 +31,7 @@ import { fileURLToPath } from 'url';
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const bundlePath = join(repoRoot, 'dist', 'cifvis.alldeps.js');
-const presentationAssets = resolve(repoRoot, '../cifvis_presentation/src/assets');
+const demoCifDirectory = join(repoRoot, 'site', 'public', 'cif');
 
 /**
  * Parses positional paths and `--name value` options.
@@ -74,13 +74,11 @@ function findCifFiles(path) {
 }
 
 /**
- * Returns the standard sibling-presentation stress fixtures that exist.
+ * Returns the demo CIFs shipped with this repository.
  * @returns {string[]} Absolute fixture paths
  */
-function defaultPresentationFiles() {
-    return ['capsaicin.cif', 'fullerene.cif', 'large_nobonds.cif', 'large_bonds.cif']
-        .map(name => join(presentationAssets, name))
-        .filter(existsSync);
+function defaultDemoFiles() {
+    return findCifFiles(demoCifDirectory);
 }
 
 /**
@@ -261,9 +259,9 @@ async function main() {
     if (!Number.isFinite(zoom) || zoom <= 0) {
         throw new Error('--zoom must be a positive number');
     }
-    const files = (paths.length > 0 ? paths.flatMap(findCifFiles) : defaultPresentationFiles()).sort();
+    const files = (paths.length > 0 ? paths.flatMap(findCifFiles) : defaultDemoFiles()).sort();
     if (files.length === 0) {
-        throw new Error('No CIFs supplied and no presentation fixtures were found');
+        throw new Error('No CIFs supplied and no shipped demo CIFs were found');
     }
     if (!existsSync(bundlePath)) {
         throw new Error('dist/cifvis.alldeps.js is missing; run npm run build:alldeps first');

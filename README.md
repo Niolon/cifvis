@@ -132,7 +132,7 @@ npm run build
 # build for production including dependencies
 npm run build:alldeps
 
-# benchmark atom-label layout (uses sibling presentation CIFs by default)
+# benchmark atom-label layout (uses the shipped demo CIFs by default)
 npm run bench:labels
 ```
 
