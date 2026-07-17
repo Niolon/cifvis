@@ -41,6 +41,12 @@ describe('CifViewWidget', () => {
     let mockDensityCallback;
     let mockFetch;
 
+    test('uses kebab-case for every public widget attribute', () => {
+        for (const attribute of CifViewWidget.observedAttributes) {
+            expect(attribute).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
+        }
+    });
+
     beforeEach(() => {
         // Reset mocks
         vi.clearAllMocks();

@@ -49,12 +49,19 @@
                 <code>growCell</code>, <code>growFragment</code>, <code>growExternalHBonds</code>. Depends only on
                 the parent <code>structure/</code> folder.</dd>
 
+                <dt>density/</dt>
+                <dd>The reflection-to-map pipeline: FCF/custom coefficient parsing, observed-reflection merging and
+                systematic-absence filtering, IAM/Cromer&ndash;Mann structure factors, anomalous-dispersion and
+                extinction corrections, Fourier grids, progressive workers, Marching Cubes, and symmetry-aware mesh
+                reuse. Its numerical core depends on <code>read-cif/</code> and <code>structure/</code>; only the surface
+                modules depend on Three.js.</dd>
+
                 <dt>ortep3d/</dt>
                 <dd><code>ORTEP3JsStructure</code> (converts a <code>CrystalStructure</code> into Three.js geometry)
                 and <code>CrystalViewer</code> (the orchestrator: CIF parsing &rarr; filters &rarr; ORTEP3D scene
-                &rarr; camera/controls/lighting/selection). The only folder that imports Three.js, and the only place
-                that imports from <code>structure-modifiers</code>, <code>fix-cif</code>, and <code>structure</code>
-                together.</dd>
+                &rarr; camera/controls/lighting/selection/density). Along with the density surface modules, this is the
+                rendering layer that imports Three.js. <code>CrystalViewer</code> joins the structure-modifier,
+                repair, structure, and density pipelines.</dd>
 
                 <dt>fix-cif/</dt>
                 <dd><code>tryToFixCifBlock</code> &mdash; repairs malformed/nonstandard CIF blocks (reconciling atom
@@ -79,14 +86,14 @@
             </p>
             <div class="dependency-diagram">
 <pre>read-cif ─┬─► structure ──► structure-modifiers ──┐
-           │                                        ├─► ortep3d ──► widget.js ──► index.js
-           └─► fix-cif ─────────────────────────────┘</pre>
+           ├─► density ◄──────── structure ─────────┤
+           └─► fix-cif ─────────────────────────────┴─► ortep3d ──► widget.js ──► index.js</pre>
             </div>
             <p>
                 <code>ortep3d/crystal-viewer.js</code> is the pipeline glue: it's the one file that imports from
-                <code>structure</code>, <code>structure-modifiers</code>, <code>fix-cif</code>, and
-                <code>read-cif</code> together to drive CIF parsing &rarr; filters &rarr; rendering end to end. When
-                you change the public shape of any of those three lower layers, check this file.
+                <code>structure</code>, <code>structure-modifiers</code>, <code>fix-cif</code>, <code>read-cif</code>,
+                and <code>density</code> together to drive CIF parsing &rarr; filters &rarr; rendering end to end. When
+                you change the public shape of any of those lower layers, check this file.
             </p>
 
             <h3>Two entry points</h3>
@@ -96,12 +103,13 @@
             <table>
                 <tr><th>Entry</th><th>Purpose</th></tr>
                 <tr><td><code>cifvis</code> &rarr; <code>src/index.js</code></td><td>Browser entry. Exports everything, and registers <code>&lt;cifview-widget&gt;</code> as a custom element.</td></tr>
-                <tr><td><code>cifvis/nobrowser</code> &rarr; <code>src/index.nobrowser.js</code></td><td>Same "core" exports (<code>CIF</code>, <code>CrystalStructure</code>, <code>ORTEP3JsStructure</code>, <code>formatValueEsd</code>, <code>tryToFixCifBlock</code>, the Filters), but <code>CrystalViewer</code>/<code>CifViewWidget</code> are stubs that throw &mdash; safe to import in Node/SSR/test environments with no <code>window</code>.</td></tr>
+                <tr><td><code>cifvis/nobrowser</code> &rarr; <code>src/index.nobrowser.js</code></td><td>Same core exports, including CIF/structure APIs, Filters, map calculation, IAM, anomalous lookup, and reflection readers, but <code>CrystalViewer</code>/<code>CifViewWidget</code> are stubs that throw &mdash; safe to import in Node/SSR/test environments with no <code>window</code>.</td></tr>
             </table>
             <p>
                 The core (<code>read-cif</code>, <code>structure</code>, <code>structure-modifiers</code>,
-                <code>fix-cif</code>, <code>ORTEP3JsStructure</code>, <code>formatValueEsd</code>) is deliberately
-                DOM-free by construction &mdash; only <code>CrystalViewer</code> (canvas/WebGL) and
+                <code>fix-cif</code>, the numerical density modules, <code>ORTEP3JsStructure</code>, and
+                <code>formatValueEsd</code>) is deliberately DOM-free by construction &mdash; only
+                <code>CrystalViewer</code> (canvas/WebGL) and
                 <code>CifViewWidget</code> (custom element) need a browser.
             </p>
         </section>
@@ -123,6 +131,33 @@ npm run bench -- path/to/file-list.txt --out results.csv --render-mode constant<
                 <code>--chrome</code> or the <code>CHROME_PATH</code> environment variable if the system default
                 isn't found.
             </p>
+            <p>Density work has two focused benchmarks:</p>
+            <pre><code>npm run bench:iam -- structure.cif 20
+npm run bench:density-symmetry -- structure.cif reflections.fcf 10</code></pre>
+            <p>
+                <code>bench:iam</code> separates model construction, first calculation, and warmed repeated
+                calculation; when calculated F-squared values are present it also reports agreement. The symmetry
+                benchmark alternates direct and symmetry-aware surface generation and reports wall-clock,
+                polygonization, stitching, and Marching Cubes timings so ordering and JIT warm-up do not favour one
+                path consistently.
+            </p>
+        </section>
+
+        <section>
+            <h2>Deployment</h2>
+            <p>
+                The deployment script is the complete GitHub Pages workflow: it cleans stale output, builds the
+                external-dependency library, the all-dependencies bundle, and the site, copies them into one
+                self-contained <code>deployment/</code> tree, publishes with <code>gh-pages</code>, and cleans generated
+                output even if publishing fails.
+            </p>
+            <pre><code>npm run deploy
+
+# Inspect the assembled tree without publishing:
+npm run build:deployment
+
+# Remove dist/ and deployment/:
+npm run clean:deployment</code></pre>
         </section>
 
         <section>

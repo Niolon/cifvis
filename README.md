@@ -20,6 +20,9 @@ For the full generated API reference (every exported class/method), run `npm run
 - Display of bonds and hydrogen bonds
 - Disorder group handling
 - Crystal symmetry growing of structures 
+- Progressive difference-density maps from FCF data or observed reflections plus an IAM calculation
+- Custom complex coefficients for deformation-density maps, with symmetry-aware surface reuse
+- Multi-block CIF selection in the playground and widget API
 - Touch and mouse controls
 - Widget for complete packaged solution
 
@@ -33,6 +36,7 @@ npm install cifvis
 
 ### Web Component
 For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/docs/widget-usage.html).
+Widget HTML attributes use kebab-case (for example `hydrogen-mode`); keys inside the JSON `options` attribute use the same camelCase paths as `CrystalViewer`.
 
 ```html
 <cifview-widget 
@@ -100,6 +104,20 @@ in the dedicated density worker after structure construction. `inputMode:
 the coefficients from the CIF observations and IAM calculation; use `'fcf'` or
 `'cif-iam'` to force either path.
 
+Once a map is displayed, the widget and playground add a compact two-line
+control beside the other display buttons. It shows `Δρ/eÅ⁻³` and the signed
+contour magnitude; clicking it hides or restores the existing surfaces without
+rerunning reflection processing, the FFT, or marching cubes. Code-driven UIs
+can do the same with
+`viewer.updateDifferenceDensityOptions({ visible: false })` or
+`viewer.setDifferenceDensityVisibility(false)`. Use
+`viewer.clearDifferenceDensity()` to discard the map entirely.
+
+The playground inspects uploaded multi-block CIFs and shows a block selector
+only when more than one top-level `data_` block is present. The widget uses its
+existing `block="index-or-name"` attribute, and direct viewer calls pass the
+same selector as the second argument to `loadCIF` or `loadDifferenceDensity`.
+
 #### Custom and deformation-density coefficients
 
 Quantum-crystallographic reflection loops can select arbitrary columns through
@@ -152,6 +170,15 @@ reflection loop, so the coordinate model and deformation-density coefficients
 can be distributed and loaded as one self-contained CIF. Additional operand
 amplitude/phase columns may be retained for provenance without affecting the
 automatically selected A/B coefficients.
+
+The bundled generator creates that self-contained layout from a coordinate CIF
+and one calculated FCF. It preserves the coordinate CIF (including its reported
+positions and ADPs), calculates a neutral-atom IAM at those coordinates, and
+appends the complex calculated-minus-IAM coefficients and their mapping tags:
+
+```bash
+npm run generate:deformation-cif -- coordinates.cif calculated.fcf deformation.cif
+```
 
 #### Anomalous-dispersion correction
 
@@ -322,7 +349,7 @@ import {
 ```javascript
 const viewer = new CrystalViewer(container, {
   camera: {
-    zoomSpeed: 0.1,
+    wheelZoomSpeed: 0.0008,
     fov: 45,
   },
   selection: {
@@ -349,7 +376,7 @@ const viewer = new CrystalViewer(container, {
   plot2DStripeWidth: 0.18,
   hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'
   disorderMode: 'all',     // 'all', 'group1of2', 'group2of2', ... "group<rank>of<total>" per disorder group in the structure
-  symmetryMode: 'bonds-no-hbonds-no' // See symmetry modes below
+  symmetryMode: 'none' // 'none', 'hbonds', 'fragment', 'fragment-hbonds', 'cell', 'fragment-cell'
 });
 ```
 
@@ -374,8 +401,19 @@ npm run build
 # build for production including dependencies
 npm run build:alldeps
 
+# prepare, publish, and clean the self-contained GitHub Pages deployment
+npm run deploy
+
+# build deployment/ without publishing, or remove generated deployment files
+npm run build:deployment
+npm run clean:deployment
+
 # benchmark atom-label layout (uses the shipped demo CIFs by default)
 npm run bench:labels
+
+# benchmark IAM factors and direct versus symmetry-aware density surfaces
+npm run bench:iam -- structure.cif 20
+npm run bench:density-symmetry -- structure.cif reflections.fcf 10
 ```
 
 ## Browser Support

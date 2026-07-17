@@ -69,6 +69,7 @@
                 <li>Zoom: Use the mouse wheel to zoom in/out</li>
                 <li>Selection: Click on atoms or bonds to select and view details, double click on the background to deselect all selections.</li>
                 <li>Toggle display: Use buttons at the top right to toggle hydrogens, disorder, and symmetry</li>
+                <li>Density maps: When present, use the compact contour-level button to hide or restore the map</li>
                 <li>Reset view: Double right-click to reset the camera position</li>
             </ul>
 
@@ -115,6 +116,34 @@ _cell.angle_gamma 90
 &lt;/cifview-widget&gt;</code></pre>
                 </div>
             </div>
+        </section>
+
+        <section>
+            <h2>Difference and Deformation Density</h2>
+            <p>
+                Density loading is opt-in for the widget. Enable it when the selected CIF block contains standard FCF
+                coefficients, observed reflections suitable for an IAM Fo&minus;Fc calculation, or a self-described
+                custom deformation-density loop:
+            </p>
+            <pre><code>&lt;cifview-widget
+    src="coordinates-and-reflections.cif"
+    options='{"differenceDensity":{"autoLoad":true}}'&gt;
+&lt;/cifview-widget&gt;</code></pre>
+            <p>
+                The coordinate structure appears first; reflection parsing, IAM calculation, FFT, and progressive
+                surface generation then run in a worker by default, with a main-thread fallback where workers are not
+                available. Once a map exists, a button appears beside the ordinary display controls. Its first row
+                reads <code>&Delta;&rho;/e&Aring;&sup3;</code> and its second row shows the positive/negative contour magnitude.
+                Clicking it hides or restores the retained surfaces without recalculating the map. It is not shown
+                when no density has been loaded.
+            </p>
+            <p>
+                Standard difference maps use green/red wireframes by default; custom coefficient loops are treated as
+                deformation density and use light blue/orange. See
+                <a href="./using-cifvis.html#difference-density">Difference and deformation density</a> for supported
+                reflection sources and custom columns, and the <a href="./options-reference.html">Options Reference</a>
+                for contour, colour, resolution, symmetry, and worker settings.
+            </p>
         </section>
 
         <section>
@@ -236,29 +265,66 @@ _cell.angle_gamma 90
                 </div>
             </div>
 
-            <h3>Setting Display Options</h3>
-            <p>Set initial display options using the following attributes, if a display mode is incompatible with the given structure (say there are no anisotropic hydrogens, even though <code>hydrogen-mode="anisotropic"</code> was selected as start mode), the widget will automatically fall back to a valid option:</p>
+            <h3>Widget attributes</h3>
+            <p>
+                Widget attribute names consistently use kebab-case (the <code>an-option</code> form). Keys inside the
+                JSON <code>options</code> attribute remain camelCase because that object is passed unchanged to the
+                JavaScript <code>CrystalViewer</code> API. If a display mode is incompatible with a structure, the
+                widget falls back to an applicable mode.
+            </p>
             <pre><code>&lt;cifview-widget
     src="structure.cif"
     caption="My Structure"
     hydrogen-mode="constant"
     disorder-mode="all"
-    symmetry-mode="bonds-yes-hbonds-no"&gt;
+    symmetry-mode="fragment"&gt;
 &lt;/cifview-widget&gt;</code></pre>
 
-            <table>
+            <table class="option-table">
                 <tr>
                     <th>Attribute</th>
                     <th>Values</th>
                     <th>Description</th>
                 </tr>
-                <tr>
-                    <td><code>hydrogen-mode</code></td>
+                <tr class="option-row">
+                    <td><span class="option-code">src</span></td>
+                    <td>URL</td>
+                    <td>Loads CIF text from a URL. Use either <code>src</code> or <code>data</code>.</td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">data</span></td>
+                    <td>CIF text</td>
+                    <td>Loads CIF text directly from the attribute. Use either <code>data</code> or <code>src</code>.</td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">caption</span></td>
+                    <td>HTML string</td>
+                    <td>Base caption shown below the viewer; selection information is appended to it.</td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">block</span></td>
+                    <td>numeric index (e.g. <code>0</code>) or block name (e.g. <code>crystal_a</code>)</td>
+                    <td>
+                        Selects which CIF data block to display. Defaults to the first block. Digits are treated as an
+                        index; any other value is the name following <code>data_</code>. The playground creates a block
+                        selector automatically only when more than one top-level block exists.
+                    </td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">options</span></td>
+                    <td>JSON object</td>
+                    <td>
+                        The camelCase <code>CrystalViewer</code> option object. See the
+                        <a href="./options-reference.html">Options Reference</a>.
+                    </td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">hydrogen-mode</span></td>
                     <td><code>none</code>, <code>constant</code>, <code>anisotropic</code></td>
                     <td>Controls the display of hydrogen atoms</td>
                 </tr>
-                <tr>
-                    <td><code>disorder-mode</code></td>
+                <tr class="option-row">
+                    <td><span class="option-code">disorder-mode</span></td>
                     <td><code>all</code>, <code>group&lt;rank&gt;of&lt;total&gt;</code> (e.g. <code>group1of2</code>)</td>
                     <td>
                         Controls which disorder groups are displayed. <br>
@@ -271,24 +337,31 @@ _cell.angle_gamma 90
                         through <code>groupNofN</code>.
                     </td>
                 </tr>
-                <tr>
-                    <td><code>symmetry-mode</code></td>
-                    <td><code>bonds-yes-hbonds-yes</code>, <code>bonds-yes-hbonds-none</code>, <code>bonds-none-hbonds-no</code>, etc.</td>
+                <tr class="option-row">
+                    <td><span class="option-code">symmetry-mode</span></td>
+                    <td><code>none</code>, <code>hbonds</code>, <code>fragment</code>, <code>fragment-hbonds</code>, <code>cell</code>, <code>fragment-cell</code></td>
                     <td>
-                        Controls symmetry-generated atoms and bonds,<br>
-                        <code>yes</code>/<code>no</code>switches growing on of off,<br>
-                        <code>none</code> means there are no bonds/H-bonds to grow.<br>
-                        Only one additional sphere is grown.
+                        Controls symmetry-generated atoms and bonds. Fragment modes grow through bonds, H-bonds, or
+                        both; cell modes display the complete unit cell, optionally with connected fragments.
                     </td>
                 </tr>
-                <tr>
-                    <td><code>block</code></td>
-                    <td>numeric index (e.g. <code>0</code>) or block name (e.g. <code>crystal_a</code>)</td>
+                <tr class="option-row">
+                    <td><span class="option-code">filtered-atoms</span></td>
+                    <td>comma-separated labels/ranges</td>
                     <td>
-                        Selects which CIF data block (dataset) to display for multi-block CIF files.<br>
-                        Defaults to the first block. A value made up entirely of digits is treated as an index,<br>
-                        any other value is treated as the block's name (the text following <code>data_</code>).
+                        Excludes atom labels. Inclusive ranges use <code>&gt;</code>, for example
+                        <code>C1,C5&gt;C12</code>.
                     </td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">atom-labels</span></td>
+                    <td><code>none</code>, <code>all</code>, <code>non-hydrogen</code>, or JSON array</td>
+                    <td>Chooses labels dynamically; JSON entries may provide custom text and priority.</td>
+                </tr>
+                <tr class="option-row">
+                    <td><span class="option-code">icons</span></td>
+                    <td>JSON object</td>
+                    <td>Overrides SVG markup for named modifier modes.</td>
                 </tr>
             </table>
         </section>
@@ -336,7 +409,7 @@ _cell.angle_gamma 90
                 of the visualization &mdash; the same schema also used by <code>CrystalViewer</code>'s constructor
                 options when using the library directly (see <a href="./using-cifvis.html">Using CifVis</a>).
                 See the <a href="./options-reference.html">Options Reference</a> for the full list (camera,
-                selection, rendering, atoms, bonds, hydrogen bonds, and per-element colors/radii).
+                selection, rendering, atoms, bonds, hydrogen bonds, density maps, and per-element colors/radii).
             </p>
             <h3>Atom labels</h3>
             <p>Labels are opt-in and may be set through <code>options.atomLabels</code> or the dynamic

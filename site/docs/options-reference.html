@@ -31,6 +31,13 @@
                 &mdash; the widget just parses the attribute and passes it straight through to its internal
                 <code>CrystalViewer</code>. Everything below applies to both.
             </p>
+            <p>
+                Every option path is shown in the same <span class="option-code">parent.child</span> format. Option
+                object keys use JavaScript camelCase. Dedicated widget HTML attributes use kebab-case, such as
+                <code>hydrogen-mode</code>; see the complete attribute table in
+                <a href="./widget-usage.html">Widget Usage</a>. Values such as <code>auto-omit</code> are written
+                exactly as they must be supplied.
+            </p>
 
             <div class="search-container">
                 <input type="text" id="optionSearch" placeholder="Search for configuration options...">
@@ -46,6 +53,11 @@
                             <th>Option</th>
                             <th>Type</th>
                             <th>Description</th>
+                        </tr>
+                        <tr class="option-row" data-keywords="camera type orthographic">
+                            <td><span class="option-code">camera.type</span></td>
+                            <td>String</td>
+                            <td>Camera projection type. Currently <code>orthographic</code>. <span class="default-value">Default: "orthographic"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="camera min distance zoom">
                             <td><span class="option-code">camera.minDistance</span></td>
@@ -246,6 +258,35 @@
                 </div>
             </div>
 
+            <!-- Initial Display Modes -->
+            <button type="button" class="collapsible">Initial Display Modes</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>
+                        These are the camelCase object equivalents of the widget's kebab-case mode attributes.
+                        Unsupported modes automatically fall back to a mode applicable to the loaded structure.
+                    </p>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="hydrogen initial display mode">
+                            <td><span class="option-code">hydrogenMode</span></td>
+                            <td>String</td>
+                            <td><code>none</code>, <code>constant</code>, or <code>anisotropic</code>. <span class="default-value">Default: "none"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="disorder initial display mode group">
+                            <td><span class="option-code">disorderMode</span></td>
+                            <td>String</td>
+                            <td><code>all</code> or a structure-dependent <code>group&lt;rank&gt;of&lt;total&gt;</code> value. <span class="default-value">Default: "all"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="symmetry grow initial display mode cell fragment hbond">
+                            <td><span class="option-code">symmetryMode</span></td>
+                            <td>String</td>
+                            <td><code>none</code>, <code>hbonds</code>, <code>fragment</code>, <code>fragment-hbonds</code>, <code>cell</code>, or <code>fragment-cell</code>. <span class="default-value">Default: "none"</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
             <!-- Atom Label Options -->
             <button type="button" class="collapsible">Atom Label Settings</button>
             <div class="content">
@@ -261,7 +302,7 @@
                         <tr class="option-row" data-keywords="atom labels text override">
                             <td><span class="option-code">atomLabels.text</span></td>
                             <td>Object</td>
-                            <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID.</td>
+                            <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID. <span class="default-value">Default: {}</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels placement mode maximum coverage omit callout performance">
                             <td><span class="option-code">atomLabels.placementMode</span></td>
@@ -269,24 +310,34 @@
                             <td><code>auto-omit</code> adaptively uses quality placement for ordinary visible workloads and performance placement for dense ones; <code>quality-omit</code> forces exact candidate evaluation with repair; <code>performance-omit</code> forces front-to-back, zoom-specific no-space reuse without repair; <code>maximum-coverage</code> searches farther and adds callouts. Omission modes reject confusing crossings. <span class="default-value">Default: "auto-omit"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels font size family weight">
-                            <td><span class="option-code">atomLabels.fontSize / fontWeight / fontFamily</span></td>
+                            <td><span class="option-code">atomLabels.fontSize</span><br><span class="option-code">atomLabels.fontWeight</span><br><span class="option-code">atomLabels.fontFamily</span></td>
                             <td>Number / Number / String</td>
-                            <td>Canvas text appearance. <span class="default-value">Defaults: 14, 500, system UI</span></td>
+                            <td>Canvas text appearance. <span class="default-value">Defaults: 14, 500, "system-ui, -apple-system, sans-serif"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels color halo outline">
-                            <td><span class="option-code">atomLabels.color / haloColor / haloWidth</span></td>
+                            <td><span class="option-code">atomLabels.color</span><br><span class="option-code">atomLabels.haloColor</span><br><span class="option-code">atomLabels.haloWidth</span></td>
                             <td>Color / Color / Number</td>
                             <td>Text and contrast-halo appearance. <span class="default-value">Defaults: #111111, #ffffff, 2</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels padding distance collision">
-                            <td><span class="option-code">atomLabels.atomPadding / bondPadding / labelPadding / viewportPadding</span></td>
+                            <td><span class="option-code">atomLabels.atomPadding</span><br><span class="option-code">atomLabels.bondPadding</span><br><span class="option-code">atomLabels.labelPadding</span><br><span class="option-code">atomLabels.viewportPadding</span></td>
                             <td>Number</td>
-                            <td>Atom, bond, label, and viewport collision clearances in CSS pixels.</td>
+                            <td>Atom, bond, label, and viewport collision clearances in CSS pixels. <span class="default-value">Defaults: 3, 2, 2, 4</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels leader lines fallback">
-                            <td><span class="option-code">atomLabels.leaderLines / fallbackDistance / maxConnectorLength</span></td>
+                            <td><span class="option-code">atomLabels.leaderLines</span><br><span class="option-code">atomLabels.fallbackDistance</span><br><span class="option-code">atomLabels.maxConnectorLength</span></td>
                             <td>String / Number / Number</td>
-                            <td>Controls leader lines, farther fallback spacing, and an optional hard connector-length ceiling in CSS pixels. Labels which cannot fit within the ceiling are omitted. <span class="default-value">maxConnectorLength default: Infinity</span></td>
+                            <td>Controls leader lines, farther fallback spacing, and an optional hard connector-length ceiling in CSS pixels. Labels which cannot fit within the ceiling are omitted. <span class="default-value">Defaults: "auto", 18, Infinity</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels leader line color width">
+                            <td><span class="option-code">atomLabels.leaderColor</span><br><span class="option-code">atomLabels.leaderWidth</span></td>
+                            <td>Color / Number</td>
+                            <td>Leader-line colour and CSS-pixel width. <span class="default-value">Defaults: rgba(17, 17, 17, 0.55), 1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels placement penalty ring movement">
+                            <td><span class="option-code">atomLabels.ringPenalty</span><br><span class="option-code">atomLabels.movementPenalty</span></td>
+                            <td>Number / Number</td>
+                            <td>Candidate scoring penalties for ring interference and movement between layouts. <span class="default-value">Defaults: 1000, 80</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels maximum visible overflow hide">
                             <td><span class="option-code">atomLabels.maxVisible</span></td>
@@ -299,27 +350,27 @@
                             <td>Runs collision placement in a Web Worker after the structure's first paint. Unsupported or failed workers fall back to the main thread. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels loading indicator progress delay">
-                            <td><span class="option-code">atomLabels.showLoadingIndicator / loadingIndicatorDelayMs</span></td>
+                            <td><span class="option-code">atomLabels.showLoadingIndicator</span><br><span class="option-code">atomLabels.loadingIndicatorDelayMs</span></td>
                             <td>Boolean / Number</td>
                             <td>Shows an accessible progress status only when asynchronous layout exceeds the delay. <span class="default-value">Defaults: true, 120</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels interaction throttle deferred hide performance">
-                            <td><span class="option-code">atomLabels.layoutThrottleMs / interactionLabelLimit / hideLabelsDuringDeferredLayout</span></td>
+                            <td><span class="option-code">atomLabels.layoutThrottleMs</span><br><span class="option-code">atomLabels.interactionLabelLimit</span><br><span class="option-code">atomLabels.hideLabelsDuringDeferredLayout</span></td>
                             <td>Number / Number / Boolean</td>
                             <td>Controls relayout during interaction. Complete or large layouts are hidden and recomputed after dragging by default. <span class="default-value">Defaults: 32, 300, true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
-                            <td><span class="option-code">atomLabels.calloutPlacement / calloutGap</span></td>
+                            <td><span class="option-code">atomLabels.calloutPlacement</span><br><span class="option-code">atomLabels.calloutGap</span></td>
                             <td>String / Number</td>
                             <td><code>structure</code> keeps maximum-coverage callouts just outside the projected structure; <code>viewport</code> uses the full viewport edges. <code>calloutGap</code> is the compact structure clearance in CSS pixels. <span class="default-value">Defaults: "structure", 12</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
-                            <td><span class="option-code">atomLabels.calloutColumns / calloutColumnGap / calloutRowGap</span></td>
+                            <td><span class="option-code">atomLabels.calloutColumns</span><br><span class="option-code">atomLabels.calloutColumnGap</span><br><span class="option-code">atomLabels.calloutRowGap</span></td>
                             <td>Number</td>
                             <td>Callout lane count and spacing used by <code>maximum-coverage</code> placement. <span class="default-value">Defaults: 3, 8, 4</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels repair backtracking connector balance">
-                            <td><span class="option-code">atomLabels.repairDepth / repairSearchLimit</span></td>
+                            <td><span class="option-code">atomLabels.repairDepth</span><br><span class="option-code">atomLabels.repairSearchLimit</span></td>
                             <td>Number / Number</td>
                             <td>Bounds displacement repair before a label is omitted or given a distant callout. Set either to 0 to disable repair. <span class="default-value">Defaults: 2, 48</span></td>
                         </tr>
@@ -342,6 +393,16 @@
                             <td><span class="option-code">atomLabels.autoPerformanceLabelThreshold</span></td>
                             <td>Number</td>
                             <td>Visible requested-label count above which <code>auto-omit</code> selects performance placement. Because this uses the current projection, zooming may switch policy. <span class="default-value">Default: 500</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels callout search candidates performance">
+                            <td><span class="option-code">atomLabels.calloutSearchLimit</span><br><span class="option-code">atomLabels.calloutChoiceLimit</span></td>
+                            <td>Number / Number</td>
+                            <td>Bounds callout candidates examined and retained per label. <span class="default-value">Defaults: 64, 4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels leader bond crossing penalty">
+                            <td><span class="option-code">atomLabels.leaderBondCrossingPenalty</span></td>
+                            <td>Number</td>
+                            <td>Candidate-score penalty for a leader line crossing a displayed bond. <span class="default-value">Default: 25</span></td>
                         </tr>
                     </table>
                 </div>
@@ -391,7 +452,7 @@
                         <tr class="option-row" data-keywords="atom color roughness material">
                             <td><span class="option-code">atomColorRoughness</span></td>
                             <td>Number</td>
-                            <td>Roughness of atom material (0-1). <span class="default-value">Default: 0.3</span></td>
+                            <td>Roughness of atom material (0-1). <span class="default-value">Default: 0.4</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom color metalness material">
                             <td><span class="option-code">atomColorMetalness</span></td>
@@ -424,6 +485,218 @@
                             <td>Multiplier for atom radius when using constant mode. <span class="default-value">Default: 0.25</span></td>
                         </tr>
                     </table>
+                </div>
+            </div>
+
+            <!-- Difference-density Options -->
+            <button type="button" class="collapsible">Difference and Deformation Density Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>
+                        Density loading is opt-in. Standard FCF or observed-intensity/IAM maps use the
+                        green/red colours; explicitly configured or self-described custom coefficient
+                        columns are treated as deformation density and use light blue/orange. The periodic
+                        Fourier grid is retained when display or symmetry-growth settings change.
+                    </p>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="density auto load reflections worker">
+                            <td><span class="option-code">differenceDensity.autoLoad</span></td><td>Boolean</td>
+                            <td>After installing the structure, automatically start density work from the loaded CIF. <span class="default-value">Default: false</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density web worker performance">
+                            <td><span class="option-code">differenceDensity.useWorker</span></td><td>Boolean</td>
+                            <td>Parse reflections, calculate IAM factors, and build the FFT grid in a Web Worker when available. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density source fcf iam automatic">
+                            <td><span class="option-code">differenceDensity.inputMode</span></td><td>String</td>
+                            <td><code>auto</code>, <code>fcf</code>, or <code>cif-iam</code>. Auto prefers explicit Fourier coefficients and otherwise uses observed intensities plus IAM phases. <span class="default-value">Default: "auto"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density reflection merge friedel systematic absence hkl">
+                            <td><span class="option-code">differenceDensity.reflections</span></td><td>Object</td>
+                            <td>Reflection-reader configuration. <span class="default-value">Default: {}</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density reflection source refln diffrn shelx hkl">
+                            <td><span class="option-code">differenceDensity.reflections.source</span></td><td>String</td>
+                            <td><code>auto</code>, <code>refln</code>, <code>diffrn_refln</code>, or <code>shelx_hkl_file</code>. <span class="default-value">Default: "auto"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density reflection merge friedel pairs">
+                            <td><span class="option-code">differenceDensity.reflections.mergeFriedel</span></td><td>Boolean</td>
+                            <td>Merges Friedel pairs for normal-scattering IAM maps; anomalous IAM defaults to keeping them separate. <span class="default-value">Default: automatic</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density systematic absences remove">
+                            <td><span class="option-code">differenceDensity.reflections.removeSystematicAbsences</span></td><td>Boolean</td>
+                            <td>Removes absent unmerged reflections before symmetry merging. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density systematic absence tolerance">
+                            <td><span class="option-code">differenceDensity.reflections.absenceTolerance</span></td><td>Number</td>
+                            <td>Complex general-position phase-sum tolerance used for absence detection. <span class="default-value">Default: 1e-8</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam cromer mann anomalous scattering">
+                            <td><span class="option-code">differenceDensity.iam</span></td><td>Object</td>
+                            <td>Independent-atom structure-factor configuration. <span class="default-value">Default: {}</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam include anomalous scattering">
+                            <td><span class="option-code">differenceDensity.iam.includeAnomalous</span></td><td>Boolean</td>
+                            <td>Includes f′ and f″ in IAM factors. Difference maps use normal scattering unless explicitly enabled. <span class="default-value">Default: false for density maps</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam wavelength radiation">
+                            <td><span class="option-code">differenceDensity.iam.wavelength</span></td><td>Number</td>
+                            <td>Fallback wavelength in Å; a wavelength reported by the CIF takes precedence.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam cromer mann coefficients elements">
+                            <td><span class="option-code">differenceDensity.iam.cromerMann</span></td><td>Object</td>
+                            <td>Fallback nine-coefficient Cromer&ndash;Mann arrays keyed by atom type or element; complete CIF rows take precedence.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam dispersion values elements">
+                            <td><span class="option-code">differenceDensity.iam.dispersionValues</span></td><td>Object</td>
+                            <td>Fallback f′/f″ values keyed by atom type or element; site and type CIF values take precedence.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density iam anomalous table wavelength tolerance cu mo">
+                            <td><span class="option-code">differenceDensity.iam.anomalous.table</span><br><span class="option-code">differenceDensity.iam.anomalous.wavelengthTolerance</span></td><td>String / Number</td>
+                            <td>Forces the internal <code>Cu</code> or <code>Mo</code> table, or controls automatic wavelength matching. <span class="default-value">Defaults: automatic, 0.005 Å</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density coefficient columns deformation amplitude phase a b">
+                            <td><span class="option-code">differenceDensity.coefficientColumns</span></td><td>Object|null</td>
+                            <td>Custom loop/index columns and either amplitude/phase or direct A/B columns. Any custom definition is displayed as deformation density. <span class="default-value">Default: null</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density custom coefficient loop h k l index columns">
+                            <td><span class="option-code">differenceDensity.coefficientColumns.loop</span><br><span class="option-code">differenceDensity.coefficientColumns.h</span><br><span class="option-code">differenceDensity.coefficientColumns.k</span><br><span class="option-code">differenceDensity.coefficientColumns.l</span></td><td>String</td>
+                            <td>Custom loop category and Miller-index column names. <span class="default-value">Defaults: _refln and its standard index columns</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density custom amplitudes phases common split">
+                            <td><span class="option-code">differenceDensity.coefficientColumns.amplitudes</span><br><span class="option-code">differenceDensity.coefficientColumns.phases</span></td><td>String or String[]</td>
+                            <td>One or two amplitude columns with one common phase or matching split phases.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density custom a b complex coefficient columns">
+                            <td><span class="option-code">differenceDensity.coefficientColumns.a</span><br><span class="option-code">differenceDensity.coefficientColumns.b</span></td><td>String or String[]</td>
+                            <td>One or two direct real/imaginary crystallographic coefficient columns; use instead of amplitudes/phases.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density custom phase unit degrees radians">
+                            <td><span class="option-code">differenceDensity.coefficientColumns.phaseUnit</span></td><td>String</td>
+                            <td><code>degrees</code> or <code>radians</code>. <span class="default-value">Default: "degrees"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density custom omit f000 mean">
+                            <td><span class="option-code">differenceDensity.coefficientColumns.omitF000</span></td><td>Boolean</td>
+                            <td>Omits the mean term. Custom/deformation coefficients retain it by default. <span class="default-value">Default: false</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous dispersion correction olex phase friedel">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion</span></td><td>Boolean|Object</td>
+                            <td>Optional anomalous-contribution correction and phase/Friedel detection. <span class="default-value">Default: false</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous target operand first second both result">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion.target</span></td><td>String</td>
+                            <td><code>first</code>, <code>second</code>, <code>both</code>, or <code>result</code>. <span class="default-value">Default: source-dependent (custom first; FCF4 both)</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous phase detection tolerance friedel amplitude">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion.phaseDetection</span><br><span class="option-code">differenceDensity.anomalousDispersion.phaseToleranceDegrees</span><br><span class="option-code">differenceDensity.anomalousDispersion.friedelAmplitudeToleranceRelative</span></td><td>Boolean / Number / Number</td>
+                            <td>Enables exact inversion/Friedel tests and sets their phase and relative-amplitude tolerances. <span class="default-value">Defaults: true, 0.05°, 1e-4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous generator olex shelxl auto">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion.generator</span></td><td>String</td>
+                            <td><code>auto</code>, <code>olex</code>, or <code>shelxl</code>; normally inferred from CIF metadata. <span class="default-value">Default: "auto"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous wavelength table tolerance cu mo">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion.wavelength</span><br><span class="option-code">differenceDensity.anomalousDispersion.table</span><br><span class="option-code">differenceDensity.anomalousDispersion.wavelengthTolerance</span></td><td>Number / String / Number</td>
+                            <td>Fallback wavelength, optional forced <code>Cu</code>/<code>Mo</code> table, and automatic table-matching tolerance. CIF wavelength wins. <span class="default-value">Table/tolerance defaults: automatic, 0.005 Å</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density anomalous fallback values fprime double prime">
+                            <td><span class="option-code">differenceDensity.anomalousDispersion.values</span></td><td>Object</td>
+                            <td>Fallback f′/f″ values keyed by atom type or element; site/type CIF values take precedence.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density extinction correction shelxl exti">
+                            <td><span class="option-code">differenceDensity.extinctionCorrection</span></td><td>String|Boolean|Number|Object</td>
+                            <td>Corrects observed amplitudes for a reported SHELXL isotropic EXTI model. Accepts <code>auto</code>, true/false, a coefficient, or a configuration object. <span class="default-value">Default: "auto"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density extinction coefficient wavelength override">
+                            <td><span class="option-code">differenceDensity.extinctionCorrection.coefficient</span><br><span class="option-code">differenceDensity.extinctionCorrection.wavelength</span></td><td>Number / Number</td>
+                            <td>Overrides the CIF extinction coefficient and/or model wavelength when the option is an object.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density intensity scale observed calculated fit">
+                            <td><span class="option-code">differenceDensity.intensityScale</span></td><td>Number|null</td>
+                            <td>Explicit observed-to-IAM intensity scale; null fits a positive scale from the reflections. <span class="default-value">Default: null</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density reciprocal resolution reflections cutoff">
+                            <td><span class="option-code">differenceDensity.reciprocalResolution</span></td><td>Number</td>
+                            <td>Fraction of the available reciprocal resolution included in the Fourier map, in (0, 1]. <span class="default-value">Default: 1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density initial grid oversampling progressive first display">
+                            <td><span class="option-code">differenceDensity.initialGridOversampling</span></td><td>Number</td>
+                            <td>FFT-grid oversampling used for the first progressive display. <span class="default-value">Default: 1</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density final grid oversampling fft">
+                            <td><span class="option-code">differenceDensity.gridOversampling</span></td><td>Number</td>
+                            <td>Final real-space FFT-grid oversampling factor. <span class="default-value">Default: 2</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density progressive surface steps polygons">
+                            <td><span class="option-code">differenceDensity.progressiveSteps</span></td><td>Number[]</td>
+                            <td>Ordered surface-resolution fractions emitted after the map is available; 1 is always included. <span class="default-value">Default: [0.5, 0.75, 1]</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density visibility toggle">
+                            <td><span class="option-code">differenceDensity.visible</span></td><td>Boolean</td>
+                            <td>Initial density-surface visibility. Changing only this option toggles the retained meshes without recalculation. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour sigma level">
+                            <td><span class="option-code">differenceDensity.sigmaLevel</span></td><td>Number</td>
+                            <td>Positive and negative contour magnitude in map standard deviations. <span class="default-value">Default: 3</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density radius clipping atoms angstrom">
+                            <td><span class="option-code">differenceDensity.radius</span></td><td>Number</td>
+                            <td>Cartesian clipping radius around displayed atoms, in Å. <span class="default-value">Default: 1.5</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density symmetry reuse marching cubes regions">
+                            <td><span class="option-code">differenceDensity.useSymmetry</span></td><td>Boolean</td>
+                            <td>Reuses meshes for exactly symmetry-equivalent disconnected regions; intersecting masks remain one field to avoid seams. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density marching cubes resolution minimum">
+                            <td><span class="option-code">differenceDensity.resolution</span></td><td>Number</td>
+                            <td>Minimum marching-cubes resolution. <span class="default-value">Default: 64</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density grid spacing draw size surface">
+                            <td><span class="option-code">differenceDensity.gridSpacing</span></td><td>Number</td>
+                            <td>Target Cartesian surface-grid spacing used to increase resolution for larger displayed regions. <span class="default-value">Default: 0.15 Å</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density maximum resolution surface memory">
+                            <td><span class="option-code">differenceDensity.maxResolution</span></td><td>Number</td>
+                            <td>Upper bound for draw-size-dependent marching-cubes resolution. <span class="default-value">Default: 96</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density stitch tolerance mesh triangles">
+                            <td><span class="option-code">differenceDensity.stitchTolerance</span></td><td>Number</td>
+                            <td>Cartesian tolerance used while welding reused surface patches. <span class="default-value">Default: 1e-4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density difference positive color green">
+                            <td><span class="option-code">differenceDensity.positiveColor</span></td><td>String</td>
+                            <td>Positive standard difference-density colour. <span class="default-value">Default: "#36b566"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density difference negative color red">
+                            <td><span class="option-code">differenceDensity.negativeColor</span></td><td>String</td>
+                            <td>Negative standard difference-density colour. <span class="default-value">Default: "#d94b64"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="deformation density positive color blue">
+                            <td><span class="option-code">differenceDensity.deformationPositiveColor</span></td><td>String</td>
+                            <td>Positive custom/deformation-density colour. <span class="default-value">Default: "#4FC3F7"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="deformation density negative color orange">
+                            <td><span class="option-code">differenceDensity.deformationNegativeColor</span></td><td>String</td>
+                            <td>Negative custom/deformation-density colour. <span class="default-value">Default: "#FF9800"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density opacity transparent">
+                            <td><span class="option-code">differenceDensity.opacity</span></td><td>Number</td>
+                            <td>Surface opacity. <span class="default-value">Default: 0.55</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density wireframe solid surface">
+                            <td><span class="option-code">differenceDensity.wireframe</span></td><td>Boolean</td>
+                            <td>Draws density surfaces as wireframes. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density maximum polygon count marching cubes">
+                            <td><span class="option-code">differenceDensity.maxPolyCount</span></td><td>Number</td>
+                            <td>Maximum marching-cubes polygon allocation per generated field. <span class="default-value">Default: 100000</span></td>
+                        </tr>
+                    </table>
+                    <p>
+                        Custom columns and anomalous correction have additional layouts described in
+                        <a href="./using-cifvis.html#difference-density">Using CifVis</a>.
+                    </p>
                 </div>
             </div>
 
@@ -512,6 +785,37 @@
                             <td><span class="option-code">hbondDashFraction</span></td>
                             <td>Number</td>
                             <td>Fraction of segment that is solid (vs gap). <span class="default-value">Default: 0.6</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Unit-cell Visualization Options -->
+            <button type="button" class="collapsible">Unit-cell Visualization Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>These options style the unit-cell box and crystallographic axis arrows used by cell growth modes.</p>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="cell box color opacity line width">
+                            <td><span class="option-code">cell.boxColor</span><br><span class="option-code">cell.boxOpacity</span><br><span class="option-code">cell.boxLineWidth</span></td>
+                            <td>Color / Number / Number</td>
+                            <td>Unit-cell edge colour, opacity, and line width. <span class="default-value">Defaults: #000000, 0.8, 2</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cell axis arrow colors a b c">
+                            <td><span class="option-code">cell.arrowColorA</span><br><span class="option-code">cell.arrowColorB</span><br><span class="option-code">cell.arrowColorC</span></td>
+                            <td>Color</td>
+                            <td>Colours of the a, b, and c axis arrows. <span class="default-value">Defaults: #E74C3C, #2ECC71, #3498DB</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cell axis arrow head dimensions">
+                            <td><span class="option-code">cell.arrowHeadLengthMult</span><br><span class="option-code">cell.arrowHeadWidthMult</span></td>
+                            <td>Number</td>
+                            <td>Arrow-head length and width multipliers. <span class="default-value">Defaults: 0.05, 0.25</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cell axis arrow cylinder radius">
+                            <td><span class="option-code">cell.arrowCylinderRadius</span></td>
+                            <td>Number</td>
+                            <td>Axis-arrow shaft radius. <span class="default-value">Default: 0.04</span></td>
                         </tr>
                     </table>
                 </div>
