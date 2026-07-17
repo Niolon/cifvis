@@ -24,7 +24,7 @@ function updateStatus(message, type = 'info') {
  * Reads viewer overrides from the URL query string.
  * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
  * render styles. `?labels=all|non-hydrogen|none` controls atom labels and
- * `?label-mode=auto-omit|complete` chooses their placement policy.
+ * `?label-mode=auto-omit|quality-omit|performance-omit|complete` chooses placement.
  * `?label-callouts=structure|viewport` controls complete-mode callout spread.
  * `?label-max-connector=<pixels>` sets a clamped connector-length ceiling.
  * Unset or unrecognised values fall back to their defaults.
@@ -37,7 +37,12 @@ function getViewerOptionsFromUrl() {
     const labels = params.get('labels');
     const validLabelModes = ['all', 'non-hydrogen', 'none'];
     const labelPlacement = params.get('label-mode');
-    const validLabelPlacements = ['auto-omit', 'complete'];
+    const validLabelPlacements = [
+        'auto-omit',
+        'quality-omit',
+        'performance-omit',
+        'complete',
+    ];
     const labelCallouts = params.get('label-callouts');
     const validLabelCallouts = ['structure', 'viewport'];
     const maximumConnector = Number(params.get('label-max-connector'));

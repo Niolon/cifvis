@@ -210,6 +210,8 @@ export default {
         'movementPenalty': 80,
         'repairDepth': 2,
         'repairSearchLimit': 48,
+        'autoPerformanceLabelThreshold': 500,
+        'performanceNoSpaceCellSize': 24,
         'spatialCellSize': 64,
         'useWorker': true,
         'showLoadingIndicator': true,

@@ -155,7 +155,7 @@ const viewer = new CrystalViewer(container, {
     renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
     atomLabels: {
         show: 'non-hydrogen',
-        placementMode: 'auto-omit', // use 'complete' to prefer repair/callouts over omission
+        placementMode: 'auto-omit', // adaptive; explicit quality/performance modes are also available
         calloutPlacement: 'structure', // compact; 'viewport' permits wider spreading
     },
 });

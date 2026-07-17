@@ -347,9 +347,11 @@ _cell.angle_gamma 90
     atom-labels='["C1", {"id":"O1", "text":"O(carbonyl)", "priority":10}]'&gt;
 &lt;/cifview-widget&gt;</code></pre>
             <p>The shorthand values <code>all</code>, <code>non-hydrogen</code>, and <code>none</code> are also
-                accepted. The default <code>auto-omit</code> placement prefers a clear figure and omits labels when
-                needed. Set <code>options.atomLabels.placementMode</code> to <code>complete</code> for longer searches
-                and callouts which may cross bonds. Callouts stay just outside the structure by default; set
+                accepted. The default <code>auto-omit</code> placement prefers exact quality placement for ordinary
+                views and automatically uses depth-aware no-space regions when more than 500 requested atoms are
+                visible. Use <code>quality-omit</code> or <code>performance-omit</code> to force either policy.
+                Set <code>options.atomLabels.placementMode</code> to
+                <code>complete</code> for longer searches and callouts which may cross bonds. Callouts stay just outside the structure by default; set
                 <code>calloutPlacement</code> to <code>viewport</code> to use all available width. Text never overlaps other text or atoms, so an
                 overfull viewport can still omit labels. Set <code>maxConnectorLength</code> to a CSS-pixel ceiling
                 when extreme connectors should be omitted rather than drawn.</p>

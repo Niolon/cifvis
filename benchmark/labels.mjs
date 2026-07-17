@@ -7,12 +7,19 @@
 //   npm run bench:labels -- path/to/file-or-directory --mode complete
 //
 // Options:
-//   --mode <mode>       auto-omit (default) or complete
+//   --mode <mode>       auto-omit (default), quality-omit, performance-omit, or complete
 //   --callouts <policy> structure (default) or viewport
 //   --max-connector <px> Optional hard connector-length ceiling
+//   --show <selection>   all (default) or non-hydrogen
+//   --max-visible <n>   Maximum labels attempted (default unlimited)
+//   --repair-depth <n>  Displacement-chain depth (default 2)
+//   --repair-limit <n>  Repair candidate budget per label (default 48)
+//   --performance-cell <px> Performance-omit no-space tile size (default 24)
+//   --auto-threshold <n> Visible-label threshold for adaptive auto-omit (default 500)
 //   --iterations <n>    Timed layouts per structure (default 12)
 //   --width <px>        Viewer width (default 1200)
 //   --height <px>       Viewer height (default 900)
+//   --zoom <factor>     Multiplies the fitted camera zoom (default 1)
 //   --chrome <path>     Chrome executable (or set CHROME_PATH)
 
 import { chromium } from 'playwright-core';
@@ -109,12 +116,22 @@ const HARNESS_HTML = `<!doctype html>
 import * as CifVis from '/cifvis.alldeps.js';
 
 window.runLabelBenchmark = async ({
-    cifText, mode, callouts, maxConnector, iterations, width, height,
+    cifText, mode, callouts, maxConnector, show, maxVisible, repairDepth,
+    repairLimit, performanceCell, autoThreshold, iterations, width, height, zoom,
 }) => {
     const container = document.getElementById('viewer');
     container.replaceChildren();
     Object.assign(container.style, { width: width + 'px', height: height + 'px' });
-    const atomLabels = { show: 'all', placementMode: mode, calloutPlacement: callouts };
+    const atomLabels = {
+        show,
+        placementMode: mode,
+        calloutPlacement: callouts,
+        maxVisible,
+        repairDepth,
+        repairSearchLimit: repairLimit,
+        performanceNoSpaceCellSize: performanceCell,
+        autoPerformanceLabelThreshold: autoThreshold,
+    };
     if (maxConnector !== null) atomLabels.maxConnectorLength = maxConnector;
     const viewer = new CifVis.CrystalViewer(container, {
         renderStyle: 'cutout-2d',
@@ -122,6 +139,8 @@ window.runLabelBenchmark = async ({
     });
     const loadResult = await viewer.loadCIF(cifText);
     if (!loadResult.success) return loadResult;
+    viewer.camera.zoom *= zoom;
+    viewer.camera.updateProjectionMatrix();
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     // Warm text metrics and shaders once, then measure complete forced layouts.
@@ -146,6 +165,8 @@ window.runLabelBenchmark = async ({
         bonds: viewer.state.displayStructure.bonds.length,
         placed: layout.placed.length,
         hidden: layout.hidden.length,
+        placementPolicy: layout.placementPolicy,
+        staticNoSpace: layout.hidden.filter(item => item.reason === 'static-no-space').length,
         execution: viewer.atomLabelManager.lastExecutionMode,
         callouts: layout.placed.filter(item => item.isCallout).length,
         maximumConnector: Math.max(0, ...connectorLengths),
@@ -189,8 +210,10 @@ function startServer() {
 async function main() {
     const { paths, options } = parseArgs(process.argv.slice(2));
     const mode = options.mode || 'auto-omit';
-    if (!['auto-omit', 'complete'].includes(mode)) {
-        throw new Error('--mode must be auto-omit or complete');
+    if (!['auto-omit', 'quality-omit', 'performance-omit', 'complete'].includes(mode)) {
+        throw new Error(
+            '--mode must be auto-omit, quality-omit, performance-omit, or complete',
+        );
     }
     const callouts = options.callouts || 'structure';
     if (!['structure', 'viewport'].includes(callouts)) {
@@ -201,9 +224,38 @@ async function main() {
     if (maxConnector !== null && (!Number.isFinite(maxConnector) || maxConnector <= 0)) {
         throw new Error('--max-connector must be a positive number');
     }
+    const show = options.show || 'all';
+    if (!['all', 'non-hydrogen'].includes(show)) {
+        throw new Error('--show must be all or non-hydrogen');
+    }
+    const maxVisible = options['max-visible'] === undefined ? Infinity :
+        Number.parseInt(options['max-visible'], 10);
+    if (!(maxVisible === Infinity || Number.isInteger(maxVisible) && maxVisible >= 0)) {
+        throw new Error('--max-visible must be a non-negative integer');
+    }
+    const repairDepth = Number.parseInt(options['repair-depth'] || '2', 10);
+    const repairLimit = Number.parseInt(options['repair-limit'] || '48', 10);
+    const performanceCell = Number.parseFloat(options['performance-cell'] || '24');
+    const autoThreshold = Number.parseInt(options['auto-threshold'] || '500', 10);
+    if (!Number.isInteger(repairDepth) || repairDepth < 0) {
+        throw new Error('--repair-depth must be a non-negative integer');
+    }
+    if (!Number.isInteger(repairLimit) || repairLimit < 0) {
+        throw new Error('--repair-limit must be a non-negative integer');
+    }
+    if (!Number.isFinite(performanceCell) || performanceCell <= 0) {
+        throw new Error('--performance-cell must be a positive number');
+    }
+    if (!Number.isInteger(autoThreshold) || autoThreshold < 0) {
+        throw new Error('--auto-threshold must be a non-negative integer');
+    }
     const iterations = Number.parseInt(options.iterations || '12', 10);
     const width = Number.parseInt(options.width || '1200', 10);
     const height = Number.parseInt(options.height || '900', 10);
+    const zoom = Number.parseFloat(options.zoom || '1');
+    if (!Number.isFinite(zoom) || zoom <= 0) {
+        throw new Error('--zoom must be a positive number');
+    }
     const files = (paths.length > 0 ? paths.flatMap(findCifFiles) : defaultPresentationFiles()).sort();
     if (files.length === 0) {
         throw new Error('No CIFs supplied and no presentation fixtures were found');
@@ -226,11 +278,13 @@ async function main() {
 
     console.log(
         `Label benchmark: mode=${mode}, callouts=${callouts}, ` +
+        `show=${show}, maxVisible=${maxVisible}, repair=${repairDepth}/${repairLimit}, ` +
+        `performanceCell=${performanceCell}, autoThreshold=${autoThreshold}, ` +
         `maxConnector=${maxConnector ?? 'none'}, viewport=${width}x${height}, ` +
-        `iterations=${iterations}`,
+        `zoom=${zoom}, iterations=${iterations}`,
     );
     console.log(
-        'file\tatoms\tbonds\tplaced\thidden\tcallouts\tmax_connector_px\t' +
+        'file\tatoms\tbonds\tpolicy\tplaced\thidden\tstatic_no_space\tcallouts\tmax_connector_px\t' +
         'execution\tmedian_ms\tp95_ms',
     );
     try {
@@ -244,7 +298,22 @@ async function main() {
                 );
                 const result = await page.evaluate(
                     input => window.runLabelBenchmark(input),
-                    { cifText, mode, callouts, maxConnector, iterations, width, height },
+                    {
+                        cifText,
+                        mode,
+                        callouts,
+                        maxConnector,
+                        show,
+                        maxVisible,
+                        repairDepth,
+                        repairLimit,
+                        performanceCell,
+                        autoThreshold,
+                        iterations,
+                        width,
+                        height,
+                        zoom,
+                    },
                 );
                 if (!result.success) {
                     console.log(`${file}\tERROR\t${result.error}`);
@@ -254,8 +323,10 @@ async function main() {
                     file,
                     result.atoms,
                     result.bonds,
+                    result.placementPolicy,
                     result.placed,
                     result.hidden,
+                    result.staticNoSpace,
                     result.callouts,
                     result.maximumConnector.toFixed(1),
                     result.execution,

@@ -12,6 +12,7 @@ This document records the assumptions made while adding atom labels as a first-c
 - Unknown or currently hidden selectors are retained in configuration but produce no label. They can become visible after a structure modifier changes.
 - Empty or `null` display text suppresses a label. Text is plain canvas text, is limited to 200 characters, and is not interpreted as HTML.
 - The runtime API is `setAtomLabels()`, `updateAtomLabelOptions()`, `clearAtomLabels()`, and `getAtomLabelLayout()`.
+- `getAtomLabelLayout().placementPolicy` reports `quality-omit`, `performance-omit`, `complete`, or `none`, so applications and benchmarks can observe which branch adaptive `auto-omit` selected.
 - The widget supports the same configuration under `options.atomLabels` and the dynamic `atom-labels` attribute.
 
 ## Rendering choice
@@ -38,24 +39,26 @@ A requested label participates only while some part of its projected atom footpr
 
 ## Placement strategy
 
-Two placement policies are supported:
+Four placement policies are supported:
 
-- `auto-omit` is the default. It uses short local leaders, rejects leaders which cross bonds, and omits a label rather than produce a confusing figure.
+- `auto-omit` is the adaptive default. It selects quality omission for up to `autoPerformanceLabelThreshold` currently visible requested labels and performance omission above that threshold. The default threshold is 500. It uses visible requests rather than total structure size, so zoom and clipping can change the selected policy.
+- `quality-omit` forces the former exact omission policy. It uses short local leaders, bounded displacement repair, rejects confusing crossings, and omits a label rather than produce a confusing figure.
+- `performance-omit` retains exact collision validation for every label it places and uses the same short candidates, but disables displacement repair and processes equal-priority labels front-to-back. When a front label proves that every candidate in a small screen tile is blocked by static geometry, deeper anchors in that tile are omitted without repeating the candidate search.
 - `complete` searches farther from the atom and then uses ordered callout lanes. By default those lanes sit just outside the projected structure bounds, keeping the combined drawing compact; `calloutPlacement: "viewport"` retains full-width edge lanes. Its leader lines may cross bonds and other leaders. Label text still may not cover atoms, bonds, or other labels, so a physically overfull viewport can still report `viewport-capacity`; "complete" means completeness is preferred, not that an impossible packing is forced.
 
-- Sixteen angular candidates are generated at each search distance: two distances in `auto-omit`, and six by default in `complete` (`completeDistanceSteps`). The additional moderate-distance positions give bounded repair somewhere useful to move earlier labels before perimeter callouts are considered.
+- Sixteen angular candidates are generated at each search distance: two distances in all omission policies, and six by default in `complete` (`completeDistanceSteps`). The additional moderate-distance positions give bounded repair somewhere useful to move earlier labels before perimeter callouts are considered.
 - The preferred direction points away from the projected bonded neighbours. Terminal atoms therefore label away from their bond; atoms in ordinary rings normally label outward.
 - Isolated atoms and geometrically balanced atoms use a deterministic direction derived from their unique ID.
 - Candidates outside the viewport, overlapping an atom, or overlapping an already placed label are rejected.
 - Candidate rectangles intersecting a projected covalent- or hydrogen-bond corridor are rejected.
 - Farther candidates receive an automatic leader line.
-- In `auto-omit`, leader lines crossing bonds, atoms other than their anchor, placed labels, or other leader lines are rejected. `complete` relaxes bond and leader crossings but never lets a leader pass through an unrelated atom or label.
-- Explicit priority is considered first; equal-priority labels use atom ID ordering for deterministic output.
-- Before omitting a label or assigning a distant callout, bounded local repair may move an earlier equal-priority label to its next-best candidate. Repair can follow a short displacement chain (`repairDepth`) and shares a strict candidate budget (`repairSearchLimit`). Higher-priority labels are never displaced by lower-priority labels.
+- In all omission policies, leader lines crossing bonds, atoms other than their anchor, placed labels, or other leader lines are rejected. `complete` relaxes bond and leader crossings but never lets a leader pass through an unrelated atom or label.
+- Explicit priority is considered first. Equal-priority labels use atom ID ordering in quality placement/`complete` and projected near-to-far depth followed by atom ID in performance placement.
+- Except in performance placement, before omitting a label or assigning a distant callout, bounded local repair may move an earlier equal-priority label to its next-best candidate. Repair can follow a short displacement chain (`repairDepth`) and shares a strict candidate budget (`repairSearchLimit`). Higher-priority labels are never displaced by lower-priority labels.
 - Complete-mode callouts optimize for the worst connector as well as total movement: equal-priority labels with the greatest unavoidable callout distance receive inner lanes first, and occupied nearby lanes can displace earlier callouts through the same repair chain. This intentionally prefers several modest connector increases over one extreme line.
 - `maxConnectorLength` provides a hard CSS-pixel ceiling when compactness matters more than completeness. Candidates beyond it are rejected before repair, so a label is omitted rather than silently creating an extreme connector.
 - Previous-frame direction is included in the score to reduce jumping while rotating.
-- If no candidate is valid, the label is reported as hidden with reason `no-space` in `auto-omit` or `viewport-capacity` in `complete`. The implementation does not violate the no-overlap rule to force every label onto the figure.
+- If no candidate is valid, the label is reported as hidden with reason `no-space` in omission modes or `viewport-capacity` in `complete`. A deeper performance-placement label rejected by a previously proven tile reports `static-no-space`. The implementation does not violate the no-overlap rule to force every label onto the figure.
 
 The solver remains deterministic and mostly greedy, with bounded local repair rather than exhaustive global optimization. Repair only follows one blocker at each level and stops at its configured depth/budget. It can therefore still omit a label, or retain a longer connector, when improvement would require moving several mutually blocking labels at once. This bound is deliberate: global label placement is combinatorial and must not monopolize the worker on large structures.
 
@@ -84,29 +87,75 @@ Planarity is not currently calculated. Applying the penalty only to the projecte
 - Three.js projection and canvas text measurement remain on the main thread. The DOM-free collision solver runs in a self-contained inline Web Worker by default. `useWorker: false` is an escape hatch, and worker creation/runtime failures fall back to the main thread.
 - Only one worker request may be in flight. Camera changes are coalesced rather than queued, and results for obsolete transforms, viewports, structures, or options are discarded.
 - Whenever the camera or molecule pose changes, the old label canvas is cleared immediately. This clean sweep deliberately shows a temporarily label-free rotating structure instead of leaving labels ghosted at their previous coordinates.
-- `complete` layouts and layouts above `interactionLabelLimit` are deferred while dragging. The overlay is hidden by default and one fresh layout is requested when interaction ends. Smaller `auto-omit` layouts may update during interaction, bounded by `layoutThrottleMs`.
+- `complete` layouts and layouts above `interactionLabelLimit` are deferred while dragging. The overlay is hidden by default and one fresh layout is requested when interaction ends. Smaller omission-mode layouts may update during interaction, bounded by `layoutThrottleMs`.
 - Text widths are cached by font and string. Bond adjacency is cached per displayed structure. Atom, bond, ring, placed-label, and leader collision queries use a uniform screen-space spatial hash.
 - Layout runs only on frames the viewer already renders in `onDemand` mode. Unchanged transform/projection state reuses the accepted layout.
 - `maxVisible` bounds the number of attempted labels. Labels excluded by this limit are reported with reason `max-visible`.
 - Label-only ring topology and bond-neighbour caches are built lazily after the first structure paint and only when labels are enabled. They are recalculated when the displayed structure changes; ring polygons are projected for each accepted pose.
 - The overlay follows device-pixel ratio while layout remains in CSS pixels.
 
+The performance no-space map exists only inside one worker layout. Its default 24 CSS-pixel tiles are therefore rebuilt for every accepted zoom, rotation, pan, viewport, or structure state; obsolete worker results are rejected through the normal transform checks. A tile is recorded only when the first/front label has no candidate which clears the viewport and static atom/bond geometry. Failure caused only by an already placed label or leader does not poison the tile. This remains a deliberate heuristic: another label in the same tile can have different text width, radius, or exact anchor position and might have found a narrow opening. `performanceNoSpaceCellSize` controls the trade-off; smaller values approach ordinary exact omission, while larger values save more work and may suppress more viable rear labels.
+
 ### Presentation-fixture stress check
 
-A July 2026 headless-Chrome check used a 1200×900 viewport, `cutout-2d`, `show: "all"`, `auto-omit`, and three forced cold end-to-end label updates per structure. The figures include projection, worker messaging, placement, and drawing. They are development-machine observations, not stable CI thresholds:
+A July 2026 headless-Chrome check used a 1200×900 viewport, `cutout-2d`, `show: "all"`, `auto-omit`, and six forced cold end-to-end label updates per structure. The figures include projection, worker messaging, placement, and drawing. They are development-machine observations, not stable CI thresholds:
 
 | Presentation fixture | Displayed atoms | Post-modifier bonds | Placed / hidden | Median layout |
 | --- | ---: | ---: | ---: | ---: |
-| `capsaicin.cif` | 22 | 22 | 22 / 0 | 1.4 ms |
-| `fullerene.cif` | 237 | 297 | 86 / 151 | 25.8 ms |
-| `large_nobonds.cif` | 1,701 | 3,775 | 63 / 1,638 | 287.3 ms |
-| `large_bonds.cif` | 1,701 | 3,787 | 63 / 1,638 | 291.6 ms |
+| `capsaicin.cif` | 22 | 22 | 22 / 0 | 4.3 ms |
+| `fullerene.cif` | 237 | 297 | 86 / 151 | 37.9 ms |
+| `large_nobonds.cif` | 1,701 | 3,775 | 63 / 1,638 | 292.9 ms |
+| `large_bonds.cif` | 1,701 | 3,787 | 63 / 1,638 | 298.1 ms |
 
 `large_nobonds.cif` has thousands of post-modifier bonds because the normal missing-bond generator is part of the displayed-structure pipeline. Spatial indexing substantially reduces total computation, but bounded repair adds work for every unresolved label and a cold layout for 1,701 requested labels still takes much longer than a frame. The worker and interaction deferral therefore improve responsiveness and time-to-first-structure without pretending that the labels themselves are immediately available.
 
-For the same `large_bonds.cif` view, a one-run complete-mode comparison placed 89 labels with compact structure-relative lanes (7 callouts, 455.8 px maximum connector) versus 92 with viewport lanes (10 callouts, 490.8 px maximum). Setting `maxConnectorLength: 250` placed 84 labels with only 2 callouts and a measured 248.7 px maximum. This is an explicit compactness trade-off: applications can impose the connector ceiling appropriate for their figure and accept further omissions.
+For the same `large_bonds.cif` view, a three-run complete-mode comparison produced:
 
-Run the persistent harness with `npm run bench:labels`; pass `-- --mode complete`, `--callouts viewport`, a CIF path/directory, or the documented sizing and iteration flags to change the workload. It reports callout count and maximum connector length as well as timing. With no paths it discovers the four sibling `cifvis_presentation` fixtures above.
+| Complete policy | Placed / hidden | Callouts | Maximum connector | Median layout |
+| --- | ---: | ---: | ---: | ---: |
+| Compact structure lanes, uncapped | 89 / 1,612 | 7 | 455.8 px | 1,582.9 ms |
+| Compact structure lanes, 250 px cap | 84 / 1,617 | 2 | 248.7 px | 1,035.0 ms |
+| Viewport lanes, uncapped | 92 / 1,609 | 10 | 490.8 px | 1,882.9 ms |
+
+The 250 px compact policy is the practical all-label preset from this fixture: relative to uncapped compact mode it gives up five labels, reduces the worst connector by 45%, and reduces median solve time by 35%. This is still an explicit compactness trade-off rather than a universal threshold; applications can choose the connector ceiling appropriate for their figure.
+
+### Adaptive omission and forced performance mode
+
+The recommended user-facing preset is simply:
+
+```js
+atomLabels: {
+    show: 'non-hydrogen',
+    placementMode: 'auto-omit',
+    useWorker: true,
+    interactionLabelLimit: 0,
+    hideLabelsDuringDeferredLayout: true,
+    maxVisible: Infinity,
+}
+```
+
+`show: "non-hydrogen"` avoids unexpectedly expanding the workload if the viewer later enables displayed hydrogens; it is equivalent to `"all"` while the viewer's default `hydrogenMode: "none"` remains active. `interactionLabelLimit: 0` means every non-empty label layout is deferred during dragging. It does not make a stationary layout faster, but preserves rotation responsiveness. The worker, clean-sweep overlay, and delayed loading indicator retain the first-structure and interaction behavior described above.
+
+With the default threshold, `auto-omit` uses quality placement for capsaicin, fullerene, and all four concrete percentile fixtures below; it selects performance placement for each 1,701-atom network. Applications can force `quality-omit` when maximum stable label recovery matters, or `performance-omit` when predictable dense-view latency matters more than a few additional labels.
+
+Performance placement retains both short search distances, atom/bond/label/leader avoidance, ring preference, and deterministic placement. Its compromises are front-surface preference, no displacement repair, and the 2D tile heuristic above. In the fitted 1200×900 presentation view it placed all 22 capsaicin labels, 75 fullerene labels, and 59 labels on each 1,701-atom network. Forced `quality-omit` placed 22, 86, and 63 respectively. The measured performance medians were 3.1 ms, 20.0 ms, and approximately 104–106 ms; the corresponding dense quality check was approximately 241–245 ms. On each dense network, 983 rear labels were rejected through proven static no-space tiles rather than full candidate searches.
+
+The map responds to zoom rather than sticking to the structure. On `large_bonds.cif`, zooming out to 0.6× increased tile rejections from 983 to 1,371 and placed 36 labels in 105.4 ms. Zooming in to 1.5× moved part of the structure outside the viewport and rebuilt the performance map. At 4× zoom only 425 requested atoms remained visible, so adaptive `auto-omit` switched back to `quality-omit` and reported that choice through `placementPolicy`. These are behavior checks, not stable performance thresholds.
+
+The same July 2026 run included the concrete CifVis p50/p90/p95/p99 structures recorded in `analysis/percentile-files.json`. Their load-time ranks come from the earlier clean serial load benchmark; the label figures below are eight forced layouts in the current 1200×900 label harness, so the two timings are contextual rather than directly additive:
+
+| Historical load rank | Displayed atoms | Recorded load | Quality omit | Performance omit | Performance placed / hidden |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| p50 | 34 | 53.1 ms | 4.1 ms | 4.8 ms | 30 / 4 |
+| p90 | 183 | 119.6 ms | 24.3 ms | 23.1 ms | 92 / 91 |
+| p95 | 135 | 151.3 ms | 17.1 ms | 16.4 ms | 98 / 37 |
+| p99 | 374 | 194.1 ms | 48.9 ms | 40.3 ms | 83 / 291 |
+
+The larger publication-scale load study in `analysis/overnight-summary.txt` is the better population reference: over 9,000 real COD structures, disk load was 44.5 ms at p50, 56.9 ms at p90, 64.1 ms at p95, 89.3 ms at p99, and 131.3 ms at p99.9. It did not record corresponding label layouts, so no structure-by-structure combined percentile should be inferred from those aggregate values. The concrete percentile fixtures nevertheless show forced performance label work at or below 40.3 ms through the selected p99 example; the 1,701-atom presentation structures remain intentionally harsher label-density cases than those four load-time picks.
+
+`maxVisible` was also tested as a hard-budget control with repair disabled. On `large_bonds.cif`, caps of 128, 256, and 512 produced medians of 48.9, 61.4, and 98.0 ms, but placed only 9, 30, and 37 labels respectively, versus 60 at 179.9 ms without a cap. Equal-priority requests are deterministically ordered by atom ID, so a blind prefix can be spatially clustered. For that reason `maxVisible` is not part of the recommended general preset. It remains useful when the application supplies an explicitly prioritized label list, or when a strict upper bound matters more than even spatial coverage. A future spatially stratified cap would be needed before a finite limit could serve as a good automatic default.
+
+Run the persistent harness with `npm run bench:labels`; pass `-- --mode quality-omit`, `--mode performance-omit`, `--mode complete`, `--auto-threshold`, `--performance-cell`, `--zoom`, `--callouts viewport`, `--show non-hydrogen`, `--max-visible`, `--repair-depth`, `--repair-limit`, a CIF path/directory, or the documented sizing and iteration flags to change the workload. It reports static no-space rejection count, callout count, and maximum connector length as well as timing. With no paths it discovers the four sibling `cifvis_presentation` fixtures above.
 
 ## Lifecycle decisions
 

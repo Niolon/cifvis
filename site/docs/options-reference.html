@@ -263,10 +263,10 @@
                             <td>Object</td>
                             <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID.</td>
                         </tr>
-                        <tr class="option-row" data-keywords="atom labels placement mode complete omit callout">
+                        <tr class="option-row" data-keywords="atom labels placement mode complete fast omit callout performance">
                             <td><span class="option-code">atomLabels.placementMode</span></td>
                             <td>String</td>
-                            <td><code>auto-omit</code> rejects confusing crossings and may omit labels; <code>complete</code> searches farther and adds callouts, allowing bond/leader crossings when needed. A viewport which cannot fit non-overlapping text can still omit labels. <span class="default-value">Default: "auto-omit"</span></td>
+                            <td><code>auto-omit</code> adaptively uses quality placement for ordinary visible workloads and performance placement for dense ones; <code>quality-omit</code> forces exact candidate evaluation with repair; <code>performance-omit</code> forces front-to-back, zoom-specific no-space reuse without repair; <code>complete</code> searches farther and adds callouts. Omission modes reject confusing crossings. <span class="default-value">Default: "auto-omit"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels font size family weight">
                             <td><span class="option-code">atomLabels.fontSize / fontWeight / fontFamily</span></td>
@@ -332,6 +332,16 @@
                             <td><span class="option-code">atomLabels.spatialCellSize</span></td>
                             <td>Number</td>
                             <td>Uniform screen-space collision-index cell size in CSS pixels. <span class="default-value">Default: 64</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels fast omit no space tile performance zoom depth">
+                            <td><span class="option-code">atomLabels.performanceNoSpaceCellSize</span></td>
+                            <td>Number</td>
+                            <td>Screen-space tile size used by performance placement. Larger tiles reuse more front-atom no-space results but may omit more deeper labels. Tiles are rebuilt after zoom or other camera changes. <span class="default-value">Default: 24</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels auto omit threshold performance visible count">
+                            <td><span class="option-code">atomLabels.autoPerformanceLabelThreshold</span></td>
+                            <td>Number</td>
+                            <td>Visible requested-label count above which <code>auto-omit</code> selects performance placement. Because this uses the current projection, zooming may switch policy. <span class="default-value">Default: 500</span></td>
                         </tr>
                     </table>
                 </div>

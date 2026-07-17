@@ -436,6 +436,25 @@ function connectorLength(candidate) {
 }
 
 /**
+ * Returns a zoom-specific screen-space bucket for performance omission.
+ * A failed front label certifies its small 2D anchor tile for deeper labels.
+ * The exact solver remains responsible for the first label in every tile.
+ * @param {object} label - Projected label request
+ * @param {object} options - Layout options
+ * @returns {string|null} Cache key, or null when depth is unavailable
+ */
+function performanceNoSpaceKey(label, options) {
+    if (!Number.isFinite(label.z)) {
+        return null;
+    }
+    const cellSize = Math.max(1, options.performanceNoSpaceCellSize ?? 24);
+    return [
+        Math.floor(label.x / cellSize),
+        Math.floor(label.y / cellSize),
+    ].join(':');
+}
+
+/**
  * Tests whether a rectangle is wholly inside the padded viewport.
  * @param {object} rect - Candidate rectangle
  * @param {{width: number, height: number}} viewport - Viewport dimensions
@@ -480,24 +499,58 @@ export function layoutAtomLabels(
     atomObstacles.forEach(atom => atomIndex.insert(atom, circleBounds(atom)));
     bondObstacles.forEach(bond => bondIndex.insert(bond, segmentBounds(bond)));
     ringPolygons.forEach(polygon => ringIndex.insert(polygon, polygonBounds(polygon)));
+    const attemptedLabelCount = Math.min(labels.length, options.maxVisible ?? Infinity);
+    const performanceMode = options.placementMode === 'performance-omit' ||
+        (options.placementMode === 'auto-omit' &&
+            attemptedLabelCount > (options.autoPerformanceLabelThreshold ?? 500));
     const allOrderedLabels = [...labels]
-        .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.id.localeCompare(b.id));
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0) ||
+            (performanceMode ? (Number.isFinite(a.z) ? a.z : Infinity) -
+                (Number.isFinite(b.z) ? b.z : Infinity) : 0) ||
+            a.id.localeCompare(b.id));
     const orderedLabels = allOrderedLabels.slice(0, options.maxVisible);
     const completeMode = options.placementMode === 'complete';
     const projectedStructureBounds = structureBounds(atomObstacles, bondObstacles);
     const candidatesByLabel = new Map();
+    const staticValidity = new WeakMap();
+    const noSpaceDepthByKey = new Map();
+
+    const staticCandidateIsValid = (item, label) => {
+        if (staticValidity.has(item)) {
+            return staticValidity.get(item);
+        }
+        let valid = true;
+        if (connectorLength(item) > (options.maxConnectorLength ?? Infinity)) {
+            valid = false;
+        }
+        if (valid && !isInsideViewport(item.rect, viewport, options.viewportPadding)) {
+            valid = false;
+        }
+        if (valid && atomIndex.query(item.rect)
+            .some(atom => rectangleOverlapsCircle(item.rect, atom))) {
+            valid = false;
+        }
+        if (valid && bondIndex.query(item.rect)
+            .some(bond => segmentIntersectsRectangle(bond, item.rect))) {
+            valid = false;
+        }
+        if (valid && item.leaderSegment) {
+            const leaderBounds = segmentBounds(item.leaderSegment);
+            if (!completeMode && bondIndex.query(leaderBounds)
+                .some(bond => segmentsOverlap(item.leaderSegment, bond))) {
+                valid = false;
+            }
+            if (valid && atomIndex.query(leaderBounds).some(atom => atom.id !== label.id &&
+                pointToSegmentDistanceSquared(atom, item.leaderSegment) < atom.radius ** 2)) {
+                valid = false;
+            }
+        }
+        staticValidity.set(item, valid);
+        return valid;
+    };
 
     const candidateBlockers = (item, label) => {
-        if (connectorLength(item) > (options.maxConnectorLength ?? Infinity)) {
-            return null;
-        }
-        if (!isInsideViewport(item.rect, viewport, options.viewportPadding)) {
-            return null;
-        }
-        if (atomIndex.query(item.rect).some(atom => rectangleOverlapsCircle(item.rect, atom))) {
-            return null;
-        }
-        if (bondIndex.query(item.rect).some(bond => segmentIntersectsRectangle(bond, item.rect))) {
+        if (!staticCandidateIsValid(item, label)) {
             return null;
         }
         const blockers = new Set(labelIndex.query(item.rect)
@@ -509,14 +562,6 @@ export function layoutAtomLabels(
             return blockers;
         }
         const leaderBounds = segmentBounds(item.leaderSegment);
-        if (!completeMode && bondIndex.query(leaderBounds)
-            .some(bond => segmentsOverlap(item.leaderSegment, bond))) {
-            return null;
-        }
-        if (atomIndex.query(leaderBounds).some(atom => atom.id !== label.id &&
-            pointToSegmentDistanceSquared(atom, item.leaderSegment) < atom.radius ** 2)) {
-            return null;
-        }
         labelIndex.query(leaderBounds)
             .filter(existing => segmentIntersectsRectangle(item.leaderSegment, existing.rect))
             .forEach(existing => blockers.add(existing));
@@ -602,6 +647,13 @@ export function layoutAtomLabels(
     );
 
     for (const label of orderedLabels) {
+        const noSpaceKey = performanceMode ? performanceNoSpaceKey(label, options) : null;
+        const nearerNoSpaceDepth = noSpaceKey === null ? undefined :
+            noSpaceDepthByKey.get(noSpaceKey);
+        if (nearerNoSpaceDepth !== undefined && nearerNoSpaceDepth < label.z - 1e-6) {
+            hidden.push({ id: label.id, text: label.text, reason: 'static-no-space' });
+            continue;
+        }
         const candidates = [];
         const distanceMultipliers = completeMode ? Array.from(
             { length: Math.max(2, options.completeDistanceSteps ?? 6) },
@@ -631,7 +683,14 @@ export function layoutAtomLabels(
 
         if (candidate) {
             register(label, candidate);
-        } else if (tryLocalRepair(label, candidates)) {
+        } else if (performanceMode && noSpaceKey !== null &&
+            candidates.every(item => !staticCandidateIsValid(item, label))) {
+            const currentDepth = noSpaceDepthByKey.get(noSpaceKey);
+            if (currentDepth === undefined || label.z < currentDepth) {
+                noSpaceDepthByKey.set(noSpaceKey, label.z);
+            }
+            unresolved.push(label);
+        } else if (!performanceMode && tryLocalRepair(label, candidates)) {
             continue;
         } else {
             unresolved.push(label);
@@ -738,5 +797,10 @@ export function layoutAtomLabels(
         hidden.push({ id: label.id, text: label.text, reason: 'max-visible' });
     }
 
-    return { placed, hidden };
+    return {
+        placed,
+        hidden,
+        placementPolicy: completeMode ? 'complete' :
+            performanceMode ? 'performance-omit' : 'quality-omit',
+    };
 }

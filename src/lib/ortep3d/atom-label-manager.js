@@ -5,6 +5,7 @@ import AtomLabelWorker from './atom-label-worker.js?worker&inline';
 
 const layoutOptionKeys = [
     'atomPadding',
+    'autoPerformanceLabelThreshold',
     'calloutChoiceLimit',
     'calloutColumnGap',
     'calloutColumns',
@@ -14,6 +15,7 @@ const layoutOptionKeys = [
     'calloutSearchLimit',
     'completeDistanceSteps',
     'fallbackDistance',
+    'performanceNoSpaceCellSize',
     'labelPadding',
     'leaderBondCrossingPenalty',
     'leaderWidth',
@@ -171,7 +173,7 @@ export class AtomLabelManager {
         this.viewer = viewer;
         this.options = viewer.options.atomLabels;
         this.previousPlacements = new Map();
-        this.layout = { placed: [], hidden: [] };
+        this.layout = { placed: [], hidden: [], placementPolicy: 'none' };
         this.rings = null;
         this.displayStructure = null;
         this.bondNeighbours = new Map();
@@ -616,7 +618,7 @@ export class AtomLabelManager {
 
         if (requests.length === 0) {
             this.endLoadingIndicator();
-            this.layout = { placed: [], hidden: [] };
+            this.layout = { placed: [], hidden: [], placementPolicy: 'none' };
             this.context.clearRect(0, 0, width, height);
             this.rememberTransforms(width, height);
             return Promise.resolve(this.layout);
@@ -628,7 +630,7 @@ export class AtomLabelManager {
         });
         if (visibleRequests.length === 0) {
             this.endLoadingIndicator();
-            this.layout = { placed: [], hidden: [] };
+            this.layout = { placed: [], hidden: [], placementPolicy: 'none' };
             this.context.clearRect(0, 0, width, height);
             this.rememberTransforms(width, height);
             return Promise.resolve(this.layout);
@@ -653,6 +655,7 @@ export class AtomLabelManager {
                 text: request.text,
                 x: anchor.x,
                 y: anchor.y,
+                z: anchor.z,
                 radius: anchor.radius,
                 width: measuredWidth,
                 height: this.options.fontSize * 1.2,

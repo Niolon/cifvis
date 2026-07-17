@@ -26,6 +26,8 @@ const options = {
     movementPenalty: 80,
     repairDepth: 2,
     repairSearchLimit: 48,
+    autoPerformanceLabelThreshold: 500,
+    performanceNoSpaceCellSize: 24,
     leaderWidth: 1,
     spatialCellSize: 32,
     calloutPlacement: 'structure',
@@ -166,6 +168,128 @@ describe('atom label layout geometry', () => {
         );
         expect(result.placed.map(item => item.id)).toEqual(['high']);
         expect(result.hidden).toContainEqual({ id: 'low', text: 'low', reason: 'max-visible' });
+    });
+
+    test('performance-omit gives front atoms precedence within an equal-priority group', () => {
+        const result = layoutAtomLabels(
+            [
+                { ...label('A-back', 60, 50), z: 0.6 },
+                { ...label('Z-front', 160, 50), z: -0.6 },
+            ],
+            [],
+            [],
+            [],
+            { width: 240, height: 100 },
+            { ...options, placementMode: 'performance-omit', maxVisible: 1 },
+        );
+
+        expect(result.placed.map(item => item.id)).toEqual(['Z-front']);
+        expect(result.hidden).toContainEqual({
+            id: 'A-back',
+            text: 'A-back',
+            reason: 'max-visible',
+        });
+    });
+
+    test('performance-omit keeps explicit priority ahead of depth', () => {
+        const result = layoutAtomLabels(
+            [
+                { ...label('important-back', 60, 50, { x: 1, y: 0 }, 10), z: 0.6 },
+                { ...label('ordinary-front', 160, 50), z: -0.6 },
+            ],
+            [],
+            [],
+            [],
+            { width: 240, height: 100 },
+            { ...options, placementMode: 'performance-omit', maxVisible: 1 },
+        );
+
+        expect(result.placed.map(item => item.id)).toEqual(['important-back']);
+    });
+
+    test('auto-omit selects quality or performance behavior from visible label count', () => {
+        const labels = [
+            { ...label('A-back', 60, 50), z: 0.6 },
+            { ...label('Z-front', 160, 50), z: -0.6 },
+        ];
+        const layout = threshold => layoutAtomLabels(
+            labels,
+            [],
+            [],
+            [],
+            { width: 240, height: 100 },
+            {
+                ...options,
+                placementMode: 'auto-omit',
+                autoPerformanceLabelThreshold: threshold,
+            },
+        );
+
+        const quality = layout(2);
+        const performance = layout(1);
+        expect(quality.placementPolicy).toBe('quality-omit');
+        expect(quality.placed.map(item => item.id)).toEqual(['A-back', 'Z-front']);
+        expect(performance.placementPolicy).toBe('performance-omit');
+        expect(performance.placed.map(item => item.id)).toEqual(['Z-front', 'A-back']);
+    });
+
+    test('performance-omit reuses a nearer static no-space result for a deeper atom', () => {
+        const labels = [
+            { ...label('front', 10, 10), z: -0.5 },
+            { ...label('back', 10, 10), z: 0.5 },
+        ];
+        const result = layoutAtomLabels(
+            labels,
+            labels.map(item => ({ id: item.id, x: item.x, y: item.y, radius: 8 })),
+            [],
+            [],
+            { width: 20, height: 20 },
+            { ...options, placementMode: 'performance-omit' },
+        );
+
+        expect(result.placed).toHaveLength(0);
+        expect(result.hidden).toContainEqual({
+            id: 'front',
+            text: 'front',
+            reason: 'no-space',
+        });
+        expect(result.hidden).toContainEqual({
+            id: 'back',
+            text: 'back',
+            reason: 'static-no-space',
+        });
+    });
+
+    test('performance no-space regions are rebuilt for a new zoom projection', () => {
+        const crampedLabels = [
+            { ...label('front', 10, 10), z: -0.5 },
+            { ...label('back', 10, 10), z: 0.5 },
+        ];
+        const roomyLabels = [
+            { ...label('front', 80, 60), z: -0.5 },
+            { ...label('back', 80, 60), z: 0.5 },
+        ];
+        const performanceOptions = { ...options, placementMode: 'performance-omit' };
+        const cramped = layoutAtomLabels(
+            crampedLabels,
+            crampedLabels.map(item => ({ id: item.id, x: item.x, y: item.y, radius: 8 })),
+            [],
+            [],
+            { width: 20, height: 20 },
+            performanceOptions,
+        );
+        const roomy = layoutAtomLabels(
+            roomyLabels,
+            roomyLabels.map(item => ({ id: item.id, x: item.x, y: item.y, radius: 8 })),
+            [],
+            [],
+            { width: 200, height: 120 },
+            performanceOptions,
+        );
+
+        expect(cramped.hidden.some(item => item.reason === 'static-no-space')).toBe(true);
+        expect(roomy.placed.length).toBeGreaterThan(0);
+        expect(roomy.hidden.some(item => item.reason === 'static-no-space')).toBe(false);
     });
 
     test('keeps label rectangles away from projected bonds', () => {

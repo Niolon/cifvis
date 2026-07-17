@@ -408,7 +408,12 @@ export class CrystalViewer {
                 `Must be one of: ${validRenderStyles.join(', ')}`,
             );
         }
-        const validLabelPlacementModes = ['auto-omit', 'complete'];
+        const validLabelPlacementModes = [
+            'auto-omit',
+            'quality-omit',
+            'performance-omit',
+            'complete',
+        ];
         if (options.atomLabels?.placementMode &&
             !validLabelPlacementModes.includes(options.atomLabels.placementMode)) {
             throw new Error(
@@ -428,6 +433,16 @@ export class CrystalViewer {
             !(typeof options.atomLabels.maxConnectorLength === 'number' &&
                 options.atomLabels.maxConnectorLength > 0)) {
             throw new Error('atomLabels.maxConnectorLength must be a positive number');
+        }
+        if (options.atomLabels?.performanceNoSpaceCellSize !== undefined &&
+            !(typeof options.atomLabels.performanceNoSpaceCellSize === 'number' &&
+                options.atomLabels.performanceNoSpaceCellSize > 0)) {
+            throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
+        }
+        if (options.atomLabels?.autoPerformanceLabelThreshold !== undefined &&
+            !(Number.isInteger(options.atomLabels.autoPerformanceLabelThreshold) &&
+                options.atomLabels.autoPerformanceLabelThreshold >= 0)) {
+            throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
         }
 
         this.container = container;
@@ -911,10 +926,15 @@ export class CrystalViewer {
      * @param {object} options - Partial atom-label options
      */
     updateAtomLabelOptions(options) {
-        if (options.placementMode && !['auto-omit', 'complete'].includes(options.placementMode)) {
+        if (options.placementMode && ![
+            'auto-omit',
+            'quality-omit',
+            'performance-omit',
+            'complete',
+        ].includes(options.placementMode)) {
             throw new Error(
                 `Invalid atom label placement mode: "${options.placementMode}". ` +
-                'Must be one of: auto-omit, complete',
+                'Must be one of: auto-omit, quality-omit, performance-omit, complete',
             );
         }
         if (options.calloutPlacement &&
@@ -927,6 +947,16 @@ export class CrystalViewer {
         if (options.maxConnectorLength !== undefined &&
             !(typeof options.maxConnectorLength === 'number' && options.maxConnectorLength > 0)) {
             throw new Error('atomLabels.maxConnectorLength must be a positive number');
+        }
+        if (options.performanceNoSpaceCellSize !== undefined &&
+            !(typeof options.performanceNoSpaceCellSize === 'number' &&
+                options.performanceNoSpaceCellSize > 0)) {
+            throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
+        }
+        if (options.autoPerformanceLabelThreshold !== undefined &&
+            !(Number.isInteger(options.autoPerformanceLabelThreshold) &&
+                options.autoPerformanceLabelThreshold >= 0)) {
+            throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
         }
         this.options.atomLabels = {
             ...this.options.atomLabels,
