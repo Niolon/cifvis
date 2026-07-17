@@ -9,6 +9,7 @@ The [full documentation hub](https://niolon.github.io/cifvis/docs/index.html) (a
 - [Developing with CifVis](https://niolon.github.io/cifvis/docs/using-cifvis.html) &mdash; parsing CIF files (Blocks, entries, Loops), driving `CrystalViewer` directly to build a custom GUI, using Filters, and using CifVis structures in your own Three.js scene.
 - [Widget Usage](https://niolon.github.io/cifvis/docs/widget-usage.html) &mdash; the `<cifview-widget>` component: attributes, display modes, and styling it (light DOM, CSS custom properties).
 - [Options Reference](https://niolon.github.io/cifvis/docs/options-reference.html) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
+- [Atom-label prototype decisions](site/docs/atom-labels-decisions.md) &mdash; implementation assumptions, compromises, and follow-up work.
 - [Developing CifVis](https://niolon.github.io/cifvis/docs/developing-cifvis.html) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
 
 For the full generated API reference (every exported class/method), run `npm run docs` to build it locally at `jsdoc-out/index.html`.
@@ -94,6 +95,10 @@ const viewer = new CrystalViewer(container, {
   },
   atomCutawayStripeCount: 7, // Horizontal hatch lines across each cutaway disc
   atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
+  atomLabels: {
+    show: ['C1', { id: 'O1', text: 'O(carbonyl)', priority: 10 }],
+    fontSize: 14,
+  },
   renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)
   plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
   plot2DStripeCount: 7,

@@ -338,6 +338,17 @@ _cell.angle_gamma 90
                 See the <a href="./options-reference.html">Options Reference</a> for the full list (camera,
                 selection, rendering, atoms, bonds, hydrogen bonds, and per-element colors/radii).
             </p>
+            <h3>Atom labels</h3>
+            <p>Labels are opt-in and may be set through <code>options.atomLabels</code> or the dynamic
+                <code>atom-labels</code> attribute. Plain selectors match every displayed symmetry copy; use a
+                qualified ID such as <code>C1|2_555</code> to select one copy.</p>
+            <pre><code>&lt;cifview-widget
+    src="../cif/urea.cif"
+    atom-labels='["C1", {"id":"O1", "text":"O(carbonyl)", "priority":10}]'&gt;
+&lt;/cifview-widget&gt;</code></pre>
+            <p>The shorthand values <code>all</code>, <code>non-hydrogen</code>, and <code>none</code> are also
+                accepted. Collision-free placement is preferred over completeness, so labels are omitted when the
+                viewport has no valid position.</p>
         </section>
 
         <section>

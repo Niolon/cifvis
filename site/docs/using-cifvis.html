@@ -169,6 +169,10 @@ if (!result.success) {
                 <tr><td><code>viewer.updateStructure()</code></td><td>Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's <code>.mode</code>.</td></tr>
                 <tr><td><code>viewer.selections.onChange(callback)</code></td><td>The only event hook. Callback receives <code>[{type: 'atom'|'bond'|'hbond', data, color}]</code>.</td></tr>
                 <tr><td><code>viewer.selectAtoms(labels)</code></td><td>Programmatic selection by atom label.</td></tr>
+                <tr><td><code>viewer.setAtomLabels(show)</code></td><td>Shows all, non-hydrogen, or selected atom labels. Selection entries may override text and priority.</td></tr>
+                <tr><td><code>viewer.updateAtomLabelOptions(options)</code></td><td>Updates label appearance/layout without rebuilding the structure.</td></tr>
+                <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
+                <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
                 <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
                 <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>

@@ -10,6 +10,7 @@ import { DisorderFilter, HydrogenFilter, SymmetryGrower } from '../structure/str
 import { tryToFixCifBlock } from '../fix-cif/base.js';
 import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
+import { AtomLabelManager } from './atom-label-manager.js';
 
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
@@ -425,6 +426,14 @@ export class CrystalViewer {
                 ...defaultSettings.interaction,
                 ...(options.interaction || {}),
             },
+            atomLabels: {
+                ...defaultSettings.atomLabels,
+                ...(options.atomLabels || {}),
+                text: {
+                    ...defaultSettings.atomLabels.text,
+                    ...(options.atomLabels?.text || {}),
+                },
+            },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
@@ -442,6 +451,12 @@ export class CrystalViewer {
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
             bondGrowTolerance: options.bondGrowTolerance ?? defaultSettings.bondGrowTolerance,
+            hbondRadius: options.hbondRadius ?? defaultSettings.hbondRadius,
+            hbondColor: options.hbondColor || defaultSettings.hbondColor,
+            hbondColorRoughness: options.hbondColorRoughness ?? defaultSettings.hbondColorRoughness,
+            hbondColorMetalness: options.hbondColorMetalness ?? defaultSettings.hbondColorMetalness,
+            hbondDashSegmentLength: options.hbondDashSegmentLength ?? defaultSettings.hbondDashSegmentLength,
+            hbondDashFraction: options.hbondDashFraction ?? defaultSettings.hbondDashFraction,
             elementProperties: {
                 ...defaultSettings.elementProperties,
                 ...options.elementProperties,
@@ -472,6 +487,7 @@ export class CrystalViewer {
             currentCifContent: null,
             currentCifBlock: null,
             currentStructure: null,
+            displayStructure: null,
             currentFloor: null,
             baseStructure: null,
             ortepObjects: new Map(),
@@ -493,6 +509,7 @@ export class CrystalViewer {
         this.selections = new SelectionManager(this.options);
 
         this.setupScene();
+        this.atomLabelManager = new AtomLabelManager(this);
         this.controls = new ViewerControls(this);
         this.animate();
         this.needsRender = true;
@@ -685,6 +702,8 @@ export class CrystalViewer {
         const ortep3DGroup = ortep.getGroup();
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
+        this.state.displayStructure = structure;
+        this.atomLabelManager.setStructure(structure);
         this.selections.pruneInvalidSelections(this.moleculeContainer);
     }
 
@@ -779,6 +798,7 @@ export class CrystalViewer {
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
+            this.atomLabelManager.update();
             this.needsRender = false;
         }
         requestAnimationFrame(this.animate.bind(this));
@@ -854,6 +874,50 @@ export class CrystalViewer {
     }
 
     /**
+     * Replaces the set of atom labels displayed by the viewer.
+     * Plain labels such as `C1` match all displayed symmetry copies; a full
+     * unique ID such as `C1|2_555` matches only that atom instance.
+     * @param {'none'|'all'|'non-hydrogen'|Array<string|object>} show - Label selection
+     */
+    setAtomLabels(show) {
+        this.options.atomLabels.show = show;
+        this.atomLabelManager.setOptions(this.options.atomLabels);
+        this.requestRender();
+    }
+
+    /**
+     * Updates atom-label appearance or layout options without rebuilding the structure.
+     * @param {object} options - Partial atom-label options
+     */
+    updateAtomLabelOptions(options) {
+        this.options.atomLabels = {
+            ...this.options.atomLabels,
+            ...options,
+            text: {
+                ...this.options.atomLabels.text,
+                ...(options.text || {}),
+            },
+        };
+        this.atomLabelManager.setOptions(this.options.atomLabels);
+        this.requestRender();
+    }
+
+    /**
+     * Hides all atom labels.
+     */
+    clearAtomLabels() {
+        this.setAtomLabels('none');
+    }
+
+    /**
+     * Returns the most recent screen-space label layout and omission reasons.
+     * @returns {{placed: Array<object>, hidden: Array<object>}} Current layout
+     */
+    getAtomLabelLayout() {
+        return this.atomLabelManager.layout;
+    }
+
+    /**
      * Releases all resources used by the viewer.
      * Call this when the viewer is no longer needed to prevent memory leaks.
      * 
@@ -866,6 +930,7 @@ export class CrystalViewer {
      */
     dispose() {
         this.controls.dispose();
+        this.atomLabelManager.dispose();
 
         this.scene.traverse((object) => {
             if (object.geometry) {

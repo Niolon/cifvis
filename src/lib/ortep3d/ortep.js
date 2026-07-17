@@ -1134,6 +1134,24 @@ export class ORTEP3JsStructure {
         checkForNaN(group);
         group.cutawayAtoms = this.atoms3D.filter(atom => atom.isCutaway);
         group.cameraFacingAtoms = group.cutawayAtoms;
+        group.atomLabelAnchors = this.atoms3D.map(atom3D => {
+            let matrix;
+            if (atom3D.segments?.[0]?.matrix) {
+                matrix = atom3D.segments[0].matrix.clone();
+            } else {
+                atom3D.updateMatrix();
+                matrix = atom3D.matrix.clone();
+            }
+            const position = new THREE.Vector3().setFromMatrixPosition(matrix);
+            const scale = new THREE.Vector3();
+            matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+            const radius = (atom3D.surfaceRadius || 0.25) * Math.max(scale.x, scale.y, scale.z);
+            return {
+                atom: atom3D.userData.atomData,
+                position,
+                radius,
+            };
+        });
 
         return group;
     }

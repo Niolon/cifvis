@@ -185,6 +185,30 @@ export default {
 
     'fixCifErrors': false,
 
+    // Screen-space atom label settings. Labels are opt-in so existing viewers
+    // retain their current appearance and rendering cost.
+    'atomLabels': {
+        'show': 'none',
+        'text': {},
+        'fontSize': 14,
+        'fontWeight': 500,
+        'fontFamily': 'system-ui, -apple-system, sans-serif',
+        'color': '#111111',
+        'haloColor': '#ffffff',
+        'haloWidth': 2,
+        'leaderLines': 'auto',
+        'leaderColor': 'rgba(17, 17, 17, 0.55)',
+        'leaderWidth': 1,
+        'atomPadding': 3,
+        'bondPadding': 2,
+        'labelPadding': 2,
+        'viewportPadding': 4,
+        'fallbackDistance': 18,
+        'ringPenalty': 1000,
+        'movementPenalty': 80,
+        'maxVisible': Infinity,
+    },
+
     // atom visualisation Settings
     'atomDetail': 3,
     'atomCutawayHysteresis': 0.025,
