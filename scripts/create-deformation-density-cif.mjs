@@ -1,17 +1,16 @@
 /* eslint-disable jsdoc/require-jsdoc -- command-line generation helpers */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { CIF } from '../src/lib/read-cif/base.js';
 import { createIAMStructureFactorCalculator } from '../src/lib/density/iam-structure-factors.js';
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const dataRoot = resolve(projectRoot, '..');
-const [
-    coordinateArgument = resolve(dataRoot, 'LAla_gpaw.cif'),
-    gpawArgument = resolve(dataRoot, 'LAla_gpaw.fcf'),
-    outputArgument = resolve(dataRoot, 'LAla_gpaw_iam_deformation.cif'),
-] = process.argv.slice(2);
+const arguments_ = process.argv.slice(2);
+if (arguments_.length !== 3) {
+    throw new Error(
+        'Usage: create-deformation-density-cif.mjs <coordinate.cif> <har.fcf> <output.cif>',
+    );
+}
+const [coordinateArgument, gpawArgument, outputArgument] = arguments_;
 
 const coordinatePath = resolve(coordinateArgument);
 const gpawPath = resolve(gpawArgument);

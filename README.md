@@ -141,11 +141,11 @@ Fo-Fc loader continues to omit it.
 
 A single CIF can make a custom complex-coefficient loop auto-loadable by
 providing `_cifvis_difference_density_loop`, `_h`, `_k`, `_l`, `_a`, and `_b`
-mapping tags. `npm run generate:deformation-cif` uses this convention to build
-`LAla_gpaw_iam_deformation.cif` from the LAla/GPAW files in the parent
-directory. Its default complex coefficient is GPAW/SCAN HAR minus a neutral-atom
-IAM calculated at the GPAW-refined positions, occupancies, and ADPs; the loop
-also retains both amplitude/phase operand pairs.
+mapping tags in the same data block. Each mapping names a column in the custom
+reflection loop, so the coordinate model and deformation-density coefficients
+can be distributed and loaded as one self-contained CIF. Additional operand
+amplitude/phase columns may be retained for provenance without affecting the
+automatically selected A/B coefficients.
 
 #### Anomalous-dispersion correction
 
