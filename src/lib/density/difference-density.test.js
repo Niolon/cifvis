@@ -88,6 +88,51 @@ loop_
  2 0 0 25 1
 `;
 
+const CIF_WITH_SHELXL_EXTINCTION = CIF_WITH_OBSERVED_INTENSITIES.replace(
+    '_cell_angle_gamma 90',
+    `_cell_angle_gamma 90
+_diffrn_radiation_wavelength 0.71073
+_refine_ls_extinction_method 'SHELXL-2018/3'
+_refine_ls_extinction_coef 0.0323
+_refine_ls_extinction_expression
+ 'Fc*=kFc[1+0.001xFc^2lambda^3/sin(2theta)]^-1/4'`,
+);
+
+const CIF_WITH_EXTINCTION_CORRECTED_EMBEDDED_FCF = CIF_WITH_SHELXL_EXTINCTION.replace(
+    `loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_F_squared_meas
+ _refln_F_squared_sigma
+ 1 0 0 100 2
+ 2 0 0 25 1`,
+    `_iucr_refine_fcf_details
+;
+data_fcf
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_F_squared_meas
+ _refln_F_squared_sigma
+ 1 0 0 100 2
+ 2 0 0 25 1
+;`,
+);
+
+const SELF_DESCRIBED_CUSTOM_COEFFICIENT_FCF = CUSTOM_COEFFICIENT_FCF.replace(
+    'loop_\n _refln_index_h',
+    `_cifvis_difference_density_loop '_refln'
+_cifvis_difference_density_h '_refln_index_h'
+_cifvis_difference_density_k '_refln_index_k'
+_cifvis_difference_density_l '_refln_index_l'
+_cifvis_difference_density_a '_refln_A_first'
+_cifvis_difference_density_b '_refln_B_first'
+loop_
+ _refln_index_h`,
+);
+
 /**
  * @param {object} columns - Custom coefficient-column definition.
  * @returns {object} Positive h=1 coefficient from a custom dataset.
@@ -184,6 +229,51 @@ describe('DifferenceDensityMap', () => {
         )).toThrow(/phase_calc/);
     });
 
+    test('automatically selects a self-described cifvis custom coefficient loop', () => {
+        const dataset = parseDifferenceDensitySource(SELF_DESCRIBED_CUSTOM_COEFFICIENT_FCF);
+
+        expect(dataset.coefficientMode).toBe('a-b');
+        expect(dataset.densitySource).toBe('fcf');
+        expect(dataset.coefficients.get('1,0,0')).toMatchObject({ real: 5, imaginary: 2 });
+    });
+
+    test('corrects raw Fobs for a reported SHELXL extinction model', () => {
+        const corrected = createCifDifferenceDensityDataset(CIF_WITH_SHELXL_EXTINCTION);
+        const uncorrected = createCifDifferenceDensityDataset(
+            CIF_WITH_SHELXL_EXTINCTION,
+            0,
+            { extinctionCorrection: false },
+        );
+        const map = calculateDifferenceDensityMap(corrected);
+
+        expect(corrected.extinctionCorrection).toMatchObject({
+            enabled: true,
+            model: 'SHELXL-isotropic',
+            coefficient: 0.0323,
+            wavelength: 0.71073,
+            source: 'cif',
+        });
+        expect(corrected.extinctionCorrection.minimumAmplitudeFactor).toBeLessThan(1);
+        expect(corrected.intensityScale).not.toBe(uncorrected.intensityScale);
+        expect(uncorrected.extinctionCorrection).toMatchObject({
+            enabled: false,
+            reason: 'disabled',
+        });
+        expect(map.extinctionCorrection).toEqual(corrected.extinctionCorrection);
+    });
+
+    test('does not correct final embedded FCF observations a second time', () => {
+        const dataset = createCifDifferenceDensityDataset(
+            CIF_WITH_EXTINCTION_CORRECTED_EMBEDDED_FCF,
+        );
+
+        expect(dataset.observations.source).toBe('embedded-refln');
+        expect(dataset.extinctionCorrection).toMatchObject({
+            enabled: false,
+            reason: 'embedded-fcf-already-corrected',
+        });
+    });
+
     test('supports custom amplitudes with one common phase', () => {
         const coefficient = customCoefficient({
             amplitudes: ['_refln_amp_first', '_refln_amp_second'],
@@ -229,6 +319,21 @@ describe('DifferenceDensityMap', () => {
         expect(direct.imaginary).toBeCloseTo(2, 12);
         expect(difference.real).toBeCloseTo(4, 12);
         expect(difference.imaginary).toBeCloseTo(3, 12);
+    });
+
+    test('accepts custom coefficients in a coordinate CIF with cell uncertainties', () => {
+        const withCellUncertainty = CUSTOM_COEFFICIENT_FCF.replace(
+            '_cell_length_a 1',
+            '_cell_length_a 1.000(1)',
+        );
+        const dataset = parseDifferenceDensityDataset(withCellUncertainty, 0, {
+            a: '_refln_A_first',
+            b: '_refln_B_first',
+        });
+
+        expect(dataset.maximumReciprocalLength).toBeGreaterThan(0);
+        expect(Number.isFinite(dataset.maximumReciprocalLength)).toBe(true);
+        expect([...calculateDifferenceDensityMap(dataset).values].every(Number.isFinite)).toBe(true);
     });
 
     test('retains custom F(000) unless explicitly omitted', () => {

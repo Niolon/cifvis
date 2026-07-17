@@ -6,6 +6,7 @@ import * as math from '../math-lite.js';
 import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
 import { createIAMStructureFactorCalculator } from './iam-structure-factors.js';
 import { readReflectionIntensities } from './reflection-intensities.js';
+import { createShelxlExtinctionCorrection } from './extinction-correction.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -414,7 +415,12 @@ function finalizeDifferenceDensityDataset(dataset, symmetry) {
 }
 
 /** @returns {object} Positive scale fit and fit diagnostics. */
-function fitObservedIntensityScale(observations, calculated, configuredScale) {
+function fitObservedIntensityScale(
+    observations,
+    calculated,
+    configuredScale,
+    extinctionFactors,
+) {
     const explicit = Number(configuredScale);
     if (Number.isFinite(explicit) && explicit > 0) {
         return { scale: explicit, fittedReflectionCount: 0, explicit: true };
@@ -424,7 +430,7 @@ function fitObservedIntensityScale(observations, calculated, configuredScale) {
     let fittedReflectionCount = 0;
     for (let index = 0; index < observations.length; index++) {
         const observation = observations[index];
-        const calculatedSquared = calculated[index].amplitude ** 2;
+        const calculatedSquared = calculated[index].amplitude ** 2 * extinctionFactors[index] ** 2;
         if (!(observation.intensity > 0 && calculatedSquared > 0)) {
             continue;
         }
@@ -462,14 +468,47 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         { ...options.iam, expectedCell: cell },
     );
     const calculated = calculator.calculate(observed.reflections);
-    const fitted = fitObservedIntensityScale(observed.reflections, calculated, options.intensityScale);
+    const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
+    const coordinateBlock = typeof coordinateCifBlock === 'number'
+        ? coordinateCif.getBlock(coordinateCifBlock)
+        : coordinateCif.getBlockByName(coordinateCifBlock);
+    const requestedExtinction = options.extinctionCorrection ?? 'auto';
+    if (!['auto', true, false].includes(requestedExtinction) &&
+        typeof requestedExtinction !== 'number' &&
+        (typeof requestedExtinction !== 'object' || requestedExtinction === null ||
+            Array.isArray(requestedExtinction))) {
+        throw new Error(
+            'extinctionCorrection must be "auto", true, false, a coefficient, or an object',
+        );
+    }
+    const embeddedFcfAlreadyCorrected = requestedExtinction === 'auto' &&
+        observed.metadata.source === 'embedded-refln';
+    const extinction = createShelxlExtinctionCorrection(
+        coordinateBlock,
+        cell,
+        calculator.metadata.wavelength,
+        observed.reflections,
+        calculated,
+        embeddedFcfAlreadyCorrected ? false :
+            requestedExtinction === 'auto' ? true : requestedExtinction,
+    );
+    if (embeddedFcfAlreadyCorrected) {
+        extinction.metadata.reason = 'embedded-fcf-already-corrected';
+    }
+    const fitted = fitObservedIntensityScale(
+        observed.reflections,
+        calculated,
+        options.intensityScale,
+        extinction.factors,
+    );
     let negativeIntensityCount = 0;
     let scaleResidualNumerator = 0;
     let scaleResidualDenominator = 0;
     const coefficientAt = index => {
         const observation = observed.reflections[index];
         const fCalculated = calculated[index];
-        const scaledIntensity = fitted.scale * observation.intensity;
+        const scaledIntensity = fitted.scale * observation.intensity /
+            extinction.factors[index] ** 2;
         if (scaledIntensity < 0) {
             negativeIntensityCount++;
         }
@@ -508,7 +547,31 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         negativeIntensityCount,
         observations: observed.metadata,
         iam: calculator.metadata,
+        extinctionCorrection: extinction.metadata,
     }, symmetry);
+}
+
+/** @returns {object|null} Self-described cifvis custom coefficient columns. */
+function selfDescribedCoefficientColumns(text, blockSelector) {
+    try {
+        const cif = new CIF(text);
+        const block = typeof blockSelector === 'number'
+            ? cif.getBlock(blockSelector)
+            : cif.getBlockByName(blockSelector);
+        const value = name => block.get(name, null);
+        const loop = value('_cifvis_difference_density_loop');
+        const h = value('_cifvis_difference_density_h');
+        const k = value('_cifvis_difference_density_k');
+        const l = value('_cifvis_difference_density_l');
+        const a = value('_cifvis_difference_density_a');
+        const b = value('_cifvis_difference_density_b');
+        if ([loop, h, k, l, a, b].every(item => typeof item === 'string' && item.length > 0)) {
+            return { loop, h, k, l, a, b, omitF000: false };
+        }
+    } catch {
+        // Ordinary CIFs have no cifvis self-description; use normal source detection.
+    }
+    return null;
 }
 
 /**
@@ -524,16 +587,18 @@ export function parseDifferenceDensitySource(text, block = 0, options = {}) {
     if (!['auto', 'fcf', 'cif-iam'].includes(inputMode)) {
         throw new Error('Difference-density inputMode must be "auto", "fcf", or "cif-iam"');
     }
+    const coefficientColumns = options.coefficientColumns ??
+        selfDescribedCoefficientColumns(text, block);
     if (inputMode !== 'cif-iam') {
         try {
             return parseDifferenceDensityDataset(
                 text,
                 block,
-                options.coefficientColumns ?? null,
+                coefficientColumns,
                 options.anomalousDispersion ?? null,
             );
         } catch (error) {
-            if (inputMode === 'fcf' || options.coefficientColumns) {
+            if (inputMode === 'fcf' || coefficientColumns) {
                 throw error;
             }
         }
@@ -724,7 +789,10 @@ export function parseDifferenceDensityDataset(
     coefficientColumns = null,
     anomalousDispersion = null,
 ) {
-    const cif = new CIF(fcfText, false);
+    // Custom coefficient loops may live in a full coordinate CIF whose cell
+    // parameters carry standard uncertainties. Keep normal CIF SU splitting
+    // so UnitCell receives numeric values rather than strings such as 5.9(1).
+    const cif = new CIF(fcfText);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const cell = UnitCell.fromCIF(block);
     const symmetry = CellSymmetry.fromCIF(block);
@@ -957,6 +1025,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         negativeIntensityCount: dataset.negativeIntensityCount,
         observations: dataset.observations,
         iam: dataset.iam,
+        extinctionCorrection: dataset.extinctionCorrection,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,

@@ -188,9 +188,12 @@ async function loadPlaygroundCif(cifText) {
     }
 
     const source = density.densitySource === 'cif-iam' ? 'observed CIF + IAM' : 'FCF coefficients';
+    const extinction = density.extinctionCorrection?.enabled
+        ? `, EXTI ${density.extinctionCorrection.coefficient}`
+        : '';
     updateStatus(
         `Difference density loaded from ${source} ` +
-        `(${density.reflectionCount.toLocaleString()} reflections, ` +
+        `(${density.reflectionCount.toLocaleString()} reflections${extinction}, ` +
         `${density.dimensions.join('×')} grid, ` +
         `${density.polygonCount.toLocaleString()} polygons)`,
         'success',

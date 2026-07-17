@@ -992,6 +992,7 @@ export class CrystalViewer {
             reflections: this.options.differenceDensity.reflections,
             iam: this.options.differenceDensity.iam,
             intensityScale: this.options.differenceDensity.intensityScale,
+            extinctionCorrection: this.options.differenceDensity.extinctionCorrection,
         };
     }
 
@@ -1058,6 +1059,7 @@ export class CrystalViewer {
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
             iam: densityMap.iam,
+            extinctionCorrection: densityMap.extinctionCorrection,
             sigma: densityMap.sigma,
             minimum: densityMap.minimum,
             maximum: densityMap.maximum,
@@ -1118,6 +1120,7 @@ export class CrystalViewer {
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
             iam: densityMap.iam,
+            extinctionCorrection: densityMap.extinctionCorrection,
             dimensions: [...densityMap.dimensions],
             gridOversampling: densityMap.gridOversampling,
             sigma: densityMap.sigma,

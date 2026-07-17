@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "generate-svg-icons": "node scripts/generate-svg-icons.js",
+    "generate:deformation-cif": "node scripts/create-deformation-density-cif.mjs",
     "prebuild": "npm run generate-svg-icons",
     "dev": "vite --config vite/vite.config.mjs serve ./site",
     "build": "vite build --config vite/vite.config.mjs",

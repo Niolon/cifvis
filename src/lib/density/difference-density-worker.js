@@ -43,6 +43,7 @@ function mapPayload(map) {
         negativeIntensityCount: map.negativeIntensityCount,
         observations: map.observations,
         iam: map.iam,
+        extinctionCorrection: map.extinctionCorrection,
         symmetryOperations: map.symmetryOperations,
         resolutionFraction: map.resolutionFraction,
         gridOversampling: map.gridOversampling,

@@ -195,6 +195,9 @@ export default {
         'reflections': {},
         'iam': {},
         'intensityScale': null,
+        // Correct raw observed intensities using a reported SHELXL EXTI model.
+        // Set false for deliberately uncorrected/custom observed amplitudes.
+        'extinctionCorrection': 'auto',
         // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
         // columns can provide amplitudes/phases or direct A/B coefficients.
         'coefficientColumns': null,

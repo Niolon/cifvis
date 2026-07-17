@@ -139,6 +139,14 @@ instead of a difference. Custom loop layouts can additionally set `loop`, `h`,
 `k`, and `l`. Custom coefficients retain F(000) by default; the legacy SHELXL
 Fo-Fc loader continues to omit it.
 
+A single CIF can make a custom complex-coefficient loop auto-loadable by
+providing `_cifvis_difference_density_loop`, `_h`, `_k`, `_l`, `_a`, and `_b`
+mapping tags. `npm run generate:deformation-cif` uses this convention to build
+`LAla_gpaw_iam_deformation.cif` from the LAla/GPAW files in the parent
+directory. Its default complex coefficient is GPAW/SCAN HAR minus a neutral-atom
+IAM calculated at the GPAW-refined positions, occupancies, and ADPs; the loop
+also retains both amplitude/phase operand pairs.
+
 #### Anomalous-dispersion correction
 
 An anomalous contribution calculated from the loaded coordinate model can be
@@ -273,6 +281,15 @@ performs the complete observed-intensity/IAM calculation. The fitted positive
 intensity scale maps observed intensities onto IAM `|Fc|^2`; negative measured
 intensities are retained during merging and contribute zero observed amplitude
 when the final `Fo-Fc` coefficient is formed.
+
+When the coordinate CIF reports the SHELXL isotropic extinction expression and
+a positive `_refine_ls_extinction_coef`, raw observed intensities are corrected
+automatically before forming `Fo-Fc`. The overall scale is fitted against the
+extinction-attenuated IAM intensities, while the displayed observed amplitudes
+are restored to the unextinguished scale. Embedded final FCF observations are
+not corrected a second time. Set `differenceDensity.extinctionCorrection:
+false` to retain deliberately uncorrected observed amplitudes, or provide
+`{ coefficient, wavelength }` to override the CIF values.
 
 
 
