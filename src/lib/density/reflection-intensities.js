@@ -118,13 +118,18 @@ function parseShelxHkl(text) {
         if (line.trim().length === 0) {
             continue;
         }
-        const whitespaceFields = line.trim().split(/\s+/);
-        let [h, k, l, intensity, sigma] = whitespaceFields.slice(0, 5).map(finiteNumber);
+        // SHELX HKL records are fixed width (3I4, 2F8.2, I4). In particular,
+        // a positive l index can touch a large positive intensity, e.g.
+        // `   0   2   313079.00`, which a whitespace-first parser mistakes for
+        // l = 313079. Prefer the defined column widths and retain free-format
+        // whitespace parsing only as a compatibility fallback.
+        const fixedFields = fixedWidthShelxRow(line);
+        let [h, k, l, intensity, sigma] = fixedFields
+            ? fixedFields.slice(0, 5).map(finiteNumber)
+            : [null, null, null, null, null];
         if (!validIndices(h, k, l) || intensity === null || sigma === null) {
-            const fixedFields = fixedWidthShelxRow(line);
-            [h, k, l, intensity, sigma] = fixedFields
-                ? fixedFields.slice(0, 5).map(finiteNumber)
-                : [null, null, null, null, null];
+            const whitespaceFields = line.trim().split(/\s+/);
+            [h, k, l, intensity, sigma] = whitespaceFields.slice(0, 5).map(finiteNumber);
         }
         if (!validIndices(h, k, l) || intensity === null || sigma === null) {
             invalidCount++;

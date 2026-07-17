@@ -178,6 +178,28 @@ loop_
         });
     });
 
+    test('uses SHELX fixed widths when the l index touches the intensity', () => {
+        const cif = cifWithReflections(`_shelx_hkl_file
+;
+   0   2   313079.00  538.22  10
+   0   0   0    0.00    0.00   0
+;
+`);
+        const result = readReflectionIntensities(cif, 0, {
+            mergeFriedel: false,
+            removeSystematicAbsences: false,
+        });
+
+        expect(result.reflections).toHaveLength(1);
+        expect(result.reflections[0]).toMatchObject({
+            h: 0,
+            k: 2,
+            l: 3,
+            intensity: 13079,
+            sigma: 538.22,
+        });
+    });
+
     test('prefers the bundled embedded merged FCF but can force raw diffrn observations', () => {
         const cif = readFileSync('site/public/cif/urea.cif', 'utf8');
         const merged = readReflectionIntensities(cif);
