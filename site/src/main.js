@@ -248,6 +248,15 @@ function initializeSymmetryButton() {
         const result = await viewer.cycleModifierMode('symmetry');
         if (result.success) {
             symmetryButton.innerHTML = SVG_ICONS['symmetry'][viewer.modifiers.symmetry.mode];
+            const density = viewer.state.differenceDensityGroup?.userData;
+            if (density) {
+                updateStatus(
+                    `Density surface: ${density.polygonCount.toLocaleString()} polygons; ` +
+                    `${density.reusedRegionCount}/${density.displayedRegionCount} regions reused; ` +
+                    `${density.generationTimeMs.toFixed(1)} ms`,
+                    'success',
+                );
+            }
         }
     });
 }

@@ -185,6 +185,7 @@ export default {
     // coordinate CIF and remain opt-in.
     'differenceDensity': {
         'useWorker': true,
+        'useSymmetry': true,
         // All reflections are used from the start. The normal grid gives a
         // quick first display; the worker then replaces it with the final
         // oversampled grid before refining only the surface tessellation.

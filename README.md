@@ -68,9 +68,12 @@ For a comprehensive list of options and the use of the widget, look at the inter
   await viewer.loadDifferenceDensity(fcfContent, 0, {
     sigmaLevel: 3,
     radius: 1.5,
+    useSymmetry: true, // reuse exact disconnected symmetry-equivalent regions
   });
 
   // The cached density grid is reused when symmetry-growth modes change.
+  // Benchmark direct and symmetry-aware surface generation with:
+  // npm run bench:density-symmetry -- structure.cif reflections.fcf 10
 </script>
 ```
 

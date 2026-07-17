@@ -346,6 +346,10 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0) {
         coefficients,
         reflectionCount: h.length,
         maximumReciprocalLength,
+        symmetryOperations: symmetry.symmetryOperations.map(operation => ({
+            rotation: operation.rotMatrix.map(row => [...row]),
+            translation: [...operation.transVector],
+        })),
     };
 }
 
@@ -382,6 +386,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         reflectionCount: dataset.reflectionCount,
         coefficientCount: coefficients.size,
         fullCoefficientCount: dataset.coefficients.size,
+        symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,
         mean: grid.mean,

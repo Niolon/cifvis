@@ -32,6 +32,7 @@ function mapPayload(map) {
         reflectionCount: map.reflectionCount,
         coefficientCount: map.coefficientCount,
         fullCoefficientCount: map.fullCoefficientCount,
+        symmetryOperations: map.symmetryOperations,
         resolutionFraction: map.resolutionFraction,
         gridOversampling: map.gridOversampling,
         mean: map.mean,

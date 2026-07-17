@@ -43,6 +43,10 @@ describe('DifferenceDensityMap', () => {
         expect(map.sigma).toBeCloseTo(Math.sqrt(2), 6);
         expect(map.mean).toBeCloseTo(0, 12);
         expect(map.maxImaginary).toBeCloseTo(0, 12);
+        expect(map.symmetryOperations).toEqual([{
+            rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            translation: [0, 0, 0],
+        }]);
     });
 
     test('samples periodically outside the base unit cell', () => {

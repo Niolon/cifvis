@@ -149,6 +149,7 @@ function createSurface(resolution, material, maxPolyCount, name, level) {
  * @returns {THREE.Group} Difference-density surface group.
  */
 export function createDifferenceDensitySurfaces(densityMap, structure, options = {}) {
+    const generationStarted = performance.now();
     const usedOptions = { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, ...options };
     const resolution = Math.max(8, Math.round(usedOptions.resolution));
     const level = usedOptions.level ?? usedOptions.sigmaLevel * densityMap.sigma;
@@ -160,6 +161,12 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     }
 
     const bounds = differenceDensityBounds(structure, usedOptions.radius);
+    const sign = usedOptions.sign ?? 'both';
+    if (!['positive', 'negative', 'both'].includes(sign)) {
+        throw new Error('Difference-density surface sign must be "positive", "negative", or "both"');
+    }
+    const renderPositive = sign !== 'negative';
+    const renderNegative = sign !== 'positive';
     const positiveMaterial = new THREE.MeshStandardMaterial({
         color: usedOptions.positiveColor,
         transparent: usedOptions.opacity < 1,
@@ -173,20 +180,26 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     const negativeMaterial = positiveMaterial.clone();
     negativeMaterial.color.set(usedOptions.negativeColor);
 
-    const positive = createSurface(
+    const positive = renderPositive ? createSurface(
         resolution,
         positiveMaterial,
         usedOptions.maxPolyCount,
         'PositiveDifferenceDensity',
         level,
-    );
-    const negative = createSurface(
+    ) : null;
+    const negative = renderNegative ? createSurface(
         resolution,
         negativeMaterial,
         usedOptions.maxPolyCount,
         'NegativeDifferenceDensity',
         level,
-    );
+    ) : null;
+    if (!positive) {
+        positiveMaterial.dispose();
+    }
+    if (!negative) {
+        negativeMaterial.dispose();
+    }
 
     const span = bounds.maximum.map((value, index) => value - bounds.minimum[index]);
     const half = resolution / 2;
@@ -211,18 +224,25 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
                     continue;
                 }
                 const value = densityMap.sample(fractionalX, fractionalY, fractionalZ);
-                positive.field[offset + x] = value;
-                negative.field[offset + x] = -value;
+                if (positive) {
+                    positive.field[offset + x] = value;
+                }
+                if (negative) {
+                    negative.field[offset + x] = -value;
+                }
             }
         }
     }
 
-    positive.update();
-    negative.update();
-    const positivePolygonCount = positive.geometry.drawRange.count / 3;
-    const negativePolygonCount = negative.geometry.drawRange.count / 3;
+    const polygonizationStarted = performance.now();
+    positive?.update();
+    negative?.update();
+    const polygonizationTimeMs = performance.now() - polygonizationStarted;
+    const positivePolygonCount = positive ? positive.geometry.drawRange.count / 3 : 0;
+    const negativePolygonCount = negative ? negative.geometry.drawRange.count / 3 : 0;
     const transformation = createFractionalToCartesianMatrix(structure.cell, bounds);
-    for (const surface of [positive, negative]) {
+    const surfaces = [positive, negative].filter(Boolean);
+    for (const surface of surfaces) {
         surface.matrix.copy(transformation);
         surface.matrixAutoUpdate = false;
     }
@@ -230,6 +250,7 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     const group = new THREE.Group();
     group.name = 'DifferenceDensity';
     group.visible = usedOptions.visible;
+    const generationTimeMs = performance.now() - generationStarted;
     group.userData = {
         selectable: false,
         type: 'difference-density',
@@ -240,7 +261,15 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
         positivePolygonCount,
         negativePolygonCount,
         polygonCount: positivePolygonCount + negativePolygonCount,
+        symmetryUsed: false,
+        displayedRegionCount: 1,
+        generatedRegionCount: 1,
+        reusedRegionCount: 0,
+        marchingCubesPassCount: surfaces.length,
+        polygonizationTimeMs,
+        marchingCubesTimeMs: generationTimeMs,
+        generationTimeMs,
     };
-    group.add(positive, negative);
+    group.add(...surfaces);
     return group;
 }

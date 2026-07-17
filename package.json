@@ -36,7 +36,8 @@
     "docs": "jsdoc -c jsdoc.json",
     "bench": "node benchmark/speed.mjs",
     "prebench:labels": "npm run build:alldeps",
-    "bench:labels": "node benchmark/labels.mjs"
+    "bench:labels": "node benchmark/labels.mjs",
+    "bench:density-symmetry": "node benchmark/difference-density-symmetry.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

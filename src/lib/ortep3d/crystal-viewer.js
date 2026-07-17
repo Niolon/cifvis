@@ -17,9 +17,11 @@ import {
     parseDifferenceDensityDataset,
 } from '../density/difference-density.js';
 import {
-    createDifferenceDensitySurfaces,
     differenceDensitySurfaceResolution,
 } from '../density/difference-density-surface.js';
+import {
+    createSymmetryAwareDifferenceDensitySurfaces,
+} from '../density/difference-density-symmetry.js';
 import DifferenceDensityWorker from '../density/difference-density-worker.js?worker';
 
 const VALID_ATOM_LABEL_PLACEMENT_MODES = [
@@ -992,6 +994,14 @@ export class CrystalViewer {
             polygonCount: surfaceStatistics.polygonCount ?? 0,
             positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
             negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
+            symmetryUsed: surfaceStatistics.symmetryUsed ?? false,
+            displayedRegionCount: surfaceStatistics.displayedRegionCount ?? 1,
+            generatedRegionCount: surfaceStatistics.generatedRegionCount ?? 1,
+            reusedRegionCount: surfaceStatistics.reusedRegionCount ?? 0,
+            marchingCubesPassCount: surfaceStatistics.marchingCubesPassCount ?? 2,
+            marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
+                surfaceStatistics.generationTimeMs ?? 0,
+            polygonizationTimeMs: surfaceStatistics.polygonizationTimeMs ?? 0,
         });
     }
 
@@ -1034,6 +1044,13 @@ export class CrystalViewer {
             polygonCount: surfaceStatistics.polygonCount ?? 0,
             positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
             negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
+            symmetryUsed: surfaceStatistics.symmetryUsed ?? false,
+            displayedRegionCount: surfaceStatistics.displayedRegionCount ?? 1,
+            generatedRegionCount: surfaceStatistics.generatedRegionCount ?? 1,
+            reusedRegionCount: surfaceStatistics.reusedRegionCount ?? 0,
+            marchingCubesPassCount: surfaceStatistics.marchingCubesPassCount ?? 2,
+            marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
+                surfaceStatistics.generationTimeMs ?? 0,
         };
     }
 
@@ -1230,7 +1247,7 @@ export class CrystalViewer {
             structure,
             this.options.differenceDensity,
         );
-        const group = createDifferenceDensitySurfaces(
+        const group = createSymmetryAwareDifferenceDensitySurfaces(
             this.state.differenceDensityMap,
             structure,
             {
