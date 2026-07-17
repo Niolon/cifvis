@@ -2,10 +2,6 @@ import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
-// Temporary correctness demo: bundle the supplied XHARPy pair directly so
-// `npm run dev` opens with difference density ready to inspect.
-import xharpyCifText from '../../../xharpy.cif?raw';
-import xharpyFcfText from '../../../xharpy_6.fcf?raw';
 
 /**
  * Updates the status message displayed to the user
@@ -139,6 +135,68 @@ viewer.selections.onChange(selections => {
     });
 });
 
+const SUPPORTED_REFLECTION_DATA = new RegExp([
+    '_refln[._](?:intensity_meas|f_squared_meas|f_meas)',
+    '_diffrn_refln[._](?:intensity_net|intensity_meas)',
+    '_shelx[^\\s]*hkl_file',
+    '_iucr_refine_fcf_details',
+].join('|'), 'i');
+let playgroundLoadSequence = 0;
+
+/**
+ * @param {string} cifText - CIF text to inspect.
+ * @returns {boolean} Whether a CIF advertises a standard observed-reflection source.
+ */
+function hasSupportedReflectionData(cifText) {
+    return SUPPORTED_REFLECTION_DATA.test(cifText);
+}
+
+/**
+ * Loads an uploaded playground CIF, adding a deferred density map when its
+ * standard reflection data can be handled automatically.
+ * @param {string} cifText - Uploaded CIF contents.
+ * @returns {Promise<void>}
+ */
+async function loadPlaygroundCif(cifText) {
+    const loadSequence = ++playgroundLoadSequence;
+    const calculateDensity = hasSupportedReflectionData(cifText);
+    const result = await viewer.loadCIF(cifText, 0, {
+        differenceDensity: calculateDensity,
+    });
+    if (loadSequence !== playgroundLoadSequence) {
+        return;
+    }
+    if (!result.success) {
+        updateStatus('Error loading structure: ' + result.error, 'error');
+        return;
+    }
+
+    adaptButtons();
+    if (!result.differenceDensityStarted) {
+        updateStatus('Structure loaded successfully', 'success');
+        return;
+    }
+
+    updateStatus('Structure loaded; calculating difference density in worker...', 'info');
+    const density = await result.differenceDensity;
+    if (loadSequence !== playgroundLoadSequence || density.cancelled) {
+        return;
+    }
+    if (!density.success) {
+        updateStatus(`Structure loaded; difference density failed: ${density.error}`, 'error');
+        return;
+    }
+
+    const source = density.densitySource === 'cif-iam' ? 'observed CIF + IAM' : 'FCF coefficients';
+    updateStatus(
+        `Difference density loaded from ${source} ` +
+        `(${density.reflectionCount.toLocaleString()} reflections, ` +
+        `${density.dimensions.join('×')} grid, ` +
+        `${density.polygonCount.toLocaleString()} polygons)`,
+        'success',
+    );
+}
+
 /**
  * Initializes the file upload button and drag-and-drop functionality
  * Handles reading and loading CIF files into the viewer
@@ -161,13 +219,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            const result = await viewer.loadCIF(text);
-            if (result.success) {
-                updateStatus('Structure loaded successfully', 'success');
-                adaptButtons();
-            } else {
-                updateStatus('Error loading structure: ' + result.error, 'error');
-            }
+            await loadPlaygroundCif(text);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -194,13 +246,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            const result = await viewer.loadCIF(text);
-            if (result.success) {
-                updateStatus('Structure loaded successfully', 'success');
-                adaptButtons();
-            } else {
-                updateStatus('Error loading structure: ' + result.error, 'error');
-            }
+            await loadPlaygroundCif(text);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -300,32 +346,23 @@ function adaptButtons() {
 
 initializeUI();
 
-/** Loads the temporary hardcoded XHARPy difference-density demonstration. */
-async function loadInitialXharpyDensity() {
+/** Loads the playground's original disorder example without density work. */
+async function loadInitialStructure() {
     try {
-        updateStatus('Loading XHARPy structure and difference density...', 'info');
-        const structureResult = await viewer.loadCIF(xharpyCifText);
-        if (!structureResult.success) {
-            throw new Error(structureResult.error);
+        const baseUrl = import.meta.env.BASE_URL;
+        const response = await fetch(`${baseUrl}cif/disorder.cif`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-
-        const densityResult = await viewer.loadDifferenceDensity(xharpyFcfText, 0, {
-            wireframe: true,
-        });
-        if (!densityResult.success) {
-            throw new Error(densityResult.error);
+        const result = await viewer.loadCIF(await response.text());
+        if (!result.success) {
+            throw new Error(result.error);
         }
-
         adaptButtons();
-        updateStatus(
-            `Difference density loaded at ±3σ (${densityResult.dimensions.join('×')} grid, ` +
-            `${densityResult.polygonCount.toLocaleString()} polygons)`,
-            'success',
-        );
     } catch (error) {
         console.error('Error loading initial structure:', error);
         updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');
     }
 }
 
-loadInitialXharpyDensity();
+loadInitialStructure();
