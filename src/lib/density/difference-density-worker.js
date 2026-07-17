@@ -32,6 +32,8 @@ function mapPayload(map) {
         reflectionCount: map.reflectionCount,
         coefficientCount: map.coefficientCount,
         fullCoefficientCount: map.fullCoefficientCount,
+        coefficientMode: map.coefficientMode,
+        omitF000: map.omitF000,
         symmetryOperations: map.symmetryOperations,
         resolutionFraction: map.resolutionFraction,
         gridOversampling: map.gridOversampling,
@@ -53,7 +55,11 @@ function waitForContinuation(loadId, stepIndex) {
 async function calculateProgressively(message) {
     const started = performance.now();
     try {
-        const dataset = parseDifferenceDensityDataset(message.fcfText, message.fcfBlock);
+        const dataset = parseDifferenceDensityDataset(
+            message.fcfText,
+            message.fcfBlock,
+            message.coefficientColumns,
+        );
         const steps = normalizedSteps(message.steps);
         const finalOversampling = Math.max(1, Number(message.gridOversampling) || 1);
         const initialOversampling = steps.length === 1

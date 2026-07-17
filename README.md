@@ -77,6 +77,45 @@ For a comprehensive list of options and the use of the widget, look at the inter
 </script>
 ```
 
+#### Custom and deformation-density coefficients
+
+Quantum-crystallographic reflection loops can select arbitrary columns through
+`differenceDensity.coefficientColumns`. One or two amplitudes are accepted. A
+single phase is shared; two phases form the full complex difference
+`F1 exp(i phi1) - F2 exp(i phi2)`.
+
+```javascript
+await viewer.loadDifferenceDensity(reflectionCif, 0, {
+  coefficientColumns: {
+    amplitudes: ['_refln_F_multipole', '_refln_F_iam'],
+    phases: ['_refln_phase_multipole', '_refln_phase_iam'],
+    phaseUnit: 'degrees', // default; 'radians' is also supported
+  },
+});
+
+// A common-phase difference uses one phase column:
+// amplitudes: [F1, F2], phases: phase
+```
+
+Direct crystallographic A/B coefficients are an alternative. They use
+`F = A + iB`; two columns of each kind produce
+`(A1 - A2) + i(B1 - B2)`.
+
+```javascript
+await viewer.loadDifferenceDensity(reflectionCif, 0, {
+  coefficientColumns: {
+    a: ['_refln_A_multipole', '_refln_A_iam'],
+    b: ['_refln_B_multipole', '_refln_B_iam'],
+    omitF000: false,
+  },
+});
+```
+
+Scalar `amplitude`/`phase` or `a`/`b` values create a single coefficient set
+instead of a difference. Custom loop layouts can additionally set `loop`, `h`,
+`k`, and `l`. Custom coefficients retain F(000) by default; the legacy SHELXL
+Fo-Fc loader continues to omit it.
+
 
 
 ### API Reference

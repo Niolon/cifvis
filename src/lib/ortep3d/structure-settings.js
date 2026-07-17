@@ -186,6 +186,9 @@ export default {
     'differenceDensity': {
         'useWorker': true,
         'useSymmetry': true,
+        // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
+        // columns can provide amplitudes/phases or direct A/B coefficients.
+        'coefficientColumns': null,
         // All reflections are used from the start. The normal grid gives a
         // quick first display; the worker then replaces it with the final
         // oversampled grid before refining only the surface tessellation.

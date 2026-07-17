@@ -30,6 +30,42 @@ const MULTI_RESOLUTION_FCF = P1_FCF.replace(
     ' 1 0 0 4 1 0\n 4 0 0 9 1 0\n',
 );
 
+const CUSTOM_COEFFICIENT_FCF = `data_custom
+loop_
+ _space_group_symop_operation_xyz
+ 'x,y,z'
+_cell_length_a 1
+_cell_length_b 1
+_cell_length_c 1
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+ _refln_index_h
+ _refln_index_k
+ _refln_index_l
+ _refln_amp_first
+ _refln_amp_second
+ _refln_phase_common
+ _refln_phase_first
+ _refln_phase_second
+ _refln_A_first
+ _refln_B_first
+ _refln_A_second
+ _refln_B_second
+ 0 0 0 10 2 0 0 0 10 0 2 0
+ 1 0 0 4 1 60 0 90 5 2 1 -1
+`;
+
+/**
+ * @param {object} columns - Custom coefficient-column definition.
+ * @returns {object} Positive h=1 coefficient from a custom dataset.
+ */
+function customCoefficient(columns) {
+    return parseDifferenceDensityDataset(CUSTOM_COEFFICIENT_FCF, 0, columns)
+        .coefficients.get('1,0,0');
+}
+
 describe('DifferenceDensityMap', () => {
     test('calculates a correctly normalized real Fo-Fc Fourier map', () => {
         const map = DifferenceDensityMap.fromCIF(P1_FCF);
@@ -81,6 +117,96 @@ describe('DifferenceDensityMap', () => {
             expect(oversampled.sample(fractionalX, 0, 0))
                 .toBeCloseTo(regular.sample(fractionalX, 0, 0), 6);
         }
+    });
+
+    test('supports custom amplitudes with one common phase', () => {
+        const coefficient = customCoefficient({
+            amplitudes: ['_refln_amp_first', '_refln_amp_second'],
+            phases: '_refln_phase_common',
+        });
+
+        expect(coefficient.real).toBeCloseTo(1.5, 12);
+        expect(coefficient.imaginary).toBeCloseTo(3 * Math.sqrt(3) / 2, 12);
+    });
+
+    test('supports amplitudes with independent phases', () => {
+        const coefficient = customCoefficient({
+            amplitudes: ['_refln_amp_first', '_refln_amp_second'],
+            phases: ['_refln_phase_first', '_refln_phase_second'],
+        });
+
+        expect(coefficient.real).toBeCloseTo(4, 12);
+        expect(coefficient.imaginary).toBeCloseTo(-1, 12);
+    });
+
+    test('supports a single amplitude and radian phase', () => {
+        const coefficient = customCoefficient({
+            amplitude: '_refln_amp_first',
+            phase: '_refln_phase_common',
+            phaseUnit: 'radians',
+        });
+
+        expect(coefficient.real).toBeCloseTo(4 * Math.cos(60), 12);
+        expect(coefficient.imaginary).toBeCloseTo(4 * Math.sin(60), 12);
+    });
+
+    test('supports direct A/B coefficients and differences of A/B pairs', () => {
+        const direct = customCoefficient({
+            A: '_refln_A_first',
+            B: '_refln_B_first',
+        });
+        const difference = customCoefficient({
+            a: ['_refln_A_first', '_refln_A_second'],
+            b: ['_refln_B_first', '_refln_B_second'],
+        });
+
+        expect(direct.real).toBeCloseTo(5, 12);
+        expect(direct.imaginary).toBeCloseTo(2, 12);
+        expect(difference.real).toBeCloseTo(4, 12);
+        expect(difference.imaginary).toBeCloseTo(3, 12);
+    });
+
+    test('retains custom F(000) unless explicitly omitted', () => {
+        const columns = {
+            a: '_refln_A_first',
+            b: '_refln_B_first',
+        };
+        const retained = parseDifferenceDensityDataset(CUSTOM_COEFFICIENT_FCF, 0, columns);
+        const omitted = parseDifferenceDensityDataset(CUSTOM_COEFFICIENT_FCF, 0, {
+            ...columns,
+            omitF000: true,
+        });
+
+        expect(retained.coefficients.get('0,0,0').real).toBe(10);
+        expect(omitted.coefficients.has('0,0,0')).toBe(false);
+        expect(calculateDifferenceDensityMap(retained).mean).toBeCloseTo(10, 6);
+    });
+
+    test('supports custom reflection-loop and index columns', () => {
+        const customLoop = CUSTOM_COEFFICIENT_FCF
+            .replaceAll('_refln_', '_qrefn_');
+        const dataset = parseDifferenceDensityDataset(customLoop, 0, {
+            loop: '_qrefn',
+            h: '_qrefn_index_h',
+            k: '_qrefn_index_k',
+            l: '_qrefn_index_l',
+            a: '_qrefn_A_first',
+            b: '_qrefn_B_first',
+        });
+
+        expect(dataset.coefficientMode).toBe('a-b');
+        expect(dataset.coefficients.get('1,0,0').real).toBe(5);
+    });
+
+    test('rejects incomplete or mismatched custom coefficient definitions', () => {
+        expect(() => customCoefficient({ amplitudes: '_refln_amp_first' }))
+            .toThrow(/amplitude and phase/);
+        expect(() => customCoefficient({
+            amplitudes: ['_refln_amp_first', '_refln_amp_second'],
+            phases: ['_refln_phase_common'],
+            a: '_refln_A_first',
+            b: '_refln_B_first',
+        })).toThrow(/either amplitudes\/phases or A\/B/);
     });
 
     test('reports missing calculated phases clearly', () => {

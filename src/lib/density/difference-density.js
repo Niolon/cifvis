@@ -33,6 +33,104 @@ function assertSameLength(columns) {
     }
 }
 
+/** @returns {string[]} One or two explicitly named coefficient columns. */
+function coefficientColumnNames(value, label) {
+    const columns = typeof value === 'string' ? [value] : value;
+    if (!Array.isArray(columns) || columns.length < 1 || columns.length > 2 ||
+        columns.some(column => typeof column !== 'string' || column.length === 0)) {
+        throw new Error(`${label} must name one or two CIF columns`);
+    }
+    return columns;
+}
+
+/** @returns {Array[]} Values for explicitly named columns. */
+function customColumns(loop, value, label) {
+    return coefficientColumnNames(value, label).map(column => {
+        try {
+            return loop.get(column);
+        } catch {
+            throw new Error(`Custom density column not found: ${column}`);
+        }
+    });
+}
+
+/** @returns {object} Custom complex-coefficient reader and its source metadata. */
+function customCoefficientReader(loop, columns) {
+    const amplitudeNames = columns.amplitudes ?? columns.amplitudeColumns ?? columns.amplitude;
+    const phaseNames = columns.phases ?? columns.phaseColumns ?? columns.phase;
+    const aNames = columns.aValues ?? columns.a ?? columns.A;
+    const bNames = columns.bValues ?? columns.b ?? columns.B;
+    const hasAmplitudePhase = amplitudeNames !== undefined || phaseNames !== undefined;
+    const hasAB = aNames !== undefined || bNames !== undefined;
+    if (hasAmplitudePhase === hasAB) {
+        throw new Error(
+            'Custom density columns must specify either amplitudes/phases or A/B values',
+        );
+    }
+
+    if (hasAB) {
+        if (aNames === undefined || bNames === undefined) {
+            throw new Error('Custom density A and B columns must both be specified');
+        }
+        const aValues = customColumns(loop, aNames, 'a');
+        const bValues = customColumns(loop, bNames, 'b');
+        if (aValues.length !== bValues.length) {
+            throw new Error('Custom density A and B column counts must match');
+        }
+        assertSameLength([...aValues, ...bValues]);
+        return {
+            mode: aValues.length === 1 ? 'a-b' : 'a-b-difference',
+            valueColumns: [...aValues, ...bValues],
+            coefficientAt(index) {
+                const real = Number(aValues[0][index]) -
+                    (aValues[1] ? Number(aValues[1][index]) : 0);
+                const imaginary = Number(bValues[0][index]) -
+                    (bValues[1] ? Number(bValues[1][index]) : 0);
+                return { real, imaginary };
+            },
+        };
+    }
+
+    if (amplitudeNames === undefined || phaseNames === undefined) {
+        throw new Error('Custom density amplitude and phase columns must both be specified');
+    }
+    const amplitudes = customColumns(loop, amplitudeNames, 'amplitudes');
+    const phases = customColumns(loop, phaseNames, 'phases');
+    if (phases.length !== 1 && phases.length !== amplitudes.length) {
+        throw new Error('Use one common phase column or one phase column per amplitude');
+    }
+    assertSameLength([...amplitudes, ...phases]);
+    const phaseScale = columns.phaseUnit === 'radians' ? 1 : Math.PI / 180;
+    if (columns.phaseUnit !== undefined && !['degrees', 'radians'].includes(columns.phaseUnit)) {
+        throw new Error('Custom density phaseUnit must be "degrees" or "radians"');
+    }
+    const splitPhases = phases.length === amplitudes.length && phases.length === 2;
+    return {
+        mode: amplitudes.length === 1 ? 'amplitude-phase' :
+            splitPhases ? 'split-phase-difference' : 'common-phase-difference',
+        valueColumns: [...amplitudes, ...phases],
+        coefficientAt(index) {
+            if (!splitPhases) {
+                const amplitude = Number(amplitudes[0][index]) -
+                    (amplitudes[1] ? Number(amplitudes[1][index]) : 0);
+                const phase = Number(phases[0][index]) * phaseScale;
+                return {
+                    real: amplitude * Math.cos(phase),
+                    imaginary: amplitude * Math.sin(phase),
+                };
+            }
+            const firstPhase = Number(phases[0][index]) * phaseScale;
+            const secondPhase = Number(phases[1][index]) * phaseScale;
+            return {
+                real: Number(amplitudes[0][index]) * Math.cos(firstPhase) -
+                    Number(amplitudes[1][index]) * Math.cos(secondPhase),
+                imaginary: Number(amplitudes[0][index]) * Math.sin(firstPhase) -
+                    Number(amplitudes[1][index]) * Math.sin(secondPhase),
+            };
+        },
+    };
+}
+
 /** @returns {number[]} Reciprocal index transformed by a direct-space rotation. */
 function transformReflectionIndex(rotation, h, k, l) {
     const reciprocalRotation = math.transpose(math.inv(rotation));
@@ -59,34 +157,24 @@ function addCoefficient(coefficients, h, k, l, real, imaginary) {
 }
 
 /** @returns {Map<string, object>} Symmetry- and Friedel-expanded coefficients. */
-function expandReflectionCoefficients(reflections, symmetry) {
+function expandReflectionCoefficients(
+    hValues,
+    kValues,
+    lValues,
+    coefficientAt,
+    symmetry,
+    omitF000,
+) {
     const coefficients = new Map();
 
-    for (let i = 0; i < reflections.h.length; i++) {
-        const h = Number(reflections.h[i]);
-        const k = Number(reflections.k[i]);
-        const l = Number(reflections.l[i]);
-        const measuredSquared = reflections.measuredSquared?.[i];
-        const measured = reflections.measured?.[i];
-        const calculatedSquared = reflections.calculatedSquared?.[i];
-        const calculated = reflections.calculated?.[i];
-        const phase = Number(reflections.phase[i]);
-
-        const observedAmplitude = measuredSquared !== null && measuredSquared !== undefined
-            ? Math.sqrt(Math.max(0, Number(measuredSquared)))
-            : Math.max(0, Number(measured));
-        const calculatedAmplitude = calculatedSquared !== null && calculatedSquared !== undefined
-            ? Math.sqrt(Math.max(0, Number(calculatedSquared)))
-            : Math.abs(Number(calculated));
-
-        if (![h, k, l, observedAmplitude, calculatedAmplitude, phase].every(Number.isFinite)) {
+    for (let i = 0; i < hValues.length; i++) {
+        const h = Number(hValues[i]);
+        const k = Number(kValues[i]);
+        const l = Number(lValues[i]);
+        const { real: baseReal, imaginary: baseImaginary } = coefficientAt(i);
+        if (![h, k, l, baseReal, baseImaginary].every(Number.isFinite)) {
             continue;
         }
-
-        const differenceAmplitude = observedAmplitude - calculatedAmplitude;
-        const phaseRadians = phase * Math.PI / 180;
-        const baseReal = differenceAmplitude * Math.cos(phaseRadians);
-        const baseImaginary = differenceAmplitude * Math.sin(phaseRadians);
 
         for (const operation of symmetry.symmetryOperations) {
             const [equivH, equivK, equivL] = transformReflectionIndex(operation.rotMatrix, h, k, l);
@@ -107,8 +195,9 @@ function expandReflectionCoefficients(reflections, symmetry) {
         }
     }
 
-    // A difference Fourier conventionally has no F(000) contribution.
-    coefficients.delete('0,0,0');
+    if (omitF000) {
+        coefficients.delete('0,0,0');
+    }
     for (const coefficient of coefficients.values()) {
         coefficient.real /= coefficient.count;
         coefficient.imaginary /= coefficient.count;
@@ -289,43 +378,87 @@ function fourierGrid(coefficients, cell, gridOversampling = 1) {
  * reuse the expensive text/reflection work.
  * @param {string} fcfText - LIST 6/8-style FCF text.
  * @param {number|string} [cifBlock] - FCF block index or name.
+ * @param {object|null} [coefficientColumns] - Custom Fourier coefficient columns.
  * @returns {object} Parsed progressive-density dataset.
  */
-export function parseDifferenceDensityDataset(fcfText, cifBlock = 0) {
+export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficientColumns = null) {
     const cif = new CIF(fcfText, false);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const cell = UnitCell.fromCIF(block);
     const symmetry = CellSymmetry.fromCIF(block);
-    const loop = block.get('_refln');
+    const loop = block.get(coefficientColumns?.loop ?? '_refln');
 
-    const h = reflectionColumn(loop, ['_refln.index_h', '_refln_index_h']);
-    const k = reflectionColumn(loop, ['_refln.index_k', '_refln_index_k']);
-    const l = reflectionColumn(loop, ['_refln.index_l', '_refln_index_l']);
-    const phase = reflectionColumn(loop, ['_refln.phase_calc', '_refln_phase_calc']);
-    const measuredSquared = reflectionColumn(
+    const h = reflectionColumn(
         loop,
-        ['_refln.F_squared_meas', '_refln_F_squared_meas'],
-        null,
+        coefficientColumns?.h ?? ['_refln.index_h', '_refln_index_h'],
     );
-    const measured = measuredSquared === null
-        ? reflectionColumn(loop, ['_refln.F_meas', '_refln_F_meas'], null)
-        : null;
-    const calculated = reflectionColumn(loop, ['_refln.F_calc', '_refln_F_calc'], null);
-    const calculatedSquared = calculated === null
-        ? reflectionColumn(loop, ['_refln.F_squared_calc', '_refln_F_squared_calc'], null)
-        : null;
+    const k = reflectionColumn(
+        loop,
+        coefficientColumns?.k ?? ['_refln.index_k', '_refln_index_k'],
+    );
+    const l = reflectionColumn(
+        loop,
+        coefficientColumns?.l ?? ['_refln.index_l', '_refln_index_l'],
+    );
 
-    if (measuredSquared === null && measured === null) {
-        throw new Error('FCF contains neither measured F nor measured F-squared values');
-    }
-    if (calculated === null && calculatedSquared === null) {
-        throw new Error('FCF contains neither calculated F nor calculated F-squared values');
+    let coefficientReader;
+    let omitF000;
+    if (coefficientColumns) {
+        coefficientReader = customCoefficientReader(loop, coefficientColumns);
+        // Custom coefficients may represent an absolute or deformation density;
+        // retain their mean term unless the caller explicitly requests omission.
+        omitF000 = coefficientColumns.omitF000 ?? false;
+    } else {
+        const phase = reflectionColumn(loop, ['_refln.phase_calc', '_refln_phase_calc']);
+        const measuredSquared = reflectionColumn(
+            loop,
+            ['_refln.F_squared_meas', '_refln_F_squared_meas'],
+            null,
+        );
+        const measured = measuredSquared === null
+            ? reflectionColumn(loop, ['_refln.F_meas', '_refln_F_meas'], null)
+            : null;
+        const calculated = reflectionColumn(loop, ['_refln.F_calc', '_refln_F_calc'], null);
+        const calculatedSquared = calculated === null
+            ? reflectionColumn(loop, ['_refln.F_squared_calc', '_refln_F_squared_calc'], null)
+            : null;
+
+        if (measuredSquared === null && measured === null) {
+            throw new Error('FCF contains neither measured F nor measured F-squared values');
+        }
+        if (calculated === null && calculatedSquared === null) {
+            throw new Error('FCF contains neither calculated F nor calculated F-squared values');
+        }
+        coefficientReader = {
+            mode: 'fo-fc-common-phase',
+            valueColumns: [phase, measuredSquared ?? measured, calculated ?? calculatedSquared],
+            coefficientAt(index) {
+                const observedAmplitude = measuredSquared !== null
+                    ? Math.sqrt(Math.max(0, Number(measuredSquared[index])))
+                    : Math.max(0, Number(measured[index]));
+                const calculatedAmplitude = calculatedSquared !== null
+                    ? Math.sqrt(Math.max(0, Number(calculatedSquared[index])))
+                    : Math.abs(Number(calculated[index]));
+                const phaseRadians = Number(phase[index]) * Math.PI / 180;
+                const amplitude = observedAmplitude - calculatedAmplitude;
+                return {
+                    real: amplitude * Math.cos(phaseRadians),
+                    imaginary: amplitude * Math.sin(phaseRadians),
+                };
+            },
+        };
+        omitF000 = true;
     }
 
-    const presentColumns = [h, k, l, phase, measuredSquared ?? measured, calculated ?? calculatedSquared];
-    assertSameLength(presentColumns);
-    const reflections = { h, k, l, phase, measuredSquared, measured, calculated, calculatedSquared };
-    const coefficients = expandReflectionCoefficients(reflections, symmetry);
+    assertSameLength([h, k, l, ...coefficientReader.valueColumns]);
+    const coefficients = expandReflectionCoefficients(
+        h,
+        k,
+        l,
+        coefficientReader.coefficientAt,
+        symmetry,
+        omitF000,
+    );
     if (coefficients.size === 0) {
         throw new Error('FCF contains no usable difference-map coefficients');
     }
@@ -345,6 +478,8 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0) {
         cell,
         coefficients,
         reflectionCount: h.length,
+        coefficientMode: coefficientReader.mode,
+        omitF000,
         maximumReciprocalLength,
         symmetryOperations: symmetry.symmetryOperations.map(operation => ({
             rotation: operation.rotMatrix.map(row => [...row]),
@@ -386,6 +521,8 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         reflectionCount: dataset.reflectionCount,
         coefficientCount: coefficients.size,
         fullCoefficientCount: dataset.coefficients.size,
+        coefficientMode: dataset.coefficientMode,
+        omitF000: dataset.omitF000,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,
@@ -445,7 +582,9 @@ export class DifferenceDensityMap {
         );
     }
 
-    static fromCIF(fcfText, cifBlock = 0) {
-        return calculateDifferenceDensityMap(parseDifferenceDensityDataset(fcfText, cifBlock));
+    static fromCIF(fcfText, cifBlock = 0, coefficientColumns = null) {
+        return calculateDifferenceDensityMap(
+            parseDifferenceDensityDataset(fcfText, cifBlock, coefficientColumns),
+        );
     }
 }

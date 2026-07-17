@@ -865,6 +865,7 @@ export class CrystalViewer {
                 loadId,
                 fcfText,
                 fcfBlock,
+                coefficientColumns: this.options.differenceDensity.coefficientColumns,
                 steps: this.options.differenceDensity.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -883,7 +884,11 @@ export class CrystalViewer {
      */
     async loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId) {
         try {
-            const dataset = parseDifferenceDensityDataset(fcfText, fcfBlock);
+            const dataset = parseDifferenceDensityDataset(
+                fcfText,
+                fcfBlock,
+                this.options.differenceDensity.coefficientColumns,
+            );
             const steps = this.normalizedDifferenceDensitySteps();
             const finalOversampling = Math.max(
                 1,
@@ -988,6 +993,8 @@ export class CrystalViewer {
             dimensions: [...densityMap.dimensions],
             reflectionCount: densityMap.reflectionCount,
             coefficientCount: densityMap.coefficientCount,
+            coefficientMode: densityMap.coefficientMode,
+            omitF000: densityMap.omitF000,
             sigma: densityMap.sigma,
             minimum: densityMap.minimum,
             maximum: densityMap.maximum,
@@ -1040,6 +1047,8 @@ export class CrystalViewer {
             success: true,
             reflectionCount: densityMap.reflectionCount,
             coefficientCount: densityMap.coefficientCount,
+            coefficientMode: densityMap.coefficientMode,
+            omitF000: densityMap.omitF000,
             dimensions: [...densityMap.dimensions],
             gridOversampling: densityMap.gridOversampling,
             sigma: densityMap.sigma,
