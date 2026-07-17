@@ -1002,6 +1002,10 @@ export class CrystalViewer {
             marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
                 surfaceStatistics.generationTimeMs ?? 0,
             polygonizationTimeMs: surfaceStatistics.polygonizationTimeMs ?? 0,
+            stitched: surfaceStatistics.stitched ?? false,
+            stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
+            removedDuplicateTriangleCount:
+                surfaceStatistics.removedDuplicateTriangleCount ?? 0,
         });
     }
 
@@ -1051,6 +1055,10 @@ export class CrystalViewer {
             marchingCubesPassCount: surfaceStatistics.marchingCubesPassCount ?? 2,
             marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
                 surfaceStatistics.generationTimeMs ?? 0,
+            stitched: surfaceStatistics.stitched ?? false,
+            stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
+            removedDuplicateTriangleCount:
+                surfaceStatistics.removedDuplicateTriangleCount ?? 0,
         };
     }
 

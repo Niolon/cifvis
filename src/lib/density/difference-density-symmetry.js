@@ -361,6 +361,61 @@ function compactGeometry(source, reverseWinding = false) {
     return geometry;
 }
 
+/** @returns {{geometry: THREE.BufferGeometry, removedTriangles: number}} Stitched sign mesh. */
+function stitchSurfacePatches(patches, tolerance) {
+    const positions = [];
+    const indices = [];
+    const vertices = new Map();
+    const triangles = new Set();
+    const multiplier = 1 / Math.max(tolerance, Number.EPSILON);
+    let removedTriangles = 0;
+
+    for (const patch of patches) {
+        const attribute = patch.getAttribute('position');
+        for (let triangleOffset = 0; triangleOffset < attribute.count; triangleOffset += 3) {
+            const triangle = [];
+            for (let vertexOffset = 0; vertexOffset < 3; vertexOffset++) {
+                const vertex = triangleOffset + vertexOffset;
+                const coordinates = [
+                    attribute.getX(vertex),
+                    attribute.getY(vertex),
+                    attribute.getZ(vertex),
+                ];
+                const key = coordinates.map(value => Math.round(value * multiplier)).join(',');
+                let index = vertices.get(key);
+                if (index === undefined) {
+                    index = positions.length / 3;
+                    vertices.set(key, index);
+                    positions.push(...coordinates);
+                }
+                triangle.push(index);
+            }
+            if (new Set(triangle).size < 3) {
+                removedTriangles++;
+                continue;
+            }
+            const triangleKey = [...triangle].sort((first, second) => first - second).join(',');
+            if (triangles.has(triangleKey)) {
+                removedTriangles++;
+                continue;
+            }
+            triangles.add(triangleKey);
+            indices.push(...triangle);
+        }
+        patch.dispose();
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const IndexArray = positions.length / 3 > 65535 ? Uint32Array : Uint16Array;
+    geometry.setIndex(new THREE.BufferAttribute(new IndexArray(indices), 1));
+    geometry.setDrawRange(0, indices.length);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return { geometry, removedTriangles };
+}
+
 /** @returns {object} Lightweight structure view containing one connected region. */
 function regionStructure(structure, region) {
     return { cell: structure.cell, atoms: region.atoms };
@@ -458,8 +513,11 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
     let negativePolygonCount = 0;
     let polygonizationTimeMs = 0;
     let marchingCubesTimeMs = 0;
+    let improperTransformCount = 0;
+    const surfacePatches = { positive: [], negative: [] };
+    const surfaceMaterials = { positive: [], negative: [] };
     plans.forEach(plan => {
-        plan.classes.forEach((regionClass, classIndex) => {
+        plan.classes.forEach(regionClass => {
             const representativeStructure = regionStructure(structure, regionClass.representative);
             const regionBounds = differenceDensityBounds(representativeStructure, usedOptions.radius);
             const regionResolution = Math.max(
@@ -499,33 +557,53 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
                 mirrored: null,
                 material: canonicalSurface.material,
                 matrix: canonicalSurface.matrix.clone(),
-                name: canonicalSurface.name,
-                userData: { ...canonicalSurface.userData },
             };
+            surfaceMaterials[plan.sign].push(geometryData.material);
             canonicalSurface.geometry.dispose();
 
-            regionClass.copies.forEach((copy, copyIndex) => {
+            regionClass.copies.forEach(copy => {
                 const transform = cartesianTransform(structure.cell, copy.transform);
                 let geometry = geometryData.regular;
                 if (transform.determinant < 0) {
+                    improperTransformCount++;
                     geometryData.mirrored ??= compactGeometry(geometryData.regular, true);
                     geometry = geometryData.mirrored;
                 }
-                const surface = new THREE.Mesh(geometry, geometryData.material);
-                surface.name = `${geometryData.name}_${plan.sign}_${classIndex}_${copyIndex}`;
-                surface.userData = { ...geometryData.userData, symmetryReused: copyIndex > 0 };
-                surface.frustumCulled = false;
-                surface.matrix.copy(transform.matrix).multiply(geometryData.matrix);
-                surface.matrixAutoUpdate = false;
-                group.add(surface);
+                const patch = geometry.clone();
+                patch.applyMatrix4(transform.matrix.clone().multiply(geometryData.matrix));
+                // Welding must depend on position alone; normals are recomputed
+                // after coincident boundary vertices and duplicate faces merge.
+                patch.deleteAttribute('normal');
+                surfacePatches[plan.sign].push(patch);
             });
-
-            positivePolygonCount += canonicalGroup.userData.positivePolygonCount *
-                regionClass.copies.length;
-            negativePolygonCount += canonicalGroup.userData.negativePolygonCount *
-                regionClass.copies.length;
+            geometryData.regular.dispose();
+            geometryData.mirrored?.dispose();
         });
     });
+
+    const stitchingStarted = performance.now();
+    let removedDuplicateTriangleCount = 0;
+    for (const sign of ['positive', 'negative']) {
+        const stitched = stitchSurfacePatches(
+            surfacePatches[sign],
+            usedOptions.stitchTolerance ?? 1e-4,
+        );
+        removedDuplicateTriangleCount += stitched.removedTriangles;
+        const material = surfaceMaterials[sign][0];
+        surfaceMaterials[sign].slice(1).forEach(extraMaterial => extraMaterial.dispose());
+        const surface = new THREE.Mesh(stitched.geometry, material);
+        surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}DifferenceDensity`;
+        surface.userData = { selectable: false, type: 'difference-density', sign };
+        surface.frustumCulled = false;
+        group.add(surface);
+        const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
+        if (sign === 'positive') {
+            positivePolygonCount = polygons;
+        } else {
+            negativePolygonCount = polygons;
+        }
+    }
+    const stitchTimeMs = performance.now() - stitchingStarted;
 
     group.userData = {
         selectable: false,
@@ -546,6 +624,11 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
         negativeGeneratedRegionCount: plans[1].classes.length,
         reusedRegionCount,
         marchingCubesPassCount: generatedRegionCount,
+        stitched: true,
+        stitchTolerance: usedOptions.stitchTolerance ?? 1e-4,
+        stitchTimeMs,
+        removedDuplicateTriangleCount,
+        improperTransformCount,
         symmetryPlanningTimeMs: planningTimeMs,
         polygonizationTimeMs,
         marchingCubesTimeMs,

@@ -97,6 +97,8 @@ for (let run = 0; run < runCount; run++) {
             wallTimeMs: performance.now() - started,
             marchingCubesTimeMs: group.userData.marchingCubesTimeMs,
             polygonizationTimeMs: group.userData.polygonizationTimeMs,
+            stitchTimeMs: group.userData.stitchTimeMs ?? 0,
+            removedDuplicateTriangles: group.userData.removedDuplicateTriangleCount ?? 0,
             polygons: group.userData.polygonCount,
             displayedRegions: group.userData.displayedRegionCount,
             generatedRegions: group.userData.generatedRegionCount,
@@ -112,6 +114,7 @@ const summarize = values => ({
     wallTimeMs: median(values.map(value => value.wallTimeMs)),
     marchingCubesTimeMs: median(values.map(value => value.marchingCubesTimeMs)),
     polygonizationTimeMs: median(values.map(value => value.polygonizationTimeMs)),
+    stitchTimeMs: median(values.map(value => value.stitchTimeMs)),
 });
 const direct = summarize(observations.direct);
 const symmetry = summarize(observations.symmetry);

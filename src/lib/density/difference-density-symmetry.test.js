@@ -65,7 +65,8 @@ describe('symmetry-aware difference-density surfaces', () => {
         expect(group.userData.generatedRegionCount).toBe(2);
         expect(group.userData.reusedRegionCount).toBe(2);
         expect(group.userData.marchingCubesPassCount).toBe(2);
-        expect(group.children).toHaveLength(4);
+        expect(group.children).toHaveLength(2);
+        expect(group.userData.stitched).toBe(true);
         expect(group.userData.polygonCount).toBeGreaterThan(0);
     });
 
@@ -89,8 +90,20 @@ describe('symmetry-aware difference-density surfaces', () => {
             surfaceOptions,
         );
 
-        expect(group.children[0].geometry).not.toBe(group.children[1].geometry);
-        expect(group.children[1].matrix.determinant()).toBeLessThan(0);
+        expect(group.userData.improperTransformCount).toBe(2);
+        expect(group.children.every(child => child.geometry.getIndex())).toBe(true);
+        for (const child of group.children) {
+            const index = child.geometry.getIndex();
+            const triangleKeys = new Set();
+            for (let offset = 0; offset < index.count; offset += 3) {
+                triangleKeys.add([
+                    index.getX(offset),
+                    index.getX(offset + 1),
+                    index.getX(offset + 2),
+                ].sort((first, second) => first - second).join(','));
+            }
+            expect(triangleKeys.size).toBe(index.count / 3);
+        }
     });
 
     test('does not reuse a structure relation absent from the FCF map symmetry', () => {

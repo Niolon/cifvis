@@ -201,6 +201,7 @@ export default {
         'resolution': 64,
         'gridSpacing': 0.15,
         'maxResolution': 96,
+        'stitchTolerance': 1e-4,
         'positiveColor': '#36b566',
         'negativeColor': '#d94b64',
         'opacity': 0.55,
