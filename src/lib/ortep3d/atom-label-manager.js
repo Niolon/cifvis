@@ -580,7 +580,7 @@ export class AtomLabelManager {
      */
     update() {
         if (!this.context) {
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         if (this.pendingLayout) {
             this.layoutQueued = true;
@@ -602,15 +602,15 @@ export class AtomLabelManager {
             if (this.options.hideLabelsDuringDeferredLayout) {
                 this.canvas.style.visibility = 'hidden';
             }
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         this.canvas.style.visibility = 'visible';
         if (this.transformsUnchanged(width, height)) {
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         if (interacting && !this.forceNextLayout &&
             now - this.lastLayoutTime < this.options.layoutThrottleMs) {
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         this.lastLayoutTime = now;
         const dpr = window.devicePixelRatio || 1;
@@ -621,7 +621,7 @@ export class AtomLabelManager {
             this.layout = { placed: [], hidden: [], placementPolicy: 'none' };
             this.context.clearRect(0, 0, width, height);
             this.rememberTransforms(width, height);
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         const projectedAnchors = this.projectAnchors();
         const visibleRequests = requests.filter(request => {
@@ -633,7 +633,7 @@ export class AtomLabelManager {
             this.layout = { placed: [], hidden: [], placementPolicy: 'none' };
             this.context.clearRect(0, 0, width, height);
             this.rememberTransforms(width, height);
-            return Promise.resolve(this.layout);
+            return this.completeUpdate(this.layout);
         }
         this.beginLoadingIndicator();
         this.prepareTopology();
@@ -688,7 +688,7 @@ export class AtomLabelManager {
             this.lastExecutionMode = this.workerUnavailable ?
                 'main-thread-fallback' : 'main-thread';
             this.applyLayout(layout, state);
-            return Promise.resolve(layout);
+            return this.completeUpdate(layout);
         }
 
         const id = this.nextWorkerRequestId++;
@@ -762,6 +762,17 @@ export class AtomLabelManager {
         for (const resolve of waiters) {
             resolve(layout);
         }
+    }
+
+    /**
+     * Settles any callers carried over from a stale worker result and completes
+     * a synchronous update path.
+     * @param {object} layout - Current accepted layout
+     * @returns {Promise<object>} Resolved current layout
+     */
+    completeUpdate(layout) {
+        this.resolveLayoutWaiters(layout);
+        return Promise.resolve(layout);
     }
 
     applyLayout(layout, state) {

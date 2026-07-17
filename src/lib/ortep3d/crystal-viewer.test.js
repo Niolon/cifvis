@@ -26,6 +26,26 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
+    test.each([
+        ['placementMode', ''],
+        ['placementMode', null],
+        ['calloutPlacement', ''],
+        ['calloutPlacement', false],
+    ])('rejects falsy invalid atom-label %s values', (option, value) => {
+        expect(() => new CrystalViewer({}, {
+            atomLabels: { [option]: value },
+        })).toThrow(`Invalid atom label ${option === 'placementMode' ?
+            'placement mode' : 'callout placement'}`);
+    });
+
+    test('rejects invalid constructor label selections before initializing WebGL', () => {
+        expect(() => new CrystalViewer({}, {
+            atomLabels: { show: 'C1' },
+        })).toThrow(
+            'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+        );
+    });
+
     test('rejects a non-positive connector ceiling before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, {
             atomLabels: { maxConnectorLength: 0 },
@@ -42,5 +62,53 @@ describe('CrystalViewer rendering option validation', () => {
         expect(() => new CrystalViewer({}, {
             atomLabels: { autoPerformanceLabelThreshold: 2.5 },
         })).toThrow('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
+    });
+});
+
+describe('CrystalViewer atom-label runtime option validation', () => {
+    test.each([
+        ['placementMode', ''],
+        ['calloutPlacement', null],
+    ])('rejects falsy invalid %s updates', (option, value) => {
+        expect(() => CrystalViewer.prototype.updateAtomLabelOptions.call({}, {
+            [option]: value,
+        })).toThrow(`Invalid atom label ${option === 'placementMode' ?
+            'placement mode' : 'callout placement'}`);
+    });
+
+    test('rejects a scalar atom selector instead of silently hiding labels', () => {
+        expect(() => CrystalViewer.prototype.setAtomLabels.call({}, 'C1')).toThrow(
+            'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+        );
+    });
+
+    test('rejects malformed entries in a label request array', () => {
+        expect(() => CrystalViewer.prototype.setAtomLabels.call({}, ['C1', { text: 'oxygen' }]))
+            .toThrow(
+                'atomLabels.show must be "none", "all", "non-hydrogen", ' +
+                'or an array of label requests',
+            );
+    });
+
+    test('does not replace active options with explicit undefined partial values', () => {
+        const viewer = {
+            options: {
+                atomLabels: {
+                    placementMode: 'quality-omit',
+                    calloutPlacement: 'structure',
+                    text: {},
+                },
+            },
+            atomLabelManager: { setOptions: () => {} },
+            requestRender: () => {},
+        };
+
+        CrystalViewer.prototype.updateAtomLabelOptions.call(viewer, {
+            placementMode: undefined,
+            calloutPlacement: undefined,
+        });
+
+        expect(viewer.options.atomLabels.placementMode).toBe('quality-omit');
+        expect(viewer.options.atomLabels.calloutPlacement).toBe('structure');
     });
 });

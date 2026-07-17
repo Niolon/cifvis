@@ -187,9 +187,6 @@ function startServer() {
             } else if (url.pathname === '/cifvis.alldeps.js') {
                 response.writeHead(200, { 'Content-Type': 'application/javascript' });
                 response.end(readFileSync(bundlePath));
-            } else if (url.pathname === '/cif') {
-                response.writeHead(200, { 'Content-Type': 'text/plain' });
-                response.end(readFileSync(url.searchParams.get('path'), 'utf8'));
             } else {
                 response.writeHead(404);
                 response.end();
@@ -295,10 +292,7 @@ async function main() {
             const page = await context.newPage();
             try {
                 await page.goto(`http://127.0.0.1:${port}/`);
-                const cifText = await page.evaluate(
-                    async path => (await fetch(`/cif?path=${encodeURIComponent(path)}`)).text(),
-                    file,
-                );
+                const cifText = readFileSync(file, 'utf8');
                 const result = await page.evaluate(
                     input => window.runLabelBenchmark(input),
                     {

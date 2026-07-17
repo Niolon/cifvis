@@ -434,6 +434,66 @@ describe('small-ring topology hint', () => {
 });
 
 describe('atom label frame lifecycle', () => {
+    /**
+     * Creates a minimal manager that can exercise update control-flow paths.
+     * @param {object} [overrides] - Per-test manager replacements
+     * @returns {AtomLabelManager} Test manager
+     */
+    function updateManager(overrides = {}) {
+        const identity = new THREE.Matrix4();
+        return Object.assign(Object.create(AtomLabelManager.prototype), {
+            context: {
+                setTransform: vi.fn(),
+                clearRect: vi.fn(),
+                measureText: vi.fn(() => ({ width: 12 })),
+            },
+            canvas: { style: {} },
+            layout: { placed: [], hidden: [], placementPolicy: 'none' },
+            layoutWaiters: [],
+            pendingLayout: null,
+            resize: vi.fn(),
+            viewer: {
+                container: { clientWidth: 320, clientHeight: 200 },
+                camera: {
+                    updateMatrixWorld: vi.fn(),
+                    matrixWorld: identity,
+                    projectionMatrix: identity,
+                },
+                moleculeContainer: { updateMatrixWorld: vi.fn(), matrixWorld: identity },
+                controls: { state: { isDragging: false, isPanning: false } },
+            },
+            options: {
+                placementMode: 'auto-omit',
+                interactionLabelLimit: 500,
+                layoutThrottleMs: 0,
+                fontWeight: 400,
+                fontSize: 12,
+                fontFamily: 'sans-serif',
+                atomPadding: 3,
+            },
+            forceNextLayout: true,
+            lastLayoutTime: 0,
+            measurementCache: new Map(),
+            previousPlacements: new Map(),
+            resolveRequests: vi.fn(() => []),
+            transformsUnchanged: vi.fn(() => false),
+            endLoadingIndicator: vi.fn(),
+            beginLoadingIndicator: vi.fn(),
+            rememberTransforms: vi.fn(),
+            prepareTopology: vi.fn(),
+            ...overrides,
+        });
+    }
+
+    /**
+     * Adds a promise representing a caller retained after a stale worker result.
+     * @param {AtomLabelManager} manager - Manager receiving the waiter
+     * @returns {Promise<object>} Carried update promise
+     */
+    function carriedWaiter(manager) {
+        return new Promise(resolve => manager.layoutWaiters.push(resolve));
+    }
+
     test('excludes atoms only after their projected footprint leaves the viewport', () => {
         const viewport = { width: 320, height: 200 };
         expect(projectedAtomIntersectsViewport(
@@ -516,5 +576,65 @@ describe('atom label frame lifecycle', () => {
         AtomLabelManager.prototype.clearStaleFrame.call(manager);
 
         expect(clearRect).not.toHaveBeenCalled();
+    });
+
+    test('settles carried worker waiters when a follow-up has no requested labels', async () => {
+        const manager = updateManager();
+        const waiter = carriedWaiter(manager);
+
+        const layout = await manager.update();
+
+        await expect(waiter).resolves.toBe(layout);
+        expect(manager.layoutWaiters).toHaveLength(0);
+    });
+
+    test('settles carried worker waiters when no requested atom is visible', async () => {
+        const manager = updateManager({
+            resolveRequests: vi.fn(() => [{
+                atom: { uniqueId: 'C1' },
+                text: 'C1',
+                priority: 0,
+            }]),
+            projectAnchors: vi.fn(() => new Map()),
+        });
+        const waiter = carriedWaiter(manager);
+
+        const layout = await manager.update();
+
+        await expect(waiter).resolves.toBe(layout);
+        expect(manager.layoutWaiters).toHaveLength(0);
+    });
+
+    test('settles carried worker waiters after a main-thread follow-up layout', async () => {
+        const calculatedLayout = {
+            placed: [{ id: 'C1', text: 'C1' }],
+            hidden: [],
+            placementPolicy: 'quality-omit',
+        };
+        const manager = updateManager({
+            resolveRequests: vi.fn(() => [{
+                atom: { uniqueId: 'C1' },
+                text: 'C1',
+                priority: 0,
+            }]),
+            projectAnchors: vi.fn(() => new Map([['C1', {
+                id: 'C1', x: 100, y: 100, z: 0, radius: 5,
+            }]])),
+            preferredDirection: vi.fn(() => ({ x: 1, y: 0 })),
+            projectBonds: vi.fn(() => []),
+            projectRings: vi.fn(() => []),
+            captureLayoutState: vi.fn(() => ({})),
+            getWorker: vi.fn(() => null),
+            calculateLayout: vi.fn(() => calculatedLayout),
+            applyLayout: vi.fn(),
+            workerUnavailable: false,
+        });
+        const waiter = carriedWaiter(manager);
+
+        const layout = await manager.update();
+
+        expect(layout).toBe(calculatedLayout);
+        await expect(waiter).resolves.toBe(calculatedLayout);
+        expect(manager.layoutWaiters).toHaveLength(0);
     });
 });

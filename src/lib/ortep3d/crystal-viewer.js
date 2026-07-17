@@ -12,6 +12,104 @@ import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
 import { AtomLabelManager } from './atom-label-manager.js';
 
+const VALID_ATOM_LABEL_PLACEMENT_MODES = [
+    'auto-omit',
+    'quality-omit',
+    'performance-omit',
+    'maximum-coverage',
+];
+const VALID_ATOM_LABEL_CALLOUT_PLACEMENTS = ['structure', 'viewport'];
+
+/**
+ * @typedef {object} AtomLabelPlacement
+ * @property {string} id - Unique atom ID
+ * @property {string} text - Displayed label text
+ * @property {{left: number, right: number, top: number, bottom: number}} rect - Label bounds
+ * @property {{x1: number, y1: number, x2: number, y2: number, radius: number}|null} leaderSegment
+ * Screen-space connector, when one is needed
+ * @property {boolean} [isCallout] - Whether this is an outer callout placement
+ */
+
+/**
+ * @typedef {object} HiddenAtomLabel
+ * @property {string} id - Unique atom ID
+ * @property {string} text - Requested label text
+ * @property {'static-no-space'|'viewport-capacity'|'no-space'|'max-visible'} reason
+ * Why the label was omitted
+ */
+
+/**
+ * @typedef {object} AtomLabelLayout
+ * @property {AtomLabelPlacement[]} placed - Visible screen-space placements
+ * @property {HiddenAtomLabel[]} hidden - Omitted labels and their reasons
+ * @property {'none'|'quality-omit'|'performance-omit'|'maximum-coverage'} placementPolicy
+ * Effective placement policy
+ */
+
+/**
+ * Checks one public label-selection value.
+ * @param {unknown} show - Candidate label selection
+ * @returns {boolean} Whether the value matches the public API
+ */
+function isValidAtomLabelSelection(show) {
+    if (show === 'none' || show === 'all' || show === 'non-hydrogen') {
+        return true;
+    }
+    return Array.isArray(show) && show.every(item =>
+        typeof item === 'string' ||
+        (item !== null && typeof item === 'object' && typeof item.id === 'string'),
+    );
+}
+
+/**
+ * Validates atom-label options shared by construction and runtime updates.
+ * @param {object} options - Partial atom-label options
+ */
+function validateAtomLabelOptions(options) {
+    if (options.placementMode !== undefined &&
+        !VALID_ATOM_LABEL_PLACEMENT_MODES.includes(options.placementMode)) {
+        throw new Error(
+            `Invalid atom label placement mode: "${options.placementMode}". ` +
+            `Must be one of: ${VALID_ATOM_LABEL_PLACEMENT_MODES.join(', ')}`,
+        );
+    }
+    if (options.calloutPlacement !== undefined &&
+        !VALID_ATOM_LABEL_CALLOUT_PLACEMENTS.includes(options.calloutPlacement)) {
+        throw new Error(
+            `Invalid atom label callout placement: "${options.calloutPlacement}". ` +
+            `Must be one of: ${VALID_ATOM_LABEL_CALLOUT_PLACEMENTS.join(', ')}`,
+        );
+    }
+    if (options.show !== undefined && !isValidAtomLabelSelection(options.show)) {
+        throw new Error(
+            'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+        );
+    }
+    if (options.maxConnectorLength !== undefined &&
+        !(typeof options.maxConnectorLength === 'number' && options.maxConnectorLength > 0)) {
+        throw new Error('atomLabels.maxConnectorLength must be a positive number');
+    }
+    if (options.performanceNoSpaceCellSize !== undefined &&
+        !(typeof options.performanceNoSpaceCellSize === 'number' &&
+            options.performanceNoSpaceCellSize > 0)) {
+        throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
+    }
+    if (options.autoPerformanceLabelThreshold !== undefined &&
+        !(Number.isInteger(options.autoPerformanceLabelThreshold) &&
+            options.autoPerformanceLabelThreshold >= 0)) {
+        throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
+    }
+}
+
+/**
+ * Omits undefined partial values so they do not replace active defaults.
+ * @param {object} options - Partial options
+ * @returns {object} Defined option values
+ */
+function definedOptions(options) {
+    return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+}
+
 /**
  * Manages selections of atoms, bonds, and hydrogen bonds in the 3D structure.
  * Tracks selected objects, their data, and handles selection state changes.
@@ -408,42 +506,8 @@ export class CrystalViewer {
                 `Must be one of: ${validRenderStyles.join(', ')}`,
             );
         }
-        const validLabelPlacementModes = [
-            'auto-omit',
-            'quality-omit',
-            'performance-omit',
-            'maximum-coverage',
-        ];
-        if (options.atomLabels?.placementMode &&
-            !validLabelPlacementModes.includes(options.atomLabels.placementMode)) {
-            throw new Error(
-                `Invalid atom label placement mode: "${options.atomLabels.placementMode}". ` +
-                `Must be one of: ${validLabelPlacementModes.join(', ')}`,
-            );
-        }
-        const validCalloutPlacements = ['structure', 'viewport'];
-        if (options.atomLabels?.calloutPlacement &&
-            !validCalloutPlacements.includes(options.atomLabels.calloutPlacement)) {
-            throw new Error(
-                `Invalid atom label callout placement: "${options.atomLabels.calloutPlacement}". ` +
-                `Must be one of: ${validCalloutPlacements.join(', ')}`,
-            );
-        }
-        if (options.atomLabels?.maxConnectorLength !== undefined &&
-            !(typeof options.atomLabels.maxConnectorLength === 'number' &&
-                options.atomLabels.maxConnectorLength > 0)) {
-            throw new Error('atomLabels.maxConnectorLength must be a positive number');
-        }
-        if (options.atomLabels?.performanceNoSpaceCellSize !== undefined &&
-            !(typeof options.atomLabels.performanceNoSpaceCellSize === 'number' &&
-                options.atomLabels.performanceNoSpaceCellSize > 0)) {
-            throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
-        }
-        if (options.atomLabels?.autoPerformanceLabelThreshold !== undefined &&
-            !(Number.isInteger(options.atomLabels.autoPerformanceLabelThreshold) &&
-                options.atomLabels.autoPerformanceLabelThreshold >= 0)) {
-            throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
-        }
+        validateAtomLabelOptions(options.atomLabels || {});
+        const atomLabelOptions = definedOptions(options.atomLabels || {});
 
         this.container = container;
         const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
@@ -464,10 +528,10 @@ export class CrystalViewer {
             },
             atomLabels: {
                 ...defaultSettings.atomLabels,
-                ...(options.atomLabels || {}),
+                ...atomLabelOptions,
                 text: {
                     ...defaultSettings.atomLabels.text,
-                    ...(options.atomLabels?.text || {}),
+                    ...(atomLabelOptions.text || {}),
                 },
             },
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
@@ -916,6 +980,11 @@ export class CrystalViewer {
      * @param {'none'|'all'|'non-hydrogen'|Array<string|object>} show - Label selection
      */
     setAtomLabels(show) {
+        if (!isValidAtomLabelSelection(show)) {
+            throw new Error(
+                'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
+            );
+        }
         this.options.atomLabels.show = show;
         this.atomLabelManager.setOptions(this.options.atomLabels);
         this.requestRender();
@@ -926,44 +995,14 @@ export class CrystalViewer {
      * @param {object} options - Partial atom-label options
      */
     updateAtomLabelOptions(options) {
-        if (options.placementMode && ![
-            'auto-omit',
-            'quality-omit',
-            'performance-omit',
-            'maximum-coverage',
-        ].includes(options.placementMode)) {
-            throw new Error(
-                `Invalid atom label placement mode: "${options.placementMode}". ` +
-                'Must be one of: auto-omit, quality-omit, performance-omit, maximum-coverage',
-            );
-        }
-        if (options.calloutPlacement &&
-            !['structure', 'viewport'].includes(options.calloutPlacement)) {
-            throw new Error(
-                `Invalid atom label callout placement: "${options.calloutPlacement}". ` +
-                'Must be one of: structure, viewport',
-            );
-        }
-        if (options.maxConnectorLength !== undefined &&
-            !(typeof options.maxConnectorLength === 'number' && options.maxConnectorLength > 0)) {
-            throw new Error('atomLabels.maxConnectorLength must be a positive number');
-        }
-        if (options.performanceNoSpaceCellSize !== undefined &&
-            !(typeof options.performanceNoSpaceCellSize === 'number' &&
-                options.performanceNoSpaceCellSize > 0)) {
-            throw new Error('atomLabels.performanceNoSpaceCellSize must be a positive number');
-        }
-        if (options.autoPerformanceLabelThreshold !== undefined &&
-            !(Number.isInteger(options.autoPerformanceLabelThreshold) &&
-                options.autoPerformanceLabelThreshold >= 0)) {
-            throw new Error('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
-        }
+        validateAtomLabelOptions(options);
+        const nextOptions = definedOptions(options);
         this.options.atomLabels = {
             ...this.options.atomLabels,
-            ...options,
+            ...nextOptions,
             text: {
                 ...this.options.atomLabels.text,
-                ...(options.text || {}),
+                ...(nextOptions.text || {}),
             },
         };
         this.atomLabelManager.setOptions(this.options.atomLabels);
@@ -979,7 +1018,7 @@ export class CrystalViewer {
 
     /**
      * Returns the most recent screen-space label layout and omission reasons.
-     * @returns {{placed: Array<object>, hidden: Array<object>}} Current layout
+     * @returns {AtomLabelLayout} Current layout
      */
     getAtomLabelLayout() {
         return this.atomLabelManager.layout;
