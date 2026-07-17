@@ -155,7 +155,8 @@ const viewer = new CrystalViewer(container, {
     renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
     atomLabels: {
         show: 'non-hydrogen',
-        placementMode: 'auto-omit', // use 'complete' to prefer long/edge callouts
+        placementMode: 'auto-omit', // use 'complete' to prefer repair/callouts over omission
+        calloutPlacement: 'structure', // compact; 'viewport' permits wider spreading
     },
 });
 const result = await viewer.loadCIF(cifText);   // or viewer.loadCIF(cifText, 'blockName')

@@ -9,7 +9,11 @@ import {
     segmentsOverlap,
     SpatialHash,
 } from './atom-label-layout.js';
-import { AtomLabelManager, findSmallRings } from './atom-label-manager.js';
+import {
+    AtomLabelManager,
+    findSmallRings,
+    projectedAtomIntersectsViewport,
+} from './atom-label-manager.js';
 
 const options = {
     placementMode: 'auto-omit',
@@ -17,10 +21,16 @@ const options = {
     labelPadding: 2,
     viewportPadding: 4,
     fallbackDistance: 18,
+    maxConnectorLength: Infinity,
     ringPenalty: 1000,
     movementPenalty: 80,
+    repairDepth: 2,
+    repairSearchLimit: 48,
     leaderWidth: 1,
     spatialCellSize: 32,
+    calloutPlacement: 'structure',
+    calloutGap: 12,
+    completeDistanceSteps: 6,
     calloutColumns: 3,
     calloutColumnGap: 8,
     calloutRowGap: 4,
@@ -172,8 +182,8 @@ describe('atom label layout geometry', () => {
         expect(segmentIntersectsRectangle(bonds[0], result.placed[0].rect)).toBe(false);
     });
 
-    test('complete mode uses edge callouts and permits leader-bond crossings', () => {
-        const centre = { x: 100, y: 60 };
+    test('complete mode supports compact structure-relative callouts', () => {
+        const centre = { x: 250, y: 120 };
         const radialBonds = Array.from({ length: 16 }, (_, index) => {
             const angle = index * Math.PI / 8;
             return {
@@ -184,17 +194,94 @@ describe('atom label layout geometry', () => {
                 radius: 5,
             };
         });
-        const result = layoutAtomLabels(
+        const compact = layoutAtomLabels(
             [label('C1', centre.x, centre.y)],
             [{ id: 'C1', ...centre, radius: 8 }],
             radialBonds,
             [],
-            { width: 240, height: 120 },
-            { ...options, placementMode: 'complete' },
+            { width: 500, height: 240 },
+            { ...options, placementMode: 'complete', completeDistanceSteps: 4 },
         );
-        expect(result.placed).toHaveLength(1);
-        expect(result.placed[0].leaderLine).toBe(true);
-        expect(result.hidden).toHaveLength(0);
+        const viewportEdge = layoutAtomLabels(
+            [label('C1', centre.x, centre.y)],
+            [{ id: 'C1', ...centre, radius: 8 }],
+            radialBonds,
+            [],
+            { width: 500, height: 240 },
+            {
+                ...options,
+                placementMode: 'complete',
+                calloutPlacement: 'viewport',
+                completeDistanceSteps: 4,
+            },
+        );
+        expect(compact.placed).toHaveLength(1);
+        expect(compact.placed[0].isCallout).toBe(true);
+        expect(compact.placed[0].leaderLine).toBe(true);
+        expect(compact.hidden).toHaveLength(0);
+        expect(viewportEdge.placed).toHaveLength(1);
+        expect(Math.abs(compact.placed[0].x - centre.x)).toBeLessThan(
+            Math.abs(viewportEdge.placed[0].x - centre.x),
+        );
+        const bounded = layoutAtomLabels(
+            [label('C1', centre.x, centre.y)],
+            [{ id: 'C1', ...centre, radius: 8 }],
+            radialBonds,
+            [],
+            { width: 500, height: 240 },
+            {
+                ...options,
+                placementMode: 'complete',
+                completeDistanceSteps: 4,
+                maxConnectorLength: 5,
+            },
+        );
+        expect(bounded.placed).toHaveLength(0);
+        expect(bounded.hidden[0].reason).toBe('viewport-capacity');
+    });
+
+    test('moves earlier labels locally to avoid one disproportionately long connector', () => {
+        const fixture = [
+            [36, 33, -1, -0.047],
+            [77, 61, -1, -0.359],
+            [80, 30, 1, -0.465],
+            [48, 58, -1, -0.352],
+            [50, 46, -1, 0.137],
+            [26, 73, -1, -0.178],
+            [88, 30, 1, -0.432],
+        ];
+        const labels = fixture.map(([x, y, dx, dy], index) => ({
+            ...label(`L${index}`, x, y, { x: dx, y: dy }),
+            radius: 7,
+        }));
+        const atoms = labels.map(item => ({
+            id: item.id,
+            x: item.x,
+            y: item.y,
+            radius: 9,
+        }));
+        const layout = repairSearchLimit => layoutAtomLabels(
+            labels,
+            atoms,
+            [],
+            [],
+            { width: 120, height: 100 },
+            {
+                ...options,
+                placementMode: 'complete',
+                repairSearchLimit,
+            },
+        );
+        const connectorMaximum = result => Math.max(0, ...result.placed.map(item =>
+            item.leaderSegment ? Math.hypot(
+                item.leaderSegment.x2 - item.leaderSegment.x1,
+                item.leaderSegment.y2 - item.leaderSegment.y1,
+            ) : 0));
+        const greedy = layout(0);
+        const repaired = layout(48);
+
+        expect(repaired.placed).toHaveLength(greedy.placed.length);
+        expect(connectorMaximum(repaired)).toBeLessThan(connectorMaximum(greedy));
     });
 });
 
@@ -219,6 +306,45 @@ describe('small-ring topology hint', () => {
 });
 
 describe('atom label frame lifecycle', () => {
+    test('excludes atoms only after their projected footprint leaves the viewport', () => {
+        const viewport = { width: 320, height: 200 };
+        expect(projectedAtomIntersectsViewport(
+            { x: -5, y: 100, z: 0, radius: 8 },
+            viewport,
+        )).toBe(true);
+        expect(projectedAtomIntersectsViewport(
+            { x: -9, y: 100, z: 0, radius: 8 },
+            viewport,
+        )).toBe(false);
+        expect(projectedAtomIntersectsViewport(
+            { x: 100, y: 100, z: 2, radius: 8 },
+            viewport,
+        )).toBe(false);
+    });
+
+    test('shows the loading indicator only after its delay and cancels it on completion', () => {
+        vi.useFakeTimers();
+        const manager = {
+            options: { showLoadingIndicator: true, loadingIndicatorDelayMs: 120 },
+            loadingIndicator: { style: { display: 'none' } },
+            loadingIndicatorActive: false,
+            loadingIndicatorTimer: null,
+            disposed: false,
+        };
+        try {
+            AtomLabelManager.prototype.beginLoadingIndicator.call(manager);
+            vi.advanceTimersByTime(119);
+            expect(manager.loadingIndicator.style.display).toBe('none');
+            vi.advanceTimersByTime(1);
+            expect(manager.loadingIndicator.style.display).toBe('flex');
+
+            AtomLabelManager.prototype.endLoadingIndicator.call(manager);
+            expect(manager.loadingIndicator.style.display).toBe('none');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test('clears a label bitmap immediately when the molecule pose changes', () => {
         const identity = new THREE.Matrix4();
         const rotated = new THREE.Matrix4().makeRotationZ(0.1);

@@ -97,7 +97,9 @@ const viewer = new CrystalViewer(container, {
   atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
   atomLabels: {
     show: ['C1', { id: 'O1', text: 'O(carbonyl)', priority: 10 }],
-    placementMode: 'auto-omit', // or 'complete' for long/edge callouts
+    placementMode: 'auto-omit', // or 'complete' for bounded repair and callouts
+    calloutPlacement: 'structure', // compact; 'viewport' uses the full width
+    maxConnectorLength: 250, // optional hard CSS-pixel ceiling
     fontSize: 14,
   },
   renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)

@@ -8,6 +8,8 @@
 //
 // Options:
 //   --mode <mode>       auto-omit (default) or complete
+//   --callouts <policy> structure (default) or viewport
+//   --max-connector <px> Optional hard connector-length ceiling
 //   --iterations <n>    Timed layouts per structure (default 12)
 //   --width <px>        Viewer width (default 1200)
 //   --height <px>       Viewer height (default 900)
@@ -106,13 +108,17 @@ const HARNESS_HTML = `<!doctype html>
 <body><div id="viewer"></div><script type="module">
 import * as CifVis from '/cifvis.alldeps.js';
 
-window.runLabelBenchmark = async ({ cifText, mode, iterations, width, height }) => {
+window.runLabelBenchmark = async ({
+    cifText, mode, callouts, maxConnector, iterations, width, height,
+}) => {
     const container = document.getElementById('viewer');
     container.replaceChildren();
     Object.assign(container.style, { width: width + 'px', height: height + 'px' });
+    const atomLabels = { show: 'all', placementMode: mode, calloutPlacement: callouts };
+    if (maxConnector !== null) atomLabels.maxConnectorLength = maxConnector;
     const viewer = new CifVis.CrystalViewer(container, {
         renderStyle: 'cutout-2d',
-        atomLabels: { show: 'all', placementMode: mode },
+        atomLabels,
     });
     const loadResult = await viewer.loadCIF(cifText);
     if (!loadResult.success) return loadResult;
@@ -130,6 +136,10 @@ window.runLabelBenchmark = async ({ cifText, mode, iterations, width, height }) 
         samples.push(performance.now() - start);
     }
     const layout = viewer.getAtomLabelLayout();
+    const connectorLengths = layout.placed.filter(item => item.leaderSegment).map(item => Math.hypot(
+        item.leaderSegment.x2 - item.leaderSegment.x1,
+        item.leaderSegment.y2 - item.leaderSegment.y1,
+    ));
     return {
         success: true,
         atoms: viewer.state.displayStructure.atoms.length,
@@ -137,6 +147,8 @@ window.runLabelBenchmark = async ({ cifText, mode, iterations, width, height }) 
         placed: layout.placed.length,
         hidden: layout.hidden.length,
         execution: viewer.atomLabelManager.lastExecutionMode,
+        callouts: layout.placed.filter(item => item.isCallout).length,
+        maximumConnector: Math.max(0, ...connectorLengths),
         samples,
     };
 };
@@ -180,6 +192,15 @@ async function main() {
     if (!['auto-omit', 'complete'].includes(mode)) {
         throw new Error('--mode must be auto-omit or complete');
     }
+    const callouts = options.callouts || 'structure';
+    if (!['structure', 'viewport'].includes(callouts)) {
+        throw new Error('--callouts must be structure or viewport');
+    }
+    const maxConnector = options['max-connector'] === undefined ? null :
+        Number.parseFloat(options['max-connector']);
+    if (maxConnector !== null && (!Number.isFinite(maxConnector) || maxConnector <= 0)) {
+        throw new Error('--max-connector must be a positive number');
+    }
     const iterations = Number.parseInt(options.iterations || '12', 10);
     const width = Number.parseInt(options.width || '1200', 10);
     const height = Number.parseInt(options.height || '900', 10);
@@ -203,8 +224,15 @@ async function main() {
     const browser = await chromium.launch(launchOptions);
     const context = await browser.newContext({ viewport: { width, height } });
 
-    console.log(`Label benchmark: mode=${mode}, viewport=${width}x${height}, iterations=${iterations}`);
-    console.log('file\tatoms\tbonds\tplaced\thidden\texecution\tmedian_ms\tp95_ms');
+    console.log(
+        `Label benchmark: mode=${mode}, callouts=${callouts}, ` +
+        `maxConnector=${maxConnector ?? 'none'}, viewport=${width}x${height}, ` +
+        `iterations=${iterations}`,
+    );
+    console.log(
+        'file\tatoms\tbonds\tplaced\thidden\tcallouts\tmax_connector_px\t' +
+        'execution\tmedian_ms\tp95_ms',
+    );
     try {
         for (const file of files) {
             const page = await context.newPage();
@@ -216,7 +244,7 @@ async function main() {
                 );
                 const result = await page.evaluate(
                     input => window.runLabelBenchmark(input),
-                    { cifText, mode, iterations, width, height },
+                    { cifText, mode, callouts, maxConnector, iterations, width, height },
                 );
                 if (!result.success) {
                     console.log(`${file}\tERROR\t${result.error}`);
@@ -228,6 +256,8 @@ async function main() {
                     result.bonds,
                     result.placed,
                     result.hidden,
+                    result.callouts,
+                    result.maximumConnector.toFixed(1),
                     result.execution,
                     percentile(result.samples, 0.5).toFixed(2),
                     percentile(result.samples, 0.95).toFixed(2),

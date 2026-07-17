@@ -416,6 +416,19 @@ export class CrystalViewer {
                 `Must be one of: ${validLabelPlacementModes.join(', ')}`,
             );
         }
+        const validCalloutPlacements = ['structure', 'viewport'];
+        if (options.atomLabels?.calloutPlacement &&
+            !validCalloutPlacements.includes(options.atomLabels.calloutPlacement)) {
+            throw new Error(
+                `Invalid atom label callout placement: "${options.atomLabels.calloutPlacement}". ` +
+                `Must be one of: ${validCalloutPlacements.join(', ')}`,
+            );
+        }
+        if (options.atomLabels?.maxConnectorLength !== undefined &&
+            !(typeof options.atomLabels.maxConnectorLength === 'number' &&
+                options.atomLabels.maxConnectorLength > 0)) {
+            throw new Error('atomLabels.maxConnectorLength must be a positive number');
+        }
 
         this.container = container;
         const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
@@ -903,6 +916,17 @@ export class CrystalViewer {
                 `Invalid atom label placement mode: "${options.placementMode}". ` +
                 'Must be one of: auto-omit, complete',
             );
+        }
+        if (options.calloutPlacement &&
+            !['structure', 'viewport'].includes(options.calloutPlacement)) {
+            throw new Error(
+                `Invalid atom label callout placement: "${options.calloutPlacement}". ` +
+                'Must be one of: structure, viewport',
+            );
+        }
+        if (options.maxConnectorLength !== undefined &&
+            !(typeof options.maxConnectorLength === 'number' && options.maxConnectorLength > 0)) {
+            throw new Error('atomLabels.maxConnectorLength must be a positive number');
         }
         this.options.atomLabels = {
             ...this.options.atomLabels,

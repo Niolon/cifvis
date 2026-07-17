@@ -185,6 +185,28 @@ function polygonBounds(polygon) {
 }
 
 /**
+ * Returns a conservative bound around the projected structure geometry.
+ * @param {Array<object>} atoms - Projected atom circles
+ * @param {Array<object>} bonds - Projected thick bond segments
+ * @returns {{left: number, right: number, top: number, bottom: number}|null} Bounds
+ */
+function structureBounds(atoms, bonds) {
+    const bounds = [
+        ...atoms.map(circleBounds),
+        ...bonds.map(segmentBounds),
+    ];
+    if (bounds.length === 0) {
+        return null;
+    }
+    return bounds.reduce((combined, item) => ({
+        left: Math.min(combined.left, item.left),
+        right: Math.max(combined.right, item.right),
+        top: Math.min(combined.top, item.top),
+        bottom: Math.max(combined.bottom, item.bottom),
+    }));
+}
+
+/**
  * Small uniform-grid spatial index used by the label solver. Objects spanning
  * more than one cell are registered in every touched cell and deduplicated on query.
  */
@@ -212,6 +234,29 @@ export class SpatialHash {
                     this.cells.set(key, new Set());
                 }
                 this.cells.get(key).add(item);
+            }
+        }
+    }
+
+    /**
+     * Removes an item from every cell touched by its former bounds.
+     * @param {object} item - Previously indexed item
+     * @param {object} bounds - Bounds used when the item was inserted
+     */
+    remove(item, bounds) {
+        for (let x = Math.floor(bounds.left / this.cellSize);
+            x <= Math.floor(bounds.right / this.cellSize); x++) {
+            for (let y = Math.floor(bounds.top / this.cellSize);
+                y <= Math.floor(bounds.bottom / this.cellSize); y++) {
+                const key = `${x},${y}`;
+                const items = this.cells.get(key);
+                if (!items) {
+                    continue;
+                }
+                items.delete(item);
+                if (items.size === 0) {
+                    this.cells.delete(key);
+                }
             }
         }
     }
@@ -334,7 +379,7 @@ function candidateScore(candidate, label, ringPolygons, previousPlacement, optio
 }
 
 /**
- * Creates a long-leader candidate in a viewport-edge callout lane.
+ * Creates a long-leader candidate in a callout lane.
  * @param {object} label - Projected label
  * @param {number} x - Label centre x
  * @param {number} y - Label centre y
@@ -373,6 +418,21 @@ function createCalloutCandidate(label, x, y, options) {
             bottom: y + halfHeight + padding,
         },
     };
+}
+
+/**
+ * Returns the visible connector length of a placement candidate.
+ * @param {object} candidate - Label placement candidate
+ * @returns {number} Connector length in CSS pixels
+ */
+function connectorLength(candidate) {
+    if (!candidate.leaderSegment) {
+        return 0;
+    }
+    return Math.hypot(
+        candidate.leaderSegment.x2 - candidate.leaderSegment.x1,
+        candidate.leaderSegment.y2 - candidate.leaderSegment.y1,
+    );
 }
 
 /**
@@ -424,43 +484,51 @@ export function layoutAtomLabels(
         .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.id.localeCompare(b.id));
     const orderedLabels = allOrderedLabels.slice(0, options.maxVisible);
     const completeMode = options.placementMode === 'complete';
+    const projectedStructureBounds = structureBounds(atomObstacles, bondObstacles);
+    const candidatesByLabel = new Map();
 
-    const candidateIsValid = (item, label) => {
+    const candidateBlockers = (item, label) => {
+        if (connectorLength(item) > (options.maxConnectorLength ?? Infinity)) {
+            return null;
+        }
         if (!isInsideViewport(item.rect, viewport, options.viewportPadding)) {
-            return false;
+            return null;
         }
         if (atomIndex.query(item.rect).some(atom => rectangleOverlapsCircle(item.rect, atom))) {
-            return false;
+            return null;
         }
         if (bondIndex.query(item.rect).some(bond => segmentIntersectsRectangle(bond, item.rect))) {
-            return false;
+            return null;
         }
-        if (labelIndex.query(item.rect).some(existing => rectanglesOverlap(item.rect, existing.rect))) {
-            return false;
-        }
-        if (leaderIndex.query(item.rect).some(existing =>
-            segmentIntersectsRectangle(existing.leaderSegment, item.rect))) {
-            return false;
-        }
+        const blockers = new Set(labelIndex.query(item.rect)
+            .filter(existing => rectanglesOverlap(item.rect, existing.rect)));
+        leaderIndex.query(item.rect)
+            .filter(existing => segmentIntersectsRectangle(existing.leaderSegment, item.rect))
+            .forEach(existing => blockers.add(existing));
         if (!item.leaderSegment) {
-            return true;
+            return blockers;
         }
         const leaderBounds = segmentBounds(item.leaderSegment);
         if (!completeMode && bondIndex.query(leaderBounds)
             .some(bond => segmentsOverlap(item.leaderSegment, bond))) {
-            return false;
+            return null;
         }
         if (atomIndex.query(leaderBounds).some(atom => atom.id !== label.id &&
             pointToSegmentDistanceSquared(atom, item.leaderSegment) < atom.radius ** 2)) {
-            return false;
+            return null;
         }
-        if (labelIndex.query(leaderBounds).some(existing =>
-            segmentIntersectsRectangle(item.leaderSegment, existing.rect))) {
-            return false;
+        labelIndex.query(leaderBounds)
+            .filter(existing => segmentIntersectsRectangle(item.leaderSegment, existing.rect))
+            .forEach(existing => blockers.add(existing));
+        if (!completeMode) {
+            leaderIndex.query(leaderBounds)
+                .filter(existing => segmentsOverlap(item.leaderSegment, existing.leaderSegment))
+                .forEach(existing => blockers.add(existing));
         }
-        return completeMode || !leaderIndex.query(leaderBounds).some(existing =>
-            segmentsOverlap(item.leaderSegment, existing.leaderSegment));
+        return blockers;
     };
+
+    const candidateIsValid = (item, label) => candidateBlockers(item, label)?.size === 0;
 
     const register = (label, candidate) => {
         const placement = { ...label, ...candidate };
@@ -469,11 +537,76 @@ export function layoutAtomLabels(
         if (placement.leaderSegment) {
             leaderIndex.insert(placement, segmentBounds(placement.leaderSegment));
         }
+        return placement;
     };
+
+    const unregister = placement => {
+        placed.splice(placed.indexOf(placement), 1);
+        labelIndex.remove(placement, placement.rect);
+        if (placement.leaderSegment) {
+            leaderIndex.remove(placement, segmentBounds(placement.leaderSegment));
+        }
+    };
+
+    const placeWithRepair = (label, candidates, depth, lockedIds, budget) => {
+        for (const candidate of candidates) {
+            if (budget.remaining-- <= 0) {
+                return false;
+            }
+            const blockers = candidateBlockers(candidate, label);
+            if (!blockers) {
+                continue;
+            }
+            if (blockers.size === 0) {
+                register(label, candidate);
+                return true;
+            }
+            if (depth <= 0 || blockers.size !== 1) {
+                continue;
+            }
+            const blocker = [...blockers][0];
+            if (lockedIds.has(blocker.id) ||
+                (blocker.priority || 0) > (label.priority || 0)) {
+                continue;
+            }
+            const blockerCandidates = candidatesByLabel.get(blocker.id) || [];
+            unregister(blocker);
+            if (!candidateIsValid(candidate, label)) {
+                register(blocker, blocker);
+                continue;
+            }
+            const newPlacement = register(label, candidate);
+            const nextLockedIds = new Set(lockedIds);
+            nextLockedIds.add(label.id);
+            if (placeWithRepair(
+                blocker,
+                blockerCandidates,
+                depth - 1,
+                nextLockedIds,
+                budget,
+            )) {
+                return true;
+            }
+            unregister(newPlacement);
+            register(blocker, blocker);
+        }
+        return false;
+    };
+
+    const tryLocalRepair = (label, candidates) => placeWithRepair(
+        label,
+        candidates,
+        Math.max(0, options.repairDepth ?? 2),
+        new Set(),
+        { remaining: Math.max(0, options.repairSearchLimit ?? 48) },
+    );
 
     for (const label of orderedLabels) {
         const candidates = [];
-        const distanceMultipliers = completeMode ? [1, 2, 3, 4] : [1, 2];
+        const distanceMultipliers = completeMode ? Array.from(
+            { length: Math.max(2, options.completeDistanceSteps ?? 6) },
+            (_, index) => index + 1,
+        ) : [1, 2];
         for (const distanceMultiplier of distanceMultipliers) {
             for (const direction of CANDIDATE_DIRECTIONS) {
                 const candidate = createCandidate(label, direction, distanceMultiplier, options);
@@ -493,10 +626,13 @@ export function layoutAtomLabels(
             }
         }
         candidates.sort((a, b) => a.score - b.score);
+        candidatesByLabel.set(label.id, candidates);
         const candidate = candidates.find(item => candidateIsValid(item, label));
 
         if (candidate) {
             register(label, candidate);
+        } else if (tryLocalRepair(label, candidates)) {
+            continue;
         } else {
             unresolved.push(label);
         }
@@ -505,15 +641,46 @@ export function layoutAtomLabels(
     if (completeMode && unresolved.length > 0) {
         const columns = Math.max(1, options.calloutColumns || 3);
         const rowGap = options.calloutRowGap || 4;
-        for (const label of unresolved) {
+        const structureRelative = options.calloutPlacement !== 'viewport' &&
+            projectedStructureBounds !== null;
+        const calloutGap = options.calloutGap ?? 12;
+        const leftBoundary = structureRelative ? projectedStructureBounds.left - calloutGap :
+            options.viewportPadding;
+        const rightBoundary = structureRelative ? projectedStructureBounds.right + calloutGap :
+            viewport.width - options.viewportPadding;
+        const calloutLabels = [...unresolved].sort((a, b) =>
+            (b.priority || 0) - (a.priority || 0) ||
+            Math.min(Math.abs(b.x - leftBoundary), Math.abs(rightBoundary - b.x)) -
+                Math.min(Math.abs(a.x - leftBoundary), Math.abs(rightBoundary - a.x)) ||
+            a.id.localeCompare(b.id));
+        for (const label of calloutLabels) {
             const candidates = [];
             let searched = 0;
             const rowHeight = label.height + options.labelPadding * 2 + rowGap;
+            const calloutTop = structureRelative ? Math.max(
+                options.viewportPadding,
+                projectedStructureBounds.top,
+            ) : options.viewportPadding;
+            const calloutBottom = structureRelative ? Math.min(
+                viewport.height - options.viewportPadding,
+                projectedStructureBounds.bottom,
+            ) : viewport.height - options.viewportPadding;
             const rowCount = Math.max(1, Math.floor(
-                (viewport.height - options.viewportPadding * 2) / rowHeight,
+                Math.max(rowHeight, calloutBottom - calloutTop) / rowHeight,
             ));
-            const rows = Array.from({ length: rowCount }, (_, index) =>
-                options.viewportPadding + label.height / 2 + options.labelPadding + index * rowHeight);
+            const firstRow = calloutTop + label.height / 2 + options.labelPadding;
+            const rows = Array.from({ length: rowCount }, (_, index) => firstRow + index * rowHeight)
+                .filter(y => y + label.height / 2 + options.labelPadding <= calloutBottom);
+            if (rows.length === 0) {
+                rows.push(Math.max(
+                    options.viewportPadding + label.height / 2 + options.labelPadding,
+                    Math.min(
+                        viewport.height - options.viewportPadding - label.height / 2 -
+                            options.labelPadding,
+                        (calloutTop + calloutBottom) / 2,
+                    ),
+                ));
+            }
             rows.sort((a, b) => Math.abs(a - label.y) - Math.abs(b - label.y));
             const preferredSide = label.x < viewport.width / 2 ? 'left' : 'right';
             const sides = [preferredSide, preferredSide === 'left' ? 'right' : 'left'];
@@ -526,11 +693,17 @@ export function layoutAtomLabels(
                             break calloutSearch;
                         }
                         searched++;
-                        const inset = options.viewportPadding + label.width / 2 + options.labelPadding +
+                        const laneOffset = label.width / 2 + options.labelPadding +
                             column * (label.width + options.calloutColumnGap);
-                        const x = side === 'left' ? inset : viewport.width - inset;
+                        const viewportX = side === 'left' ?
+                            options.viewportPadding + laneOffset :
+                            viewport.width - options.viewportPadding - laneOffset;
+                        const structureX = side === 'left' ?
+                            projectedStructureBounds?.left - calloutGap - laneOffset :
+                            projectedStructureBounds?.right + calloutGap + laneOffset;
+                        const x = structureRelative ? structureX : viewportX;
                         const candidate = createCalloutCandidate(label, x, y, options);
-                        if (candidateIsValid(candidate, label)) {
+                        if (candidateBlockers(candidate, label) !== null) {
                             candidate.score = Math.hypot(x - label.x, y - label.y);
                             const leaderBounds = segmentBounds(candidate.leaderSegment);
                             candidate.score += bondIndex.query(leaderBounds)
@@ -541,11 +714,19 @@ export function layoutAtomLabels(
                     }
                 }
             }
-            candidates.sort((a, b) => a.score - b.score);
-            const candidate = candidates[0];
-            if (candidate) {
-                register(label, candidate);
-            } else {
+            const relocationCandidates = [
+                ...(candidatesByLabel.get(label.id) || [])
+                    .filter(item => candidateBlockers(item, label) !== null),
+                ...candidates,
+            ].sort((a, b) => connectorLength(a) - connectorLength(b) || a.score - b.score);
+            candidatesByLabel.set(label.id, relocationCandidates);
+            if (!placeWithRepair(
+                label,
+                relocationCandidates,
+                Math.max(0, options.repairDepth ?? 2),
+                new Set(),
+                { remaining: Math.max(0, options.repairSearchLimit ?? 48) },
+            )) {
                 hidden.push({ id: label.id, text: label.text, reason: 'viewport-capacity' });
             }
         }

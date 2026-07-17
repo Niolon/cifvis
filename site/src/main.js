@@ -25,6 +25,8 @@ function updateStatus(message, type = 'info') {
  * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
  * render styles. `?labels=all|non-hydrogen|none` controls atom labels and
  * `?label-mode=auto-omit|complete` chooses their placement policy.
+ * `?label-callouts=structure|viewport` controls complete-mode callout spread.
+ * `?label-max-connector=<pixels>` sets a clamped connector-length ceiling.
  * Unset or unrecognised values fall back to their defaults.
  * @returns {object} CrystalViewer options derived from the URL
  */
@@ -36,6 +38,9 @@ function getViewerOptionsFromUrl() {
     const validLabelModes = ['all', 'non-hydrogen', 'none'];
     const labelPlacement = params.get('label-mode');
     const validLabelPlacements = ['auto-omit', 'complete'];
+    const labelCallouts = params.get('label-callouts');
+    const validLabelCallouts = ['structure', 'viewport'];
+    const maximumConnector = Number(params.get('label-max-connector'));
     const options = {};
 
     if (validStyles.includes(style)) {
@@ -46,7 +51,12 @@ function getViewerOptionsFromUrl() {
             show: labels,
             placementMode: validLabelPlacements.includes(labelPlacement) ?
                 labelPlacement : 'auto-omit',
+            calloutPlacement: validLabelCallouts.includes(labelCallouts) ?
+                labelCallouts : 'structure',
         };
+        if (Number.isFinite(maximumConnector) && maximumConnector > 0) {
+            options.atomLabels.maxConnectorLength = Math.max(20, Math.min(1000, maximumConnector));
+        }
     }
     return options;
 }

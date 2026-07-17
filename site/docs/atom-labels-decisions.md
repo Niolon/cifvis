@@ -34,14 +34,16 @@ This guarantees a safer clearance at the cost of sometimes placing a label farth
 
 All displayed atom footprints are obstacles, not just atoms which themselves have labels. Labels that cannot avoid atoms and already placed labels are omitted.
 
+A requested label participates only while some part of its projected atom footprint intersects the viewport and its depth lies inside the camera clip range. Once zoom or pan moves the atom completely off-screen, both its label and connector disappear; an off-screen anchor is never allowed to pull a callout back into view. A partially clipped atom remains eligible to avoid visible popping at the boundary.
+
 ## Placement strategy
 
 Two placement policies are supported:
 
 - `auto-omit` is the default. It uses short local leaders, rejects leaders which cross bonds, and omits a label rather than produce a confusing figure.
-- `complete` searches twice as far from the atom and then uses ordered callout lanes at the left and right viewport edges. Its leader lines may cross bonds and other leaders. Label text still may not cover atoms, bonds, or other labels, so a physically overfull viewport can still report `viewport-capacity`; "complete" means completeness is preferred, not that an impossible packing is forced.
+- `complete` searches farther from the atom and then uses ordered callout lanes. By default those lanes sit just outside the projected structure bounds, keeping the combined drawing compact; `calloutPlacement: "viewport"` retains full-width edge lanes. Its leader lines may cross bonds and other leaders. Label text still may not cover atoms, bonds, or other labels, so a physically overfull viewport can still report `viewport-capacity`; "complete" means completeness is preferred, not that an impossible packing is forced.
 
-- Sixteen angular candidates are generated at each search distance: two distances in `auto-omit`, four in `complete`.
+- Sixteen angular candidates are generated at each search distance: two distances in `auto-omit`, and six by default in `complete` (`completeDistanceSteps`). The additional moderate-distance positions give bounded repair somewhere useful to move earlier labels before perimeter callouts are considered.
 - The preferred direction points away from the projected bonded neighbours. Terminal atoms therefore label away from their bond; atoms in ordinary rings normally label outward.
 - Isolated atoms and geometrically balanced atoms use a deterministic direction derived from their unique ID.
 - Candidates outside the viewport, overlapping an atom, or overlapping an already placed label are rejected.
@@ -49,10 +51,13 @@ Two placement policies are supported:
 - Farther candidates receive an automatic leader line.
 - In `auto-omit`, leader lines crossing bonds, atoms other than their anchor, placed labels, or other leader lines are rejected. `complete` relaxes bond and leader crossings but never lets a leader pass through an unrelated atom or label.
 - Explicit priority is considered first; equal-priority labels use atom ID ordering for deterministic output.
+- Before omitting a label or assigning a distant callout, bounded local repair may move an earlier equal-priority label to its next-best candidate. Repair can follow a short displacement chain (`repairDepth`) and shares a strict candidate budget (`repairSearchLimit`). Higher-priority labels are never displaced by lower-priority labels.
+- Complete-mode callouts optimize for the worst connector as well as total movement: equal-priority labels with the greatest unavoidable callout distance receive inner lanes first, and occupied nearby lanes can displace earlier callouts through the same repair chain. This intentionally prefers several modest connector increases over one extreme line.
+- `maxConnectorLength` provides a hard CSS-pixel ceiling when compactness matters more than completeness. Candidates beyond it are rejected before repair, so a label is omitted rather than silently creating an extreme connector.
 - Previous-frame direction is included in the score to reduce jumping while rotating.
-- If no candidate is valid, the label is reported as hidden with reason `no-space`. The implementation does not violate the no-overlap rule to force every label onto the figure.
+- If no candidate is valid, the label is reported as hidden with reason `no-space` in `auto-omit` or `viewport-capacity` in `complete`. The implementation does not violate the no-overlap rule to force every label onto the figure.
 
-The current solver is deterministic greedy placement. It does not yet perform global backtracking or move an earlier label to make room for a later one. Consequently it can omit a label even when a different global arrangement exists. This is the principal prototype compromise and the clearest next algorithmic improvement.
+The solver remains deterministic and mostly greedy, with bounded local repair rather than exhaustive global optimization. Repair only follows one blocker at each level and stops at its configured depth/budget. It can therefore still omit a label, or retain a longer connector, when improvement would require moving several mutually blocking labels at once. This bound is deliberate: global label placement is combinatorial and must not monopolize the worker on large structures.
 
 Regular bonds are represented by their projected centre line plus the projected bond radius and `bondPadding`. Dashed hydrogen bonds are deliberately treated as continuous corridors: this can reject a usable gap between dashes, but prevents a label from visually sitting on the overall hydrogen-bond path. Bond thickness is sampled at the bond midpoint, so perspective views of unusually depth-aligned bonds remain an approximation.
 
@@ -75,6 +80,7 @@ Planarity is not currently calculated. Applying the penalty only to the projecte
 ## Interaction and performance
 
 - The WebGL structure is rendered first. Label preparation is scheduled for the following animation frame so the browser can present the structure before label work begins.
+- Slow layouts show an accessible `Laying out labels…` status after `loadingIndicatorDelayMs`; the delay prevents a flash for ordinary fast layouts. The indicator is cancelled while interaction defers layout, when no requested atoms are visible, and when the accepted layout arrives. It can be disabled with `showLoadingIndicator: false`.
 - Three.js projection and canvas text measurement remain on the main thread. The DOM-free collision solver runs in a self-contained inline Web Worker by default. `useWorker: false` is an escape hatch, and worker creation/runtime failures fall back to the main thread.
 - Only one worker request may be in flight. Camera changes are coalesced rather than queued, and results for obsolete transforms, viewports, structures, or options are discarded.
 - Whenever the camera or molecule pose changes, the old label canvas is cleared immediately. This clean sweep deliberately shows a temporarily label-free rotating structure instead of leaving labels ghosted at their previous coordinates.
@@ -91,14 +97,16 @@ A July 2026 headless-Chrome check used a 1200×900 viewport, `cutout-2d`, `show:
 
 | Presentation fixture | Displayed atoms | Post-modifier bonds | Placed / hidden | Median layout |
 | --- | ---: | ---: | ---: | ---: |
-| `capsaicin.cif` | 22 | 22 | 22 / 0 | 2.0 ms |
-| `fullerene.cif` | 237 | 297 | 83 / 154 | 21.6 ms |
-| `large_nobonds.cif` | 1,701 | 3,775 | 60 / 1,641 | 203.5 ms |
-| `large_bonds.cif` | 1,701 | 3,787 | 60 / 1,641 | 178.6 ms |
+| `capsaicin.cif` | 22 | 22 | 22 / 0 | 1.4 ms |
+| `fullerene.cif` | 237 | 297 | 86 / 151 | 25.8 ms |
+| `large_nobonds.cif` | 1,701 | 3,775 | 63 / 1,638 | 287.3 ms |
+| `large_bonds.cif` | 1,701 | 3,787 | 63 / 1,638 | 291.6 ms |
 
-`large_nobonds.cif` has thousands of post-modifier bonds because the normal missing-bond generator is part of the displayed-structure pipeline. Spatial indexing substantially reduces total computation, but a cold layout for 1,701 requested labels still takes much longer than a frame. The worker and interaction deferral therefore improve responsiveness and time-to-first-structure without pretending that the labels themselves are immediately available.
+`large_nobonds.cif` has thousands of post-modifier bonds because the normal missing-bond generator is part of the displayed-structure pipeline. Spatial indexing substantially reduces total computation, but bounded repair adds work for every unresolved label and a cold layout for 1,701 requested labels still takes much longer than a frame. The worker and interaction deferral therefore improve responsiveness and time-to-first-structure without pretending that the labels themselves are immediately available.
 
-Run the persistent harness with `npm run bench:labels`; pass `-- --mode complete`, a CIF path/directory, or the documented sizing and iteration flags to change the workload. With no paths it discovers the four sibling `cifvis_presentation` fixtures above.
+For the same `large_bonds.cif` view, a one-run complete-mode comparison placed 89 labels with compact structure-relative lanes (7 callouts, 455.8 px maximum connector) versus 92 with viewport lanes (10 callouts, 490.8 px maximum). Setting `maxConnectorLength: 250` placed 84 labels with only 2 callouts and a measured 248.7 px maximum. This is an explicit compactness trade-off: applications can impose the connector ceiling appropriate for their figure and accept further omissions.
+
+Run the persistent harness with `npm run bench:labels`; pass `-- --mode complete`, `--callouts viewport`, a CIF path/directory, or the documented sizing and iteration flags to change the workload. It reports callout count and maximum connector length as well as timing. With no paths it discovers the four sibling `cifvis_presentation` fixtures above.
 
 ## Lifecycle decisions
 
@@ -110,7 +118,7 @@ Run the persistent harness with `npm run bench:labels`; pass `-- --mode complete
 
 ## Known follow-up work
 
-1. Add bounded local repair/backtracking so crowded layouts hide fewer labels.
+1. Evaluate a time-bounded global refinement pass if bounded displacement still leaves visible connector outliers in publication-sized figures.
 2. Move projection off the main thread only if a compact camera/anchor representation proves faster than its serialization overhead; canvas text measurement must remain browser-dependent or use precomputed metrics.
 3. Calculate exact projected ellipsoid footprints if the conservative circles prove too wasteful.
 4. Sample perspective bond thickness at more than the midpoint if this approximation proves visible.
