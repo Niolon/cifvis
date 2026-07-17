@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CrystalViewer } from './crystal-viewer.js';
 
 describe('CrystalViewer rendering option validation', () => {
@@ -110,5 +110,81 @@ describe('CrystalViewer atom-label runtime option validation', () => {
 
         expect(viewer.options.atomLabels.placementMode).toBe('quality-omit');
         expect(viewer.options.atomLabels.calloutPlacement).toBe('structure');
+    });
+});
+
+describe('CrystalViewer progressive difference-density events', () => {
+    test('subscribes and unsubscribes update listeners', () => {
+        const viewer = { differenceDensityUpdateCallbacks: new Set() };
+        const updates = [];
+        const unsubscribe = CrystalViewer.prototype.onDifferenceDensityUpdate.call(
+            viewer,
+            update => updates.push(update),
+        );
+
+        CrystalViewer.prototype.notifyDifferenceDensityUpdate.call(viewer, { type: 'update', stepIndex: 0 });
+        unsubscribe();
+        CrystalViewer.prototype.notifyDifferenceDensityUpdate.call(viewer, { type: 'update', stepIndex: 1 });
+
+        expect(updates).toEqual([{ type: 'update', stepIndex: 0 }]);
+    });
+
+    test('normalizes progressive steps and always includes the final surface resolution', () => {
+        const viewer = {
+            options: { differenceDensity: { progressiveSteps: [1, 0.5, -1, 0.5, 2] } },
+        };
+        expect(CrystalViewer.prototype.normalizedDifferenceDensitySteps.call(viewer)).toEqual([0.5, 1]);
+    });
+
+    test('reuses one density map while increasing only surface resolution', () => {
+        const densityMap = {
+            cell: {},
+            dimensions: [64, 128, 64],
+            resolutionFraction: 1,
+            reflectionCount: 100,
+            coefficientCount: 200,
+            sigma: 0.05,
+            minimum: -0.2,
+            maximum: 0.3,
+        };
+        const viewer = {
+            state: {
+                baseStructure: { cell: {} },
+                displayStructure: {},
+                differenceDensityGroup: null,
+            },
+            options: { differenceDensity: { resolution: 64 } },
+            validateDifferenceDensityCell: vi.fn(),
+            updateDifferenceDensity3D: vi.fn(function () {
+                this.state.differenceDensityGroup = {
+                    userData: {
+                        polygonCount: this.state.differenceDensitySurfaceResolutionFraction * 1000,
+                        resolution: this.state.differenceDensitySurfaceResolutionFraction * 64,
+                    },
+                };
+            }),
+            requestRender: vi.fn(),
+            notifyDifferenceDensityUpdate: vi.fn(),
+        };
+
+        CrystalViewer.prototype.applyProgressiveDifferenceDensityMap.call(viewer, densityMap, {
+            stepIndex: 0,
+            totalSteps: 2,
+            final: false,
+            surfaceResolutionFraction: 0.5,
+        });
+        CrystalViewer.prototype.applyProgressiveDifferenceDensityMap.call(viewer, densityMap, {
+            stepIndex: 1,
+            totalSteps: 2,
+            final: true,
+            surfaceResolutionFraction: 1,
+        });
+
+        expect(viewer.state.differenceDensityMap).toBe(densityMap);
+        expect(viewer.notifyDifferenceDensityUpdate.mock.calls.map(call => call[0]))
+            .toMatchObject([
+                { surfaceResolution: 32, polygonCount: 500, dimensions: [64, 128, 64] },
+                { surfaceResolution: 64, polygonCount: 1000, dimensions: [64, 128, 64] },
+            ]);
     });
 });

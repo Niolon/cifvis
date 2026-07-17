@@ -181,6 +181,32 @@ export default {
     'disorderMode': 'all',
     'symmetryMode': 'none',
 
+    // Difference-electron-density maps are loaded separately from the
+    // coordinate CIF and remain opt-in.
+    'differenceDensity': {
+        'useWorker': true,
+        // All reflections are used from the start. The normal grid gives a
+        // quick first display; the worker then replaces it with the final
+        // oversampled grid before refining only the surface tessellation.
+        'reciprocalResolution': 1,
+        'initialGridOversampling': 1,
+        'gridOversampling': 2,
+        'progressiveSteps': [0.5, 0.75, 1],
+        'visible': true,
+        'sigmaLevel': 3,
+        'radius': 1.5,
+        // Final surface resolution grows with physical draw size to maintain
+        // approximately this spacing, bounded by resolution/maxResolution.
+        'resolution': 64,
+        'gridSpacing': 0.15,
+        'maxResolution': 96,
+        'positiveColor': '#36b566',
+        'negativeColor': '#d94b64',
+        'opacity': 0.55,
+        'wireframe': false,
+        'maxPolyCount': 100000,
+    },
+
     'bondGrowTolerance': 0.45,
 
     'fixCifErrors': false,

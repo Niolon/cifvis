@@ -54,7 +54,23 @@ For a comprehensive list of options and the use of the widget, look at the inter
   import { CrystalViewer } from 'cifvis';
   
   const viewer = new CrystalViewer(document.getElementById('viewer'));
-  viewer.loadStructure(cifContent);
+  await viewer.loadCIF(cifContent);
+
+  const stopListening = viewer.onDifferenceDensityUpdate(update => {
+    if (update.type === 'update') {
+      console.log(update.surfaceResolution, update.polygonCount);
+    }
+  });
+
+  // Optional SHELXL LIST 6/8 Fo-Fc difference density. A worker first uses all
+  // reflections on the normal FFT grid, then replaces it with an oversampled
+  // grid and emits increasingly detailed surface meshes.
+  await viewer.loadDifferenceDensity(fcfContent, 0, {
+    sigmaLevel: 3,
+    radius: 1.5,
+  });
+
+  // The cached density grid is reused when symmetry-growth modes change.
 </script>
 ```
 

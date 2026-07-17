@@ -2,6 +2,10 @@ import { CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
+// Temporary correctness demo: bundle the supplied XHARPy pair directly so
+// `npm run dev` opens with difference density ready to inspect.
+import xharpyCifText from '../../../xharpy.cif?raw';
+import xharpyFcfText from '../../../xharpy_6.fcf?raw';
 
 /**
  * Updates the status message displayed to the user
@@ -69,6 +73,17 @@ function getViewerOptionsFromUrl() {
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
 viewer.animate();
+viewer.onDifferenceDensityUpdate(update => {
+    if (update.type === 'update' && !update.final) {
+        updateStatus(
+            `Refining density surface: step ${update.stepIndex + 1}/${update.totalSteps} ` +
+            `(${update.surfaceResolution}³ surface grid, ` +
+            `${update.polygonCount.toLocaleString()} polygons; ` +
+            `${update.dimensions.join('×')} density grid, all reflections)`,
+            'info',
+        );
+    }
+});
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
     // Remove all existing selections
@@ -276,16 +291,32 @@ function adaptButtons() {
 
 initializeUI();
 
-// Load initial structure
-const baseUrl = import.meta.env.BASE_URL;
-fetch(`${baseUrl}cif/disorder.cif`)
-    .then(res => res.text())
-    .then(text => {
-        const result = viewer.loadCIF(text);
+/** Loads the temporary hardcoded XHARPy difference-density demonstration. */
+async function loadInitialXharpyDensity() {
+    try {
+        updateStatus('Loading XHARPy structure and difference density...', 'info');
+        const structureResult = await viewer.loadCIF(xharpyCifText);
+        if (!structureResult.success) {
+            throw new Error(structureResult.error);
+        }
+
+        const densityResult = await viewer.loadDifferenceDensity(xharpyFcfText, 0, {
+            wireframe: true,
+        });
+        if (!densityResult.success) {
+            throw new Error(densityResult.error);
+        }
+
         adaptButtons();
-        return result;
-    })
-    .catch(error => {
+        updateStatus(
+            `Difference density loaded at ±3σ (${densityResult.dimensions.join('×')} grid, ` +
+            `${densityResult.polygonCount.toLocaleString()} polygons)`,
+            'success',
+        );
+    } catch (error) {
         console.error('Error loading initial structure:', error);
         updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');
-    });
+    }
+}
+
+loadInitialXharpyDensity();

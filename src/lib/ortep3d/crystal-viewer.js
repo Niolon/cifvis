@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CIF } from '../read-cif/base.js';
-import { CrystalStructure } from '../structure/crystal.js';
+import { CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
 import { setupLighting, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
@@ -11,6 +11,16 @@ import { tryToFixCifBlock } from '../fix-cif/base.js';
 import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
 import { AtomLabelManager } from './atom-label-manager.js';
+import {
+    calculateDifferenceDensityMap,
+    DifferenceDensityMap,
+    parseDifferenceDensityDataset,
+} from '../density/difference-density.js';
+import {
+    createDifferenceDensitySurfaces,
+    differenceDensitySurfaceResolution,
+} from '../density/difference-density-surface.js';
+import DifferenceDensityWorker from '../density/difference-density-worker.js?worker';
 
 const VALID_ATOM_LABEL_PLACEMENT_MODES = [
     'auto-omit',
@@ -580,6 +590,10 @@ export class CrystalViewer {
                 ...defaultSettings.cell,
                 ...options.cell,
             },
+            differenceDensity: {
+                ...defaultSettings.differenceDensity,
+                ...definedOptions(options.differenceDensity || {}),
+            },
         };
 
         this.state = {
@@ -592,7 +606,16 @@ export class CrystalViewer {
             baseStructure: null,
             ortepObjects: new Map(),
             structureCenter: new THREE.Vector3(),
+            differenceDensityMap: null,
+            differenceDensityGroup: null,
+            differenceDensityResolutionFraction: 1,
+            differenceDensitySurfaceResolutionFraction: 1,
         };
+
+        this.differenceDensityUpdateCallbacks = new Set();
+        this.differenceDensityLoadSequence = 0;
+        this.differenceDensityWorker = null;
+        this.differenceDensityPendingResolve = null;
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
@@ -692,6 +715,11 @@ export class CrystalViewer {
                     throw e;
                 }
             }
+            // Density data belongs to a specific coordinate model/cell. A new
+            // coordinate CIF must never inherit the previous FCF implicitly.
+            this.cancelDifferenceDensityLoad('Coordinate structure changed');
+            this.removeDifferenceDensity3D();
+            this.state.differenceDensityMap = null;
             await this.loadStructure(structure);
 
             this.state.currentCifContent = cifText;
@@ -701,6 +729,385 @@ export class CrystalViewer {
         } catch (error) {
             console.error('Error loading structure:', error);
             return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Loads an FCF progressively and displays its Fo-Fc difference density.
+     * The worker calculates one fixed, oversampled scalar grid. Progressive
+     * updates reuse that grid and refine only its surface tessellation.
+     * @param {string} fcfText - LIST 6/8-style FCF text.
+     * @param {number|string} [fcfBlock] - FCF block index or name.
+     * @param {object} [options] - Partial difference-density display options.
+     * @returns {Promise<object>} Load result and map statistics.
+     */
+    async loadDifferenceDensity(fcfText, fcfBlock = 0, options = {}) {
+        if (!this.state.baseStructure) {
+            return { success: false, error: 'Load a crystal structure before loading difference density' };
+        }
+        if (fcfText === undefined) {
+            return { success: false, error: 'Cannot load empty text as an FCF' };
+        }
+
+        this.cancelDifferenceDensityLoad('Superseded by a new FCF load');
+        this.removeDifferenceDensity3D();
+        this.state.differenceDensityMap = null;
+        this.options.differenceDensity = {
+            ...this.options.differenceDensity,
+            ...definedOptions(options),
+        };
+        const loadId = ++this.differenceDensityLoadSequence;
+        this.notifyDifferenceDensityUpdate({ type: 'started', loadId });
+
+        if (this.options.differenceDensity.useWorker && typeof Worker !== 'undefined') {
+            return this.loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId);
+        }
+        return this.loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId);
+    }
+
+    /**
+     * Subscribes to progressive density events (`started`, `update`, `complete`,
+     * `error`, and `cancelled`).
+     * @param {function(object): void} callback - Update listener.
+     * @returns {function(): void} Function that removes the listener.
+     */
+    onDifferenceDensityUpdate(callback) {
+        if (typeof callback !== 'function') {
+            throw new Error('Difference-density update callback must be a function');
+        }
+        this.differenceDensityUpdateCallbacks.add(callback);
+        return () => this.differenceDensityUpdateCallbacks.delete(callback);
+    }
+
+    /**
+     * Notifies all progressive-density listeners.
+     * @param {object} update - Density pipeline event.
+     */
+    notifyDifferenceDensityUpdate(update) {
+        for (const callback of this.differenceDensityUpdateCallbacks) {
+            try {
+                callback(update);
+            } catch (error) {
+                console.error('Difference-density update callback failed:', error);
+            }
+        }
+    }
+
+    /**
+     * Runs the progressive pipeline in a module worker.
+     * @param {string} fcfText - FCF source text.
+     * @param {number|string} fcfBlock - FCF block index or name.
+     * @param {number} loadId - Identifier used to reject stale worker events.
+     * @returns {Promise<object>} Final load result.
+     * @private
+     */
+    loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId) {
+        return new Promise(resolve => {
+            const worker = new DifferenceDensityWorker();
+            this.differenceDensityWorker = worker;
+            this.differenceDensityPendingResolve = resolve;
+
+            const fail = (error) => {
+                if (loadId !== this.differenceDensityLoadSequence) {
+                    return;
+                }
+                const message = error?.message || String(error);
+                console.error('Error loading difference density:', error);
+                this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: message });
+                this.finishDifferenceDensityWorker();
+                resolve({ success: false, error: message });
+            };
+
+            worker.addEventListener('error', fail);
+            worker.addEventListener('message', event => {
+                const message = event.data;
+                if (message.loadId !== loadId || loadId !== this.differenceDensityLoadSequence) {
+                    return;
+                }
+                if (message.type === 'error') {
+                    fail(new Error(message.error));
+                    return;
+                }
+                if (message.type !== 'update') {
+                    return;
+                }
+
+                try {
+                    const densityMap = message.map
+                        ? this.differenceDensityMapFromPayload(message.map)
+                        : this.state.differenceDensityMap;
+                    if (!densityMap) {
+                        throw new Error('Density worker requested surface refinement before providing a grid');
+                    }
+                    this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                    if (message.final) {
+                        const result = this.differenceDensityResult(densityMap);
+                        this.notifyDifferenceDensityUpdate({
+                            ...message,
+                            ...result,
+                            type: 'complete',
+                            loadId,
+                        });
+                        this.finishDifferenceDensityWorker();
+                        resolve(result);
+                    } else {
+                        this.continueDensityWorkerAfterRender(worker, loadId, message.stepIndex);
+                    }
+                } catch (error) {
+                    fail(error);
+                }
+            });
+
+            worker.postMessage({
+                type: 'load',
+                loadId,
+                fcfText,
+                fcfBlock,
+                steps: this.options.differenceDensity.progressiveSteps,
+                reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
+                initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
+                gridOversampling: this.options.differenceDensity.gridOversampling,
+            });
+        });
+    }
+
+    /**
+     * Synchronous-environment fallback retaining the same progressive events.
+     * @param {string} fcfText - FCF source text.
+     * @param {number|string} fcfBlock - FCF block index or name.
+     * @param {number} loadId - Identifier used to reject stale results.
+     * @returns {Promise<object>} Final load result.
+     * @private
+     */
+    async loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId) {
+        try {
+            const dataset = parseDifferenceDensityDataset(fcfText, fcfBlock);
+            const steps = this.normalizedDifferenceDensitySteps();
+            const finalOversampling = Math.max(
+                1,
+                Number(this.options.differenceDensity.gridOversampling) || 1,
+            );
+            const initialOversampling = steps.length === 1
+                ? finalOversampling
+                : Math.min(
+                    finalOversampling,
+                    Math.max(
+                        1,
+                        Number(this.options.differenceDensity.initialGridOversampling) || 1,
+                    ),
+                );
+            let densityMap = calculateDifferenceDensityMap(
+                dataset,
+                this.options.differenceDensity.reciprocalResolution,
+                initialOversampling,
+            );
+            for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+                if (stepIndex === 1 && initialOversampling !== finalOversampling) {
+                    densityMap = calculateDifferenceDensityMap(
+                        dataset,
+                        this.options.differenceDensity.reciprocalResolution,
+                        finalOversampling,
+                    );
+                }
+                const message = {
+                    loadId,
+                    stepIndex,
+                    totalSteps: steps.length,
+                    final: stepIndex === steps.length - 1,
+                    surfaceResolutionFraction: steps[stepIndex],
+                };
+                this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                if (!message.final) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+            const result = this.differenceDensityResult(densityMap);
+            this.notifyDifferenceDensityUpdate({ type: 'complete', loadId, ...result });
+            return result;
+        } catch (error) {
+            console.error('Error loading difference density:', error);
+            this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
+            return { success: false, error: error.message };
+        }
+    }
+
+    /** @returns {number[]} Valid ordered surface-resolution fractions. */
+    normalizedDifferenceDensitySteps() {
+        const steps = (Array.isArray(this.options.differenceDensity.progressiveSteps)
+            ? this.options.differenceDensity.progressiveSteps : [1])
+            .map(Number)
+            .filter(step => Number.isFinite(step) && step > 0 && step <= 1)
+            .sort((a, b) => a - b);
+        if (!steps.includes(1)) {
+            steps.push(1);
+        }
+        return [...new Set(steps)];
+    }
+
+    /**
+     * @param {object} payload - Transferable worker map data.
+     * @returns {DifferenceDensityMap} Map reconstructed from a worker payload.
+     */
+    differenceDensityMapFromPayload(payload) {
+        const cell = new UnitCell(
+            payload.cell.a,
+            payload.cell.b,
+            payload.cell.c,
+            payload.cell.alpha,
+            payload.cell.beta,
+            payload.cell.gamma,
+        );
+        const { cell: _cell, dimensions, values, ...statistics } = payload;
+        return new DifferenceDensityMap(cell, dimensions, values, statistics);
+    }
+
+    /**
+     * Applies one progressive map and emits its update signal.
+     * @param {DifferenceDensityMap} densityMap - Current scalar grid.
+     * @param {object} message - Progressive step metadata.
+     */
+    applyProgressiveDifferenceDensityMap(densityMap, message) {
+        this.validateDifferenceDensityCell(densityMap.cell, this.state.baseStructure.cell);
+        this.state.differenceDensityMap = densityMap;
+        this.state.differenceDensityResolutionFraction = densityMap.resolutionFraction;
+        this.state.differenceDensitySurfaceResolutionFraction =
+            message.surfaceResolutionFraction ?? 1;
+        this.updateDifferenceDensity3D(this.state.displayStructure);
+        const surfaceStatistics = this.state.differenceDensityGroup?.userData ?? {};
+        this.requestRender();
+        this.notifyDifferenceDensityUpdate({
+            type: 'update',
+            ...message,
+            progress: (message.stepIndex + 1) / message.totalSteps,
+            resolutionFraction: densityMap.resolutionFraction,
+            gridOversampling: densityMap.gridOversampling,
+            surfaceResolutionFraction: this.state.differenceDensitySurfaceResolutionFraction,
+            surfaceResolution: surfaceStatistics.resolution ?? 0,
+            dimensions: [...densityMap.dimensions],
+            reflectionCount: densityMap.reflectionCount,
+            coefficientCount: densityMap.coefficientCount,
+            sigma: densityMap.sigma,
+            minimum: densityMap.minimum,
+            maximum: densityMap.maximum,
+            polygonCount: surfaceStatistics.polygonCount ?? 0,
+            positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
+            negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
+        });
+    }
+
+    /**
+     * Waits for a browser frame before requesting the next surface refinement.
+     * @param {Worker} worker - Active density worker.
+     * @param {number} loadId - Active load identifier.
+     * @param {number} stepIndex - Surface step awaiting acknowledgement.
+     */
+    continueDensityWorkerAfterRender(worker, loadId, stepIndex) {
+        let continued = false;
+        const continueWorker = () => {
+            if (continued || worker !== this.differenceDensityWorker) {
+                return;
+            }
+            continued = true;
+            worker.postMessage({ type: 'continue', loadId, stepIndex });
+        };
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(continueWorker);
+        }
+        setTimeout(continueWorker, 100);
+    }
+
+    /**
+     * @param {DifferenceDensityMap} densityMap - Completed scalar grid.
+     * @returns {object} Public successful density-load result.
+     */
+    differenceDensityResult(densityMap) {
+        const surfaceStatistics = this.state.differenceDensityGroup?.userData ?? {};
+        return {
+            success: true,
+            reflectionCount: densityMap.reflectionCount,
+            coefficientCount: densityMap.coefficientCount,
+            dimensions: [...densityMap.dimensions],
+            gridOversampling: densityMap.gridOversampling,
+            sigma: densityMap.sigma,
+            minimum: densityMap.minimum,
+            maximum: densityMap.maximum,
+            polygonCount: surfaceStatistics.polygonCount ?? 0,
+            positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
+            negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
+        };
+    }
+
+    /** Terminates the active worker without resolving its already-handled promise. */
+    finishDifferenceDensityWorker() {
+        this.differenceDensityWorker?.terminate();
+        this.differenceDensityWorker = null;
+        this.differenceDensityPendingResolve = null;
+    }
+
+    /**
+     * Cancels any in-flight progressive density load.
+     * @param {string} reason - Public cancellation reason.
+     */
+    cancelDifferenceDensityLoad(reason = 'Difference-density load cancelled') {
+        if (!this.differenceDensityWorker && !this.differenceDensityPendingResolve) {
+            return;
+        }
+        const loadId = this.differenceDensityLoadSequence;
+        this.differenceDensityWorker?.terminate();
+        this.differenceDensityWorker = null;
+        const resolve = this.differenceDensityPendingResolve;
+        this.differenceDensityPendingResolve = null;
+        resolve?.({ success: false, cancelled: true, error: reason });
+        this.notifyDifferenceDensityUpdate({ type: 'cancelled', loadId, error: reason });
+    }
+
+    /**
+     * Updates contour and appearance options without reparsing the FCF or
+     * recalculating its Fourier grid.
+     * @param {object} options - Partial difference-density display options.
+     * @returns {object} Update result.
+     */
+    updateDifferenceDensityOptions(options = {}) {
+        this.options.differenceDensity = {
+            ...this.options.differenceDensity,
+            ...definedOptions(options),
+        };
+        if (this.state.differenceDensityMap && this.state.displayStructure) {
+            this.updateDifferenceDensity3D(this.state.displayStructure);
+            this.requestRender();
+        }
+        return { success: true };
+    }
+
+    /** Removes the loaded difference-density map and surfaces. */
+    clearDifferenceDensity() {
+        this.cancelDifferenceDensityLoad();
+        this.removeDifferenceDensity3D();
+        this.state.differenceDensityMap = null;
+        this.state.differenceDensityResolutionFraction = 1;
+        this.state.differenceDensitySurfaceResolutionFraction = 1;
+        this.requestRender();
+    }
+
+    /**
+     * Ensures that an FCF belongs to the currently displayed coordinate CIF.
+     * @param {object} densityCell - Unit cell parsed from the FCF.
+     * @param {object} structureCell - Unit cell parsed from the coordinate CIF.
+     * @private
+     */
+    validateDifferenceDensityCell(densityCell, structureCell) {
+        const lengths = ['a', 'b', 'c'];
+        const angles = ['alpha', 'beta', 'gamma'];
+        for (const parameter of lengths) {
+            const scale = Math.max(Math.abs(structureCell[parameter]), 1);
+            if (Math.abs(densityCell[parameter] - structureCell[parameter]) / scale > 1e-3) {
+                throw new Error(`FCF unit cell does not match the structure (${parameter})`);
+            }
+        }
+        for (const parameter of angles) {
+            if (Math.abs(densityCell[parameter] - structureCell[parameter]) > 0.05) {
+                throw new Error(`FCF unit cell does not match the structure (${parameter})`);
+            }
         }
     }
 
@@ -803,8 +1210,56 @@ export class CrystalViewer {
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
         this.state.displayStructure = structure;
+        this.updateDifferenceDensity3D(structure);
         this.atomLabelManager.setStructure(structure);
         this.selections.pruneInvalidSelections(this.moleculeContainer);
+    }
+
+    /**
+     * Rebuilds clipped surfaces for the current symmetry-grown structure while
+     * retaining the already calculated periodic density grid.
+     * @param {CrystalStructure} structure - Current display structure.
+     * @private
+     */
+    updateDifferenceDensity3D(structure) {
+        this.removeDifferenceDensity3D();
+        if (!this.state.differenceDensityMap || !structure) {
+            return;
+        }
+        const finalResolution = differenceDensitySurfaceResolution(
+            structure,
+            this.options.differenceDensity,
+        );
+        const group = createDifferenceDensitySurfaces(
+            this.state.differenceDensityMap,
+            structure,
+            {
+                ...this.options.differenceDensity,
+                resolution: Math.max(
+                    8,
+                    Math.round(
+                        finalResolution *
+                        (this.state.differenceDensitySurfaceResolutionFraction ?? 1),
+                    ),
+                ),
+            },
+        );
+        this.moleculeContainer.add(group);
+        this.state.differenceDensityGroup = group;
+    }
+
+    /** Disposes and removes the current density surfaces, retaining the grid. */
+    removeDifferenceDensity3D() {
+        const group = this.state.differenceDensityGroup;
+        if (!group) {
+            return;
+        }
+        group.traverse((object) => {
+            object.geometry?.dispose();
+            object.material?.dispose();
+        });
+        group.removeFromParent();
+        this.state.differenceDensityGroup = null;
     }
 
     /**
@@ -831,6 +1286,7 @@ export class CrystalViewer {
             }
         });
         this.moleculeContainer.clear();
+        this.state.differenceDensityGroup = null;
     }
 
     /**
