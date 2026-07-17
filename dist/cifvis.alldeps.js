@@ -13404,6 +13404,49 @@ var Bu = Object.freeze({
 	symmetryMode: "none",
 	bondGrowTolerance: .45,
 	fixCifErrors: !1,
+	atomLabels: {
+		show: "none",
+		placementMode: "auto-omit",
+		text: {},
+		fontSize: 14,
+		fontWeight: 500,
+		fontFamily: "system-ui, -apple-system, sans-serif",
+		color: "#111111",
+		haloColor: "#ffffff",
+		haloWidth: 2,
+		leaderLines: "auto",
+		leaderColor: "rgba(17, 17, 17, 0.55)",
+		leaderWidth: 1,
+		atomPadding: 3,
+		bondPadding: 2,
+		labelPadding: 2,
+		viewportPadding: 4,
+		fallbackDistance: 18,
+		maxConnectorLength: Infinity,
+		ringPenalty: 1e3,
+		movementPenalty: 80,
+		repairDepth: 2,
+		repairSearchLimit: 48,
+		autoPerformanceLabelThreshold: 500,
+		performanceNoSpaceCellSize: 24,
+		spatialCellSize: 64,
+		useWorker: !0,
+		showLoadingIndicator: !0,
+		loadingIndicatorDelayMs: 120,
+		layoutThrottleMs: 32,
+		interactionLabelLimit: 300,
+		hideLabelsDuringDeferredLayout: !0,
+		calloutPlacement: "structure",
+		calloutGap: 12,
+		maximumCoverageDistanceSteps: 6,
+		calloutColumns: 3,
+		calloutColumnGap: 8,
+		calloutRowGap: 4,
+		calloutSearchLimit: 64,
+		calloutChoiceLimit: 4,
+		leaderBondCrossingPenalty: 25,
+		maxVisible: Infinity
+	},
 	atomDetail: 3,
 	atomCutawayHysteresis: .025,
 	atomCutawayStripeCount: 7,
@@ -14251,7 +14294,18 @@ var td = class {
 		for (let t of this.bonds3D) e.add(t);
 		this.hbondPool && e.add(this.hbondPool.mesh);
 		for (let t of this.hBonds3D) e.add(t);
-		return Xu(e), e.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), e.cameraFacingAtoms = e.cutawayAtoms, e;
+		return Xu(e), e.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), e.cameraFacingAtoms = e.cutawayAtoms, e.atomLabelAnchors = this.atoms3D.map((e) => {
+			let t;
+			e.segments?.[0]?.matrix ? t = e.segments[0].matrix.clone() : (e.updateMatrix(), t = e.matrix.clone());
+			let n = new W().setFromMatrixPosition(t), r = new W();
+			t.decompose(new W(), new Xn(), r);
+			let i = (e.surfaceRadius || .25) * Math.max(r.x, r.y, r.z);
+			return {
+				atom: e.userData.atomData,
+				position: n,
+				radius: i
+			};
+		}), e;
 	}
 	dispose() {
 		this.cache.dispose();
@@ -16080,7 +16134,7 @@ var Of = class {
 				};
 				this.handleTouchSelect(r, n - this.state.lastClickTime), this.state.lastClickTime = n;
 			}
-			this.state.isDragging = !1, this.state.pinchStartDistance = 0;
+			this.state.isDragging = !1, this.state.pinchStartDistance = 0, this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
 		}
 	}
 	handleContextMenu(e) {
@@ -16097,7 +16151,7 @@ var Of = class {
 		this.state.isPanning ? this.panCamera(r) : this.rotateStructure(r), this.state.mouse.copy(n);
 	}
 	handleMouseUp() {
-		this.state.isDragging = !1, this.state.isPanning = !1;
+		this.state.isDragging = !1, this.state.isPanning = !1, this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
 	}
 	handleClick(e) {
 		if (e.button !== 0 || Date.now() - this.state.clickStartTime > this.options.interaction.clickThreshold || this.state.isDragging) return;
@@ -16261,8 +16315,797 @@ function Ff(e, t) {
 	}, d;
 }
 //#endregion
-//#region src/lib/ortep3d/crystal-viewer.js
-var If = class {
+//#region src/lib/ortep3d/atom-label-layout.js
+function If(e, t) {
+	return e.left < t.right && e.right > t.left && e.top < t.bottom && e.bottom > t.top;
+}
+function Lf(e, t) {
+	let n = Math.max(e.left, Math.min(t.x, e.right)), r = Math.max(e.top, Math.min(t.y, e.bottom)), i = t.x - n, a = t.y - r;
+	return i * i + a * a < t.radius * t.radius;
+}
+function Rf(e, t) {
+	let n = e.radius || 0, r = {
+		left: t.left - n,
+		right: t.right + n,
+		top: t.top - n,
+		bottom: t.bottom + n
+	}, i = e.x2 - e.x1, a = e.y2 - e.y1, o = 0, s = 1;
+	for (let [t, n, c, l] of [[
+		e.x1,
+		i,
+		r.left,
+		r.right
+	], [
+		e.y1,
+		a,
+		r.top,
+		r.bottom
+	]]) {
+		if (Math.abs(n) < 1e-9) {
+			if (t < c || t > l) return !1;
+			continue;
+		}
+		let e = (c - t) / n, r = (l - t) / n;
+		if (o = Math.max(o, Math.min(e, r)), s = Math.min(s, Math.max(e, r)), o > s) return !1;
+	}
+	return !0;
+}
+function zf(e, t) {
+	let n = t.x2 - t.x1, r = t.y2 - t.y1, i = n * n + r * r;
+	if (i === 0) return (e.x - t.x1) ** 2 + (e.y - t.y1) ** 2;
+	let a = Math.max(0, Math.min(1, ((e.x - t.x1) * n + (e.y - t.y1) * r) / i)), o = t.x1 + a * n, s = t.y1 + a * r;
+	return (e.x - o) ** 2 + (e.y - s) ** 2;
+}
+function Bf(e, t, n) {
+	return (t.x - e.x) * (n.y - e.y) - (t.y - e.y) * (n.x - e.x);
+}
+function Vf(e, t) {
+	let n = {
+		x: e.x1,
+		y: e.y1
+	}, r = {
+		x: e.x2,
+		y: e.y2
+	}, i = {
+		x: t.x1,
+		y: t.y1
+	}, a = {
+		x: t.x2,
+		y: t.y2
+	}, o = Bf(n, r, i), s = Bf(n, r, a), c = Bf(i, a, n), l = Bf(i, a, r);
+	return [
+		o,
+		s,
+		c,
+		l
+	].every((e) => Math.abs(e) < 1e-9) ? Math.max(Math.min(e.x1, e.x2), Math.min(t.x1, t.x2)) <= Math.min(Math.max(e.x1, e.x2), Math.max(t.x1, t.x2)) && Math.max(Math.min(e.y1, e.y2), Math.min(t.y1, t.y2)) <= Math.min(Math.max(e.y1, e.y2), Math.max(t.y1, t.y2)) : o * s <= 0 && c * l <= 0;
+}
+function Hf(e, t) {
+	if (Vf(e, t)) return !0;
+	let n = (e.radius || 0) + (t.radius || 0);
+	return Math.min(zf({
+		x: e.x1,
+		y: e.y1
+	}, t), zf({
+		x: e.x2,
+		y: e.y2
+	}, t), zf({
+		x: t.x1,
+		y: t.y1
+	}, e), zf({
+		x: t.x2,
+		y: t.y2
+	}, e)) <= n * n;
+}
+function Uf(e) {
+	let t = e.radius || 0;
+	return {
+		left: Math.min(e.x1, e.x2) - t,
+		right: Math.max(e.x1, e.x2) + t,
+		top: Math.min(e.y1, e.y2) - t,
+		bottom: Math.max(e.y1, e.y2) + t
+	};
+}
+function Wf(e) {
+	return {
+		left: e.x - e.radius,
+		right: e.x + e.radius,
+		top: e.y - e.radius,
+		bottom: e.y + e.radius
+	};
+}
+function Gf(e) {
+	return {
+		left: Math.min(...e.map((e) => e.x)),
+		right: Math.max(...e.map((e) => e.x)),
+		top: Math.min(...e.map((e) => e.y)),
+		bottom: Math.max(...e.map((e) => e.y))
+	};
+}
+function Kf(e, t) {
+	let n = [...e.map(Wf), ...t.map(Uf)];
+	return n.length === 0 ? null : n.reduce((e, t) => ({
+		left: Math.min(e.left, t.left),
+		right: Math.max(e.right, t.right),
+		top: Math.min(e.top, t.top),
+		bottom: Math.max(e.bottom, t.bottom)
+	}));
+}
+var qf = class {
+	constructor(e = 64) {
+		this.cellSize = e, this.cells = /* @__PURE__ */ new Map();
+	}
+	insert(e, t) {
+		for (let n = Math.floor(t.left / this.cellSize); n <= Math.floor(t.right / this.cellSize); n++) for (let r = Math.floor(t.top / this.cellSize); r <= Math.floor(t.bottom / this.cellSize); r++) {
+			let t = `${n},${r}`;
+			this.cells.has(t) || this.cells.set(t, /* @__PURE__ */ new Set()), this.cells.get(t).add(e);
+		}
+	}
+	remove(e, t) {
+		for (let n = Math.floor(t.left / this.cellSize); n <= Math.floor(t.right / this.cellSize); n++) for (let r = Math.floor(t.top / this.cellSize); r <= Math.floor(t.bottom / this.cellSize); r++) {
+			let t = `${n},${r}`, i = this.cells.get(t);
+			i && (i.delete(e), i.size === 0 && this.cells.delete(t));
+		}
+	}
+	query(e) {
+		let t = /* @__PURE__ */ new Set();
+		for (let n = Math.floor(e.left / this.cellSize); n <= Math.floor(e.right / this.cellSize); n++) for (let r = Math.floor(e.top / this.cellSize); r <= Math.floor(e.bottom / this.cellSize); r++) {
+			let e = this.cells.get(`${n},${r}`);
+			e && e.forEach((e) => t.add(e));
+		}
+		return [...t];
+	}
+};
+function Jf(e, t) {
+	let n = !1;
+	for (let r = 0, i = t.length - 1; r < t.length; i = r++) {
+		let a = t[r], o = t[i];
+		a.y > e.y != o.y > e.y && e.x < (o.x - a.x) * (e.y - a.y) / (o.y - a.y) + a.x && (n = !n);
+	}
+	return n;
+}
+var Yf = Array.from({ length: 16 }, (e, t) => {
+	let n = t * Math.PI / 8;
+	return {
+		x: Math.cos(n),
+		y: Math.sin(n)
+	};
+});
+function Xf(e, t, n, r) {
+	let i = e.width / 2, a = e.height / 2, o = Math.abs(t.x) * i + Math.abs(t.y) * a, s = e.radius + r.atomPadding + o + (n - 1) * r.fallbackDistance, c = e.x + t.x * s, l = e.y + t.y * s, u = r.labelPadding, d = n > 1 ? {
+		x1: e.x + t.x * (e.radius + r.atomPadding),
+		y1: e.y + t.y * (e.radius + r.atomPadding),
+		x2: c - t.x * (o + u),
+		y2: l - t.y * (o + u),
+		radius: r.leaderWidth / 2
+	} : null;
+	return {
+		x: c,
+		y: l,
+		anchorX: e.x,
+		anchorY: e.y,
+		direction: t,
+		distanceMultiplier: n,
+		leaderLine: n > 1,
+		leaderSegment: d,
+		rect: {
+			left: c - i - u,
+			right: c + i + u,
+			top: l - a - u,
+			bottom: l + a + u
+		}
+	};
+}
+function Zf(e, t, n, r, i) {
+	let a = t.preferredDirection || {
+		x: 1,
+		y: -1
+	}, o = (1 - (e.direction.x * a.x + e.direction.y * a.y)) * 50;
+	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Jf(e, t)) && (o += i.ringPenalty), r) {
+		let t = e.direction.x * r.direction.x + e.direction.y * r.direction.y;
+		o += (1 - t) * i.movementPenalty;
+	}
+	return o;
+}
+function Qf(e, t, n, r) {
+	let i = e.width / 2, a = e.height / 2, o = t - e.x, s = n - e.y, c = Math.hypot(o, s) || 1, l = {
+		x: o / c,
+		y: s / c
+	}, u = Math.abs(l.x) * i + Math.abs(l.y) * a, d = r.labelPadding;
+	return {
+		x: t,
+		y: n,
+		anchorX: e.x,
+		anchorY: e.y,
+		direction: l,
+		distanceMultiplier: 1 + c / r.fallbackDistance,
+		leaderLine: !0,
+		isCallout: !0,
+		leaderSegment: {
+			x1: e.x + l.x * (e.radius + r.atomPadding),
+			y1: e.y + l.y * (e.radius + r.atomPadding),
+			x2: t - l.x * (u + d),
+			y2: n - l.y * (u + d),
+			radius: r.leaderWidth / 2
+		},
+		rect: {
+			left: t - i - d,
+			right: t + i + d,
+			top: n - a - d,
+			bottom: n + a + d
+		}
+	};
+}
+function $f(e) {
+	return e.leaderSegment ? Math.hypot(e.leaderSegment.x2 - e.leaderSegment.x1, e.leaderSegment.y2 - e.leaderSegment.y1) : 0;
+}
+function ep(e, t) {
+	if (!Number.isFinite(e.z)) return null;
+	let n = Math.max(1, t.performanceNoSpaceCellSize ?? 24);
+	return [Math.floor(e.x / n), Math.floor(e.y / n)].join(":");
+}
+function tp(e, t, n) {
+	return e.left >= n && e.top >= n && e.right <= t.width - n && e.bottom <= t.height - n;
+}
+function np(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
+	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new qf(u), f = new qf(u), p = new qf(u), m = new qf(u), h = new qf(u);
+	t.forEach((e) => d.insert(e, Wf(e))), n.forEach((e) => f.insert(e, Uf(e))), r.forEach((e) => p.insert(e, Gf(e)));
+	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = Kf(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
+		if (C.has(e)) return C.get(e);
+		let n = !0;
+		if ($f(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !tp(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => Lf(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => Rf(t, e.rect)) && (n = !1), n && e.leaderSegment) {
+			let r = Uf(e.leaderSegment);
+			!b && f.query(r).some((t) => Hf(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && zf(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
+		}
+		return C.set(e, n), n;
+	}, E = (e, t) => {
+		if (!T(e, t)) return null;
+		let n = new Set(m.query(e.rect).filter((t) => If(e.rect, t.rect)));
+		if (h.query(e.rect).filter((t) => Rf(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
+		let r = Uf(e.leaderSegment);
+		return m.query(r).filter((t) => Rf(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Hf(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
+	}, D = (e, t) => E(e, t)?.size === 0, O = (e, t) => {
+		let n = {
+			...e,
+			...t
+		};
+		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, Uf(n.leaderSegment)), n;
+	}, k = (e) => {
+		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, Uf(e.leaderSegment));
+	}, A = (e, t, n, r, i) => {
+		for (let a of t) {
+			if (i.remaining-- <= 0) return !1;
+			let t = E(a, e);
+			if (!t) continue;
+			if (t.size === 0) return O(e, a), !0;
+			if (n <= 0 || t.size !== 1) continue;
+			let o = [...t][0];
+			if (r.has(o.id) || (o.priority || 0) > (e.priority || 0)) continue;
+			let s = S.get(o.id) || [];
+			if (k(o), !D(a, e)) {
+				O(o, o);
+				continue;
+			}
+			let c = O(e, a), l = new Set(r);
+			if (l.add(e.id), A(o, s, n - 1, l, i)) return !0;
+			k(c), O(o, o);
+		}
+		return !1;
+	}, j = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
+	for (let e of y) {
+		let t = _ ? ep(e, a) : null, n = t === null ? void 0 : w.get(t);
+		if (n !== void 0 && n < e.z - 1e-6) {
+			c.push({
+				id: e.id,
+				text: e.text,
+				reason: "static-no-space"
+			});
+			continue;
+		}
+		let r = [], i = b ? Array.from({ length: Math.max(2, a.maximumCoverageDistanceSteps ?? 6) }, (e, t) => t + 1) : [1, 2];
+		for (let t of i) for (let n of Yf) {
+			let i = Xf(e, n, t, a);
+			i.score = Zf(i, e, p.query({
+				left: i.x,
+				right: i.x,
+				top: i.y,
+				bottom: i.y
+			}), o.get(e.id), a), r.push(i);
+		}
+		r.sort((e, t) => e.score - t.score), S.set(e.id, r);
+		let s = r.find((t) => D(t, e));
+		if (s) O(e, s);
+		else if (_ && t !== null && r.every((t) => !T(t, e))) {
+			let n = w.get(t);
+			(n === void 0 || e.z < n) && w.set(t, e.z), l.push(e);
+		} else if (!_ && j(e, r)) continue;
+		else l.push(e);
+	}
+	if (b && l.length > 0) {
+		let e = Math.max(1, a.calloutColumns || 3), t = a.calloutRowGap || 4, n = a.calloutPlacement !== "viewport" && x !== null, r = a.calloutGap ?? 12, o = n ? x.left - r : a.viewportPadding, s = n ? x.right + r : i.width - a.viewportPadding, u = [...l].sort((e, t) => (t.priority || 0) - (e.priority || 0) || Math.min(Math.abs(t.x - o), Math.abs(s - t.x)) - Math.min(Math.abs(e.x - o), Math.abs(s - e.x)) || e.id.localeCompare(t.id));
+		for (let o of u) {
+			let s = [], l = 0, u = o.height + a.labelPadding * 2 + t, d = n ? Math.max(a.viewportPadding, x.top) : a.viewportPadding, p = n ? Math.min(i.height - a.viewportPadding, x.bottom) : i.height - a.viewportPadding, m = Math.max(1, Math.floor(Math.max(u, p - d) / u)), h = d + o.height / 2 + a.labelPadding, g = Array.from({ length: m }, (e, t) => h + t * u).filter((e) => e + o.height / 2 + a.labelPadding <= p);
+			g.length === 0 && g.push(Math.max(a.viewportPadding + o.height / 2 + a.labelPadding, Math.min(i.height - a.viewportPadding - o.height / 2 - a.labelPadding, (d + p) / 2))), g.sort((e, t) => Math.abs(e - o.y) - Math.abs(t - o.y));
+			let _ = o.x < i.width / 2 ? "left" : "right", v = [_, _ === "left" ? "right" : "left"];
+			calloutSearch: for (let t of g) for (let c = 0; c < e; c++) for (let e of v) {
+				if (l >= a.calloutSearchLimit || s.length >= a.calloutChoiceLimit) break calloutSearch;
+				l++;
+				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Qf(o, m, t, a);
+				if (E(h, o) !== null) {
+					h.score = Math.hypot(m - o.x, t - o.y);
+					let e = Uf(h.leaderSegment);
+					h.score += f.query(e).filter((e) => Hf(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
+				}
+			}
+			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => $f(e) - $f(t) || e.score - t.score);
+			S.set(o.id, y), A(o, y, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) }) || c.push({
+				id: o.id,
+				text: o.text,
+				reason: "viewport-capacity"
+			});
+		}
+	} else l.forEach((e) => c.push({
+		id: e.id,
+		text: e.text,
+		reason: "no-space"
+	}));
+	for (let e of v.slice(a.maxVisible)) c.push({
+		id: e.id,
+		text: e.text,
+		reason: "max-visible"
+	});
+	return {
+		placed: s,
+		hidden: c,
+		placementPolicy: b ? "maximum-coverage" : _ ? "performance-omit" : "quality-omit"
+	};
+}
+//#endregion
+//#region src/lib/ortep3d/atom-label-worker.js?worker&inline
+var rp = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", ip = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", rp], { type: "text/javascript;charset=utf-8" });
+function ap(e) {
+	let t;
+	try {
+		if (t = ip && (self.URL || self.webkitURL).createObjectURL(ip), !t) throw "";
+		let n = new Worker(t, { name: e?.name });
+		return n.addEventListener("error", () => {
+			(self.URL || self.webkitURL).revokeObjectURL(t);
+		}), n;
+	} catch {
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(rp), { name: e?.name });
+	}
+}
+//#endregion
+//#region src/lib/ortep3d/atom-label-manager.js
+var op = [
+	"atomPadding",
+	"autoPerformanceLabelThreshold",
+	"calloutChoiceLimit",
+	"calloutColumnGap",
+	"calloutColumns",
+	"calloutGap",
+	"calloutPlacement",
+	"calloutRowGap",
+	"calloutSearchLimit",
+	"maximumCoverageDistanceSteps",
+	"fallbackDistance",
+	"performanceNoSpaceCellSize",
+	"labelPadding",
+	"leaderBondCrossingPenalty",
+	"leaderWidth",
+	"maxVisible",
+	"maxConnectorLength",
+	"movementPenalty",
+	"placementMode",
+	"repairDepth",
+	"repairSearchLimit",
+	"ringPenalty",
+	"spatialCellSize",
+	"viewportPadding"
+];
+function sp(e) {
+	return Object.fromEntries(op.map((t) => [t, e[t]]));
+}
+function cp(e) {
+	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
+}
+function lp(e) {
+	return Array.isArray(e) ? e.map((e) => typeof e == "string" ? { id: e } : e).filter((e) => e && typeof e.id == "string") : [];
+}
+function up(e, t) {
+	return e.includes("|") ? e === t.uniqueId : e === t.label;
+}
+function dp(e) {
+	let t = 0;
+	for (let n = 0; n < e.length; n++) {
+		let r = (n + 1) % e.length;
+		t += e[n].x * e[r].y - e[r].x * e[n].y;
+	}
+	return Math.abs(t) / 2;
+}
+function fp(e, t) {
+	return e.z >= -1 && e.z <= 1 && e.x + e.radius >= 0 && e.x - e.radius <= t.width && e.y + e.radius >= 0 && e.y - e.radius <= t.height;
+}
+function pp(e) {
+	if (!e) return [];
+	let t = [...new Map(e.atoms.map((e) => [e.uniqueId, e])).keys()].sort(), n = new Map(t.map((e, t) => [e, t])), r = new Map(t.map((e) => [e, /* @__PURE__ */ new Set()]));
+	for (let t of Ld(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
+	let i = [], a = /* @__PURE__ */ new Set();
+	for (let e of t) {
+		let t = [e], o = new Set(t), s = (c) => {
+			if (!(t.length > 7 || i.length >= 512)) for (let l of r.get(c)) if (l === e && t.length >= 5) {
+				let e = [...t], n = 0;
+				for (let t of e) n += [...r.get(t)].filter((t) => e.includes(t)).length;
+				if (n !== e.length * 2) continue;
+				let o = [...e].sort().join("|");
+				a.has(o) || (a.add(o), i.push(e));
+			} else !o.has(l) && n.get(l) >= n.get(e) && (o.add(l), t.push(l), s(l), t.pop(), o.delete(l));
+		};
+		s(e);
+	}
+	return i;
+}
+var mp = class {
+	constructor(e) {
+		this.viewer = e, this.options = e.options.atomLabels, this.previousPlacements = /* @__PURE__ */ new Map(), this.layout = {
+			placed: [],
+			hidden: [],
+			placementPolicy: "none"
+		}, this.rings = null, this.displayStructure = null, this.bondNeighbours = /* @__PURE__ */ new Map(), this.measurementCache = /* @__PURE__ */ new Map(), this.lastLayoutTime = 0, this.forceNextLayout = !0, this.lastMoleculeMatrix = null, this.lastCameraMatrix = null, this.lastProjectionMatrix = null, this.lastViewport = null, this.layoutRevision = 0, this.lastLayoutRevision = 0, this.nextWorkerRequestId = 1, this.worker = null, this.workerUnavailable = !1, this.pendingLayout = null, this.layoutQueued = !1, this.layoutWaiters = [], this.scheduledFrame = null, this.disposed = !1, this.lastExecutionMode = "none", this.loadingIndicatorActive = !1, this.loadingIndicatorTimer = null, this.canvas = document.createElement("canvas"), this.canvas.className = "cifvis-atom-labels", this.canvas.setAttribute("aria-hidden", "true"), Object.assign(this.canvas.style, {
+			position: "absolute",
+			inset: "0",
+			pointerEvents: "none",
+			zIndex: "1"
+		}), window.getComputedStyle(e.container).position === "static" && (this.changedContainerPosition = !0, this.previousContainerPosition = e.container.style.position, e.container.style.position = "relative"), e.container.appendChild(this.canvas), this.context = this.canvas.getContext("2d"), this.loadingIndicator = document.createElement("div"), this.loadingIndicator.className = "cifvis-atom-label-loading", this.loadingIndicator.setAttribute("role", "status"), this.loadingIndicator.setAttribute("aria-live", "polite"), Object.assign(this.loadingIndicator.style, {
+			position: "absolute",
+			right: "12px",
+			bottom: "12px",
+			display: "none",
+			alignItems: "center",
+			gap: "7px",
+			padding: "6px 9px",
+			border: "1px solid rgba(0, 0, 0, 0.14)",
+			borderRadius: "6px",
+			background: "rgba(255, 255, 255, 0.92)",
+			color: "#333333",
+			font: "12px system-ui, -apple-system, sans-serif",
+			pointerEvents: "none",
+			zIndex: "2"
+		});
+		let t = document.createElement("progress");
+		t.removeAttribute("value"), t.setAttribute("aria-hidden", "true"), Object.assign(t.style, {
+			width: "32px",
+			height: "8px"
+		}), this.loadingIndicator.append(t, document.createTextNode("Laying out labels…")), e.container.appendChild(this.loadingIndicator);
+	}
+	setOptions(e) {
+		this.options = e, (!e.showLoadingIndicator || cp(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.invalidateLayout();
+	}
+	setStructure(e) {
+		this.endLoadingIndicator(), this.displayStructure = e, this.rings = null, this.bondNeighbours.clear(), this.previousPlacements.clear(), this.invalidateLayout();
+	}
+	prepareTopology() {
+		if (this.rings === null) {
+			this.rings = pp(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
+			for (let e of this.displayStructure.bonds) this.bondNeighbours.has(e.atom1Id) && this.bondNeighbours.has(e.atom2Id) && (this.bondNeighbours.get(e.atom1Id).add(e.atom2Id), this.bondNeighbours.get(e.atom2Id).add(e.atom1Id));
+		}
+	}
+	invalidateLayout() {
+		this.forceNextLayout = !0, this.layoutRevision++;
+	}
+	beginLoadingIndicator() {
+		if (!this.options.showLoadingIndicator || this.loadingIndicatorActive) return;
+		this.loadingIndicatorActive = !0;
+		let e = () => {
+			this.loadingIndicatorTimer = null, this.loadingIndicatorActive && !this.disposed && (this.loadingIndicator.style.display = "flex");
+		}, t = Math.max(0, this.options.loadingIndicatorDelayMs ?? 120);
+		t === 0 ? e() : this.loadingIndicatorTimer = setTimeout(e, t);
+	}
+	endLoadingIndicator() {
+		this.loadingIndicatorActive = !1, this.loadingIndicatorTimer !== null && (clearTimeout(this.loadingIndicatorTimer), this.loadingIndicatorTimer = null), this.loadingIndicator && (this.loadingIndicator.style.display = "none");
+	}
+	scheduleUpdate() {
+		if (!this.disposed) {
+			if ((this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning) && this.endLoadingIndicator(), this.clearStaleFrame(), this.pendingLayout) {
+				this.layoutQueued = !0;
+				return;
+			}
+			this.scheduledFrame === null && (this.scheduledFrame = requestAnimationFrame(() => {
+				this.scheduledFrame = null, this.update();
+			}));
+		}
+	}
+	clearStaleFrame() {
+		if (!this.context || this.layout.placed.length === 0 || !this.lastMoleculeMatrix || !this.lastCameraMatrix || !this.lastProjectionMatrix) return;
+		let e = this.viewer.container.clientWidth, t = this.viewer.container.clientHeight;
+		if (!(this.lastViewport?.width !== e || this.lastViewport?.height !== t || this.lastLayoutRevision !== this.layoutRevision || !this.lastMoleculeMatrix.equals(this.viewer.moleculeContainer.matrixWorld) || !this.lastCameraMatrix.equals(this.viewer.camera.matrixWorld) || !this.lastProjectionMatrix.equals(this.viewer.camera.projectionMatrix))) return;
+		let n = window.devicePixelRatio || 1;
+		this.context.setTransform(n, 0, 0, n, 0, 0), this.context.clearRect(0, 0, e, t);
+	}
+	transformsUnchanged(e, t) {
+		return !this.forceNextLayout && this.lastViewport?.width === e && this.lastViewport?.height === t && this.lastMoleculeMatrix?.equals(this.viewer.moleculeContainer.matrixWorld) && this.lastCameraMatrix?.equals(this.viewer.camera.matrixWorld) && this.lastProjectionMatrix?.equals(this.viewer.camera.projectionMatrix);
+	}
+	rememberTransforms(e, t) {
+		this.lastViewport = {
+			width: e,
+			height: t
+		}, this.lastMoleculeMatrix = this.viewer.moleculeContainer.matrixWorld.clone(), this.lastCameraMatrix = this.viewer.camera.matrixWorld.clone(), this.lastProjectionMatrix = this.viewer.camera.projectionMatrix.clone(), this.forceNextLayout = !1;
+	}
+	captureLayoutState(e, t) {
+		return {
+			width: e,
+			height: t,
+			revision: this.layoutRevision,
+			moleculeMatrix: this.viewer.moleculeContainer.matrixWorld.clone(),
+			cameraMatrix: this.viewer.camera.matrixWorld.clone(),
+			projectionMatrix: this.viewer.camera.projectionMatrix.clone()
+		};
+	}
+	layoutStateIsCurrent(e) {
+		return e.revision === this.layoutRevision && e.width === this.viewer.container.clientWidth && e.height === this.viewer.container.clientHeight && e.moleculeMatrix.equals(this.viewer.moleculeContainer.matrixWorld) && e.cameraMatrix.equals(this.viewer.camera.matrixWorld) && e.projectionMatrix.equals(this.viewer.camera.projectionMatrix);
+	}
+	getWorker() {
+		if (this.options.useWorker === !1 || this.workerUnavailable || typeof Worker > "u") return null;
+		if (this.worker) return this.worker;
+		try {
+			return this.worker = new ap({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
+				e.preventDefault?.(), this.handleWorkerFailure(Error(e.message || "Atom-label worker failed"));
+			}, this.worker;
+		} catch (e) {
+			return this.workerUnavailable = !0, console.warn("Atom-label worker unavailable; using main-thread layout.", e), null;
+		}
+	}
+	resize() {
+		let e = window.devicePixelRatio || 1, t = this.viewer.container.clientWidth, n = this.viewer.container.clientHeight, r = Math.floor(t * e), i = Math.floor(n * e);
+		(this.canvas.width !== r || this.canvas.height !== i) && (this.canvas.width = r, this.canvas.height = i, this.canvas.style.width = `${t}px`, this.canvas.style.height = `${n}px`);
+	}
+	resolveRequests() {
+		let e = this.displayStructure, t = cp(this.options.show);
+		if (!e || t === "none") return [];
+		if (t === "all" || t === "non-hydrogen") return e.atoms.filter((e) => t === "all" || !["H", "D"].includes(e.atomType)).map((e) => ({
+			atom: e,
+			text: this.options.text?.[e.uniqueId] ?? this.options.text?.[e.label] ?? e.label,
+			priority: 0
+		})).filter((e) => e.text !== null && String(e.text).length > 0).map((e) => ({
+			...e,
+			text: String(e.text).slice(0, 200)
+		}));
+		let n = lp(t), r = [];
+		for (let t of e.atoms) {
+			let e = n.find((e) => up(e.id, t));
+			if (!e) continue;
+			let i = e.text ?? this.options.text?.[t.uniqueId] ?? this.options.text?.[t.label] ?? t.label;
+			i !== null && String(i).length > 0 && r.push({
+				atom: t,
+				text: String(i).slice(0, 200),
+				priority: e.priority || 0
+			});
+		}
+		return r;
+	}
+	projectLocalPosition(e) {
+		let t = e.clone().applyMatrix4(this.viewer.moleculeContainer.matrixWorld).project(this.viewer.camera);
+		return {
+			x: (t.x + 1) * this.viewer.container.clientWidth / 2,
+			y: (1 - t.y) * this.viewer.container.clientHeight / 2,
+			z: t.z
+		};
+	}
+	projectRadius(e, t) {
+		let n = this.projectLocalPosition(e), r = [
+			new W(t, 0, 0),
+			new W(0, t, 0),
+			new W(0, 0, t)
+		].map((t) => this.projectLocalPosition(e.clone().add(t)));
+		return Math.max(0, ...r.map((e) => Math.hypot(e.x - n.x, e.y - n.y)));
+	}
+	projectAnchors() {
+		let e = this.viewer.state.currentStructure?.atomLabelAnchors || [], t = /* @__PURE__ */ new Map();
+		for (let n of e) {
+			let e = this.projectLocalPosition(n.position);
+			t.set(n.atom.uniqueId, {
+				...e,
+				id: n.atom.uniqueId,
+				localPosition: n.position,
+				radius: Math.max(2, this.projectRadius(n.position, n.radius))
+			});
+		}
+		return t;
+	}
+	projectBonds(e) {
+		let t = [], n = (n, r, i, a) => {
+			let o = e.get(n), s = e.get(r);
+			if (!o || !s || o.z < -1 || o.z > 1 || s.z < -1 || s.z > 1) return;
+			let c = o.localPosition.clone().add(s.localPosition).multiplyScalar(.5);
+			t.push({
+				x1: o.x,
+				y1: o.y,
+				x2: s.x,
+				y2: s.y,
+				radius: this.projectRadius(c, i) + this.options.bondPadding,
+				type: a
+			});
+		};
+		for (let e of this.displayStructure.bonds) n(e.atom1Id, e.atom2Id, this.viewer.options.bondRadius, "bond");
+		for (let e of this.displayStructure.hBonds) n(e.hydrogenAtomId, e.acceptorAtomId, this.viewer.options.hbondRadius, "hbond");
+		return t;
+	}
+	preferredDirection(e, t) {
+		let n = t.get(e.uniqueId), r = [...this.bondNeighbours.get(e.uniqueId) || []].map((e) => t.get(e)).filter(Boolean), i = 0, a = 0;
+		for (let e of r) {
+			let t = e.x - n.x, r = e.y - n.y, o = Math.hypot(t, r) || 1;
+			i -= t / o, a -= r / o;
+		}
+		let o = Math.hypot(i, a);
+		if (o > .1) return {
+			x: i / o,
+			y: a / o
+		};
+		let s = 0;
+		for (let t of e.uniqueId) s = s * 31 + t.charCodeAt(0) >>> 0;
+		let c = s % 16 * Math.PI / 8;
+		return {
+			x: Math.cos(c),
+			y: Math.sin(c)
+		};
+	}
+	projectRings(e) {
+		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && dp(e) >= 25);
+	}
+	update() {
+		if (!this.context) return this.completeUpdate(this.layout);
+		if (this.pendingLayout) return this.layoutQueued = !0, new Promise((e) => this.layoutWaiters.push(e));
+		this.resize();
+		let e = this.viewer.container.clientWidth, t = this.viewer.container.clientHeight;
+		this.viewer.camera.updateMatrixWorld(), this.viewer.moleculeContainer.updateMatrixWorld(!0);
+		let n = performance.now(), r = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning, i = this.resolveRequests();
+		if (r && (this.options.placementMode === "maximum-coverage" || i.length > this.options.interactionLabelLimit)) return this.endLoadingIndicator(), this.options.hideLabelsDuringDeferredLayout && (this.canvas.style.visibility = "hidden"), this.completeUpdate(this.layout);
+		if (this.canvas.style.visibility = "visible", this.transformsUnchanged(e, t) || r && !this.forceNextLayout && n - this.lastLayoutTime < this.options.layoutThrottleMs) return this.completeUpdate(this.layout);
+		this.lastLayoutTime = n;
+		let a = window.devicePixelRatio || 1;
+		if (this.context.setTransform(a, 0, 0, a, 0, 0), i.length === 0) return this.endLoadingIndicator(), this.layout = {
+			placed: [],
+			hidden: [],
+			placementPolicy: "none"
+		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
+		let o = this.projectAnchors(), s = i.filter((n) => {
+			let r = o.get(n.atom.uniqueId);
+			return r && fp(r, {
+				width: e,
+				height: t
+			});
+		});
+		if (s.length === 0) return this.endLoadingIndicator(), this.layout = {
+			placed: [],
+			hidden: [],
+			placementPolicy: "none"
+		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
+		this.beginLoadingIndicator(), this.prepareTopology();
+		let c = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+		this.context.font = c, this.context.textAlign = "center", this.context.textBaseline = "middle";
+		let l = {
+			labels: s.map((e) => {
+				let t = o.get(e.atom.uniqueId), n = `${c}\u0000${e.text}`, r = this.measurementCache.get(n);
+				return r === void 0 && (r = this.context.measureText(e.text).width, this.measurementCache.set(n, r)), {
+					id: e.atom.uniqueId,
+					text: e.text,
+					x: t.x,
+					y: t.y,
+					z: t.z,
+					radius: t.radius,
+					width: r,
+					height: this.options.fontSize * 1.2,
+					priority: e.priority,
+					preferredDirection: this.preferredDirection(e.atom, o)
+				};
+			}),
+			atoms: [...o.values()].filter((e) => e.z >= -1 && e.z <= 1).map((e) => ({
+				id: e.id,
+				x: e.x,
+				y: e.y,
+				radius: e.radius + this.options.atomPadding
+			})),
+			bonds: this.projectBonds(o),
+			rings: this.projectRings(o).map((e) => e.map((e) => ({
+				x: e.x,
+				y: e.y
+			}))),
+			viewport: {
+				width: e,
+				height: t
+			},
+			options: sp(this.options),
+			previousPlacements: [...this.previousPlacements.entries()]
+		}, u = this.captureLayoutState(e, t), d = this.getWorker();
+		if (!d) {
+			let e = this.calculateLayout(l);
+			return this.lastExecutionMode = this.workerUnavailable ? "main-thread-fallback" : "main-thread", this.applyLayout(e, u), this.completeUpdate(e);
+		}
+		let f = this.nextWorkerRequestId++;
+		this.pendingLayout = {
+			id: f,
+			input: l,
+			state: u
+		};
+		let p = new Promise((e) => this.layoutWaiters.push(e));
+		return d.postMessage({
+			id: f,
+			...l
+		}), p;
+	}
+	calculateLayout(e) {
+		return np(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
+	}
+	handleWorkerMessage(e) {
+		if (!this.pendingLayout || e.id !== this.pendingLayout.id) return;
+		if (e.error) {
+			this.handleWorkerFailure(Error(e.error));
+			return;
+		}
+		let { state: t } = this.pendingLayout;
+		this.pendingLayout = null;
+		let n = this.layoutQueued || !this.layoutStateIsCurrent(t);
+		if (this.layoutQueued = !1, n) {
+			this.forceNextLayout = !0, this.scheduleUpdate();
+			return;
+		}
+		this.applyLayout(e.layout, t), this.lastExecutionMode = "worker", this.resolveLayoutWaiters(e.layout);
+	}
+	handleWorkerFailure(e) {
+		let t = this.pendingLayout;
+		if (this.pendingLayout = null, this.layoutQueued = !1, this.worker?.terminate(), this.worker = null, this.workerUnavailable = !0, !t || this.disposed) {
+			this.endLoadingIndicator(), this.resolveLayoutWaiters(this.layout);
+			return;
+		}
+		if (console.warn("Atom-label worker failed; using main-thread layout.", e), this.layoutStateIsCurrent(t.state)) {
+			let e = this.calculateLayout(t.input);
+			this.lastExecutionMode = "main-thread-fallback", this.applyLayout(e, t.state), this.resolveLayoutWaiters(e);
+		} else this.forceNextLayout = !0, this.scheduleUpdate();
+	}
+	resolveLayoutWaiters(e) {
+		let t = this.layoutWaiters.splice(0);
+		for (let n of t) n(e);
+	}
+	completeUpdate(e) {
+		return this.resolveLayoutWaiters(e), Promise.resolve(e);
+	}
+	applyLayout(e, t) {
+		this.endLoadingIndicator(), this.layout = e, this.previousPlacements = new Map(e.placed.map((e) => [e.id, e])), this.lastViewport = {
+			width: t.width,
+			height: t.height
+		}, this.lastMoleculeMatrix = t.moleculeMatrix, this.lastCameraMatrix = t.cameraMatrix, this.lastProjectionMatrix = t.projectionMatrix, this.lastLayoutRevision = t.revision, this.forceNextLayout = !1;
+		let n = window.devicePixelRatio || 1;
+		this.context.setTransform(n, 0, 0, n, 0, 0), this.context.clearRect(0, 0, t.width, t.height), this.context.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`, this.context.textAlign = "center", this.context.textBaseline = "middle", this.canvas.style.visibility = "visible", this.draw();
+	}
+	draw() {
+		let e = this.context;
+		e.lineJoin = "round", e.lineCap = "round";
+		for (let t of this.layout.placed) t.leaderLine && this.options.leaderLines !== "none" && (e.strokeStyle = this.options.leaderColor, e.lineWidth = this.options.leaderWidth, e.beginPath(), e.moveTo(t.leaderSegment.x1, t.leaderSegment.y1), e.lineTo(t.leaderSegment.x2, t.leaderSegment.y2), e.stroke()), this.options.haloWidth > 0 && (e.strokeStyle = this.options.haloColor, e.lineWidth = this.options.haloWidth * 2, e.strokeText(t.text, t.x, t.y)), e.fillStyle = this.options.color, e.fillText(t.text, t.x, t.y);
+	}
+	dispose() {
+		this.disposed = !0, this.endLoadingIndicator(), this.scheduledFrame !== null && (cancelAnimationFrame(this.scheduledFrame), this.scheduledFrame = null), this.worker?.terminate(), this.worker = null, this.pendingLayout = null, this.resolveLayoutWaiters(this.layout), this.canvas.remove(), this.loadingIndicator.remove(), this.changedContainerPosition && (this.viewer.container.style.position = this.previousContainerPosition), this.previousPlacements.clear(), this.measurementCache.clear(), this.viewer = null;
+	}
+}, hp = [
+	"auto-omit",
+	"quality-omit",
+	"performance-omit",
+	"maximum-coverage"
+], gp = ["structure", "viewport"];
+function _p(e) {
+	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
+}
+function vp(e) {
+	if (e.placementMode !== void 0 && !hp.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${hp.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !gp.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${gp.join(", ")}`);
+	if (e.show !== void 0 && !_p(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
+	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
+	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
+}
+function yp(e) {
+	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
+}
+var bp = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -16403,7 +17246,7 @@ var If = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, Lf = class {
+}, xp = class {
 	constructor(e, t = {}) {
 		let n = ["constant", "onDemand"];
 		if (t.renderMode && !n.includes(t.renderMode)) throw Error(`Invalid render mode: "${t.renderMode}". Must be one of: ${n.join(", ")}`);
@@ -16413,13 +17256,15 @@ var If = class {
 			"cutout-2d"
 		];
 		if (t.renderStyle && !r.includes(t.renderStyle)) throw Error(`Invalid render style: "${t.renderStyle}". Must be one of: ${r.join(", ")}`);
+		vp(t.atomLabels || {});
+		let i = yp(t.atomLabels || {});
 		this.container = e;
-		let i = t.camera?.initialPosition ?? $.camera.initialPosition;
+		let a = t.camera?.initialPosition ?? $.camera.initialPosition;
 		this.options = {
 			camera: {
 				...$.camera,
 				...t.camera || {},
-				initialPosition: i.isVector3 ? i.clone() : new W(...i)
+				initialPosition: a.isVector3 ? a.clone() : new W(...a)
 			},
 			selection: {
 				...$.selection,
@@ -16428,6 +17273,14 @@ var If = class {
 			interaction: {
 				...$.interaction,
 				...t.interaction || {}
+			},
+			atomLabels: {
+				...$.atomLabels,
+				...i,
+				text: {
+					...$.atomLabels.text,
+					...i.text || {}
+				}
 			},
 			atomDetail: t.atomDetail || $.atomDetail,
 			atomCutawayHysteresis: t.atomCutawayHysteresis ?? $.atomCutawayHysteresis,
@@ -16444,6 +17297,12 @@ var If = class {
 			bondColorRoughness: t.bondColorRoughness || $.bondColorRoughness,
 			bondColorMetalness: t.bondColorMetalness || $.bondColorMetalness,
 			bondGrowTolerance: t.bondGrowTolerance ?? $.bondGrowTolerance,
+			hbondRadius: t.hbondRadius ?? $.hbondRadius,
+			hbondColor: t.hbondColor || $.hbondColor,
+			hbondColorRoughness: t.hbondColorRoughness ?? $.hbondColorRoughness,
+			hbondColorMetalness: t.hbondColorMetalness ?? $.hbondColorMetalness,
+			hbondDashSegmentLength: t.hbondDashSegmentLength ?? $.hbondDashSegmentLength,
+			hbondDashFraction: t.hbondDashFraction ?? $.hbondDashFraction,
 			elementProperties: {
 				...$.elementProperties,
 				...t.elementProperties
@@ -16471,6 +17330,7 @@ var If = class {
 			currentCifContent: null,
 			currentCifBlock: null,
 			currentStructure: null,
+			displayStructure: null,
 			currentFloor: null,
 			baseStructure: null,
 			ortepObjects: /* @__PURE__ */ new Map(),
@@ -16482,7 +17342,7 @@ var If = class {
 			disorder: new yf(this.options.disorderMode),
 			symmetry: new bf(this.options.symmetryMode),
 			hydrogen: new vf(this.options.hydrogenMode)
-		}, this.selections = new If(this.options), this.setupScene(), this.controls = new Of(this), this.animate(), this.needsRender = !0;
+		}, this.selections = new bp(this.options), this.setupScene(), this.atomLabelManager = new mp(this), this.controls = new Of(this), this.animate(), this.needsRender = !0;
 	}
 	setupScene() {
 		this.scene = new $r(), this.cameraController = Mf(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new Lu({
@@ -16550,7 +17410,7 @@ var If = class {
 			this.moleculeContainer.add(t);
 		}
 		let n = new nd(e, this.options).getGroup();
-		this.moleculeContainer.add(n), this.state.currentStructure = n, this.selections.pruneInvalidSelections(this.moleculeContainer);
+		this.moleculeContainer.add(n), this.state.currentStructure = n, this.state.displayStructure = e, this.atomLabelManager.setStructure(e), this.selections.pruneInvalidSelections(this.moleculeContainer);
 	}
 	updateCamera() {
 		this.controls.handleResize(), this.cameraController.fitToStructure(this.moleculeContainer), this.requestRender();
@@ -16573,7 +17433,7 @@ var If = class {
 		return this.modifiers[e].getApplicableModes(t).length;
 	}
 	animate() {
-		(this.options.renderMode === "constant" || this.needsRender) && (this.updateCameraFacingOctants(), this.renderer.render(this.scene, this.camera), this.needsRender = !1), requestAnimationFrame(this.animate.bind(this));
+		(this.options.renderMode === "constant" || this.needsRender) && (this.updateCameraFacingOctants(), this.renderer.render(this.scene, this.camera), this.atomLabelManager.scheduleUpdate(), this.needsRender = !1), requestAnimationFrame(this.animate.bind(this));
 	}
 	updateCameraFacingOctants() {
 		let e = this.state.currentStructure?.cameraFacingAtoms;
@@ -16591,12 +17451,34 @@ var If = class {
 	selectAtoms(e) {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
+	setAtomLabels(e) {
+		if (!_p(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
+	}
+	updateAtomLabelOptions(e) {
+		vp(e);
+		let t = yp(e);
+		this.options.atomLabels = {
+			...this.options.atomLabels,
+			...t,
+			text: {
+				...this.options.atomLabels.text,
+				...t.text || {}
+			}
+		}, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
+	}
+	clearAtomLabels() {
+		this.setAtomLabels("none");
+	}
+	getAtomLabelLayout() {
+		return this.atomLabelManager.layout;
+	}
 	dispose() {
-		this.controls.dispose(), this.scene.traverse((e) => {
+		this.controls.dispose(), this.atomLabelManager.dispose(), this.scene.traverse((e) => {
 			e.geometry && e.geometry.dispose(), e.material && (Array.isArray(e.material) ? e.material.forEach((e) => e.dispose()) : e.material.dispose());
 		}), this.selections.dispose(), this.renderer.dispose(), this.renderer.domElement.parentNode && this.renderer.domElement.parentNode.removeChild(this.renderer.domElement), this.scene = null, this.camera = null, this.renderer = null, this.state = null, this.options = null;
 	}
-}, Rf = {
+}, Sp = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -16616,7 +17498,7 @@ var If = class {
 		none: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path17-0\" style=\"color:#000000;fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.421606;-inkscape-stroke:none\" d=\"m 23.896827,18.870815 v 0.898 h 9.51437 v -0.898 z\" /><circle style=\"fill:#000000;stroke:none;stroke-width:0.565;stroke-dasharray:none\" id=\"path1-7-1\" cx=\"23.335804\" cy=\"19.319817\" r=\"2.3135188\" /><circle style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0.564999\" id=\"path1-7-7-8\" cx=\"33.972233\" cy=\"19.319817\" r=\"2.3135188\" /><path style=\"fill:#000000;stroke:#000000;stroke-width:0.6;stroke-dasharray:none\" d=\"M 28.654019,10.932651 V 27.762155\" id=\"path7\" /></g></svg>"
 	},
 	upload: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\"><marker style=\"overflow:visible\" id=\"ArrowWide\" refX=\"0\" refY=\"0\" orient=\"auto-start-reverse\" arrow\" markerWidth=\"1\" markerHeight=\"1\" viewBox=\"0 0 1 1\" preserveAspectRatio=\"xMidYMid\"><path style=\"fill:none;stroke:context-stroke;stroke-width:1;stroke-linecap:butt\" d=\"M 3,-3 0,0 3,3\" transform=\"rotate(180,0.125,0)\" id=\"path1\" /></marker></defs><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><text xml:space=\"preserve\" style=\"font-size:7.05556px;fill:#e6e6e6;stroke:none;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none\" x=\"22.242813\" y=\"28.151989\" id=\"text2\"><tspan id=\"tspan2\" style=\"font-size:7.05556px;fill:#1a1a1a;stroke-width:0.5;stroke-linecap:round;stroke-dasharray:none\" x=\"22.242813\" y=\"28.151989\">CIF</tspan></text><path style=\"fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1\" d=\"m 20.714121,18.107197 v 3.07807 h 15.879794 v -3.07807\" id=\"path2\" /><path style=\"fill:none;stroke:#000000;stroke-width:0.68;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)\" d=\"M 28.654018,19.170064 V 11.045456\" id=\"path3\" /></g></svg>"
-}, zf = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", Bf = class extends HTMLElement {
+}, Cp = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", wp = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -16628,30 +17510,31 @@ var If = class {
 			"hydrogen-mode",
 			"disorder-mode",
 			"symmetry-mode",
-			"block"
+			"block",
+			"atom-labels"
 		];
 	}
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = zf, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = Cp, document.head.appendChild(e);
 		}
 		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...Rf,
+			...Sp,
 			...this.customIcons
 		};
 	}
 	async connectedCallback() {
-		this.baseCaption = this.getAttribute("caption") || this.defaultCaption, this.parseOptions(), this.parseInitialModes();
+		this.baseCaption = this.getAttribute("caption") || this.defaultCaption, this.parseOptions(), this.parseInitialModes(), this.parseInitialAtomLabels();
 		let e = document.createElement("div");
 		e.className = "crystal-container", this.appendChild(e);
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new Lf(e, this.userOptions), this.viewer.selections.onChange((e) => {
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new xp(e, this.userOptions), this.viewer.selections.onChange((e) => {
 			this.selections = e, this.updateCaption();
 		}), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
@@ -16686,6 +17569,25 @@ var If = class {
 	parseInitialModes() {
 		let e = this.getAttribute("hydrogen-mode"), t = this.getAttribute("disorder-mode"), n = this.getAttribute("symmetry-mode");
 		e && (this.userOptions.hydrogenMode = e), t && (this.userOptions.disorderMode = t), n && (this.userOptions.symmetryMode = n);
+	}
+	parseInitialAtomLabels() {
+		let e = this.getAttribute("atom-labels");
+		if (!e) return;
+		let t = e;
+		if (![
+			"all",
+			"none",
+			"non-hydrogen"
+		].includes(e)) try {
+			t = JSON.parse(e);
+		} catch (e) {
+			console.warn("Failed to parse atom-labels:", e);
+			return;
+		}
+		this.userOptions.atomLabels = {
+			...this.userOptions.atomLabels || $.atomLabels,
+			show: t
+		};
 	}
 	clearButtons() {
 		if (this.buttonContainer) for (; this.buttonContainer.firstChild;) this.buttonContainer.removeChild(this.buttonContainer.firstChild);
@@ -16757,10 +17659,23 @@ var If = class {
 			case "filtered-atoms":
 				await this.updateFilteredAtoms(), await this.viewer.loadStructure();
 				break;
+			case "atom-labels":
+				if (n === null || n === "") this.viewer.clearAtomLabels();
+				else if ([
+					"all",
+					"none",
+					"non-hydrogen"
+				].includes(n)) this.viewer.setAtomLabels(n);
+				else try {
+					this.viewer.setAtomLabels(JSON.parse(n));
+				} catch (e) {
+					console.warn("Failed to parse atom-labels:", e);
+				}
+				break;
 			case "options":
-				if (this.parseOptions(), this.viewer) {
+				if (this.parseOptions(), this.parseInitialAtomLabels(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.viewer.dispose(), this.viewer = new Lf(e, this.userOptions), this.viewer.selections.onChange((e) => {
+					this.viewer.dispose(), this.viewer = new xp(e, this.userOptions), this.viewer.selections.onChange((e) => {
 						this.selections = e, this.updateCaption();
 					}), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons());
 				}
@@ -16862,9 +17777,9 @@ var If = class {
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", Bf);
+	window.customElements.define("cifview-widget", wp);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { xf as AtomLabelFilter, Sf as BondGenerator, w as CIF, Bf as CifViewWidget, Ne as CrystalStructure, Lf as CrystalViewer, yf as DisorderFilter, vf as HydrogenFilter, nd as ORTEP3JsStructure, bf as SymmetryGrower, _d as formatValueEsd, Od as generateDisorderGroupIcon, Dd as getDisorderIcon, Ed as tryToFixCifBlock };
+export { xf as AtomLabelFilter, Sf as BondGenerator, w as CIF, wp as CifViewWidget, Ne as CrystalStructure, xp as CrystalViewer, yf as DisorderFilter, vf as HydrogenFilter, nd as ORTEP3JsStructure, bf as SymmetryGrower, _d as formatValueEsd, Od as generateDisorderGroupIcon, Dd as getDisorderIcon, Ed as tryToFixCifBlock };

@@ -246,6 +246,107 @@
                 </div>
             </div>
 
+            <!-- Atom Label Options -->
+            <button type="button" class="collapsible">Atom Label Settings</button>
+            <div class="content">
+                <div class="inner-content">
+                    <p>Screen-space labels are opt-in and avoid displayed atoms and other labels.</p>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="atom labels show display">
+                            <td><span class="option-code">atomLabels.show</span></td>
+                            <td>String or Array</td>
+                            <td><code>none</code>, <code>all</code>, <code>non-hydrogen</code>, or atom selectors/specifications. <span class="default-value">Default: "none"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels text override">
+                            <td><span class="option-code">atomLabels.text</span></td>
+                            <td>Object</td>
+                            <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels placement mode maximum coverage omit callout performance">
+                            <td><span class="option-code">atomLabels.placementMode</span></td>
+                            <td>String</td>
+                            <td><code>auto-omit</code> adaptively uses quality placement for ordinary visible workloads and performance placement for dense ones; <code>quality-omit</code> forces exact candidate evaluation with repair; <code>performance-omit</code> forces front-to-back, zoom-specific no-space reuse without repair; <code>maximum-coverage</code> searches farther and adds callouts. Omission modes reject confusing crossings. <span class="default-value">Default: "auto-omit"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels font size family weight">
+                            <td><span class="option-code">atomLabels.fontSize / fontWeight / fontFamily</span></td>
+                            <td>Number / Number / String</td>
+                            <td>Canvas text appearance. <span class="default-value">Defaults: 14, 500, system UI</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels color halo outline">
+                            <td><span class="option-code">atomLabels.color / haloColor / haloWidth</span></td>
+                            <td>Color / Color / Number</td>
+                            <td>Text and contrast-halo appearance. <span class="default-value">Defaults: #111111, #ffffff, 2</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels padding distance collision">
+                            <td><span class="option-code">atomLabels.atomPadding / bondPadding / labelPadding / viewportPadding</span></td>
+                            <td>Number</td>
+                            <td>Atom, bond, label, and viewport collision clearances in CSS pixels.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels leader lines fallback">
+                            <td><span class="option-code">atomLabels.leaderLines / fallbackDistance / maxConnectorLength</span></td>
+                            <td>String / Number / Number</td>
+                            <td>Controls leader lines, farther fallback spacing, and an optional hard connector-length ceiling in CSS pixels. Labels which cannot fit within the ceiling are omitted. <span class="default-value">maxConnectorLength default: Infinity</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels maximum visible overflow hide">
+                            <td><span class="option-code">atomLabels.maxVisible</span></td>
+                            <td>Number</td>
+                            <td>Maximum labels attempted; excess labels are reported as hidden. <span class="default-value">Default: Infinity</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels worker asynchronous performance thread">
+                            <td><span class="option-code">atomLabels.useWorker</span></td>
+                            <td>Boolean</td>
+                            <td>Runs collision placement in a Web Worker after the structure's first paint. Unsupported or failed workers fall back to the main thread. <span class="default-value">Default: true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels loading indicator progress delay">
+                            <td><span class="option-code">atomLabels.showLoadingIndicator / loadingIndicatorDelayMs</span></td>
+                            <td>Boolean / Number</td>
+                            <td>Shows an accessible progress status only when asynchronous layout exceeds the delay. <span class="default-value">Defaults: true, 120</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels interaction throttle deferred hide performance">
+                            <td><span class="option-code">atomLabels.layoutThrottleMs / interactionLabelLimit / hideLabelsDuringDeferredLayout</span></td>
+                            <td>Number / Number / Boolean</td>
+                            <td>Controls relayout during interaction. Complete or large layouts are hidden and recomputed after dragging by default. <span class="default-value">Defaults: 32, 300, true</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
+                            <td><span class="option-code">atomLabels.calloutPlacement / calloutGap</span></td>
+                            <td>String / Number</td>
+                            <td><code>structure</code> keeps maximum-coverage callouts just outside the projected structure; <code>viewport</code> uses the full viewport edges. <code>calloutGap</code> is the compact structure clearance in CSS pixels. <span class="default-value">Defaults: "structure", 12</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
+                            <td><span class="option-code">atomLabels.calloutColumns / calloutColumnGap / calloutRowGap</span></td>
+                            <td>Number</td>
+                            <td>Callout lane count and spacing used by <code>maximum-coverage</code> placement. <span class="default-value">Defaults: 3, 8, 4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels repair backtracking connector balance">
+                            <td><span class="option-code">atomLabels.repairDepth / repairSearchLimit</span></td>
+                            <td>Number / Number</td>
+                            <td>Bounds displacement repair before a label is omitted or given a distant callout. Set either to 0 to disable repair. <span class="default-value">Defaults: 2, 48</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels maximum coverage distance radial search compact connector">
+                            <td><span class="option-code">atomLabels.maximumCoverageDistanceSteps</span></td>
+                            <td>Number</td>
+                            <td>Number of local radial distance bands searched in <code>maximum-coverage</code> mode before callouts. More bands give repair additional moderate placements at added worker cost. <span class="default-value">Default: 6</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels spatial index cell performance">
+                            <td><span class="option-code">atomLabels.spatialCellSize</span></td>
+                            <td>Number</td>
+                            <td>Uniform screen-space collision-index cell size in CSS pixels. <span class="default-value">Default: 64</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels fast omit no space tile performance zoom depth">
+                            <td><span class="option-code">atomLabels.performanceNoSpaceCellSize</span></td>
+                            <td>Number</td>
+                            <td>Screen-space tile size used by performance placement. Larger tiles reuse more front-atom no-space results but may omit more deeper labels. Tiles are rebuilt after zoom or other camera changes. <span class="default-value">Default: 24</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels auto omit threshold performance visible count">
+                            <td><span class="option-code">atomLabels.autoPerformanceLabelThreshold</span></td>
+                            <td>Number</td>
+                            <td>Visible requested-label count above which <code>auto-omit</code> selects performance placement. Because this uses the current projection, zooming may switch policy. <span class="default-value">Default: 500</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
             <!-- Atom Visualization Options -->
             <button type="button" class="collapsible">Atom Visualization Settings</button>
             <div class="content">

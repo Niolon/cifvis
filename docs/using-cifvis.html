@@ -34,8 +34,8 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/docsUsing.BKrzlwJ9.js"></script>
-  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.BeD7n3Y3.js">
+  <script type="module" crossorigin src="/cifvis/assets/docsUsing.polYqSmc.js"></script>
+  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.De7qcGdK.js">
   <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
@@ -155,12 +155,20 @@ try {
 
 const viewer = new CrystalViewer(container, {
     renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
+    atomLabels: {
+        show: 'non-hydrogen',
+        placementMode: 'auto-omit', // adaptive; quality, performance, and maximum coverage are available
+        calloutPlacement: 'structure', // compact; 'viewport' permits wider spreading
+    },
 });
 const result = await viewer.loadCIF(cifText);   // or viewer.loadCIF(cifText, 'blockName')
 if (!result.success) {
     console.error(result.error);
 }</code></pre>
-            <p>For the full <code>options</code> schema (camera, selection, rendering, atoms, bonds, elements), see the <a href="./options-reference.html">Options Reference</a>.</p>
+            <p>The structure is painted before label layout begins. Collision placement uses a Web Worker when
+                available, and stale label frames are cleared during rotation rather than ghosting over the new pose.
+                For the full <code>options</code> schema (camera, selection, rendering, atoms, bonds, elements), see
+                the <a href="./options-reference.html">Options Reference</a>.</p>
 
             <h3>The GUI-facing surface</h3>
             <table>
@@ -171,6 +179,10 @@ if (!result.success) {
                 <tr><td><code>viewer.updateStructure()</code></td><td>Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's <code>.mode</code>.</td></tr>
                 <tr><td><code>viewer.selections.onChange(callback)</code></td><td>The only event hook. Callback receives <code>[{type: 'atom'|'bond'|'hbond', data, color}]</code>.</td></tr>
                 <tr><td><code>viewer.selectAtoms(labels)</code></td><td>Programmatic selection by atom label.</td></tr>
+                <tr><td><code>viewer.setAtomLabels(show)</code></td><td>Shows all, non-hydrogen, or selected atom labels. Selection entries may override text and priority.</td></tr>
+                <tr><td><code>viewer.updateAtomLabelOptions(options)</code></td><td>Updates label appearance/layout without rebuilding the structure.</td></tr>
+                <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
+                <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
                 <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
                 <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>
