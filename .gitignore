@@ -5,6 +5,7 @@ node_modules/
 
 # Build outputs
 dist/
+deployment/
 build/
 out/
 src/lib/generated/

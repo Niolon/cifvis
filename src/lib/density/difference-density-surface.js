@@ -13,7 +13,7 @@ export const DEFAULT_DIFFERENCE_DENSITY_OPTIONS = Object.freeze({
     positiveColor: '#36b566',
     negativeColor: '#d94b64',
     opacity: 0.55,
-    wireframe: false,
+    wireframe: true,
     maxPolyCount: 100000,
 });
 

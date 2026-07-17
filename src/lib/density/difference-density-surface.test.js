@@ -49,6 +49,7 @@ describe('difference-density surfaces', () => {
         expect(group.userData.level).toBeCloseTo(0.1);
         expect(group.userData.bounds.minimum[0]).toBeCloseTo(0.3);
         expect(group.userData.bounds.maximum[0]).toBeCloseTo(0.7);
+        expect(group.children.every(child => child.material.wireframe)).toBe(true);
     });
 
     test('increases final mesh resolution with physical draw size up to a cap', () => {
