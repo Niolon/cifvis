@@ -1173,15 +1173,38 @@ export class CrystalViewer {
      * @returns {object} Update result.
      */
     updateDifferenceDensityOptions(options = {}) {
+        const updates = definedOptions(options);
+        if (Object.keys(updates).length === 1 && Object.hasOwn(updates, 'visible')) {
+            return this.setDifferenceDensityVisibility(updates.visible);
+        }
         this.options.differenceDensity = {
             ...this.options.differenceDensity,
-            ...definedOptions(options),
+            ...updates,
         };
         if (this.state.differenceDensityMap && this.state.displayStructure) {
             this.updateDifferenceDensity3D(this.state.displayStructure);
             this.requestRender();
         }
         return { success: true };
+    }
+
+    /**
+     * Shows or hides the existing density surfaces without rebuilding them.
+     * @param {boolean} visible - Requested visibility.
+     * @returns {object} Successful visibility update.
+     */
+    setDifferenceDensityVisibility(visible) {
+        const usedVisibility = Boolean(visible);
+        this.options.differenceDensity.visible = usedVisibility;
+        if (this.state.differenceDensityGroup) {
+            this.state.differenceDensityGroup.visible = usedVisibility;
+        }
+        this.requestRender();
+        this.notifyDifferenceDensityUpdate({
+            type: 'visibility',
+            visible: usedVisibility,
+        });
+        return { success: true, visible: usedVisibility };
     }
 
     /** Removes the loaded difference-density map and surfaces. */
@@ -1191,6 +1214,7 @@ export class CrystalViewer {
         this.state.differenceDensityMap = null;
         this.state.differenceDensityResolutionFraction = 1;
         this.state.differenceDensitySurfaceResolutionFraction = 1;
+        this.notifyDifferenceDensityUpdate({ type: 'cleared' });
         this.requestRender();
     }
 

@@ -16,6 +16,10 @@ html, body {
     border: none;
 }
 
+.button-container > [hidden] {
+    display: none !important;
+}
+
 .control-button {
     width: 50px;
     height: 50px;
@@ -33,6 +37,18 @@ html, body {
 .control-button img {
     width: 24px;
     height: 24px;
+}
+
+#cif-block-select {
+    height: 50px;
+    max-width: min(240px, 45vw);
+    padding: 0 30px 0 10px;
+    border: 1px solid rgba(120, 120, 120, 0.25);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #333;
+    font: 14px system-ui, sans-serif;
+    cursor: pointer;
 }
 
 .upload-button img {
@@ -66,6 +82,32 @@ html, body {
 
 #status-message.info {
     color: #1565c0;
+}
+
+#density-level {
+    width: 50px;
+    min-width: 50px;
+    padding: 3px;
+    flex-direction: column;
+    gap: 1px;
+    font-family: system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+#density-level .density-unit {
+    font-size: 10px;
+    line-height: 1;
+}
+
+#density-level .density-value {
+    font-size: 12px;
+    line-height: 1;
+}
+
+#density-level[aria-pressed="false"] {
+    opacity: 0.55;
+    text-decoration: line-through;
 }
 
 .selection-container {

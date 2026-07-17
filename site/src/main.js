@@ -1,4 +1,4 @@
-import { CrystalViewer } from '../../src';
+import { CIF, CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
@@ -69,7 +69,48 @@ function getViewerOptionsFromUrl() {
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
 viewer.animate();
+
+/** @returns {{level:number, full:string}|null} Formatted density contour description. */
+function currentDensityLevelText() {
+    const density = viewer.state.differenceDensityGroup?.userData;
+    if (!Number.isFinite(density?.level)) {
+        return null;
+    }
+    const level = Number(density.level.toPrecision(3));
+    const sigma = Number.isFinite(density.sigmaLevel)
+        ? ` · ${Number(density.sigmaLevel.toPrecision(3))}σ`
+        : '';
+    return {
+        level,
+        full: `Δρ ±${level} e Å⁻³${sigma}`,
+    };
+}
+
+/** Keeps the playground's lower-right density badge synchronized. */
+function updateDensityLevelDisplay() {
+    const element = document.getElementById('density-level');
+    const density = viewer.state.differenceDensityGroup;
+    const labels = currentDensityLevelText();
+    element.hidden = labels === null;
+    element.replaceChildren();
+    if (labels) {
+        const unit = document.createElement('span');
+        unit.className = 'density-unit';
+        unit.textContent = 'Δρ/eÅ⁻³';
+        const value = document.createElement('span');
+        value.className = 'density-value';
+        value.textContent = `±${labels.level}`;
+        element.append(unit, value);
+    }
+    const visible = density?.visible !== false;
+    element.setAttribute('aria-pressed', String(visible));
+    element.title = labels
+        ? `${visible ? 'Hide' : 'Show'} difference density (${labels.full})`
+        : '';
+}
+
 viewer.onDifferenceDensityUpdate(update => {
+    updateDensityLevelDisplay();
     if (update.type === 'update' && !update.final) {
         updateStatus(
             `Refining density surface: step ${update.stepIndex + 1}/${update.totalSteps} ` +
@@ -140,29 +181,65 @@ const SUPPORTED_REFLECTION_DATA = new RegExp([
     '_diffrn_refln[._](?:intensity_net|intensity_meas)',
     '_shelx[^\\s]*hkl_file',
     '_iucr_refine_fcf_details',
+    '_cifvis_difference_density_loop',
 ].join('|'), 'i');
 let playgroundLoadSequence = 0;
+let currentPlaygroundCifText = null;
 
 /**
  * @param {string} cifText - CIF text to inspect.
- * @returns {boolean} Whether a CIF advertises a standard observed-reflection source.
+ * @param {number|string} [blockSelector] - Selected coordinate/reflection block.
+ * @returns {boolean} Whether the selected block advertises a supported reflection source.
  */
-function hasSupportedReflectionData(cifText) {
-    return SUPPORTED_REFLECTION_DATA.test(cifText);
+function hasSupportedReflectionData(cifText, blockSelector = 0) {
+    try {
+        const cif = new CIF(cifText);
+        const block = typeof blockSelector === 'number'
+            ? cif.getBlock(blockSelector)
+            : cif.getBlockByName(blockSelector);
+        return SUPPORTED_REFLECTION_DATA.test(block.rawText ?? cifText);
+    } catch {
+        return SUPPORTED_REFLECTION_DATA.test(cifText);
+    }
+}
+
+/**
+ * Stores an uploaded CIF and shows its block selector only when useful.
+ * @param {string} cifText - Newly loaded CIF text.
+ * @returns {number} Initially selected block index.
+ */
+function configurePlaygroundBlocks(cifText) {
+    currentPlaygroundCifText = cifText;
+    const select = document.getElementById('cif-block-select');
+    select.replaceChildren();
+    const cif = new CIF(cifText);
+    const names = cif.getBlockNames();
+    const blockCount = cif.rawCifBlocks.length;
+    for (let index = 0; index < blockCount; index++) {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = names[index] ? `data_${names[index]}` : `Block ${index + 1}`;
+        select.appendChild(option);
+    }
+    select.hidden = blockCount <= 1;
+    select.value = '0';
+    return 0;
 }
 
 /**
  * Loads an uploaded playground CIF, adding a deferred density map when its
  * standard reflection data can be handled automatically.
  * @param {string} cifText - Uploaded CIF contents.
+ * @param {number|string} [cifBlock] - Block index or name.
  * @returns {Promise<void>}
  */
-async function loadPlaygroundCif(cifText) {
+async function loadPlaygroundCif(cifText, cifBlock = 0) {
     const loadSequence = ++playgroundLoadSequence;
-    const calculateDensity = hasSupportedReflectionData(cifText);
-    const result = await viewer.loadCIF(cifText, 0, {
+    const calculateDensity = hasSupportedReflectionData(cifText, cifBlock);
+    const result = await viewer.loadCIF(cifText, cifBlock, {
         differenceDensity: calculateDensity,
     });
+    updateDensityLevelDisplay();
     if (loadSequence !== playgroundLoadSequence) {
         return;
     }
@@ -222,7 +299,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundCif(text);
+            await loadPlaygroundCif(text, configurePlaygroundBlocks(text));
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -249,10 +326,32 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundCif(text);
+            await loadPlaygroundCif(text, configurePlaygroundBlocks(text));
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
+        }
+    });
+}
+
+/** Reloads the currently uploaded CIF when another data block is selected. */
+function initializeBlockSelector() {
+    const select = document.getElementById('cif-block-select');
+    select.addEventListener('change', async () => {
+        if (currentPlaygroundCifText === null) {
+            return;
+        }
+        updateStatus(`Loading ${select.selectedOptions[0]?.textContent ?? 'CIF block'}...`, 'info');
+        await loadPlaygroundCif(currentPlaygroundCifText, Number(select.value));
+    });
+}
+
+/** Makes the compact density-level readout double as its visibility toggle. */
+function initializeDensityLevelButton() {
+    document.getElementById('density-level').addEventListener('click', () => {
+        const density = viewer.state.differenceDensityGroup;
+        if (density) {
+            viewer.updateDifferenceDensityOptions({ visible: density.visible === false });
         }
     });
 }
@@ -315,6 +414,8 @@ function initializeSymmetryButton() {
  */
 function initializeUI() {
     initializeFileUpload();
+    initializeBlockSelector();
+    initializeDensityLevelButton();
     initializeHydrogenButton();
     initializeDisorderButton();
     initializeSymmetryButton();

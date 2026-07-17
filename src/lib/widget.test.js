@@ -38,6 +38,7 @@ customElements.define('cifview-widget', CifViewWidget);
 describe('CifViewWidget', () => {
     let mockCrystalViewer;
     let mockSelectionCallback;
+    let mockDensityCallback;
     let mockFetch;
 
     beforeEach(() => {
@@ -70,6 +71,8 @@ describe('CifViewWidget', () => {
             selections: {
                 onChange: vi.fn(),
             },
+            onDifferenceDensityUpdate: vi.fn(),
+            updateDifferenceDensityOptions: vi.fn(),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -88,8 +91,13 @@ describe('CifViewWidget', () => {
 
         // Mock selection callback storage
         mockSelectionCallback = null;
+        mockDensityCallback = null;
         mockCrystalViewer.selections.onChange.mockImplementation(callback => {
             mockSelectionCallback = callback;
+        });
+        mockCrystalViewer.onDifferenceDensityUpdate.mockImplementation(callback => {
+            mockDensityCallback = callback;
+            return vi.fn();
         });
 
         // Mock fetch - now returning data that will pass CIF validation
@@ -206,6 +214,34 @@ describe('CifViewWidget', () => {
         expect(caption.innerHTML).toContain('C1-O1: 1.5 ± SU Å');
         expect(caption.innerHTML).toContain('color:#ff0000');
         expect(caption.innerHTML).toContain('color:#00ff00');
+    });
+
+    test('shows the active density level next to the other controls', () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('caption', 'Test Structure');
+        document.body.appendChild(widget);
+        mockCrystalViewer.state.differenceDensityGroup = {
+            visible: true,
+            userData: { level: 0.12345, sigmaLevel: 3 },
+        };
+
+        mockDensityCallback({ type: 'update' });
+
+        const level = widget.querySelector('.density-level');
+        expect(level.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
+        expect(level.querySelector('.density-value').textContent).toBe('±0.123');
+        expect(level.title).toContain('Δρ ±0.123 e Å⁻³ · 3σ');
+        expect(level.parentElement).toBe(widget.buttonContainer);
+        expect(widget.querySelector('.crystal-caption').textContent)
+            .toBe('Test Structure');
+
+        level.click();
+        expect(mockCrystalViewer.updateDifferenceDensityOptions)
+            .toHaveBeenCalledWith({ visible: false });
+
+        mockCrystalViewer.state.differenceDensityGroup = null;
+        mockDensityCallback({ type: 'cleared' });
+        expect(widget.querySelector('.density-level')).toBeNull();
     });
 
     test('cleans up on disconnect', () => {

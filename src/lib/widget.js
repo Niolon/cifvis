@@ -31,6 +31,33 @@ const defaultStyles = `
     line-height: 1.5;
   }
 
+  cifview-widget .control-button.density-level {
+    width: 40px;
+    min-width: 40px;
+    padding: 2px;
+    flex-direction: column;
+    gap: 1px;
+    color: var(--cifvis-caption-color, #333);
+    font-family: system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  cifview-widget .density-level .density-unit {
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  cifview-widget .density-level .density-value {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  cifview-widget .control-button.density-level[aria-pressed="false"] {
+    opacity: 0.55;
+    text-decoration: line-through;
+  }
+
   cifview-widget .button-container {
     position: absolute;
     top: 16px;
@@ -121,11 +148,7 @@ export class CifViewWidget extends HTMLElement {
 
         // Create viewer with merged options
         this.viewer = new CrystalViewer(container, this.userOptions);
-        
-        this.viewer.selections.onChange(selections => {
-            this.selections = selections;
-            this.updateCaption();
-        });
+        this.connectViewerEvents();
         
         this.customIcons = this.parseCustomIcons();
         await this.updateFilteredAtoms();
@@ -152,6 +175,19 @@ export class CifViewWidget extends HTMLElement {
             return 0;
         }
         return /^\d+$/.test(rawValue) ? Number(rawValue) : rawValue;
+    }
+
+    /** Connects caption updates to the current viewer instance. */
+    connectViewerEvents() {
+        this.stopDifferenceDensityUpdates?.();
+        this.stopDifferenceDensityUpdates = this.viewer.onDifferenceDensityUpdate?.(() => {
+            this.updateDensityButton();
+            this.updateCaption();
+        }) ?? null;
+        this.viewer.selections.onChange(selections => {
+            this.selections = selections;
+            this.updateCaption();
+        });
     }
 
     parseOptions() {
@@ -264,6 +300,39 @@ export class CifViewWidget extends HTMLElement {
         if (this.viewer.numberModifierModes('symmetry') > 1) {
             this.addButton(this.buttonContainer, 'symmetry', 'Toggle Symmetry Display');
         }
+        this.updateDensityButton();
+    }
+
+    /** Adds or updates the compact density-level visibility control. */
+    updateDensityButton() {
+        this.buttonContainer?.querySelector('.density-level')?.remove();
+        const group = this.viewer?.state?.differenceDensityGroup;
+        const density = group?.userData;
+        if (!this.buttonContainer || !Number.isFinite(density?.level)) {
+            return;
+        }
+        const level = Number(density.level.toPrecision(3));
+        const sigma = Number.isFinite(density.sigmaLevel)
+            ? ` · ${Number(density.sigmaLevel.toPrecision(3))}σ`
+            : '';
+        const visible = group.visible !== false;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'control-button density-level';
+        const unit = document.createElement('span');
+        unit.className = 'density-unit';
+        unit.textContent = 'Δρ/eÅ⁻³';
+        const value = document.createElement('span');
+        value.className = 'density-value';
+        value.textContent = `±${level}`;
+        button.append(unit, value);
+        button.setAttribute('aria-pressed', String(visible));
+        button.title = `${visible ? 'Hide' : 'Show'} difference density ` +
+            `(Δρ ±${level} e Å⁻³${sigma})`;
+        button.addEventListener('click', () => {
+            this.viewer.updateDifferenceDensityOptions({ visible: group.visible === false });
+        });
+        this.buttonContainer.appendChild(button);
     }
 
     parseCustomIcons() {
@@ -433,15 +502,13 @@ export class CifViewWidget extends HTMLElement {
 
                     this.viewer.dispose();
                     this.viewer = new CrystalViewer(container, this.userOptions);
-                    this.viewer.selections.onChange(selections => {
-                        this.selections = selections;
-                        this.updateCaption();
-                    });
+                    this.connectViewerEvents();
 
                     // Reload structure if we already had one
                     if (currentCifContent) {
                         await this.viewer.loadCIF(currentCifContent, currentCifBlock ?? 0);
                         this.setupButtons();
+                        this.updateCaption();
                     }
                 }
                 break;
@@ -519,6 +586,7 @@ export class CifViewWidget extends HTMLElement {
 
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
+                this.updateCaption();
             } else {
                 throw new Error(result.error ||'Unknown Error');
             }
@@ -534,6 +602,7 @@ export class CifViewWidget extends HTMLElement {
 
             if (result.success) {
                 this.setupButtons();  // Setup buttons after loading
+                this.updateCaption();
             } else {
                 throw new Error(result.error || 'Unknown Error');
             }
@@ -650,6 +719,7 @@ export class CifViewWidget extends HTMLElement {
     }
 
     disconnectedCallback() {
+        this.stopDifferenceDensityUpdates?.();
         if (this.viewer) {
             this.viewer.dispose();
         }

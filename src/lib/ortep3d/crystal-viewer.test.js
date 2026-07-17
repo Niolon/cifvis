@@ -284,4 +284,30 @@ describe('CrystalViewer progressive difference-density events', () => {
                 { surfaceResolution: 64, polygonCount: 1000, dimensions: [64, 128, 64] },
             ]);
     });
+
+    test('toggles density visibility without rebuilding its surfaces', () => {
+        const group = { visible: true };
+        const viewer = {
+            state: { differenceDensityGroup: group },
+            options: { differenceDensity: { visible: true } },
+            requestRender: vi.fn(),
+            notifyDifferenceDensityUpdate: vi.fn(),
+            setDifferenceDensityVisibility(visible) {
+                return CrystalViewer.prototype.setDifferenceDensityVisibility.call(this, visible);
+            },
+            updateDifferenceDensity3D: vi.fn(),
+        };
+
+        const result = CrystalViewer.prototype.updateDifferenceDensityOptions.call(
+            viewer,
+            { visible: false },
+        );
+
+        expect(result).toEqual({ success: true, visible: false });
+        expect(group.visible).toBe(false);
+        expect(viewer.options.differenceDensity.visible).toBe(false);
+        expect(viewer.updateDifferenceDensity3D).not.toHaveBeenCalled();
+        expect(viewer.notifyDifferenceDensityUpdate)
+            .toHaveBeenCalledWith({ type: 'visibility', visible: false });
+    });
 });
