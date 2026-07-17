@@ -1301,8 +1301,13 @@ export class CrystalViewer {
             this.moleculeContainer.updateMatrix();
         }
 
-        // Calculate center from rotated structure for proper bounding box
-        const extent = new THREE.Box3().setFromObject(this.moleculeContainer);
+        // Centre on the rendered molecule, not auxiliary objects such as the
+        // unit-cell helper or an asymmetric/clipped density surface. Density is
+        // normally added after the initial structure load, but it is already
+        // present when a growth-mode change rebuilds the scene; including it
+        // here would therefore move the molecule after cycling modifiers.
+        this.moleculeContainer.updateMatrixWorld(true);
+        const extent = new THREE.Box3().setFromObject(this.state.currentStructure);
         extent.getCenter(this.state.structureCenter);
 
         this.moleculeContainer.position.sub(this.state.structureCenter);
@@ -1424,7 +1429,12 @@ export class CrystalViewer {
      */
     updateCamera() {
         this.controls.handleResize();
-        this.cameraController.fitToStructure(this.moleculeContainer);
+        // Camera framing follows the molecule only. Density is an overlay and
+        // must not change either the molecular centre or the fitted zoom when
+        // it happens to be present during a modifier rebuild.
+        this.cameraController.fitToStructure(
+            this.state.currentStructure ?? this.moleculeContainer,
+        );
         this.requestRender();
     }
 

@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import * as THREE from 'three';
 import { CrystalViewer } from './crystal-viewer.js';
 
 const MINIMAL_CIF_WITH_STRUCTURE = `data_structure
@@ -130,6 +131,65 @@ describe('CrystalViewer atom-label runtime option validation', () => {
 
         expect(viewer.options.atomLabels.placementMode).toBe('quality-omit');
         expect(viewer.options.atomLabels.calloutPlacement).toBe('structure');
+    });
+});
+
+describe('CrystalViewer structure centring', () => {
+    test('does not let an existing density overlay displace the molecule on reload', async () => {
+        const moleculeContainer = new THREE.Group();
+        const viewer = {
+            state: {
+                baseStructure: {},
+                currentStructure: null,
+                structureCenter: new THREE.Vector3(),
+            },
+            selections: { clear: vi.fn() },
+            moleculeContainer,
+            cameraTarget: new THREE.Vector3(),
+            camera: new THREE.PerspectiveCamera(),
+            options: { camera: { initialPosition: new THREE.Vector3(0, 0, 10) } },
+            container: { clientWidth: 800, clientHeight: 600 },
+            scene: new THREE.Scene(),
+            update3DOrtep() {
+                const molecule = new THREE.Group();
+                for (const position of [[10, 0, 0], [12, 0, 0], [11, 2, 1]]) {
+                    const atom = new THREE.Mesh(new THREE.SphereGeometry(0.25));
+                    atom.position.set(...position);
+                    atom.userData.type = 'atom';
+                    molecule.add(atom);
+                }
+                const density = new THREE.Mesh(new THREE.BoxGeometry(20, 2, 2));
+                density.position.set(100, 0, 0);
+                this.moleculeContainer.add(molecule, density);
+                this.state.currentStructure = molecule;
+            },
+            updateCamera: vi.fn(),
+            requestRender: vi.fn(),
+        };
+
+        await CrystalViewer.prototype.loadStructure.call(viewer, viewer.state.baseStructure);
+
+        moleculeContainer.updateMatrixWorld(true);
+        const centre = new THREE.Vector3();
+        new THREE.Box3().setFromObject(viewer.state.currentStructure).getCenter(centre);
+        expect(centre.length()).toBeCloseTo(0, 10);
+    });
+
+    test('fits the camera to the molecule rather than the density container', () => {
+        const molecule = new THREE.Group();
+        const container = new THREE.Group();
+        container.add(molecule);
+        const viewer = {
+            state: { currentStructure: molecule },
+            moleculeContainer: container,
+            controls: { handleResize: vi.fn() },
+            cameraController: { fitToStructure: vi.fn() },
+            requestRender: vi.fn(),
+        };
+
+        CrystalViewer.prototype.updateCamera.call(viewer);
+
+        expect(viewer.cameraController.fitToStructure).toHaveBeenCalledWith(molecule);
     });
 });
 
