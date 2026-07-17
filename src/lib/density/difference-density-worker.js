@@ -34,6 +34,7 @@ function mapPayload(map) {
         fullCoefficientCount: map.fullCoefficientCount,
         coefficientMode: map.coefficientMode,
         omitF000: map.omitF000,
+        anomalousDispersion: map.anomalousDispersion,
         symmetryOperations: map.symmetryOperations,
         resolutionFraction: map.resolutionFraction,
         gridOversampling: map.gridOversampling,
@@ -59,6 +60,7 @@ async function calculateProgressively(message) {
             message.fcfText,
             message.fcfBlock,
             message.coefficientColumns,
+            message.anomalousDispersion,
         );
         const steps = normalizedSteps(message.steps);
         const finalOversampling = Math.max(1, Number(message.gridOversampling) || 1);

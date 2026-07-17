@@ -136,6 +136,28 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(CrystalViewer.prototype.normalizedDifferenceDensitySteps.call(viewer)).toEqual([0.5, 1]);
     });
 
+    test('passes the active coordinate CIF to anomalous-dispersion correction', () => {
+        const viewer = {
+            state: { currentCifContent: 'data_model', currentCifBlock: 'model' },
+            options: {
+                differenceDensity: {
+                    anomalousDispersion: { target: 'second', table: 'Mo' },
+                },
+            },
+        };
+
+        expect(CrystalViewer.prototype.differenceDensityAnomalousDispersionOptions.call(viewer))
+            .toEqual({
+                target: 'second',
+                table: 'Mo',
+                cifText: 'data_model',
+                cifBlock: 'model',
+            });
+        viewer.options.differenceDensity.anomalousDispersion = false;
+        expect(CrystalViewer.prototype.differenceDensityAnomalousDispersionOptions.call(viewer))
+            .toBeNull();
+    });
+
     test('reuses one density map while increasing only surface resolution', () => {
         const densityMap = {
             cell: {},

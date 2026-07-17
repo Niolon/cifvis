@@ -866,6 +866,7 @@ export class CrystalViewer {
                 fcfText,
                 fcfBlock,
                 coefficientColumns: this.options.differenceDensity.coefficientColumns,
+                anomalousDispersion: this.differenceDensityAnomalousDispersionOptions(),
                 steps: this.options.differenceDensity.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -888,6 +889,7 @@ export class CrystalViewer {
                 fcfText,
                 fcfBlock,
                 this.options.differenceDensity.coefficientColumns,
+                this.differenceDensityAnomalousDispersionOptions(),
             );
             const steps = this.normalizedDifferenceDensitySteps();
             const finalOversampling = Math.max(
@@ -936,6 +938,26 @@ export class CrystalViewer {
             this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
             return { success: false, error: error.message };
         }
+    }
+
+    /**
+     * Adds the active coordinate CIF to the public anomalous-correction option.
+     * @returns {object|null} Worker-safe correction configuration.
+     * @private
+     */
+    differenceDensityAnomalousDispersionOptions() {
+        const option = this.options.differenceDensity.anomalousDispersion;
+        if (!option) {
+            return null;
+        }
+        if (option !== true && (typeof option !== 'object' || Array.isArray(option))) {
+            throw new Error('differenceDensity.anomalousDispersion must be true, false, or an object');
+        }
+        return {
+            ...(option === true ? {} : option),
+            cifText: this.state.currentCifContent,
+            cifBlock: this.state.currentCifBlock,
+        };
     }
 
     /** @returns {number[]} Valid ordered surface-resolution fractions. */
@@ -995,6 +1017,7 @@ export class CrystalViewer {
             coefficientCount: densityMap.coefficientCount,
             coefficientMode: densityMap.coefficientMode,
             omitF000: densityMap.omitF000,
+            anomalousDispersion: densityMap.anomalousDispersion,
             sigma: densityMap.sigma,
             minimum: densityMap.minimum,
             maximum: densityMap.maximum,
@@ -1049,6 +1072,7 @@ export class CrystalViewer {
             coefficientCount: densityMap.coefficientCount,
             coefficientMode: densityMap.coefficientMode,
             omitF000: densityMap.omitF000,
+            anomalousDispersion: densityMap.anomalousDispersion,
             dimensions: [...densityMap.dimensions],
             gridOversampling: densityMap.gridOversampling,
             sigma: densityMap.sigma,

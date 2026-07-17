@@ -189,6 +189,10 @@ export default {
         // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
         // columns can provide amplitudes/phases or direct A/B coefficients.
         'coefficientColumns': null,
+        // Detect an uncorrected anomalous contribution from inversion/Friedel
+        // constraints, with Olex metadata as fallback. Coordinate-CIF f'/f''
+        // values take precedence over internal tables.
+        'anomalousDispersion': false,
         // All reflections are used from the start. The normal grid gives a
         // quick first display; the worker then replaces it with the final
         // oversampled grid before refining only the surface tessellation.

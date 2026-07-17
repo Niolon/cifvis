@@ -3,6 +3,7 @@ import { CIF } from '../read-cif/base.js';
 import { UnitCell } from '../structure/crystal.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
 import * as math from '../math-lite.js';
+import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -21,8 +22,15 @@ function wrapIndex(value, size) {
 }
 
 /** @returns {Array|null} First matching reflection-loop column. */
-function reflectionColumn(loop, names, defaultValue = null) {
-    return loop.get(names, defaultValue);
+function reflectionColumn(loop, names, ...fallback) {
+    try {
+        return loop.get(names);
+    } catch (error) {
+        if (fallback.length > 0) {
+            return fallback[0];
+        }
+        throw error;
+    }
 }
 
 /** Ensures all required reflection columns contain the same row count. */
@@ -80,6 +88,7 @@ function customCoefficientReader(loop, columns) {
         assertSameLength([...aValues, ...bValues]);
         return {
             mode: aValues.length === 1 ? 'a-b' : 'a-b-difference',
+            componentCount: aValues.length,
             valueColumns: [...aValues, ...bValues],
             coefficientAt(index) {
                 const real = Number(aValues[0][index]) -
@@ -108,6 +117,7 @@ function customCoefficientReader(loop, columns) {
     return {
         mode: amplitudes.length === 1 ? 'amplitude-phase' :
             splitPhases ? 'split-phase-difference' : 'common-phase-difference',
+        componentCount: amplitudes.length,
         valueColumns: [...amplitudes, ...phases],
         coefficientAt(index) {
             if (!splitPhases) {
@@ -128,6 +138,177 @@ function customCoefficientReader(loop, columns) {
                     Number(amplitudes[1][index]) * Math.sin(secondPhase),
             };
         },
+    };
+}
+
+/** @returns {number} Sign used to remove anomalous scattering from a selected operand. */
+function anomalousCorrectionScale(target, componentCount) {
+    const normalized = target ?? 'first';
+    if (!['first', 'second', 'both', 'result'].includes(normalized)) {
+        throw new Error(
+            'Anomalous-dispersion target must be "first", "second", "both", or "result"',
+        );
+    }
+    if (normalized === 'second') {
+        if (componentCount < 2) {
+            throw new Error('Cannot correct the second operand of a single coefficient set');
+        }
+        return 1;
+    }
+    if (normalized === 'both' && componentCount > 1) {
+        return 0;
+    }
+    return -1;
+}
+
+/** @returns {string} Reflection-file producer relevant to anomalous correction. */
+function reflectionFileGenerator(block, options) {
+    if (options.generator !== undefined && options.generator !== 'auto') {
+        const generator = String(options.generator).toLowerCase();
+        if (!['olex', 'shelxl'].includes(generator)) {
+            throw new Error('Anomalous-dispersion generator must be "auto", "olex", or "shelxl"');
+        }
+        return generator;
+    }
+    const value = name => {
+        try {
+            return String(block.get(name, '')).toLowerCase();
+        } catch {
+            return '';
+        }
+    };
+    const refinement = value('_computing_structure_refinement');
+    if (refinement.includes('olex2.refine') || refinement.includes('olex2_refine')) {
+        return 'olex';
+    }
+    if (refinement.includes('shelxl')) {
+        return 'shelxl';
+    }
+    const creation = value('_audit_creation_method');
+    if (creation.includes('olex2.refine') || creation.includes('olex2_refine')) {
+        return 'olex';
+    }
+    if (creation.includes('shelxl')) {
+        return 'shelxl';
+    }
+    return 'unknown';
+}
+
+/** @returns {object} Centrosymmetric phase-conformance information. */
+function centrosymmetricPhaseCheck(symmetry, h, k, l, phases, toleranceDegrees = 0.05) {
+    const inversion = symmetry.symmetryOperations.find(operation =>
+        operation.rotMatrix.every((row, rowIndex) => row.every((value, columnIndex) =>
+            Math.abs(value - (rowIndex === columnIndex ? -1 : 0)) < 1e-8,
+        )),
+    );
+    if (!inversion) {
+        return { centrosymmetric: false, available: false };
+    }
+    if (!phases) {
+        return { centrosymmetric: true, available: false };
+    }
+    let checkedCount = 0;
+    let maximumDeviationDegrees = 0;
+    for (let index = 0; index < phases.length; index++) {
+        const phase = Number(phases[index]);
+        const indices = [Number(h[index]), Number(k[index]), Number(l[index])];
+        if (![phase, ...indices].every(Number.isFinite)) {
+            continue;
+        }
+        const expected = 180 * (
+            indices[0] * inversion.transVector[0] +
+            indices[1] * inversion.transVector[1] +
+            indices[2] * inversion.transVector[2]
+        );
+        const deviation = Math.abs(((phase - expected + 90) % 180 + 180) % 180 - 90);
+        maximumDeviationDegrees = Math.max(maximumDeviationDegrees, deviation);
+        checkedCount++;
+    }
+    return {
+        centrosymmetric: true,
+        method: 'inversion-phases',
+        available: checkedCount > 0,
+        checkedCount,
+        toleranceDegrees,
+        maximumDeviationDegrees,
+        alreadyCorrected: checkedCount > 0 && maximumDeviationDegrees <= toleranceDegrees,
+        needsCorrection: checkedCount > 0 && maximumDeviationDegrees > toleranceDegrees,
+    };
+}
+
+/** @returns {object} Friedel-pair phase-conformance information. */
+function friedelPairPhaseCheck(
+    h,
+    k,
+    l,
+    phases,
+    amplitudes,
+    toleranceDegrees = 0.05,
+    amplitudeToleranceRelative = 1e-4,
+) {
+    if (!phases) {
+        return { centrosymmetric: false, method: 'friedel-pair-phases', available: false };
+    }
+    const rows = new Map();
+    let maximumAmplitude = 0;
+    for (let index = 0; index < phases.length; index++) {
+        const indices = [Number(h[index]), Number(k[index]), Number(l[index])];
+        const phase = Number(phases[index]);
+        const amplitude = amplitudes ? Number(amplitudes[index]) : null;
+        if (![...indices, phase].every(Number.isFinite)) {
+            continue;
+        }
+        if (Number.isFinite(amplitude)) {
+            maximumAmplitude = Math.max(maximumAmplitude, Math.abs(amplitude));
+        }
+        rows.set(indices.join(','), { indices, phase, amplitude });
+    }
+    const visited = new Set();
+    let checkedPairCount = 0;
+    let maximumDeviationDegrees = 0;
+    let maximumAmplitudeDeviationRelative = 0;
+    const minimumAmplitude = maximumAmplitude * 1e-4;
+    for (const [key, row] of rows) {
+        if (visited.has(key) || row.indices.every(value => value === 0)) {
+            continue;
+        }
+        const mateKey = row.indices.map(value => -value).join(',');
+        const mate = rows.get(mateKey);
+        if (!mate) {
+            continue;
+        }
+        visited.add(key);
+        visited.add(mateKey);
+        if (maximumAmplitude > 0 &&
+            (Math.abs(row.amplitude) < minimumAmplitude ||
+                Math.abs(mate.amplitude) < minimumAmplitude)) {
+            continue;
+        }
+        const deviation = Math.abs(((row.phase + mate.phase + 180) % 360 + 360) % 360 - 180);
+        maximumDeviationDegrees = Math.max(maximumDeviationDegrees, deviation);
+        if (maximumAmplitude > 0 &&
+            Number.isFinite(row.amplitude) && Number.isFinite(mate.amplitude)) {
+            maximumAmplitudeDeviationRelative = Math.max(
+                maximumAmplitudeDeviationRelative,
+                Math.abs(Math.abs(row.amplitude) - Math.abs(mate.amplitude)) / maximumAmplitude,
+            );
+        }
+        checkedPairCount++;
+    }
+    const alreadyCorrected = checkedPairCount > 0 &&
+        maximumDeviationDegrees <= toleranceDegrees &&
+        maximumAmplitudeDeviationRelative <= amplitudeToleranceRelative;
+    return {
+        centrosymmetric: false,
+        method: 'friedel-pair-phases',
+        available: checkedPairCount > 0,
+        checkedPairCount,
+        toleranceDegrees,
+        maximumDeviationDegrees,
+        amplitudeToleranceRelative,
+        maximumAmplitudeDeviationRelative,
+        alreadyCorrected,
+        needsCorrection: checkedPairCount > 0 && !alreadyCorrected,
     };
 }
 
@@ -379,9 +560,15 @@ function fourierGrid(coefficients, cell, gridOversampling = 1) {
  * @param {string} fcfText - LIST 6/8-style FCF text.
  * @param {number|string} [cifBlock] - FCF block index or name.
  * @param {object|null} [coefficientColumns] - Custom Fourier coefficient columns.
+ * @param {boolean|object|null} [anomalousDispersion] - Anomalous correction and coordinate CIF.
  * @returns {object} Parsed progressive-density dataset.
  */
-export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficientColumns = null) {
+export function parseDifferenceDensityDataset(
+    fcfText,
+    cifBlock = 0,
+    coefficientColumns = null,
+    anomalousDispersion = null,
+) {
     const cif = new CIF(fcfText, false);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const cell = UnitCell.fromCIF(block);
@@ -400,6 +587,22 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficient
         loop,
         coefficientColumns?.l ?? ['_refln.index_l', '_refln_index_l'],
     );
+    const calculatedPhases = reflectionColumn(
+        loop,
+        ['_refln.phase_calc', '_refln_phase_calc'],
+        null,
+    );
+    const phaseCheckCalculated = reflectionColumn(
+        loop,
+        ['_refln.F_calc', '_refln_F_calc'],
+        null,
+    );
+    const phaseCheckCalculatedSquared = phaseCheckCalculated === null
+        ? reflectionColumn(loop, ['_refln.F_squared_calc', '_refln_F_squared_calc'], null)
+        : null;
+    const phaseCheckAmplitudes = phaseCheckCalculated ?? phaseCheckCalculatedSquared?.map(value =>
+        Math.sqrt(Math.max(0, Number(value))),
+    );
 
     let coefficientReader;
     let omitF000;
@@ -409,7 +612,10 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficient
         // retain their mean term unless the caller explicitly requests omission.
         omitF000 = coefficientColumns.omitF000 ?? false;
     } else {
-        const phase = reflectionColumn(loop, ['_refln.phase_calc', '_refln_phase_calc']);
+        if (calculatedPhases === null) {
+            throw new Error('None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop');
+        }
+        const phase = calculatedPhases;
         const measuredSquared = reflectionColumn(
             loop,
             ['_refln.F_squared_meas', '_refln_F_squared_meas'],
@@ -431,6 +637,7 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficient
         }
         coefficientReader = {
             mode: 'fo-fc-common-phase',
+            componentCount: 2,
             valueColumns: [phase, measuredSquared ?? measured, calculated ?? calculatedSquared],
             coefficientAt(index) {
                 const observedAmplitude = measuredSquared !== null
@@ -451,11 +658,88 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficient
     }
 
     assertSameLength([h, k, l, ...coefficientReader.valueColumns]);
+    let coefficientAt = coefficientReader.coefficientAt;
+    let anomalousMetadata = { enabled: false, requested: Boolean(anomalousDispersion) };
+    if (anomalousDispersion) {
+        const options = anomalousDispersion === true ? {} : anomalousDispersion;
+        if (typeof options !== 'object') {
+            throw new Error('Anomalous-dispersion options must be true or an object');
+        }
+        const generator = reflectionFileGenerator(block, options);
+        let phaseCheck;
+        if (options.phaseDetection === false) {
+            phaseCheck = { available: false, disabled: true };
+        } else {
+            const centrosymmetricCheck = centrosymmetricPhaseCheck(
+                symmetry,
+                h,
+                k,
+                l,
+                calculatedPhases,
+                Number(options.phaseToleranceDegrees) || 0.05,
+            );
+            phaseCheck = centrosymmetricCheck.centrosymmetric
+                ? centrosymmetricCheck
+                : friedelPairPhaseCheck(
+                    h,
+                    k,
+                    l,
+                    calculatedPhases,
+                    phaseCheckAmplitudes,
+                    Number(options.phaseToleranceDegrees) || 0.05,
+                    Number(options.friedelAmplitudeToleranceRelative) || 1e-4,
+                );
+        }
+        const skipReason = phaseCheck.disabled
+            ? 'phase-detection-disabled'
+            : phaseCheck.alreadyCorrected
+                ? 'phases-already-corrected'
+                : !phaseCheck.available && generator !== 'olex'
+                    ? 'exact-test-unavailable'
+                    : null;
+        if (skipReason) {
+            anomalousMetadata = {
+                enabled: false,
+                requested: true,
+                generator,
+                reason: skipReason,
+                phaseCheck,
+            };
+        } else {
+            const correction = createAnomalousDispersionCorrection(
+                options.cifText,
+                options.cifBlock ?? 0,
+                options,
+                cell,
+            );
+            const scale = anomalousCorrectionScale(options.target, coefficientReader.componentCount);
+            coefficientAt = index => {
+                const coefficient = coefficientReader.coefficientAt(index);
+                const anomalous = correction.coefficientAt(
+                    Number(h[index]),
+                    Number(k[index]),
+                    Number(l[index]),
+                );
+                return {
+                    real: coefficient.real + scale * anomalous.real,
+                    imaginary: coefficient.imaginary + scale * anomalous.imaginary,
+                };
+            };
+            anomalousMetadata = {
+                ...correction.metadata,
+                requested: true,
+                generator,
+                phaseCheck,
+                target: options.target ?? 'first',
+                correctionScale: scale,
+            };
+        }
+    }
     const coefficients = expandReflectionCoefficients(
         h,
         k,
         l,
-        coefficientReader.coefficientAt,
+        coefficientAt,
         symmetry,
         omitF000,
     );
@@ -480,6 +764,7 @@ export function parseDifferenceDensityDataset(fcfText, cifBlock = 0, coefficient
         reflectionCount: h.length,
         coefficientMode: coefficientReader.mode,
         omitF000,
+        anomalousDispersion: anomalousMetadata,
         maximumReciprocalLength,
         symmetryOperations: symmetry.symmetryOperations.map(operation => ({
             rotation: operation.rotMatrix.map(row => [...row]),
@@ -523,6 +808,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         fullCoefficientCount: dataset.coefficients.size,
         coefficientMode: dataset.coefficientMode,
         omitF000: dataset.omitF000,
+        anomalousDispersion: dataset.anomalousDispersion,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,
@@ -582,9 +868,19 @@ export class DifferenceDensityMap {
         );
     }
 
-    static fromCIF(fcfText, cifBlock = 0, coefficientColumns = null) {
+    static fromCIF(
+        fcfText,
+        cifBlock = 0,
+        coefficientColumns = null,
+        anomalousDispersion = null,
+    ) {
         return calculateDifferenceDensityMap(
-            parseDifferenceDensityDataset(fcfText, cifBlock, coefficientColumns),
+            parseDifferenceDensityDataset(
+                fcfText,
+                cifBlock,
+                coefficientColumns,
+                anomalousDispersion,
+            ),
         );
     }
 }
