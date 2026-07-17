@@ -172,6 +172,11 @@ export function createIAMStructureFactorCalculator(cifText, cifBlock = 0, option
             const coefficientSource = cifCoefficients ? 'cif' : configured ? 'configured' : 'internal';
             return {
                 source: `${coefficientSource}/${dispersionSource}`,
+                scatteringKey: JSON.stringify([
+                    ...coefficients,
+                    dispersion.real,
+                    dispersion.imaginary,
+                ]),
                 scatteringAt(sSquared) {
                     return {
                         real: evaluateCromerMann(coefficients, sSquared) + dispersion.real,

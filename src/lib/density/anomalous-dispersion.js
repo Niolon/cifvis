@@ -224,6 +224,7 @@ export function createAnomalousDispersionCorrection(cifText, cifBlock = 0, optio
             );
             return {
                 source: dispersion.source,
+                scatteringKey: `${dispersion.real},${dispersion.imaginary}`,
                 scatteringAt() {
                     return { real: dispersion.real, imaginary: dispersion.imaginary };
                 },

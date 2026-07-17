@@ -161,7 +161,8 @@ export function createStructureFactorModelInput(structure, block) {
 /**
  * Builds a symmetry-expanded atom sum with occupancy and displacement factors.
  * The supplied resolver provides the reflection-dependent complex scattering
- * factor for each independent atom.
+ * factor for each independent atom. Equal `scatteringKey` values identify
+ * numerically identical models that share one evaluation per reflection.
  * @param {string} cifText - Coordinate CIF contents.
  * @param {number|string} cifBlock - CIF block index or name.
  * @param {object} options - Model options.
@@ -208,6 +209,8 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
     })();
     const atoms = [];
     const sourceCounts = {};
+    const scatteringModels = [];
+    const scatteringModelIndices = new Map();
     for (let sourceIndex = 0; sourceIndex < sourceAtoms.length; sourceIndex++) {
         const sourceAtom = sourceAtoms[sourceIndex];
         let atom;
@@ -235,10 +238,20 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         }
         const source = resolved.source ?? 'unknown';
         sourceCounts[source] = (sourceCounts[source] ?? 0) + 1;
+        const scatteringKey = resolved.scatteringKey ?? resolved.scatteringAt;
+        let scatteringModelIndex = scatteringModelIndices.get(scatteringKey);
+        if (scatteringModelIndex === undefined) {
+            scatteringModelIndex = scatteringModels.length;
+            scatteringModelIndices.set(scatteringKey, scatteringModelIndex);
+            scatteringModels.push({
+                scatteringAt: resolved.scatteringAt,
+                atoms: [],
+            });
+        }
         atoms.push({
             atom,
             occupancy: finiteNumber(sourceAtom.occupancy) ?? 1,
-            scatteringAt: resolved.scatteringAt,
+            scatteringModelIndex,
         });
     }
 
@@ -263,7 +276,7 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             inverseDirectTransform,
         ),
     }));
-    const expandedAtoms = [];
+    let expandedAtomCount = 0;
     for (const modelAtom of atoms) {
         const seen = new Set();
         const position = modelAtom.atom.position instanceof FractPosition
@@ -286,16 +299,17 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                 continue;
             }
             seen.add(key);
-            expandedAtoms.push({
+            const expandedAtom = {
                 position: transformedPosition,
                 occupancy: modelAtom.occupancy,
-                scatteringAt: modelAtom.scatteringAt,
                 displacement: displacementParameters(
                     modelAtom.atom,
                     cell,
                     transform.cartesianRotation,
                 ),
-            });
+            };
+            expandedAtomCount++;
+            scatteringModels[modelAtom.scatteringModelIndex].atoms.push(expandedAtom);
         }
     }
     const npdAdpLabels = atoms
@@ -308,18 +322,23 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         const sSquared = reciprocalLengthSquared / 4;
         let real = 0;
         let imaginary = 0;
-        for (const atom of expandedAtoms) {
-            const scattering = atom.scatteringAt(sSquared);
-            const phase = TWO_PI * (h * atom.position[0] + k * atom.position[1] + l * atom.position[2]);
-            const scale = atom.occupancy * displacementFactor(
-                atom.displacement,
-                reciprocal,
-                reciprocalLengthSquared,
-            );
-            const cosine = Math.cos(phase);
-            const sine = Math.sin(phase);
-            real += scale * (scattering.real * cosine - scattering.imaginary * sine);
-            imaginary += scale * (scattering.real * sine + scattering.imaginary * cosine);
+        for (let modelIndex = 0; modelIndex < scatteringModels.length; modelIndex++) {
+            const scatteringModel = scatteringModels[modelIndex];
+            const scattering = scatteringModel.scatteringAt(sSquared);
+            for (const atom of scatteringModel.atoms) {
+                const phase = TWO_PI * (
+                    h * atom.position[0] + k * atom.position[1] + l * atom.position[2]
+                );
+                const scale = atom.occupancy * displacementFactor(
+                    atom.displacement,
+                    reciprocal,
+                    reciprocalLengthSquared,
+                );
+                const cosine = Math.cos(phase);
+                const sine = Math.sin(phase);
+                real += scale * (scattering.real * cosine - scattering.imaginary * sine);
+                imaginary += scale * (scattering.real * sine + scattering.imaginary * cosine);
+            }
         }
         return { real, imaginary };
     }
@@ -341,7 +360,8 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         metadata: {
             wavelength,
             atomCount: atoms.length,
-            expandedAtomCount: expandedAtoms.length,
+            expandedAtomCount,
+            scatteringModelCount: scatteringModels.length,
             sourceCounts,
             npdAdpCount: npdAdpLabels.length,
             npdAdpLabels,

@@ -11,7 +11,10 @@ import { createAnomalousDispersionCorrection } from './anomalous-dispersion.js';
 import { CIF } from '../read-cif/base.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { UIsoADP } from '../structure/adp.js';
-import { createStructureFactorModelInput } from './structure-factor-model.js';
+import {
+    createStructureFactorModel,
+    createStructureFactorModelInput,
+} from './structure-factor-model.js';
 
 function modelCif({
     position = '0 0 0',
@@ -128,6 +131,38 @@ describe('IAM structure factors', () => {
             -2 * evaluateCromerMann(lookupCromerMann('C'), 0.2 ** 2 / 4),
             12,
         );
+    });
+
+    test('evaluates a shared atomic form factor once per model and reflection', () => {
+        const cif = modelCif().replace(
+            'C1 C 0 0 0 1 0',
+            'C1 C 0 0 0 1 0\n C2 C 0.25 0.25 0.25 1 0',
+        );
+        let evaluationCount = 0;
+        const calculator = createStructureFactorModel(cif, 0, {
+            resolveAtom() {
+                return {
+                    source: 'test',
+                    scatteringKey: 'C',
+                    scatteringAt(sSquared) {
+                        evaluationCount++;
+                        return { real: 6 - sSquared, imaginary: 0 };
+                    },
+                };
+            },
+        });
+
+        calculator.coefficientAt(1, 0, 0);
+        expect(evaluationCount).toBe(1);
+        calculator.coefficientAt(-1, 0, 0);
+        expect(evaluationCount).toBe(2);
+        calculator.coefficientAt(2, 0, 0);
+        expect(evaluationCount).toBe(3);
+        expect(calculator.metadata).toMatchObject({
+            atomCount: 2,
+            expandedAtomCount: 2,
+            scatteringModelCount: 1,
+        });
     });
 
     test('returns amplitudes and phases for batched hkl arrays and objects', () => {

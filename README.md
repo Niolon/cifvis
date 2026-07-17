@@ -239,6 +239,9 @@ const reflections = calculator.calculate([[1, 2, 3], { h: -1, k: -2, l: -3 }]);
 
 The normal factor is evaluated as
 `f0(s) = sum(ai exp(-bi s^2)) + c`, with `s = sin(theta) / wavelength`.
+Atoms with numerically identical normal and anomalous scattering models share
+one form-factor evaluation per reflection; position, occupancy, and ADP terms
+remain atom-specific.
 Complete CIF `_atom_type_scat_Cromer_Mann_*` rows take precedence over
 configured `cromerMann` values and the internal neutral-atom H-Cf table.
 Anomalous terms use site CIF values first, then type CIF values, configured
