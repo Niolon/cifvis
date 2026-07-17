@@ -10,7 +10,7 @@ export default defineConfig({
             reporter: ['text', 'json', 'html'],
             exclude: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*', 'integration-tests/*', 'src/demo'],
         },
-        include: ['src/lib/**/*.test.js'],
+        include: ['src/lib/**/*.test.js', 'site/src/**/*.test.js'],
         exclude: ['node_modules', 'dist', 'cod', 'coverage', 'integration-tests'],
     },
     resolve: {

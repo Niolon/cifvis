@@ -117,6 +117,10 @@ The playground inspects uploaded multi-block CIFs and shows a block selector
 only when more than one top-level `data_` block is present. The widget uses its
 existing `block="index-or-name"` attribute, and direct viewer calls pass the
 same selector as the second argument to `loadCIF` or `loadDifferenceDensity`.
+After a coordinate structure is loaded, dropping a reflection-only `.cif` or
+`.fcf` onto the playground updates its difference density without replacing the
+structure. The viewer rejects the update when the reflection and structure
+unit cells do not match.
 
 #### Custom and deformation-density coefficients
 

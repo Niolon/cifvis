@@ -6,6 +6,10 @@ import {
     createDifferenceDensityDisplayState,
     reduceDifferenceDensityDisplayState,
 } from '../../src/lib/density/difference-density-display-state.js';
+import {
+    classifyPlaygroundCif,
+    hasSupportedReflectionData,
+} from './playground-cif-routing.js';
 
 /**
  * Updates the status message displayed to the user
@@ -190,39 +194,17 @@ viewer.selections.onChange(selections => {
     });
 });
 
-const SUPPORTED_REFLECTION_DATA = new RegExp([
-    '_refln[._](?:intensity_meas|f_squared_meas|f_meas)',
-    '_diffrn_refln[._](?:intensity_net|intensity_meas)',
-    '_shelx[^\\s]*hkl_file',
-    '_iucr_refine_fcf_details',
-    '_cifvis_difference_density_loop',
-].join('|'), 'i');
 let playgroundLoadSequence = 0;
 let currentPlaygroundCifText = null;
-
-/**
- * @param {string} cifText - CIF text to inspect.
- * @param {number|string} [blockSelector] - Selected coordinate/reflection block.
- * @returns {boolean} Whether the selected block advertises a supported reflection source.
- */
-function hasSupportedReflectionData(cifText, blockSelector = 0) {
-    try {
-        const cif = new CIF(cifText);
-        const block = typeof blockSelector === 'number'
-            ? cif.getBlock(blockSelector)
-            : cif.getBlockByName(blockSelector);
-        return SUPPORTED_REFLECTION_DATA.test(block.rawText ?? cifText);
-    } catch {
-        return SUPPORTED_REFLECTION_DATA.test(cifText);
-    }
-}
+let playgroundHasStructure = false;
 
 /**
  * Stores an uploaded CIF and shows its block selector only when useful.
  * @param {string} cifText - Newly loaded CIF text.
+ * @param {number} [initialBlock] - Initially selected block index.
  * @returns {number} Initially selected block index.
  */
-function configurePlaygroundBlocks(cifText) {
+function configurePlaygroundBlocks(cifText, initialBlock = 0) {
     currentPlaygroundCifText = cifText;
     const select = document.getElementById('cif-block-select');
     select.replaceChildren();
@@ -236,8 +218,8 @@ function configurePlaygroundBlocks(cifText) {
         select.appendChild(option);
     }
     select.hidden = blockCount <= 1;
-    select.value = '0';
-    return 0;
+    select.value = String(initialBlock);
+    return initialBlock;
 }
 
 /**
@@ -264,6 +246,7 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
         return;
     }
 
+    playgroundHasStructure = true;
     adaptButtons();
     if (!result.differenceDensityStarted) {
         updateStatus('Structure loaded successfully', 'success');
@@ -281,6 +264,54 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
     }
 
     clearStatus();
+}
+
+/**
+ * Updates the active structure with reflection data from a separate CIF/FCF.
+ * Cell compatibility and density progress are owned and reported by the viewer.
+ * @param {string} cifText - Reflection-only CIF/FCF contents.
+ * @param {number|string} [cifBlock] - Reflection block index or name.
+ * @returns {Promise<void>}
+ */
+async function loadPlaygroundDifferenceDensity(cifText, cifBlock = 0) {
+    if (!playgroundHasStructure) {
+        updateStatus('Load a coordinate CIF before adding a reflection-only CIF/FCF.', 'error');
+        return;
+    }
+
+    const loadSequence = ++playgroundLoadSequence;
+    clearStatus();
+    const result = await viewer.loadDifferenceDensity(cifText, cifBlock);
+    if (loadSequence !== playgroundLoadSequence || result.cancelled) {
+        return;
+    }
+    if (!result.success) {
+        updateStatus(`Difference density failed: ${result.error}`, 'error');
+        return;
+    }
+    clearStatus();
+}
+
+/**
+ * Routes coordinate-bearing files to a full load and reflection-only files to
+ * the density loader for the current structure.
+ * @param {string} cifText - Uploaded or dropped CIF-style text.
+ * @returns {Promise<void>}
+ */
+async function loadPlaygroundText(cifText) {
+    const { coordinateBlock, reflectionBlock } = classifyPlaygroundCif(cifText);
+    if (coordinateBlock !== null) {
+        await loadPlaygroundCif(
+            cifText,
+            configurePlaygroundBlocks(cifText, coordinateBlock),
+        );
+        return;
+    }
+    if (reflectionBlock !== null) {
+        await loadPlaygroundDifferenceDensity(cifText, reflectionBlock);
+        return;
+    }
+    updateStatus('No atom coordinates or supported reflection data found.', 'error');
 }
 
 /**
@@ -305,7 +336,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundCif(text, configurePlaygroundBlocks(text));
+            await loadPlaygroundText(text);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -324,15 +355,15 @@ function initializeFileUpload() {
         e.stopPropagation();
         
         const file = e.dataTransfer.files[0];
-        if (!file || !file.name.toLowerCase().endsWith('.cif')) {
-            updateStatus('Please drop a CIF file', 'error');
+        if (!file || !/\.(?:cif|fcf)$/i.test(file.name)) {
+            updateStatus('Please drop a CIF or FCF file', 'error');
             return;
         }
 
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundCif(text, configurePlaygroundBlocks(text));
+            await loadPlaygroundText(text);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -458,6 +489,7 @@ async function loadInitialStructure() {
         if (!result.success) {
             throw new Error(result.error);
         }
+        playgroundHasStructure = true;
         adaptButtons();
     } catch (error) {
         console.error('Error loading initial structure:', error);
