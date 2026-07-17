@@ -13,7 +13,7 @@ const layoutOptionKeys = [
     'calloutPlacement',
     'calloutRowGap',
     'calloutSearchLimit',
-    'completeDistanceSteps',
+    'maximumCoverageDistanceSteps',
     'fallbackDistance',
     'performanceNoSpaceCellSize',
     'labelPadding',
@@ -595,7 +595,7 @@ export class AtomLabelManager {
         const interacting = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning;
         const requests = this.resolveRequests();
         const deferUntilInteractionEnds = interacting &&
-            (this.options.placementMode === 'complete' ||
+            (this.options.placementMode === 'maximum-coverage' ||
                 requests.length > this.options.interactionLabelLimit);
         if (deferUntilInteractionEnds) {
             this.endLoadingIndicator();

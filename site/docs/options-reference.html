@@ -263,10 +263,10 @@
                             <td>Object</td>
                             <td>Optional display-text overrides keyed by base label or symmetry-qualified atom ID.</td>
                         </tr>
-                        <tr class="option-row" data-keywords="atom labels placement mode complete fast omit callout performance">
+                        <tr class="option-row" data-keywords="atom labels placement mode maximum coverage omit callout performance">
                             <td><span class="option-code">atomLabels.placementMode</span></td>
                             <td>String</td>
-                            <td><code>auto-omit</code> adaptively uses quality placement for ordinary visible workloads and performance placement for dense ones; <code>quality-omit</code> forces exact candidate evaluation with repair; <code>performance-omit</code> forces front-to-back, zoom-specific no-space reuse without repair; <code>complete</code> searches farther and adds callouts. Omission modes reject confusing crossings. <span class="default-value">Default: "auto-omit"</span></td>
+                            <td><code>auto-omit</code> adaptively uses quality placement for ordinary visible workloads and performance placement for dense ones; <code>quality-omit</code> forces exact candidate evaluation with repair; <code>performance-omit</code> forces front-to-back, zoom-specific no-space reuse without repair; <code>maximum-coverage</code> searches farther and adds callouts. Omission modes reject confusing crossings. <span class="default-value">Default: "auto-omit"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels font size family weight">
                             <td><span class="option-code">atomLabels.fontSize / fontWeight / fontFamily</span></td>
@@ -308,25 +308,25 @@
                             <td>Number / Number / Boolean</td>
                             <td>Controls relayout during interaction. Complete or large layouts are hidden and recomputed after dragging by default. <span class="default-value">Defaults: 32, 300, true</span></td>
                         </tr>
-                        <tr class="option-row" data-keywords="atom labels complete callout lanes columns spacing">
+                        <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
                             <td><span class="option-code">atomLabels.calloutPlacement / calloutGap</span></td>
                             <td>String / Number</td>
-                            <td><code>structure</code> keeps complete-mode callouts just outside the projected structure; <code>viewport</code> uses the full viewport edges. <code>calloutGap</code> is the compact structure clearance in CSS pixels. <span class="default-value">Defaults: "structure", 12</span></td>
+                            <td><code>structure</code> keeps maximum-coverage callouts just outside the projected structure; <code>viewport</code> uses the full viewport edges. <code>calloutGap</code> is the compact structure clearance in CSS pixels. <span class="default-value">Defaults: "structure", 12</span></td>
                         </tr>
-                        <tr class="option-row" data-keywords="atom labels complete callout lanes columns spacing">
+                        <tr class="option-row" data-keywords="atom labels maximum coverage callout lanes columns spacing">
                             <td><span class="option-code">atomLabels.calloutColumns / calloutColumnGap / calloutRowGap</span></td>
                             <td>Number</td>
-                            <td>Callout lane count and spacing used by <code>complete</code> placement. <span class="default-value">Defaults: 3, 8, 4</span></td>
+                            <td>Callout lane count and spacing used by <code>maximum-coverage</code> placement. <span class="default-value">Defaults: 3, 8, 4</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels repair backtracking connector balance">
                             <td><span class="option-code">atomLabels.repairDepth / repairSearchLimit</span></td>
                             <td>Number / Number</td>
                             <td>Bounds displacement repair before a label is omitted or given a distant callout. Set either to 0 to disable repair. <span class="default-value">Defaults: 2, 48</span></td>
                         </tr>
-                        <tr class="option-row" data-keywords="atom labels complete distance radial search compact connector">
-                            <td><span class="option-code">atomLabels.completeDistanceSteps</span></td>
+                        <tr class="option-row" data-keywords="atom labels maximum coverage distance radial search compact connector">
+                            <td><span class="option-code">atomLabels.maximumCoverageDistanceSteps</span></td>
                             <td>Number</td>
-                            <td>Number of local radial distance bands searched in <code>complete</code> mode before callouts. More bands give repair additional moderate placements at added worker cost. <span class="default-value">Default: 6</span></td>
+                            <td>Number of local radial distance bands searched in <code>maximum-coverage</code> mode before callouts. More bands give repair additional moderate placements at added worker cost. <span class="default-value">Default: 6</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels spatial index cell performance">
                             <td><span class="option-code">atomLabels.spatialCellSize</span></td>

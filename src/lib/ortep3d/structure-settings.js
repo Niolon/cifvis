@@ -221,7 +221,7 @@ export default {
         'hideLabelsDuringDeferredLayout': true,
         'calloutPlacement': 'structure',
         'calloutGap': 12,
-        'completeDistanceSteps': 6,
+        'maximumCoverageDistanceSteps': 6,
         'calloutColumns': 3,
         'calloutColumnGap': 8,
         'calloutRowGap': 4,

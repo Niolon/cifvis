@@ -4,10 +4,10 @@
 //
 // Usage:
 //   npm run bench:labels
-//   npm run bench:labels -- path/to/file-or-directory --mode complete
+//   npm run bench:labels -- path/to/file-or-directory --mode maximum-coverage
 //
 // Options:
-//   --mode <mode>       auto-omit (default), quality-omit, performance-omit, or complete
+//   --mode <mode>       auto-omit, quality-omit, performance-omit, or maximum-coverage
 //   --callouts <policy> structure (default) or viewport
 //   --max-connector <px> Optional hard connector-length ceiling
 //   --show <selection>   all (default) or non-hydrogen
@@ -143,7 +143,7 @@ window.runLabelBenchmark = async ({
     viewer.camera.updateProjectionMatrix();
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    // Warm text metrics and shaders once, then measure complete forced layouts.
+    // Warm text metrics and shaders once, then measure full forced layouts.
     viewer.atomLabelManager.invalidateLayout();
     await viewer.atomLabelManager.update();
     const samples = [];
@@ -210,9 +210,14 @@ function startServer() {
 async function main() {
     const { paths, options } = parseArgs(process.argv.slice(2));
     const mode = options.mode || 'auto-omit';
-    if (!['auto-omit', 'quality-omit', 'performance-omit', 'complete'].includes(mode)) {
+    if (![
+        'auto-omit',
+        'quality-omit',
+        'performance-omit',
+        'maximum-coverage',
+    ].includes(mode)) {
         throw new Error(
-            '--mode must be auto-omit, quality-omit, performance-omit, or complete',
+            '--mode must be auto-omit, quality-omit, performance-omit, or maximum-coverage',
         );
     }
     const callouts = options.callouts || 'structure';

@@ -412,7 +412,7 @@ export class CrystalViewer {
             'auto-omit',
             'quality-omit',
             'performance-omit',
-            'complete',
+            'maximum-coverage',
         ];
         if (options.atomLabels?.placementMode &&
             !validLabelPlacementModes.includes(options.atomLabels.placementMode)) {
@@ -930,11 +930,11 @@ export class CrystalViewer {
             'auto-omit',
             'quality-omit',
             'performance-omit',
-            'complete',
+            'maximum-coverage',
         ].includes(options.placementMode)) {
             throw new Error(
                 `Invalid atom label placement mode: "${options.placementMode}". ` +
-                'Must be one of: auto-omit, quality-omit, performance-omit, complete',
+                'Must be one of: auto-omit, quality-omit, performance-omit, maximum-coverage',
             );
         }
         if (options.calloutPlacement &&

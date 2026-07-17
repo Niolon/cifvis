@@ -32,7 +32,7 @@ const options = {
     spatialCellSize: 32,
     calloutPlacement: 'structure',
     calloutGap: 12,
-    completeDistanceSteps: 6,
+    maximumCoverageDistanceSteps: 6,
     calloutColumns: 3,
     calloutColumnGap: 8,
     calloutRowGap: 4,
@@ -306,7 +306,7 @@ describe('atom label layout geometry', () => {
         expect(segmentIntersectsRectangle(bonds[0], result.placed[0].rect)).toBe(false);
     });
 
-    test('complete mode supports compact structure-relative callouts', () => {
+    test('maximum-coverage mode supports compact structure-relative callouts', () => {
         const centre = { x: 250, y: 120 };
         const radialBonds = Array.from({ length: 16 }, (_, index) => {
             const angle = index * Math.PI / 8;
@@ -324,7 +324,11 @@ describe('atom label layout geometry', () => {
             radialBonds,
             [],
             { width: 500, height: 240 },
-            { ...options, placementMode: 'complete', completeDistanceSteps: 4 },
+            {
+                ...options,
+                placementMode: 'maximum-coverage',
+                maximumCoverageDistanceSteps: 4,
+            },
         );
         const viewportEdge = layoutAtomLabels(
             [label('C1', centre.x, centre.y)],
@@ -334,9 +338,9 @@ describe('atom label layout geometry', () => {
             { width: 500, height: 240 },
             {
                 ...options,
-                placementMode: 'complete',
+                placementMode: 'maximum-coverage',
                 calloutPlacement: 'viewport',
-                completeDistanceSteps: 4,
+                maximumCoverageDistanceSteps: 4,
             },
         );
         expect(compact.placed).toHaveLength(1);
@@ -355,8 +359,8 @@ describe('atom label layout geometry', () => {
             { width: 500, height: 240 },
             {
                 ...options,
-                placementMode: 'complete',
-                completeDistanceSteps: 4,
+                placementMode: 'maximum-coverage',
+                maximumCoverageDistanceSteps: 4,
                 maxConnectorLength: 5,
             },
         );
@@ -392,7 +396,7 @@ describe('atom label layout geometry', () => {
             { width: 120, height: 100 },
             {
                 ...options,
-                placementMode: 'complete',
+                placementMode: 'maximum-coverage',
                 repairSearchLimit,
             },
         );

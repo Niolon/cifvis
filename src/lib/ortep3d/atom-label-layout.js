@@ -509,7 +509,7 @@ export function layoutAtomLabels(
                 (Number.isFinite(b.z) ? b.z : Infinity) : 0) ||
             a.id.localeCompare(b.id));
     const orderedLabels = allOrderedLabels.slice(0, options.maxVisible);
-    const completeMode = options.placementMode === 'complete';
+    const maximumCoverageMode = options.placementMode === 'maximum-coverage';
     const projectedStructureBounds = structureBounds(atomObstacles, bondObstacles);
     const candidatesByLabel = new Map();
     const staticValidity = new WeakMap();
@@ -536,7 +536,7 @@ export function layoutAtomLabels(
         }
         if (valid && item.leaderSegment) {
             const leaderBounds = segmentBounds(item.leaderSegment);
-            if (!completeMode && bondIndex.query(leaderBounds)
+            if (!maximumCoverageMode && bondIndex.query(leaderBounds)
                 .some(bond => segmentsOverlap(item.leaderSegment, bond))) {
                 valid = false;
             }
@@ -565,7 +565,7 @@ export function layoutAtomLabels(
         labelIndex.query(leaderBounds)
             .filter(existing => segmentIntersectsRectangle(item.leaderSegment, existing.rect))
             .forEach(existing => blockers.add(existing));
-        if (!completeMode) {
+        if (!maximumCoverageMode) {
             leaderIndex.query(leaderBounds)
                 .filter(existing => segmentsOverlap(item.leaderSegment, existing.leaderSegment))
                 .forEach(existing => blockers.add(existing));
@@ -655,8 +655,8 @@ export function layoutAtomLabels(
             continue;
         }
         const candidates = [];
-        const distanceMultipliers = completeMode ? Array.from(
-            { length: Math.max(2, options.completeDistanceSteps ?? 6) },
+        const distanceMultipliers = maximumCoverageMode ? Array.from(
+            { length: Math.max(2, options.maximumCoverageDistanceSteps ?? 6) },
             (_, index) => index + 1,
         ) : [1, 2];
         for (const distanceMultiplier of distanceMultipliers) {
@@ -697,7 +697,7 @@ export function layoutAtomLabels(
         }
     }
 
-    if (completeMode && unresolved.length > 0) {
+    if (maximumCoverageMode && unresolved.length > 0) {
         const columns = Math.max(1, options.calloutColumns || 3);
         const rowGap = options.calloutRowGap || 4;
         const structureRelative = options.calloutPlacement !== 'viewport' &&
@@ -800,7 +800,7 @@ export function layoutAtomLabels(
     return {
         placed,
         hidden,
-        placementPolicy: completeMode ? 'complete' :
+        placementPolicy: maximumCoverageMode ? 'maximum-coverage' :
             performanceMode ? 'performance-omit' : 'quality-omit',
     };
 }

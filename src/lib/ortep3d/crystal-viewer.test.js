@@ -22,7 +22,7 @@ describe('CrystalViewer rendering option validation', () => {
             atomLabels: { placementMode: 'instant' },
         })).toThrow(
             'Invalid atom label placement mode: "instant". ' +
-            'Must be one of: auto-omit, quality-omit, performance-omit, complete',
+            'Must be one of: auto-omit, quality-omit, performance-omit, maximum-coverage',
         );
     });
 
