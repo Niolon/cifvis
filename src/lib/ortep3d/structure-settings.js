@@ -211,6 +211,12 @@ export default {
         ...DEFAULT_ISOSURFACE_OPTIONS,
     },
 
+    // Optional line-only section through any loaded scalar field. No plane
+    // geometry or fill is rendered, so the viewer/widget background is kept.
+    'contourLines': {
+        ...DEFAULT_CONTOUR_LINE_OPTIONS,
+    },
+
     'bondGrowTolerance': 0.45,
 
     'fixCifErrors': false,
@@ -307,3 +313,4 @@ export default {
 import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from '../density/difference-density-options.js';
 import { DEFAULT_SCALAR_FIELD_OPTIONS } from '../density/scalar-field-options.js';
 import { DEFAULT_ISOSURFACE_OPTIONS } from '../density/isosurface-options.js';
+import { DEFAULT_CONTOUR_LINE_OPTIONS } from '../density/contour-line-options.js';

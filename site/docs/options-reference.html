@@ -498,8 +498,8 @@
                         columns are treated as deformation density and use light blue/orange. The periodic
                         Fourier grid is retained when display or symmetry-growth settings change.
                         Source-specific calculation settings live under <code>differenceDensity</code>,
-                        the shared worker policy under <code>scalarField</code>, and all mesh/contour
-                        presentation settings under <code>isosurface</code>.
+                        the shared worker policy under <code>scalarField</code>, 3D mesh presentation under
+                        <code>isosurface</code>, and planar line sections under <code>contourLines</code>.
                     </p>
                     <table class="option-table">
                         <tr><th>Option</th><th>Type</th><th>Description</th></tr>
@@ -694,6 +694,50 @@
                         <tr class="option-row" data-keywords="density maximum polygon count marching cubes">
                             <td><span class="option-code">isosurface.maxPolyCount</span></td><td>Number</td>
                             <td>Maximum marching-cubes polygon allocation per generated field. <span class="default-value">Default: 100000</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density planar contour lines enable background">
+                            <td><span class="option-code">contourLines.enabled</span></td><td>Boolean</td>
+                            <td>Replaces the 3D isosurface with line-only contours on a plane. It creates no plane fill/background, preserving the viewer or widget background. <span class="default-value">Default: false</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour plane best fit atoms labels">
+                            <td><span class="option-code">contourLines.plane</span><br><span class="option-code">contourLines.plane.mode</span><br><span class="option-code">contourLines.plane.atoms</span></td><td>Object / String / String[]</td>
+                            <td>Plane definition. Use <code>{mode: "best-fit"}</code>, <code>{atoms: ["C1","C2","O1"]}</code>, the string <code>"best-fit"</code>, or an atom-label array. At least three non-collinear atoms are required. <span class="default-value">Default: {mode: "best-fit"}</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour explicit plane cartesian fractional origin normal">
+                            <td><span class="option-code">contourLines.plane.coordinateSystem</span><br><span class="option-code">contourLines.plane.origin</span><br><span class="option-code">contourLines.plane.normal</span></td><td>String / Number[] / Number[]</td>
+                            <td>Explicit <code>"cartesian"</code> (Å) or <code>"fractional"</code> plane. Origin and normal are three-value vectors; a fractional normal is transformed as a reciprocal/covector normal.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour plane bounds padding extent angstrom">
+                            <td><span class="option-code">contourLines.plane.bounds</span><br><span class="option-code">contourLines.padding</span></td><td>Object / Number</td>
+                            <td>Optional in-plane <code>{u:[min,max], v:[min,max]}</code> bounds in Å, or automatic padding around all displayed atoms. <span class="default-value">Padding default: 1.5 Å</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour line resolution grid spacing maximum">
+                            <td><span class="option-code">contourLines.resolution</span><br><span class="option-code">contourLines.gridSpacing</span><br><span class="option-code">contourLines.maxResolution</span></td><td>Number</td>
+                            <td>Minimum samples per in-plane axis, target Cartesian sample spacing, and per-axis cap. <span class="default-value">Defaults: 256, 0.04 Å, 512</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour interpolation tricubic linear smooth">
+                            <td><span class="option-code">contourLines.interpolation</span></td><td>String</td>
+                            <td><code>"tricubic"</code> uses smooth slope-limited monotone sampling of the retained scalar grid without introducing local overshoot; <code>"linear"</code> uses its original trilinear sampler. <span class="default-value">Default: "tricubic"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour levels count step explicit sigma">
+                            <td><span class="option-code">contourLines.contourCount</span><br><span class="option-code">contourLines.contourStep</span><br><span class="option-code">contourLines.levels</span><br><span class="option-code">contourLines.levelSubdivisions</span></td><td>Number / Number|null / Number[]|null / Number</td>
+                            <td>Number of regularly spaced lines, optional absolute step, explicit positive magnitudes, and intervals within the ordinary field/isosurface level. Explicit step/levels take precedence. A 3&sigma; field level starts at 0.75&sigma; by default. <span class="default-value">Defaults: 20, null, null, 4</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour sign positive negative both">
+                            <td><span class="option-code">contourLines.sign</span></td><td>String|null</td>
+                            <td><code>"positive"</code>, <code>"negative"</code>, or <code>"both"</code>; null follows the scalar-field source metadata. <span class="default-value">Default: null</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour zero line color">
+                            <td><span class="option-code">contourLines.zeroLine</span><br><span class="option-code">contourLines.zeroColor</span></td><td>Boolean / Color</td>
+                            <td>Draws and colours an optional zero contour. <span class="default-value">Defaults: false, "#666666"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour line color positive negative deformation">
+                            <td><span class="option-code">contourLines.lineColor</span></td><td>Color|null</td>
+                            <td>Overrides both signed line colours. Null inherits the standard/deformation positive and negative colours from <code>isosurface</code>. <span class="default-value">Default: null</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="density contour line width opacity offset z fighting">
+                            <td><span class="option-code">contourLines.lineWidth</span><br><span class="option-code">contourLines.opacity</span><br><span class="option-code">contourLines.depthOffset</span></td><td>Number</td>
+                            <td>Line material width, opacity, and offset along the plane normal in Å to reduce overlap artefacts. WebGL may clamp line width to one pixel. <span class="default-value">Defaults: 1, 1, 0.02 Å</span></td>
                         </tr>
                     </table>
                     <h3>Common per-source collection options</h3>

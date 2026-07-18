@@ -110,6 +110,7 @@ export class ThreeIsosurfaceLayer {
             displayLabel: this.field?.displayLabel ?? 'Scalar field',
             quantityName: this.field?.quantityName ?? 'scalar field',
             signed: this.field?.surfaceSign !== 'positive',
+            displayMode: 'isosurface',
         };
     }
 

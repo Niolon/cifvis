@@ -254,6 +254,7 @@ describe('CrystalViewer progressive difference-density events', () => {
             },
             cancelScalarFieldLoad: vi.fn(),
             isosurfaceLayer: { clear: vi.fn() },
+            contourLineLayer: { clear: vi.fn() },
             notifyScalarFieldUpdate: vi.fn(),
             loadStructure: vi.fn(async structure => {
                 viewer.state.baseStructure = structure;
@@ -280,6 +281,7 @@ describe('CrystalViewer progressive difference-density events', () => {
             },
             cancelScalarFieldLoad: vi.fn(),
             isosurfaceLayer: { clear: vi.fn() },
+            contourLineLayer: { clear: vi.fn() },
             notifyScalarFieldUpdate: vi.fn(),
             loadStructure: vi.fn(async structure => {
                 order.push('structure');
@@ -367,7 +369,10 @@ describe('CrystalViewer progressive difference-density events', () => {
                 activeScalarFieldIndex: -1,
                 isosurfaceResolutionFraction: 1,
             },
-            options: { isosurface: { resolution: 64 } },
+            options: {
+                isosurface: { resolution: 64 },
+                contourLines: { enabled: false },
+            },
             defaultIsosurfaceOptions: { resolution: 64, visible: true },
             scalarFieldIdSequence: 0,
             scalarFieldLoadTarget: {
@@ -397,6 +402,13 @@ describe('CrystalViewer progressive difference-density events', () => {
                         sigmaLevel: 3,
                     };
                 },
+            },
+            contourLineLayer: { clearMesh: vi.fn() },
+            scalarFieldDisplayLayer() {
+                return CrystalViewer.prototype.scalarFieldDisplayLayer.call(this);
+            },
+            rebuildScalarFieldDisplay() {
+                return CrystalViewer.prototype.rebuildScalarFieldDisplay.call(this);
             },
             scalarFieldDisplayState() {
                 return CrystalViewer.prototype.scalarFieldDisplayState.call(this);
@@ -476,7 +488,10 @@ describe('CrystalViewer progressive difference-density events', () => {
         const group = { visible: true };
         const viewer = {
             state: { scalarField: {}, scalarFields: [], activeScalarFieldIndex: -1 },
-            options: { isosurface: { visible: true } },
+            options: {
+                isosurface: { visible: true },
+                contourLines: { enabled: false },
+            },
             isosurfaceLayer: {
                 setVisible(visible) {
                     group.visible = visible;
@@ -485,6 +500,9 @@ describe('CrystalViewer progressive difference-density events', () => {
             },
             requestRender: vi.fn(),
             notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldDisplayLayer() {
+                return CrystalViewer.prototype.scalarFieldDisplayLayer.call(this);
+            },
             scalarFieldCollectionState() {
                 return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
             },
@@ -529,7 +547,7 @@ describe('CrystalViewer progressive difference-density events', () => {
                 displayStructure: {},
                 isosurfaceResolutionFraction: 1,
             },
-            options: { isosurface: {} },
+            options: { isosurface: {}, contourLines: { enabled: false } },
             isosurfaceLayer: {
                 group: null,
                 options: {},
@@ -556,8 +574,15 @@ describe('CrystalViewer progressive difference-density events', () => {
                     return visible;
                 },
             },
+            contourLineLayer: { clearMesh: vi.fn() },
             requestRender: vi.fn(),
             notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldDisplayLayer() {
+                return CrystalViewer.prototype.scalarFieldDisplayLayer.call(this);
+            },
+            rebuildScalarFieldDisplay() {
+                return CrystalViewer.prototype.rebuildScalarFieldDisplay.call(this);
+            },
             scalarFieldCollectionState() {
                 return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
             },
@@ -594,6 +619,57 @@ describe('CrystalViewer progressive difference-density events', () => {
             visible: true,
         });
         expect(viewer.options.isosurface.level).toBe(0.1);
+    });
+
+    test('switches an active field between isosurface and planar-line adapters', () => {
+        const field = { displayLabel: 'Δρ/eÅ⁻³', quantityName: 'difference density' };
+        const isosurfaceLayer = {
+            clearMesh: vi.fn(),
+            setOptions: vi.fn(),
+            setField: vi.fn(),
+            setStructure: vi.fn(),
+            rebuild: vi.fn().mockReturnValue({ displayMode: 'isosurface' }),
+        };
+        const contourLineLayer = {
+            clearMesh: vi.fn(),
+            setOptions: vi.fn(),
+            setField: vi.fn(),
+            setStructure: vi.fn(),
+            rebuild: vi.fn().mockReturnValue({ displayMode: 'contour-lines' }),
+        };
+        const viewer = {
+            state: {
+                scalarFields: [{
+                    id: 'difference',
+                    field,
+                    resolutionFraction: 1,
+                    isosurfaceOptions: { sigmaLevel: 3, visible: true },
+                }],
+                activeScalarFieldIndex: 0,
+                displayStructure: {},
+            },
+            options: {
+                isosurface: { sigmaLevel: 3 },
+                contourLines: { enabled: true, plane: { mode: 'best-fit' } },
+            },
+            isosurfaceLayer,
+            contourLineLayer,
+        };
+
+        const lineResult = CrystalViewer.prototype.rebuildScalarFieldDisplay.call(viewer);
+        expect(lineResult.displayMode).toBe('contour-lines');
+        expect(isosurfaceLayer.clearMesh).toHaveBeenCalled();
+        expect(contourLineLayer.setOptions).toHaveBeenCalledWith(expect.objectContaining({
+            enabled: true,
+            sigmaLevel: 3,
+            visible: true,
+        }));
+
+        viewer.options.contourLines.enabled = false;
+        const surfaceResult = CrystalViewer.prototype.rebuildScalarFieldDisplay.call(viewer);
+        expect(surfaceResult.displayMode).toBe('isosurface');
+        expect(contourLineLayer.clearMesh).toHaveBeenCalled();
+        expect(isosurfaceLayer.setField).toHaveBeenCalledWith(field, 1);
     });
 
     test('loads heterogeneous source definitions in their declared order', async () => {

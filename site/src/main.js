@@ -10,6 +10,7 @@ import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
 } from './playground-cif-routing.js';
+import { getPlaygroundViewerOptions } from './playground-options.js';
 
 /**
  * Updates the status message displayed to the user
@@ -35,54 +36,11 @@ function clearStatus() {
     statusElement.className = '';
 }
 
-/**
- * Reads viewer overrides from the URL query string.
- * `?style=solid-3d|cutout-3d|cutout-2d` selects one of CrystalViewer's three
- * render styles. `?labels=all|non-hydrogen|none` controls atom labels and
- * `?label-mode=auto-omit|quality-omit|performance-omit|maximum-coverage` chooses placement.
- * `?label-callouts=structure|viewport` controls maximum-coverage callout spread.
- * `?label-max-connector=<pixels>` sets a clamped connector-length ceiling.
- * Unset or unrecognised values fall back to their defaults.
- * @returns {object} CrystalViewer options derived from the URL
- */
-function getViewerOptionsFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const style = params.get('style');
-    const validStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
-    const labels = params.get('labels');
-    const validLabelModes = ['all', 'non-hydrogen', 'none'];
-    const labelPlacement = params.get('label-mode');
-    const validLabelPlacements = [
-        'auto-omit',
-        'quality-omit',
-        'performance-omit',
-        'maximum-coverage',
-    ];
-    const labelCallouts = params.get('label-callouts');
-    const validLabelCallouts = ['structure', 'viewport'];
-    const maximumConnector = Number(params.get('label-max-connector'));
-    const options = {};
-
-    if (validStyles.includes(style)) {
-        options.renderStyle = style;
-    }
-    if (validLabelModes.includes(labels)) {
-        options.atomLabels = {
-            show: labels,
-            placementMode: validLabelPlacements.includes(labelPlacement) ?
-                labelPlacement : 'auto-omit',
-            calloutPlacement: validLabelCallouts.includes(labelCallouts) ?
-                labelCallouts : 'structure',
-        };
-        if (Number.isFinite(maximumConnector) && maximumConnector > 0) {
-            options.atomLabels.maxConnectorLength = Math.max(20, Math.min(1000, maximumConnector));
-        }
-    }
-    return options;
-}
-
 // Initialize the viewer
-const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
+const viewer = new CrystalViewer(
+    document.body,
+    getPlaygroundViewerOptions(window.location.search),
+);
 viewer.animate();
 let scalarFieldDisplay = createScalarFieldDisplayState();
 

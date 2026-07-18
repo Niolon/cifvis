@@ -115,7 +115,31 @@ can select or cycle fields with `setActiveScalarField()` and
 `viewer.clearScalarField()` to discard one entry and `viewer.clearScalarFields()`
 to discard the collection. Source calculation,
 worker execution, and presentation defaults are configured separately through
-`differenceDensity`, `scalarField`, and `isosurface` constructor options.
+`differenceDensity`, `scalarField`, `isosurface`, and `contourLines` constructor
+options.
+
+For a line-only section like a conventional molecular contour plot, enable
+`contourLines` and define its plane. No filled plane or background mesh is
+created, so the widget's existing background colour remains in use:
+
+```javascript
+const viewer = new CrystalViewer(container, {
+  contourLines: {
+    enabled: true,
+    plane: { atoms: ['C1', 'C2', 'O1'] },
+    contourCount: 20,
+  },
+});
+```
+
+`plane: { mode: 'best-fit' }` uses all displayed atoms. Explicit planes accept
+`{ coordinateSystem: 'fractional'|'cartesian', origin: [x,y,z], normal:
+[x,y,z] }`. The playground exposes the same forms through
+`?contours=best-fit`, `?contours=atoms:C1,C2,O1`,
+`?contours=frac:0,0,0.5:0,0,1`, or the corresponding `cart:` form.
+Planar plots use tricubic field sampling and four line intervals per ordinary
+surface level by default; set `interpolation: 'linear'`, `levelSubdivisions: 1`,
+or an explicit `contourStep`/`levels` array when exact legacy spacing is wanted.
 
 Different source types can be declared together. Each entry retains its own
 contour and appearance options:

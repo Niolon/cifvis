@@ -10,9 +10,11 @@ export {
 } from './lib/density/difference-density.js';
 export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './lib/density/difference-density-options.js';
 export { DEFAULT_ISOSURFACE_OPTIONS } from './lib/density/isosurface-options.js';
+export { DEFAULT_CONTOUR_LINE_OPTIONS } from './lib/density/contour-line-options.js';
 export { DEFAULT_SCALAR_FIELD_OPTIONS } from './lib/density/scalar-field-options.js';
 export { BOHR_TO_ANGSTROM, parseCube } from './lib/density/cube.js';
 export { ScalarFieldGrid } from './lib/density/scalar-field.js';
+export { calculatePlanarContours, resolveContourPlane } from './lib/density/plane-contours.js';
 export {
     createIsosurfaces,
     isosurfaceBounds,
@@ -23,6 +25,7 @@ export {
     createSymmetryAwareIsosurfaces,
 } from './lib/density/symmetry-isosurface.js';
 export { ThreeIsosurfaceLayer } from './lib/ortep3d/three-isosurface-layer.js';
+export { ThreeContourLineLayer } from './lib/ortep3d/three-contour-line-layer.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
 export {
     calculateIAMStructureFactors,

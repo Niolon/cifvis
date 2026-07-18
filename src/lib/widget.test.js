@@ -652,6 +652,10 @@ describe('CifViewWidget', () => {
             selection: {
                 mode: 'single',
             },
+            contourLines: {
+                enabled: true,
+                plane: { atoms: ['C1', 'C2', 'N1'] },
+            },
             elementProperties: {
                 'C': { radius: 0.8 },
                 'N': { radius: 0.7 },
@@ -674,6 +678,10 @@ describe('CifViewWidget', () => {
             selection: {
                 mode: 'single',
                 markerMult: 1.3,
+            },
+            contourLines: {
+                enabled: true,
+                plane: { atoms: ['C1', 'C2', 'N1'] },
             },
             elementProperties: expect.objectContaining({
                 'C': { radius: 0.8, atomColor: '#000000' },

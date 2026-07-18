@@ -195,6 +195,7 @@ if (!result.success) {
                 <tr><td><code>viewer.cycleScalarField()</code></td><td>Advances through the loaded fields and one hidden state.</td></tr>
                 <tr><td><code>viewer.onScalarFieldUpdate(callback)</code></td><td>Subscribes to source-independent <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
                 <tr><td><code>viewer.updateIsosurfaceOptions(options)</code></td><td>Changes contours/appearance while retaining the scalar grid. A visibility-only update does not rebuild surfaces.</td></tr>
+                <tr><td><code>viewer.updateContourLineOptions(options)</code></td><td>Enables/disables a line-only planar section or changes its plane, levels, and line appearance while retaining the scalar grid.</td></tr>
                 <tr><td><code>viewer.setIsosurfaceVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without source parsing, FFT, or marching-cubes work.</td></tr>
                 <tr><td><code>viewer.clearScalarField(indexOrId)</code></td><td>Discards one field, defaulting to the active entry.</td></tr>
                 <tr><td><code>viewer.clearScalarFields()</code></td><td>Discards the complete field collection.</td></tr>
@@ -255,6 +256,11 @@ const density = await loaded.differenceDensity;</code></pre>
 });
 
 viewer.updateIsosurfaceOptions({ sigmaLevel: 2.5 });
+viewer.updateContourLineOptions({
+    enabled: true,
+    plane: { atoms: ['C1', 'C2', 'O1'] },
+    contourCount: 20,
+});
 viewer.setIsosurfaceVisibility(false); // instant: retains field + meshes
 viewer.setIsosurfaceVisibility(true);
 viewer.clearScalarField();
@@ -316,6 +322,34 @@ const result = await viewer.loadCube(cubeText, {
                 not need to inspect renderer groups, grid objects, or other fields under <code>viewer.state</code>.
             </p>
 
+            <h3>Planar contour lines</h3>
+            <p>
+                Set <code>contourLines.enabled</code> to replace the 3D mesh with marching-squares lines sampled on a
+                Cartesian plane. Define the plane with three or more atom labels, use the best-fit plane through all
+                displayed atoms, or provide an explicit origin and normal. The contour adapter never draws a filled
+                plane, so existing viewer and widget background colours are preserved. The default plane grid uses
+                tricubic interpolation, and four line intervals fit inside the ordinary surface level. For a
+                3&sigma; map this begins at 0.75&sigma; instead of jumping from 3&sigma; directly to 6&sigma;.
+            </p>
+            <pre><code>const viewer = new CrystalViewer(container, {
+    contourLines: {
+        enabled: true,
+        plane: { atoms: ['C1', 'C2', 'O1'] },
+        contourCount: 20,
+    },
+});
+
+// Alternatives:
+// plane: { mode: 'best-fit' }
+// plane: { coordinateSystem: 'fractional', origin: [0,0,0.5], normal: [0,0,1] }
+
+viewer.updateContourLineOptions({ plane: { atoms: ['N1', 'C2', 'C3'] } });</code></pre>
+            <p>
+                The playground query flag accepts <code>?contours=best-fit</code>,
+                <code>?contours=atoms:C1,C2,O1</code>, <code>?contours=frac:0,0,0.5:0,0,1</code>, or the equivalent
+                <code>cart:</code> form.
+            </p>
+
             <h3>Custom quantum-crystallographic coefficients</h3>
             <p>
                 <code>coefficientColumns</code> accepts one or two amplitudes with a common or split phase, or direct
@@ -358,8 +392,8 @@ const result = await viewer.loadCube(cubeText, {
             </p>
             <p>
                 Internally, every source produces the same renderer-independent <code>ScalarFieldGrid</code>, with
-                separate source, field-kind, units, contour, and boundary metadata. A dedicated Three.js isosurface
-                layer owns mesh construction and disposal; <code>CrystalViewer</code> only coordinates the source,
+                separate source, field-kind, units, contour, and boundary metadata. Dedicated Three.js isosurface and
+                contour-line adapters own rendering and disposal; <code>CrystalViewer</code> only coordinates the source,
                 displayed structure, events, and render requests. This keeps Cube density, deformation density,
                 orbitals, potentials, and future scalar fields out of the Fo&minus;Fc-specific API.
             </p>
@@ -367,10 +401,11 @@ const result = await viewer.loadCube(cubeText, {
                 See <a href="./options-reference.html">Options Reference</a> for every setting. The package root and
                 <code>cifvis/nobrowser</code> also export <code>ScalarFieldGrid</code>,
                 <code>parseDifferenceDensitySource</code>, <code>calculateDifferenceDensityMap</code>,
-                <code>createCifDifferenceDensityDataset</code>, generic isosurface builders, the
-                <code>ThreeIsosurfaceLayer</code> adapter, IAM helpers, reflection readers, and
+                <code>createCifDifferenceDensityDataset</code>, generic isosurface and planar-contour builders, the
+                <code>ThreeIsosurfaceLayer</code> and <code>ThreeContourLineLayer</code> adapters, IAM helpers, reflection readers, and
                 separate <code>DEFAULT_DIFFERENCE_DENSITY_OPTIONS</code>,
-                <code>DEFAULT_SCALAR_FIELD_OPTIONS</code>, and <code>DEFAULT_ISOSURFACE_OPTIONS</code>
+                <code>DEFAULT_SCALAR_FIELD_OPTIONS</code>, <code>DEFAULT_ISOSURFACE_OPTIONS</code>, and
+                <code>DEFAULT_CONTOUR_LINE_OPTIONS</code>
                 objects for lower-level use.
             </p>
         </section>
