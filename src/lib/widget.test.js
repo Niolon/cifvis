@@ -64,6 +64,15 @@ describe('CifViewWidget', () => {
                 }
             }),
             cycleModifierMode: vi.fn().mockResolvedValue({ success: true, mode: 'constant' }),
+            setModifierMode: vi.fn().mockImplementation(async (name, mode) => {
+                mockCrystalViewer.modifiers[name].mode = mode;
+                if (mockCrystalViewer.modifiers[name].requiresCameraUpdate) {
+                    await mockCrystalViewer.loadStructure();
+                } else {
+                    await mockCrystalViewer.updateStructure();
+                }
+                return { success: true, mode };
+            }),
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             loadStructure: vi.fn().mockResolvedValue({ success: true }),
@@ -78,6 +87,7 @@ describe('CifViewWidget', () => {
                 onChange: vi.fn(),
             },
             onScalarFieldUpdate: vi.fn(),
+            onModifierModeChange: vi.fn(),
             updateIsosurfaceOptions: vi.fn(),
             setIsosurfaceVisibility: vi.fn(),
             cycleScalarField: vi.fn(),
@@ -107,6 +117,7 @@ describe('CifViewWidget', () => {
             mockDensityCallback = callback;
             return vi.fn();
         });
+        mockCrystalViewer.onModifierModeChange.mockReturnValue(vi.fn());
 
         // Mock fetch - now returning data that will pass CIF validation
         mockFetch = vi.fn().mockResolvedValue({

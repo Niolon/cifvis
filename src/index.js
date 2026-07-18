@@ -47,6 +47,10 @@ export {
 
 // Export DOM-dependent features
 export { CrystalViewer } from './lib/ortep3d/crystal-viewer.js';
+export {
+    ViewerInteractionCoupling,
+    coupleViewerInteractions,
+} from './lib/ortep3d/viewer-interaction-coupling.js';
 export { ThreeIsosurfaceLayer } from './lib/ortep3d/three-isosurface-layer.js';
 export { ThreeContourLineLayer } from './lib/ortep3d/three-contour-line-layer.js';
 

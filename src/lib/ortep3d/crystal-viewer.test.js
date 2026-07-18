@@ -113,6 +113,53 @@ describe('CrystalViewer rendering option validation', () => {
     });
 });
 
+describe('CrystalViewer semantic modifier modes', () => {
+    test('applies several modes with one camera-resetting rebuild and reports skipped modes', async () => {
+        const hydrogen = {
+            mode: 'none',
+            MODES: { NONE: 'none', CONSTANT: 'constant' },
+            requiresCameraUpdate: false,
+            getApplicableModes: () => ['none', 'constant'],
+        };
+        const symmetry = {
+            mode: 'none',
+            MODES: { NONE: 'none', FRAGMENT: 'fragment' },
+            requiresCameraUpdate: true,
+            getApplicableModes: () => ['none', 'fragment'],
+        };
+        const disorder = {
+            mode: 'all',
+            MODES: { ALL: 'all', GROUP1: 'group1' },
+            requiresCameraUpdate: false,
+            getApplicableModes: () => ['all'],
+        };
+        const viewer = {
+            modifiers: { hydrogen, symmetry, disorder },
+            state: { baseStructure: {} },
+            loadStructure: vi.fn().mockResolvedValue({ success: true }),
+            updateStructure: vi.fn().mockResolvedValue({ success: true }),
+            notifyModifierModeChange: vi.fn(),
+        };
+
+        const result = await CrystalViewer.prototype.setModifierModes.call(viewer, {
+            hydrogen: 'constant',
+            symmetry: 'fragment',
+            disorder: 'group1',
+        });
+
+        expect(viewer.loadStructure).toHaveBeenCalledTimes(1);
+        expect(viewer.updateStructure).not.toHaveBeenCalled();
+        expect(hydrogen.mode).toBe('constant');
+        expect(symmetry.mode).toBe('fragment');
+        expect(disorder.mode).toBe('all');
+        expect(result.changes.disorder).toMatchObject({
+            skipped: true,
+            requestedMode: 'group1',
+        });
+        expect(viewer.notifyModifierModeChange).toHaveBeenCalledTimes(2);
+    });
+});
+
 describe('CrystalViewer atom-label runtime option validation', () => {
     test.each([
         ['placementMode', ''],

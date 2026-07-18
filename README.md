@@ -81,6 +81,33 @@ Widget HTML attributes use kebab-case (for example `hydrogen-mode`); keys inside
 </script>
 ```
 
+### Coupled comparison viewers
+
+Hydrogen, disorder, and symmetry modes plus rotation, pan, zoom, and camera
+reset can be coupled across any mixture of `CrystalViewer` and initialized
+`<cifview-widget>` instances. Inputs are batched per animation frame and every
+peer renders only once for that batch.
+
+```javascript
+import { coupleViewerInteractions } from 'cifvis';
+
+const coupling = coupleViewerInteractions(leftViewer, rightViewer, thirdWidget);
+
+// After independent loads: match modes, orientation, and absolute framing.
+await coupling.synchronizeFrom(leftViewer);
+
+// Viewers can be attached or detached later.
+coupling.add(fourthViewer);
+coupling.delete(rightViewer);
+
+// Release the listeners when the comparison UI is removed.
+coupling.dispose();
+```
+
+Selection stays independent because compared structures need not share atom
+identifiers. Rotation and camera framing are matched exactly, giving every
+viewer the same initial distance/orthographic size and subsequent zoom.
+
 When coordinates and observed reflections are in the same CIF, the viewer can
 calculate IAM phases and an Fo-Fc map automatically:
 

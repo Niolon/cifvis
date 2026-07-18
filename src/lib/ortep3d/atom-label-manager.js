@@ -385,7 +385,9 @@ export class AtomLabelManager {
         if (this.disposed) {
             return;
         }
-        if (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning) {
+        const interacting = this.viewer.controls?.isInteracting?.() ??
+            (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning);
+        if (interacting) {
             this.endLoadingIndicator();
         }
         this.clearStaleFrame();
@@ -682,7 +684,8 @@ export class AtomLabelManager {
         this.viewer.camera.updateMatrixWorld();
         this.viewer.moleculeContainer.updateMatrixWorld(true);
         const now = performance.now();
-        const interacting = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning;
+        const interacting = this.viewer.controls?.isInteracting?.() ??
+            (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning);
         const requests = this.resolveRequests();
         const deferUntilInteractionEnds = interacting &&
             (this.options.placementMode === 'maximum-coverage' ||

@@ -198,6 +198,7 @@ export class CifViewWidget extends HTMLElement {
     /** Connects caption updates to the current viewer instance. */
     connectViewerEvents() {
         this.stopScalarFieldUpdates?.();
+        this.stopModifierModeUpdates?.();
         this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.(update => {
             this.scalarFieldDisplay = reduceScalarFieldDisplayState(
                 this.scalarFieldDisplay,
@@ -205,6 +206,9 @@ export class CifViewWidget extends HTMLElement {
             );
             this.updateScalarFieldButton();
             this.updateCaption();
+        }) ?? null;
+        this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
+            this.setupButtons();
         }) ?? null;
         this.viewer.selections.onChange(selections => {
             this.selections = selections;
@@ -570,26 +574,17 @@ export class CifViewWidget extends HTMLElement {
             }
             case 'hydrogen-mode':
                 if (this.viewer.modifiers.hydrogen) {
-                    this.viewer.modifiers.hydrogen.mode = newValue;
-                    await this.viewer.updateStructure();
-                    this.setupButtons();
+                    await this.viewer.setModifierMode('hydrogen', newValue);
                 }
                 break;
             case 'disorder-mode':
                 if (this.viewer.modifiers.disorder) {
-                    this.viewer.modifiers.disorder.mode = newValue;
-                    await this.viewer.updateStructure();
-                    this.setupButtons();
+                    await this.viewer.setModifierMode('disorder', newValue);
                 }
                 break;
             case 'symmetry-mode':
                 if (this.viewer.modifiers.symmetry) {
-                    this.viewer.modifiers.symmetry.mode = newValue;
-                    // SymmetryGrower.requiresCameraUpdate is true: called with no argument,
-                    // loadStructure() defaults to the current base structure and resets the
-                    // camera/orientation, like cycleModifierMode does for this modifier.
-                    await this.viewer.loadStructure();
-                    this.setupButtons();
+                    await this.viewer.setModifierMode('symmetry', newValue);
                 }
                 break;
         }
@@ -763,6 +758,7 @@ export class CifViewWidget extends HTMLElement {
 
     disconnectedCallback() {
         this.stopScalarFieldUpdates?.();
+        this.stopModifierModeUpdates?.();
         if (this.viewer) {
             this.viewer.dispose();
         }

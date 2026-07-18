@@ -32,6 +32,8 @@ export class ViewerControls {
         this.moleculeContainer = moleculeContainer;
         this.options = options;
         this.doubleClickDelay = 300;
+        this.interactionCallbacks = new Set();
+        this.coupledInteractionStates = new Map();
 
         this.raycaster = new THREE.Raycaster();
         this.raycaster.near = 0.1;
@@ -111,12 +113,117 @@ export class ViewerControls {
     }
 
     /**
-     * Resets camera to initial position and orientation.
+     * Subscribes to view interactions suitable for replay in another viewer.
+     * Selection is intentionally excluded because atom identities need not match.
+     * @param {function(object): void} callback - Interaction listener
+     * @returns {function(): void} Function that removes the listener
+     */
+    onInteraction(callback) {
+        if (typeof callback !== 'function') {
+            throw new Error('Viewer interaction callback must be a function');
+        }
+        this.interactionCallbacks.add(callback);
+        return () => this.interactionCallbacks.delete(callback);
+    }
+
+    /**
+     * @param {object} interaction - View interaction to publish
      * @private
      */
-    resetCameraPosition() {
+    notifyInteraction(interaction) {
+        for (const callback of this.interactionCallbacks) {
+            try {
+                callback(interaction);
+            } catch (error) {
+                console.error('Viewer interaction callback failed:', error);
+            }
+        }
+    }
+
+    /** @returns {boolean} Whether this viewer or a coupled peer is manipulating the view. */
+    isInteracting() {
+        if (this.state.isDragging || this.state.isPanning) {
+            return true;
+        }
+        return [...this.coupledInteractionStates.values()]
+            .some(state => state.isDragging || state.isPanning);
+    }
+
+    /** @private */
+    notifyInteractionState() {
+        this.notifyInteraction({
+            type: 'interaction-state',
+            isDragging: this.state.isDragging,
+            isPanning: this.state.isPanning,
+        });
+    }
+
+    /**
+     * Replays one view interaction without broadcasting it again.
+     * @param {object} interaction - Interaction emitted by another ViewerControls
+     * @param {object} source - Source viewer, used to track remote drag state
+     */
+    applyCoupledInteraction(interaction, source) {
+        switch (interaction.type) {
+            case 'rotate':
+                this.setStructureTransform(interaction.matrix);
+                break;
+            case 'camera':
+                this.viewer.cameraController.applyCoupledViewState(interaction.state);
+                break;
+            case 'interaction-state':
+                if (interaction.isDragging || interaction.isPanning) {
+                    this.coupledInteractionStates.set(source, interaction);
+                } else {
+                    this.clearCoupledInteraction(source);
+                    this.viewer.atomLabelManager?.invalidateLayout();
+                }
+                break;
+            default:
+                throw new Error(`Unknown coupled viewer interaction: ${interaction.type}`);
+        }
+    }
+
+    /**
+     * Removes interaction state retained for a peer that was detached.
+     * @param {object} source - Detached source viewer
+     */
+    clearCoupledInteraction(source) {
+        this.coupledInteractionStates.delete(source);
+    }
+
+    /**
+     * Copies the complete structure transform so independently fitted render
+     * styles use the same molecular origin as well as the same orientation.
+     * @param {number[]} matrixElements - Column-major Matrix4 elements
+     */
+    setStructureTransform(matrixElements) {
+        this.moleculeContainer.matrix.fromArray(matrixElements);
+        this.moleculeContainer.matrix.decompose(
+            this.moleculeContainer.position,
+            this.moleculeContainer.quaternion,
+            this.moleculeContainer.scale,
+        );
+        this.moleculeContainer.matrixWorldNeedsUpdate = true;
+    }
+
+    /**
+     * Resets camera to initial position and orientation.
+     * @param {object} [behavior] - Broadcast and render controls for coupled replay
+     * @private
+     */
+    resetCameraPosition(behavior = {}) {
+        const { broadcast = true, render = true } = behavior;
         this.viewer.cameraController.reset();
-        this.viewer.requestRender();
+        if (render) {
+            this.viewer.requestRender();
+        }
+        if (broadcast) {
+            this.notifyInteraction({
+                type: 'camera',
+                state: this.viewer.cameraController.getCoupledViewState(),
+            });
+        }
     }
 
     /**
@@ -150,9 +257,11 @@ export class ViewerControls {
     /**
      * Rotates the molecular structure based on delta movement.
      * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+     * @param {object} [behavior] - Broadcast and render controls for coupled replay
      * @private
      */
-    rotateStructure(delta) {
+    rotateStructure(delta, behavior = {}) {
+        const { broadcast = true, render = true } = behavior;
         const rotationSpeed = this.options.interaction.rotationSpeed;
         const xAxis = new THREE.Vector3(1, 0, 0);
         const yAxis = new THREE.Vector3(0, 1, 0);
@@ -163,17 +272,36 @@ export class ViewerControls {
         this.moleculeContainer.applyMatrix4(
             new THREE.Matrix4().makeRotationAxis(xAxis, -delta.y * rotationSpeed),
         );
-        this.viewer.requestRender();
+        if (render) {
+            this.viewer.requestRender();
+        }
+        if (broadcast) {
+            this.moleculeContainer.updateMatrix();
+            this.notifyInteraction({
+                type: 'rotate',
+                matrix: this.moleculeContainer.matrix.toArray(),
+            });
+        }
     }
 
     /**
      * Moves camera in the view plane based on delta movement.
      * @param {THREE.Vector2} delta - Movement delta in normalized device coordinates
+     * @param {object} [behavior] - Broadcast and render controls for coupled replay
      * @private
      */
-    panCamera(delta) {
+    panCamera(delta, behavior = {}) {
+        const { broadcast = true, render = true } = behavior;
         this.viewer.cameraController.pan(delta);
-        this.viewer.requestRender();
+        if (render) {
+            this.viewer.requestRender();
+        }
+        if (broadcast) {
+            this.notifyInteraction({
+                type: 'camera',
+                state: this.viewer.cameraController.getCoupledViewState(),
+            });
+        }
     }
 
     /**
@@ -195,11 +323,21 @@ export class ViewerControls {
     /**
      * Adjusts camera distance to zoom in/out of the structure.
      * @param {number} zoomDelta - Zoom amount (positive for zoom out, negative for zoom in)
+     * @param {object} [behavior] - Broadcast and render controls for coupled replay
      * @private
      */
-    handleZoom(zoomDelta) {
+    handleZoom(zoomDelta, behavior = {}) {
+        const { broadcast = true, render = true } = behavior;
         this.viewer.cameraController.zoom(zoomDelta);
-        this.viewer.requestRender();
+        if (render) {
+            this.viewer.requestRender();
+        }
+        if (broadcast) {
+            this.notifyInteraction({
+                type: 'camera',
+                state: this.viewer.cameraController.getCoupledViewState(),
+            });
+        }
     }
 
     /**
@@ -213,6 +351,7 @@ export class ViewerControls {
         
         if (touches.length === 1 && !this.state.isDragging) {
             this.state.isDragging = true;
+            this.state.isPanning = false;
             this.state.clickStartTime = Date.now();
             this.updateMouseCoordinates(touches[0].clientX, touches[0].clientY);
         } else if (touches.length === 2) {
@@ -231,7 +370,9 @@ export class ViewerControls {
                 this.state.twoFingerStartPos.copy(startCentroid);
             }
             this.state.isDragging = false;
+            this.state.isPanning = true;
         }
+        this.notifyInteractionState();
     }
 
     /**
@@ -313,7 +454,9 @@ export class ViewerControls {
             }
             
             this.state.isDragging = false;
+            this.state.isPanning = false;
             this.state.pinchStartDistance = 0;  // Reset pinch distance when ending gesture
+            this.notifyInteractionState();
             this.viewer.atomLabelManager?.invalidateLayout();
             this.viewer.requestRender();
         }
@@ -347,6 +490,7 @@ export class ViewerControls {
         } else {
             this.state.isDragging = true;
         }
+        this.notifyInteractionState();
         this.state.clickStartTime = Date.now();
         this.updateMouseCoordinates(event.clientX, event.clientY);
     }
@@ -385,6 +529,7 @@ export class ViewerControls {
     handleMouseUp() {
         this.state.isDragging = false;
         this.state.isPanning = false;
+        this.notifyInteractionState();
         this.viewer.atomLabelManager?.invalidateLayout();
         this.viewer.requestRender();
     }
@@ -455,5 +600,7 @@ export class ViewerControls {
         canvas.removeEventListener('touchmove', touchMove);
         canvas.removeEventListener('touchend', touchEnd);
         window.removeEventListener('resize', resize);
+        this.interactionCallbacks.clear();
+        this.coupledInteractionStates.clear();
     }
 }

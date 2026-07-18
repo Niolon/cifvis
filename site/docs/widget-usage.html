@@ -83,6 +83,23 @@
         </section>
 
         <section>
+            <h2>Coupled comparison views</h2>
+            <p>
+                Widgets can share hydrogen, disorder, and symmetry modes together with rotation, right-drag panning,
+                wheel/pinch zoom, and camera reset. Interaction events are replayed once per animation frame, while
+                selection stays independent.
+            </p>
+            <p><a href="./comparison.html">Open the lightweight live comparison demo.</a></p>
+            <pre><code>import { coupleViewerInteractions } from 'cifvis';
+
+const coupling = coupleViewerInteractions(leftWidget, rightWidget);
+await coupling.synchronizeFrom(leftWidget); // modes, orientation, and absolute framing
+// coupling.add(otherViewer);
+// coupling.delete(leftWidget);
+// coupling.dispose();</code></pre>
+        </section>
+
+        <section>
             <h2>Loading CIF Data</h2>
             <p>You can load CIF data in two ways:</p>
 

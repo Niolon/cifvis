@@ -684,6 +684,7 @@ export class CrystalViewer {
         };
 
         this.scalarFieldUpdateCallbacks = new Set();
+        this.modifierModeCallbacks = new Set();
         this.scalarFieldLoadSequence = 0;
         this.scalarFieldWorker = null;
         this.scalarFieldPendingResolve = null;
@@ -2207,6 +2208,9 @@ export class CrystalViewer {
      */
     async cycleModifierMode(modifierName) {
         const selectedModifier = this.modifiers[modifierName];
+        if (!selectedModifier) {
+            throw new Error(`Unknown structure modifier: ${modifierName}`);
+        }
         const mode = selectedModifier.cycleMode(this.state.baseStructure);
         let result;
         if (selectedModifier.requiresCameraUpdate) {
@@ -2214,7 +2218,109 @@ export class CrystalViewer {
         } else {
             result = await this.updateStructure();
         }
-        return { ...result, mode };
+        const modeResult = { ...result, mode };
+        if (result.success) {
+            this.notifyModifierModeChange({ modifierName, mode });
+        }
+        return modeResult;
+    }
+
+    /**
+     * Sets a structure modifier to a semantic mode and rebuilds only when the
+     * mode is applicable to the loaded structure.
+     * @param {string} modifierName - Modifier name
+     * @param {string} mode - Requested semantic mode
+     * @param {object} [behavior] - Coupling behavior
+     * @returns {Promise<object>} Update result, including skipped unsupported modes
+     */
+    async setModifierMode(modifierName, mode, behavior = {}) {
+        const result = await this.setModifierModes({ [modifierName]: mode }, behavior);
+        const change = result.changes[modifierName];
+        return {
+            ...result,
+            ...change,
+            success: change.skipped ? false : result.success,
+            mode: this.modifiers[modifierName].mode,
+        };
+    }
+
+    /**
+     * Applies several semantic modifier modes with at most one structure rebuild.
+     * Unsupported modes are reported and skipped independently.
+     * @param {object} modes - Modifier-name to semantic-mode mapping
+     * @param {object} [behavior] - Coupling behavior
+     * @returns {Promise<object>} Batched update result and per-modifier changes
+     */
+    async setModifierModes(modes, behavior = {}) {
+        const { broadcast = true } = behavior;
+        const changes = {};
+        const changedModifiers = [];
+        for (const [modifierName, requestedMode] of Object.entries(modes)) {
+            const modifier = this.modifiers[modifierName];
+            if (!modifier) {
+                throw new Error(`Unknown structure modifier: ${modifierName}`);
+            }
+            const normalizedMode = String(requestedMode).toLowerCase().replace(/_/g, '-');
+            const applicableModes = this.state.baseStructure
+                ? modifier.getApplicableModes(this.state.baseStructure)
+                : Object.values(modifier.MODES);
+            if (!applicableModes.includes(normalizedMode)) {
+                changes[modifierName] = {
+                    skipped: true,
+                    mode: modifier.mode,
+                    requestedMode: normalizedMode,
+                };
+                continue;
+            }
+            if (modifier.mode === normalizedMode) {
+                changes[modifierName] = { unchanged: true, mode: modifier.mode };
+                continue;
+            }
+            modifier.mode = normalizedMode;
+            changes[modifierName] = { mode: modifier.mode };
+            changedModifiers.push({ modifierName, modifier });
+        }
+
+        let result = { success: true };
+        if (changedModifiers.length > 0 && this.state.baseStructure) {
+            result = changedModifiers.some(({ modifier }) => modifier.requiresCameraUpdate)
+                ? await this.loadStructure(this.state.baseStructure)
+                : await this.updateStructure();
+        }
+        if (result.success) {
+            changedModifiers.forEach(({ modifierName, modifier }) => {
+                this.notifyModifierModeChange({
+                    modifierName,
+                    mode: modifier.mode,
+                    coupled: !broadcast,
+                });
+            });
+        }
+        return { ...result, changes };
+    }
+
+    /**
+     * Subscribes to successful structure-modifier mode changes.
+     * @param {function(object): void} callback - Mode-change listener
+     * @returns {function(): void} Function that removes the listener
+     */
+    onModifierModeChange(callback) {
+        if (typeof callback !== 'function') {
+            throw new Error('Modifier mode callback must be a function');
+        }
+        this.modifierModeCallbacks.add(callback);
+        return () => this.modifierModeCallbacks.delete(callback);
+    }
+
+    /** @param {object} change - Successful modifier mode change. */
+    notifyModifierModeChange(change) {
+        for (const callback of this.modifierModeCallbacks) {
+            try {
+                callback(change);
+            } catch (error) {
+                console.error('Modifier mode callback failed:', error);
+            }
+        }
     }
 
     /**
@@ -2394,6 +2500,7 @@ export class CrystalViewer {
         this.contourLineLayer.dispose();
         this.controls.dispose();
         this.atomLabelManager.dispose();
+        this.modifierModeCallbacks.clear();
 
         this.scene.traverse((object) => {
             if (object.geometry) {

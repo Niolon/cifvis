@@ -10,6 +10,7 @@ export default defineConfig({
             input: {
                 main: resolve(__dirname, '../site/index.html'),
                 docsIndex: resolve(__dirname, '../site/docs/index.html'),
+                docsComparison: resolve(__dirname, '../site/docs/comparison.html'),
                 docsWidget: resolve(__dirname, '../site/docs/widget-usage.html'),
                 docsOptions: resolve(__dirname, '../site/docs/options-reference.html'),
                 docsUsing: resolve(__dirname, '../site/docs/using-cifvis.html'),
