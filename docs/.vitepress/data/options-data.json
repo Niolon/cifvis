@@ -162,6 +162,11 @@
       "default": "0.25"
     },
     {
+      "path": "plot2DColorLuminanceFloor",
+      "type": "null",
+      "default": "null"
+    },
+    {
       "path": "plot2DOpenBondInnerScale",
       "type": "Number",
       "default": "0.5"
@@ -518,6 +523,11 @@
       "path": "atomLabels.atomColorLuminanceCeiling",
       "type": "Number",
       "default": "0.25"
+    },
+    {
+      "path": "atomLabels.atomColorLuminanceFloor",
+      "type": "null",
+      "default": "null"
     },
     {
       "path": "atomLabels.haloColor",

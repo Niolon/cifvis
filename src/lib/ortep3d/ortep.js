@@ -5,7 +5,7 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
-import { paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
+import { liftColorLuminance, paletteLuminanceLift, paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
 
 const OCTANT_SIGNS = [
     [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
@@ -461,12 +461,18 @@ export class GeometryMaterialCache {
         this.geometries = {};
         this.materials = {};
         this.elementMaterials = {};
-        this.plot2DElementColorScale = paletteLuminanceScale(
-            Object.values(this.options.elementProperties)
-                .map(property => property.atomColor)
-                .filter(Boolean),
-            this.options.plot2DColorLuminanceCeiling,
-        );
+        const plot2DPalette = Object.values(this.options.elementProperties)
+            .map(property => property.atomColor)
+            .filter(Boolean);
+        const plot2DFloor = this.options.plot2DColorLuminanceFloor;
+        // A configured floor replaces the ceiling: the palette is mixed
+        // towards white for dark backgrounds instead of darkened.
+        this.plot2DElementColorScale = plot2DFloor !== null && plot2DFloor !== undefined
+            ? 1
+            : paletteLuminanceScale(plot2DPalette, this.options.plot2DColorLuminanceCeiling);
+        this.plot2DElementColorLift = plot2DFloor !== null && plot2DFloor !== undefined
+            ? paletteLuminanceLift(plot2DPalette, plot2DFloor)
+            : 0;
 
         this.initializeGeometries();
         this.initializeMaterials();
@@ -602,9 +608,9 @@ export class GeometryMaterialCache {
                 const elementProperty = this.options.elementProperties[elementType];
                 const rawElementLineColor = ['H', 'D'].includes(elementType) ?
                     this.options.plot2DLineColor : elementProperty.atomColor;
-                const elementLineColor = scaleColorLuminance(
-                    rawElementLineColor,
-                    this.plot2DElementColorScale,
+                const elementLineColor = liftColorLuminance(
+                    scaleColorLuminance(rawElementLineColor, this.plot2DElementColorScale),
+                    this.plot2DElementColorLift,
                 );
                 const outlineMaterial = new THREE.MeshBasicMaterial({
                     color: elementLineColor,

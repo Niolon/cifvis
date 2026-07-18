@@ -174,6 +174,10 @@ export default {
     'plot2DBondOutlineColor': '#ffffff',
     'plot2DBondOutlineScale': 1.18,
     'plot2DColorLuminanceCeiling': 0.25,
+    // When set (0-1), replaces the ceiling: the element palette is mixed
+    // towards white so its darkest colour reaches this relative luminance -
+    // for dark plot2DBackground values.
+    'plot2DColorLuminanceFloor': null,
     'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
     'plot2DStripeWidth': 0.18,
@@ -236,6 +240,10 @@ export default {
         'colorMode': 'uniform',
         'color': '#111111',
         'atomColorLuminanceCeiling': 0.25,
+        // When set (0-1), replaces the ceiling: label colours are mixed
+        // towards white so the darkest element colour reaches this relative
+        // luminance - for labels on dark backgrounds.
+        'atomColorLuminanceFloor': null,
         'haloColor': '#ffffff',
         'haloWidth': 2,
         'leaderLines': 'auto',

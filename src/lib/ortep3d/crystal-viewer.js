@@ -107,6 +107,11 @@ function validateAtomLabelOptions(options) {
             options.atomColorLuminanceCeiling >= 0 && options.atomColorLuminanceCeiling <= 1)) {
         throw new Error('atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1');
     }
+    if (options.atomColorLuminanceFloor !== undefined && options.atomColorLuminanceFloor !== null &&
+        !(typeof options.atomColorLuminanceFloor === 'number' &&
+            options.atomColorLuminanceFloor >= 0 && options.atomColorLuminanceFloor <= 1)) {
+        throw new Error('atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1');
+    }
     if (options.show !== undefined && !isValidAtomLabelSelection(options.show)) {
         throw new Error(
             'atomLabels.show must be "none", "all", "non-hydrogen", or an array of label requests',
@@ -559,6 +564,12 @@ export class CrystalViewer {
                 options.plot2DColorLuminanceCeiling >= 0 &&
                 options.plot2DColorLuminanceCeiling <= 1)) {
             throw new Error('plot2DColorLuminanceCeiling must be a number from 0 to 1');
+        }
+        if (options.plot2DColorLuminanceFloor !== undefined && options.plot2DColorLuminanceFloor !== null &&
+            !(typeof options.plot2DColorLuminanceFloor === 'number' &&
+                options.plot2DColorLuminanceFloor >= 0 &&
+                options.plot2DColorLuminanceFloor <= 1)) {
+            throw new Error('plot2DColorLuminanceFloor must be null or a number from 0 to 1');
         }
         if (options.plot2DBondOutlineScale !== undefined &&
             !(typeof options.plot2DBondOutlineScale === 'number' &&

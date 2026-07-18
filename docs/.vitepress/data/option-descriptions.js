@@ -65,6 +65,13 @@ export const descriptions = {
     'plot2DColorLuminanceCeiling': 'Maximum relative luminance for element-coloured outlines and ' +
         'hatching in <code>cutout-2d</code>. The entire palette is scaled together so hue and ' +
         'relative brightness are preserved.',
+    'plot2DColorLuminanceFloor': {
+        type: 'Number|null',
+        description: 'When set (0&ndash;1), replaces the ceiling: the element palette is mixed ' +
+            'towards white so its darkest colour reaches this relative luminance &mdash; for ' +
+            'dark <code>plot2DBackground</code> values. See the ' +
+            '<a href="../widget/styling.html#default-dark-theme">default dark theme</a>.',
+    },
     'plot2DOpenBondInnerScale': 'Opaque inner width of open PART 2 bonds relative to a solid bond.',
     'plot2DStripeCount': 'Number of hatch repeats across each 2D section face.',
     'plot2DStripeWidth': 'Element-coloured line width as a fraction of each repeat.',
@@ -100,6 +107,13 @@ export const descriptions = {
     'atomLabels.atomColorLuminanceCeiling': 'In <code>atom</code> colour mode, the element palette ' +
         'is scaled so its brightest colour reaches this relative-luminance ceiling without ' +
         'clustering colours there.',
+    'atomLabels.atomColorLuminanceFloor': {
+        type: 'Number|null',
+        description: 'When set (0&ndash;1), replaces the ceiling: in <code>atom</code> colour ' +
+            'mode the palette is mixed towards white so its darkest element colour reaches this ' +
+            'relative luminance &mdash; keeps labels readable on dark backgrounds. See the ' +
+            '<a href="../widget/styling.html#default-dark-theme">default dark theme</a>.',
+    },
     'atomLabels.haloColor': 'Contrast halo colour behind label text.',
     'atomLabels.haloWidth': 'Contrast halo width in CSS pixels.',
     'atomLabels.leaderLines': 'Controls when leader lines from a label to its atom are drawn.',

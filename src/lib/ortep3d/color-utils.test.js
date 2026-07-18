@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
 import {
     colorLuminance,
+    liftColorLuminance,
+    paletteLuminanceLift,
     paletteLuminanceScale,
     scaleColorLuminance,
 } from './color-utils.js';
@@ -33,5 +35,30 @@ describe('readable color luminance', () => {
             colorLuminance(first) / colorLuminance(second),
             6,
         );
+    });
+});
+
+describe('dark-background luminance floor', () => {
+    test('leaves an already bright palette unlifted', () => {
+        expect(paletteLuminanceLift(['#ffffff', '#cccccc'], 0.25)).toBe(0);
+    });
+
+    test('lifts the darkest palette color (including black) to the floor', () => {
+        const lift = paletteLuminanceLift(['#000000', '#ffffff'], 0.35);
+        const black = liftColorLuminance('#000000', lift);
+
+        expect(lift).toBeGreaterThan(0);
+        expect(colorLuminance(black)).toBeCloseTo(0.35, 6);
+    });
+
+    test('preserves luminance ordering when lifting', () => {
+        const dark = new THREE.Color('#111111');
+        const bright = new THREE.Color('#ff0d0d');
+        const lift = paletteLuminanceLift([dark, bright], 0.4);
+        const liftedDark = liftColorLuminance(dark, lift);
+        const liftedBright = liftColorLuminance(bright, lift);
+
+        expect(colorLuminance(liftedDark)).toBeLessThan(colorLuminance(liftedBright));
+        expect(colorLuminance(liftedBright)).toBeGreaterThan(colorLuminance(bright));
     });
 });

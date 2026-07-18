@@ -21,7 +21,7 @@ features:
     details: What CifVis is and the concepts shared by widget and library — the CIF model, the structure model and its filters, and how density maps work.
     link: /general/introduction
   - title: Widget
-    details: The <cifview-widget> web component — one HTML tag for an interactive structure on your page, with attributes for modes, density, filtering, and styling.
+    details: The <code>&lt;cifview-widget&gt;</code> web component — one HTML tag for an interactive structure on your page, with attributes for modes, density, filtering, and styling.
     link: /widget/getting-started
   - title: JS Library
     details: Parse CIF files, drive CrystalViewer to build a custom GUI, calculate density maps, run Filters standalone, or feed geometry into your own Three.js scene.

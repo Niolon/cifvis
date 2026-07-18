@@ -66,9 +66,12 @@ lanes — is explained in [How placement works](./how-it-works.md).
 
 Font, colour, halo, and leader-line appearance are all options in the same group:
 uniform text colour or per-element colour (`colorMode: 'atom'`, with a luminance ceiling
-so bright element colours stay readable), a contrast halo, and configurable leader
-lines. The exhaustive option table is in
-[Options Reference → Atom labels](../reference/atom-labels.md).
+so bright element colours stay readable on light backgrounds), a contrast halo, and
+configurable leader lines. On dark backgrounds, set `atomColorLuminanceFloor` instead —
+it replaces the ceiling and mixes the palette towards white so even black carbon labels
+stay legible (see the
+[default dark theme](../widget/styling.md#default-dark-theme)). The exhaustive option
+table is in [Options Reference → Atom labels](../reference/atom-labels.md).
 
 ## Performance behaviour
 

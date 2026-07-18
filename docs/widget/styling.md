@@ -6,6 +6,10 @@
   `document.head` (guarded so multiple widget instances on a page don't duplicate it).
 - All internal styling is scoped by tag name + class selector, e.g.
   `cifview-widget .control-button`.
+- The root creates its own stacking context (`isolation: isolate`), so the widget's
+  internal overlays (toggle buttons, error messages) can never paint over your page's
+  sticky headers, menus, or modals — any positioned ancestor or sibling with a
+  `z-index` above the widget's own stacks above *all* of it.
 
 ## Internal class names
 
@@ -34,6 +38,10 @@ all — just set the custom properties on `cifview-widget` (or an ancestor):
 | `--cifvis-button-bg` | `rgba(255,255,255,0.9)` | Toggle button background. |
 | `--cifvis-button-hover-bg` | `#ffffff` | Toggle button background on hover. |
 | `--cifvis-button-radius` | `8px` | Toggle button border radius. |
+| `--cifvis-icon-filter` | `none` (light) / `invert(1) brightness(0.88)` (dark) | CSS filter applied to the toggle-button icons; the built-in dark theme uses it to invert the grayscale default icons to a soft off-white matching the caption text. |
+
+The defaults listed are the light-scheme values; the
+[built-in dark theme](#default-dark-theme) below swaps them automatically.
 
 ```css
 cifview-widget {
@@ -55,6 +63,44 @@ If you are also looking at `site/src/style.css` for reference: that file styles 
 styling, and copying it onto a page that also embeds the widget will cause the rules to
 collide.
 :::
+
+## Built-in dark theme {#default-dark-theme}
+
+The widget's injected stylesheet supports dark mode by default — no extra CSS needed.
+The dark palette applies:
+
+- **automatically** when the OS/browser prefers a dark color scheme
+  (`prefers-color-scheme: dark`), or
+- when the widget is inside an element with the common `dark` class (as used by this
+  documentation's theme toggle, Tailwind, etc.), or carries/inherits the explicit
+  `cifvis-dark` class; `cifvis-light` forces the light defaults back.
+
+All dark rules have zero CSS specificity (they are wrapped in `:where()`), so anything
+you set yourself — a `--cifvis-*` custom property or a direct rule — always wins. The
+default grayscale button icons are inverted in dark mode via the
+`--cifvis-icon-filter` custom property (set it to `none` if you supply colourful
+[custom icons](./loading-data.md#custom-icons)).
+
+```html
+<!-- Forced dark, regardless of the OS scheme: -->
+<cifview-widget class="cifvis-dark" src="structure.cif"
+    options='{
+        "atomLabels": {"colorMode": "atom", "atomColorLuminanceFloor": 0.35,
+                       "haloColor": "#1e1e2f"},
+        "bondColor": "#9a9aae"
+    }'>
+</cifview-widget>
+```
+
+CSS only reaches the widget chrome, so on dark pages pair it with viewer options for
+the WebGL content. The key one is `atomLabels.atomColorLuminanceFloor`: where the
+default luminance *ceiling* darkens the element palette so bright colours stay readable
+on white, a configured *floor* replaces it and mixes the palette towards white so even
+black carbon labels stay readable on dark backgrounds. The same pair exists for the 2D
+publication style (`plot2DColorLuminanceCeiling` / `plot2DColorLuminanceFloor`,
+combined with a dark `plot2DBackground`).
+
+<CifDemo src="/cif/sucrose.cif" class="cifvis-dark" options='{"atomLabels":{"show":"non-hydrogen","colorMode":"atom","atomColorLuminanceFloor":0.35,"haloColor":"#1e1e2f"},"bondColor":"#9a9aae"}' caption="Forced dark theme (cifvis-dark class) plus a 0.35 label luminance floor." style="aspect-ratio: 16 / 9;" />
 
 ## Try it live
 
