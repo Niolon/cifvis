@@ -131,9 +131,10 @@ npm run bench -- path/to/file-list.txt --out results.csv --render-mode constant<
                 <code>--chrome</code> or the <code>CHROME_PATH</code> environment variable if the system default
                 isn't found.
             </p>
-            <p>Density work has three focused benchmarks:</p>
+            <p>Density work has four focused benchmarks:</p>
             <pre><code>npm run bench:iam -- structure.cif 20
 npm run bench:density-symmetry -- structure.cif reflections.fcf 10
+npm run bench:density-cod -- /path/to/cod/cif --sample 5000 --out benchmark/density-pipeline-cod.csv
 npm run bench:contours -- structure.cif scalar-field.cube 7</code></pre>
             <p>
                 <code>bench:iam</code> separates model construction, first calculation, and warmed repeated
@@ -143,6 +144,18 @@ npm run bench:contours -- structure.cif scalar-field.cube 7</code></pre>
                 path consistently. The contour benchmark reports plane setup, linear or monotone-tricubic sampling,
                 multi-level Marching Squares extraction, transferable packing, and main-thread thick-line geometry
                 independently. This mirrors the production worker/rendering boundary without including worker startup.
+            </p>
+            <p>
+                <code>bench:density-cod</code> calibrates the full synthetic Fo&minus;Fc path on a deterministic COD
+                sample. HKL generation and artificial noisy Fobs creation are deliberately untimed; IAM Fcalc, FFT
+                density, and symmetry-aware Marching Cubes are timed separately. A processor exercise at the beginning
+                and end normalizes drift. The analysis-ready CSV includes asymmetric-unit and expanded unit-cell atom
+                counts, all cell parameters, file size and its empirical quantile, reflection/grid/mesh sizes, raw and normalized timings, predictions, and
+                recommended equal-work fractions. Estimates below 200 ms remain one step; longer work is divided into
+                increments as close as possible to the 100&ndash;200 ms window. The fitted work coefficients are written
+                to a JSON sidecar for a later runtime estimator. Directory inputs are stratified into equal-probability
+                intervals of the complete CIF file-size distribution, with one deterministic random selection per
+                interval and shuffled execution order. Partial CSV results are checkpointed every 25 structures.
             </p>
         </section>
 

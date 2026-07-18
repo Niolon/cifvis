@@ -497,9 +497,26 @@ npm run bench:labels
 npm run bench:iam -- structure.cif 20
 npm run bench:density-symmetry -- structure.cif reflections.fcf 10
 
+# calibrate the complete synthetic Fo-Fc pipeline on a size-stratified COD sample
+npm run bench:density-cod -- /path/to/cod/cif --sample 5000 \
+  --out benchmark/density-pipeline-cod.csv
+
 # isolate worker-eligible plane sampling/extraction from main-thread line geometry
 npm run bench:contours -- structure.cif scalar-field.cube 7
 ```
+
+`bench:density-cod` generates an absence-filtered HKL set without timing it,
+times IAM Fcalc, creates deterministic noisy Fobs without timing it, then times
+the FFT density and symmetry-aware Marching Cubes stages separately. The CSV
+records asymmetric-unit and symmetry-expanded unit-cell atom counts, cell
+parameters, CIF file size and empirical size quantile, grid/mesh sizes, processor calibration at the beginning and end,
+CPU-normalized work scores, fitted estimates, and equal-work progressive
+fractions. A single final step is retained below 200 ms; longer estimates are
+divided as closely as possible into 100–200 ms work increments. The fitted
+processor-independent coefficients are also written to
+`benchmark/density-pipeline-heuristic.json`. Directory samples use one deterministic random entry from each
+equal-probability stratum of the complete COD file-size distribution, then shuffle execution order to keep processor
+drift independent of file size. The CSV is checkpointed every 25 structures.
 
 ## Browser Support
 

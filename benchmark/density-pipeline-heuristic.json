@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-07-18T12:21:35.660Z",
+  "sampleSize": 4963,
+  "requestedSampleSize": 5000,
+  "codPopulationSize": 524186,
+  "fileSizeRangeBytes": [
+    698,
+    62005699
+  ],
+  "samplingSeed": 20260718,
+  "samplingMethod": "one deterministic random CIF per equal-probability file-size stratum",
+  "dMin": 0.9,
+  "processorSpeedStart": 152311.90431766276,
+  "processorSpeedEnd": 159538.3428348969,
+  "workPerUnit": {
+    "fcalcWorkPerUnit": 10.12892660391215,
+    "densityWorkPerUnit": 0.7011008854602637,
+    "surfaceWorkPerUnit": 21.234372277261546
+  },
+  "predictors": {
+    "fcalc": "reflectionCount * (unitCellAtoms + scatteringModelCount)",
+    "density": "gridPoints * (log2(gridPoints) + 1) + coefficientCount",
+    "surface": "surfaceResolution^3 * marchingCubesPassCount"
+  },
+  "progressiveTimingWindowMs": [
+    100,
+    200
+  ],
+  "progressiveFractionModel": "(stepIndex / stepCount)^(1/3)"
+}
