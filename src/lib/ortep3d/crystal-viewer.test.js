@@ -90,6 +90,21 @@ describe('CrystalViewer rendering option validation', () => {
             atomLabels: { autoPerformanceLabelThreshold: 2.5 },
         })).toThrow('atomLabels.autoPerformanceLabelThreshold must be a non-negative integer');
     });
+
+    test('rejects invalid atom-label color readability options', () => {
+        expect(() => new CrystalViewer({}, {
+            atomLabels: { colorMode: 'element-gradient' },
+        })).toThrow('Invalid atom label color mode: "element-gradient". Must be one of: uniform, atom');
+        expect(() => new CrystalViewer({}, {
+            atomLabels: { atomColorLuminanceCeiling: 1.1 },
+        })).toThrow('atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1');
+    });
+
+    test('rejects an invalid 2D element-color luminance ceiling', () => {
+        expect(() => new CrystalViewer({}, { plot2DColorLuminanceCeiling: -0.1 })).toThrow(
+            'plot2DColorLuminanceCeiling must be a number from 0 to 1',
+        );
+    });
 });
 
 describe('CrystalViewer atom-label runtime option validation', () => {

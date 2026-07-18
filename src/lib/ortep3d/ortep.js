@@ -5,6 +5,7 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
+import { paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
 
 const OCTANT_SIGNS = [
     [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
@@ -460,6 +461,12 @@ export class GeometryMaterialCache {
         this.geometries = {};
         this.materials = {};
         this.elementMaterials = {};
+        this.plot2DElementColorScale = paletteLuminanceScale(
+            Object.values(this.options.elementProperties)
+                .map(property => property.atomColor)
+                .filter(Boolean),
+            this.options.plot2DColorLuminanceCeiling,
+        );
 
         this.initializeGeometries();
         this.initializeMaterials();
@@ -585,8 +592,12 @@ export class GeometryMaterialCache {
             const plotKey = `${elementType}_2d_materials`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
-                const elementLineColor = ['H', 'D'].includes(elementType) ?
+                const rawElementLineColor = ['H', 'D'].includes(elementType) ?
                     this.options.plot2DLineColor : elementProperty.atomColor;
+                const elementLineColor = scaleColorLuminance(
+                    rawElementLineColor,
+                    this.plot2DElementColorScale,
+                );
                 const outlineMaterial = new THREE.MeshBasicMaterial({
                     color: elementLineColor,
                     side: THREE.BackSide,

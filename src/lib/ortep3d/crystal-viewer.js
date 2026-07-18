@@ -33,11 +33,13 @@ const VALID_ATOM_LABEL_PLACEMENT_MODES = [
     'maximum-coverage',
 ];
 const VALID_ATOM_LABEL_CALLOUT_PLACEMENTS = ['structure', 'viewport'];
+const VALID_ATOM_LABEL_COLOR_MODES = ['uniform', 'atom'];
 
 /**
  * @typedef {object} AtomLabelPlacement
  * @property {string} id - Unique atom ID
  * @property {string} text - Displayed label text
+ * @property {string} [color] - Per-label CSS text colour
  * @property {{left: number, right: number, top: number, bottom: number}} rect - Label bounds
  * @property {{x1: number, y1: number, x2: number, y2: number, radius: number}|null} leaderSegment
  * Screen-space connector, when one is needed
@@ -93,6 +95,17 @@ function validateAtomLabelOptions(options) {
             `Invalid atom label callout placement: "${options.calloutPlacement}". ` +
             `Must be one of: ${VALID_ATOM_LABEL_CALLOUT_PLACEMENTS.join(', ')}`,
         );
+    }
+    if (options.colorMode !== undefined && !VALID_ATOM_LABEL_COLOR_MODES.includes(options.colorMode)) {
+        throw new Error(
+            `Invalid atom label color mode: "${options.colorMode}". ` +
+            `Must be one of: ${VALID_ATOM_LABEL_COLOR_MODES.join(', ')}`,
+        );
+    }
+    if (options.atomColorLuminanceCeiling !== undefined &&
+        !(typeof options.atomColorLuminanceCeiling === 'number' &&
+            options.atomColorLuminanceCeiling >= 0 && options.atomColorLuminanceCeiling <= 1)) {
+        throw new Error('atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1');
     }
     if (options.show !== undefined && !isValidAtomLabelSelection(options.show)) {
         throw new Error(
@@ -541,6 +554,12 @@ export class CrystalViewer {
                 `Must be one of: ${validBondColorModes.join(', ')}`,
             );
         }
+        if (options.plot2DColorLuminanceCeiling !== undefined &&
+            !(typeof options.plot2DColorLuminanceCeiling === 'number' &&
+                options.plot2DColorLuminanceCeiling >= 0 &&
+                options.plot2DColorLuminanceCeiling <= 1)) {
+            throw new Error('plot2DColorLuminanceCeiling must be a number from 0 to 1');
+        }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
 
@@ -606,6 +625,8 @@ export class CrystalViewer {
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
+                defaultSettings.plot2DColorLuminanceCeiling,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
                 defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,

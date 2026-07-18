@@ -447,6 +447,8 @@ const viewer = new CrystalViewer(container, {
   atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
   atomLabels: {
     show: ['C1', { id: 'O1', text: 'O(carbonyl)', priority: 10 }],
+    colorMode: 'atom', // element palette scaled together to a readability ceiling
+    atomColorLuminanceCeiling: 0.25,
     placementMode: 'auto-omit', // adaptive; or quality, performance, maximum coverage
     calloutPlacement: 'structure', // compact; 'viewport' uses the full width
     maxConnectorLength: 250, // optional hard CSS-pixel ceiling

@@ -239,6 +239,11 @@
                             <td>Color</td>
                             <td>Solid bond and open-bond outline colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
                         </tr>
+                        <tr class="option-row" data-keywords="2d plot atom element color luminance brightness ceiling readable">
+                            <td><span class="option-code">plot2DColorLuminanceCeiling</span></td>
+                            <td>Number</td>
+                            <td>Maximum relative luminance for element-coloured outlines and hatching in <code>cutout-2d</code>. The entire palette is scaled together so hue and relative brightness are preserved. <span class="default-value">Default: 0.25</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="2d plot disorder open bond white inner scale part 2">
                             <td><span class="option-code">plot2DOpenBondInnerScale</span></td>
                             <td>Number</td>
@@ -318,6 +323,11 @@
                             <td><span class="option-code">atomLabels.color</span><br><span class="option-code">atomLabels.haloColor</span><br><span class="option-code">atomLabels.haloWidth</span></td>
                             <td>Color / Color / Number</td>
                             <td>Text and contrast-halo appearance. <span class="default-value">Defaults: #111111, #ffffff, 2</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels atom element color mode luminance brightness readable">
+                            <td><span class="option-code">atomLabels.colorMode</span><br><span class="option-code">atomLabels.atomColorLuminanceCeiling</span></td>
+                            <td>String / Number</td>
+                            <td><code>uniform</code> uses <code>atomLabels.color</code>; <code>atom</code> uses each atom's element colour. The entire element palette is scaled so its brightest colour reaches the configured relative-luminance ceiling without clustering colours there. <span class="default-value">Defaults: "uniform", 0.25</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels padding distance collision">
                             <td><span class="option-code">atomLabels.atomPadding</span><br><span class="option-code">atomLabels.bondPadding</span><br><span class="option-code">atomLabels.labelPadding</span><br><span class="option-code">atomLabels.viewportPadding</span></td>

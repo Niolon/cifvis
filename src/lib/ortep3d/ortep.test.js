@@ -12,6 +12,7 @@ import { FractPosition } from '../structure/position.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
 import { matrix as buildMatrix } from '../math-lite.js';
+import { colorLuminance, scaleColorLuminance } from './color-utils.js';
 
 describe('Transformation Functions', () => {
     describe('getThreeEllipsoidMatrix', () => {
@@ -337,9 +338,15 @@ describe('GeometryMaterialCache', () => {
             expect(carbon.color.getHexString()).toBe('ffffff');
             expect(oxygen.color.getHexString()).toBe('ffffff');
             expect(carbonRing.color.getHexString()).toBe('000000');
-            expect(oxygenRing.color.getHexString()).toBe('ff0d0d');
+            expect(oxygenRing.color.getHexString()).toBe(
+                scaleColorLuminance(
+                    defaultSettings.elementProperties.O.atomColor,
+                    plotCache.plot2DElementColorScale,
+                ).getHexString(),
+            );
             expect(carbonHatch.userData.plot2DHatch.color.getHexString()).toBe('000000');
-            expect(oxygenHatch.userData.plot2DHatch.color.getHexString()).toBe('ff0d0d');
+            expect(oxygenHatch.userData.plot2DHatch.color.getHexString())
+                .toBe(oxygenRing.color.getHexString());
             expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
             expect(plotCache.materials.openBond.color.getHexString()).toBe('ffffff');
             expect(plotCache.materials.openBond.transparent).toBe(false);
@@ -347,6 +354,21 @@ describe('GeometryMaterialCache', () => {
             expect(plotCache.materials.openBondOutline.color.getHexString()).toBe('000000');
             expect(plotCache.materials.openBondOutline.side).toBe(THREE.BackSide);
             expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+
+            plotCache.dispose();
+        });
+
+        test('caps bright element colors in the 2D plot while preserving their hue', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [, sulfurRing, sulfurHatch] = plotCache.getAtomMaterials('S');
+
+            expect(colorLuminance(sulfurRing.color)).toBeCloseTo(
+                colorLuminance(defaultSettings.elementProperties.S.atomColor) *
+                    plotCache.plot2DElementColorScale,
+                6,
+            );
+            expect(sulfurHatch.userData.plot2DHatch.color.getHexString())
+                .toBe(sulfurRing.color.getHexString());
 
             plotCache.dispose();
         });
