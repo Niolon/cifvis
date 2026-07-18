@@ -59266,7 +59266,7 @@ var j_ = class {
 		return this.modifiers[e].getApplicableModes(t).length;
 	}
 	animate() {
-		(this.options.renderMode === "constant" || this.needsRender) && (this.updateCameraFacingOctants(), this.renderer.render(this.scene, this.camera), this.atomLabelManager.scheduleUpdate(), this.needsRender = !1), requestAnimationFrame(this.animate.bind(this));
+		this.options !== null && ((this.options.renderMode === "constant" || this.needsRender) && (this.updateCameraFacingOctants(), this.renderer.render(this.scene, this.camera), this.atomLabelManager.scheduleUpdate(), this.needsRender = !1), this.animationFrameId = requestAnimationFrame(this.animate.bind(this)));
 	}
 	updateCameraFacingOctants() {
 		let e = this.state.currentStructure?.cameraFacingAtoms;
@@ -59307,7 +59307,7 @@ var j_ = class {
 		return this.atomLabelManager.layout;
 	}
 	dispose() {
-		this.cancelScalarFieldLoad("Viewer disposed"), this.isosurfaceLayer.dispose(), this.contourLineLayer.dispose(), this.controls.dispose(), this.atomLabelManager.dispose(), this.modifierModeCallbacks.clear(), this.scene.traverse((e) => {
+		this.animationFrameId !== void 0 && cancelAnimationFrame(this.animationFrameId), this.cancelScalarFieldLoad("Viewer disposed"), this.isosurfaceLayer.dispose(), this.contourLineLayer.dispose(), this.controls.dispose(), this.atomLabelManager.dispose(), this.modifierModeCallbacks.clear(), this.scene.traverse((e) => {
 			e.geometry && e.geometry.dispose(), e.material && (Array.isArray(e.material) ? e.material.forEach((e) => e.dispose()) : e.material.dispose());
 		}), this.selections.dispose(), this.renderer.dispose(), this.renderer.domElement.parentNode && this.renderer.domElement.parentNode.removeChild(this.renderer.domElement), this.scene = null, this.camera = null, this.renderer = null, this.state = null, this.options = null;
 	}
