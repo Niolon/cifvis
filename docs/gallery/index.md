@@ -16,6 +16,7 @@ as widget markup and as library JavaScript.
 | [Disorder handling](./disorder.md) | Cycling disorder groups on a disordered structure. |
 | [Labeled figures](./atom-labels-figure.md) | Maximum-coverage atom labels for an annotated figure. |
 | [Embedding with other JS](./embedding.md) | A viewer coexisting with your own JavaScript — selection driving a chart. |
+| [Geometry measurements](./measurements.md) | Click atoms into a list and measure distances, angles, torsions, and distances to a plane. |
 | [Extended solids](./extended-solid.md) | An ionic structure grown through symmetry with the unit cell displayed. |
 
 All demos use the sample CIF files that ship with the

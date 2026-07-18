@@ -119,6 +119,7 @@ export default defineConfig({
                     { text: 'Disorder handling', link: '/gallery/disorder' },
                     { text: 'Labeled figures', link: '/gallery/atom-labels-figure' },
                     { text: 'Embedding with other JS', link: '/gallery/embedding' },
+                    { text: 'Geometry measurements', link: '/gallery/measurements' },
                     { text: 'Extended solids', link: '/gallery/extended-solid' },
                 ],
             },
