@@ -501,6 +501,9 @@ npm run bench:density-symmetry -- structure.cif reflections.fcf 10
 npm run bench:density-cod -- /path/to/cod/cif --sample 5000 \
   --out benchmark/density-pipeline-cod.csv
 
+# refit estimates and preview schedules from an existing calibration CSV
+npm run bench:density-fit
+
 # isolate worker-eligible plane sampling/extraction from main-thread line geometry
 npm run bench:contours -- structure.cif scalar-field.cube 7
 ```
@@ -510,13 +513,17 @@ times IAM Fcalc, creates deterministic noisy Fobs without timing it, then times
 the FFT density and symmetry-aware Marching Cubes stages separately. The CSV
 records asymmetric-unit and symmetry-expanded unit-cell atom counts, cell
 parameters, CIF file size and empirical size quantile, grid/mesh sizes, processor calibration at the beginning and end,
-CPU-normalized work scores, fitted estimates, and equal-work progressive
-fractions. A single final step is retained below 200 ms; longer estimates are
-divided as closely as possible into 100–200 ms work increments. The fitted
-processor-independent coefficients are also written to
+CPU-normalized work scores, fitted estimates, and bounded progressive-preview
+fractions. Estimates below 300 ms run only once. Longer calculations may receive
+up to five 100–200 ms previews, but preview work is capped at 750 ms and at 50%
+of the estimated final calculation. Longer gaps should report progress without
+starting another calculation. The robust log-linear component models and
+held-out validation errors are written to
 `benchmark/density-pipeline-heuristic.json`. Directory samples use one deterministic random entry from each
 equal-probability stratum of the complete COD file-size distribution, then shuffle execution order to keep processor
 drift independent of file size. The CSV is checkpointed every 25 structures.
+`bench:density-fit` can rebuild the estimates, schedules, and model sidecar from
+that CSV without rerunning the expensive COD benchmark.
 
 ## Browser Support
 

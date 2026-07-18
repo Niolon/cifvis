@@ -32,6 +32,7 @@ import {
     recommendProgressiveSchedule,
 } from '../src/lib/density/progressive-timing.js';
 import * as math from '../src/lib/math-lite.js';
+import { refitDensityHeuristic } from './fit-density-heuristic.mjs';
 
 const DEFAULT_COD_DIRECTORY = process.env.COD_DIR || '/home/niklas/cod/cif';
 const TWO_PI = 2 * Math.PI;
@@ -611,7 +612,11 @@ async function main() {
             maximumStepMs: options.maxStepMs,
         });
         record.recommendedStepCount = recommendation.stepCount;
-        record.recommendedStepMs = recommendation.estimatedStepMs;
+        record.recommendedPreviewCount = recommendation.previewCount;
+        record.recommendedPreviewMs = recommendation.estimatedPreviewMs.join(';');
+        record.recommendedExtraWorkMs = recommendation.estimatedExtraWorkMs;
+        record.recommendedSequentialMs = recommendation.estimatedSequentialMs;
+        record.recommendedProgressSignalMs = recommendation.progressSignalIntervalMs;
         record.recommendedProgressiveSteps = recommendation.fractions.join(';');
     }
     writeCsv(options.out, records);
@@ -633,9 +638,12 @@ async function main() {
             surface: 'surfaceResolution^3 * marchingCubesPassCount',
         },
         progressiveTimingWindowMs: [options.minStepMs, options.maxStepMs],
-        progressiveFractionModel: '(stepIndex / stepCount)^(1/3)',
+        maximumPreviewBudgetMs: 750,
+        progressiveFractionModel: '(estimated preview redraw ms / final estimated ms)^(1/3)',
+        progressSignalIntervalMs: 150,
     };
     writeFileSync(resolve(options.modelOut), `${JSON.stringify(model, null, 2)}\n`);
+    const refit = refitDensityHeuristic({ csv: options.out, model: options.modelOut });
     console.log(JSON.stringify({
         output: resolve(options.out),
         modelOutput: resolve(options.modelOut),
@@ -645,6 +653,7 @@ async function main() {
         processorSpeedEnd,
         processorSpeedDrift: processorSpeedEnd / processorSpeedStart,
         heuristic,
+        validation: refit.validationMetrics,
     }, null, 2));
 }
 

@@ -34,6 +34,27 @@ export function estimateDensityPipelineTimings(metrics, workPerUnit, processorSp
     }
     const predictors = densityPipelinePredictors(metrics);
     const component = name => {
+        const logModel = workPerUnit?.logLinear?.[name];
+        if (logModel) {
+            const features = Array.isArray(logModel.features) ? logModel.features : [];
+            const coefficients = Array.isArray(logModel.coefficients)
+                ? logModel.coefficients.map(Number)
+                : [];
+            if (coefficients.length !== features.length + 1 ||
+                !coefficients.every(Number.isFinite)) {
+                throw new Error(`Invalid ${name} log-linear timing model`);
+            }
+            const logWork = features.reduce((sum, feature, index) => {
+                const value = Number(metrics[feature]);
+                if (!(Number.isFinite(value) && value > 0)) {
+                    throw new Error(
+                        `Missing positive ${feature} metric for ${name} timing model`,
+                    );
+                }
+                return sum + coefficients[index + 1] * Math.log(value);
+            }, coefficients[0]);
+            return Math.exp(logWork) / processorSpeed;
+        }
         const coefficient = Number(workPerUnit?.[`${name}WorkPerUnit`]);
         if (!(Number.isFinite(coefficient) && coefficient >= 0)) {
             throw new Error(`Missing non-negative ${name} work coefficient`);
@@ -53,16 +74,23 @@ export function estimateDensityPipelineTimings(metrics, workPerUnit, processorSp
 }
 
 /**
- * Divides estimated reusable cubic work into user-visible 100–200 ms increments.
- * Fractions are linear resolution/reciprocal-shell radii, so cumulative work is
- * approximated by fraction cubed. A cheap calculation remains a single final step.
+ * Selects a bounded number of sequential preview redraws. Every preview is a
+ * complete lower-resolution calculation, so its cost is additive rather than
+ * reusable. Cheap calculations remain single-stage; expensive calculations
+ * get previews whose combined estimated overhead stays below the configured
+ * budget. Long gaps should use progress-only signals instead of more redraws.
  * @param {number} totalMs - Estimated complete pipeline duration.
- * @param {object} [options] - Timing window and cubic scaling exponent.
- * @returns {{fractions:number[],stepCount:number,estimatedStepMs:number}} Recommended schedule.
+ * @param {object} [options] - Preview timing, budget, and cubic scaling options.
+ * @returns {object} Fractions, preview costs, total overhead, and signal cadence.
  */
 export function recommendProgressiveSchedule(totalMs, options = {}) {
     const minimumStepMs = Number(options.minimumStepMs ?? 100);
     const maximumStepMs = Number(options.maximumStepMs ?? 200);
+    const minimumPreviewTotalMs = Number(options.minimumPreviewTotalMs ?? 300);
+    const maximumPreviewBudgetMs = Number(options.maximumPreviewBudgetMs ?? 750);
+    const maximumPreviewSteps = Math.max(0, Math.round(options.maximumPreviewSteps ?? 5));
+    const maximumOverheadFraction = Number(options.maximumOverheadFraction ?? 0.5);
+    const progressSignalIntervalMs = Number(options.progressSignalIntervalMs ?? 150);
     const exponent = Number(options.exponent ?? 3);
     if (!(Number.isFinite(totalMs) && totalMs >= 0)) {
         throw new Error('Estimated pipeline duration must be a non-negative finite number');
@@ -70,20 +98,54 @@ export function recommendProgressiveSchedule(totalMs, options = {}) {
     if (!(minimumStepMs > 0 && maximumStepMs >= minimumStepMs)) {
         throw new Error('Progressive timing window must satisfy 0 < minimum <= maximum');
     }
+    if (!(minimumPreviewTotalMs >= 0 && maximumPreviewBudgetMs >= 0 &&
+        maximumOverheadFraction >= 0 && progressSignalIntervalMs > 0)) {
+        throw new Error('Progressive preview budgets and signal interval must be non-negative');
+    }
     if (!(Number.isFinite(exponent) && exponent > 0)) {
         throw new Error('Progressive work exponent must be a positive finite number');
     }
-    if (totalMs <= maximumStepMs) {
-        return { fractions: [1], stepCount: 1, estimatedStepMs: totalMs };
+    const singleStage = () => ({
+        fractions: [1],
+        stepCount: 1,
+        previewCount: 0,
+        estimatedPreviewMs: [],
+        estimatedExtraWorkMs: 0,
+        estimatedSequentialMs: totalMs,
+        progressSignalIntervalMs,
+    });
+    if (totalMs < minimumPreviewTotalMs || maximumPreviewSteps === 0) {
+        return singleStage();
     }
-    const targetStepMs = (minimumStepMs + maximumStepMs) / 2;
-    const minimumCount = Math.ceil(totalMs / maximumStepMs);
-    const maximumCount = Math.max(minimumCount, Math.floor(totalMs / minimumStepMs));
-    const stepCount = Math.min(
-        maximumCount,
-        Math.max(minimumCount, Math.round(totalMs / targetStepMs)),
+    const availableBudgetMs = Math.min(
+        maximumPreviewBudgetMs,
+        totalMs * maximumOverheadFraction,
     );
-    const fractions = Array.from({ length: stepCount }, (_, index) =>
-        Math.round(((index + 1) / stepCount) ** (1 / exponent) * 1000) / 1000);
-    return { fractions, stepCount, estimatedStepMs: totalMs / stepCount };
+    let estimatedPreviewMs = [];
+    for (let count = 1; count <= maximumPreviewSteps; count++) {
+        const candidate = count === 1
+            ? [(minimumStepMs + maximumStepMs) / 2]
+            : Array.from({ length: count }, (_, index) =>
+                minimumStepMs + index / (count - 1) * (maximumStepMs - minimumStepMs));
+        const candidateCost = candidate.reduce((sum, value) => sum + value, 0);
+        if (candidateCost > availableBudgetMs || candidate.at(-1) >= totalMs) {
+            break;
+        }
+        estimatedPreviewMs = candidate;
+    }
+    if (estimatedPreviewMs.length === 0) {
+        return singleStage();
+    }
+    const previewFractions = estimatedPreviewMs.map(duration =>
+        Math.round((duration / totalMs) ** (1 / exponent) * 1000) / 1000);
+    const estimatedExtraWorkMs = estimatedPreviewMs.reduce((sum, value) => sum + value, 0);
+    return {
+        fractions: [...previewFractions, 1],
+        stepCount: estimatedPreviewMs.length + 1,
+        previewCount: estimatedPreviewMs.length,
+        estimatedPreviewMs,
+        estimatedExtraWorkMs,
+        estimatedSequentialMs: totalMs + estimatedExtraWorkMs,
+        progressSignalIntervalMs,
+    };
 }
