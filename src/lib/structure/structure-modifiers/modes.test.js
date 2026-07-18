@@ -375,7 +375,7 @@ describe('SymmetryGrower', () => {
             expect(repeated.hBonds).toHaveLength(result.hBonds.length);
         });
 
-        test('keeps both H-bonds from a molecule completed across a special position', () => {
+        test('keeps the complete incoming H-bond orbit for urea special positions', () => {
             const cifContent = readFileSync('site/public/cif/urea.cif', 'utf8');
             const urea = CrystalStructure.fromCIF(new CIF(cifContent).getBlock(0));
             const result = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_HBONDS)
@@ -395,6 +395,18 @@ describe('SymmetryGrower', () => {
             expect(result.hBonds).toContainEqual(expect.objectContaining({
                 donorAtomId: 'N|6_566',
                 hydrogenAtomId: 'Ha|6_566',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|3_656',
+                hydrogenAtomId: 'Hb|3_656',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|2_466',
+                hydrogenAtomId: 'Hb|2_466',
                 acceptorAtomId: 'O|1_555',
                 acceptorAtomSymmetry: '.',
             }));
