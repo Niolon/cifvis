@@ -34,8 +34,8 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/docsUsing.Cdn8dLc0.js"></script>
-  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.Bo9a_yqd.js">
+  <script type="module" crossorigin src="/cifvis/assets/docsUsing.DB9KpGGi.js"></script>
+  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.C4SeXDOg.js">
   <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
@@ -188,6 +188,7 @@ if (!result.success) {
                 <tr><td><code>viewer.updateAtomLabelOptions(options)</code></td><td>Updates label appearance/layout without rebuilding the structure.</td></tr>
                 <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
+                <tr><td><code>coupleViewerInteractions(...viewers)</code></td><td>Bidirectionally couples hydrogen/disorder/symmetry modes plus the complete molecular transform, pan, absolute zoom/framing, and camera reset. Peer view events render once per animation frame; semantic mode changes rebuild each peer at most once.</td></tr>
                 <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
                 <tr><td><code>viewer.loadCube(text, options)</code></td><td>Loads a cell-matched Gaussian Cube grid in the density worker and progressively displays its isosurface.</td></tr>
                 <tr><td><code>viewer.addScalarField(field, options)</code></td><td>Adds an already calculated <code>ScalarFieldGrid</code>.</td></tr>

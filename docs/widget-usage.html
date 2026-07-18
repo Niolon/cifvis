@@ -9,7 +9,7 @@
             aspect-ratio: 16 / 9;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/src.Bo9a_yqd.js"></script>
+  <script type="module" crossorigin src="/cifvis/assets/src.C4SeXDOg.js"></script>
   <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
@@ -78,6 +78,23 @@
                     caption="Try clicking on atoms and bonds to select them. The caption updates with selection information.">
                 </cifview-widget>
             </div>
+        </section>
+
+        <section>
+            <h2>Coupled comparison views</h2>
+            <p>
+                Widgets can share hydrogen, disorder, and symmetry modes together with the complete molecular transform, right-drag panning,
+                wheel/pinch zoom, and camera reset. Interaction events are replayed once per animation frame, while
+                selection stays independent.
+            </p>
+            <p><a href="./comparison.html">Open the lightweight live comparison demo.</a></p>
+            <pre><code>import { coupleViewerInteractions } from 'cifvis';
+
+const coupling = coupleViewerInteractions(leftWidget, rightWidget);
+await coupling.synchronizeFrom(leftWidget); // modes, molecular origin/orientation, and absolute framing
+// coupling.add(otherViewer);
+// coupling.delete(leftWidget);
+// coupling.dispose();</code></pre>
         </section>
 
         <section>

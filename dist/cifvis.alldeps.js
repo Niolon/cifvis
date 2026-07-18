@@ -56354,7 +56354,7 @@ var ig = class {
 			initialCameraPosition: e.camera.position.clone()
 		};
 		let { container: t, camera: n, renderer: r, moleculeContainer: i, options: a } = e;
-		this.container = t, this.camera = n, this.renderer = r, this.moleculeContainer = i, this.options = a, this.doubleClickDelay = 300, this.raycaster = new As(), this.raycaster.near = .1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
+		this.container = t, this.camera = n, this.renderer = r, this.moleculeContainer = i, this.options = a, this.doubleClickDelay = 300, this.interactionCallbacks = /* @__PURE__ */ new Set(), this.coupledInteractionStates = /* @__PURE__ */ new Map(), this.raycaster = new As(), this.raycaster.near = .1, this.raycaster.far = 100, this.bindEventHandlers(), this.setupEventListeners();
 	}
 	bindEventHandlers() {
 		this.boundHandlers = {
@@ -56382,8 +56382,53 @@ var ig = class {
 		let n = this.clientToMouseCoordinates(e, t);
 		this.state.mouse.x = n.x, this.state.mouse.y = n.y;
 	}
-	resetCameraPosition() {
-		this.viewer.cameraController.reset(), this.viewer.requestRender();
+	onInteraction(e) {
+		if (typeof e != "function") throw Error("Viewer interaction callback must be a function");
+		return this.interactionCallbacks.add(e), () => this.interactionCallbacks.delete(e);
+	}
+	notifyInteraction(e) {
+		for (let t of this.interactionCallbacks) try {
+			t(e);
+		} catch (e) {
+			console.error("Viewer interaction callback failed:", e);
+		}
+	}
+	isInteracting() {
+		return this.state.isDragging || this.state.isPanning ? !0 : [...this.coupledInteractionStates.values()].some((e) => e.isDragging || e.isPanning);
+	}
+	notifyInteractionState() {
+		this.notifyInteraction({
+			type: "interaction-state",
+			isDragging: this.state.isDragging,
+			isPanning: this.state.isPanning
+		});
+	}
+	applyCoupledInteraction(e, t) {
+		switch (e.type) {
+			case "rotate":
+				this.setStructureTransform(e.matrix);
+				break;
+			case "camera":
+				this.viewer.cameraController.applyCoupledViewState(e.state);
+				break;
+			case "interaction-state":
+				e.isDragging || e.isPanning ? this.coupledInteractionStates.set(t, e) : (this.clearCoupledInteraction(t), this.viewer.atomLabelManager?.invalidateLayout());
+				break;
+			default: throw Error(`Unknown coupled viewer interaction: ${e.type}`);
+		}
+	}
+	clearCoupledInteraction(e) {
+		this.coupledInteractionStates.delete(e);
+	}
+	setStructureTransform(e) {
+		this.moleculeContainer.matrix.fromArray(e), this.moleculeContainer.matrix.decompose(this.moleculeContainer.position, this.moleculeContainer.quaternion, this.moleculeContainer.scale), this.moleculeContainer.matrixWorldNeedsUpdate = !0;
+	}
+	resetCameraPosition(e = {}) {
+		let { broadcast: t = !0, render: n = !0 } = e;
+		this.viewer.cameraController.reset(), n && this.viewer.requestRender(), t && this.notifyInteraction({
+			type: "camera",
+			state: this.viewer.cameraController.getCoupledViewState()
+		});
 	}
 	handleSelection(e, t) {
 		this.updateMouseCoordinates(e.clientX, e.clientY), this.raycaster.setFromCamera(this.state.mouse, this.camera);
@@ -56394,24 +56439,35 @@ var ig = class {
 		let r = this.raycaster.intersectObjects(n).filter((e) => e.object.userData?.selectable);
 		r.length > 0 ? this.viewer.selections.handle(r[0].object) : t < this.doubleClickDelay && this.viewer.selections.clear(), this.viewer.requestRender();
 	}
-	rotateStructure(e) {
-		let t = this.options.interaction.rotationSpeed, n = new U(1, 0, 0), r = new U(0, 1, 0);
-		this.moleculeContainer.applyMatrix4(new K().makeRotationAxis(r, e.x * t)), this.moleculeContainer.applyMatrix4(new K().makeRotationAxis(n, -e.y * t)), this.viewer.requestRender();
+	rotateStructure(e, t = {}) {
+		let { broadcast: n = !0, render: r = !0 } = t, i = this.options.interaction.rotationSpeed, a = new U(1, 0, 0), o = new U(0, 1, 0);
+		this.moleculeContainer.applyMatrix4(new K().makeRotationAxis(o, e.x * i)), this.moleculeContainer.applyMatrix4(new K().makeRotationAxis(a, -e.y * i)), r && this.viewer.requestRender(), n && (this.moleculeContainer.updateMatrix(), this.notifyInteraction({
+			type: "rotate",
+			matrix: this.moleculeContainer.matrix.toArray()
+		}));
 	}
-	panCamera(e) {
-		this.viewer.cameraController.pan(e), this.viewer.requestRender();
+	panCamera(e, t = {}) {
+		let { broadcast: n = !0, render: r = !0 } = t;
+		this.viewer.cameraController.pan(e), r && this.viewer.requestRender(), n && this.notifyInteraction({
+			type: "camera",
+			state: this.viewer.cameraController.getCoupledViewState()
+		});
 	}
 	handleTouchSelect(e, t) {
 		let n = this.options.interaction.touchRaycast;
 		this.raycaster.params.Line.threshold = n.lineThreshold, this.raycaster.params.Points.threshold = n.pointsThreshold, this.raycaster.params.Mesh.threshold = n.meshThreshold, this.handleSelection(e, t);
 	}
-	handleZoom(e) {
-		this.viewer.cameraController.zoom(e), this.viewer.requestRender();
+	handleZoom(e, t = {}) {
+		let { broadcast: n = !0, render: r = !0 } = t;
+		this.viewer.cameraController.zoom(e), r && this.viewer.requestRender(), n && this.notifyInteraction({
+			type: "camera",
+			state: this.viewer.cameraController.getCoupledViewState()
+		});
 	}
 	handleTouchStart(e) {
 		e.preventDefault();
 		let t = e.touches;
-		if (t.length === 1 && !this.state.isDragging) this.state.isDragging = !0, this.state.clickStartTime = Date.now(), this.updateMouseCoordinates(t[0].clientX, t[0].clientY);
+		if (t.length === 1 && !this.state.isDragging) this.state.isDragging = !0, this.state.isPanning = !1, this.state.clickStartTime = Date.now(), this.updateMouseCoordinates(t[0].clientX, t[0].clientY);
 		else if (t.length === 2) {
 			if (!this.state.isDragging) {
 				let e = t[0].clientX - t[1].clientX, n = t[0].clientY - t[1].clientY;
@@ -56419,8 +56475,9 @@ var ig = class {
 				let r = this.clientToMouseCoordinates((t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2);
 				this.state.twoFingerStartPos.copy(r);
 			}
-			this.state.isDragging = !1;
+			this.state.isDragging = !1, this.state.isPanning = !0;
 		}
+		this.notifyInteractionState();
 	}
 	handleTouchMove(e) {
 		e.preventDefault();
@@ -56450,7 +56507,7 @@ var ig = class {
 				};
 				this.handleTouchSelect(r, n - this.state.lastClickTime), this.state.lastClickTime = n;
 			}
-			this.state.isDragging = !1, this.state.pinchStartDistance = 0, this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
+			this.state.isDragging = !1, this.state.isPanning = !1, this.state.pinchStartDistance = 0, this.notifyInteractionState(), this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
 		}
 	}
 	handleContextMenu(e) {
@@ -56459,7 +56516,7 @@ var ig = class {
 		t - this.state.lastRightClickTime < this.doubleClickDelay && this.resetCameraPosition(), this.state.lastRightClickTime = t;
 	}
 	handleMouseDown(e) {
-		e.button === 2 ? this.state.isPanning = !0 : this.state.isDragging = !0, this.state.clickStartTime = Date.now(), this.updateMouseCoordinates(e.clientX, e.clientY);
+		e.button === 2 ? this.state.isPanning = !0 : this.state.isDragging = !0, this.notifyInteractionState(), this.state.clickStartTime = Date.now(), this.updateMouseCoordinates(e.clientX, e.clientY);
 	}
 	handleMouseMove(e) {
 		if (!this.state.isDragging && !this.state.isPanning) return;
@@ -56467,7 +56524,7 @@ var ig = class {
 		this.state.isPanning ? this.panCamera(r) : this.rotateStructure(r), this.state.mouse.copy(n);
 	}
 	handleMouseUp() {
-		this.state.isDragging = !1, this.state.isPanning = !1, this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
+		this.state.isDragging = !1, this.state.isPanning = !1, this.notifyInteractionState(), this.viewer.atomLabelManager?.invalidateLayout(), this.viewer.requestRender();
 	}
 	handleClick(e) {
 		if (e.button !== 0 || Date.now() - this.state.clickStartTime > this.options.interaction.clickThreshold || this.state.isDragging) return;
@@ -56482,7 +56539,7 @@ var ig = class {
 	}
 	dispose() {
 		let e = this.renderer.domElement, { wheel: t, mouseDown: n, mouseMove: r, mouseUp: i, click: a, contextMenu: o, touchStart: s, touchMove: c, touchEnd: l, resize: u } = this.boundHandlers;
-		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u);
+		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u), this.interactionCallbacks.clear(), this.coupledInteractionStates.clear();
 	}
 }, ag = class e {
 	constructor(t, n) {
@@ -56507,6 +56564,12 @@ var ig = class {
 	reset() {
 		this.camera.position.copy(this.basePosition), this.camera.lookAt(this.cameraTarget);
 	}
+	getCoupledViewState() {
+		throw Error("getCoupledViewState() must be implemented by subclass");
+	}
+	applyCoupledViewState(e) {
+		throw Error("applyCoupledViewState() must be implemented by subclass");
+	}
 }, og = class extends ag {
 	createCamera() {
 		return this.camera = new as(this.options.fov, this.container.clientWidth / this.container.clientHeight, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
@@ -56526,6 +56589,19 @@ var ig = class {
 	pan(e) {
 		let t = this.camera.position.z, n = this.options.fov * Math.PI / 180, r = Math.tan(n / 2) * t, i = r * this.camera.aspect, a = -e.x * i, o = -e.y * r, s = new U(), c = new U();
 		this.camera.matrix.extractBasis(s, c, new U()), this.camera.position.addScaledVector(s, a), this.camera.position.addScaledVector(c, o);
+	}
+	getCoupledViewState() {
+		let e = this.basePosition?.length() || this.camera.position.length() || 1;
+		return {
+			type: "perspective",
+			position: this.camera.position.toArray(),
+			positionScale: this.camera.position.clone().divideScalar(e).toArray(),
+			quaternion: this.camera.quaternion.toArray()
+		};
+	}
+	applyCoupledViewState(e) {
+		let t = this.basePosition?.length() || this.camera.position.length() || 1;
+		e.type === "perspective" ? this.camera.position.fromArray(e.position) : this.camera.position.set(e.pan[0] * t, e.pan[1] * t, e.zoomScale * t), this.camera.quaternion.fromArray(e.quaternion), this.camera.updateMatrixWorld();
 	}
 	handleResize() {
 		let e = this.container.clientWidth / this.container.clientHeight;
@@ -56553,6 +56629,26 @@ var ig = class {
 	pan(e) {
 		let t = this.camera.top, n = this.camera.right / this.camera.top, r = -e.x * t * n, i = -e.y * t, a = new U(), o = new U();
 		this.camera.matrix.extractBasis(a, o, new U()), this.camera.position.addScaledVector(a, r), this.camera.position.addScaledVector(o, i);
+	}
+	getCoupledViewState() {
+		let e = this.baseSize || this.camera.top || 1, t = this.basePosition || new U(0, 0, this.camera.position.z);
+		return {
+			type: "orthographic",
+			position: this.camera.position.toArray(),
+			orthoSize: this.camera.top,
+			pan: [(this.camera.position.x - t.x) / e, (this.camera.position.y - t.y) / e],
+			zoomScale: this.camera.top / e,
+			quaternion: this.camera.quaternion.toArray()
+		};
+	}
+	applyCoupledViewState(e) {
+		let t = this.baseSize || this.camera.top || 1, n = this.basePosition || new U(0, 0, this.camera.position.z);
+		if (e.type === "orthographic") this.camera.position.fromArray(e.position), this.setOrthoSize(e.orthoSize);
+		else {
+			let r = e.positionScale.slice(0, 2), i = new U(...e.positionScale).length();
+			this.camera.position.set(n.x + r[0] * t, n.y + r[1] * t, n.z), this.setOrthoSize(t * i);
+		}
+		this.camera.quaternion.fromArray(e.quaternion), this.camera.updateProjectionMatrix(), this.camera.updateMatrixWorld();
 	}
 	handleResize() {
 		let e = this.container.clientWidth / this.container.clientHeight, t = this.camera.top;
@@ -57141,7 +57237,7 @@ var Kg = class {
 	}
 	scheduleUpdate() {
 		if (!this.disposed) {
-			if ((this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning) && this.endLoadingIndicator(), this.clearStaleFrame(), this.pendingLayout) {
+			if ((this.viewer.controls?.isInteracting?.() ?? (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning)) && this.endLoadingIndicator(), this.clearStaleFrame(), this.pendingLayout) {
 				this.layoutQueued = !0;
 				return;
 			}
@@ -57298,7 +57394,7 @@ var Kg = class {
 		this.resize();
 		let e = this.viewer.container.clientWidth, t = this.viewer.container.clientHeight;
 		this.viewer.camera.updateMatrixWorld(), this.viewer.moleculeContainer.updateMatrixWorld(!0);
-		let n = performance.now(), r = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning, i = this.resolveRequests();
+		let n = performance.now(), r = this.viewer.controls?.isInteracting?.() ?? (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning), i = this.resolveRequests();
 		if (r && (this.options.placementMode === "maximum-coverage" || i.length > this.options.interactionLabelLimit)) return this.endLoadingIndicator(), this.options.hideLabelsDuringDeferredLayout && (this.canvas.style.visibility = "hidden"), this.completeUpdate(this.layout);
 		if (this.canvas.style.visibility = "visible", this.transformsUnchanged(e, t) || r && !this.forceNextLayout && n - this.lastLayoutTime < this.options.layoutThrottleMs) return this.completeUpdate(this.layout);
 		this.lastLayoutTime = n;
@@ -58201,7 +58297,7 @@ var j_ = class {
 			isosurfaceResolutionFraction: 1,
 			contourDisplayVersion: 0,
 			currentStructureFactorModel: null
-		}, this.scalarFieldUpdateCallbacks = /* @__PURE__ */ new Set(), this.scalarFieldLoadSequence = 0, this.scalarFieldWorker = null, this.scalarFieldPendingResolve = null, this.scalarFieldMainThreadLoadId = null, this.scalarFieldLoadTarget = null, this.scalarFieldIdSequence = 0, this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity }, this.defaultScalarFieldOptions = { ...this.options.scalarField }, this.defaultIsosurfaceOptions = { ...this.options.isosurface }, this.modifiers = {
+		}, this.scalarFieldUpdateCallbacks = /* @__PURE__ */ new Set(), this.modifierModeCallbacks = /* @__PURE__ */ new Set(), this.scalarFieldLoadSequence = 0, this.scalarFieldWorker = null, this.scalarFieldPendingResolve = null, this.scalarFieldMainThreadLoadId = null, this.scalarFieldLoadTarget = null, this.scalarFieldIdSequence = 0, this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity }, this.defaultScalarFieldOptions = { ...this.options.scalarField }, this.defaultIsosurfaceOptions = { ...this.options.isosurface }, this.modifiers = {
 			removeatoms: new qh(),
 			addhydrogen: new Yh(),
 			missingbonds: new Jh(this.options.elementProperties, this.options.bondGrowTolerance),
@@ -59093,11 +59189,76 @@ var j_ = class {
 		}), this.moleculeContainer.clear();
 	}
 	async cycleModifierMode(e) {
-		let t = this.modifiers[e], n = t.cycleMode(this.state.baseStructure), r;
-		return r = t.requiresCameraUpdate ? await this.loadStructure(this.state.baseStructure) : await this.updateStructure(), {
+		let t = this.modifiers[e];
+		if (!t) throw Error(`Unknown structure modifier: ${e}`);
+		let n = t.cycleMode(this.state.baseStructure), r;
+		r = t.requiresCameraUpdate ? await this.loadStructure(this.state.baseStructure) : await this.updateStructure();
+		let i = {
 			...r,
 			mode: n
 		};
+		return r.success && this.notifyModifierModeChange({
+			modifierName: e,
+			mode: n
+		}), i;
+	}
+	async setModifierMode(e, t, n = {}) {
+		let r = await this.setModifierModes({ [e]: t }, n), i = r.changes[e];
+		return {
+			...r,
+			...i,
+			success: !i.skipped && r.success,
+			mode: this.modifiers[e].mode
+		};
+	}
+	async setModifierModes(e, t = {}) {
+		let { broadcast: n = !0 } = t, r = {}, i = [];
+		for (let [t, n] of Object.entries(e)) {
+			let e = this.modifiers[t];
+			if (!e) throw Error(`Unknown structure modifier: ${t}`);
+			let a = String(n).toLowerCase().replace(/_/g, "-");
+			if (!(this.state.baseStructure ? e.getApplicableModes(this.state.baseStructure) : Object.values(e.MODES)).includes(a)) {
+				r[t] = {
+					skipped: !0,
+					mode: e.mode,
+					requestedMode: a
+				};
+				continue;
+			}
+			if (e.mode === a) {
+				r[t] = {
+					unchanged: !0,
+					mode: e.mode
+				};
+				continue;
+			}
+			e.mode = a, r[t] = { mode: e.mode }, i.push({
+				modifierName: t,
+				modifier: e
+			});
+		}
+		let a = { success: !0 };
+		return i.length > 0 && this.state.baseStructure && (a = i.some(({ modifier: e }) => e.requiresCameraUpdate) ? await this.loadStructure(this.state.baseStructure) : await this.updateStructure()), a.success && i.forEach(({ modifierName: e, modifier: t }) => {
+			this.notifyModifierModeChange({
+				modifierName: e,
+				mode: t.mode,
+				coupled: !n
+			});
+		}), {
+			...a,
+			changes: r
+		};
+	}
+	onModifierModeChange(e) {
+		if (typeof e != "function") throw Error("Modifier mode callback must be a function");
+		return this.modifierModeCallbacks.add(e), () => this.modifierModeCallbacks.delete(e);
+	}
+	notifyModifierModeChange(e) {
+		for (let t of this.modifierModeCallbacks) try {
+			t(e);
+		} catch (e) {
+			console.error("Modifier mode callback failed:", e);
+		}
 	}
 	numberModifierModes(e) {
 		if (!this.state.baseStructure) return !1;
@@ -59146,11 +59307,113 @@ var j_ = class {
 		return this.atomLabelManager.layout;
 	}
 	dispose() {
-		this.cancelScalarFieldLoad("Viewer disposed"), this.isosurfaceLayer.dispose(), this.contourLineLayer.dispose(), this.controls.dispose(), this.atomLabelManager.dispose(), this.scene.traverse((e) => {
+		this.cancelScalarFieldLoad("Viewer disposed"), this.isosurfaceLayer.dispose(), this.contourLineLayer.dispose(), this.controls.dispose(), this.atomLabelManager.dispose(), this.modifierModeCallbacks.clear(), this.scene.traverse((e) => {
 			e.geometry && e.geometry.dispose(), e.material && (Array.isArray(e.material) ? e.material.forEach((e) => e.dispose()) : e.material.dispose());
 		}), this.selections.dispose(), this.renderer.dispose(), this.renderer.domElement.parentNode && this.renderer.domElement.parentNode.removeChild(this.renderer.domElement), this.scene = null, this.camera = null, this.renderer = null, this.state = null, this.options = null;
 	}
-}, N_ = {
+};
+//#endregion
+//#region src/lib/ortep3d/viewer-interaction-coupling.js
+function N_(e) {
+	let t = e?.viewer || e;
+	if (!t?.controls?.onInteraction || typeof t.controls.applyCoupledInteraction != "function" || typeof t.requestRender != "function") throw Error("Coupled participants must be CrystalViewer or initialized cifview-widget instances");
+	return t;
+}
+function P_(e) {
+	return typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 0);
+}
+function F_(e) {
+	typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e);
+}
+var I_ = [
+	"hydrogen",
+	"disorder",
+	"symmetry"
+], L_ = class {
+	constructor(e = []) {
+		this.viewers = /* @__PURE__ */ new Map(), this.pendingInteractions = [], this.pendingFrame = null, this.pendingModeUpdate = Promise.resolve(), e.forEach((e) => this.add(e));
+	}
+	add(e) {
+		let t = N_(e);
+		if (this.viewers.has(t)) return this;
+		let n = t.controls.onInteraction((e) => {
+			this.enqueue(t, e);
+		}), r = t.onModifierModeChange?.((e) => {
+			this.enqueueModeChange(t, e);
+		}) ?? (() => {});
+		return this.viewers.set(t, {
+			stopInteraction: n,
+			stopMode: r
+		}), this;
+	}
+	async synchronizeFrom(e) {
+		let t = N_(e);
+		if (!this.viewers.has(t)) throw Error("The synchronization source must belong to this coupling");
+		let n = Object.fromEntries(I_.map((e) => [e, t.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
+		return await Promise.all([...this.viewers.keys()].filter((e) => e !== t).map((e) => e.setModifierModes?.(n, { broadcast: !1 }))), this.synchronizeViewFrom(t), this;
+	}
+	synchronizeViewFrom(e) {
+		e.moleculeContainer.updateMatrix();
+		let t = e.moleculeContainer.matrix.toArray(), n = e.cameraController.getCoupledViewState();
+		for (let r of this.viewers.keys()) r !== e && (r.controls.setStructureTransform(t), r.cameraController.applyCoupledViewState(n), r.requestRender());
+	}
+	delete(e) {
+		let t = e?.viewer || e, n = this.viewers.get(t);
+		if (!n) return !1;
+		n.stopInteraction(), n.stopMode(), this.viewers.delete(t), this.pendingInteractions = this.pendingInteractions.filter((e) => e.source !== t);
+		for (let e of this.viewers.keys()) e.controls.clearCoupledInteraction(t), t.controls.clearCoupledInteraction(e);
+		return !0;
+	}
+	enqueue(e, t) {
+		if (t.type === "rotate" || t.type === "camera") for (let n = this.pendingInteractions.length - 1; n >= 0; n--) {
+			let r = this.pendingInteractions[n];
+			if (r.source === e && r.interaction.type === t.type) {
+				this.pendingInteractions[n] = {
+					source: e,
+					interaction: t
+				}, this.pendingFrame === null && (this.pendingFrame = P_(() => this.flush()));
+				return;
+			}
+		}
+		this.pendingInteractions.push({
+			source: e,
+			interaction: t
+		}), this.pendingFrame === null && (this.pendingFrame = P_(() => this.flush()));
+	}
+	enqueueModeChange(e, t) {
+		t.coupled || !I_.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
+			this.viewers.has(e) && (await Promise.all([...this.viewers.keys()].filter((t) => t !== e).map((e) => e.setModifierModes?.({ [t.modifierName]: t.mode }, { broadcast: !1 }))), this.viewers.has(e) && this.synchronizeViewFrom(e));
+		}).catch((e) => {
+			console.error("Coupled modifier mode update failed:", e);
+		}));
+	}
+	async settled() {
+		this.flush(), await this.pendingModeUpdate;
+	}
+	flush() {
+		if (this.pendingFrame !== null && (F_(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
+		let e = this.pendingInteractions;
+		this.pendingInteractions = [];
+		let t = /* @__PURE__ */ new Set();
+		for (let { source: n, interaction: r } of e) if (this.viewers.has(n)) for (let e of this.viewers.keys()) e !== n && (e.controls.applyCoupledInteraction(r, n), t.add(e));
+		t.forEach((e) => e.requestRender());
+	}
+	dispose() {
+		this.pendingFrame !== null && (F_(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
+		let e = [...this.viewers.keys()];
+		this.viewers.forEach(({ stopInteraction: e, stopMode: t }) => {
+			e(), t();
+		}), this.viewers.clear(), e.forEach((t) => {
+			e.forEach((e) => t.controls.clearCoupledInteraction(e));
+		});
+	}
+};
+function R_(...e) {
+	return new L_(e.length === 1 && Array.isArray(e[0]) ? e[0] : e);
+}
+//#endregion
+//#region src/lib/generated/svg-icons.js
+var z_ = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -59173,7 +59436,7 @@ var j_ = class {
 };
 //#endregion
 //#region src/lib/density/scalar-field-display-state.js
-function P_() {
+function B_() {
 	return {
 		loading: !1,
 		available: !1,
@@ -59192,9 +59455,9 @@ function P_() {
 		pendingFieldName: null
 	};
 }
-function F_(e, t) {
+function V_(e, t) {
 	if (t.type === "started") return {
-		...P_(),
+		...B_(),
 		loading: !0,
 		visible: t.visible ?? !0,
 		sigmaLevel: t.sigmaLevel ?? null,
@@ -59209,7 +59472,7 @@ function F_(e, t) {
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: t.pendingFieldName ?? null
 	};
-	if (t.type === "cleared") return P_();
+	if (t.type === "cleared") return B_();
 	if (["error", "cancelled"].includes(t.type)) return e.fieldCount > 0 ? {
 		...e,
 		loading: !1,
@@ -59225,7 +59488,7 @@ function F_(e, t) {
 		activeFieldId: t.activeFieldId ?? e.activeFieldId,
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: null
-	} : P_();
+	} : B_();
 	if (t.type === "visibility") return {
 		...e,
 		visible: !!t.visible,
@@ -59261,7 +59524,7 @@ function F_(e, t) {
 }
 //#endregion
 //#region src/lib/widget.js
-var I_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", L_ = class extends HTMLElement {
+var H_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 1000;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n  }\n", U_ = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -59280,13 +59543,13 @@ var I_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = I_, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = H_, document.head.appendChild(e);
 		}
-		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = P_(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
+		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = B_(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...N_,
+			...z_,
 			...this.customIcons
 		};
 	}
@@ -59305,8 +59568,10 @@ var I_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		return e ? /^\d+$/.test(e) ? Number(e) : e : 0;
 	}
 	connectViewerEvents() {
-		this.stopScalarFieldUpdates?.(), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
-			this.scalarFieldDisplay = F_(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+		this.stopScalarFieldUpdates?.(), this.stopModifierModeUpdates?.(), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
+			this.scalarFieldDisplay = V_(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+		}) ?? null, this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
+			this.setupButtons();
 		}) ?? null, this.viewer.selections.onChange((e) => {
 			this.selections = e, this.updateCaption();
 		});
@@ -59469,13 +59734,13 @@ var I_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 				break;
 			}
 			case "hydrogen-mode":
-				this.viewer.modifiers.hydrogen && (this.viewer.modifiers.hydrogen.mode = n, await this.viewer.updateStructure(), this.setupButtons());
+				this.viewer.modifiers.hydrogen && await this.viewer.setModifierMode("hydrogen", n);
 				break;
 			case "disorder-mode":
-				this.viewer.modifiers.disorder && (this.viewer.modifiers.disorder.mode = n, await this.viewer.updateStructure(), this.setupButtons());
+				this.viewer.modifiers.disorder && await this.viewer.setModifierMode("disorder", n);
 				break;
 			case "symmetry-mode":
-				this.viewer.modifiers.symmetry && (this.viewer.modifiers.symmetry.mode = n, await this.viewer.loadStructure(), this.setupButtons());
+				this.viewer.modifiers.symmetry && await this.viewer.setModifierMode("symmetry", n);
 				break;
 		}
 	}
@@ -59550,15 +59815,15 @@ var I_ = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		this.captionElement.innerHTML = e, this.viewer.controls.handleResize();
 	}
 	disconnectedCallback() {
-		this.stopScalarFieldUpdates?.(), this.viewer && this.viewer.dispose();
+		this.stopScalarFieldUpdates?.(), this.stopModifierModeUpdates?.(), this.viewer && this.viewer.dispose();
 	}
 };
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", L_);
+	window.customElements.define("cifview-widget", U_);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { qh as AtomLabelFilter, Np as BOHR_TO_ANGSTROM, Jh as BondGenerator, w as CIF, L_ as CifViewWidget, Pe as CrystalStructure, M_ as CrystalViewer, pd as DEFAULT_CONTOUR_LINE_OPTIONS, ud as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, fd as DEFAULT_ISOSURFACE_OPTIONS, dd as DEFAULT_SCALAR_FIELD_OPTIONS, Gh as DisorderFilter, Wh as HydrogenFilter, Md as ORTEP3JsStructure, op as ScalarFieldGrid, Kh as SymmetryGrower, C_ as ThreeContourLineLayer, Xg as ThreeIsosurfaceLayer, Mp as calculateDifferenceDensityMap, If as calculateIAMStructureFactors, cm as calculatePlanarContours, Em as connectedIsosurfaceRegions, wp as createCifDifferenceDensityDataset, Ff as createIAMStructureFactorCalculator, vm as createIsosurfaces, Rm as createSymmetryAwareIsosurfaces, Tf as evaluateCromerMann, qd as formatValueEsd, Jm as generateDisorderGroupIcon, qm as getDisorderIcon, $f as isSystematicAbsence, pm as isosurfaceBounds, mm as isosurfaceResolution, _f as lookupAnomalousDispersion, wf as lookupCromerMann, ep as mergeReflectionIntensities, Hp as parseCube, Ep as parseDifferenceDensitySource, tp as readReflectionIntensities, rm as resolveContourPlane, Km as tryToFixCifBlock };
+export { qh as AtomLabelFilter, Np as BOHR_TO_ANGSTROM, Jh as BondGenerator, w as CIF, U_ as CifViewWidget, Pe as CrystalStructure, M_ as CrystalViewer, pd as DEFAULT_CONTOUR_LINE_OPTIONS, ud as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, fd as DEFAULT_ISOSURFACE_OPTIONS, dd as DEFAULT_SCALAR_FIELD_OPTIONS, Gh as DisorderFilter, Wh as HydrogenFilter, Md as ORTEP3JsStructure, op as ScalarFieldGrid, Kh as SymmetryGrower, C_ as ThreeContourLineLayer, Xg as ThreeIsosurfaceLayer, L_ as ViewerInteractionCoupling, Mp as calculateDifferenceDensityMap, If as calculateIAMStructureFactors, cm as calculatePlanarContours, Em as connectedIsosurfaceRegions, R_ as coupleViewerInteractions, wp as createCifDifferenceDensityDataset, Ff as createIAMStructureFactorCalculator, vm as createIsosurfaces, Rm as createSymmetryAwareIsosurfaces, Tf as evaluateCromerMann, qd as formatValueEsd, Jm as generateDisorderGroupIcon, qm as getDisorderIcon, $f as isSystematicAbsence, pm as isosurfaceBounds, mm as isosurfaceResolution, _f as lookupAnomalousDispersion, wf as lookupCromerMann, ep as mergeReflectionIntensities, Hp as parseCube, Ep as parseDifferenceDensitySource, tp as readReflectionIntensities, rm as resolveContourPlane, Km as tryToFixCifBlock };
