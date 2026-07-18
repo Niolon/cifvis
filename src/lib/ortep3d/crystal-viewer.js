@@ -534,6 +534,13 @@ export class CrystalViewer {
                 `Must be one of: ${validRenderStyles.join(', ')}`,
             );
         }
+        const validBondColorModes = ['uniform', 'split'];
+        if (options.bondColorMode !== undefined && !validBondColorModes.includes(options.bondColorMode)) {
+            throw new Error(
+                `Invalid bond color mode: "${options.bondColorMode}". ` +
+                `Must be one of: ${validBondColorModes.join(', ')}`,
+            );
+        }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
 
@@ -575,6 +582,7 @@ export class CrystalViewer {
             atomADPRingSections: options.atomADPRingSections || defaultSettings.atomADPRingSections,
             bondRadius: options.bondRadius || defaultSettings.bondRadius,
             bondSections: options.bondSections || defaultSettings.bondSections,
+            bondColorMode: options.bondColorMode ?? defaultSettings.bondColorMode,
             bondColor: options.bondColor || defaultSettings.bondColor,
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,

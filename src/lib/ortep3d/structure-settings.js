@@ -283,6 +283,7 @@ export default {
     // Bond visualisation settings
     'bondRadius': 0.05,
     'bondSections': 15,
+    'bondColorMode': 'uniform',
     'bondColor': '#666666',
     'bondColorRoughness': 0.3,
     'bondColorMetalness': 0.1,

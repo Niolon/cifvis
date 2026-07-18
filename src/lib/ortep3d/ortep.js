@@ -12,6 +12,7 @@ const OCTANT_SIGNS = [
 ];
 
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
+const BOND_GEOMETRY_HEIGHT = 0.98;
 
 /**
  * Local transforms placing the three ADP rings on the ellipsoid's principal
@@ -309,11 +310,15 @@ export class InstancedPool {
     /**
      * Registers a new instance transform, returning its stable index.
      * @param {THREE.Matrix4} matrix - World-space instance transform
+     * @param {THREE.Color|null} [color] - Optional per-instance material colour
      * @returns {number} Index assigned to this instance
      */
-    register(matrix) {
+    register(matrix, color = null) {
         const index = this.nextIndex++;
         this.mesh.setMatrixAt(index, matrix);
+        if (color) {
+            this.mesh.setColorAt(index, color);
+        }
         return index;
     }
 
@@ -323,6 +328,9 @@ export class InstancedPool {
      */
     finalize() {
         this.mesh.instanceMatrix.needsUpdate = true;
+        if (this.mesh.instanceColor) {
+            this.mesh.instanceColor.needsUpdate = true;
+        }
         this.mesh.computeBoundingSphere();
     }
 
@@ -491,7 +499,7 @@ export class GeometryMaterialCache {
         this.geometries.bond = new THREE.CylinderGeometry(
             this.options.bondRadius,
             this.options.bondRadius,
-            0.98,
+            BOND_GEOMETRY_HEIGHT,
             this.options.bondSections,
             1,
             true,
@@ -532,7 +540,7 @@ export class GeometryMaterialCache {
 
         // Base bond material
         this.materials.bond = new THREE.MeshStandardMaterial({
-            color: this.options.bondColor,
+            color: this.options.bondColorMode === 'split' ? 0xffffff : this.options.bondColor,
             roughness: this.options.bondColorRoughness,
             metalness: this.options.bondColorMetalness,
         });
@@ -1022,6 +1030,13 @@ export class ORTEP3JsStructure {
             // front (pass 1) to size the pool before any instance is
             // registered (pass 2), since InstancedMesh cannot grow after creation.
             const bondMatricesByBond = [];
+            const splitBondColors = this.options.bondColorMode === 'split';
+            const atomColorsById = splitBondColors ? new Map() : null;
+            if (atomColorsById) {
+                for (const [atomId, atom] of atomsById) {
+                    atomColorsById.set(atomId, this.cache.getAtomMaterials(atom.atomType)[0].color);
+                }
+            }
             for (const bond of drawnBonds) {
                 try {
                     const matrix = ORTEPBondInstance.computeMatrix(
@@ -1030,7 +1045,11 @@ export class ORTEP3JsStructure {
                         getCartesianPosition,
                         getRenderedAtom,
                     );
-                    bondMatricesByBond.push([bond, matrix]);
+                    const colors = atomColorsById ? [
+                        atomColorsById.get(bond.atom1Id),
+                        atomColorsById.get(bond.atom2Id),
+                    ] : null;
+                    bondMatricesByBond.push([bond, matrix, colors]);
                 } catch (e) {
                     if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
                         throw e;
@@ -1041,11 +1060,11 @@ export class ORTEP3JsStructure {
             this.bondPool = bondMatricesByBond.length > 0 ? new InstancedPool(
                 this.cache.geometries.bond,
                 this.cache.materials.bond,
-                bondMatricesByBond.length,
+                bondMatricesByBond.length * (splitBondColors ? 2 : 1),
             ) : null;
 
-            for (const [bond, matrix] of bondMatricesByBond) {
-                this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix));
+            for (const [bond, matrix, colors] of bondMatricesByBond) {
+                this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix, colors));
             }
             this.bondPool?.finalize();
         }
@@ -1802,6 +1821,9 @@ export class PooledSelectableObject extends THREE.Object3D {
 
         this.highlightMeshes = this.segments.map(segment => {
             const highlightMaterial = segment.pool.mesh.material.clone();
+            if (segment.color && highlightMaterial.color) {
+                highlightMaterial.color.copy(segment.color);
+            }
             highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
             segment.pool.hideInstance(segment.index);
             const mesh = new THREE.Mesh(segment.pool.mesh.geometry, highlightMaterial);
@@ -2200,6 +2222,19 @@ export class ORTEPGroupObject extends THREE.Group {
  */
 export class ORTEPBondInstance extends PooledSelectableObject {
     /**
+     * Splits a full bond transform into two exactly adjoining half transforms.
+     * @param {THREE.Matrix4} matrix - Full bond transform
+     * @returns {THREE.Matrix4[]} First-atom and second-atom half transforms
+     */
+    static computeSplitMatrices(matrix) {
+        const halfScale = new THREE.Matrix4().makeScale(1, 0.5, 1);
+        const centerOffset = BOND_GEOMETRY_HEIGHT / 4;
+        return [-centerOffset, centerOffset].map(offset => matrix.clone()
+            .multiply(new THREE.Matrix4().makeTranslation(0, offset, 0))
+            .multiply(halfScale));
+    }
+
+    /**
      * Computes a bond's world-space transform, without creating any
      * rendering resources. Used both to size the shared InstancedPool before
      * any instance is registered, and to register into it.
@@ -2237,8 +2272,9 @@ export class ORTEPBondInstance extends PooledSelectableObject {
      * @param {Bond} bond - Bond data
      * @param {InstancedPool} pool - Shared pool for all regular bonds
      * @param {THREE.Matrix4} matrix - Precomputed bond transform
+     * @param {THREE.Color[]|null} [colors] - Optional atom colours for the two bond halves
      */
-    constructor(bond, pool, matrix) {
+    constructor(bond, pool, matrix, colors = null) {
         super();
         this.userData = {
             type: 'bond',
@@ -2246,7 +2282,17 @@ export class ORTEPBondInstance extends PooledSelectableObject {
             selectable: true,
             isOpenDisorderBond: false,
         };
-        this.segments = [{ pool, matrix, index: pool.register(matrix) }];
+        this.matrix = matrix;
+        const segmentMatrices = colors ? ORTEPBondInstance.computeSplitMatrices(matrix) : [matrix];
+        this.segments = segmentMatrices.map((segmentMatrix, index) => {
+            const segmentColor = colors?.[index] || null;
+            return {
+                pool,
+                matrix: segmentMatrix,
+                index: pool.register(segmentMatrix, segmentColor),
+                color: segmentColor?.clone() || null,
+            };
+        });
     }
 
     /**
@@ -2258,7 +2304,7 @@ export class ORTEPBondInstance extends PooledSelectableObject {
     createSelectionMarker(color, options) {
         const segment = this.segments[0];
         const outlineMesh = new THREE.Mesh(segment.pool.mesh.geometry, this.createSelectionMaterial(color));
-        outlineMesh.applyMatrix4(segment.matrix);
+        outlineMesh.applyMatrix4(this.matrix);
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
         outlineMesh.scale.z *= options.selection.bondMarkerMult;
         outlineMesh.userData.selectable = false;

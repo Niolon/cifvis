@@ -29,6 +29,12 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
+    test('rejects an invalid bond color mode before initializing WebGL', () => {
+        expect(() => new CrystalViewer({}, { bondColorMode: 'gradient' })).toThrow(
+            'Invalid bond color mode: "gradient". Must be one of: uniform, split',
+        );
+    });
+
     test('rejects invalid atom-label callout placement before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, {
             atomLabels: { calloutPlacement: 'corners' },

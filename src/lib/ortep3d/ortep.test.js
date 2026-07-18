@@ -201,6 +201,21 @@ describe('GeometryMaterialCache', () => {
             expect(cache.materials.hbond.color).toBeDefined();
         });
 
+        test('keeps the configured uniform bond color by default', () => {
+            expect(cache.options.bondColorMode).toBe('uniform');
+            expect(cache.materials.bond.color.getHexString()).toBe(
+                new THREE.Color(defaultSettings.bondColor).getHexString(),
+            );
+        });
+
+        test('uses a white base material so split instance colors are unchanged', () => {
+            const splitCache = new GeometryMaterialCache({ bondColorMode: 'split' });
+
+            expect(splitCache.materials.bond.color.getHex()).toBe(0xffffff);
+
+            splitCache.dispose();
+        });
+
         test('initializes with custom options', () => {
             const customOptions = {
                 atomDetail: 4,
@@ -552,6 +567,63 @@ describe('ORTEP3JsStructure', () => {
             expect(structure.atoms3D).toHaveLength(3);
             expect(structure.bonds3D).toHaveLength(1);
             expect(structure.hBonds3D).toHaveLength(1);
+        });
+
+        test('keeps one uncolored instance per bond in the default uniform mode', () => {
+            expect(structure.options.bondColorMode).toBe('uniform');
+            expect(structure.bondPool.mesh.count).toBe(1);
+            expect(structure.bondPool.mesh.instanceColor).toBeNull();
+            expect(structure.bonds3D[0].segments).toHaveLength(1);
+        });
+
+        test('renders split bonds as two atom-colored halves in one instanced pool', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                bondColorMode: 'split',
+            });
+
+            const bond = structure.bonds3D[0];
+            const firstColor = new THREE.Color();
+            const secondColor = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, firstColor);
+            structure.bondPool.mesh.getColorAt(1, secondColor);
+
+            expect(structure.bondPool.mesh.count).toBe(2);
+            expect(bond.segments).toHaveLength(2);
+            expect(firstColor.getHexString()).toBe(
+                new THREE.Color(defaultSettings.elementProperties.C.atomColor).getHexString(),
+            );
+            expect(secondColor.getHexString()).toBe(
+                new THREE.Color(defaultSettings.elementProperties.O.atomColor).getHexString(),
+            );
+            expect(structure.getGroup().children.filter(child => child === structure.bondPool.mesh))
+                .toHaveLength(1);
+
+            structure.cache.geometries.bond.computeBoundingBox();
+            const halfHeight = structure.cache.geometries.bond.boundingBox.max.y;
+            const firstMidpoint = new THREE.Vector3(0, halfHeight, 0)
+                .applyMatrix4(bond.segments[0].matrix);
+            const secondMidpoint = new THREE.Vector3(0, -halfHeight, 0)
+                .applyMatrix4(bond.segments[1].matrix);
+            expect(firstMidpoint.distanceTo(secondMidpoint)).toBeLessThan(1e-6);
+        });
+
+        test('uses customized connected-atom colors for split bonds', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                bondColorMode: 'split',
+                elementProperties: {
+                    C: { atomColor: '#123456' },
+                    O: { atomColor: '#fedcba' },
+                },
+            });
+
+            const firstColor = new THREE.Color();
+            const secondColor = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, firstColor);
+            structure.bondPool.mesh.getColorAt(1, secondColor);
+            expect(firstColor.getHexString()).toBe(new THREE.Color('#123456').getHexString());
+            expect(secondColor.getHexString()).toBe(new THREE.Color('#fedcba').getHexString());
         });
 
         test('creates group with correct structure', () => {
@@ -1605,6 +1677,25 @@ describe('ORTEPBondInstance', () => {
         restoredStored.elements.forEach((value, i) => {
             expect(value).toBeCloseTo(originalMatrix.elements[i], 6);
         });
+    });
+
+    test('preserves both half colors while a split bond is selected', () => {
+        pool = new InstancedPool(mockGeometry, mockMaterial, 2);
+        const matrix = ORTEPBondInstance.computeMatrix(mockBond, mockCrystalStructure);
+        const colors = [new THREE.Color('#112233'), new THREE.Color('#aabbcc')];
+        const bondInstance = new ORTEPBondInstance(mockBond, pool, matrix, colors);
+        pool.finalize();
+
+        bondInstance.select(0xff0000, mockOptions);
+
+        expect(bondInstance.segments).toHaveLength(2);
+        expect(bondInstance.highlightMeshes).toHaveLength(2);
+        expect(bondInstance.highlightMeshes[0].material.color.getHexString()).toBe(
+            colors[0].getHexString(),
+        );
+        expect(bondInstance.highlightMeshes[1].material.color.getHexString()).toBe(
+            colors[1].getHexString(),
+        );
     });
 
     test('creates a correctly scaled selection marker', () => {
