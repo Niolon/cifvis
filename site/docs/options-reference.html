@@ -509,7 +509,7 @@
                         </tr>
                         <tr class="option-row" data-keywords="density web worker performance">
                             <td><span class="option-code">scalarField.useWorker</span></td><td>Boolean</td>
-                            <td>Parse and calculate scalar fields in a Web Worker when available. Applies to reflection and Cube sources. <span class="default-value">Default: true</span></td>
+                            <td>Parse and calculate scalar fields in a Web Worker when available. Applies to reflection and Cube sources; in planar-line mode the worker also performs plane sampling and Marching Squares before transferring packed endpoints. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density source fcf iam automatic">
                             <td><span class="option-code">differenceDensity.inputMode</span></td><td>String</td>
@@ -701,7 +701,7 @@
                         </tr>
                         <tr class="option-row" data-keywords="density contour plane best fit atoms labels">
                             <td><span class="option-code">contourLines.plane</span><br><span class="option-code">contourLines.plane.mode</span><br><span class="option-code">contourLines.plane.atoms</span></td><td>Object / String / String[]</td>
-                            <td>Plane definition. Use <code>{mode: "best-fit"}</code>, <code>{atoms: ["C1","C2","O1"]}</code>, the string <code>"best-fit"</code>, or an atom-label array. At least three non-collinear atoms are required. <span class="default-value">Default: {mode: "best-fit"}</span></td>
+                            <td>Plane definition. Use <code>{mode: "best-fit"}</code>, <code>{atoms: ["C1","C2","O1"]}</code>, the string <code>"best-fit"</code>, or an atom-label array. Explicit atom lists require three non-collinear atoms; best-fit mode uses a stable crystallographic fallback for one- or two-atom structures. <span class="default-value">Default: {mode: "best-fit"}</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density contour explicit plane cartesian fractional origin normal">
                             <td><span class="option-code">contourLines.plane.coordinateSystem</span><br><span class="option-code">contourLines.plane.origin</span><br><span class="option-code">contourLines.plane.normal</span></td><td>String / Number[] / Number[]</td>

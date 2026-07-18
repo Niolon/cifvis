@@ -7,6 +7,10 @@ import {
 } from './difference-density-progress.js';
 import { normalizeIsosurfaceSteps } from './isosurface-progress.js';
 import { parseCube } from './cube.js';
+import {
+    calculateContourWorkerTask,
+    contourTransferables,
+} from './contour-worker-task.js';
 
 const continuationResolvers = new Map();
 
@@ -35,6 +39,13 @@ async function calculateDifferenceDensityProgressively(message) {
             const mapStarted = performance.now();
             const { map, changed } = progression.mapAt(stepIndex);
             const mapTimeMs = changed ? performance.now() - mapStarted : 0;
+            const contourStarted = performance.now();
+            const contours = calculateContourWorkerTask(
+                map,
+                message.contourRequest,
+                steps[stepIndex],
+            );
+            const contourTimeMs = contours ? performance.now() - contourStarted : 0;
             const payload = changed ? map.toPayload() : null;
             const update = {
                 type: 'update',
@@ -43,11 +54,16 @@ async function calculateDifferenceDensityProgressively(message) {
                 totalSteps: steps.length,
                 final: stepIndex === steps.length - 1,
                 computeTimeMs: mapTimeMs,
+                contourTimeMs,
                 elapsedTimeMs: performance.now() - started,
                 surfaceResolutionFraction: steps[stepIndex],
                 map: payload,
+                contours,
             };
-            globalThis.postMessage(update, payload ? [payload.values.buffer] : []);
+            globalThis.postMessage(update, [
+                ...(payload && !message.contourRequest ? [payload.values.buffer] : []),
+                ...contourTransferables(contours),
+            ]);
 
             if (stepIndex < steps.length - 1) {
                 await waitForContinuation(message.loadId, stepIndex);
@@ -66,20 +82,33 @@ async function loadCubeProgressively(message) {
     const started = performance.now();
     try {
         const map = parseCube(message.cubeText, message.cubeOptions);
+        const computeTimeMs = performance.now() - started;
         const steps = normalizeIsosurfaceSteps(message.steps);
         for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
             const payload = stepIndex === 0 ? map.toPayload() : null;
+            const contourStarted = performance.now();
+            const contours = calculateContourWorkerTask(
+                map,
+                message.contourRequest,
+                steps[stepIndex],
+            );
+            const contourTimeMs = contours ? performance.now() - contourStarted : 0;
             globalThis.postMessage({
                 type: 'update',
                 loadId: message.loadId,
                 stepIndex,
                 totalSteps: steps.length,
                 final: stepIndex === steps.length - 1,
-                computeTimeMs: stepIndex === 0 ? performance.now() - started : 0,
+                computeTimeMs: stepIndex === 0 ? computeTimeMs : 0,
+                contourTimeMs,
                 elapsedTimeMs: performance.now() - started,
                 surfaceResolutionFraction: steps[stepIndex],
                 map: payload,
-            }, payload ? [payload.values.buffer] : []);
+                contours,
+            }, [
+                ...(payload && !message.contourRequest ? [payload.values.buffer] : []),
+                ...contourTransferables(contours),
+            ]);
 
             if (stepIndex < steps.length - 1) {
                 await waitForContinuation(message.loadId, stepIndex);

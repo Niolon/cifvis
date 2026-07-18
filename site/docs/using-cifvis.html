@@ -330,6 +330,8 @@ const result = await viewer.loadCube(cubeText, {
                 plane, so existing viewer and widget background colours are preserved. The default plane grid uses
                 tricubic interpolation, and four line intervals fit inside the ordinary surface level. For a
                 3&sigma; map this begins at 0.75&sigma; instead of jumping from 3&sigma; directly to 6&sigma;.
+                For progressive worker loads, plane sampling and Marching Squares are renderer-independent worker
+                tasks. The main thread receives packed endpoints and only creates the Three.js line objects.
             </p>
             <pre><code>const viewer = new CrystalViewer(container, {
     contourLines: {
@@ -389,6 +391,9 @@ viewer.updateContourLineOptions({ plane: { atoms: ['N1', 'C2', 'C3'] } });</code
                 later steps do not move the density. Surface resolution grows with the Cartesian draw size up to
                 <code>maxResolution</code>. Exactly symmetry-equivalent disconnected regions can reuse geometry, while
                 intersecting clipping masks are polygonized as one field so bridges have no internal seams.
+                Planar-line mode applies the same progressive fractions to its investigation grid in the worker, so
+                the first contour plot is cheaper and later updates add line detail without blocking plane sampling
+                on the rendering thread.
             </p>
             <p>
                 Internally, every source produces the same renderer-independent <code>ScalarFieldGrid</code>, with

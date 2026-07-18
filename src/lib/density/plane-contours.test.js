@@ -2,7 +2,11 @@ import { describe, expect, test, vi } from 'vitest';
 import * as THREE from 'three';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { FractPosition } from '../structure/position.js';
-import { calculatePlanarContours, resolveContourPlane } from './plane-contours.js';
+import {
+    calculatePlanarContours,
+    packPlanarContours,
+    resolveContourPlane,
+} from './plane-contours.js';
 import { ThreeContourLineLayer } from '../ortep3d/three-contour-line-layer.js';
 
 /** @returns {CrystalStructure} Four atoms in the fractional z=0.5 plane. */
@@ -65,6 +69,12 @@ describe('planar scalar-field contours', () => {
         expect(contours.segmentCount).toBe(
             contours.positiveSegments.length + contours.negativeSegments.length,
         );
+        expect(contours.timings).toEqual({
+            planeSetupTimeMs: expect.any(Number),
+            samplingTimeMs: expect.any(Number),
+            contourExtractionTimeMs: expect.any(Number),
+            totalTimeMs: expect.any(Number),
+        });
         for (const point of contours.positiveSegments.flat()) {
             expect(point[2]).toBeCloseTo(5);
         }
@@ -101,6 +111,21 @@ describe('planar scalar-field contours', () => {
         })).toThrow('must not all be collinear');
     });
 
+    test('chooses a deterministic default plane for structures with two atoms', () => {
+        const structure = planarStructure();
+        structure.atoms = structure.atoms.slice(0, 2);
+
+        const plane = resolveContourPlane(structure, { mode: 'best-fit' });
+
+        expect(plane.normal.every(Number.isFinite)).toBe(true);
+        const atomDirection = [4, 0, 0];
+        expect(Math.abs(
+            plane.normal[0] * atomDirection[0] +
+            plane.normal[1] * atomDirection[1] +
+            plane.normal[2] * atomDirection[2],
+        )).toBeCloseTo(0);
+    });
+
     test('Three.js adapter creates only line objects and no background plane', () => {
         const parent = new THREE.Group();
         const layer = new ThreeContourLineLayer(parent, {
@@ -127,5 +152,37 @@ describe('planar scalar-field contours', () => {
         expect(layer.group.children.every(child => child.material.linewidth === 1.5)).toBe(true);
         layer.dispose();
         expect(parent.children).toHaveLength(0);
+    });
+
+    test('Three.js adapter installs packed worker output without recalculating contours', () => {
+        const parent = new THREE.Group();
+        const options = {
+            plane: { atoms: ['C1', 'C2', 'C3'] },
+            padding: 1,
+            resolution: 20,
+            maxResolution: 20,
+            contourStep: 0.1,
+            contourCount: 2,
+            positiveColor: '#00ff00',
+            negativeColor: '#ff0000',
+            zeroColor: '#000000',
+            opacity: 1,
+            lineWidth: 1.5,
+            depthOffset: 0,
+        };
+        const contours = packPlanarContours(calculatePlanarContours(
+            field,
+            planarStructure(),
+            options,
+        ));
+        const layer = new ThreeContourLineLayer(parent, options);
+        layer.setField(field);
+
+        const statistics = layer.rebuildFromContours(contours);
+
+        expect(statistics.segmentCount).toBe(contours.segmentCount);
+        expect(statistics.calculationTimeMs).toBe(contours.timings.totalTimeMs);
+        expect(layer.group.children.every(child => child.isLineSegments2)).toBe(true);
+        layer.dispose();
     });
 });

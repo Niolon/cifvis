@@ -140,6 +140,9 @@ const viewer = new CrystalViewer(container, {
 Planar plots use tricubic field sampling and four line intervals per ordinary
 surface level by default; set `interpolation: 'linear'`, `levelSubdivisions: 1`,
 or an explicit `contourStep`/`levels` array when exact legacy spacing is wanted.
+During progressive browser loads, plane sampling and Marching Squares run in
+the scalar-field worker. Only packed line endpoints and the small Three.js line
+installation step remain on the rendering thread.
 
 Different source types can be declared together. Each entry retains its own
 contour and appearance options:
@@ -493,6 +496,9 @@ npm run bench:labels
 # benchmark IAM factors and direct versus symmetry-aware density surfaces
 npm run bench:iam -- structure.cif 20
 npm run bench:density-symmetry -- structure.cif reflections.fcf 10
+
+# isolate worker-eligible plane sampling/extraction from main-thread line geometry
+npm run bench:contours -- structure.cif scalar-field.cube 7
 ```
 
 ## Browser Support

@@ -636,6 +636,7 @@ describe('CrystalViewer progressive difference-density events', () => {
             setField: vi.fn(),
             setStructure: vi.fn(),
             rebuild: vi.fn().mockReturnValue({ displayMode: 'contour-lines' }),
+            rebuildFromContours: vi.fn().mockReturnValue({ displayMode: 'contour-lines' }),
         };
         const viewer = {
             state: {
@@ -664,6 +665,10 @@ describe('CrystalViewer progressive difference-density events', () => {
             sigmaLevel: 3,
             visible: true,
         }));
+
+        const packed = { positiveSegments: new Float32Array(6) };
+        CrystalViewer.prototype.rebuildScalarFieldDisplay.call(viewer, packed);
+        expect(contourLineLayer.rebuildFromContours).toHaveBeenCalledWith(packed);
 
         viewer.options.contourLines.enabled = false;
         const surfaceResult = CrystalViewer.prototype.rebuildScalarFieldDisplay.call(viewer);

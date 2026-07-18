@@ -165,7 +165,9 @@ _cell.angle_gamma 90
             <p>
                 Use <code>{"mode":"best-fit"}</code> for all displayed atoms, or provide
                 <code>coordinateSystem</code>, <code>origin</code>, and <code>normal</code> for an explicit Cartesian or
-                fractional plane. The same density button continues to hide/show or cycle loaded fields.
+                fractional plane. During progressive loading, field sampling and Marching Squares run in the
+                scalar-field worker; the UI thread only installs the packed line segments. The same density button
+                continues to hide/show or cycle loaded fields.
             </p>
         </section>
 

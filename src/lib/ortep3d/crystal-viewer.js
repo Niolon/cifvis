@@ -640,6 +640,7 @@ export class CrystalViewer {
             scalarFields: [],
             activeScalarFieldIndex: -1,
             isosurfaceResolutionFraction: 1,
+            contourDisplayVersion: 0,
             currentStructureFactorModel: null,
         };
 
@@ -1056,6 +1057,7 @@ export class CrystalViewer {
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
                 gridOversampling: this.options.differenceDensity.gridOversampling,
+                contourRequest: this.contourWorkerRequest(),
             });
         });
     }
@@ -1134,6 +1136,7 @@ export class CrystalViewer {
                 cubeText,
                 cubeOptions,
                 steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
+                contourRequest: this.contourWorkerRequest(),
             });
         });
     }
@@ -1357,8 +1360,44 @@ export class CrystalViewer {
             : this.isosurfaceLayer;
     }
 
-    /** @returns {object} Statistics for the rebuilt surface/line representation. */
-    rebuildScalarFieldDisplay() {
+    /** @returns {object|null} Worker-safe displayed structure and contour options. */
+    contourWorkerRequest() {
+        const structure = this.state.displayStructure;
+        if (!this.options.contourLines.enabled || !structure) {
+            return null;
+        }
+        return {
+            displayVersion: this.state.contourDisplayVersion,
+            structure: {
+                cell: {
+                    a: structure.cell.a,
+                    b: structure.cell.b,
+                    c: structure.cell.c,
+                    alpha: structure.cell.alpha,
+                    beta: structure.cell.beta,
+                    gamma: structure.cell.gamma,
+                },
+                atoms: structure.atoms.map(atom => ({
+                    label: atom.label,
+                    position: {
+                        x: atom.position.x,
+                        y: atom.position.y,
+                        z: atom.position.z,
+                    },
+                })),
+            },
+            options: {
+                ...this.options.isosurface,
+                ...this.options.contourLines,
+            },
+        };
+    }
+
+    /**
+     * @param {object|null} [contours] - Packed contours already calculated by the worker.
+     * @returns {object} Statistics for the rebuilt surface/line representation.
+     */
+    rebuildScalarFieldDisplay(contours = null) {
         const entry = this.state.scalarFields[this.state.activeScalarFieldIndex];
         if (!entry || !this.state.displayStructure) {
             this.isosurfaceLayer.clearMesh();
@@ -1374,7 +1413,9 @@ export class CrystalViewer {
             });
             this.contourLineLayer.setField(entry.field);
             this.contourLineLayer.setStructure(this.state.displayStructure);
-            return this.contourLineLayer.rebuild() ?? {};
+            return (contours
+                ? this.contourLineLayer.rebuildFromContours(contours)
+                : this.contourLineLayer.rebuild()) ?? {};
         }
         this.contourLineLayer.clearMesh();
         this.isosurfaceLayer.setOptions(entry.isosurfaceOptions);
@@ -1387,10 +1428,11 @@ export class CrystalViewer {
      * Installs one collection entry into the Three.js adapter.
      * @param {number} index - Collection index.
      * @param {boolean} [visible] - Whether its surface should be shown.
+     * @param {object|null} [contours] - Packed contours already calculated by the worker.
      * @returns {object} Surface statistics.
      * @private
      */
-    activateScalarFieldIndex(index, visible = true) {
+    activateScalarFieldIndex(index, visible = true, contours = null) {
         const entry = this.state.scalarFields[index];
         if (!entry) {
             throw new Error(`No scalar field exists at index ${index}`);
@@ -1400,17 +1442,18 @@ export class CrystalViewer {
         this.state.isosurfaceResolutionFraction = entry.resolutionFraction;
         entry.isosurfaceOptions.visible = visible;
         this.options.isosurface = { ...entry.isosurfaceOptions };
-        return this.rebuildScalarFieldDisplay();
+        return this.rebuildScalarFieldDisplay(contours);
     }
 
     /**
      * Adds or updates the collection entry targeted by a progressive load.
      * @param {ScalarFieldGrid} field - New grid state.
      * @param {number} resolutionFraction - Current surface-resolution fraction.
+     * @param {object|null} [contours] - Packed contours already calculated by the worker.
      * @returns {{index:number, surfaceStatistics:object}} Stored entry and rendering result.
      * @private
      */
-    storeProgressiveScalarField(field, resolutionFraction) {
+    storeProgressiveScalarField(field, resolutionFraction, contours = null) {
         const target = this.scalarFieldLoadTarget ?? this.prepareScalarFieldLoad(
             null,
             {},
@@ -1434,7 +1477,11 @@ export class CrystalViewer {
         const shouldActivate = target.activate || this.state.activeScalarFieldIndex === index ||
             this.state.activeScalarFieldIndex === -1;
         const surfaceStatistics = shouldActivate
-            ? this.activateScalarFieldIndex(index, entry.isosurfaceOptions.visible !== false)
+            ? this.activateScalarFieldIndex(
+                index,
+                entry.isosurfaceOptions.visible !== false,
+                contours,
+            )
             : {};
         return { index, surfaceStatistics };
     }
@@ -1456,9 +1503,13 @@ export class CrystalViewer {
         this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
             field.sourceType === 'cube' ? 'Cube' : 'FCF');
         const resolutionFraction = message.surfaceResolutionFraction ?? 1;
+        const contours = message.contours?.displayVersion === this.state.contourDisplayVersion
+            ? message.contours
+            : null;
         const { index, surfaceStatistics } = this.storeProgressiveScalarField(
             field,
             resolutionFraction,
+            contours,
         );
         const display = this.scalarFieldDisplayState();
         this.requestRender();
@@ -1508,7 +1559,15 @@ export class CrystalViewer {
             marchingCubesPassCount: surfaceStatistics.marchingCubesPassCount ??
                 (surfaceStatistics.displayMode === 'contour-lines' ? 0 : 2),
             marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
-                surfaceStatistics.generationTimeMs ?? 0,
+                (surfaceStatistics.displayMode === 'contour-lines'
+                    ? 0
+                    : surfaceStatistics.generationTimeMs ?? 0),
+            planeSetupTimeMs: surfaceStatistics.planeSetupTimeMs ?? 0,
+            samplingTimeMs: surfaceStatistics.samplingTimeMs ?? 0,
+            contourExtractionTimeMs: surfaceStatistics.contourExtractionTimeMs ?? 0,
+            contourCalculationTimeMs: surfaceStatistics.calculationTimeMs ?? 0,
+            contourGeometryTimeMs: surfaceStatistics.geometryTimeMs ?? 0,
+            contourWorkerTimeMs: message.contourTimeMs ?? 0,
             polygonizationTimeMs: surfaceStatistics.polygonizationTimeMs ?? 0,
             stitched: surfaceStatistics.stitched ?? false,
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
@@ -1584,7 +1643,14 @@ export class CrystalViewer {
             marchingCubesPassCount: surfaceStatistics.marchingCubesPassCount ??
                 (surfaceStatistics.displayMode === 'contour-lines' ? 0 : 2),
             marchingCubesTimeMs: surfaceStatistics.marchingCubesTimeMs ??
-                surfaceStatistics.generationTimeMs ?? 0,
+                (surfaceStatistics.displayMode === 'contour-lines'
+                    ? 0
+                    : surfaceStatistics.generationTimeMs ?? 0),
+            planeSetupTimeMs: surfaceStatistics.planeSetupTimeMs ?? 0,
+            samplingTimeMs: surfaceStatistics.samplingTimeMs ?? 0,
+            contourExtractionTimeMs: surfaceStatistics.contourExtractionTimeMs ?? 0,
+            contourCalculationTimeMs: surfaceStatistics.calculationTimeMs ?? 0,
+            contourGeometryTimeMs: surfaceStatistics.geometryTimeMs ?? 0,
             stitched: surfaceStatistics.stitched ?? false,
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
             removedDuplicateTriangleCount:
@@ -1798,6 +1864,7 @@ export class CrystalViewer {
             ...this.options.isosurface,
             ...updates,
         };
+        this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1;
         const entry = this.state.scalarFields[this.state.activeScalarFieldIndex];
         if (entry) {
             entry.isosurfaceOptions = { ...this.options.isosurface };
@@ -1823,6 +1890,7 @@ export class CrystalViewer {
             ...this.options.contourLines,
             ...definedOptions(options),
         };
+        this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1;
         if (this.state.scalarField && this.state.displayStructure) {
             this.rebuildScalarFieldDisplay();
             this.requestRender();
@@ -2034,6 +2102,7 @@ export class CrystalViewer {
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
         this.state.displayStructure = structure;
+        this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1;
         this.rebuildScalarFieldDisplay();
         this.atomLabelManager.setStructure(structure);
         this.selections.pruneInvalidSelections(this.moleculeContainer);

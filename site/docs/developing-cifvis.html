@@ -131,15 +131,18 @@ npm run bench -- path/to/file-list.txt --out results.csv --render-mode constant<
                 <code>--chrome</code> or the <code>CHROME_PATH</code> environment variable if the system default
                 isn't found.
             </p>
-            <p>Density work has two focused benchmarks:</p>
+            <p>Density work has three focused benchmarks:</p>
             <pre><code>npm run bench:iam -- structure.cif 20
-npm run bench:density-symmetry -- structure.cif reflections.fcf 10</code></pre>
+npm run bench:density-symmetry -- structure.cif reflections.fcf 10
+npm run bench:contours -- structure.cif scalar-field.cube 7</code></pre>
             <p>
                 <code>bench:iam</code> separates model construction, first calculation, and warmed repeated
                 calculation; when calculated F-squared values are present it also reports agreement. The symmetry
                 benchmark alternates direct and symmetry-aware surface generation and reports wall-clock,
                 polygonization, stitching, and Marching Cubes timings so ordering and JIT warm-up do not favour one
-                path consistently.
+                path consistently. The contour benchmark reports plane setup, linear or monotone-tricubic sampling,
+                multi-level Marching Squares extraction, transferable packing, and main-thread thick-line geometry
+                independently. This mirrors the production worker/rendering boundary without including worker startup.
             </p>
         </section>
 

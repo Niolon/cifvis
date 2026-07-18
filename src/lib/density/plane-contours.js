@@ -2,6 +2,11 @@
 import * as math from '../math-lite.js';
 import { DEFAULT_CONTOUR_LINE_OPTIONS } from './contour-line-options.js';
 
+/** @returns {number} Monotonic high-resolution time where available. */
+function now() {
+    return globalThis.performance?.now?.() ?? Date.now();
+}
+
 /** @returns {number} Three-vector dot product. */
 function dot(first, second) {
     return first[0] * second[0] + first[1] * second[1] + first[2] * second[2];
@@ -81,6 +86,23 @@ function bestFitNormal(points, centre) {
     return normalize(plainArray(match.vector), 'Best-fit plane normal');
 }
 
+/** @returns {number[]} Stable plane normal for a one- or two-atom structure. */
+function sparseStructureNormal(points, fractionalToCartesianMatrix) {
+    if (points.length === 1) {
+        return normalize(plainArray(math.multiply(
+            math.transpose(math.inv(fractionalToCartesianMatrix)),
+            [0, 0, 1],
+        )), 'Sparse-structure contour plane normal');
+    }
+    const direction = normalize(subtract(points[1], points[0]), 'Sparse atom separation');
+    const references = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const reference = references.reduce((best, candidate) =>
+        Math.abs(dot(direction, candidate)) < Math.abs(dot(direction, best))
+            ? candidate
+            : best);
+    return normalize(cross(direction, reference), 'Sparse-structure contour plane normal');
+}
+
 /** @returns {{u:number[], v:number[]}} Stable orthonormal in-plane basis. */
 function planeBasis(normal) {
     const reference = Math.abs(normal[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
@@ -117,6 +139,7 @@ export function resolveContourPlane(structure, definition = { mode: 'best-fit' }
     if (usedDefinition.mode !== undefined && usedDefinition.mode !== 'best-fit') {
         throw new Error('Contour plane mode must be "best-fit"');
     }
+    const fractionalToCartesianMatrix = structure.cell.fractToCartMatrix.toArray();
     const allCoordinates = structureAtomCoordinates(structure);
     let definingCoordinates = allCoordinates;
     if (usedDefinition.atoms) {
@@ -162,7 +185,9 @@ export function resolveContourPlane(structure, definition = { mode: 'best-fit' }
         normal = normalize(normal, 'Contour plane normal');
     } else {
         origin = centroid(definingCoordinates);
-        normal = bestFitNormal(definingCoordinates, origin);
+        normal = definingCoordinates.length >= 3
+            ? bestFitNormal(definingCoordinates, origin)
+            : sparseStructureNormal(definingCoordinates, fractionalToCartesianMatrix);
     }
     const { u, v } = planeBasis(normal);
     let minimumU = Infinity;
@@ -320,6 +345,7 @@ function contourLevels(field, options) {
  * @returns {object} Plane definition, levels, sampled dimensions, and Cartesian segments.
  */
 export function calculatePlanarContours(field, structure, options = {}) {
+    const started = now();
     const usedOptions = { ...DEFAULT_CONTOUR_LINE_OPTIONS, ...options };
     const plane = resolveContourPlane(structure, usedOptions.plane, usedOptions.padding);
     const spanU = plane.bounds.u[1] - plane.bounds.u[0];
@@ -352,6 +378,7 @@ export function calculatePlanarContours(field, structure, options = {}) {
     const sample = interpolation === 'tricubic' && typeof field.sampleCubic === 'function'
         ? (...fractional) => field.sampleCubic(...fractional)
         : (...fractional) => field.sample(...fractional);
+    const samplingStarted = now();
     for (let row = 0; row < dimensions[1]; row++) {
         const coordinateV = plane.bounds.v[0] +
             row / (dimensions[1] - 1) * spanV;
@@ -363,6 +390,7 @@ export function calculatePlanarContours(field, structure, options = {}) {
             values[row * dimensions[0] + column] = sample(...fractional);
         }
     }
+    const contouringStarted = now();
     const levels = contourLevels(field, usedOptions);
     const sign = usedOptions.sign ?? field.surfaceSign ?? 'both';
     if (!['positive', 'negative', 'both'].includes(sign)) {
@@ -381,6 +409,7 @@ export function calculatePlanarContours(field, structure, options = {}) {
     const zeroSegments = usedOptions.zeroLine
         ? contourSegments(values, dimensions, plane, [0], offset)
         : [];
+    const completed = now();
     return {
         plane,
         dimensions,
@@ -390,5 +419,38 @@ export function calculatePlanarContours(field, structure, options = {}) {
         negativeSegments,
         zeroSegments,
         segmentCount: positiveSegments.length + negativeSegments.length + zeroSegments.length,
+        timings: {
+            planeSetupTimeMs: samplingStarted - started,
+            samplingTimeMs: contouringStarted - samplingStarted,
+            contourExtractionTimeMs: completed - contouringStarted,
+            totalTimeMs: completed - started,
+        },
+    };
+}
+
+/** @returns {Float32Array} Packed xyz endpoint positions for transferable output. */
+function packSegments(segments) {
+    const positions = new Float32Array(segments.length * 6);
+    let offset = 0;
+    for (const [start, end] of segments) {
+        positions.set(start, offset);
+        positions.set(end, offset + 3);
+        offset += 6;
+    }
+    return positions;
+}
+
+/**
+ * Packs nested contour endpoints into transferable typed arrays.
+ * @param {object} contours - Output from {@link calculatePlanarContours}.
+ * @returns {object} Equivalent contour result with packed signed positions.
+ */
+export function packPlanarContours(contours) {
+    return {
+        ...contours,
+        positiveSegments: packSegments(contours.positiveSegments),
+        negativeSegments: packSegments(contours.negativeSegments),
+        zeroSegments: packSegments(contours.zeroSegments),
+        packed: true,
     };
 }

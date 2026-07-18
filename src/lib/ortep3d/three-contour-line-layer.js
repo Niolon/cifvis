@@ -4,13 +4,28 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { calculatePlanarContours } from '../density/plane-contours.js';
 
+/** @returns {number} Monotonic high-resolution time where available. */
+function now() {
+    return globalThis.performance?.now?.() ?? Date.now();
+}
+
 /**
  * Flattens Cartesian line segments into a Three.js position array.
  * @param {number[][][]} segments - Cartesian endpoint pairs.
  * @returns {Float32Array} Packed xyz positions.
  */
 function segmentPositions(segments) {
-    return new Float32Array(segments.flat(2));
+    return ArrayBuffer.isView(segments)
+        ? segments
+        : new Float32Array(segments.flat(2));
+}
+
+/**
+ * @param {number[][][]|Float32Array} segments - Nested or packed endpoints.
+ * @returns {number} Number of endpoint pairs in nested or packed segments.
+ */
+function segmentCount(segments) {
+    return ArrayBuffer.isView(segments) ? segments.length / 6 : segments.length;
 }
 
 /**
@@ -47,7 +62,8 @@ export class ThreeContourLineLayer {
      * @param {THREE.ColorRepresentation} color - Line colour.
      */
     addSegments(group, segments, sign, color) {
-        if (segments.length === 0) {
+        const count = segmentCount(segments);
+        if (count === 0) {
             return;
         }
         const geometry = new LineSegmentsGeometry();
@@ -64,17 +80,41 @@ export class ThreeContourLineLayer {
         const lines = new LineSegments2(geometry, material);
         lines.name = `${sign[0].toUpperCase()}${sign.slice(1)} contour lines`;
         lines.userData.sign = sign;
-        lines.userData.segmentCount = segments.length;
+        lines.userData.segmentCount = count;
         group.add(lines);
     }
 
     /** @returns {object|null} Generated contour statistics, or null without input. */
     rebuild() {
+        const started = now();
         this.clearMesh();
         if (!this.field || !this.structure) {
             return null;
         }
         const contours = calculatePlanarContours(this.field, this.structure, this.options);
+        return this.buildContours(contours, started);
+    }
+
+    /**
+     * Installs contours calculated outside the rendering thread.
+     * @param {object} contours - Nested or packed planar-contour result.
+     * @returns {object|null} Generated contour statistics.
+     */
+    rebuildFromContours(contours) {
+        const started = now();
+        this.clearMesh();
+        if (!this.field || !contours) {
+            return null;
+        }
+        return this.buildContours(contours, started);
+    }
+
+    /**
+     * @param {object} contours - Calculated nested or packed contours.
+     * @param {number} started - Geometry installation start time.
+     * @returns {object} Three.js geometry statistics for a calculated contour result.
+     */
+    buildContours(contours, started) {
         const deformation = this.field.fieldKind === 'deformation-density';
         const positiveColor = this.options.lineColor ?? (deformation
             ? this.options.deformationPositiveColor
@@ -82,11 +122,13 @@ export class ThreeContourLineLayer {
         const negativeColor = this.options.lineColor ?? (deformation
             ? this.options.deformationNegativeColor
             : this.options.negativeColor);
+        const geometryStarted = now();
         const group = new THREE.Group();
         group.name = 'Planar contour lines';
         this.addSegments(group, contours.positiveSegments, 'positive', positiveColor);
         this.addSegments(group, contours.negativeSegments, 'negative', negativeColor);
         this.addSegments(group, contours.zeroSegments, 'zero', this.options.zeroColor);
+        const geometryCompleted = now();
         group.userData = {
             displayMode: 'contour-lines',
             level: contours.level,
@@ -97,11 +139,17 @@ export class ThreeContourLineLayer {
             dimensions: contours.dimensions,
             plane: contours.plane,
             segmentCount: contours.segmentCount,
-            positiveSegmentCount: contours.positiveSegments.length,
-            negativeSegmentCount: contours.negativeSegments.length,
-            zeroSegmentCount: contours.zeroSegments.length,
+            positiveSegmentCount: segmentCount(contours.positiveSegments),
+            negativeSegmentCount: segmentCount(contours.negativeSegments),
+            zeroSegmentCount: segmentCount(contours.zeroSegments),
             polygonCount: 0,
             resolution: Math.max(...contours.dimensions),
+            planeSetupTimeMs: contours.timings.planeSetupTimeMs,
+            samplingTimeMs: contours.timings.samplingTimeMs,
+            contourExtractionTimeMs: contours.timings.contourExtractionTimeMs,
+            calculationTimeMs: contours.timings.totalTimeMs,
+            geometryTimeMs: geometryCompleted - geometryStarted,
+            generationTimeMs: geometryCompleted - started,
         };
         group.visible = this.options.visible !== false;
         this.group = group;
