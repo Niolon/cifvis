@@ -1,0 +1,829 @@
+{
+  "camera": [
+    {
+      "path": "camera.type",
+      "type": "String",
+      "default": "\"orthographic\""
+    },
+    {
+      "path": "camera.minDistance",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "camera.maxDistance",
+      "type": "Number",
+      "default": "100"
+    },
+    {
+      "path": "camera.wheelZoomSpeed",
+      "type": "Number",
+      "default": "0.0008"
+    },
+    {
+      "path": "camera.pinchZoomSpeed",
+      "type": "Number",
+      "default": "0.001"
+    },
+    {
+      "path": "camera.initialPosition",
+      "type": "Array",
+      "default": "[0, 0, 10]"
+    },
+    {
+      "path": "camera.fov",
+      "type": "Number",
+      "default": "45"
+    },
+    {
+      "path": "camera.near",
+      "type": "Number",
+      "default": "0.1"
+    },
+    {
+      "path": "camera.far",
+      "type": "Number",
+      "default": "1000"
+    }
+  ],
+  "selection": [
+    {
+      "path": "selection.mode",
+      "type": "String",
+      "default": "\"multiple\""
+    },
+    {
+      "path": "selection.markerMult",
+      "type": "Number",
+      "default": "1.3"
+    },
+    {
+      "path": "selection.bondMarkerMult",
+      "type": "Number",
+      "default": "1.7"
+    },
+    {
+      "path": "selection.highlightEmissive",
+      "type": "Number",
+      "default": "11184810"
+    },
+    {
+      "path": "selection.markerColors",
+      "type": "Array",
+      "default": "[2062260, 16744206, 2924588, 14034728, 9725885, 9197131, 14907330, 8355711, 12369186, 1556175]"
+    }
+  ],
+  "interaction": [
+    {
+      "path": "interaction.rotationSpeed",
+      "type": "Number",
+      "default": "5"
+    },
+    {
+      "path": "interaction.clickThreshold",
+      "type": "Number",
+      "default": "200"
+    },
+    {
+      "path": "interaction.mouseRaycast.lineThreshold",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "interaction.mouseRaycast.pointsThreshold",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "interaction.mouseRaycast.meshThreshold",
+      "type": "Number",
+      "default": "0.1"
+    },
+    {
+      "path": "interaction.touchRaycast.lineThreshold",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "interaction.touchRaycast.pointsThreshold",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "interaction.touchRaycast.meshThreshold",
+      "type": "Number",
+      "default": "0.2"
+    }
+  ],
+  "rendering": [
+    {
+      "path": "renderMode",
+      "type": "String",
+      "default": "\"onDemand\""
+    },
+    {
+      "path": "renderStyle",
+      "type": "String",
+      "default": "\"solid-3d\""
+    },
+    {
+      "path": "plot2DBackground",
+      "type": "Color",
+      "default": "\"#ffffff\""
+    },
+    {
+      "path": "plot2DAtomColor",
+      "type": "Color",
+      "default": "\"#ffffff\""
+    },
+    {
+      "path": "plot2DLineColor",
+      "type": "Color",
+      "default": "\"#000000\""
+    },
+    {
+      "path": "plot2DBondColor",
+      "type": "Color",
+      "default": "\"#000000\""
+    },
+    {
+      "path": "plot2DBondOutlineColor",
+      "type": "Color",
+      "default": "\"#ffffff\""
+    },
+    {
+      "path": "plot2DBondOutlineScale",
+      "type": "Number",
+      "default": "1.18"
+    },
+    {
+      "path": "plot2DColorLuminanceCeiling",
+      "type": "Number",
+      "default": "0.25"
+    },
+    {
+      "path": "plot2DOpenBondInnerScale",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "plot2DStripeCount",
+      "type": "Number",
+      "default": "7"
+    },
+    {
+      "path": "plot2DStripeWidth",
+      "type": "Number",
+      "default": "0.18"
+    },
+    {
+      "path": "plot2DOutlineScale",
+      "type": "Number",
+      "default": "1.035"
+    },
+    {
+      "path": "fixCifErrors",
+      "type": "Boolean",
+      "default": "false"
+    }
+  ],
+  "display-modes": [
+    {
+      "path": "hydrogenMode",
+      "type": "String",
+      "default": "\"none\""
+    },
+    {
+      "path": "disorderMode",
+      "type": "String",
+      "default": "\"all\""
+    },
+    {
+      "path": "symmetryMode",
+      "type": "String",
+      "default": "\"none\""
+    }
+  ],
+  "density": [
+    {
+      "path": "differenceDensity.autoLoad",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "differenceDensity.inputMode",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
+      "path": "differenceDensity.reflections",
+      "type": "Object",
+      "default": "{}"
+    },
+    {
+      "path": "differenceDensity.iam",
+      "type": "Object",
+      "default": "{}"
+    },
+    {
+      "path": "differenceDensity.intensityScale",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "differenceDensity.extinctionCorrection",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
+      "path": "differenceDensity.coefficientColumns",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "differenceDensity.anomalousDispersion",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "differenceDensity.reciprocalResolution",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "differenceDensity.initialGridOversampling",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "differenceDensity.gridOversampling",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "scalarField.useWorker",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "isosurface.useSymmetry",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "isosurface.progressiveSteps",
+      "type": "Array",
+      "default": "[0.5, 0.75, 1]"
+    },
+    {
+      "path": "isosurface.visible",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "isosurface.sigmaLevel",
+      "type": "Number",
+      "default": "3"
+    },
+    {
+      "path": "isosurface.radius",
+      "type": "Number",
+      "default": "1.5"
+    },
+    {
+      "path": "isosurface.resolution",
+      "type": "Number",
+      "default": "64"
+    },
+    {
+      "path": "isosurface.gridSpacing",
+      "type": "Number",
+      "default": "0.15"
+    },
+    {
+      "path": "isosurface.maxResolution",
+      "type": "Number",
+      "default": "96"
+    },
+    {
+      "path": "isosurface.stitchTolerance",
+      "type": "Number",
+      "default": "0.0001"
+    },
+    {
+      "path": "isosurface.positiveColor",
+      "type": "Color",
+      "default": "\"#36b566\""
+    },
+    {
+      "path": "isosurface.negativeColor",
+      "type": "Color",
+      "default": "\"#d94b64\""
+    },
+    {
+      "path": "isosurface.deformationPositiveColor",
+      "type": "Color",
+      "default": "\"#4FC3F7\""
+    },
+    {
+      "path": "isosurface.deformationNegativeColor",
+      "type": "Color",
+      "default": "\"#FF9800\""
+    },
+    {
+      "path": "isosurface.opacity",
+      "type": "Number",
+      "default": "0.55"
+    },
+    {
+      "path": "isosurface.wireframe",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "isosurface.maxPolyCount",
+      "type": "Number",
+      "default": "100000"
+    },
+    {
+      "path": "contourLines.enabled",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "contourLines.plane",
+      "type": "Object",
+      "default": "{mode: \"best-fit\"}"
+    },
+    {
+      "path": "contourLines.padding",
+      "type": "Number",
+      "default": "1.5"
+    },
+    {
+      "path": "contourLines.resolution",
+      "type": "Number",
+      "default": "256"
+    },
+    {
+      "path": "contourLines.gridSpacing",
+      "type": "Number",
+      "default": "0.04"
+    },
+    {
+      "path": "contourLines.maxResolution",
+      "type": "Number",
+      "default": "512"
+    },
+    {
+      "path": "contourLines.interpolation",
+      "type": "String",
+      "default": "\"tricubic\""
+    },
+    {
+      "path": "contourLines.contourCount",
+      "type": "Number",
+      "default": "20"
+    },
+    {
+      "path": "contourLines.contourStep",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "contourLines.levelSubdivisions",
+      "type": "Number",
+      "default": "4"
+    },
+    {
+      "path": "contourLines.levels",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "contourLines.sign",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "contourLines.zeroLine",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "contourLines.zeroColor",
+      "type": "Color",
+      "default": "\"#666666\""
+    },
+    {
+      "path": "contourLines.lineColor",
+      "type": "null",
+      "default": "null"
+    },
+    {
+      "path": "contourLines.lineWidth",
+      "type": "Number",
+      "default": "1.5"
+    },
+    {
+      "path": "contourLines.opacity",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "contourLines.depthOffset",
+      "type": "Number",
+      "default": "0.02"
+    }
+  ],
+  "bonds": [
+    {
+      "path": "bondGrowTolerance",
+      "type": "Number",
+      "default": "0.45"
+    },
+    {
+      "path": "bondRadius",
+      "type": "Number",
+      "default": "0.05"
+    },
+    {
+      "path": "bondSections",
+      "type": "Number",
+      "default": "15"
+    },
+    {
+      "path": "bondColorMode",
+      "type": "String",
+      "default": "\"uniform\""
+    },
+    {
+      "path": "bondColor",
+      "type": "Color",
+      "default": "\"#666666\""
+    },
+    {
+      "path": "bondColorRoughness",
+      "type": "Number",
+      "default": "0.3"
+    },
+    {
+      "path": "bondColorMetalness",
+      "type": "Number",
+      "default": "0.1"
+    }
+  ],
+  "atom-labels": [
+    {
+      "path": "atomLabels.show",
+      "type": "String",
+      "default": "\"none\""
+    },
+    {
+      "path": "atomLabels.placementMode",
+      "type": "String",
+      "default": "\"auto-omit\""
+    },
+    {
+      "path": "atomLabels.text",
+      "type": "Object",
+      "default": "{}"
+    },
+    {
+      "path": "atomLabels.fontSize",
+      "type": "Number",
+      "default": "14"
+    },
+    {
+      "path": "atomLabels.fontWeight",
+      "type": "Number",
+      "default": "500"
+    },
+    {
+      "path": "atomLabels.fontFamily",
+      "type": "String",
+      "default": "\"system-ui, -apple-system, sans-serif\""
+    },
+    {
+      "path": "atomLabels.colorMode",
+      "type": "String",
+      "default": "\"uniform\""
+    },
+    {
+      "path": "atomLabels.color",
+      "type": "Color",
+      "default": "\"#111111\""
+    },
+    {
+      "path": "atomLabels.atomColorLuminanceCeiling",
+      "type": "Number",
+      "default": "0.25"
+    },
+    {
+      "path": "atomLabels.haloColor",
+      "type": "Color",
+      "default": "\"#ffffff\""
+    },
+    {
+      "path": "atomLabels.haloWidth",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "atomLabels.leaderLines",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
+      "path": "atomLabels.leaderColor",
+      "type": "Color",
+      "default": "\"rgba(17, 17, 17, 0.55)\""
+    },
+    {
+      "path": "atomLabels.leaderWidth",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "atomLabels.atomPadding",
+      "type": "Number",
+      "default": "3"
+    },
+    {
+      "path": "atomLabels.bondPadding",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "atomLabels.labelPadding",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "atomLabels.viewportPadding",
+      "type": "Number",
+      "default": "4"
+    },
+    {
+      "path": "atomLabels.fallbackDistance",
+      "type": "Number",
+      "default": "18"
+    },
+    {
+      "path": "atomLabels.maxConnectorLength",
+      "type": "Number",
+      "default": "Infinity"
+    },
+    {
+      "path": "atomLabels.ringPenalty",
+      "type": "Number",
+      "default": "1000"
+    },
+    {
+      "path": "atomLabels.movementPenalty",
+      "type": "Number",
+      "default": "80"
+    },
+    {
+      "path": "atomLabels.repairDepth",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "atomLabels.repairSearchLimit",
+      "type": "Number",
+      "default": "48"
+    },
+    {
+      "path": "atomLabels.autoPerformanceLabelThreshold",
+      "type": "Number",
+      "default": "500"
+    },
+    {
+      "path": "atomLabels.performanceNoSpaceCellSize",
+      "type": "Number",
+      "default": "24"
+    },
+    {
+      "path": "atomLabels.spatialCellSize",
+      "type": "Number",
+      "default": "64"
+    },
+    {
+      "path": "atomLabels.useWorker",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "atomLabels.showLoadingIndicator",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "atomLabels.loadingIndicatorDelayMs",
+      "type": "Number",
+      "default": "120"
+    },
+    {
+      "path": "atomLabels.layoutThrottleMs",
+      "type": "Number",
+      "default": "32"
+    },
+    {
+      "path": "atomLabels.interactionLabelLimit",
+      "type": "Number",
+      "default": "300"
+    },
+    {
+      "path": "atomLabels.hideLabelsDuringDeferredLayout",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "atomLabels.calloutPlacement",
+      "type": "String",
+      "default": "\"structure\""
+    },
+    {
+      "path": "atomLabels.calloutGap",
+      "type": "Number",
+      "default": "12"
+    },
+    {
+      "path": "atomLabels.maximumCoverageDistanceSteps",
+      "type": "Number",
+      "default": "6"
+    },
+    {
+      "path": "atomLabels.calloutColumns",
+      "type": "Number",
+      "default": "3"
+    },
+    {
+      "path": "atomLabels.calloutColumnGap",
+      "type": "Number",
+      "default": "8"
+    },
+    {
+      "path": "atomLabels.calloutRowGap",
+      "type": "Number",
+      "default": "4"
+    },
+    {
+      "path": "atomLabels.calloutSearchLimit",
+      "type": "Number",
+      "default": "64"
+    },
+    {
+      "path": "atomLabels.calloutChoiceLimit",
+      "type": "Number",
+      "default": "4"
+    },
+    {
+      "path": "atomLabels.leaderBondCrossingPenalty",
+      "type": "Number",
+      "default": "25"
+    },
+    {
+      "path": "atomLabels.maxVisible",
+      "type": "Number",
+      "default": "Infinity"
+    }
+  ],
+  "atom-visualization": [
+    {
+      "path": "atomDetail",
+      "type": "Number",
+      "default": "3"
+    },
+    {
+      "path": "atomCutawayHysteresis",
+      "type": "Number",
+      "default": "0.025"
+    },
+    {
+      "path": "atomCutawayStripeCount",
+      "type": "Number",
+      "default": "7"
+    },
+    {
+      "path": "atomCutawayStripeWidth",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "atomColorRoughness",
+      "type": "Number",
+      "default": "0.4"
+    },
+    {
+      "path": "atomColorMetalness",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "atomADPRingWidthFactor",
+      "type": "Number",
+      "default": "1"
+    },
+    {
+      "path": "atomADPRingHeight",
+      "type": "Number",
+      "default": "0.06"
+    },
+    {
+      "path": "atomADPRingSections",
+      "type": "Number",
+      "default": "18"
+    },
+    {
+      "path": "atomADPInnerSections",
+      "type": "Number",
+      "default": "7"
+    },
+    {
+      "path": "atomConstantRadiusMultiplier",
+      "type": "Number",
+      "default": "0.25"
+    }
+  ],
+  "hydrogen-bonds": [
+    {
+      "path": "hbondRadius",
+      "type": "Number",
+      "default": "0.04"
+    },
+    {
+      "path": "hbondColor",
+      "type": "Color",
+      "default": "\"#AAAAAA\""
+    },
+    {
+      "path": "hbondColorRoughness",
+      "type": "Number",
+      "default": "0.3"
+    },
+    {
+      "path": "hbondColorMetalness",
+      "type": "Number",
+      "default": "0.1"
+    },
+    {
+      "path": "hbondDashSegmentLength",
+      "type": "Number",
+      "default": "0.3"
+    },
+    {
+      "path": "hbondDashFraction",
+      "type": "Number",
+      "default": "0.6"
+    }
+  ],
+  "cell": [
+    {
+      "path": "cell.boxColor",
+      "type": "Color",
+      "default": "\"#000000\""
+    },
+    {
+      "path": "cell.boxOpacity",
+      "type": "Number",
+      "default": "0.8"
+    },
+    {
+      "path": "cell.boxLineWidth",
+      "type": "Number",
+      "default": "2"
+    },
+    {
+      "path": "cell.arrowColorA",
+      "type": "Color",
+      "default": "\"#E74C3C\""
+    },
+    {
+      "path": "cell.arrowColorB",
+      "type": "Color",
+      "default": "\"#2ECC71\""
+    },
+    {
+      "path": "cell.arrowColorC",
+      "type": "Color",
+      "default": "\"#3498DB\""
+    },
+    {
+      "path": "cell.arrowHeadLengthMult",
+      "type": "Number",
+      "default": "0.05"
+    },
+    {
+      "path": "cell.arrowHeadWidthMult",
+      "type": "Number",
+      "default": "0.25"
+    },
+    {
+      "path": "cell.arrowCylinderRadius",
+      "type": "Number",
+      "default": "0.04"
+    }
+  ]
+}

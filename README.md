@@ -4,12 +4,15 @@ A JavaScript library and web components for visualizing crystal structures from 
 
 ## Documentation
 
-The [full documentation hub](https://niolon.github.io/cifvis/docs/index.html) (also under `site/docs/` in this repo) covers:
+The [full documentation site](https://niolon.github.io/cifvis/docs/) (a VitePress site under `docs/` in this repo; `npm run docs:dev` serves it locally) covers:
 
-- [Developing with CifVis](https://niolon.github.io/cifvis/docs/using-cifvis.html) &mdash; parsing CIF files (Blocks, entries, Loops), driving `CrystalViewer` directly to build a custom GUI, using Filters, and using CifVis structures in your own Three.js scene.
-- [Widget Usage](https://niolon.github.io/cifvis/docs/widget-usage.html) &mdash; the `<cifview-widget>` component: attributes, display modes, and styling it (light DOM, CSS custom properties).
-- [Options Reference](https://niolon.github.io/cifvis/docs/options-reference.html) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
-- [Developing CifVis](https://niolon.github.io/cifvis/docs/developing-cifvis.html) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
+- [General](https://niolon.github.io/cifvis/docs/general/introduction.html) &mdash; what CifVis is and the shared concepts: the CIF model, the structure model and its Filters, and density-map theory.
+- [Widget](https://niolon.github.io/cifvis/docs/widget/getting-started.html) &mdash; the `<cifview-widget>` component: attributes, loading data, display modes, density, and styling it (light DOM, CSS custom properties).
+- [JS Library](https://niolon.github.io/cifvis/docs/library/getting-started.html) &mdash; parsing CIF files, driving `CrystalViewer` directly to build a custom GUI, density maps from code, Filters, coupled viewers, and using CifVis structures in your own Three.js scene.
+- [Atom Labels](https://niolon.github.io/cifvis/docs/labels/) &mdash; activating labels and how the collision-free placement algorithms work.
+- [Options Reference](https://niolon.github.io/cifvis/docs/reference/) &mdash; the full `options` schema shared by `CrystalViewer` and the widget, with tables generated from the source defaults.
+- [Gallery](https://niolon.github.io/cifvis/docs/gallery/) &mdash; live application examples, each with widget and library reproduction code.
+- [Developing CifVis](https://niolon.github.io/cifvis/docs/contributing/) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
 
 For the full generated API reference (every exported class/method), run `npm run docs` to build it locally at `jsdoc-out/index.html`.
 

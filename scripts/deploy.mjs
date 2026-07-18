@@ -74,6 +74,14 @@ function prepareDeployment() {
     build('build:site');
     copyDirectoryContents(distDirectory, deploymentDirectory);
     removeBuildDirectory(distDirectory);
+
+    // VitePress documentation is copied last so its pages (including the
+    // docs index) win over any same-named files from the site build.
+    run(npmCommand, ['run', 'docs:build']);
+    copyDirectoryContents(
+        join(projectRoot, 'docs', '.vitepress', 'dist'),
+        join(deploymentDirectory, 'docs'),
+    );
 }
 
 const prepareOnly = process.argv.includes('--prepare-only');

@@ -1,0 +1,333 @@
+data_ed_para_ag_3
+_audit_creation_date               2025-04-29
+_audit_creation_method
+;
+Olex2 1.5
+(compiled 2025.04.05 svn.rf049d14d for OlexSys, GUI svn.r7224)
+;
+_audit_contact_author_address      ?
+_audit_contact_author_email        ?
+_audit_contact_author_name         ''
+_audit_contact_author_phone        ?
+_publ_contact_author_id_orcid      ?
+_publ_section_references
+;
+Bourhis, L.J., Dolomanov, O.V., Gildea, R.J., Howard, J.A.K., Puschmann, H.
+ (2015). Acta Cryst. A71, 59-75.
+
+Dolomanov, O.V., Bourhis, L.J., Gildea, R.J, Howard, J.A.K. & Puschmann, H.
+ (2009), J. Appl. Cryst. 42, 339-341.
+;
+_chemical_formula_moiety           'C2 H2'
+_chemical_formula_sum              'C2 H2'
+_chemical_formula_weight           26.038
+loop_
+  _atom_type_symbol
+  _atom_type_scat_dispersion_real
+  _atom_type_scat_dispersion_imag
+  _atom_type_scat_Cromer_Mann_a1
+  _atom_type_scat_Cromer_Mann_a2
+  _atom_type_scat_Cromer_Mann_a3
+  _atom_type_scat_Cromer_Mann_a4
+  _atom_type_scat_Cromer_Mann_b1
+  _atom_type_scat_Cromer_Mann_b2
+  _atom_type_scat_Cromer_Mann_b3
+  _atom_type_scat_Cromer_Mann_b4
+  _atom_type_scat_Cromer_Mann_c
+  _atom_type_scat_source
+  _atom_type_scat_dispersion_source
+ C 0.00130 0.00090 2.31000 1.02000 1.58860 0.86500 20.84390 10.20750 0.56870
+ 51.65120 0.21560 'International Tables Volume C Table 6.1.1.4 (pp. 500-502)'
+ 'Brennan, Cowan, Rev. Sci. Instrum., 1992, 63, 850'
+ H 0.00000 0.00000 0.49300 0.32291 0.14019 0.04081 10.51090 26.12570 3.14236
+ 57.79970 0.00304 'International Tables Volume C Table 6.1.1.4 (pp. 500-502)'
+ 'Brennan, Cowan, Rev. Sci. Instrum., 1992, 63, 850'
+
+_space_group_crystal_system        'tetragonal'
+_space_group_IT_number             136
+_space_group_name_H-M_alt          'P 42/m n m'
+_space_group_name_Hall             '-P 4n 2n'
+loop_
+  _space_group_symop_id
+  _space_group_symop_operation_xyz
+ 1 x,y,z
+ 2 -y+1/2,x+1/2,z+1/2
+ 3 y+1/2,-x+1/2,z+1/2
+ 4 x+1/2,-y+1/2,-z+1/2
+ 5 -x+1/2,y+1/2,-z+1/2
+ 6 -x,-y,z
+ 7 y,x,-z
+ 8 -y,-x,-z
+ 9 -x,-y,-z
+ 10 y-1/2,-x-1/2,-z-1/2
+ 11 -y-1/2,x-1/2,-z-1/2
+ 12 -x-1/2,y-1/2,z-1/2
+ 13 x-1/2,-y-1/2,z-1/2
+ 14 x,y,-z
+ 15 -y,-x,z
+ 16 y,x,z
+
+_symmetry_Int_Tables_number        136
+_cell_length_a                     7.70369(14)
+_cell_length_b                     7.70369(14)
+_cell_length_c                     9.2301(4)
+_cell_angle_alpha                  90
+_cell_angle_beta                   90
+_cell_angle_gamma                  90
+_cell_volume                       547.78(3)
+_cell_formula_units_Z              16
+_cell_measurement_temperature      293(2)
+_exptl_absorpt_coefficient_mu      0.047
+_exptl_crystal_density_diffrn      1.263
+_exptl_crystal_F_000               224.042
+_diffrn_reflns_av_R_equivalents    0.0316
+_diffrn_reflns_av_unetI/netI       0.0204
+_diffrn_reflns_Laue_measured_fraction_full  1.0000
+_diffrn_reflns_Laue_measured_fraction_max  0.9295
+_diffrn_reflns_limit_h_max         14
+_diffrn_reflns_limit_h_min         -9
+_diffrn_reflns_limit_k_max         16
+_diffrn_reflns_limit_k_min         -15
+_diffrn_reflns_limit_l_max         18
+_diffrn_reflns_limit_l_min         -17
+_diffrn_reflns_number              8909
+_diffrn_reflns_point_group_measured_fraction_full  1.0000
+_diffrn_reflns_point_group_measured_fraction_max  0.9295
+_diffrn_reflns_theta_full          19.6651
+_diffrn_reflns_theta_max           36.40
+_diffrn_reflns_theta_min           2.72
+_diffrn_measured_fraction_theta_full  1.0000
+_diffrn_measured_fraction_theta_max  0.9295
+_diffrn_radiation_type             'Ag K\a'
+_diffrn_radiation_wavelength       0.56087
+_reflns_Friedel_coverage           0.0
+_reflns_limit_h_max                16
+_reflns_limit_h_min                0
+_reflns_limit_k_max                11
+_reflns_limit_k_min                0
+_reflns_limit_l_max                18
+_reflns_limit_l_min                0
+_reflns_number_gt                  1225
+_reflns_number_total               1398
+_reflns_threshold_expression       I>=2u(I)
+_computing_molecular_graphics      'Olex2 1.5 (Dolomanov et al., 2009)'
+_computing_publication_material    'Olex2 1.5 (Dolomanov et al., 2009)'
+_computing_structure_refinement    'olex2.refine 1.5 (Bourhis et al., 2015)'
+_computing_structure_solution      'SHELXT 2018/2 (Sheldrick, 2018)'
+_refine_diff_density_max           0.6248
+_refine_diff_density_min           -0.2893
+_refine_diff_density_rms           0.0926
+_refine_ls_d_res_high              0.4726
+_refine_ls_d_res_low               5.9144
+_refine_ls_goodness_of_fit_ref     1.2845
+_refine_ls_hydrogen_treatment      constr
+_refine_ls_matrix_type             full
+_refine_ls_number_constraints      5
+_refine_ls_number_parameters       22
+_refine_ls_number_reflns           1398
+_refine_ls_number_restraints       0
+_refine_ls_R_factor_all            0.0575
+_refine_ls_R_factor_gt             0.0523
+_refine_ls_restrained_S_all        1.2845
+_refine_ls_shift/su_max            -0.0008
+_refine_ls_shift/su_mean           0.0001
+_refine_ls_structure_factor_coef   Fsqd
+_refine_ls_weighting_details      
+ 'w=1/[\s^2^(Fo^2^)+(0.0986P)^2^+0.0164P] where P=(Fo^2^+2Fc^2^)/3'
+_refine_ls_weighting_scheme        calc
+_refine_ls_wR_factor_gt            0.1661
+_refine_ls_wR_factor_ref           0.1718
+_olex2_refinement_description
+;
+1. Fixed Uiso
+ At 1.2 times of:
+  All C(H) groups, All C(H,H) groups, All C(C) groups
+2. Others
+ Fixed Sof: H1a(0.5) H1b(0.5)
+3.a Secondary CH2 refined with riding coordinates:
+ C1(H1a,H1b)
+3.b Aromatic/amide H refined with riding coordinates:
+ C3(H3)
+;
+loop_
+  _atom_site_label
+  _atom_site_type_symbol
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_U_iso_or_equiv
+  _atom_site_adp_type
+  _atom_site_occupancy
+  _atom_site_site_symmetry_order
+  _atom_site_refinement_flags_posn
+  _atom_site_refinement_flags_adp
+  _atom_site_refinement_flags_occupancy
+ C1 C 0.57243(6) 0.42757(6) 0.19722(7) 0.02740(16) Uani 1.000000 2 S T P
+ H1a H 0.52930(6) 0.32691(6) 0.14536(7) 0.03288(19) Uiso 0.500000 1 R . P
+ H1b H 0.67309(6) 0.47070(6) 0.14536(7) 0.03288(19) Uiso 0.500000 1 R . P
+ C2 C 0.62785(5) 0.37215(5) 0.34713(6) 0.01784(12) Uani 1.000000 2 S T P
+ C3 C 0.75189(5) 0.46730(5) 0.42462(5) 0.01922(12) Uani 1.000000 1 . . .
+ H3 H 0.83513(5) 0.53116(5) 0.37478(5) 0.02306(14) Uiso 1.000000 1 R . .
+
+loop_
+  _atom_site_aniso_label
+  _atom_site_aniso_U_11
+  _atom_site_aniso_U_22
+  _atom_site_aniso_U_33
+  _atom_site_aniso_U_12
+  _atom_site_aniso_U_13
+  _atom_site_aniso_U_23
+ C1 0.0320(2) 0.0320(2) 0.0182(2) 0.0134(2) 0.00143(11) -0.00143(11)
+ C2 0.01723(14) 0.01723(14) 0.0191(2) 0.00413(12) 0.00109(9) -0.00109(9)
+ C3 0.01430(15) 0.01747(17) 0.0259(2) -0.00076(9) 0.00289(10) 0.00179(11)
+
+loop_
+  _geom_bond_atom_site_label_1
+  _geom_bond_atom_site_label_2
+  _geom_bond_distance
+  _geom_bond_site_symmetry_2
+  _geom_bond_publ_flag
+ C1 C1 1.5781(12) 6_665 ?
+ C1 H1a 0.9700 15_665 ?
+ C1 H1a 0.9700 . ?
+ C1 H1b 0.9700 . ?
+ C1 H1b 0.9700 15_665 ?
+ C1 C2 1.5097(8) . ?
+ C2 C3 1.4007(5) 15_665 ?
+ C2 C3 1.4007(5) . ?
+ C3 C3 1.3915(9) 14_556 ?
+ C3 H3 0.9300 . ?
+
+loop_
+  _geom_angle_atom_site_label_1
+  _geom_angle_atom_site_label_2
+  _geom_angle_atom_site_label_3
+  _geom_angle
+  _geom_angle_site_symmetry_1
+  _geom_angle_site_symmetry_3
+  _geom_angle_publ_flag
+ H1a C1 H1a 107.703(13) 15_665 . ?
+ H1b C1 H1a 107.7 15_665 15_665 ?
+ H1b C1 H1a 0.0 . 15_665 ?
+ H1b C1 H1a 0.0 15_665 . ?
+ H1b C1 H1a 107.7 . . ?
+ H1b C1 H1b 107.703(13) . 15_665 ?
+ C2 C1 H1a 108.850(17) . . ?
+ C2 C1 H1a 108.850(17) . 15_665 ?
+ C2 C1 H1b 108.850(17) . 15_665 ?
+ C2 C1 H1b 108.850(17) . . ?
+ C3 C2 C1 120.86(3) 15_665 . ?
+ C3 C2 C1 120.86(3) . . ?
+ C3 C2 C3 116.95(5) . 15_665 ?
+ C3 C3 C2 120.71(3) 14_556 15_665 ?
+ H3 C3 C2 119.65(3) . 15_665 ?
+
+loop_
+  _geom_torsion_atom_site_label_1
+  _geom_torsion_atom_site_label_2
+  _geom_torsion_atom_site_label_3
+  _geom_torsion_atom_site_label_4
+  _geom_torsion
+  _geom_torsion_site_symmetry_1
+  _geom_torsion_site_symmetry_2
+  _geom_torsion_site_symmetry_3
+  _geom_torsion_site_symmetry_4
+  _geom_torsion_publ_flag
+ C1 C1 C2 C3 83.22(3) 6_665 . . 15_665 ?
+ C1 C1 C2 C3 -83.22(4) 6_665 . . . ?
+ C1 C2 C3 C2 0(120000000000000) . . . 15_665 ?
+ C1 C2 C3 C3 -152.49(4) . . 15_665 8_666 ?
+ C1 C2 C3 C3 152.49(4) . . . 14_556 ?
+ C2 C1 C1 C2 0.0 . . 6_665 6_665 ?
+ C2 C3 C2 C1 0(50000000000000) . . 15_665 15_665 ?
+ C2 C3 C2 C3 0(50000000000000) . . 15_665 15_665 ?
+ C2 C3 C3 C2 0.00(6) . . 14_556 8_666 ?
+ C2 C3 C3 C2 -0.00(6) . 15_665 8_666 14_556 ?
+ C3 C2 C3 C2 0(110000000000000) . 15_665 15_665 . ?
+ C3 C2 C3 C3 -14.47(6) 15_665 . . 14_556 ?
+ C3 C3 C2 C3 14.469(6) 8_666 15_665 . . ?
+
+_iucr_refine_instructions_details
+;
+TITL ed_para_ag_3_a.res in P4(2)/mnm
+REM Ins file created by Rigaku Oxford Diffraction
+REM Old TITL ED_para_Ag_3 in P4(2)/mnm
+REM SHELXT solution in P4(2)/mnm: R1 0.192, Rweak 0.001, Alpha 0.017
+REM <I/s> 0.855 for 48 systematic absences, Orientation as input
+REM Formula found by SHELXT: H1b
+REM PLAN 0
+CELL 0.56087 7.70369 7.70369 9.23008 90 90 90
+ZERR 16 0.00014 0.00014 0.00037 0 0 0
+LATT 1
+SYMM -X,-Y,+Z
+SYMM 0.5-Y,0.5+X,0.5+Z
+SYMM 0.5+Y,0.5-X,0.5+Z
+SYMM 0.5-X,0.5+Y,0.5-Z
+SYMM 0.5+X,0.5-Y,0.5-Z
+SYMM +Y,+X,-Z
+SYMM -Y,-X,-Z
+SFAC C H
+DISP C 0.0013 0.0009 7.4
+DISP H 0 0 0.7
+UNIT 32 32
+
+L.S. 6
+PLAN  5
+CONF
+LIST 6
+fmap 2
+MORE -1
+BOND $H
+ACTA
+WGHT 0.098616 0.016413
+FVAR 1.737231
+REM <olex2.extras>
+REM <HklSrc "%.\\ed_para_ag_3.hkl">
+REM </olex2.extras>
+
+C1    1     0.572426  0.427574  0.197222  10.50000  0.03199  0.03199 =
+ 0.01821 -0.00143  0.00143  0.01336
+AFIX 23
+H1a   2     0.529299  0.326913  0.145357  10.50000 -1.20000
+H1b   2     0.673087  0.470701  0.145357  10.50000 -1.20000
+AFIX 0
+C2    1     0.627852  0.372148  0.347131  10.50000  0.01723  0.01723 =
+ 0.01905 -0.00109  0.00109  0.00413
+C3    1     0.751888  0.467302  0.424624  11.00000  0.01430  0.01747 =
+ 0.02589  0.00179  0.00289 -0.00076
+AFIX 43
+H3    2     0.835132  0.531162  0.374784  11.00000 -1.20000
+AFIX 0
+HKLF 4
+
+END
+Q2 1 0.7 0.42 0.375 11 0.05 0.47
+Q3 1 0.6 0.4 0.28125 10.5 0.05 0.44
+Q4 1 0.82 0.58 0.375 11 0.05 0.29
+Q5 1 0.6 0.4 0.15625 10.5 0.05 0.29
+Q1 1 0.76 0.48 0.5 10.5 0.05 0.62
+
+  REM The information below was added by Olex2.
+  REM
+  REM R1 = 0.0523 for 1225 Fo > 4sig(Fo) and 0.0575 for all 1398 data
+  REM 22 parameters refined using 0 restraints
+  REM Highest difference peak 0.6248, deepest hole -0.2893
+  REM Mean Shift 0.0001, Max Shift -0.0008.
+
+  REM +++ Tabular Listing of Refinement Information +++
+  REM R1_all = 0.0575
+  REM R1_gt = 0.0523
+  REM wR_ref = 0.1718
+  REM GOOF = 1.2845
+  REM Shift_max = -0.0008
+  REM Shift_mean = 0.0001
+  REM Reflections_all = 1398
+  REM Reflections_gt = 1225
+  REM Parameters = 22
+  REM Hole = -0.2893
+  REM Peak = 0.6248
+  REM Flack = n/a
+
+  
+;
+_olex2_submission_special_instructions  'No special instructions were received'

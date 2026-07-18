@@ -2354,13 +2354,17 @@ export class CrystalViewer {
      * @private
      */
     animate() {
+        if (this.options === null) {
+            // dispose() ran after this frame was scheduled; stop the loop.
+            return;
+        }
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
             this.atomLabelManager.scheduleUpdate();
             this.needsRender = false;
         }
-        requestAnimationFrame(this.animate.bind(this));
+        this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
     }
 
     /**
@@ -2495,6 +2499,9 @@ export class CrystalViewer {
      * ```
      */
     dispose() {
+        if (this.animationFrameId !== undefined) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
         this.cancelScalarFieldLoad('Viewer disposed');
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();

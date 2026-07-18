@@ -11,6 +11,13 @@ out/
 src/lib/generated/
 jsdoc-out/
 
+# VitePress docs build outputs (any location, incl. a stray root .vitepress/
+# from running vitepress outside docs/). Note: docs/.vitepress/data/options-data.json
+# is generated but deliberately committed - a test guards it against drift.
+**/.vitepress/dist/
+**/.vitepress/cache/
+**/.vitepress/.temp/
+
 # integration testing directory
 cod/
 integration-tests/logs/
