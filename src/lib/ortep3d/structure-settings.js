@@ -181,6 +181,42 @@ export default {
     'disorderMode': 'all',
     'symmetryMode': 'none',
 
+    // Difference-electron-density maps are loaded separately from the
+    // coordinate CIF and remain opt-in.
+    'differenceDensity': {
+        ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS,
+        // Structure construction always completes first. When enabled, density
+        // parsing/calculation is scheduled afterwards in the density worker.
+        // auto first tries explicit FCF coefficients and then CIF observations
+        // plus an IAM Fcalc. The individual modes can be forced for diagnostics.
+        // Correct raw observed intensities using a reported SHELXL EXTI model.
+        // Set false for deliberately uncorrected/custom observed amplitudes.
+        // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
+        // columns can provide amplitudes/phases or direct A/B coefficients.
+        // Detect an uncorrected anomalous contribution from inversion/Friedel
+        // constraints, with Olex metadata as fallback. Coordinate-CIF f'/f''
+        // values take precedence over internal tables.
+        // All reflections are used from the start. The normal grid gives a
+        // quick first display; the worker then replaces it with the final
+        // oversampled grid before refining only the surface tessellation.
+        // Final surface resolution grows with physical draw size to maintain
+        // approximately this spacing, bounded by resolution/maxResolution.
+    },
+
+    'scalarField': {
+        ...DEFAULT_SCALAR_FIELD_OPTIONS,
+    },
+
+    'isosurface': {
+        ...DEFAULT_ISOSURFACE_OPTIONS,
+    },
+
+    // Optional line-only section through any loaded scalar field. No plane
+    // geometry or fill is rendered, so the viewer/widget background is kept.
+    'contourLines': {
+        ...DEFAULT_CONTOUR_LINE_OPTIONS,
+    },
+
     'bondGrowTolerance': 0.45,
 
     'fixCifErrors': false,
@@ -274,3 +310,7 @@ export default {
 
     'elementProperties': elementProperties,
 };
+import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from '../density/difference-density-options.js';
+import { DEFAULT_SCALAR_FIELD_OPTIONS } from '../density/scalar-field-options.js';
+import { DEFAULT_ISOSURFACE_OPTIONS } from '../density/isosurface-options.js';
+import { DEFAULT_CONTOUR_LINE_OPTIONS } from '../density/contour-line-options.js';

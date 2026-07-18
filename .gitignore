@@ -5,6 +5,7 @@ node_modules/
 
 # Build outputs
 dist/
+deployment/
 build/
 out/
 src/lib/generated/
@@ -55,3 +56,4 @@ coverage/
 .vite/
 *.local
 .nvmrc
+benchmark/density-pipeline-cod.csv

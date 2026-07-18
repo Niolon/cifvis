@@ -22,27 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Build standard library
-        run: npm run build
-        
-      - name: Save standard build
-        run: |
-          mkdir -p deployment/dist
-          cp -r dist/* deployment/dist/
-        
-      - name: Build all-deps version
-        run: npm run build:alldeps
-        
-      - name: Save all-deps build
-        run: |
-          cp -r dist/* deployment/dist/
-          
-      - name: Build site
-        run: npm run build:site
-
-      - name: Save site build
-        run: |
-          cp -r dist/* deployment/
+      - name: Build deployment bundle
+        run: npm run build:deployment
           
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4

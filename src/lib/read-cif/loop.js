@@ -114,7 +114,7 @@ export class CifLoop {
      * @static
      * @param {Array<string>} headers - Column header names (data names).
      * @param {Array<object>} tokens - The full CIF2 token stream `cellTokenRanges` indexes into.
-     * @param {Array<[number, number]>} cellTokenRanges - Row-major `[start, end)` token ranges, one per cell.
+     * @param {Array<Array<number>>} cellTokenRanges - Row-major `[start, end)` ranges.
      * @param {boolean} splitSU - Whether to split standard uncertainties.
      * @returns {CifLoop} New CifLoop instance backed by the unparsed cell token ranges.
      */

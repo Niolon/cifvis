@@ -1,0 +1,18 @@
+export const DEFAULT_ISOSURFACE_OPTIONS = Object.freeze({
+    useSymmetry: true,
+    progressiveSteps: Object.freeze([0.5, 0.75, 1]),
+    visible: true,
+    sigmaLevel: 3,
+    radius: 1.5,
+    resolution: 64,
+    gridSpacing: 0.15,
+    maxResolution: 96,
+    stitchTolerance: 1e-4,
+    positiveColor: '#36b566',
+    negativeColor: '#d94b64',
+    deformationPositiveColor: '#4FC3F7',
+    deformationNegativeColor: '#FF9800',
+    opacity: 0.55,
+    wireframe: true,
+    maxPolyCount: 100000,
+});

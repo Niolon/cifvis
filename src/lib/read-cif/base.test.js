@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { CIF, CifBlock } from './base.js';
 
 describe('CIF Parser', () => {
@@ -266,6 +266,24 @@ entry
             expect(block.get('_another_multiline_entry')).toBe('more sloppy\nentry');
         });
 
+        test('parses a final unterminated SHELX HKL text field without corrupting the block', () => {
+            const block = new CifBlock(`test
+_cell_length_a 10
+_shelx_hkl_file
+;
+   1   0   0  25.0  1.0
+   2   0   0  16.0  1.0`);
+            const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            try {
+                expect(block.get('_cell_length_a')).toBe(10);
+                expect(block.get('_shelx_hkl_file')).toContain('   2   0   0  16.0  1.0');
+                expect(warning).toHaveBeenCalledOnce();
+                expect(warning.mock.calls[0][0]).toContain('Unterminated CIF multiline text field');
+            } finally {
+                warning.mockRestore();
+            }
+        });
+
         test('handles both multiline string formats', () => {
             const block = new CifBlock(`test
 _proper_multiline
@@ -365,4 +383,3 @@ _valid_key 123
         });
     });
 });
-
