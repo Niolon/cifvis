@@ -410,6 +410,22 @@ describe('SymmetryGrower', () => {
                 acceptorAtomId: 'O|1_555',
                 acceptorAtomSymmetry: '.',
             }));
+            expect(result.hBonds.filter(hBond =>
+                hBond.acceptorAtomId === 'O|1_555',
+            )).toHaveLength(4);
+
+            const atomPositionKeys = result.atoms.map(atom => [
+                atom.label,
+                atom.position.x.toFixed(6),
+                atom.position.y.toFixed(6),
+                atom.position.z.toFixed(6),
+            ].join('|'));
+            expect(new Set(atomPositionKeys).size).toBe(result.atoms.length);
+
+            const bondKeys = result.bonds.map(bond =>
+                [bond.atom1Id, bond.atom2Id].sort().join('|'),
+            );
+            expect(new Set(bondKeys).size).toBe(result.bonds.length);
         });
 
         test('combines fragment and cell growth in FRAGMENT_CELL mode', () => {
