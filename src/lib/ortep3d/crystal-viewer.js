@@ -815,8 +815,8 @@ export class CrystalViewer {
 
     /**
      * Loads an FCF progressively and displays its Fo-Fc difference density.
-     * The worker calculates one fixed, oversampled scalar grid. Progressive
-     * updates reuse that grid and refine only its surface tessellation.
+     * The worker calculates an initial grid and then the final oversampled grid.
+     * Later progressive updates reuse the final grid and refine only its surface.
      * @param {string} fcfText - LIST 6/8-style FCF text.
      * @param {number|string} [fcfBlock] - FCF block index or name.
      * @param {object} [options] - Calculation, isosurface, and collection options.
@@ -828,6 +828,9 @@ export class CrystalViewer {
         }
         if (fcfText === undefined) {
             return { success: false, error: 'Cannot load empty text as an FCF' };
+        }
+        if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+            return { success: false, error: 'loadDifferenceDensity options must be an object' };
         }
 
         this.cancelScalarFieldLoad('Superseded by a new FCF load');
@@ -855,6 +858,9 @@ export class CrystalViewer {
             loadId,
             visible: isosurfaceOptions.visible,
             sigmaLevel: isosurfaceOptions.sigmaLevel,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'density map',
+            signed: true,
             pendingFieldId: target.fieldId,
             pendingFieldName: target.fieldName,
             ...this.scalarFieldCollectionState(),

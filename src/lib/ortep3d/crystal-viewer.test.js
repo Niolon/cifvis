@@ -194,6 +194,51 @@ describe('CrystalViewer structure centring', () => {
 });
 
 describe('CrystalViewer progressive difference-density events', () => {
+    test('starts a Fourier load with difference-density presentation metadata', async () => {
+        const viewer = {
+            state: {
+                baseStructure: {},
+                scalarField: null,
+                scalarFields: [],
+                activeScalarFieldIndex: -1,
+            },
+            options: {
+                differenceDensity: {},
+                scalarField: { useWorker: false },
+                isosurface: { visible: true },
+            },
+            scalarFieldLoadSequence: 0,
+            scalarFieldIdSequence: 0,
+            defaultDifferenceDensityOptions: {},
+            defaultScalarFieldOptions: { useWorker: false },
+            defaultIsosurfaceOptions: { visible: true, sigmaLevel: 3 },
+            cancelScalarFieldLoad: vi.fn(),
+            prepareScalarFieldLoad(...args) {
+                return CrystalViewer.prototype.prepareScalarFieldLoad.call(this, ...args);
+            },
+            scalarFieldCollectionState() {
+                return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
+            },
+            notifyScalarFieldUpdate: vi.fn(),
+            loadDifferenceDensityOnMainThread: vi.fn().mockResolvedValue({ success: true }),
+        };
+
+        const result = await CrystalViewer.prototype.loadDifferenceDensity.call(
+            viewer,
+            'data_reflections',
+        );
+
+        expect(result).toEqual({ success: true });
+        expect(viewer.notifyScalarFieldUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: 'started',
+                displayLabel: 'Δρ/eÅ⁻³',
+                quantityName: 'density map',
+                signed: true,
+            }),
+        );
+    });
+
     test('starts a Cube load with source-specific presentation metadata', async () => {
         const viewer = {
             state: {

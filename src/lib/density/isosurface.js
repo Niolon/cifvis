@@ -132,7 +132,7 @@ function createSurface(resolution, material, maxPolyCount, name, level) {
 /**
  * Creates positive and negative isosurfaces clipped around
  * the atoms in the currently displayed (and potentially symmetry-grown) structure.
- * @param {import('./scalar-field.js').ScalarFieldGrid} field - Sampled scalar field.
+ * @param {object} field - Sampled scalar field.
  * @param {object} structure - Current displayed CrystalStructure.
  * @param {object} [options] - Surface display options.
  * @returns {THREE.Group} Isosurface group.

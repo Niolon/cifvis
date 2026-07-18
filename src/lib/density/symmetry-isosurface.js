@@ -379,7 +379,7 @@ function classifyRegions(regions, field, cellMatrix) {
  * Creates isosurfaces while reusing exact symmetry-equivalent,
  * disconnected regions. Connected masks are never split, ensuring bridges and
  * shared surface topology are produced by one marching-cubes calculation.
- * @param {import('./scalar-field.js').ScalarFieldGrid} field - Sampled scalar field.
+ * @param {object} field - Sampled scalar field.
  * @param {object} structure - Current displayed CrystalStructure.
  * @param {object} [options] - Isosurface options.
  * @returns {THREE.Group} Symmetry-aware surface group.

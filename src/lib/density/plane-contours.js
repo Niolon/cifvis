@@ -339,7 +339,7 @@ function contourLevels(field, options) {
 
 /**
  * Samples a scalar grid on a plane and extracts line-only marching-squares contours.
- * @param {import('./scalar-field.js').ScalarFieldGrid} field - Sampled scalar field.
+ * @param {object} field - Sampled scalar field.
  * @param {object} structure - Displayed crystal structure.
  * @param {object} [options] - Plane, resolution, levels, and display options.
  * @returns {object} Plane definition, levels, sampled dimensions, and Cartesian segments.

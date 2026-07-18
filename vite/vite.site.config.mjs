@@ -16,7 +16,6 @@ export default defineConfig({
                 docsDeveloping: resolve(__dirname, '../site/docs/developing-cifvis.html'),
             },
             output: {
-                inlineDynamicImports: false,
                 // Ensure files go to the main dist directory
                 dir: resolve(__dirname, '../dist'),
                 // Ensure assets are placed directly in the output directory
@@ -27,6 +26,7 @@ export default defineConfig({
         },
         // Specify the output directory
         outDir: '../dist',
+        emptyOutDir: true,
     },
     // Specify the root directory for file resolution
     root: resolve(__dirname, '../site'),

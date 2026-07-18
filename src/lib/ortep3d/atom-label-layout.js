@@ -27,7 +27,7 @@ export function rectangleOverlapsCircle(rect, circle) {
  * Tests whether a line segment intersects a rectangle expanded by a radius.
  * Uses a slab intersection, so bond thickness can be represented without
  * converting every bond to a polygon.
- * @param {{x1: number, y1: number, x2: number, y2: number, radius?: number}} segment - Segment
+ * @param {object} segment - Segment, with an optional radius.
  * @param {{left: number, right: number, top: number, bottom: number}} rect - Rectangle
  * @returns {boolean} Whether the thick segment intersects the rectangle
  */
@@ -123,8 +123,8 @@ function segmentCentreLinesIntersect(a, b) {
 
 /**
  * Tests whether two thick line segments cross or approach within their radii.
- * @param {{x1: number, y1: number, x2: number, y2: number, radius?: number}} a - First segment
- * @param {{x1: number, y1: number, x2: number, y2: number, radius?: number}} b - Second segment
+ * @param {object} a - First segment, with an optional radius.
+ * @param {object} b - Second segment, with an optional radius.
  * @returns {boolean} Whether the segments overlap
  */
 export function segmentsOverlap(a, b) {

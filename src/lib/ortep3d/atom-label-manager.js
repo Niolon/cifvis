@@ -106,7 +106,7 @@ export function projectedAtomIntersectsViewport(anchor, viewport) {
 /**
  * Finds chordless five-to-seven-member cycles in a structure's chemical graph.
  * This is a bounded geometric hint, not an aromaticity assignment.
- * @param {import('../structure/crystal.js').CrystalStructure} structure - Displayed structure
+ * @param {object} structure - Displayed structure
  * @returns {Array<string[]>} Rings represented by ordered atom IDs
  */
 export function findSmallRings(structure) {
@@ -167,7 +167,7 @@ export function findSmallRings(structure) {
  */
 export class AtomLabelManager {
     /**
-     * @param {import('./crystal-viewer.js').CrystalViewer} viewer - Owning viewer
+     * @param {object} viewer - Owning viewer
      */
     constructor(viewer) {
         this.viewer = viewer;

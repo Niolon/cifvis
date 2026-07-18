@@ -34,7 +34,7 @@ import {
 import * as math from '../src/lib/math-lite.js';
 import { refitDensityHeuristic } from './fit-density-heuristic.mjs';
 
-const DEFAULT_COD_DIRECTORY = process.env.COD_DIR || '/home/niklas/cod/cif';
+const DEFAULT_COD_DIRECTORY = process.env.COD_DIR;
 const TWO_PI = 2 * Math.PI;
 
 function parseArguments(argv) {
@@ -78,6 +78,11 @@ function parseArguments(argv) {
     }
     if (!(options.minStepMs > 0 && options.maxStepMs >= options.minStepMs)) {
         throw new Error('Step timing window must satisfy 0 < min-step-ms <= max-step-ms');
+    }
+    if (!options.target) {
+        throw new Error(
+            'Provide a COD CIF directory/file as the first argument or set COD_DIR',
+        );
     }
     if (!(Number.isInteger(options.progressEvery) && options.progressEvery > 0 &&
         Number.isInteger(options.checkpointEvery) && options.checkpointEvery > 0)) {
