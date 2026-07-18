@@ -194,6 +194,46 @@ describe('CrystalViewer structure centring', () => {
 });
 
 describe('CrystalViewer progressive difference-density events', () => {
+    test('starts a Cube load with source-specific presentation metadata', async () => {
+        const viewer = {
+            state: { baseStructure: {}, differenceDensityMap: null },
+            options: {
+                differenceDensity: {
+                    useWorker: false,
+                    visible: true,
+                },
+            },
+            differenceDensityLoadSequence: 0,
+            cancelDifferenceDensityLoad: vi.fn(),
+            removeDifferenceDensity3D: vi.fn(),
+            notifyDifferenceDensityUpdate: vi.fn(),
+            loadCubeOnMainThread: vi.fn().mockResolvedValue({ success: true }),
+        };
+
+        const result = await CrystalViewer.prototype.loadCube.call(
+            viewer,
+            'cube text',
+            { property: 'density', wireframe: false },
+        );
+
+        expect(result).toEqual({ success: true });
+        expect(viewer.options.differenceDensity.wireframe).toBe(false);
+        expect(viewer.loadCubeOnMainThread).toHaveBeenCalledWith(
+            'cube text',
+            { property: 'density' },
+            1,
+        );
+        expect(viewer.notifyDifferenceDensityUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: 'started',
+                densitySource: 'cube',
+                displayLabel: 'ρ/eÅ⁻³',
+                quantityName: 'electron density',
+                signed: false,
+            }),
+        );
+    });
+
     test('does not start density work during an ordinary structure load', async () => {
         const viewer = {
             state: { differenceDensityMap: null },

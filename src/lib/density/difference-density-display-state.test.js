@@ -18,6 +18,9 @@ describe('difference density display state', () => {
             type: 'update',
             stepIndex: 0,
             totalSteps: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
             level: 0.125,
             sigmaLevel: 3,
             visible: true,
@@ -31,6 +34,9 @@ describe('difference density display state', () => {
             sigmaLevel: 3,
             stepIndex: 0,
             totalSteps: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
         });
         expect(state).not.toHaveProperty('map');
 
@@ -47,6 +53,29 @@ describe('difference density display state', () => {
             visible: false,
         });
         expect(state).toMatchObject({ loading: false, available: true, visible: false });
+    });
+
+    test('carries Cube presentation metadata without exposing map internals', () => {
+        let state = reduceDifferenceDensityDisplayState(
+            createDifferenceDensityDisplayState(),
+            {
+                type: 'started',
+                displayLabel: 'ρ/eÅ⁻³',
+                quantityName: 'electron density',
+                signed: false,
+            },
+        );
+        state = reduceDifferenceDensityDisplayState(state, {
+            type: 'complete',
+            level: 0.3,
+        });
+
+        expect(state).toMatchObject({
+            displayLabel: 'ρ/eÅ⁻³',
+            quantityName: 'electron density',
+            signed: false,
+            level: 0.3,
+        });
     });
 
     test.each(['error', 'cancelled', 'cleared'])('%s clears the UI state', type => {

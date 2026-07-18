@@ -8,6 +8,9 @@ export function createDifferenceDensityDisplayState() {
         sigmaLevel: null,
         stepIndex: null,
         totalSteps: null,
+        displayLabel: 'Δρ/eÅ⁻³',
+        quantityName: 'difference density',
+        signed: true,
     };
 }
 
@@ -26,6 +29,9 @@ export function reduceDifferenceDensityDisplayState(state, event) {
             visible: event.visible ?? true,
             sigmaLevel: event.sigmaLevel ?? null,
             stepIndex: 0,
+            displayLabel: event.displayLabel ?? 'Δρ/eÅ⁻³',
+            quantityName: event.quantityName ?? 'difference density',
+            signed: event.signed ?? true,
         };
     }
     if (['error', 'cancelled', 'cleared'].includes(event.type)) {
@@ -47,5 +53,8 @@ export function reduceDifferenceDensityDisplayState(state, event) {
         sigmaLevel: Number.isFinite(event.sigmaLevel) ? event.sigmaLevel : state.sigmaLevel,
         stepIndex: Number.isInteger(event.stepIndex) ? event.stepIndex : state.stepIndex,
         totalSteps: Number.isInteger(event.totalSteps) ? event.totalSteps : state.totalSteps,
+        displayLabel: event.displayLabel ?? state.displayLabel,
+        quantityName: event.quantityName ?? state.quantityName,
+        signed: event.signed ?? state.signed,
     };
 }

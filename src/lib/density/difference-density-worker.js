@@ -2,7 +2,11 @@
 import {
     parseDifferenceDensitySource,
 } from './difference-density.js';
-import { createDifferenceDensityProgression } from './difference-density-progress.js';
+import {
+    createDifferenceDensityProgression,
+    normalizeDifferenceDensitySteps,
+} from './difference-density-progress.js';
+import { parseCube } from './cube.js';
 
 const continuationResolvers = new Map();
 
@@ -58,6 +62,38 @@ async function calculateProgressively(message) {
     }
 }
 
+async function loadCubeProgressively(message) {
+    const started = performance.now();
+    try {
+        const map = parseCube(message.cubeText, message.cubeOptions);
+        const steps = normalizeDifferenceDensitySteps(message.steps);
+        for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+            const payload = stepIndex === 0 ? map.toPayload() : null;
+            globalThis.postMessage({
+                type: 'update',
+                loadId: message.loadId,
+                stepIndex,
+                totalSteps: steps.length,
+                final: stepIndex === steps.length - 1,
+                computeTimeMs: stepIndex === 0 ? performance.now() - started : 0,
+                elapsedTimeMs: performance.now() - started,
+                surfaceResolutionFraction: steps[stepIndex],
+                map: payload,
+            }, payload ? [payload.values.buffer] : []);
+
+            if (stepIndex < steps.length - 1) {
+                await waitForContinuation(message.loadId, stepIndex);
+            }
+        }
+    } catch (error) {
+        globalThis.postMessage({
+            type: 'error',
+            loadId: message.loadId,
+            error: error.message,
+        });
+    }
+}
+
 globalThis.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'continue') {
@@ -68,5 +104,7 @@ globalThis.addEventListener('message', (event) => {
     }
     if (message.type === 'load') {
         calculateProgressively(message);
+    } else if (message.type === 'load-cube') {
+        loadCubeProgressively(message);
     }
 });

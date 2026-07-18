@@ -10,6 +10,7 @@ export {
     parseDifferenceDensitySource,
 } from './lib/density/difference-density.js';
 export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './lib/density/difference-density-options.js';
+export { BOHR_TO_ANGSTROM, CubeDensityMap, parseCube } from './lib/density/cube.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
 export {
     calculateIAMStructureFactors,

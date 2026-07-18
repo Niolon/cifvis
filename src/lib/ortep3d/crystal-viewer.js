@@ -22,6 +22,7 @@ import {
     createSymmetryAwareDifferenceDensitySurfaces,
 } from '../density/difference-density-symmetry.js';
 import DifferenceDensityWorker from '../density/difference-density-worker.js?worker';
+import { CubeDensityMap, parseCube } from '../density/cube.js';
 import { createStructureFactorModelInput } from '../density/structure-factor-model.js';
 import {
     createDifferenceDensityProgression,
@@ -813,6 +814,75 @@ export class CrystalViewer {
     }
 
     /**
+     * Loads a periodic Gaussian Cube scalar field over the active crystal.
+     * Cube coordinates and density values are normalized to Å and e/Å³ by
+     * default. Use `property: "orbital"|"potential"|"generic"` for other
+     * scalar quantities, and `datasetIndex` for multi-orbital files.
+     * @param {string} cubeText - Complete Gaussian Cube file contents.
+     * @param {object} [options] - Cube parsing and density display options.
+     * @returns {Promise<object>} Load result and map statistics.
+     */
+    async loadCube(cubeText, options = {}) {
+        if (!this.state.baseStructure) {
+            return { success: false, error: 'Load a crystal structure before loading a Cube file' };
+        }
+        if (typeof cubeText !== 'string' || cubeText.length === 0) {
+            return { success: false, error: 'Cannot load empty text as a Cube file' };
+        }
+        if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+            return { success: false, error: 'loadCube options must be an object' };
+        }
+
+        this.cancelDifferenceDensityLoad('Superseded by a new Cube load');
+        this.removeDifferenceDensity3D();
+        this.state.differenceDensityMap = null;
+        const cubeOptionNames = new Set([
+            'property', 'datasetIndex', 'valueScale', 'valueUnit',
+            'displayLabel', 'quantityName', 'periodic', 'level', 'sign',
+        ]);
+        const displayOptions = Object.fromEntries(
+            Object.entries(definedOptions(options))
+                .filter(([name]) => !cubeOptionNames.has(name)),
+        );
+        this.options.differenceDensity = {
+            ...this.options.differenceDensity,
+            ...displayOptions,
+        };
+        // Absolute Cube level/sign live on the loaded map. Do not inherit an
+        // override that may have been applied to a previous Fourier map.
+        delete this.options.differenceDensity.level;
+        delete this.options.differenceDensity.sign;
+        const cubeOptions = Object.fromEntries(
+            Object.entries(definedOptions(options))
+                .filter(([name]) => cubeOptionNames.has(name)),
+        );
+        const property = cubeOptions.property ?? 'density';
+        const propertyDisplay = {
+            density: { displayLabel: 'ρ/eÅ⁻³', quantityName: 'electron density', signed: false },
+            'signed-density': { displayLabel: 'Δρ/eÅ⁻³', quantityName: 'signed density', signed: true },
+            orbital: { displayLabel: 'ψ', quantityName: 'orbital', signed: true },
+            potential: { displayLabel: 'V', quantityName: 'potential', signed: true },
+            generic: { displayLabel: 'Cube', quantityName: 'Cube field', signed: true },
+        }[property] ?? { displayLabel: 'Cube', quantityName: 'Cube field', signed: true };
+        const loadId = ++this.differenceDensityLoadSequence;
+        this.notifyDifferenceDensityUpdate({
+            type: 'started',
+            loadId,
+            visible: this.options.differenceDensity.visible,
+            sigmaLevel: null,
+            densitySource: 'cube',
+            displayLabel: cubeOptions.displayLabel ?? propertyDisplay.displayLabel,
+            quantityName: cubeOptions.quantityName ?? propertyDisplay.quantityName,
+            signed: cubeOptions.sign === 'positive' ? false : propertyDisplay.signed,
+        });
+
+        if (this.options.differenceDensity.useWorker && typeof Worker !== 'undefined') {
+            return this.loadCubeInWorker(cubeText, cubeOptions, loadId);
+        }
+        return this.loadCubeOnMainThread(cubeText, cubeOptions, loadId);
+    }
+
+    /**
      * Subscribes to density events (`started`, `update`, `complete`, `display`,
      * `visibility`, `cleared`, `error`, and `cancelled`). Display-bearing events
      * expose level/visibility fields so UIs need not inspect renderer state.
@@ -921,6 +991,79 @@ export class CrystalViewer {
     }
 
     /**
+     * Runs Cube parsing in the density worker and progressively refines its surface.
+     * @param {string} cubeText - Complete Cube file contents.
+     * @param {object} cubeOptions - Worker-safe Cube parser options.
+     * @param {number} loadId - Active density load identifier.
+     * @returns {Promise<object>} Final Cube load result.
+     */
+    loadCubeInWorker(cubeText, cubeOptions, loadId) {
+        return new Promise(resolve => {
+            const worker = new DifferenceDensityWorker();
+            this.differenceDensityWorker = worker;
+            this.differenceDensityPendingResolve = resolve;
+
+            const fail = (error) => {
+                if (loadId !== this.differenceDensityLoadSequence) {
+                    return;
+                }
+                const message = error?.message || String(error);
+                console.error('Error loading Cube field:', error);
+                this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: message });
+                this.finishDifferenceDensityWorker();
+                resolve({ success: false, error: message });
+            };
+
+            worker.addEventListener('error', fail);
+            worker.addEventListener('message', event => {
+                const message = event.data;
+                if (message.loadId !== loadId || loadId !== this.differenceDensityLoadSequence) {
+                    return;
+                }
+                if (message.type === 'error') {
+                    fail(new Error(message.error));
+                    return;
+                }
+                if (message.type !== 'update') {
+                    return;
+                }
+                try {
+                    const densityMap = message.map
+                        ? this.differenceDensityMapFromPayload(message.map)
+                        : this.state.differenceDensityMap;
+                    if (!densityMap) {
+                        throw new Error('Cube worker requested refinement before providing a grid');
+                    }
+                    this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                    if (message.final) {
+                        const result = this.differenceDensityResult(densityMap);
+                        this.notifyDifferenceDensityUpdate({
+                            ...message,
+                            ...result,
+                            type: 'complete',
+                            loadId,
+                        });
+                        this.finishDifferenceDensityWorker();
+                        resolve(result);
+                    } else {
+                        this.continueDensityWorkerAfterRender(worker, loadId, message.stepIndex);
+                    }
+                } catch (error) {
+                    fail(error);
+                }
+            });
+
+            worker.postMessage({
+                type: 'load-cube',
+                loadId,
+                cubeText,
+                cubeOptions,
+                steps: this.options.differenceDensity.progressiveSteps,
+            });
+        });
+    }
+
+    /**
      * Synchronous-environment fallback retaining the same progressive events.
      * @param {string} fcfText - FCF source text.
      * @param {number|string} fcfBlock - FCF block index or name.
@@ -979,6 +1122,51 @@ export class CrystalViewer {
     }
 
     /**
+     * Synchronous-environment Cube fallback retaining progressive surface events.
+     * @param {string} cubeText - Complete Cube file contents.
+     * @param {object} cubeOptions - Cube parser options.
+     * @param {number} loadId - Active density load identifier.
+     * @returns {Promise<object>} Final Cube load result.
+     */
+    async loadCubeOnMainThread(cubeText, cubeOptions, loadId) {
+        this.differenceDensityMainThreadLoadId = loadId;
+        try {
+            const densityMap = parseCube(cubeText, cubeOptions);
+            const steps = this.normalizedDifferenceDensitySteps();
+            for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+                if (loadId !== this.differenceDensityLoadSequence) {
+                    return { success: false, cancelled: true, error: 'Cube load cancelled' };
+                }
+                const message = {
+                    loadId,
+                    stepIndex,
+                    totalSteps: steps.length,
+                    final: stepIndex === steps.length - 1,
+                    surfaceResolutionFraction: steps[stepIndex],
+                };
+                this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                if (!message.final) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+            const result = this.differenceDensityResult(densityMap);
+            this.notifyDifferenceDensityUpdate({ type: 'complete', loadId, ...result });
+            return result;
+        } catch (error) {
+            if (loadId !== this.differenceDensityLoadSequence) {
+                return { success: false, cancelled: true, error: 'Cube load cancelled' };
+            }
+            console.error('Error loading Cube field:', error);
+            this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
+            return { success: false, error: error.message };
+        } finally {
+            if (this.differenceDensityMainThreadLoadId === loadId) {
+                this.differenceDensityMainThreadLoadId = null;
+            }
+        }
+    }
+
+    /**
      * Adds the active coordinate CIF to the public anomalous-correction option.
      * @returns {object|null} Worker-safe correction configuration.
      * @private
@@ -1025,7 +1213,9 @@ export class CrystalViewer {
      * @returns {DifferenceDensityMap} Map reconstructed from a worker payload.
      */
     differenceDensityMapFromPayload(payload) {
-        return DifferenceDensityMap.fromPayload(payload);
+        return payload.mapType === 'cube'
+            ? CubeDensityMap.fromPayload(payload)
+            : DifferenceDensityMap.fromPayload(payload);
     }
 
     /**
@@ -1034,7 +1224,8 @@ export class CrystalViewer {
      * @param {object} message - Progressive step metadata.
      */
     applyProgressiveDifferenceDensityMap(densityMap, message) {
-        this.validateDifferenceDensityCell(densityMap.cell, this.state.baseStructure.cell);
+        this.validateDifferenceDensityCell(densityMap.cell, this.state.baseStructure.cell,
+            densityMap.densitySource === 'cube' ? 'Cube' : 'FCF');
         this.state.differenceDensityMap = densityMap;
         this.state.differenceDensityResolutionFraction = densityMap.resolutionFraction;
         this.state.differenceDensitySurfaceResolutionFraction =
@@ -1059,6 +1250,14 @@ export class CrystalViewer {
             anomalousDispersion: densityMap.anomalousDispersion,
             densitySource: densityMap.densitySource,
             densityKind: densityMap.densityKind,
+            property: densityMap.property,
+            datasetCount: densityMap.datasetCount,
+            datasetIndex: densityMap.datasetIndex,
+            datasetId: densityMap.datasetId,
+            valueUnit: densityMap.valueUnit,
+            displayLabel: densityMap.displayLabel,
+            quantityName: densityMap.quantityName,
+            signed: densityMap.surfaceSign !== 'positive',
             intensityScale: densityMap.intensityScale,
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
@@ -1123,6 +1322,11 @@ export class CrystalViewer {
             anomalousDispersion: densityMap.anomalousDispersion,
             densitySource: densityMap.densitySource,
             densityKind: densityMap.densityKind,
+            property: densityMap.property,
+            datasetCount: densityMap.datasetCount,
+            datasetIndex: densityMap.datasetIndex,
+            datasetId: densityMap.datasetId,
+            valueUnit: densityMap.valueUnit,
             intensityScale: densityMap.intensityScale,
             scaleR1: densityMap.scaleR1,
             observations: densityMap.observations,
@@ -1155,13 +1359,20 @@ export class CrystalViewer {
     /** @returns {object} Renderer-independent density state exposed to UI listeners. */
     differenceDensityDisplayState() {
         const surface = this.state.differenceDensityGroup?.userData;
+        const map = this.state.differenceDensityMap;
         return {
             available: Number.isFinite(surface?.level),
             visible: this.state.differenceDensityGroup?.visible !== false,
             level: Number.isFinite(surface?.level) ? surface.level : null,
-            sigmaLevel: Number.isFinite(surface?.sigmaLevel)
-                ? surface.sigmaLevel
-                : this.options.differenceDensity.sigmaLevel,
+            sigmaLevel: map?.densitySource === 'cube'
+                ? null
+                : Number.isFinite(surface?.sigmaLevel)
+                    ? surface.sigmaLevel
+                    : this.options.differenceDensity.sigmaLevel,
+            densitySource: map?.densitySource ?? 'fcf',
+            displayLabel: map?.displayLabel ?? 'Δρ/eÅ⁻³',
+            quantityName: map?.quantityName ?? 'difference density',
+            signed: map?.surfaceSign !== 'positive',
         };
     }
 
@@ -1252,12 +1463,13 @@ export class CrystalViewer {
 
     /**
      * Ensures that an FCF belongs to the currently displayed coordinate CIF.
-     * @param {object} densityCell - Unit cell parsed from the FCF.
+     * @param {object} densityCell - Unit cell parsed from the density source.
      * @param {object} structureCell - Unit cell parsed from the coordinate CIF.
+     * @param {string} [label] - Source label used in mismatch errors.
      * @private
      */
-    validateDifferenceDensityCell(densityCell, structureCell) {
-        assertCellsMatch(densityCell, structureCell, 'FCF');
+    validateDifferenceDensityCell(densityCell, structureCell, label = 'FCF') {
+        assertCellsMatch(densityCell, structureCell, label);
     }
 
     /**

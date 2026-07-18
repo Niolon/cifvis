@@ -141,7 +141,8 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     const generationStarted = performance.now();
     const usedOptions = { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, ...options };
     const resolution = Math.max(8, Math.round(usedOptions.resolution));
-    const level = usedOptions.level ?? usedOptions.sigmaLevel * densityMap.sigma;
+    const level = usedOptions.level ?? densityMap.defaultLevel ??
+        usedOptions.sigmaLevel * densityMap.sigma;
     if (!(Number.isFinite(level) && level > 0)) {
         throw new Error('Difference-density contour level must be a positive finite number');
     }
@@ -150,7 +151,7 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     }
 
     const bounds = differenceDensityBounds(structure, usedOptions.radius);
-    const sign = usedOptions.sign ?? 'both';
+    const sign = usedOptions.sign ?? densityMap.surfaceSign ?? 'both';
     if (!['positive', 'negative', 'both'].includes(sign)) {
         throw new Error('Difference-density surface sign must be "positive", "negative", or "both"');
     }

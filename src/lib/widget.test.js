@@ -271,6 +271,27 @@ describe('CifViewWidget', () => {
         expect(widget.querySelector('.density-level')).toBeNull();
     });
 
+    test('uses Cube quantity metadata in the compact density control', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'complete',
+            available: true,
+            visible: true,
+            level: 0.3,
+            sigmaLevel: null,
+            displayLabel: 'ρ/eÅ⁻³',
+            quantityName: 'electron density',
+            signed: false,
+        });
+
+        const button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('ρ/eÅ⁻³');
+        expect(button.querySelector('.density-value').textContent).toBe('0.3');
+        expect(button.title).toContain('electron density (0.3)');
+    });
+
     test('cleans up on disconnect', () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);

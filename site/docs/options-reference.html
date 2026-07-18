@@ -693,6 +693,34 @@
                             <td>Maximum marching-cubes polygon allocation per generated field. <span class="default-value">Default: 100000</span></td>
                         </tr>
                     </table>
+                    <h3><code>loadCube</code> options</h3>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="cube property density orbital potential generic">
+                            <td><span class="option-code">property</span></td><td>String</td>
+                            <td><code>density</code>, <code>signed-density</code>, <code>orbital</code>, <code>potential</code>, or <code>generic</code>. Controls unit conversion, label, default contour, and whether one or both signs are drawn. <span class="default-value">Default: "density"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cube contour absolute level">
+                            <td><span class="option-code">level</span></td><td>Number</td>
+                            <td>Absolute Cube contour level. Electron density defaults to 0.3 e/Å³; signed density defaults to 0.05 e/Å³; other properties default to three map standard deviations.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cube orbital multiple dataset index">
+                            <td><span class="option-code">datasetIndex</span></td><td>Integer</td>
+                            <td>Zero-based dataset/orbital selection for a multi-dataset Cube. <span class="default-value">Default: 0</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cube units scale values">
+                            <td><span class="option-code">valueScale</span></td><td>Number</td>
+                            <td>Explicit scalar-value multiplier. By default, Bohr-based density properties are converted from e/bohr³ to e/Å³ and other properties remain unscaled.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cube label quantity units ui">
+                            <td><span class="option-code">displayLabel</span><br><span class="option-code">quantityName</span><br><span class="option-code">valueUnit</span></td><td>String</td>
+                            <td>Presentation metadata for generic, potential, and orbital fields. These values are emitted in density display events so the UI need not inspect the map.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="cube periodic wrapping sign positive negative">
+                            <td><span class="option-code">periodic</span><br><span class="option-code">sign</span></td><td>Boolean / String</td>
+                            <td>Controls cell wrapping and <code>positive</code>, <code>negative</code>, or <code>both</code> surface signs. <span class="default-value">Defaults: true and property-dependent</span></td>
+                        </tr>
+                    </table>
                     <p>
                         Custom columns and anomalous correction have additional layouts described in
                         <a href="./using-cifvis.html#difference-density">Using CifVis</a>.

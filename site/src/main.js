@@ -95,9 +95,13 @@ function currentDensityLevelText() {
     const sigma = Number.isFinite(densityDisplay.sigmaLevel)
         ? ` · ${Number(densityDisplay.sigmaLevel.toPrecision(3))}σ`
         : '';
+    const sign = densityDisplay.signed ? '±' : '';
+    const full = densityDisplay.quantityName === 'difference density'
+        ? `Δρ ±${level} e Å⁻³${sigma}`
+        : `${densityDisplay.quantityName} ${sign}${level}${sigma}`;
     return {
         level,
-        full: `Δρ ±${level} e Å⁻³${sigma}`,
+        full,
     };
 }
 
@@ -111,14 +115,14 @@ function updateDensityLevelDisplay() {
     if (labels || loading) {
         const unit = document.createElement('span');
         unit.className = 'density-unit';
-        unit.textContent = 'Δρ/eÅ⁻³';
+        unit.textContent = densityDisplay.displayLabel;
         const value = document.createElement('span');
         value.className = 'density-value';
         value.textContent = loading
             ? densityDisplay.totalSteps
                 ? `${densityDisplay.stepIndex + 1}/${densityDisplay.totalSteps}`
                 : '…'
-            : `±${labels.level}`;
+            : `${densityDisplay.signed ? '±' : ''}${labels.level}`;
         element.append(unit, value);
     }
     element.classList.toggle('density-loading', loading);
@@ -131,7 +135,7 @@ function updateDensityLevelDisplay() {
                 `of ${densityDisplay.totalSteps}`
             : 'Calculating difference density'
         : labels
-            ? `${visible ? 'Hide' : 'Show'} difference density (${labels.full})`
+            ? `${visible ? 'Hide' : 'Show'} ${densityDisplay.quantityName} (${labels.full})`
             : '';
 }
 
@@ -293,12 +297,41 @@ async function loadPlaygroundDifferenceDensity(cifText, cifBlock = 0) {
 }
 
 /**
+ * Loads a Cube scalar field over the active structure without replacing it.
+ * @param {string} cubeText - Complete Cube file contents.
+ * @param {string} [fileName] - Filename used for conservative property inference.
+ */
+async function loadPlaygroundCube(cubeText, fileName = '') {
+    if (!playgroundHasStructure) {
+        updateStatus('Load a coordinate CIF before adding a Cube file.', 'error');
+        return;
+    }
+    const loadSequence = ++playgroundLoadSequence;
+    clearStatus();
+    const property = /(?:density|charge|rho)/i.test(fileName) ? 'density' : 'generic';
+    const result = await viewer.loadCube(cubeText, { property });
+    if (loadSequence !== playgroundLoadSequence || result.cancelled) {
+        return;
+    }
+    if (!result.success) {
+        updateStatus(`Cube field failed: ${result.error}`, 'error');
+        return;
+    }
+    clearStatus();
+}
+
+/**
  * Routes coordinate-bearing files to a full load and reflection-only files to
  * the density loader for the current structure.
- * @param {string} cifText - Uploaded or dropped CIF-style text.
+ * @param {string} cifText - Uploaded or dropped CIF/Cube text.
+ * @param {string} [fileName] - Source filename used to route Cube files.
  * @returns {Promise<void>}
  */
-async function loadPlaygroundText(cifText) {
+async function loadPlaygroundText(cifText, fileName = '') {
+    if (/\.(?:cube|cub)$/i.test(fileName)) {
+        await loadPlaygroundCube(cifText, fileName);
+        return;
+    }
     const { coordinateBlock, reflectionBlock } = classifyPlaygroundCif(cifText);
     if (coordinateBlock !== null) {
         await loadPlaygroundCif(
@@ -336,7 +369,7 @@ function initializeFileUpload() {
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundText(text);
+            await loadPlaygroundText(text, file.name);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');
@@ -355,15 +388,15 @@ function initializeFileUpload() {
         e.stopPropagation();
         
         const file = e.dataTransfer.files[0];
-        if (!file || !/\.(?:cif|fcf)$/i.test(file.name)) {
-            updateStatus('Please drop a CIF or FCF file', 'error');
+        if (!file || !/\.(?:cif|fcf|cube|cub)$/i.test(file.name)) {
+            updateStatus('Please drop a CIF, FCF, or Cube file', 'error');
             return;
         }
 
         try {
             updateStatus('Reading file...', 'info');
             const text = await file.text();
-            await loadPlaygroundText(text);
+            await loadPlaygroundText(text, file.name);
         } catch (error) {
             console.error('Error reading file:', error);
             updateStatus('Error reading file: ' + error.message, 'error');

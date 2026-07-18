@@ -399,7 +399,8 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
     const globalResolution = Math.max(8, Math.round(usedOptions.resolution));
     const globalSpacing = longestBoundsEdge(structure.cell, globalBounds) /
         Math.max(1, globalResolution - 1);
-    const level = usedOptions.level ?? usedOptions.sigmaLevel * densityMap.sigma;
+    const level = usedOptions.level ?? densityMap.defaultLevel ??
+        usedOptions.sigmaLevel * densityMap.sigma;
     const cellMatrix = structure.cell.fractToCartMatrix.toArray();
     const plans = ['positive', 'negative'].map(sign => {
         const regions = contourConnectedDifferenceDensityRegions(

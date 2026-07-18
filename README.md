@@ -122,6 +122,27 @@ After a coordinate structure is loaded, dropping a reflection-only `.cif` or
 structure. The viewer rejects the update when the reflection and structure
 unit cells do not match.
 
+Gaussian Cube grids can be overlaid in the same way after loading their
+coordinate CIF. Parsing stays in the density worker, the Cube cell must match
+the structure cell, and the original grid is reused while the surface is
+progressively refined:
+
+```javascript
+await viewer.loadCIF(coordinateCif);
+await viewer.loadCube(cubeText, {
+  property: 'density', // density, signed-density, orbital, potential, or generic
+  level: 0.3,          // absolute contour value; density is normalized to e/Å³
+  datasetIndex: 0,     // for multi-dataset/orbital Cube files
+});
+```
+
+Positive voxel counts use Bohr coordinates and negative counts use Å. Density
+properties from Bohr-based files are converted from e/bohr³ to e/Å³; other
+properties retain their raw values unless `valueScale` is supplied. The
+playground accepts `.cube` and `.cub` drops without replacing the structure.
+Files named like density/charge/rho are treated as electron density; other
+names use a generic signed field.
+
 #### Custom and deformation-density coefficients
 
 Quantum-crystallographic reflection loops can select arbitrary columns through

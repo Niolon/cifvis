@@ -187,6 +187,7 @@ if (!result.success) {
                 <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
+                <tr><td><code>viewer.loadCube(text, options)</code></td><td>Loads a cell-matched Gaussian Cube grid in the density worker and progressively displays its isosurface.</td></tr>
                 <tr><td><code>viewer.onDifferenceDensityUpdate(callback)</code></td><td>Subscribes to <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
                 <tr><td><code>viewer.updateDifferenceDensityOptions(options)</code></td><td>Changes contours/appearance while retaining the Fourier grid. A visibility-only update does not rebuild surfaces.</td></tr>
                 <tr><td><code>viewer.setDifferenceDensityVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without reflection, FFT, or marching-cubes work.</td></tr>
@@ -252,6 +253,28 @@ viewer.setDifferenceDensityVisibility(false); // instant: retains map + meshes
 viewer.setDifferenceDensityVisibility(true);
 viewer.clearDifferenceDensity();
 stop();</code></pre>
+            <h3>Gaussian Cube grids</h3>
+            <p>
+                Load the coordinate CIF first, then overlay a Cube whose three voxel-axis spans describe the same
+                unit cell. Positive voxel counts use Bohr coordinates and negative counts use Å. For
+                <code>property: "density"</code> or <code>"signed-density"</code>, Bohr-based values are converted
+                from e/bohr³ to e/Å³. Cube parsing remains in the density worker and emits the same progressive
+                events as reflection-derived maps.
+            </p>
+            <pre><code>await viewer.loadCIF(coordinateCif);
+const result = await viewer.loadCube(cubeText, {
+    property: 'density',
+    level: 0.3,
+    datasetIndex: 0,
+});</code></pre>
+            <p>
+                The supported property modes are <code>density</code>, <code>signed-density</code>,
+                <code>orbital</code>, <code>potential</code>, and <code>generic</code>. Electron density defaults to
+                one positive contour; the other modes are signed. Use <code>valueScale</code>,
+                <code>displayLabel</code>, and <code>quantityName</code> when the Cube property or units are not
+                encoded in the file. Multi-orbital files use <code>datasetIndex</code>. The viewer validates the
+                Cube cell before replacing the current map.
+            </p>
             <p>
                 UI code should treat these events as the public boundary. Progress events include
                 <code>stepIndex</code>/<code>totalSteps</code>; display-bearing events include <code>available</code>,

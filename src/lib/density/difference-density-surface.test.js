@@ -53,6 +53,21 @@ describe('difference-density surfaces', () => {
         expect(group.children.every(child => child.material.wireframe)).toBe(true);
     });
 
+    test('honours a Cube map absolute level and positive-only surface', () => {
+        const group = createDifferenceDensitySurfaces({
+            ...densityMap,
+            defaultLevel: 0.3,
+            surfaceSign: 'positive',
+        }, structureAt(0.5), {
+            resolution: 8,
+            radius: 2,
+            maxPolyCount: 2000,
+        });
+
+        expect(group.userData.level).toBe(0.3);
+        expect(group.children.map(child => child.userData.sign)).toEqual(['positive']);
+    });
+
     test('increases final mesh resolution with physical draw size up to a cap', () => {
         const small = structureAt(0.5);
         const large = new CrystalStructure(
