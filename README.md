@@ -83,8 +83,8 @@ Widget HTML attributes use kebab-case (for example `hydrogen-mode`); keys inside
 
 ### Coupled comparison viewers
 
-Hydrogen, disorder, and symmetry modes plus rotation, pan, zoom, and camera
-reset can be coupled across any mixture of `CrystalViewer` and initialized
+Hydrogen, disorder, and symmetry modes plus the complete molecular transform,
+pan, zoom, and camera reset can be coupled across any mixture of `CrystalViewer` and initialized
 `<cifview-widget>` instances. Inputs are batched per animation frame and every
 peer renders only once for that batch.
 

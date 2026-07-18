@@ -85,7 +85,7 @@
         <section>
             <h2>Coupled comparison views</h2>
             <p>
-                Widgets can share hydrogen, disorder, and symmetry modes together with rotation, right-drag panning,
+                Widgets can share hydrogen, disorder, and symmetry modes together with the complete molecular transform, right-drag panning,
                 wheel/pinch zoom, and camera reset. Interaction events are replayed once per animation frame, while
                 selection stays independent.
             </p>
@@ -93,7 +93,7 @@
             <pre><code>import { coupleViewerInteractions } from 'cifvis';
 
 const coupling = coupleViewerInteractions(leftWidget, rightWidget);
-await coupling.synchronizeFrom(leftWidget); // modes, orientation, and absolute framing
+await coupling.synchronizeFrom(leftWidget); // modes, molecular origin/orientation, and absolute framing
 // coupling.add(otherViewer);
 // coupling.delete(leftWidget);
 // coupling.dispose();</code></pre>
