@@ -113,7 +113,7 @@ describe('planar scalar-field contours', () => {
             positiveColor: '#00ff00',
             negativeColor: '#ff0000',
             opacity: 1,
-            lineWidth: 1,
+            lineWidth: 1.5,
             depthOffset: 0,
         });
         layer.setField(field);
@@ -123,8 +123,8 @@ describe('planar scalar-field contours', () => {
 
         expect(statistics.displayMode).toBe('contour-lines');
         expect(statistics.segmentCount).toBeGreaterThan(0);
-        expect(layer.group.children.every(child => child.isLineSegments)).toBe(true);
-        expect(layer.group.children.some(child => child.isMesh)).toBe(false);
+        expect(layer.group.children.every(child => child.isLineSegments2)).toBe(true);
+        expect(layer.group.children.every(child => child.material.linewidth === 1.5)).toBe(true);
         layer.dispose();
         expect(parent.children).toHaveLength(0);
     });

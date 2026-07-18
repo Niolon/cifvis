@@ -14,7 +14,7 @@ export const DEFAULT_CONTOUR_LINE_OPTIONS = Object.freeze({
     zeroLine: false,
     zeroColor: '#666666',
     lineColor: null,
-    lineWidth: 1,
+    lineWidth: 1.5,
     opacity: 1,
     depthOffset: 0.02,
 });

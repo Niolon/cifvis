@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { calculatePlanarContours } from '../density/plane-contours.js';
 
 /**
@@ -12,7 +15,8 @@ function segmentPositions(segments) {
 
 /**
  * Three.js adapter for renderer-independent planar contours. The adapter only
- * creates line objects: it deliberately has no plane mesh or background fill.
+ * creates screen-space line primitives: it deliberately has no plane or
+ * background fill.
  */
 export class ThreeContourLineLayer {
     constructor(parent, options = {}) {
@@ -46,16 +50,18 @@ export class ThreeContourLineLayer {
         if (segments.length === 0) {
             return;
         }
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(segmentPositions(segments), 3));
-        const material = new THREE.LineBasicMaterial({
+        const geometry = new LineSegmentsGeometry();
+        geometry.setPositions(segmentPositions(segments));
+        const material = new LineMaterial({
             color,
             linewidth: this.options.lineWidth,
             opacity: this.options.opacity,
             transparent: this.options.opacity < 1,
             depthWrite: false,
+            worldUnits: false,
+            alphaToCoverage: true,
         });
-        const lines = new THREE.LineSegments(geometry, material);
+        const lines = new LineSegments2(geometry, material);
         lines.name = `${sign[0].toUpperCase()}${sign.slice(1)} contour lines`;
         lines.userData.sign = sign;
         lines.userData.segmentCount = segments.length;
