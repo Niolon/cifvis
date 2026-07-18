@@ -560,6 +560,12 @@ export class CrystalViewer {
                 options.plot2DColorLuminanceCeiling <= 1)) {
             throw new Error('plot2DColorLuminanceCeiling must be a number from 0 to 1');
         }
+        if (options.plot2DBondOutlineScale !== undefined &&
+            !(typeof options.plot2DBondOutlineScale === 'number' &&
+                Number.isFinite(options.plot2DBondOutlineScale) &&
+                options.plot2DBondOutlineScale >= 1)) {
+            throw new Error('plot2DBondOutlineScale must be a finite number greater than or equal to 1');
+        }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
 
@@ -625,6 +631,10 @@ export class CrystalViewer {
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
+            plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
+                defaultSettings.plot2DBondOutlineColor,
+            plot2DBondOutlineScale: options.plot2DBondOutlineScale ??
+                defaultSettings.plot2DBondOutlineScale,
             plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
                 defaultSettings.plot2DColorLuminanceCeiling,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??

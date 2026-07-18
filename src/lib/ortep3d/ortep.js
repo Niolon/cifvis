@@ -503,10 +503,12 @@ export class GeometryMaterialCache {
         this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing);
 
         // Bond geometry
+        const bondGeometryHeight = this.options.renderStyle === 'cutout-2d' ?
+            1 : BOND_GEOMETRY_HEIGHT;
         this.geometries.bond = new THREE.CylinderGeometry(
             this.options.bondRadius,
             this.options.bondRadius,
-            BOND_GEOMETRY_HEIGHT,
+            bondGeometryHeight,
             this.options.bondSections,
             1,
             true,
@@ -538,6 +540,12 @@ export class GeometryMaterialCache {
             this.materials.openBondOutline = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DBondColor,
                 side: THREE.BackSide,
+            });
+            this.materials.bondDepthOutline = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DBondOutlineColor,
+                side: THREE.BackSide,
+                depthTest: true,
+                depthWrite: true,
             });
             this.materials.hbond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DLineColor,
@@ -1028,6 +1036,12 @@ export class ORTEP3JsStructure {
                             outlineMaterial: this.cache.materials.openBondOutline,
                             innerScale: this.options.plot2DOpenBondInnerScale,
                         } : null,
+                        {
+                            material: this.cache.materials.bondDepthOutline,
+                            scale: this.options.plot2DBondOutlineScale,
+                            endpointInset: this.options.bondRadius *
+                                (this.options.plot2DBondOutlineScale - 1),
+                        },
                     ));
                 } catch (e) {
                     if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -1349,7 +1363,7 @@ export class ORTEPAtom extends ORTEPObject {
      * @returns {number} Distance to the atom surface
      */
     getSurfaceDistanceAlong(direction) {
-        if (direction.lengthSq() === 0 || this.surfaceRadius === 0) {
+        if (this.isSolidFallback || direction.lengthSq() === 0 || this.surfaceRadius === 0) {
             return 0;
         }
 
@@ -1406,6 +1420,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
     ) {
         super(atom, unitCell, baseAtom, atomMaterial);
         if ([atom.adp.u11, atom.adp.u22, atom.adp.u33].some(val => val <= 0)) {
+            this.isSolidFallback = true;
             this.geometry = new THREE.TetrahedronGeometry(0.8);
             if (this.plot2DOutline) {
                 this.plot2DOutline.geometry = this.geometry;
@@ -1414,6 +1429,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
         } else {
             const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
             if (ellipsoidMatrix.toArray().includes(NaN)) {
+                this.isSolidFallback = true;
                 this.geometry = new THREE.TetrahedronGeometry(0.8);
                 if (this.plot2DOutline) {
                     this.plot2DOutline.geometry = this.geometry;
@@ -1651,6 +1667,7 @@ export class ORTEPIsoAtom extends ORTEPAtom {
             throw new Error('Atom must have isotropic displacement parameters (UIsoADP)');
         }
         if (atom.adp.uiso <= 0.0) {
+            this.isSolidFallback = true;
             this.geometry = new THREE.TetrahedronGeometry(1);
             this.updateSurfaceRadius();
         } else {
@@ -2000,6 +2017,7 @@ export class ORTEPBond extends ORTEPObject {
      * @param {function(string): THREE.Vector3} [getCartesianPosition] - Cached atom-position resolver
      * @param {function(string): THREE.Object3D} [getRenderedAtom] - Rendered atom resolver for surface trimming
      * @param {object|null} [openStyle] - Optional opaque fill and outline setup
+     * @param {object|null} [depthOutlineStyle] - Optional depth-writing silhouette outline
      */
     constructor(
         bond,
@@ -2009,6 +2027,7 @@ export class ORTEPBond extends ORTEPObject {
         getCartesianPosition = null,
         getRenderedAtom = null,
         openStyle = null,
+        depthOutlineStyle = null,
     ) {
         super(baseBond, baseBondMaterial);
         let atom1position;
@@ -2031,10 +2050,13 @@ export class ORTEPBond extends ORTEPObject {
             );
         }
         const bondTransform = calcBondTransform(atom1position, atom2position);
+        const bondLength = atom1position.distanceTo(atom2position);
 
         this.applyMatrix4(bondTransform);
+        let radialParentScale = 1;
         if (openStyle) {
             const innerScale = THREE.MathUtils.clamp(openStyle.innerScale, 0.05, 0.95);
+            radialParentScale = innerScale;
             this.scale.x *= innerScale;
             this.scale.z *= innerScale;
 
@@ -2043,6 +2065,21 @@ export class ORTEPBond extends ORTEPObject {
             outline.userData = { selectable: false, type: '2d-open-bond-outline' };
             this.add(outline);
             this.openBondOutline = outline;
+        }
+        if (depthOutlineStyle && depthOutlineStyle.scale > 1) {
+            const outlineScale = Math.max(1, depthOutlineStyle.scale);
+            const endpointInset = Math.max(0, depthOutlineStyle.endpointInset || 0);
+            const lengthScale = bondLength > 0 ?
+                Math.max(0.05, 1 - 2 * endpointInset / bondLength) : 1;
+            const depthOutline = new THREE.Mesh(baseBond, depthOutlineStyle.material);
+            depthOutline.scale.set(
+                outlineScale / radialParentScale,
+                lengthScale,
+                outlineScale / radialParentScale,
+            );
+            depthOutline.userData = { selectable: false, type: '2d-bond-depth-outline' };
+            this.add(depthOutline);
+            this.bondDepthOutline = depthOutline;
         }
         this.userData = {
             type: 'bond',

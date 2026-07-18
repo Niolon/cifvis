@@ -105,6 +105,12 @@ describe('CrystalViewer rendering option validation', () => {
             'plot2DColorLuminanceCeiling must be a number from 0 to 1',
         );
     });
+
+    test('rejects an invalid 2D bond outline scale', () => {
+        expect(() => new CrystalViewer({}, { plot2DBondOutlineScale: 0.99 })).toThrow(
+            'plot2DBondOutlineScale must be a finite number greater than or equal to 1',
+        );
+    });
 });
 
 describe('CrystalViewer atom-label runtime option validation', () => {

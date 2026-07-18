@@ -353,7 +353,17 @@ describe('GeometryMaterialCache', () => {
             expect(plotCache.materials.openBond.depthWrite).toBe(true);
             expect(plotCache.materials.openBondOutline.color.getHexString()).toBe('000000');
             expect(plotCache.materials.openBondOutline.side).toBe(THREE.BackSide);
+            expect(plotCache.materials.bondDepthOutline.color.getHexString()).toBe('ffffff');
+            expect(plotCache.materials.bondDepthOutline.side).toBe(THREE.BackSide);
+            expect(plotCache.materials.bondDepthOutline.depthTest).toBe(true);
+            expect(plotCache.materials.bondDepthOutline.depthWrite).toBe(true);
             expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+
+            plotCache.geometries.bond.computeBoundingBox();
+            expect(
+                plotCache.geometries.bond.boundingBox.max.y -
+                plotCache.geometries.bond.boundingBox.min.y,
+            ).toBeCloseTo(1);
 
             plotCache.dispose();
         });
@@ -701,6 +711,28 @@ describe('ORTEP3JsStructure', () => {
             expect(ortep.atoms3D[0].geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
         });
 
+        test('keeps cutout-2d bonds at full length between solid NPD fallback atoms', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const npdAdp = () => new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0, 0, 0), npdAdp()),
+                new Atom('C2', 'C', new FractPosition(0.12, 0, 0), npdAdp()),
+            ];
+            const npdStructure = new CrystalStructure(
+                cell,
+                atoms,
+                [new Bond('C1', 'C2', 1.2, 0.01, '.')],
+            );
+            const ortep = new ORTEP3JsStructure(npdStructure, {
+                renderStyle: 'cutout-2d',
+            });
+
+            expect(ortep.atoms3D.every(atom => atom.isSolidFallback)).toBe(true);
+            expect(ortep.bonds3D).toHaveLength(1);
+            expect(ortep.bonds3D[0].scale.y).toBeCloseTo(1.2);
+            ortep.dispose();
+        });
+
         test('exposes cutaway atoms for camera-facing updates', () => {
             structure.dispose();
             structure = new ORTEP3JsStructure(mockCrystalStructure, {
@@ -776,6 +808,9 @@ describe('ORTEP3JsStructure', () => {
             expect(closedBond.userData.isOpenDisorderBond).toBe(false);
             expect(closedBond.material.color.getHexString()).toBe('000000');
             expect(closedBond.openBondOutline).toBeUndefined();
+            expect(closedBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
+            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1.18);
+            expect(closedBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             expect(openBond.userData.isOpenDisorderBond).toBe(true);
             expect(openBond.material.color.getHexString()).toBe('ffffff');
@@ -789,6 +824,22 @@ describe('ORTEP3JsStructure', () => {
             expect(openBond.scale.z).toBeCloseTo(0.5);
             expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
             expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
+            expect(openBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
+            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1.18 / 0.5);
+            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1.18 / 0.5);
+            expect(openBond.bondDepthOutline.scale.y).toBeLessThan(1);
+
+            const closedBondScale = new THREE.Vector3();
+            closedBond.matrix.decompose(
+                new THREE.Vector3(),
+                new THREE.Quaternion(),
+                closedBondScale,
+            );
+            const endpointInset = closedBondScale.y *
+                (1 - closedBond.bondDepthOutline.scale.y) / 2;
+            expect(endpointInset).toBeCloseTo(
+                defaultSettings.bondRadius * (defaultSettings.plot2DBondOutlineScale - 1),
+            );
         });
     });
 
@@ -1031,6 +1082,7 @@ describe('ORTEPAtom and subclasses', () => {
 
             // Should fall back to tetrahedron geometry
             expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+            expect(ortepAtom.getSurfaceDistanceAlong(new THREE.Vector3(1, 0, 0))).toBe(0);
         });
 
         test('falls back to tetrahedron geometry for a non-positive u22 ' +

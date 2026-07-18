@@ -171,6 +171,8 @@ export default {
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
     'plot2DBondColor': '#000000',
+    'plot2DBondOutlineColor': '#ffffff',
+    'plot2DBondOutlineScale': 1.18,
     'plot2DColorLuminanceCeiling': 0.25,
     'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
