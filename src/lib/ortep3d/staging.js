@@ -1,5 +1,16 @@
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import * as math from '../math-lite.js';
+
+let rectAreaLightUniformsInitialized = false;
+
+/** Initializes the WebGL area-light lookup textures once per module load. */
+function ensureRectAreaLightUniforms() {
+    if (!rectAreaLightUniformsInitialized) {
+        RectAreaLightUniformsLib.init();
+        rectAreaLightUniformsInitialized = true;
+    }
+}
 
 /**
  * Calculates the normal vector to the best-fit (mean) plane through a set of 3D points
@@ -134,36 +145,39 @@ export function structureOrientationMatrix(structureGroup) {
 
 /**
  * Sets up scene lighting optimized for molecular visualization based on structure dimensions.
- * Creates a combination of ambient light, main directional light, and fill lights.
+ * Creates a studio-style square softbox with inexpensive ambient and directional fill lights.
  * @param {THREE.Scene} scene - The scene to add lights to
  * @param {THREE.Object3D} ortep3DGroup - The molecular structure object to light
+ * @param {THREE.Box3} [structureExtent] - Precomputed rendered bounds, when available
  */
-export function setupLighting(scene, ortep3DGroup) {
+export function setupLighting(scene, ortep3DGroup, structureExtent) {
     // Remove all existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
-    let maxLength = 6;
-    ortep3DGroup.traverse(obj => {
-        if(obj.userData?.type === 'atom' && obj.position.length() > maxLength) {
-            maxLength = obj.position.length();
-        }
-    });
-    const lightDistance = maxLength * 2;
+
+    // Reuse the viewer's bounds calculation where possible. This also handles
+    // pooled/instanced atoms, whose selectable Object3Ds remain at the origin.
+    const extent = structureExtent || new THREE.Box3().setFromObject(ortep3DGroup);
+    const extentSize = extent.getSize(new THREE.Vector3());
+    const structureRadius = Math.max(extentSize.length() * 0.5, 6);
+    const lightDistance = structureRadius * 2.5;
     
     // Base ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     scene.add(ambientLight);
     
-    // Main shadow-casting light - always from fixed position since structure rotates
-    const mainLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI * 0.27, 0.6);
-    mainLight.position.set(0, -0.5, lightDistance * 2);
+    // A single square area light gives broad, studio-soft highlights. Its size
+    // and distance scale together, keeping illumination stable for large models.
+    ensureRectAreaLightUniforms();
+    const softboxSize = structureRadius * 2.25;
+    const mainLight = new THREE.RectAreaLight(0xffffff, 5, softboxSize, softboxSize);
+    mainLight.position.set(-lightDistance * 0.6, -lightDistance * 0.5, lightDistance);
     mainLight.lookAt(new THREE.Vector3(0, 0, 0));
     scene.add(mainLight);
 
-    // Additional fill lights for better depth perception
+    // A cheap directional fill and rim retain depth without adding more area lights.
     const fillLights = [
-        { pos: [-1, -0.5, 1], intensity: 0.4 },
-        { pos: [1, -0.5, 1], intensity: 0.4 },
-        { pos: [0, -0.5, 1], intensity: 0.3 },
+        { pos: [1, -0.25, 0.75], intensity: 0.2 },
+        { pos: [0.5, 0.8, -0.5], intensity: 0.3 },
     ];
 
     fillLights.forEach(({ pos, intensity }) => {

@@ -2057,7 +2057,7 @@ export class CrystalViewer {
         this.moleculeContainer.position.sub(this.state.structureCenter);
 
         this.updateCamera();
-        setupLighting(this.scene, this.state.currentStructure);
+        setupLighting(this.scene, this.state.currentStructure, extent);
         this.requestRender();
         return { success: true };
     }
