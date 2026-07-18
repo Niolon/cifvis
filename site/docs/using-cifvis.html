@@ -188,10 +188,10 @@ if (!result.success) {
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
                 <tr><td><code>viewer.loadCube(text, options)</code></td><td>Loads a cell-matched Gaussian Cube grid in the density worker and progressively displays its isosurface.</td></tr>
-                <tr><td><code>viewer.onDifferenceDensityUpdate(callback)</code></td><td>Subscribes to <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
-                <tr><td><code>viewer.updateDifferenceDensityOptions(options)</code></td><td>Changes contours/appearance while retaining the Fourier grid. A visibility-only update does not rebuild surfaces.</td></tr>
-                <tr><td><code>viewer.setDifferenceDensityVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without reflection, FFT, or marching-cubes work.</td></tr>
-                <tr><td><code>viewer.clearDifferenceDensity()</code></td><td>Discards the current map and surface meshes.</td></tr>
+                <tr><td><code>viewer.onScalarFieldUpdate(callback)</code></td><td>Subscribes to source-independent <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
+                <tr><td><code>viewer.updateIsosurfaceOptions(options)</code></td><td>Changes contours/appearance while retaining the scalar grid. A visibility-only update does not rebuild surfaces.</td></tr>
+                <tr><td><code>viewer.setIsosurfaceVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without source parsing, FFT, or marching-cubes work.</td></tr>
+                <tr><td><code>viewer.clearScalarField()</code></td><td>Discards the current scalar field and surface meshes.</td></tr>
                 <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
                 <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
                 <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>
@@ -242,16 +242,16 @@ const density = await loaded.differenceDensity;</code></pre>
                 uses occupancies, literal isotropic/anisotropic ADPs (non-positive-definite ADPs are reported but not
                 changed), symmetry mates, and special-position deduplication.
             </p>
-            <pre><code>const stop = viewer.onDifferenceDensityUpdate(update =&gt; {
+            <pre><code>const stop = viewer.onScalarFieldUpdate(update =&gt; {
     if (update.type === 'update') {
         console.log(update.progress, update.polygonCount, update.sigma);
     }
 });
 
-viewer.updateDifferenceDensityOptions({ sigmaLevel: 2.5 });
-viewer.setDifferenceDensityVisibility(false); // instant: retains map + meshes
-viewer.setDifferenceDensityVisibility(true);
-viewer.clearDifferenceDensity();
+viewer.updateIsosurfaceOptions({ sigmaLevel: 2.5 });
+viewer.setIsosurfaceVisibility(false); // instant: retains field + meshes
+viewer.setIsosurfaceVisibility(true);
+viewer.clearScalarField();
 stop();</code></pre>
             <h3>Gaussian Cube grids</h3>
             <p>
@@ -324,11 +324,21 @@ const result = await viewer.loadCube(cubeText, {
                 intersecting clipping masks are polygonized as one field so bridges have no internal seams.
             </p>
             <p>
+                Internally, every source produces the same renderer-independent <code>ScalarFieldGrid</code>, with
+                separate source, field-kind, units, contour, and boundary metadata. A dedicated Three.js isosurface
+                layer owns mesh construction and disposal; <code>CrystalViewer</code> only coordinates the source,
+                displayed structure, events, and render requests. This keeps Cube density, deformation density,
+                orbitals, potentials, and future scalar fields out of the Fo&minus;Fc-specific API.
+            </p>
+            <p>
                 See <a href="./options-reference.html">Options Reference</a> for every setting. The package root and
-                <code>cifvis/nobrowser</code> also export <code>DifferenceDensityMap</code>,
+                <code>cifvis/nobrowser</code> also export <code>ScalarFieldGrid</code>,
                 <code>parseDifferenceDensitySource</code>, <code>calculateDifferenceDensityMap</code>,
-                <code>createCifDifferenceDensityDataset</code>, IAM helpers, reflection readers, and
-                <code>DEFAULT_DIFFERENCE_DENSITY_OPTIONS</code> for lower-level use.
+                <code>createCifDifferenceDensityDataset</code>, generic isosurface builders, the
+                <code>ThreeIsosurfaceLayer</code> adapter, IAM helpers, reflection readers, and
+                separate <code>DEFAULT_DIFFERENCE_DENSITY_OPTIONS</code>,
+                <code>DEFAULT_SCALAR_FIELD_OPTIONS</code>, and <code>DEFAULT_ISOSURFACE_OPTIONS</code>
+                objects for lower-level use.
             </p>
         </section>
 

@@ -2,9 +2,9 @@
 import { describe, expect, test } from 'vitest';
 import {
     BOHR_TO_ANGSTROM,
-    CubeDensityMap,
     parseCube,
 } from './cube.js';
+import { ScalarFieldGrid } from './scalar-field.js';
 
 function cubeText({ atomCount = 1, dimensions = [2, 2, 2], values, extra = '' } = {}) {
     const usedValues = values ?? [0, 1, 2, 3, 4, 5, 6, 7];
@@ -26,13 +26,13 @@ describe('Gaussian Cube parsing', () => {
         expect(map.dimensions).toEqual([2, 2, 2]);
         expect(map.cell.a).toBeCloseTo(2 * BOHR_TO_ANGSTROM, 12);
         expect(map.axisVectors[0]).toEqual([BOHR_TO_ANGSTROM, 0, 0]);
-        expect(map.values[1]).toBeCloseTo(1 / BOHR_TO_ANGSTROM ** 3, 5);
+        expect(map.values[1]).toBeCloseTo(4 / BOHR_TO_ANGSTROM ** 3, 5);
         expect(map.displayLabel).toBe('ρ/eÅ⁻³');
         expect(map.surfaceSign).toBe('positive');
         expect(map.defaultLevel).toBe(0.3);
     });
 
-    test('uses Cube z-fastest ordering for periodic trilinear sampling', () => {
+    test('normalizes Cube z-fastest input to x-fastest field sampling', () => {
         const map = parseCube(cubeText(), { property: 'generic' });
 
         expect(map.sample(0, 0, 0)).toBe(0);
@@ -48,7 +48,7 @@ describe('Gaussian Cube parsing', () => {
 
         expect(map.coordinateUnit).toBe('angstrom');
         expect(map.cell.a).toBeCloseTo(2, 12);
-        expect(map.values[1]).toBe(1);
+        expect(map.values[1]).toBe(4);
     });
 
     test('selects one interleaved orbital dataset', () => {
@@ -65,13 +65,13 @@ describe('Gaussian Cube parsing', () => {
         expect(map.datasetCount).toBe(2);
         expect(map.datasetIds).toEqual([5, 7]);
         expect(map.datasetId).toBe(7);
-        expect(Array.from(map.values)).toEqual([1, 3, 5, 7, 9, 11, 13, 15]);
+        expect(Array.from(map.values)).toEqual([1, 9, 5, 13, 3, 11, 7, 15]);
         expect(map.surfaceSign).toBe('both');
     });
 
     test('round-trips transferable map payloads', () => {
         const original = parseCube(cubeText(), { property: 'generic' });
-        const restored = CubeDensityMap.fromPayload(original.toPayload());
+        const restored = ScalarFieldGrid.fromPayload(original.toPayload());
 
         expect(restored.dimensions).toEqual(original.dimensions);
         expect(restored.originFractional).toEqual(original.originFractional);

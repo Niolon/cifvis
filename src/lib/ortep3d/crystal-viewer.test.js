@@ -196,17 +196,16 @@ describe('CrystalViewer structure centring', () => {
 describe('CrystalViewer progressive difference-density events', () => {
     test('starts a Cube load with source-specific presentation metadata', async () => {
         const viewer = {
-            state: { baseStructure: {}, differenceDensityMap: null },
+            state: { baseStructure: {}, scalarField: null },
             options: {
-                differenceDensity: {
-                    useWorker: false,
-                    visible: true,
-                },
+                differenceDensity: {},
+                scalarField: { useWorker: false },
+                isosurface: { visible: true },
             },
-            differenceDensityLoadSequence: 0,
-            cancelDifferenceDensityLoad: vi.fn(),
-            removeDifferenceDensity3D: vi.fn(),
-            notifyDifferenceDensityUpdate: vi.fn(),
+            scalarFieldLoadSequence: 0,
+            cancelScalarFieldLoad: vi.fn(),
+            isosurfaceLayer: { clear: vi.fn(), setOptions: vi.fn() },
+            notifyScalarFieldUpdate: vi.fn(),
             loadCubeOnMainThread: vi.fn().mockResolvedValue({ success: true }),
         };
 
@@ -217,16 +216,16 @@ describe('CrystalViewer progressive difference-density events', () => {
         );
 
         expect(result).toEqual({ success: true });
-        expect(viewer.options.differenceDensity.wireframe).toBe(false);
+        expect(viewer.options.isosurface.wireframe).toBe(false);
         expect(viewer.loadCubeOnMainThread).toHaveBeenCalledWith(
             'cube text',
             { property: 'density' },
             1,
         );
-        expect(viewer.notifyDifferenceDensityUpdate).toHaveBeenCalledWith(
+        expect(viewer.notifyScalarFieldUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
                 type: 'started',
-                densitySource: 'cube',
+                sourceType: 'cube',
                 displayLabel: 'ρ/eÅ⁻³',
                 quantityName: 'electron density',
                 signed: false,
@@ -236,13 +235,14 @@ describe('CrystalViewer progressive difference-density events', () => {
 
     test('does not start density work during an ordinary structure load', async () => {
         const viewer = {
-            state: { differenceDensityMap: null },
+            state: { scalarField: null },
             options: {
                 fixCifErrors: false,
                 differenceDensity: { autoLoad: false },
             },
-            cancelDifferenceDensityLoad: vi.fn(),
-            removeDifferenceDensity3D: vi.fn(),
+            cancelScalarFieldLoad: vi.fn(),
+            isosurfaceLayer: { clear: vi.fn() },
+            notifyScalarFieldUpdate: vi.fn(),
             loadStructure: vi.fn(async structure => {
                 viewer.state.baseStructure = structure;
             }),
@@ -261,13 +261,14 @@ describe('CrystalViewer progressive difference-density events', () => {
     test('installs the structure before scheduling automatic density work', async () => {
         const order = [];
         const viewer = {
-            state: { differenceDensityMap: null },
+            state: { scalarField: null },
             options: {
                 fixCifErrors: false,
                 differenceDensity: { autoLoad: true },
             },
-            cancelDifferenceDensityLoad: vi.fn(),
-            removeDifferenceDensity3D: vi.fn(),
+            cancelScalarFieldLoad: vi.fn(),
+            isosurfaceLayer: { clear: vi.fn() },
+            notifyScalarFieldUpdate: vi.fn(),
             loadStructure: vi.fn(async structure => {
                 order.push('structure');
                 viewer.state.baseStructure = structure;
@@ -290,25 +291,25 @@ describe('CrystalViewer progressive difference-density events', () => {
     });
 
     test('subscribes and unsubscribes update listeners', () => {
-        const viewer = { differenceDensityUpdateCallbacks: new Set() };
+        const viewer = { scalarFieldUpdateCallbacks: new Set() };
         const updates = [];
-        const unsubscribe = CrystalViewer.prototype.onDifferenceDensityUpdate.call(
+        const unsubscribe = CrystalViewer.prototype.onScalarFieldUpdate.call(
             viewer,
             update => updates.push(update),
         );
 
-        CrystalViewer.prototype.notifyDifferenceDensityUpdate.call(viewer, { type: 'update', stepIndex: 0 });
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, { type: 'update', stepIndex: 0 });
         unsubscribe();
-        CrystalViewer.prototype.notifyDifferenceDensityUpdate.call(viewer, { type: 'update', stepIndex: 1 });
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, { type: 'update', stepIndex: 1 });
 
         expect(updates).toEqual([{ type: 'update', stepIndex: 0 }]);
     });
 
     test('normalizes progressive steps and always includes the final surface resolution', () => {
         const viewer = {
-            options: { differenceDensity: { progressiveSteps: [1, 0.5, -1, 0.5, 2] } },
+            options: { isosurface: { progressiveSteps: [1, 0.5, -1, 0.5, 2] } },
         };
-        expect(CrystalViewer.prototype.normalizedDifferenceDensitySteps.call(viewer)).toEqual([0.5, 1]);
+        expect(CrystalViewer.prototype.normalizedIsosurfaceSteps.call(viewer)).toEqual([0.5, 1]);
     });
 
     test('passes the active coordinate CIF to anomalous-dispersion correction', () => {
@@ -334,7 +335,7 @@ describe('CrystalViewer progressive difference-density events', () => {
     });
 
     test('reuses one density map while increasing only surface resolution', () => {
-        const densityMap = {
+        const field = {
             cell: {},
             dimensions: [64, 128, 64],
             resolutionFraction: 1,
@@ -348,43 +349,51 @@ describe('CrystalViewer progressive difference-density events', () => {
             state: {
                 baseStructure: { cell: {} },
                 displayStructure: {},
-                differenceDensityGroup: null,
+                scalarField: null,
             },
-            options: { differenceDensity: { resolution: 64 } },
-            validateDifferenceDensityCell: vi.fn(),
-            updateDifferenceDensity3D: vi.fn(function () {
-                this.state.differenceDensityGroup = {
-                    userData: {
-                        polygonCount: this.state.differenceDensitySurfaceResolutionFraction * 1000,
-                        resolution: this.state.differenceDensitySurfaceResolutionFraction * 64,
+            options: { isosurface: { resolution: 64 } },
+            validateScalarFieldCell: vi.fn(),
+            isosurfaceLayer: {
+                setField: vi.fn(),
+                setStructure: vi.fn(),
+                rebuild() {
+                    const fraction = viewer.state.isosurfaceResolutionFraction;
+                    this.displayState = {
+                        available: true,
+                        visible: true,
                         level: 0.15,
                         sigmaLevel: 3,
-                    },
-                    visible: true,
-                };
-            }),
-            differenceDensityDisplayState() {
-                return CrystalViewer.prototype.differenceDensityDisplayState.call(this);
+                    };
+                    return {
+                        polygonCount: fraction * 1000,
+                        resolution: fraction * 64,
+                        level: 0.15,
+                        sigmaLevel: 3,
+                    };
+                },
+            },
+            scalarFieldDisplayState() {
+                return CrystalViewer.prototype.scalarFieldDisplayState.call(this);
             },
             requestRender: vi.fn(),
-            notifyDifferenceDensityUpdate: vi.fn(),
+            notifyScalarFieldUpdate: vi.fn(),
         };
 
-        CrystalViewer.prototype.applyProgressiveDifferenceDensityMap.call(viewer, densityMap, {
+        CrystalViewer.prototype.applyProgressiveScalarField.call(viewer, field, {
             stepIndex: 0,
             totalSteps: 2,
             final: false,
             surfaceResolutionFraction: 0.5,
         });
-        CrystalViewer.prototype.applyProgressiveDifferenceDensityMap.call(viewer, densityMap, {
+        CrystalViewer.prototype.applyProgressiveScalarField.call(viewer, field, {
             stepIndex: 1,
             totalSteps: 2,
             final: true,
             surfaceResolutionFraction: 1,
         });
 
-        expect(viewer.state.differenceDensityMap).toBe(densityMap);
-        expect(viewer.notifyDifferenceDensityUpdate.mock.calls.map(call => call[0]))
+        expect(viewer.state.scalarField).toBe(field);
+        expect(viewer.notifyScalarFieldUpdate.mock.calls.map(call => call[0]))
             .toMatchObject([
                 {
                     surfaceResolution: 32,
@@ -410,26 +419,30 @@ describe('CrystalViewer progressive difference-density events', () => {
     test('toggles density visibility without rebuilding its surfaces', () => {
         const group = { visible: true };
         const viewer = {
-            state: { differenceDensityGroup: group },
-            options: { differenceDensity: { visible: true } },
-            requestRender: vi.fn(),
-            notifyDifferenceDensityUpdate: vi.fn(),
-            setDifferenceDensityVisibility(visible) {
-                return CrystalViewer.prototype.setDifferenceDensityVisibility.call(this, visible);
+            state: { scalarField: {} },
+            options: { isosurface: { visible: true } },
+            isosurfaceLayer: {
+                setVisible(visible) {
+                    group.visible = visible;
+                    return visible;
+                },
             },
-            updateDifferenceDensity3D: vi.fn(),
+            requestRender: vi.fn(),
+            notifyScalarFieldUpdate: vi.fn(),
+            setIsosurfaceVisibility(visible) {
+                return CrystalViewer.prototype.setIsosurfaceVisibility.call(this, visible);
+            },
         };
 
-        const result = CrystalViewer.prototype.updateDifferenceDensityOptions.call(
+        const result = CrystalViewer.prototype.updateIsosurfaceOptions.call(
             viewer,
             { visible: false },
         );
 
         expect(result).toEqual({ success: true, visible: false });
         expect(group.visible).toBe(false);
-        expect(viewer.options.differenceDensity.visible).toBe(false);
-        expect(viewer.updateDifferenceDensity3D).not.toHaveBeenCalled();
-        expect(viewer.notifyDifferenceDensityUpdate)
+        expect(viewer.options.isosurface.visible).toBe(false);
+        expect(viewer.notifyScalarFieldUpdate)
             .toHaveBeenCalledWith({ type: 'visibility', visible: false });
     });
 });

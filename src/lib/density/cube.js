@@ -1,6 +1,7 @@
 /* eslint-disable jsdoc/require-param, jsdoc/require-returns -- private parsing helpers */
 import { UnitCell } from '../structure/crystal.js';
 import * as math from '../math-lite.js';
+import { ScalarFieldGrid } from './scalar-field.js';
 
 export const BOHR_TO_ANGSTROM = 0.529177210903;
 
@@ -31,11 +32,6 @@ function angle(first, second) {
 /** @returns {number[]} Plain array for math-lite results. */
 function plainArray(value) {
     return Array.isArray(value) ? value : value.toArray();
-}
-
-/** @returns {number} Periodic array index. */
-function wrapIndex(value, size) {
-    return ((value % size) + size) % size;
 }
 
 /** Parses one fixed-header Cube line and validates its numeric fields. */
@@ -125,107 +121,12 @@ function fieldStatistics(values) {
  * Periodic scalar values read from a Gaussian Cube grid whose three voxel axes
  * span one crystallographic cell.
  */
-export class CubeDensityMap {
-    constructor(cell, dimensions, values, metadata = {}) {
-        this.cell = cell;
-        this.dimensions = dimensions;
-        this.values = values;
-        Object.assign(this, metadata);
-    }
-
-    /** @returns {object} Structured-clone-safe worker payload. */
-    toPayload() {
-        const { cell, dimensions, values, ...metadata } = this;
-        return {
-            mapType: 'cube',
-            cell: {
-                a: cell.a,
-                b: cell.b,
-                c: cell.c,
-                alpha: cell.alpha,
-                beta: cell.beta,
-                gamma: cell.gamma,
-            },
-            dimensions,
-            values,
-            ...metadata,
-        };
-    }
-
-    /** @returns {CubeDensityMap} Map reconstructed from a worker payload. */
-    static fromPayload(payload) {
-        const cell = new UnitCell(
-            payload.cell.a,
-            payload.cell.b,
-            payload.cell.c,
-            payload.cell.alpha,
-            payload.cell.beta,
-            payload.cell.gamma,
-        );
-        const { mapType: _mapType, cell: _cell, dimensions, values, ...metadata } = payload;
-        return new CubeDensityMap(cell, dimensions, values, metadata);
-    }
-
-    /**
-     * Trilinearly samples the Cube at crystallographic fractional coordinates.
-     * @param {number} x - Fractional coordinate along the Cube x lattice vector.
-     * @param {number} y - Fractional coordinate along the Cube y lattice vector.
-     * @param {number} z - Fractional coordinate along the Cube z lattice vector.
-     * @returns {number} Interpolated scalar value.
-     */
-    sample(x, y, z) {
-        const [nx, ny, nz] = this.dimensions;
-        const origin = this.originFractional ?? [0, 0, 0];
-        const scaled = [
-            (x - origin[0]) * nx,
-            (y - origin[1]) * ny,
-            (z - origin[2]) * nz,
-        ];
-        if (!this.periodic && scaled.some((value, axis) =>
-            value < 0 || value > this.dimensions[axis] - 1,
-        )) {
-            return 0;
-        }
-        const lower = scaled.map(value => Math.floor(value));
-        const fraction = scaled.map((value, axis) => {
-            if (!this.periodic && lower[axis] >= this.dimensions[axis] - 1) {
-                lower[axis] = this.dimensions[axis] - 1;
-                return 0;
-            }
-            return value - lower[axis];
-        });
-        const index = (ix, iy, iz) => {
-            const usedX = this.periodic ? wrapIndex(ix, nx) : Math.min(nx - 1, ix);
-            const usedY = this.periodic ? wrapIndex(iy, ny) : Math.min(ny - 1, iy);
-            const usedZ = this.periodic ? wrapIndex(iz, nz) : Math.min(nz - 1, iz);
-            // Cube text stores z fastest, then y, then x.
-            return (usedX * ny + usedY) * nz + usedZ;
-        };
-        const valueAt = (ix, iy, iz) => this.values[index(ix, iy, iz)];
-        const lerp = (first, second, fractionValue) =>
-            first + (second - first) * fractionValue;
-        const x00 = lerp(valueAt(lower[0], lower[1], lower[2]),
-            valueAt(lower[0] + 1, lower[1], lower[2]), fraction[0]);
-        const x10 = lerp(valueAt(lower[0], lower[1] + 1, lower[2]),
-            valueAt(lower[0] + 1, lower[1] + 1, lower[2]), fraction[0]);
-        const x01 = lerp(valueAt(lower[0], lower[1], lower[2] + 1),
-            valueAt(lower[0] + 1, lower[1], lower[2] + 1), fraction[0]);
-        const x11 = lerp(valueAt(lower[0], lower[1] + 1, lower[2] + 1),
-            valueAt(lower[0] + 1, lower[1] + 1, lower[2] + 1), fraction[0]);
-        return lerp(
-            lerp(x00, x10, fraction[1]),
-            lerp(x01, x11, fraction[1]),
-            fraction[2],
-        );
-    }
-}
-
 /**
  * Parses a Gaussian Cube scalar grid. Coordinates are normalized to Å; density
  * properties are additionally normalized from e/bohr³ to e/Å³.
  * @param {string} cubeText - Complete Cube file contents.
  * @param {object} [options] - Property, dataset, scaling, and periodicity options.
- * @returns {CubeDensityMap} Parsed grid and metadata.
+ * @returns {ScalarFieldGrid} Parsed grid and metadata.
  */
 export function parseCube(cubeText, options = {}) {
     if (typeof cubeText !== 'string' || cubeText.trim().length === 0) {
@@ -320,7 +221,12 @@ export function parseCube(cubeText, options = {}) {
         if (!Number.isFinite(value)) {
             throw new Error(`Gaussian Cube grid value ${point + 1} is not finite`);
         }
-        values[point] = value * presentation.valueScale;
+        const cubeX = Math.floor(point / (dimensions[1] * dimensions[2]));
+        const remainder = point % (dimensions[1] * dimensions[2]);
+        const cubeY = Math.floor(remainder / dimensions[2]);
+        const cubeZ = remainder % dimensions[2];
+        const fieldIndex = (cubeZ * dimensions[1] + cubeY) * dimensions[0] + cubeX;
+        values[fieldIndex] = value * presentation.valueScale;
     }
 
     const latticeVectors = axisVectors.map((vector, axis) =>
@@ -346,7 +252,7 @@ export function parseCube(cubeText, options = {}) {
     const statistics = fieldStatistics(values);
     const defaultLevel = presentation.defaultLevel ?? 3 * statistics.sigma;
 
-    return new CubeDensityMap(cell, dimensions, values, {
+    return new ScalarFieldGrid(cell, dimensions, values, {
         ...statistics,
         comments,
         atoms,
@@ -366,9 +272,11 @@ export function parseCube(cubeText, options = {}) {
         quantityName: presentation.quantityName,
         surfaceSign: presentation.surfaceSign,
         defaultLevel,
-        periodic: options.periodic ?? true,
-        densitySource: 'cube',
-        densityKind: property === 'signed-density' ? 'deformation' : 'cube',
+        boundaryMode: options.periodic === false ? 'zero' : 'periodic',
+        sourceType: 'cube',
+        fieldKind: property === 'density' ? 'electron-density' :
+            property === 'signed-density' ? 'deformation-density' : property,
+        contourMode: 'absolute',
         resolutionFraction: 1,
         gridOversampling: 1,
     });

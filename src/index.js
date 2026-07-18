@@ -6,11 +6,22 @@ export { formatValueEsd } from './lib/formatting.js';
 export {
     calculateDifferenceDensityMap,
     createCifDifferenceDensityDataset,
-    DifferenceDensityMap,
     parseDifferenceDensitySource,
 } from './lib/density/difference-density.js';
 export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './lib/density/difference-density-options.js';
-export { BOHR_TO_ANGSTROM, CubeDensityMap, parseCube } from './lib/density/cube.js';
+export { DEFAULT_ISOSURFACE_OPTIONS } from './lib/density/isosurface-options.js';
+export { DEFAULT_SCALAR_FIELD_OPTIONS } from './lib/density/scalar-field-options.js';
+export { BOHR_TO_ANGSTROM, parseCube } from './lib/density/cube.js';
+export { ScalarFieldGrid } from './lib/density/scalar-field.js';
+export {
+    createIsosurfaces,
+    isosurfaceBounds,
+    isosurfaceResolution,
+} from './lib/density/isosurface.js';
+export {
+    connectedIsosurfaceRegions,
+    createSymmetryAwareIsosurfaces,
+} from './lib/density/symmetry-isosurface.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
 export {
     calculateIAMStructureFactors,
@@ -34,6 +45,7 @@ export {
 
 // Export DOM-dependent features
 export { CrystalViewer } from './lib/ortep3d/crystal-viewer.js';
+export { ThreeIsosurfaceLayer } from './lib/ortep3d/three-isosurface-layer.js';
 
 import  { CifViewWidget } from './lib/widget.js';
 

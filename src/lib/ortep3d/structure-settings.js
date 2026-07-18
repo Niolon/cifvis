@@ -203,6 +203,14 @@ export default {
         // approximately this spacing, bounded by resolution/maxResolution.
     },
 
+    'scalarField': {
+        ...DEFAULT_SCALAR_FIELD_OPTIONS,
+    },
+
+    'isosurface': {
+        ...DEFAULT_ISOSURFACE_OPTIONS,
+    },
+
     'bondGrowTolerance': 0.45,
 
     'fixCifErrors': false,
@@ -297,3 +305,5 @@ export default {
     'elementProperties': elementProperties,
 };
 import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from '../density/difference-density-options.js';
+import { DEFAULT_SCALAR_FIELD_OPTIONS } from '../density/scalar-field-options.js';
+import { DEFAULT_ISOSURFACE_OPTIONS } from '../density/isosurface-options.js';

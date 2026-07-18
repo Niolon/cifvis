@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest';
 import {
     calculateDifferenceDensityMap,
     createCifDifferenceDensityDataset,
-    DifferenceDensityMap,
     parseDifferenceDensityDataset,
     parseDifferenceDensitySource,
 } from './difference-density.js';
@@ -142,12 +141,24 @@ function customCoefficient(columns) {
         .coefficients.get('1,0,0');
 }
 
-describe('DifferenceDensityMap', () => {
+/**
+ * @param {string} text - FCF source text.
+ * @returns {import('./scalar-field.js').ScalarFieldGrid} Map parsed from explicit coefficients.
+ */
+function mapFromFcf(text) {
+    return calculateDifferenceDensityMap(parseDifferenceDensitySource(
+        text,
+        0,
+        { inputMode: 'fcf' },
+    ));
+}
+
+describe('difference-density scalar fields', () => {
     test('calculates a correctly normalized real Fo-Fc Fourier map', () => {
-        const map = DifferenceDensityMap.fromCIF(P1_FCF);
+        const map = mapFromFcf(P1_FCF);
 
         expect(map.reflectionCount).toBe(1);
-        expect(map.densityKind).toBe('difference');
+        expect(map.fieldKind).toBe('difference-density');
         expect(map.coefficientCount).toBe(2);
         expect(map.dimensions).toEqual([4, 2, 2]);
         expect(map.sample(0, 0, 0)).toBeCloseTo(2, 6);
@@ -163,7 +174,7 @@ describe('DifferenceDensityMap', () => {
     });
 
     test('samples periodically outside the base unit cell', () => {
-        const map = DifferenceDensityMap.fromCIF(P1_FCF);
+        const map = mapFromFcf(P1_FCF);
 
         expect(map.sample(1.125, 0, 0)).toBeCloseTo(map.sample(0.125, 0, 0), 6);
         expect(map.sample(-0.25, 0, 0)).toBeCloseTo(map.sample(0.75, 0, 0), 6);
@@ -173,7 +184,7 @@ describe('DifferenceDensityMap', () => {
         const dataset = parseDifferenceDensityDataset(MULTI_RESOLUTION_FCF);
         const rough = calculateDifferenceDensityMap(dataset, 0.3);
         const refined = calculateDifferenceDensityMap(dataset, 1);
-        const direct = DifferenceDensityMap.fromCIF(MULTI_RESOLUTION_FCF);
+        const direct = mapFromFcf(MULTI_RESOLUTION_FCF);
 
         expect(rough.dimensions).toEqual([4, 2, 2]);
         expect(refined.dimensions).toEqual([16, 2, 2]);
@@ -201,7 +212,7 @@ describe('DifferenceDensityMap', () => {
         const map = calculateDifferenceDensityMap(dataset);
 
         expect(dataset).toMatchObject({
-            densitySource: 'cif-iam',
+            sourceType: 'cif-iam',
             coefficientMode: 'fo-fc-iam-phase',
             reflectionCount: 2,
             observations: { source: 'refln', alreadyMerged: true },
@@ -210,19 +221,21 @@ describe('DifferenceDensityMap', () => {
         expect(dataset.intensityScale).toBeGreaterThan(0);
         expect(dataset.scaleFittedReflectionCount).toBe(2);
         expect(dataset.scaleR1).toBeGreaterThan(0);
-        expect(map.densitySource).toBe('cif-iam');
+        expect(map.sourceType).toBe('cif-iam');
         expect(map.sigma).toBeGreaterThan(0);
         expect([...map.values].every(Number.isFinite)).toBe(true);
 
-        const staticMap = DifferenceDensityMap.fromReflectionCIF(CIF_WITH_OBSERVED_INTENSITIES);
-        expect(staticMap.densitySource).toBe('cif-iam');
-        expect(staticMap.reflectionCount).toBe(2);
+        const parsedMap = calculateDifferenceDensityMap(parseDifferenceDensitySource(
+            CIF_WITH_OBSERVED_INTENSITIES,
+        ));
+        expect(parsedMap.sourceType).toBe('cif-iam');
+        expect(parsedMap.reflectionCount).toBe(2);
     });
 
     test('automatically falls back from absent FCF phases to CIF observations plus IAM', () => {
         const automatic = parseDifferenceDensitySource(CIF_WITH_OBSERVED_INTENSITIES);
 
-        expect(automatic.densitySource).toBe('cif-iam');
+        expect(automatic.sourceType).toBe('cif-iam');
         expect(() => parseDifferenceDensitySource(
             CIF_WITH_OBSERVED_INTENSITIES,
             0,
@@ -247,8 +260,8 @@ describe('DifferenceDensityMap', () => {
         const dataset = parseDifferenceDensitySource(SELF_DESCRIBED_CUSTOM_COEFFICIENT_FCF);
 
         expect(dataset.coefficientMode).toBe('a-b');
-        expect(dataset.densitySource).toBe('fcf');
-        expect(dataset.densityKind).toBe('deformation');
+        expect(dataset.sourceType).toBe('fcf');
+        expect(dataset.fieldKind).toBe('deformation-density');
         expect(dataset.coefficients.get('1,0,0')).toMatchObject({ real: 5, imaginary: 2 });
     });
 
@@ -347,7 +360,7 @@ describe('DifferenceDensityMap', () => {
         });
 
         expect(dataset.maximumReciprocalLength).toBeGreaterThan(0);
-        expect(dataset.densityKind).toBe('deformation');
+        expect(dataset.fieldKind).toBe('deformation-density');
         expect(Number.isFinite(dataset.maximumReciprocalLength)).toBe(true);
         expect([...calculateDifferenceDensityMap(dataset).values].every(Number.isFinite)).toBe(true);
     });
@@ -399,6 +412,6 @@ describe('DifferenceDensityMap', () => {
         const withoutPhase = P1_FCF
             .replace(' _refln_phase_calc\n', '')
             .replace(' 1 0 0 4 1 0\n', ' 1 0 0 4 1\n');
-        expect(() => DifferenceDensityMap.fromCIF(withoutPhase)).toThrow(/phase_calc/);
+        expect(() => mapFromFcf(withoutPhase)).toThrow(/phase_calc/);
     });
 });

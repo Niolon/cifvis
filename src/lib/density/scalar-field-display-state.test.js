@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'vitest';
 import {
-    createDifferenceDensityDisplayState,
-    reduceDifferenceDensityDisplayState,
-} from './difference-density-display-state.js';
+    createScalarFieldDisplayState,
+    reduceScalarFieldDisplayState,
+} from './scalar-field-display-state.js';
 
-describe('difference density display state', () => {
+describe('scalar-field display state', () => {
     test('derives loading, level, and visibility only from public events', () => {
-        let state = createDifferenceDensityDisplayState();
-        state = reduceDifferenceDensityDisplayState(state, {
+        let state = createScalarFieldDisplayState();
+        state = reduceScalarFieldDisplayState(state, {
             type: 'started',
             visible: true,
             sigmaLevel: 3,
         });
         expect(state).toMatchObject({ loading: true, available: false, visible: true });
 
-        state = reduceDifferenceDensityDisplayState(state, {
+        state = reduceScalarFieldDisplayState(state, {
             type: 'update',
             stepIndex: 0,
             totalSteps: 3,
@@ -40,13 +40,13 @@ describe('difference density display state', () => {
         });
         expect(state).not.toHaveProperty('map');
 
-        state = reduceDifferenceDensityDisplayState(state, {
+        state = reduceScalarFieldDisplayState(state, {
             type: 'visibility',
             visible: false,
         });
         expect(state.visible).toBe(false);
 
-        state = reduceDifferenceDensityDisplayState(state, {
+        state = reduceScalarFieldDisplayState(state, {
             type: 'complete',
             level: 0.125,
             sigmaLevel: 3,
@@ -56,8 +56,8 @@ describe('difference density display state', () => {
     });
 
     test('carries Cube presentation metadata without exposing map internals', () => {
-        let state = reduceDifferenceDensityDisplayState(
-            createDifferenceDensityDisplayState(),
+        let state = reduceScalarFieldDisplayState(
+            createScalarFieldDisplayState(),
             {
                 type: 'started',
                 displayLabel: 'ρ/eÅ⁻³',
@@ -65,7 +65,7 @@ describe('difference density display state', () => {
                 signed: false,
             },
         );
-        state = reduceDifferenceDensityDisplayState(state, {
+        state = reduceScalarFieldDisplayState(state, {
             type: 'complete',
             level: 0.3,
         });
@@ -88,7 +88,7 @@ describe('difference density display state', () => {
             stepIndex: 2,
             totalSteps: 3,
         };
-        expect(reduceDifferenceDensityDisplayState(loaded, { type }))
-            .toEqual(createDifferenceDensityDisplayState());
+        expect(reduceScalarFieldDisplayState(loaded, { type }))
+            .toEqual(createScalarFieldDisplayState());
     });
 });

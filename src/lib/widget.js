@@ -4,9 +4,9 @@ import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
 import { getDisorderIcon } from './disorder-icons.js';
 import {
-    createDifferenceDensityDisplayState,
-    reduceDifferenceDensityDisplayState,
-} from './density/difference-density-display-state.js';
+    createScalarFieldDisplayState,
+    reduceScalarFieldDisplayState,
+} from './density/scalar-field-display-state.js';
 
 const defaultStyles = `
   cifview-widget {
@@ -133,7 +133,7 @@ export class CifViewWidget extends HTMLElement {
         this.selections = [];
         this.customIcons = null;
         this.userOptions = {};
-        this.differenceDensityDisplay = createDifferenceDensityDisplayState();
+        this.scalarFieldDisplay = createScalarFieldDisplayState();
         this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
     }
 
@@ -197,13 +197,13 @@ export class CifViewWidget extends HTMLElement {
 
     /** Connects caption updates to the current viewer instance. */
     connectViewerEvents() {
-        this.stopDifferenceDensityUpdates?.();
-        this.stopDifferenceDensityUpdates = this.viewer.onDifferenceDensityUpdate?.(update => {
-            this.differenceDensityDisplay = reduceDifferenceDensityDisplayState(
-                this.differenceDensityDisplay,
+        this.stopScalarFieldUpdates?.();
+        this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.(update => {
+            this.scalarFieldDisplay = reduceScalarFieldDisplayState(
+                this.scalarFieldDisplay,
                 update,
             );
-            this.updateDensityButton();
+            this.updateScalarFieldButton();
             this.updateCaption();
         }) ?? null;
         this.viewer.selections.onChange(selections => {
@@ -322,13 +322,13 @@ export class CifViewWidget extends HTMLElement {
         if (this.viewer.numberModifierModes('symmetry') > 1) {
             this.addButton(this.buttonContainer, 'symmetry', 'Toggle Symmetry Display');
         }
-        this.updateDensityButton();
+        this.updateScalarFieldButton();
     }
 
     /** Adds or updates the compact density-level visibility control. */
-    updateDensityButton() {
+    updateScalarFieldButton() {
         this.buttonContainer?.querySelector('.density-level')?.remove();
-        const density = this.differenceDensityDisplay;
+        const density = this.scalarFieldDisplay;
         const loading = density.loading;
         if (!this.buttonContainer || (!density.available && !loading)) {
             return;
@@ -358,9 +358,9 @@ export class CifViewWidget extends HTMLElement {
         button.setAttribute('aria-busy', String(loading));
         button.title = loading
             ? density.totalSteps
-                ? 'Calculating difference density: step ' +
+                ? `Calculating ${density.quantityName}: step ` +
                     `${density.stepIndex + 1} of ${density.totalSteps}`
-                : 'Calculating difference density'
+                : `Calculating ${density.quantityName}`
             : density.quantityName === 'difference density'
                 ? `${visible ? 'Hide' : 'Show'} difference density ` +
                     `(Δρ ±${level} e Å⁻³${sigma})`
@@ -368,7 +368,7 @@ export class CifViewWidget extends HTMLElement {
                     `(${density.signed ? '±' : ''}${level}${sigma})`;
         button.addEventListener('click', () => {
             if (density.available) {
-                this.viewer.setDifferenceDensityVisibility(!density.visible);
+                this.viewer.setIsosurfaceVisibility(!density.visible);
             }
         });
         this.buttonContainer.appendChild(button);
@@ -758,7 +758,7 @@ export class CifViewWidget extends HTMLElement {
     }
 
     disconnectedCallback() {
-        this.stopDifferenceDensityUpdates?.();
+        this.stopScalarFieldUpdates?.();
         if (this.viewer) {
             this.viewer.dispose();
         }

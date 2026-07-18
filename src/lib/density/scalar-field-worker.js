@@ -4,8 +4,8 @@ import {
 } from './difference-density.js';
 import {
     createDifferenceDensityProgression,
-    normalizeDifferenceDensitySteps,
 } from './difference-density-progress.js';
+import { normalizeIsosurfaceSteps } from './isosurface-progress.js';
 import { parseCube } from './cube.js';
 
 const continuationResolvers = new Map();
@@ -16,7 +16,7 @@ function waitForContinuation(loadId, stepIndex) {
     });
 }
 
-async function calculateProgressively(message) {
+async function calculateDifferenceDensityProgressively(message) {
     const started = performance.now();
     try {
         const dataset = parseDifferenceDensitySource(
@@ -66,7 +66,7 @@ async function loadCubeProgressively(message) {
     const started = performance.now();
     try {
         const map = parseCube(message.cubeText, message.cubeOptions);
-        const steps = normalizeDifferenceDensitySteps(message.steps);
+        const steps = normalizeIsosurfaceSteps(message.steps);
         for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
             const payload = stepIndex === 0 ? map.toPayload() : null;
             globalThis.postMessage({
@@ -102,8 +102,8 @@ globalThis.addEventListener('message', (event) => {
         continuationResolvers.delete(key);
         return;
     }
-    if (message.type === 'load') {
-        calculateProgressively(message);
+    if (message.type === 'load-difference-density') {
+        calculateDifferenceDensityProgressively(message);
     } else if (message.type === 'load-cube') {
         loadCubeProgressively(message);
     }

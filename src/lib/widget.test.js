@@ -77,9 +77,9 @@ describe('CifViewWidget', () => {
             selections: {
                 onChange: vi.fn(),
             },
-            onDifferenceDensityUpdate: vi.fn(),
-            updateDifferenceDensityOptions: vi.fn(),
-            setDifferenceDensityVisibility: vi.fn(),
+            onScalarFieldUpdate: vi.fn(),
+            updateIsosurfaceOptions: vi.fn(),
+            setIsosurfaceVisibility: vi.fn(),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -102,7 +102,7 @@ describe('CifViewWidget', () => {
         mockCrystalViewer.selections.onChange.mockImplementation(callback => {
             mockSelectionCallback = callback;
         });
-        mockCrystalViewer.onDifferenceDensityUpdate.mockImplementation(callback => {
+        mockCrystalViewer.onScalarFieldUpdate.mockImplementation(callback => {
             mockDensityCallback = callback;
             return vi.fn();
         });
@@ -234,6 +234,8 @@ describe('CifViewWidget', () => {
             visible: true,
             level: 0.12345,
             sigmaLevel: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
         });
 
         const level = widget.querySelector('.density-level');
@@ -245,7 +247,7 @@ describe('CifViewWidget', () => {
             .toBe('Test Structure');
 
         level.click();
-        expect(mockCrystalViewer.setDifferenceDensityVisibility).toHaveBeenCalledWith(false);
+        expect(mockCrystalViewer.setIsosurfaceVisibility).toHaveBeenCalledWith(false);
 
         mockDensityCallback({ type: 'cleared' });
         expect(widget.querySelector('.density-level')).toBeNull();
@@ -255,7 +257,11 @@ describe('CifViewWidget', () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
 
-        mockDensityCallback({ type: 'started' });
+        mockDensityCallback({
+            type: 'started',
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+        });
         let button = widget.querySelector('.density-level');
         expect(button.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
         expect(button.querySelector('.density-value').textContent).toBe('…');

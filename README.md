@@ -60,7 +60,7 @@ Widget HTML attributes use kebab-case (for example `hydrogen-mode`); keys inside
   const viewer = new CrystalViewer(document.getElementById('viewer'));
   await viewer.loadCIF(cifContent);
 
-  const stopListening = viewer.onDifferenceDensityUpdate(update => {
+  const stopListening = viewer.onScalarFieldUpdate(update => {
     if (update.type === 'update') {
       console.log(update.surfaceResolution, update.polygonCount);
     }
@@ -109,9 +109,11 @@ control beside the other display buttons. It shows `Δρ/eÅ⁻³` and the signe
 contour magnitude; clicking it hides or restores the existing surfaces without
 rerunning reflection processing, the FFT, or marching cubes. Code-driven UIs
 can do the same with
-`viewer.updateDifferenceDensityOptions({ visible: false })` or
-`viewer.setDifferenceDensityVisibility(false)`. Use
-`viewer.clearDifferenceDensity()` to discard the map entirely.
+`viewer.updateIsosurfaceOptions({ visible: false })` or
+`viewer.setIsosurfaceVisibility(false)`. Use
+`viewer.clearScalarField()` to discard the field entirely. Source calculation,
+worker execution, and presentation defaults are configured separately through
+`differenceDensity`, `scalarField`, and `isosurface` constructor options.
 
 The playground inspects uploaded multi-block CIFs and shows a block selector
 only when more than one top-level `data_` block is present. The widget uses its
@@ -337,8 +339,9 @@ diagnostics, `source` can force `refln`, `diffrn_refln`, or `shelx_hkl_file`.
 The result metadata reports input/output counts, invalid rows, removed
 systematic absences, and whether the source was already merged.
 
-For a non-viewer calculation, `DifferenceDensityMap.fromReflectionCIF(cif)`
-performs the complete observed-intensity/IAM calculation. The fitted positive
+For a non-viewer calculation, use
+`calculateDifferenceDensityMap(parseDifferenceDensitySource(cif))`; it performs
+the complete observed-intensity/IAM calculation. The fitted positive
 intensity scale maps observed intensities onto IAM `|Fc|^2`; negative measured
 intensities are retained during merging and contribute zero observed amplitude
 when the final `Fo-Fc` coefficient is formed.

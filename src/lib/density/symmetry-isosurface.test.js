@@ -3,9 +3,9 @@ import { describe, expect, test } from 'vitest';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { FractPosition } from '../structure/position.js';
 import {
-    connectedDifferenceDensityRegions,
-    createSymmetryAwareDifferenceDensitySurfaces,
-} from './difference-density-symmetry.js';
+    connectedIsosurfaceRegions,
+    createSymmetryAwareIsosurfaces,
+} from './symmetry-isosurface.js';
 
 const identity = {
     rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -51,10 +51,10 @@ const surfaceOptions = {
     maxPolyCount: 10000,
 };
 
-describe('symmetry-aware difference-density surfaces', () => {
+describe('symmetry-aware isosurfaces', () => {
     test('reuses disconnected inversion-equivalent regions', () => {
         const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             surfaceOptions,
@@ -73,8 +73,8 @@ describe('symmetry-aware difference-density surfaces', () => {
     test('keeps overlapping regions in one field so bridges have no internal border', () => {
         const structure = structureAt([0.4, 0.5, 0.5], [0.6, 0.5, 0.5]);
 
-        expect(connectedDifferenceDensityRegions(structure, 1.1)).toHaveLength(1);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        expect(connectedIsosurfaceRegions(structure, 1.1)).toHaveLength(1);
+        const group = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             { ...surfaceOptions, radius: 1.1 },
@@ -84,7 +84,7 @@ describe('symmetry-aware difference-density surfaces', () => {
 
     test('reverses shared geometry winding for an improper transform', () => {
         const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             surfaceOptions,
@@ -108,7 +108,7 @@ describe('symmetry-aware difference-density surfaces', () => {
 
     test('does not reuse a structure relation absent from the FCF map symmetry', () => {
         const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap([identity]),
             structure,
             surfaceOptions,
@@ -120,7 +120,7 @@ describe('symmetry-aware difference-density surfaces', () => {
 
     test('does not duplicate a region fixed by a special-position operation', () => {
         const structure = structureAt([0, 0, 0]);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             surfaceOptions,
@@ -132,7 +132,7 @@ describe('symmetry-aware difference-density surfaces', () => {
 
     test('reuses lattice translations even for a P1 map', () => {
         const structure = structureAt([0.2, 0.5, 0.5], [1.2, 0.5, 0.5]);
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap([identity]),
             structure,
             surfaceOptions,
@@ -144,12 +144,12 @@ describe('symmetry-aware difference-density surfaces', () => {
 
     test('reports directly comparable surface-generation timings', () => {
         const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
-        const symmetryGroup = createSymmetryAwareDifferenceDensitySurfaces(
+        const symmetryGroup = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             surfaceOptions,
         );
-        const directGroup = createSymmetryAwareDifferenceDensitySurfaces(
+        const directGroup = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
             { ...surfaceOptions, useSymmetry: false },

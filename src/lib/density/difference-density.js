@@ -8,6 +8,7 @@ import { createIAMStructureFactorCalculator } from './iam-structure-factors.js';
 import { readReflectionIntensities } from './reflection-intensities.js';
 import { createShelxlExtinctionCorrection } from './extinction-correction.js';
 import { multiplyReflectionIndex, reciprocalSymmetryKernel } from './reciprocal-symmetry.js';
+import { ScalarFieldGrid } from './scalar-field.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -546,8 +547,8 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             target: 'both',
             source: 'iam',
         },
-        densitySource: 'cif-iam',
-        densityKind: 'difference',
+        sourceType: 'cif-iam',
+        fieldKind: 'difference-density',
         intensityScale: fitted.scale,
         intensityScaleExplicit: fitted.explicit,
         scaleFittedReflectionCount: fitted.fittedReflectionCount,
@@ -580,7 +581,16 @@ function selfDescribedCoefficientColumns(text, blockSelector) {
         const a = value('_cifvis_difference_density_a');
         const b = value('_cifvis_difference_density_b');
         if ([loop, h, k, l, a, b].every(item => typeof item === 'string' && item.length > 0)) {
-            return { loop, h, k, l, a, b, omitF000: false, densityKind: 'deformation' };
+            return {
+                loop,
+                h,
+                k,
+                l,
+                a,
+                b,
+                omitF000: false,
+                fieldKind: 'deformation-density',
+            };
         }
     } catch {
         // Ordinary CIFs have no cifvis self-description; use normal source detection.
@@ -1008,8 +1018,8 @@ export function parseDifferenceDensityDataset(
         coefficientMode: coefficientReader.mode,
         omitF000,
         anomalousDispersion: anomalousMetadata,
-        densitySource: 'fcf',
-        densityKind: coefficientColumns ? 'deformation' : 'difference',
+        sourceType: 'fcf',
+        fieldKind: coefficientColumns ? 'deformation-density' : 'difference-density',
     }, symmetry);
 }
 
@@ -1018,7 +1028,7 @@ export function parseDifferenceDensityDataset(
  * @param {object} dataset - Result of parseDifferenceDensityDataset().
  * @param {number} [resolutionFraction] - Fraction of the maximum reciprocal resolution.
  * @param {number} [gridOversampling] - Real-space FFT grid oversampling factor.
- * @returns {DifferenceDensityMap} Periodic difference-density grid.
+ * @returns {ScalarFieldGrid} Periodic difference-density grid.
  */
 export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, gridOversampling = 1) {
     if (!(Number.isFinite(resolutionFraction) && resolutionFraction > 0 && resolutionFraction <= 1)) {
@@ -1042,15 +1052,23 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         throw new Error('Difference-density grid oversampling must be at least 1');
     }
     const grid = fourierGrid(coefficients, dataset.cell, gridOversampling);
-    return new DifferenceDensityMap(dataset.cell, grid.dimensions, grid.values, {
+    return new ScalarFieldGrid(dataset.cell, grid.dimensions, grid.values, {
         reflectionCount: dataset.reflectionCount,
         coefficientCount: coefficients.size,
         fullCoefficientCount: dataset.coefficients.size,
         coefficientMode: dataset.coefficientMode,
         omitF000: dataset.omitF000,
         anomalousDispersion: dataset.anomalousDispersion,
-        densitySource: dataset.densitySource,
-        densityKind: dataset.densityKind,
+        sourceType: dataset.sourceType,
+        fieldKind: dataset.fieldKind,
+        contourMode: 'sigma',
+        displayLabel: 'Δρ/eÅ⁻³',
+        quantityName: dataset.fieldKind === 'deformation-density'
+            ? 'deformation density'
+            : 'difference density',
+        valueUnit: 'e/angstrom^3',
+        surfaceSign: 'both',
+        boundaryMode: 'periodic',
         intensityScale: dataset.intensityScale,
         intensityScaleExplicit: dataset.intensityScaleExplicit,
         scaleFittedReflectionCount: dataset.scaleFittedReflectionCount,
@@ -1070,116 +1088,4 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         maxImaginary: grid.maxImaginary,
         volume: grid.volume,
     });
-}
-
-/**
- * Periodic difference-electron-density values over one crystallographic unit cell.
- */
-export class DifferenceDensityMap {
-    constructor(cell, dimensions, values, statistics = {}) {
-        this.cell = cell;
-        this.dimensions = dimensions;
-        this.values = values;
-        Object.assign(this, statistics);
-    }
-
-    /** @returns {object} Structured-clone-safe map data for a worker message. */
-    toPayload() {
-        const { cell, dimensions, values, ...statistics } = this;
-        return {
-            cell: {
-                a: cell.a,
-                b: cell.b,
-                c: cell.c,
-                alpha: cell.alpha,
-                beta: cell.beta,
-                gamma: cell.gamma,
-            },
-            dimensions,
-            values,
-            ...statistics,
-        };
-    }
-
-    /**
-     * @param {object} payload - Structured worker map data.
-     * @returns {DifferenceDensityMap} Reconstructed periodic map.
-     */
-    static fromPayload(payload) {
-        const cell = new UnitCell(
-            payload.cell.a,
-            payload.cell.b,
-            payload.cell.c,
-            payload.cell.alpha,
-            payload.cell.beta,
-            payload.cell.gamma,
-        );
-        const { cell: _cell, dimensions, values, ...statistics } = payload;
-        return new DifferenceDensityMap(cell, dimensions, values, statistics);
-    }
-
-    /**
-     * Trilinearly samples the periodic map at fractional coordinates.
-     * @param {number} x - Fractional x coordinate.
-     * @param {number} y - Fractional y coordinate.
-     * @param {number} z - Fractional z coordinate.
-     * @returns {number} Difference density in electrons per cubic Angstrom.
-     */
-    sample(x, y, z) {
-        const [nx, ny, nz] = this.dimensions;
-        const scaled = [x * nx, y * ny, z * nz];
-        const lower = scaled.map(Math.floor);
-        const fraction = scaled.map((value, index) => value - lower[index]);
-        const valueAt = (ix, iy, iz) => this.values[
-            (wrapIndex(iz, nz) * ny + wrapIndex(iy, ny)) * nx + wrapIndex(ix, nx)
-        ];
-
-        const c000 = valueAt(lower[0], lower[1], lower[2]);
-        const c100 = valueAt(lower[0] + 1, lower[1], lower[2]);
-        const c010 = valueAt(lower[0], lower[1] + 1, lower[2]);
-        const c110 = valueAt(lower[0] + 1, lower[1] + 1, lower[2]);
-        const c001 = valueAt(lower[0], lower[1], lower[2] + 1);
-        const c101 = valueAt(lower[0] + 1, lower[1], lower[2] + 1);
-        const c011 = valueAt(lower[0], lower[1] + 1, lower[2] + 1);
-        const c111 = valueAt(lower[0] + 1, lower[1] + 1, lower[2] + 1);
-        const lerp = (a, b, t) => a + (b - a) * t;
-        const x00 = lerp(c000, c100, fraction[0]);
-        const x10 = lerp(c010, c110, fraction[0]);
-        const x01 = lerp(c001, c101, fraction[0]);
-        const x11 = lerp(c011, c111, fraction[0]);
-        return lerp(
-            lerp(x00, x10, fraction[1]),
-            lerp(x01, x11, fraction[1]),
-            fraction[2],
-        );
-    }
-
-    static fromCIF(
-        fcfText,
-        cifBlock = 0,
-        coefficientColumns = null,
-        anomalousDispersion = null,
-    ) {
-        return calculateDifferenceDensityMap(
-            parseDifferenceDensityDataset(
-                fcfText,
-                cifBlock,
-                coefficientColumns,
-                anomalousDispersion,
-            ),
-        );
-    }
-
-    /**
-     * Calculates an Fo-Fc map from observed CIF intensities and an IAM model.
-     * @param {string} cifText - CIF containing coordinates and observed reflections.
-     * @param {number|string} [cifBlock] - CIF block index or name.
-     * @param {object} [options] - Reflection, IAM, and intensity-scale options.
-     * @returns {DifferenceDensityMap} Calculated difference-density map.
-     */
-    static fromReflectionCIF(cifText, cifBlock = 0, options = {}) {
-        return calculateDifferenceDensityMap(
-            createCifDifferenceDensityDataset(cifText, cifBlock, options),
-        );
-    }
 }

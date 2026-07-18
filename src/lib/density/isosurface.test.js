@@ -4,12 +4,12 @@ import * as THREE from 'three';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { FractPosition } from '../structure/position.js';
 import {
-    createDifferenceDensitySurfaces,
-    differenceDensityBounds,
-    differenceDensitySurfaceResolution,
-} from './difference-density-surface.js';
-import { CrystalViewer } from '../ortep3d/crystal-viewer.js';
-import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
+    createIsosurfaces,
+    isosurfaceBounds,
+    isosurfaceResolution,
+} from './isosurface.js';
+import { ThreeIsosurfaceLayer } from '../ortep3d/three-isosurface-layer.js';
+import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 
 /** @returns {CrystalStructure} Minimal structure with one atom at fractional x. */
 function structureAt(x) {
@@ -29,23 +29,23 @@ const densityMap = {
     },
 };
 
-describe('difference-density surfaces', () => {
+describe('isosurfaces', () => {
     test('retains fractional positions outside the cell for symmetry-grown fragments', () => {
-        const bounds = differenceDensityBounds(structureAt(1.2), 1.5);
+        const bounds = isosurfaceBounds(structureAt(1.2), 1.5);
 
         expect(bounds.minimum[0]).toBeCloseTo(1.05);
         expect(bounds.maximum[0]).toBeCloseTo(1.35);
     });
 
     test('creates paired positive and negative surfaces around displayed atoms', () => {
-        const group = createDifferenceDensitySurfaces(densityMap, structureAt(0.5), {
+        const group = createIsosurfaces(densityMap, structureAt(0.5), {
             resolution: 8,
             radius: 2,
             sigmaLevel: 1,
             maxPolyCount: 2000,
         });
 
-        expect(group.name).toBe('DifferenceDensity');
+        expect(group.name).toBe('Isosurface');
         expect(group.children.map(child => child.userData.sign)).toEqual(['positive', 'negative']);
         expect(group.userData.level).toBeCloseTo(0.1);
         expect(group.userData.bounds.minimum[0]).toBeCloseTo(0.3);
@@ -54,7 +54,7 @@ describe('difference-density surfaces', () => {
     });
 
     test('honours a Cube map absolute level and positive-only surface', () => {
-        const group = createDifferenceDensitySurfaces({
+        const group = createIsosurfaces({
             ...densityMap,
             defaultLevel: 0.3,
             surfaceSign: 'positive',
@@ -81,19 +81,19 @@ describe('difference-density surfaces', () => {
             null,
         );
 
-        expect(differenceDensitySurfaceResolution(small, {
+        expect(isosurfaceResolution(small, {
             resolution: 64,
             maxResolution: 96,
             gridSpacing: 0.15,
             radius: 1.5,
         })).toBe(64);
-        expect(differenceDensitySurfaceResolution(large, {
+        expect(isosurfaceResolution(large, {
             resolution: 64,
             maxResolution: 96,
             gridSpacing: 0.15,
             radius: 1.5,
         })).toBe(75);
-        expect(differenceDensitySurfaceResolution(large, {
+        expect(isosurfaceResolution(large, {
             resolution: 64,
             maxResolution: 70,
             gridSpacing: 0.15,
@@ -101,59 +101,44 @@ describe('difference-density surfaces', () => {
         })).toBe(70);
     });
 
-    test('viewer rebuilds clipping bounds when a growth mode changes the displayed atoms', () => {
-        const viewer = {
-            state: {
-                differenceDensityMap: densityMap,
-                differenceDensityGroup: null,
-            },
-            options: {
-                differenceDensity: {
-                    resolution: 8,
-                    radius: 1.5,
-                    sigmaLevel: 1,
-                    maxPolyCount: 2000,
-                },
-            },
-            moleculeContainer: new THREE.Group(),
-            removeDifferenceDensity3D() {
-                return CrystalViewer.prototype.removeDifferenceDensity3D.call(this);
-            },
-        };
-
-        CrystalViewer.prototype.updateDifferenceDensity3D.call(viewer, structureAt(0.2));
-        const originalGroup = viewer.state.differenceDensityGroup;
+    test('Three layer rebuilds clipping bounds when the displayed atoms change', () => {
+        const parent = new THREE.Group();
+        const layer = new ThreeIsosurfaceLayer(parent, {
+            ...DEFAULT_ISOSURFACE_OPTIONS,
+            resolution: 8,
+            radius: 1.5,
+            sigmaLevel: 1,
+            maxPolyCount: 2000,
+        });
+        layer.setField(densityMap);
+        layer.setStructure(structureAt(0.2));
+        layer.rebuild();
+        const originalGroup = layer.group;
         const originalMinimum = originalGroup.userData.bounds.minimum[0];
 
-        CrystalViewer.prototype.updateDifferenceDensity3D.call(viewer, structureAt(1.2));
+        layer.setStructure(structureAt(1.2));
+        layer.rebuild();
 
         expect(originalGroup.parent).toBeNull();
-        expect(viewer.state.differenceDensityGroup).not.toBe(originalGroup);
-        expect(viewer.state.differenceDensityGroup.userData.bounds.minimum[0])
+        expect(layer.group).not.toBe(originalGroup);
+        expect(layer.group.userData.bounds.minimum[0])
             .toBeCloseTo(originalMinimum + 1);
     });
 
-    test('viewer gives custom deformation coefficients their distinct default colors', () => {
-        const viewer = {
-            state: {
-                differenceDensityMap: { ...densityMap, densityKind: 'deformation' },
-                differenceDensityGroup: null,
-                differenceDensitySurfaceResolutionFraction: 1,
-            },
-            options: { differenceDensity: { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, resolution: 8 } },
-            moleculeContainer: new THREE.Group(),
-            removeDifferenceDensity3D() {
-                return CrystalViewer.prototype.removeDifferenceDensity3D.call(this);
-            },
-        };
+    test('Three layer gives deformation fields their distinct default colors', () => {
+        const layer = new ThreeIsosurfaceLayer(new THREE.Group(), {
+            ...DEFAULT_ISOSURFACE_OPTIONS,
+            resolution: 8,
+        });
+        layer.setField({ ...densityMap, fieldKind: 'deformation-density' });
+        layer.setStructure(structureAt(0.5));
+        layer.rebuild();
 
-        CrystalViewer.prototype.updateDifferenceDensity3D.call(viewer, structureAt(0.5));
-
-        const colors = Object.fromEntries(viewer.state.differenceDensityGroup.children.map(
+        const colors = Object.fromEntries(layer.group.children.map(
             child => [child.userData.sign, `#${child.material.color.getHexString().toUpperCase()}`],
         ));
         expect(colors).toEqual({ positive: '#4FC3F7', negative: '#FF9800' });
-        expect(colors.positive).not.toBe(DEFAULT_DIFFERENCE_DENSITY_OPTIONS.positiveColor);
-        expect(colors.negative).not.toBe(DEFAULT_DIFFERENCE_DENSITY_OPTIONS.negativeColor);
+        expect(colors.positive).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.positiveColor);
+        expect(colors.negative).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.negativeColor);
     });
 });

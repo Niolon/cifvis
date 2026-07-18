@@ -12,23 +12,18 @@ import { createCameraController } from './camera-controllers.js';
 import { createCell3D } from './cell3d.js';
 import { AtomLabelManager } from './atom-label-manager.js';
 import {
-    DifferenceDensityMap,
     parseDifferenceDensitySource,
 } from '../density/difference-density.js';
-import {
-    differenceDensitySurfaceResolution,
-} from '../density/difference-density-surface.js';
-import {
-    createSymmetryAwareDifferenceDensitySurfaces,
-} from '../density/difference-density-symmetry.js';
-import DifferenceDensityWorker from '../density/difference-density-worker.js?worker';
-import { CubeDensityMap, parseCube } from '../density/cube.js';
+import ScalarFieldWorker from '../density/scalar-field-worker.js?worker';
+import { parseCube } from '../density/cube.js';
+import { ScalarFieldGrid } from '../density/scalar-field.js';
 import { createStructureFactorModelInput } from '../density/structure-factor-model.js';
 import {
     createDifferenceDensityProgression,
-    normalizeDifferenceDensitySteps,
 } from '../density/difference-density-progress.js';
+import { normalizeIsosurfaceSteps } from '../density/isosurface-progress.js';
 import { assertCellsMatch } from '../density/cell-matching.js';
+import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 
 const VALID_ATOM_LABEL_PLACEMENT_MODES = [
     'auto-omit',
@@ -126,6 +121,20 @@ function validateAtomLabelOptions(options) {
  */
 function definedOptions(options) {
     return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+}
+
+/**
+ * Selects options belonging to one public option group.
+ * @param {object} options - Flat per-load options.
+ * @param {object} defaults - Default values defining the group keys.
+ * @param {string[]} [extraNames] - Valid keys without global defaults.
+ * @returns {object} Options selected for the group.
+ */
+function optionSubset(options, defaults, extraNames = []) {
+    const names = new Set([...Object.keys(defaults), ...extraNames]);
+    return Object.fromEntries(
+        Object.entries(definedOptions(options)).filter(([name]) => names.has(name)),
+    );
 }
 
 /**
@@ -602,6 +611,14 @@ export class CrystalViewer {
                 ...defaultSettings.differenceDensity,
                 ...definedOptions(options.differenceDensity || {}),
             },
+            scalarField: {
+                ...defaultSettings.scalarField,
+                ...definedOptions(options.scalarField || {}),
+            },
+            isosurface: {
+                ...defaultSettings.isosurface,
+                ...definedOptions(options.isosurface || {}),
+            },
         };
 
         this.state = {
@@ -614,18 +631,16 @@ export class CrystalViewer {
             baseStructure: null,
             ortepObjects: new Map(),
             structureCenter: new THREE.Vector3(),
-            differenceDensityMap: null,
-            differenceDensityGroup: null,
-            differenceDensityResolutionFraction: 1,
-            differenceDensitySurfaceResolutionFraction: 1,
+            scalarField: null,
+            isosurfaceResolutionFraction: 1,
             currentStructureFactorModel: null,
         };
 
-        this.differenceDensityUpdateCallbacks = new Set();
-        this.differenceDensityLoadSequence = 0;
-        this.differenceDensityWorker = null;
-        this.differenceDensityPendingResolve = null;
-        this.differenceDensityMainThreadLoadId = null;
+        this.scalarFieldUpdateCallbacks = new Set();
+        this.scalarFieldLoadSequence = 0;
+        this.scalarFieldWorker = null;
+        this.scalarFieldPendingResolve = null;
+        this.scalarFieldMainThreadLoadId = null;
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
@@ -642,6 +657,10 @@ export class CrystalViewer {
         this.selections = new SelectionManager(this.options);
 
         this.setupScene();
+        this.isosurfaceLayer = new ThreeIsosurfaceLayer(
+            this.moleculeContainer,
+            this.options.isosurface,
+        );
         this.atomLabelManager = new AtomLabelManager(this);
         this.controls = new ViewerControls(this);
         this.animate();
@@ -728,14 +747,12 @@ export class CrystalViewer {
             }
             // Density data belongs to a specific coordinate model/cell. A new
             // coordinate CIF must never inherit the previous FCF implicitly.
-            const hadDifferenceDensity = Boolean(
-                this.state.differenceDensityMap || this.state.differenceDensityGroup,
-            );
-            this.cancelDifferenceDensityLoad('Coordinate structure changed');
-            this.removeDifferenceDensity3D();
-            this.state.differenceDensityMap = null;
-            if (hadDifferenceDensity) {
-                this.notifyDifferenceDensityUpdate({ type: 'cleared' });
+            const hadScalarField = Boolean(this.state.scalarField);
+            this.cancelScalarFieldLoad('Coordinate structure changed');
+            this.isosurfaceLayer.clear();
+            this.state.scalarField = null;
+            if (hadScalarField) {
+                this.notifyScalarFieldUpdate({ type: 'cleared' });
             }
             await this.loadStructure(structure);
 
@@ -792,22 +809,31 @@ export class CrystalViewer {
             return { success: false, error: 'Cannot load empty text as an FCF' };
         }
 
-        this.cancelDifferenceDensityLoad('Superseded by a new FCF load');
-        this.removeDifferenceDensity3D();
-        this.state.differenceDensityMap = null;
+        this.cancelScalarFieldLoad('Superseded by a new FCF load');
+        this.isosurfaceLayer.clear();
+        this.state.scalarField = null;
         this.options.differenceDensity = {
             ...this.options.differenceDensity,
-            ...definedOptions(options),
+            ...optionSubset(options, defaultSettings.differenceDensity),
         };
-        const loadId = ++this.differenceDensityLoadSequence;
-        this.notifyDifferenceDensityUpdate({
+        this.options.isosurface = {
+            ...this.options.isosurface,
+            ...optionSubset(options, defaultSettings.isosurface, ['level', 'sign']),
+        };
+        this.options.scalarField = {
+            ...this.options.scalarField,
+            ...optionSubset(options, defaultSettings.scalarField),
+        };
+        this.isosurfaceLayer.setOptions(this.options.isosurface);
+        const loadId = ++this.scalarFieldLoadSequence;
+        this.notifyScalarFieldUpdate({
             type: 'started',
             loadId,
-            visible: this.options.differenceDensity.visible,
-            sigmaLevel: this.options.differenceDensity.sigmaLevel,
+            visible: this.options.isosurface.visible,
+            sigmaLevel: this.options.isosurface.sigmaLevel,
         });
 
-        if (this.options.differenceDensity.useWorker && typeof Worker !== 'undefined') {
+        if (this.options.scalarField.useWorker && typeof Worker !== 'undefined') {
             return this.loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId);
         }
         return this.loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId);
@@ -833,25 +859,31 @@ export class CrystalViewer {
             return { success: false, error: 'loadCube options must be an object' };
         }
 
-        this.cancelDifferenceDensityLoad('Superseded by a new Cube load');
-        this.removeDifferenceDensity3D();
-        this.state.differenceDensityMap = null;
+        this.cancelScalarFieldLoad('Superseded by a new Cube load');
+        this.isosurfaceLayer.clear();
+        this.state.scalarField = null;
         const cubeOptionNames = new Set([
             'property', 'datasetIndex', 'valueScale', 'valueUnit',
             'displayLabel', 'quantityName', 'periodic', 'level', 'sign',
         ]);
-        const displayOptions = Object.fromEntries(
-            Object.entries(definedOptions(options))
-                .filter(([name]) => !cubeOptionNames.has(name)),
+        const displayOptions = optionSubset(
+            options,
+            defaultSettings.isosurface,
+            ['level', 'sign'],
         );
-        this.options.differenceDensity = {
-            ...this.options.differenceDensity,
+        this.options.isosurface = {
+            ...this.options.isosurface,
             ...displayOptions,
         };
         // Absolute Cube level/sign live on the loaded map. Do not inherit an
         // override that may have been applied to a previous Fourier map.
-        delete this.options.differenceDensity.level;
-        delete this.options.differenceDensity.sign;
+        delete this.options.isosurface.level;
+        delete this.options.isosurface.sign;
+        this.options.scalarField = {
+            ...this.options.scalarField,
+            ...optionSubset(options, defaultSettings.scalarField),
+        };
+        this.isosurfaceLayer.setOptions(this.options.isosurface);
         const cubeOptions = Object.fromEntries(
             Object.entries(definedOptions(options))
                 .filter(([name]) => cubeOptionNames.has(name)),
@@ -864,49 +896,49 @@ export class CrystalViewer {
             potential: { displayLabel: 'V', quantityName: 'potential', signed: true },
             generic: { displayLabel: 'Cube', quantityName: 'Cube field', signed: true },
         }[property] ?? { displayLabel: 'Cube', quantityName: 'Cube field', signed: true };
-        const loadId = ++this.differenceDensityLoadSequence;
-        this.notifyDifferenceDensityUpdate({
+        const loadId = ++this.scalarFieldLoadSequence;
+        this.notifyScalarFieldUpdate({
             type: 'started',
             loadId,
-            visible: this.options.differenceDensity.visible,
+            visible: this.options.isosurface.visible,
             sigmaLevel: null,
-            densitySource: 'cube',
+            sourceType: 'cube',
             displayLabel: cubeOptions.displayLabel ?? propertyDisplay.displayLabel,
             quantityName: cubeOptions.quantityName ?? propertyDisplay.quantityName,
             signed: cubeOptions.sign === 'positive' ? false : propertyDisplay.signed,
         });
 
-        if (this.options.differenceDensity.useWorker && typeof Worker !== 'undefined') {
+        if (this.options.scalarField.useWorker && typeof Worker !== 'undefined') {
             return this.loadCubeInWorker(cubeText, cubeOptions, loadId);
         }
         return this.loadCubeOnMainThread(cubeText, cubeOptions, loadId);
     }
 
     /**
-     * Subscribes to density events (`started`, `update`, `complete`, `display`,
+     * Subscribes to scalar-field events (`started`, `update`, `complete`, `display`,
      * `visibility`, `cleared`, `error`, and `cancelled`). Display-bearing events
      * expose level/visibility fields so UIs need not inspect renderer state.
      * @param {function(object): void} callback - Update listener.
      * @returns {function(): void} Function that removes the listener.
      */
-    onDifferenceDensityUpdate(callback) {
+    onScalarFieldUpdate(callback) {
         if (typeof callback !== 'function') {
-            throw new Error('Difference-density update callback must be a function');
+            throw new Error('Scalar-field update callback must be a function');
         }
-        this.differenceDensityUpdateCallbacks.add(callback);
-        return () => this.differenceDensityUpdateCallbacks.delete(callback);
+        this.scalarFieldUpdateCallbacks.add(callback);
+        return () => this.scalarFieldUpdateCallbacks.delete(callback);
     }
 
     /**
-     * Notifies all progressive-density listeners.
-     * @param {object} update - Density pipeline event.
+     * Notifies all scalar-field listeners.
+     * @param {object} update - Scalar-field pipeline event.
      */
-    notifyDifferenceDensityUpdate(update) {
-        for (const callback of this.differenceDensityUpdateCallbacks) {
+    notifyScalarFieldUpdate(update) {
+        for (const callback of this.scalarFieldUpdateCallbacks) {
             try {
                 callback(update);
             } catch (error) {
-                console.error('Difference-density update callback failed:', error);
+                console.error('Scalar-field update callback failed:', error);
             }
         }
     }
@@ -921,25 +953,25 @@ export class CrystalViewer {
      */
     loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId) {
         return new Promise(resolve => {
-            const worker = new DifferenceDensityWorker();
-            this.differenceDensityWorker = worker;
-            this.differenceDensityPendingResolve = resolve;
+            const worker = new ScalarFieldWorker();
+            this.scalarFieldWorker = worker;
+            this.scalarFieldPendingResolve = resolve;
 
             const fail = (error) => {
-                if (loadId !== this.differenceDensityLoadSequence) {
+                if (loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
                 const message = error?.message || String(error);
                 console.error('Error loading difference density:', error);
-                this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: message });
-                this.finishDifferenceDensityWorker();
+                this.notifyScalarFieldUpdate({ type: 'error', loadId, error: message });
+                this.finishScalarFieldWorker();
                 resolve({ success: false, error: message });
             };
 
             worker.addEventListener('error', fail);
             worker.addEventListener('message', event => {
                 const message = event.data;
-                if (message.loadId !== loadId || loadId !== this.differenceDensityLoadSequence) {
+                if (message.loadId !== loadId || loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
                 if (message.type === 'error') {
@@ -951,25 +983,25 @@ export class CrystalViewer {
                 }
 
                 try {
-                    const densityMap = message.map
-                        ? this.differenceDensityMapFromPayload(message.map)
-                        : this.state.differenceDensityMap;
-                    if (!densityMap) {
+                    const field = message.map
+                        ? this.scalarFieldFromPayload(message.map)
+                        : this.state.scalarField;
+                    if (!field) {
                         throw new Error('Density worker requested surface refinement before providing a grid');
                     }
-                    this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                    this.applyProgressiveScalarField(field, message);
                     if (message.final) {
-                        const result = this.differenceDensityResult(densityMap);
-                        this.notifyDifferenceDensityUpdate({
+                        const result = this.scalarFieldResult(field);
+                        this.notifyScalarFieldUpdate({
                             ...message,
                             ...result,
                             type: 'complete',
                             loadId,
                         });
-                        this.finishDifferenceDensityWorker();
+                        this.finishScalarFieldWorker();
                         resolve(result);
                     } else {
-                        this.continueDensityWorkerAfterRender(worker, loadId, message.stepIndex);
+                        this.continueScalarFieldWorkerAfterRender(worker, loadId, message.stepIndex);
                     }
                 } catch (error) {
                     fail(error);
@@ -977,12 +1009,12 @@ export class CrystalViewer {
             });
 
             worker.postMessage({
-                type: 'load',
+                type: 'load-difference-density',
                 loadId,
                 fcfText,
                 fcfBlock,
                 datasetOptions: this.differenceDensityDatasetOptions(),
-                steps: this.options.differenceDensity.progressiveSteps,
+                steps: this.options.isosurface.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
                 gridOversampling: this.options.differenceDensity.gridOversampling,
@@ -999,25 +1031,25 @@ export class CrystalViewer {
      */
     loadCubeInWorker(cubeText, cubeOptions, loadId) {
         return new Promise(resolve => {
-            const worker = new DifferenceDensityWorker();
-            this.differenceDensityWorker = worker;
-            this.differenceDensityPendingResolve = resolve;
+            const worker = new ScalarFieldWorker();
+            this.scalarFieldWorker = worker;
+            this.scalarFieldPendingResolve = resolve;
 
             const fail = (error) => {
-                if (loadId !== this.differenceDensityLoadSequence) {
+                if (loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
                 const message = error?.message || String(error);
                 console.error('Error loading Cube field:', error);
-                this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: message });
-                this.finishDifferenceDensityWorker();
+                this.notifyScalarFieldUpdate({ type: 'error', loadId, error: message });
+                this.finishScalarFieldWorker();
                 resolve({ success: false, error: message });
             };
 
             worker.addEventListener('error', fail);
             worker.addEventListener('message', event => {
                 const message = event.data;
-                if (message.loadId !== loadId || loadId !== this.differenceDensityLoadSequence) {
+                if (message.loadId !== loadId || loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
                 if (message.type === 'error') {
@@ -1028,25 +1060,25 @@ export class CrystalViewer {
                     return;
                 }
                 try {
-                    const densityMap = message.map
-                        ? this.differenceDensityMapFromPayload(message.map)
-                        : this.state.differenceDensityMap;
-                    if (!densityMap) {
+                    const field = message.map
+                        ? this.scalarFieldFromPayload(message.map)
+                        : this.state.scalarField;
+                    if (!field) {
                         throw new Error('Cube worker requested refinement before providing a grid');
                     }
-                    this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                    this.applyProgressiveScalarField(field, message);
                     if (message.final) {
-                        const result = this.differenceDensityResult(densityMap);
-                        this.notifyDifferenceDensityUpdate({
+                        const result = this.scalarFieldResult(field);
+                        this.notifyScalarFieldUpdate({
                             ...message,
                             ...result,
                             type: 'complete',
                             loadId,
                         });
-                        this.finishDifferenceDensityWorker();
+                        this.finishScalarFieldWorker();
                         resolve(result);
                     } else {
-                        this.continueDensityWorkerAfterRender(worker, loadId, message.stepIndex);
+                        this.continueScalarFieldWorkerAfterRender(worker, loadId, message.stepIndex);
                     }
                 } catch (error) {
                     fail(error);
@@ -1058,7 +1090,7 @@ export class CrystalViewer {
                 loadId,
                 cubeText,
                 cubeOptions,
-                steps: this.options.differenceDensity.progressiveSteps,
+                steps: this.options.isosurface.progressiveSteps,
             });
         });
     }
@@ -1072,7 +1104,7 @@ export class CrystalViewer {
      * @private
      */
     async loadDifferenceDensityOnMainThread(fcfText, fcfBlock, loadId) {
-        this.differenceDensityMainThreadLoadId = loadId;
+        this.scalarFieldMainThreadLoadId = loadId;
         try {
             const dataset = parseDifferenceDensitySource(
                 fcfText,
@@ -1080,7 +1112,7 @@ export class CrystalViewer {
                 this.differenceDensityDatasetOptions(),
             );
             const progression = createDifferenceDensityProgression(dataset, {
-                steps: this.options.differenceDensity.progressiveSteps,
+                steps: this.options.isosurface.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
                 gridOversampling: this.options.differenceDensity.gridOversampling,
@@ -1088,7 +1120,7 @@ export class CrystalViewer {
             const steps = progression.steps;
             let densityMap;
             for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-                if (loadId !== this.differenceDensityLoadSequence) {
+                if (loadId !== this.scalarFieldLoadSequence) {
                     return { success: false, cancelled: true, error: 'Difference-density load cancelled' };
                 }
                 densityMap = progression.mapAt(stepIndex).map;
@@ -1099,24 +1131,24 @@ export class CrystalViewer {
                     final: stepIndex === steps.length - 1,
                     surfaceResolutionFraction: steps[stepIndex],
                 };
-                this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                this.applyProgressiveScalarField(densityMap, message);
                 if (!message.final) {
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
-            const result = this.differenceDensityResult(densityMap);
-            this.notifyDifferenceDensityUpdate({ type: 'complete', loadId, ...result });
+            const result = this.scalarFieldResult(densityMap);
+            this.notifyScalarFieldUpdate({ type: 'complete', loadId, ...result });
             return result;
         } catch (error) {
-            if (loadId !== this.differenceDensityLoadSequence) {
+            if (loadId !== this.scalarFieldLoadSequence) {
                 return { success: false, cancelled: true, error: 'Difference-density load cancelled' };
             }
             console.error('Error loading difference density:', error);
-            this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
+            this.notifyScalarFieldUpdate({ type: 'error', loadId, error: error.message });
             return { success: false, error: error.message };
         } finally {
-            if (this.differenceDensityMainThreadLoadId === loadId) {
-                this.differenceDensityMainThreadLoadId = null;
+            if (this.scalarFieldMainThreadLoadId === loadId) {
+                this.scalarFieldMainThreadLoadId = null;
             }
         }
     }
@@ -1129,12 +1161,12 @@ export class CrystalViewer {
      * @returns {Promise<object>} Final Cube load result.
      */
     async loadCubeOnMainThread(cubeText, cubeOptions, loadId) {
-        this.differenceDensityMainThreadLoadId = loadId;
+        this.scalarFieldMainThreadLoadId = loadId;
         try {
             const densityMap = parseCube(cubeText, cubeOptions);
-            const steps = this.normalizedDifferenceDensitySteps();
+            const steps = this.normalizedIsosurfaceSteps();
             for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-                if (loadId !== this.differenceDensityLoadSequence) {
+                if (loadId !== this.scalarFieldLoadSequence) {
                     return { success: false, cancelled: true, error: 'Cube load cancelled' };
                 }
                 const message = {
@@ -1144,24 +1176,24 @@ export class CrystalViewer {
                     final: stepIndex === steps.length - 1,
                     surfaceResolutionFraction: steps[stepIndex],
                 };
-                this.applyProgressiveDifferenceDensityMap(densityMap, message);
+                this.applyProgressiveScalarField(densityMap, message);
                 if (!message.final) {
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
-            const result = this.differenceDensityResult(densityMap);
-            this.notifyDifferenceDensityUpdate({ type: 'complete', loadId, ...result });
+            const result = this.scalarFieldResult(densityMap);
+            this.notifyScalarFieldUpdate({ type: 'complete', loadId, ...result });
             return result;
         } catch (error) {
-            if (loadId !== this.differenceDensityLoadSequence) {
+            if (loadId !== this.scalarFieldLoadSequence) {
                 return { success: false, cancelled: true, error: 'Cube load cancelled' };
             }
             console.error('Error loading Cube field:', error);
-            this.notifyDifferenceDensityUpdate({ type: 'error', loadId, error: error.message });
+            this.notifyScalarFieldUpdate({ type: 'error', loadId, error: error.message });
             return { success: false, error: error.message };
         } finally {
-            if (this.differenceDensityMainThreadLoadId === loadId) {
-                this.differenceDensityMainThreadLoadId = null;
+            if (this.scalarFieldMainThreadLoadId === loadId) {
+                this.scalarFieldMainThreadLoadId = null;
             }
         }
     }
@@ -1204,69 +1236,66 @@ export class CrystalViewer {
     }
 
     /** @returns {number[]} Valid ordered surface-resolution fractions. */
-    normalizedDifferenceDensitySteps() {
-        return normalizeDifferenceDensitySteps(this.options.differenceDensity.progressiveSteps);
+    normalizedIsosurfaceSteps() {
+        return normalizeIsosurfaceSteps(this.options.isosurface.progressiveSteps);
     }
 
     /**
      * @param {object} payload - Transferable worker map data.
-     * @returns {DifferenceDensityMap} Map reconstructed from a worker payload.
+     * @returns {ScalarFieldGrid} Field reconstructed from a worker payload.
      */
-    differenceDensityMapFromPayload(payload) {
-        return payload.mapType === 'cube'
-            ? CubeDensityMap.fromPayload(payload)
-            : DifferenceDensityMap.fromPayload(payload);
+    scalarFieldFromPayload(payload) {
+        return ScalarFieldGrid.fromPayload(payload);
     }
 
     /**
      * Applies one progressive map and emits its update signal.
-     * @param {DifferenceDensityMap} densityMap - Current scalar grid.
+     * @param {ScalarFieldGrid} field - Current scalar grid.
      * @param {object} message - Progressive step metadata.
      */
-    applyProgressiveDifferenceDensityMap(densityMap, message) {
-        this.validateDifferenceDensityCell(densityMap.cell, this.state.baseStructure.cell,
-            densityMap.densitySource === 'cube' ? 'Cube' : 'FCF');
-        this.state.differenceDensityMap = densityMap;
-        this.state.differenceDensityResolutionFraction = densityMap.resolutionFraction;
-        this.state.differenceDensitySurfaceResolutionFraction =
-            message.surfaceResolutionFraction ?? 1;
-        this.updateDifferenceDensity3D(this.state.displayStructure);
-        const surfaceStatistics = this.state.differenceDensityGroup?.userData ?? {};
-        const display = this.differenceDensityDisplayState();
+    applyProgressiveScalarField(field, message) {
+        this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
+            field.sourceType === 'cube' ? 'Cube' : 'FCF');
+        this.state.scalarField = field;
+        this.state.isosurfaceResolutionFraction = message.surfaceResolutionFraction ?? 1;
+        this.isosurfaceLayer.setField(field, this.state.isosurfaceResolutionFraction);
+        this.isosurfaceLayer.setStructure(this.state.displayStructure);
+        const surfaceStatistics = this.isosurfaceLayer.rebuild() ?? {};
+        const display = this.scalarFieldDisplayState();
         this.requestRender();
-        this.notifyDifferenceDensityUpdate({
+        this.notifyScalarFieldUpdate({
             type: 'update',
             ...message,
             progress: (message.stepIndex + 1) / message.totalSteps,
-            resolutionFraction: densityMap.resolutionFraction,
-            gridOversampling: densityMap.gridOversampling,
-            surfaceResolutionFraction: this.state.differenceDensitySurfaceResolutionFraction,
+            resolutionFraction: field.resolutionFraction,
+            gridOversampling: field.gridOversampling,
+            surfaceResolutionFraction: this.state.isosurfaceResolutionFraction,
             surfaceResolution: surfaceStatistics.resolution ?? 0,
-            dimensions: [...densityMap.dimensions],
-            reflectionCount: densityMap.reflectionCount,
-            coefficientCount: densityMap.coefficientCount,
-            coefficientMode: densityMap.coefficientMode,
-            omitF000: densityMap.omitF000,
-            anomalousDispersion: densityMap.anomalousDispersion,
-            densitySource: densityMap.densitySource,
-            densityKind: densityMap.densityKind,
-            property: densityMap.property,
-            datasetCount: densityMap.datasetCount,
-            datasetIndex: densityMap.datasetIndex,
-            datasetId: densityMap.datasetId,
-            valueUnit: densityMap.valueUnit,
-            displayLabel: densityMap.displayLabel,
-            quantityName: densityMap.quantityName,
-            signed: densityMap.surfaceSign !== 'positive',
-            intensityScale: densityMap.intensityScale,
-            scaleR1: densityMap.scaleR1,
-            observations: densityMap.observations,
-            iam: densityMap.iam,
-            reflectionPolicy: densityMap.reflectionPolicy,
-            extinctionCorrection: densityMap.extinctionCorrection,
-            sigma: densityMap.sigma,
-            minimum: densityMap.minimum,
-            maximum: densityMap.maximum,
+            dimensions: [...field.dimensions],
+            reflectionCount: field.reflectionCount,
+            coefficientCount: field.coefficientCount,
+            coefficientMode: field.coefficientMode,
+            omitF000: field.omitF000,
+            anomalousDispersion: field.anomalousDispersion,
+            sourceType: field.sourceType,
+            fieldKind: field.fieldKind,
+            property: field.property,
+            datasetCount: field.datasetCount,
+            datasetIndex: field.datasetIndex,
+            datasetId: field.datasetId,
+            valueUnit: field.valueUnit,
+            displayLabel: field.displayLabel,
+            quantityName: field.quantityName,
+            signed: field.surfaceSign !== 'positive',
+            intensityScale: field.intensityScale,
+            scaleR1: field.scaleR1,
+            observations: field.observations,
+            iam: field.iam,
+            reflectionPolicy: field.reflectionPolicy,
+            extinctionCorrection: field.extinctionCorrection,
+            sigma: field.sigma,
+            minimum: field.minimum,
+            maximum: field.maximum,
             polygonCount: surfaceStatistics.polygonCount ?? 0,
             positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
             negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
@@ -1292,10 +1321,10 @@ export class CrystalViewer {
      * @param {number} loadId - Active load identifier.
      * @param {number} stepIndex - Surface step awaiting acknowledgement.
      */
-    continueDensityWorkerAfterRender(worker, loadId, stepIndex) {
+    continueScalarFieldWorkerAfterRender(worker, loadId, stepIndex) {
         let continued = false;
         const continueWorker = () => {
-            if (continued || worker !== this.differenceDensityWorker) {
+            if (continued || worker !== this.scalarFieldWorker) {
                 return;
             }
             continued = true;
@@ -1308,36 +1337,36 @@ export class CrystalViewer {
     }
 
     /**
-     * @param {DifferenceDensityMap} densityMap - Completed scalar grid.
+     * @param {ScalarFieldGrid} field - Completed scalar grid.
      * @returns {object} Public successful density-load result.
      */
-    differenceDensityResult(densityMap) {
-        const surfaceStatistics = this.state.differenceDensityGroup?.userData ?? {};
+    scalarFieldResult(field) {
+        const surfaceStatistics = this.isosurfaceLayer.statistics;
         return {
             success: true,
-            reflectionCount: densityMap.reflectionCount,
-            coefficientCount: densityMap.coefficientCount,
-            coefficientMode: densityMap.coefficientMode,
-            omitF000: densityMap.omitF000,
-            anomalousDispersion: densityMap.anomalousDispersion,
-            densitySource: densityMap.densitySource,
-            densityKind: densityMap.densityKind,
-            property: densityMap.property,
-            datasetCount: densityMap.datasetCount,
-            datasetIndex: densityMap.datasetIndex,
-            datasetId: densityMap.datasetId,
-            valueUnit: densityMap.valueUnit,
-            intensityScale: densityMap.intensityScale,
-            scaleR1: densityMap.scaleR1,
-            observations: densityMap.observations,
-            iam: densityMap.iam,
-            reflectionPolicy: densityMap.reflectionPolicy,
-            extinctionCorrection: densityMap.extinctionCorrection,
-            dimensions: [...densityMap.dimensions],
-            gridOversampling: densityMap.gridOversampling,
-            sigma: densityMap.sigma,
-            minimum: densityMap.minimum,
-            maximum: densityMap.maximum,
+            reflectionCount: field.reflectionCount,
+            coefficientCount: field.coefficientCount,
+            coefficientMode: field.coefficientMode,
+            omitF000: field.omitF000,
+            anomalousDispersion: field.anomalousDispersion,
+            sourceType: field.sourceType,
+            fieldKind: field.fieldKind,
+            property: field.property,
+            datasetCount: field.datasetCount,
+            datasetIndex: field.datasetIndex,
+            datasetId: field.datasetId,
+            valueUnit: field.valueUnit,
+            intensityScale: field.intensityScale,
+            scaleR1: field.scaleR1,
+            observations: field.observations,
+            iam: field.iam,
+            reflectionPolicy: field.reflectionPolicy,
+            extinctionCorrection: field.extinctionCorrection,
+            dimensions: [...field.dimensions],
+            gridOversampling: field.gridOversampling,
+            sigma: field.sigma,
+            minimum: field.minimum,
+            maximum: field.maximum,
             polygonCount: surfaceStatistics.polygonCount ?? 0,
             positivePolygonCount: surfaceStatistics.positivePolygonCount ?? 0,
             negativePolygonCount: surfaceStatistics.negativePolygonCount ?? 0,
@@ -1352,124 +1381,105 @@ export class CrystalViewer {
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
-            ...this.differenceDensityDisplayState(),
+            ...this.scalarFieldDisplayState(),
         };
     }
 
     /** @returns {object} Renderer-independent density state exposed to UI listeners. */
-    differenceDensityDisplayState() {
-        const surface = this.state.differenceDensityGroup?.userData;
-        const map = this.state.differenceDensityMap;
-        return {
-            available: Number.isFinite(surface?.level),
-            visible: this.state.differenceDensityGroup?.visible !== false,
-            level: Number.isFinite(surface?.level) ? surface.level : null,
-            sigmaLevel: map?.densitySource === 'cube'
-                ? null
-                : Number.isFinite(surface?.sigmaLevel)
-                    ? surface.sigmaLevel
-                    : this.options.differenceDensity.sigmaLevel,
-            densitySource: map?.densitySource ?? 'fcf',
-            displayLabel: map?.displayLabel ?? 'Δρ/eÅ⁻³',
-            quantityName: map?.quantityName ?? 'difference density',
-            signed: map?.surfaceSign !== 'positive',
-        };
+    scalarFieldDisplayState() {
+        return this.isosurfaceLayer.displayState;
     }
 
     /** Terminates the active worker without resolving its already-handled promise. */
-    finishDifferenceDensityWorker() {
-        this.differenceDensityWorker?.terminate();
-        this.differenceDensityWorker = null;
-        this.differenceDensityPendingResolve = null;
+    finishScalarFieldWorker() {
+        this.scalarFieldWorker?.terminate();
+        this.scalarFieldWorker = null;
+        this.scalarFieldPendingResolve = null;
     }
 
     /**
      * Cancels any in-flight progressive density load.
      * @param {string} reason - Public cancellation reason.
      */
-    cancelDifferenceDensityLoad(reason = 'Difference-density load cancelled') {
-        const mainThreadActive = this.differenceDensityMainThreadLoadId !== null;
-        if (!this.differenceDensityWorker && !this.differenceDensityPendingResolve && !mainThreadActive) {
+    cancelScalarFieldLoad(reason = 'Scalar-field load cancelled') {
+        const mainThreadActive = this.scalarFieldMainThreadLoadId !== null;
+        if (!this.scalarFieldWorker && !this.scalarFieldPendingResolve && !mainThreadActive) {
             return;
         }
-        const loadId = this.differenceDensityMainThreadLoadId ?? this.differenceDensityLoadSequence;
+        const loadId = this.scalarFieldMainThreadLoadId ?? this.scalarFieldLoadSequence;
         if (mainThreadActive) {
-            this.differenceDensityLoadSequence++;
-            this.differenceDensityMainThreadLoadId = null;
+            this.scalarFieldLoadSequence++;
+            this.scalarFieldMainThreadLoadId = null;
         }
-        this.differenceDensityWorker?.terminate();
-        this.differenceDensityWorker = null;
-        const resolve = this.differenceDensityPendingResolve;
-        this.differenceDensityPendingResolve = null;
+        this.scalarFieldWorker?.terminate();
+        this.scalarFieldWorker = null;
+        const resolve = this.scalarFieldPendingResolve;
+        this.scalarFieldPendingResolve = null;
         resolve?.({ success: false, cancelled: true, error: reason });
-        this.notifyDifferenceDensityUpdate({ type: 'cancelled', loadId, error: reason });
+        this.notifyScalarFieldUpdate({ type: 'cancelled', loadId, error: reason });
     }
 
     /**
-     * Updates contour and appearance options without reparsing the FCF or
-     * recalculating its Fourier grid.
-     * @param {object} options - Partial difference-density display options.
+     * Updates contour and appearance options without rebuilding the scalar field.
+     * @param {object} options - Partial isosurface display options.
      * @returns {object} Update result.
      */
-    updateDifferenceDensityOptions(options = {}) {
+    updateIsosurfaceOptions(options = {}) {
         const updates = definedOptions(options);
         if (Object.keys(updates).length === 1 && Object.hasOwn(updates, 'visible')) {
-            return this.setDifferenceDensityVisibility(updates.visible);
+            return this.setIsosurfaceVisibility(updates.visible);
         }
-        this.options.differenceDensity = {
-            ...this.options.differenceDensity,
+        this.options.isosurface = {
+            ...this.options.isosurface,
             ...updates,
         };
-        if (this.state.differenceDensityMap && this.state.displayStructure) {
-            this.updateDifferenceDensity3D(this.state.displayStructure);
+        this.isosurfaceLayer.setOptions(this.options.isosurface);
+        if (this.state.scalarField && this.state.displayStructure) {
+            this.isosurfaceLayer.rebuild();
             this.requestRender();
-            this.notifyDifferenceDensityUpdate({
+            this.notifyScalarFieldUpdate({
                 type: 'display',
-                ...this.differenceDensityDisplayState(),
+                ...this.scalarFieldDisplayState(),
             });
         }
         return { success: true };
     }
 
     /**
-     * Shows or hides the existing density surfaces without rebuilding them.
+     * Shows or hides the existing isosurfaces without rebuilding them.
      * @param {boolean} visible - Requested visibility.
      * @returns {object} Successful visibility update.
      */
-    setDifferenceDensityVisibility(visible) {
-        const usedVisibility = Boolean(visible);
-        this.options.differenceDensity.visible = usedVisibility;
-        if (this.state.differenceDensityGroup) {
-            this.state.differenceDensityGroup.visible = usedVisibility;
-        }
+    setIsosurfaceVisibility(visible) {
+        const usedVisibility = this.isosurfaceLayer.setVisible(visible);
+        this.options.isosurface.visible = usedVisibility;
         this.requestRender();
-        this.notifyDifferenceDensityUpdate({
+        this.notifyScalarFieldUpdate({
             type: 'visibility',
             visible: usedVisibility,
         });
         return { success: true, visible: usedVisibility };
     }
 
-    /** Removes the loaded difference-density map and surfaces. */
-    clearDifferenceDensity() {
-        this.cancelDifferenceDensityLoad();
-        this.removeDifferenceDensity3D();
-        this.state.differenceDensityMap = null;
-        this.state.differenceDensityResolutionFraction = 1;
-        this.state.differenceDensitySurfaceResolutionFraction = 1;
-        this.notifyDifferenceDensityUpdate({ type: 'cleared' });
+    /** Removes the loaded scalar field and its isosurfaces. */
+    clearScalarField() {
+        this.cancelScalarFieldLoad();
+        this.isosurfaceLayer.clear();
+        this.state.scalarField = null;
+        this.state.isosurfaceResolutionFraction = 1;
+        this.notifyScalarFieldUpdate({ type: 'cleared' });
         this.requestRender();
     }
 
     /**
-     * Ensures that an FCF belongs to the currently displayed coordinate CIF.
-     * @param {object} densityCell - Unit cell parsed from the density source.
+     * Ensures that a scalar field belongs to the displayed coordinate CIF.
+     * @param {object} fieldCell - Unit cell parsed from the field source.
      * @param {object} structureCell - Unit cell parsed from the coordinate CIF.
      * @param {string} [label] - Source label used in mismatch errors.
      * @private
      */
-    validateDifferenceDensityCell(densityCell, structureCell, label = 'FCF') {
-        assertCellsMatch(densityCell, structureCell, label);
+    validateScalarFieldCell(fieldCell, structureCell, label = 'scalar field') {
+        assertCellsMatch(fieldCell, structureCell, label);
     }
 
     /**
@@ -1576,63 +1586,10 @@ export class CrystalViewer {
         this.moleculeContainer.add(ortep3DGroup);
         this.state.currentStructure = ortep3DGroup;
         this.state.displayStructure = structure;
-        this.updateDifferenceDensity3D(structure);
+        this.isosurfaceLayer.setStructure(structure);
+        this.isosurfaceLayer.rebuild();
         this.atomLabelManager.setStructure(structure);
         this.selections.pruneInvalidSelections(this.moleculeContainer);
-    }
-
-    /**
-     * Rebuilds clipped surfaces for the current symmetry-grown structure while
-     * retaining the already calculated periodic density grid.
-     * @param {CrystalStructure} structure - Current display structure.
-     * @private
-     */
-    updateDifferenceDensity3D(structure) {
-        this.removeDifferenceDensity3D();
-        if (!this.state.differenceDensityMap || !structure) {
-            return;
-        }
-        const finalResolution = differenceDensitySurfaceResolution(
-            structure,
-            this.options.differenceDensity,
-        );
-        const kindColors = this.state.differenceDensityMap.densityKind === 'deformation'
-            ? {
-                positiveColor: this.options.differenceDensity.deformationPositiveColor,
-                negativeColor: this.options.differenceDensity.deformationNegativeColor,
-            }
-            : {};
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
-            this.state.differenceDensityMap,
-            structure,
-            {
-                ...this.options.differenceDensity,
-                ...kindColors,
-                resolution: Math.max(
-                    8,
-                    Math.round(
-                        finalResolution *
-                        (this.state.differenceDensitySurfaceResolutionFraction ?? 1),
-                    ),
-                ),
-            },
-        );
-        this.moleculeContainer.add(group);
-        this.state.differenceDensityGroup = group;
-    }
-
-    /** Disposes and removes the current density surfaces, retaining the grid. */
-    removeDifferenceDensity3D() {
-        const group = this.state.differenceDensityGroup;
-        if (!group) {
-            return;
-        }
-        group.traverse((object) => {
-            object.geometry?.dispose();
-            object.material?.dispose();
-        });
-        group.removeFromParent();
-        this.state.differenceDensityGroup = null;
     }
 
     /**
@@ -1655,6 +1612,7 @@ export class CrystalViewer {
      * @private
      */
     removeStructure() {
+        this.isosurfaceLayer?.clearMesh();
         this.moleculeContainer.traverse((object) => {
             if (object.geometry) {
                 object.geometry.dispose();
@@ -1664,7 +1622,6 @@ export class CrystalViewer {
             }
         });
         this.moleculeContainer.clear();
-        this.state.differenceDensityGroup = null;
     }
 
     /**
@@ -1870,6 +1827,8 @@ export class CrystalViewer {
      * ```
      */
     dispose() {
+        this.cancelScalarFieldLoad('Viewer disposed');
+        this.isosurfaceLayer.dispose();
         this.controls.dispose();
         this.atomLabelManager.dispose();
 

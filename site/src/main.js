@@ -3,9 +3,9 @@ import { formatValueEsd } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 import {
-    createDifferenceDensityDisplayState,
-    reduceDifferenceDensityDisplayState,
-} from '../../src/lib/density/difference-density-display-state.js';
+    createScalarFieldDisplayState,
+    reduceScalarFieldDisplayState,
+} from '../../src/lib/density/scalar-field-display-state.js';
 import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
@@ -84,21 +84,21 @@ function getViewerOptionsFromUrl() {
 // Initialize the viewer
 const viewer = new CrystalViewer(document.body, getViewerOptionsFromUrl());
 viewer.animate();
-let densityDisplay = createDifferenceDensityDisplayState();
+let scalarFieldDisplay = createScalarFieldDisplayState();
 
 /** @returns {{level:number, full:string}|null} Formatted density contour description. */
-function currentDensityLevelText() {
-    if (!Number.isFinite(densityDisplay.level)) {
+function currentScalarFieldLevelText() {
+    if (!Number.isFinite(scalarFieldDisplay.level)) {
         return null;
     }
-    const level = Number(densityDisplay.level.toPrecision(3));
-    const sigma = Number.isFinite(densityDisplay.sigmaLevel)
-        ? ` · ${Number(densityDisplay.sigmaLevel.toPrecision(3))}σ`
+    const level = Number(scalarFieldDisplay.level.toPrecision(3));
+    const sigma = Number.isFinite(scalarFieldDisplay.sigmaLevel)
+        ? ` · ${Number(scalarFieldDisplay.sigmaLevel.toPrecision(3))}σ`
         : '';
-    const sign = densityDisplay.signed ? '±' : '';
-    const full = densityDisplay.quantityName === 'difference density'
+    const sign = scalarFieldDisplay.signed ? '±' : '';
+    const full = scalarFieldDisplay.quantityName === 'difference density'
         ? `Δρ ±${level} e Å⁻³${sigma}`
-        : `${densityDisplay.quantityName} ${sign}${level}${sigma}`;
+        : `${scalarFieldDisplay.quantityName} ${sign}${level}${sigma}`;
     return {
         level,
         full,
@@ -106,42 +106,42 @@ function currentDensityLevelText() {
 }
 
 /** Keeps the playground's lower-right density badge synchronized. */
-function updateDensityLevelDisplay() {
+function updateScalarFieldLevelDisplay() {
     const element = document.getElementById('density-level');
-    const labels = currentDensityLevelText();
-    const loading = densityDisplay.loading;
+    const labels = currentScalarFieldLevelText();
+    const loading = scalarFieldDisplay.loading;
     element.hidden = labels === null && !loading;
     element.replaceChildren();
     if (labels || loading) {
         const unit = document.createElement('span');
         unit.className = 'density-unit';
-        unit.textContent = densityDisplay.displayLabel;
+        unit.textContent = scalarFieldDisplay.displayLabel;
         const value = document.createElement('span');
         value.className = 'density-value';
         value.textContent = loading
-            ? densityDisplay.totalSteps
-                ? `${densityDisplay.stepIndex + 1}/${densityDisplay.totalSteps}`
+            ? scalarFieldDisplay.totalSteps
+                ? `${scalarFieldDisplay.stepIndex + 1}/${scalarFieldDisplay.totalSteps}`
                 : '…'
-            : `${densityDisplay.signed ? '±' : ''}${labels.level}`;
+            : `${scalarFieldDisplay.signed ? '±' : ''}${labels.level}`;
         element.append(unit, value);
     }
     element.classList.toggle('density-loading', loading);
     element.setAttribute('aria-busy', String(loading));
-    const visible = densityDisplay.visible;
+    const visible = scalarFieldDisplay.visible;
     element.setAttribute('aria-pressed', String(visible));
     element.title = loading
-        ? densityDisplay.totalSteps
-            ? `Calculating difference density: step ${densityDisplay.stepIndex + 1} ` +
-                `of ${densityDisplay.totalSteps}`
-            : 'Calculating difference density'
+        ? scalarFieldDisplay.totalSteps
+            ? `Calculating ${scalarFieldDisplay.quantityName}: step ` +
+                `${scalarFieldDisplay.stepIndex + 1} of ${scalarFieldDisplay.totalSteps}`
+            : `Calculating ${scalarFieldDisplay.quantityName}`
         : labels
-            ? `${visible ? 'Hide' : 'Show'} ${densityDisplay.quantityName} (${labels.full})`
+            ? `${visible ? 'Hide' : 'Show'} ${scalarFieldDisplay.quantityName} (${labels.full})`
             : '';
 }
 
-viewer.onDifferenceDensityUpdate(update => {
-    densityDisplay = reduceDifferenceDensityDisplayState(densityDisplay, update);
-    updateDensityLevelDisplay();
+viewer.onScalarFieldUpdate(update => {
+    scalarFieldDisplay = reduceScalarFieldDisplayState(scalarFieldDisplay, update);
+    updateScalarFieldLevelDisplay();
 });
 viewer.selections.onChange(selections => {
     const container = document.getElementById('selection-container');
@@ -235,13 +235,13 @@ function configurePlaygroundBlocks(cifText, initialBlock = 0) {
  */
 async function loadPlaygroundCif(cifText, cifBlock = 0) {
     const loadSequence = ++playgroundLoadSequence;
-    densityDisplay = createDifferenceDensityDisplayState();
-    updateDensityLevelDisplay();
+    scalarFieldDisplay = createScalarFieldDisplayState();
+    updateScalarFieldLevelDisplay();
     const calculateDensity = hasSupportedReflectionData(cifText, cifBlock);
     const result = await viewer.loadCIF(cifText, cifBlock, {
         differenceDensity: calculateDensity,
     });
-    updateDensityLevelDisplay();
+    updateScalarFieldLevelDisplay();
     if (loadSequence !== playgroundLoadSequence) {
         return;
     }
@@ -419,8 +419,8 @@ function initializeBlockSelector() {
 /** Makes the compact density-level readout double as its visibility toggle. */
 function initializeDensityLevelButton() {
     document.getElementById('density-level').addEventListener('click', () => {
-        if (densityDisplay.available) {
-            viewer.setDifferenceDensityVisibility(!densityDisplay.visible);
+        if (scalarFieldDisplay.available) {
+            viewer.setIsosurfaceVisibility(!scalarFieldDisplay.visible);
         }
     });
 }

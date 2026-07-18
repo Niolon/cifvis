@@ -1,5 +1,5 @@
 /** @returns {object} UI-owned state derived exclusively from public density events. */
-export function createDifferenceDensityDisplayState() {
+export function createScalarFieldDisplayState() {
     return {
         loading: false,
         available: false,
@@ -8,8 +8,8 @@ export function createDifferenceDensityDisplayState() {
         sigmaLevel: null,
         stepIndex: null,
         totalSteps: null,
-        displayLabel: 'Δρ/eÅ⁻³',
-        quantityName: 'difference density',
+        displayLabel: 'Scalar field',
+        quantityName: 'scalar field',
         signed: true,
     };
 }
@@ -18,24 +18,24 @@ export function createDifferenceDensityDisplayState() {
  * Reduces one public CrystalViewer density event into compact UI state.
  * Deliberately copies only presentation fields, never renderer objects or map payloads.
  * @param {object} state - Previous display state.
- * @param {object} event - Public difference-density event.
+ * @param {object} event - Public scalar-field event.
  * @returns {object} Next display state.
  */
-export function reduceDifferenceDensityDisplayState(state, event) {
+export function reduceScalarFieldDisplayState(state, event) {
     if (event.type === 'started') {
         return {
-            ...createDifferenceDensityDisplayState(),
+            ...createScalarFieldDisplayState(),
             loading: true,
             visible: event.visible ?? true,
             sigmaLevel: event.sigmaLevel ?? null,
             stepIndex: 0,
-            displayLabel: event.displayLabel ?? 'Δρ/eÅ⁻³',
-            quantityName: event.quantityName ?? 'difference density',
+            displayLabel: event.displayLabel ?? 'Scalar field',
+            quantityName: event.quantityName ?? 'scalar field',
             signed: event.signed ?? true,
         };
     }
     if (['error', 'cancelled', 'cleared'].includes(event.type)) {
-        return createDifferenceDensityDisplayState();
+        return createScalarFieldDisplayState();
     }
     if (event.type === 'visibility') {
         return { ...state, visible: Boolean(event.visible) };

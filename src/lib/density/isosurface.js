@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 import * as math from '../math-lite.js';
-import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
+import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 
-export { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from './difference-density-options.js';
+export { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 
 /** @returns {number[]} Cartesian coordinates for a fractional point. */
 function cartesianCoordinates(matrix, x, y, z) {
@@ -23,7 +23,7 @@ function cartesianCoordinates(matrix, x, y, z) {
  * @param {number} radius - Padding around atoms in Angstrom.
  * @returns {{minimum: number[], maximum: number[]}} Fractional clipping bounds.
  */
-export function differenceDensityBounds(structure, radius) {
+export function isosurfaceBounds(structure, radius) {
     if (!structure?.atoms?.length) {
         return { minimum: [0, 0, 0], maximum: [1, 1, 1] };
     }
@@ -50,11 +50,11 @@ export function differenceDensityBounds(structure, radius) {
  * The configured resolution remains a minimum, while maxResolution prevents
  * the cubic field allocation from growing without bound.
  * @param {object} structure - Current displayed CrystalStructure.
- * @param {object} [options] - Difference-density display options.
+ * @param {object} [options] - Isosurface display options.
  * @returns {number} Final surface resolution for this displayed structure.
  */
-export function differenceDensitySurfaceResolution(structure, options = {}) {
-    const usedOptions = { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, ...options };
+export function isosurfaceResolution(structure, options = {}) {
+    const usedOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, ...options };
     const minimumResolution = Math.max(8, Math.round(Number(usedOptions.resolution)));
     const maximumResolution = Math.max(
         minimumResolution,
@@ -62,13 +62,13 @@ export function differenceDensitySurfaceResolution(structure, options = {}) {
     );
     const gridSpacing = Number(usedOptions.gridSpacing);
     if (!(Number.isFinite(gridSpacing) && gridSpacing > 0)) {
-        throw new Error('Difference-density surface grid spacing must be a positive number');
+        throw new Error('Isosurface grid spacing must be a positive number');
     }
     if (!(Number.isFinite(maximumResolution) && maximumResolution >= 8)) {
-        throw new Error('Difference-density maximum surface resolution must be at least 8');
+        throw new Error('Maximum isosurface resolution must be at least 8');
     }
 
-    const bounds = differenceDensityBounds(structure, usedOptions.radius);
+    const bounds = isosurfaceBounds(structure, usedOptions.radius);
     const matrix = structure.cell.fractToCartMatrix.toArray();
     const edgeLengths = bounds.maximum.map((maximum, axis) => {
         const span = maximum - bounds.minimum[axis];
@@ -123,37 +123,37 @@ function createSurface(resolution, material, maxPolyCount, name, level) {
     surface.frustumCulled = false;
     surface.userData = {
         selectable: false,
-        type: 'difference-density',
+        type: 'isosurface',
         sign: name.includes('Positive') ? 'positive' : 'negative',
     };
     return surface;
 }
 
 /**
- * Creates positive and negative difference-density isosurfaces clipped around
+ * Creates positive and negative isosurfaces clipped around
  * the atoms in the currently displayed (and potentially symmetry-grown) structure.
- * @param {import('./difference-density.js').DifferenceDensityMap} densityMap - Periodic unit-cell map.
+ * @param {import('./scalar-field.js').ScalarFieldGrid} field - Sampled scalar field.
  * @param {object} structure - Current displayed CrystalStructure.
  * @param {object} [options] - Surface display options.
- * @returns {THREE.Group} Difference-density surface group.
+ * @returns {THREE.Group} Isosurface group.
  */
-export function createDifferenceDensitySurfaces(densityMap, structure, options = {}) {
+export function createIsosurfaces(field, structure, options = {}) {
     const generationStarted = performance.now();
-    const usedOptions = { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, ...options };
+    const usedOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, ...options };
     const resolution = Math.max(8, Math.round(usedOptions.resolution));
-    const level = usedOptions.level ?? densityMap.defaultLevel ??
-        usedOptions.sigmaLevel * densityMap.sigma;
+    const level = usedOptions.level ?? field.defaultLevel ??
+        usedOptions.sigmaLevel * field.sigma;
     if (!(Number.isFinite(level) && level > 0)) {
-        throw new Error('Difference-density contour level must be a positive finite number');
+        throw new Error('Isosurface level must be a positive finite number');
     }
     if (!(Number.isFinite(usedOptions.radius) && usedOptions.radius > 0)) {
-        throw new Error('Difference-density radius must be a positive finite number');
+        throw new Error('Isosurface radius must be a positive finite number');
     }
 
-    const bounds = differenceDensityBounds(structure, usedOptions.radius);
-    const sign = usedOptions.sign ?? densityMap.surfaceSign ?? 'both';
+    const bounds = isosurfaceBounds(structure, usedOptions.radius);
+    const sign = usedOptions.sign ?? field.surfaceSign ?? 'both';
     if (!['positive', 'negative', 'both'].includes(sign)) {
-        throw new Error('Difference-density surface sign must be "positive", "negative", or "both"');
+        throw new Error('Isosurface sign must be "positive", "negative", or "both"');
     }
     const renderPositive = sign !== 'negative';
     const renderNegative = sign !== 'positive';
@@ -174,14 +174,14 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
         resolution,
         positiveMaterial,
         usedOptions.maxPolyCount,
-        'PositiveDifferenceDensity',
+        'PositiveIsosurface',
         level,
     ) : null;
     const negative = renderNegative ? createSurface(
         resolution,
         negativeMaterial,
         usedOptions.maxPolyCount,
-        'NegativeDifferenceDensity',
+        'NegativeIsosurface',
         level,
     ) : null;
     if (!positive) {
@@ -213,7 +213,7 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
                 if (!isNearDisplayedAtom(cartesian, atomCoordinates, radiusSquared)) {
                     continue;
                 }
-                const value = densityMap.sample(fractionalX, fractionalY, fractionalZ);
+                const value = field.sample(fractionalX, fractionalY, fractionalZ);
                 if (positive) {
                     positive.field[offset + x] = value;
                 }
@@ -238,15 +238,17 @@ export function createDifferenceDensitySurfaces(densityMap, structure, options =
     }
 
     const group = new THREE.Group();
-    group.name = 'DifferenceDensity';
+    group.name = 'Isosurface';
     group.visible = usedOptions.visible;
     const generationTimeMs = performance.now() - generationStarted;
     group.userData = {
         selectable: false,
-        type: 'difference-density',
+        type: 'isosurface',
         bounds,
         level,
-        sigmaLevel: level / densityMap.sigma,
+        sigmaLevel: Number.isFinite(field.sigma) && field.sigma !== 0
+            ? level / field.sigma
+            : null,
         resolution,
         positivePolygonCount,
         negativePolygonCount,

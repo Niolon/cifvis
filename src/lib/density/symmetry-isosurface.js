@@ -2,10 +2,10 @@
 import * as THREE from 'three';
 import * as math from '../math-lite.js';
 import {
-    createDifferenceDensitySurfaces,
-    DEFAULT_DIFFERENCE_DENSITY_OPTIONS,
-    differenceDensityBounds,
-} from './difference-density-surface.js';
+    createIsosurfaces,
+    DEFAULT_ISOSURFACE_OPTIONS,
+    isosurfaceBounds,
+} from './isosurface.js';
 
 const POSITION_TOLERANCE_ANGSTROM = 1e-4;
 
@@ -69,7 +69,7 @@ function joinRoots(parents, first, second) {
  * @param {number} [connectionMargin] - Extra conservative grid-scale overlap.
  * @returns {Array<{atoms: object[]}>} Connected atom-mask regions.
  */
-export function connectedDifferenceDensityRegions(structure, radius, connectionMargin = 0) {
+export function connectedIsosurfaceRegions(structure, radius, connectionMargin = 0) {
     const atoms = structure?.atoms ?? [];
     if (atoms.length === 0) {
         return [];
@@ -106,19 +106,19 @@ export function connectedDifferenceDensityRegions(structure, radius, connectionM
  * therefore polygonized in one field and cannot acquire an internal seam.
  * @param {object} structure - Displayed CrystalStructure.
  * @param {number} radius - Density clipping radius in Angstrom.
- * @param {object} _densityMap - Periodic difference-density map (unused by design).
+ * @param {object} _field - Scalar field (unused by design).
  * @param {number} _level - Positive absolute contour level (unused by design).
  * @param {string} _sign - Contour sign (unused by design).
  * @returns {Array<{atoms: object[]}>} Contour-connected atom-mask regions.
  */
-export function contourConnectedDifferenceDensityRegions(
+export function contourConnectedIsosurfaceRegions(
     structure,
     radius,
-    _densityMap,
+    _field,
     _level,
     _sign = 'both',
 ) {
-    return connectedDifferenceDensityRegions(structure, radius);
+    return connectedIsosurfaceRegions(structure, radius);
 }
 
 /** @returns {string} Fast rejection signature for symmetry matching. */
@@ -209,12 +209,12 @@ function matchOperation(source, target, operation, cellMatrix) {
 }
 
 /** @returns {object|null} Exact map-symmetry transform between two regions. */
-function symmetryTransformBetween(source, target, densityMap, cellMatrix) {
+function symmetryTransformBetween(source, target, field, cellMatrix) {
     if (source.atoms.length !== target.atoms.length ||
         regionSignature(source) !== regionSignature(target)) {
         return null;
     }
-    const operations = densityMap.symmetryOperations ?? [{
+    const operations = field.symmetryOperations ?? [{
         rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
         translation: [0, 0, 0],
     }];
@@ -339,7 +339,7 @@ function regionStructure(structure, region) {
 }
 
 /** @returns {Array<object>} Exact symmetry-equivalence classes for regions. */
-function classifyRegions(regions, densityMap, cellMatrix) {
+function classifyRegions(regions, field, cellMatrix) {
     const classes = [];
     for (const region of regions) {
         let matchedClass = null;
@@ -348,7 +348,7 @@ function classifyRegions(regions, densityMap, cellMatrix) {
             const transform = symmetryTransformBetween(
                 candidate.representative,
                 region,
-                densityMap,
+                field,
                 cellMatrix,
             );
             if (transform) {
@@ -376,51 +376,51 @@ function classifyRegions(regions, densityMap, cellMatrix) {
 }
 
 /**
- * Creates difference-density surfaces while reusing exact symmetry-equivalent,
+ * Creates isosurfaces while reusing exact symmetry-equivalent,
  * disconnected regions. Connected masks are never split, ensuring bridges and
  * shared surface topology are produced by one marching-cubes calculation.
- * @param {import('./difference-density.js').DifferenceDensityMap} densityMap - Periodic map.
+ * @param {import('./scalar-field.js').ScalarFieldGrid} field - Sampled scalar field.
  * @param {object} structure - Current displayed CrystalStructure.
- * @param {object} [options] - Difference-density surface options.
+ * @param {object} [options] - Isosurface options.
  * @returns {THREE.Group} Symmetry-aware surface group.
  */
-export function createSymmetryAwareDifferenceDensitySurfaces(
-    densityMap,
+export function createSymmetryAwareIsosurfaces(
+    field,
     structure,
     options = {},
 ) {
-    const usedOptions = { ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS, ...options };
+    const usedOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, ...options };
     if (usedOptions.useSymmetry === false || !structure?.atoms?.length) {
-        return createDifferenceDensitySurfaces(densityMap, structure, usedOptions);
+        return createIsosurfaces(field, structure, usedOptions);
     }
 
     const started = performance.now();
-    const globalBounds = differenceDensityBounds(structure, usedOptions.radius);
+    const globalBounds = isosurfaceBounds(structure, usedOptions.radius);
     const globalResolution = Math.max(8, Math.round(usedOptions.resolution));
     const globalSpacing = longestBoundsEdge(structure.cell, globalBounds) /
         Math.max(1, globalResolution - 1);
-    const level = usedOptions.level ?? densityMap.defaultLevel ??
-        usedOptions.sigmaLevel * densityMap.sigma;
+    const level = usedOptions.level ?? field.defaultLevel ??
+        usedOptions.sigmaLevel * field.sigma;
     const cellMatrix = structure.cell.fractToCartMatrix.toArray();
     const plans = ['positive', 'negative'].map(sign => {
-        const regions = contourConnectedDifferenceDensityRegions(
+        const regions = contourConnectedIsosurfaceRegions(
             structure,
             usedOptions.radius,
-            densityMap,
+            field,
             level,
             sign,
         );
         return {
             sign,
             regions,
-            classes: classifyRegions(regions, densityMap, cellMatrix),
+            classes: classifyRegions(regions, field, cellMatrix),
         };
     });
     const displayedRegionCount = plans.reduce((sum, plan) => sum + plan.regions.length, 0);
     const generatedRegionCount = plans.reduce((sum, plan) => sum + plan.classes.length, 0);
     const reusedRegionCount = displayedRegionCount - generatedRegionCount;
     if (reusedRegionCount === 0) {
-        const group = createDifferenceDensitySurfaces(densityMap, structure, usedOptions);
+        const group = createIsosurfaces(field, structure, usedOptions);
         for (const plan of plans) {
             group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
         }
@@ -429,7 +429,7 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
 
     const planningTimeMs = performance.now() - started;
     const group = new THREE.Group();
-    group.name = 'DifferenceDensity';
+    group.name = 'Isosurface';
     group.visible = usedOptions.visible;
     let positivePolygonCount = 0;
     let negativePolygonCount = 0;
@@ -441,7 +441,7 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
     plans.forEach(plan => {
         plan.classes.forEach(regionClass => {
             const representativeStructure = regionStructure(structure, regionClass.representative);
-            const regionBounds = differenceDensityBounds(representativeStructure, usedOptions.radius);
+            const regionBounds = isosurfaceBounds(representativeStructure, usedOptions.radius);
             const regionResolution = Math.max(
                 8,
                 Math.min(
@@ -460,8 +460,8 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
                 ),
             );
             const regionStarted = performance.now();
-            const canonicalGroup = createDifferenceDensitySurfaces(
-                densityMap,
+            const canonicalGroup = createIsosurfaces(
+                field,
                 representativeStructure,
                 {
                     ...usedOptions,
@@ -514,8 +514,8 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
         const material = surfaceMaterials[sign][0];
         surfaceMaterials[sign].slice(1).forEach(extraMaterial => extraMaterial.dispose());
         const surface = new THREE.Mesh(stitched.geometry, material);
-        surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}DifferenceDensity`;
-        surface.userData = { selectable: false, type: 'difference-density', sign };
+        surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}Isosurface`;
+        surface.userData = { selectable: false, type: 'isosurface', sign };
         surface.frustumCulled = false;
         group.add(surface);
         const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
@@ -529,10 +529,12 @@ export function createSymmetryAwareDifferenceDensitySurfaces(
 
     group.userData = {
         selectable: false,
-        type: 'difference-density',
+        type: 'isosurface',
         bounds: globalBounds,
         level,
-        sigmaLevel: level / densityMap.sigma,
+        sigmaLevel: Number.isFinite(field.sigma) && field.sigma !== 0
+            ? level / field.sigma
+            : null,
         resolution: globalResolution,
         positivePolygonCount,
         negativePolygonCount,

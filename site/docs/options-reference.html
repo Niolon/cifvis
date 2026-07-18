@@ -488,8 +488,8 @@
                 </div>
             </div>
 
-            <!-- Difference-density Options -->
-            <button type="button" class="collapsible">Difference and Deformation Density Settings</button>
+            <!-- Scalar-field Options -->
+            <button type="button" class="collapsible">Scalar Fields, Difference Density, and Isosurfaces</button>
             <div class="content">
                 <div class="inner-content">
                     <p>
@@ -497,6 +497,9 @@
                         green/red colours; explicitly configured or self-described custom coefficient
                         columns are treated as deformation density and use light blue/orange. The periodic
                         Fourier grid is retained when display or symmetry-growth settings change.
+                        Source-specific calculation settings live under <code>differenceDensity</code>,
+                        the shared worker policy under <code>scalarField</code>, and all mesh/contour
+                        presentation settings under <code>isosurface</code>.
                     </p>
                     <table class="option-table">
                         <tr><th>Option</th><th>Type</th><th>Description</th></tr>
@@ -505,8 +508,8 @@
                             <td>After installing the structure, automatically start density work from the loaded CIF. <span class="default-value">Default: false</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density web worker performance">
-                            <td><span class="option-code">differenceDensity.useWorker</span></td><td>Boolean</td>
-                            <td>Parse reflections, calculate IAM factors, and build the FFT grid in a Web Worker when available. <span class="default-value">Default: true</span></td>
+                            <td><span class="option-code">scalarField.useWorker</span></td><td>Boolean</td>
+                            <td>Parse and calculate scalar fields in a Web Worker when available. Applies to reflection and Cube sources. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density source fcf iam automatic">
                             <td><span class="option-code">differenceDensity.inputMode</span></td><td>String</td>
@@ -629,67 +632,67 @@
                             <td>Final real-space FFT-grid oversampling factor. <span class="default-value">Default: 2</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density progressive surface steps polygons">
-                            <td><span class="option-code">differenceDensity.progressiveSteps</span></td><td>Number[]</td>
+                            <td><span class="option-code">isosurface.progressiveSteps</span></td><td>Number[]</td>
                             <td>Ordered surface-resolution fractions emitted after the map is available; 1 is always included. <span class="default-value">Default: [0.5, 0.75, 1]</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density visibility toggle">
-                            <td><span class="option-code">differenceDensity.visible</span></td><td>Boolean</td>
+                            <td><span class="option-code">isosurface.visible</span></td><td>Boolean</td>
                             <td>Initial density-surface visibility. Changing only this option toggles the retained meshes without recalculation. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density contour sigma level">
-                            <td><span class="option-code">differenceDensity.sigmaLevel</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.sigmaLevel</span></td><td>Number</td>
                             <td>Positive and negative contour magnitude in map standard deviations. <span class="default-value">Default: 3</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density radius clipping atoms angstrom">
-                            <td><span class="option-code">differenceDensity.radius</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.radius</span></td><td>Number</td>
                             <td>Cartesian clipping radius around displayed atoms, in Å. <span class="default-value">Default: 1.5</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density symmetry reuse marching cubes regions">
-                            <td><span class="option-code">differenceDensity.useSymmetry</span></td><td>Boolean</td>
+                            <td><span class="option-code">isosurface.useSymmetry</span></td><td>Boolean</td>
                             <td>Reuses meshes for exactly symmetry-equivalent disconnected regions; intersecting masks remain one field to avoid seams. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density marching cubes resolution minimum">
-                            <td><span class="option-code">differenceDensity.resolution</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.resolution</span></td><td>Number</td>
                             <td>Minimum marching-cubes resolution. <span class="default-value">Default: 64</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density grid spacing draw size surface">
-                            <td><span class="option-code">differenceDensity.gridSpacing</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.gridSpacing</span></td><td>Number</td>
                             <td>Target Cartesian surface-grid spacing used to increase resolution for larger displayed regions. <span class="default-value">Default: 0.15 Å</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density maximum resolution surface memory">
-                            <td><span class="option-code">differenceDensity.maxResolution</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.maxResolution</span></td><td>Number</td>
                             <td>Upper bound for draw-size-dependent marching-cubes resolution. <span class="default-value">Default: 96</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density stitch tolerance mesh triangles">
-                            <td><span class="option-code">differenceDensity.stitchTolerance</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.stitchTolerance</span></td><td>Number</td>
                             <td>Cartesian tolerance used while welding reused surface patches. <span class="default-value">Default: 1e-4</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density difference positive color green">
-                            <td><span class="option-code">differenceDensity.positiveColor</span></td><td>String</td>
+                            <td><span class="option-code">isosurface.positiveColor</span></td><td>String</td>
                             <td>Positive standard difference-density colour. <span class="default-value">Default: "#36b566"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density difference negative color red">
-                            <td><span class="option-code">differenceDensity.negativeColor</span></td><td>String</td>
+                            <td><span class="option-code">isosurface.negativeColor</span></td><td>String</td>
                             <td>Negative standard difference-density colour. <span class="default-value">Default: "#d94b64"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="deformation density positive color blue">
-                            <td><span class="option-code">differenceDensity.deformationPositiveColor</span></td><td>String</td>
+                            <td><span class="option-code">isosurface.deformationPositiveColor</span></td><td>String</td>
                             <td>Positive custom/deformation-density colour. <span class="default-value">Default: "#4FC3F7"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="deformation density negative color orange">
-                            <td><span class="option-code">differenceDensity.deformationNegativeColor</span></td><td>String</td>
+                            <td><span class="option-code">isosurface.deformationNegativeColor</span></td><td>String</td>
                             <td>Negative custom/deformation-density colour. <span class="default-value">Default: "#FF9800"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density opacity transparent">
-                            <td><span class="option-code">differenceDensity.opacity</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.opacity</span></td><td>Number</td>
                             <td>Surface opacity. <span class="default-value">Default: 0.55</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density wireframe solid surface">
-                            <td><span class="option-code">differenceDensity.wireframe</span></td><td>Boolean</td>
+                            <td><span class="option-code">isosurface.wireframe</span></td><td>Boolean</td>
                             <td>Draws density surfaces as wireframes. <span class="default-value">Default: true</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="density maximum polygon count marching cubes">
-                            <td><span class="option-code">differenceDensity.maxPolyCount</span></td><td>Number</td>
+                            <td><span class="option-code">isosurface.maxPolyCount</span></td><td>Number</td>
                             <td>Maximum marching-cubes polygon allocation per generated field. <span class="default-value">Default: 100000</span></td>
                         </tr>
                     </table>

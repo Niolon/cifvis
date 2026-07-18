@@ -8,11 +8,14 @@ import {
     HydrogenFilter,
     SymmetryGrower,
 } from '../src/lib/structure/structure-modifiers/modes.js';
-import { DifferenceDensityMap } from '../src/lib/density/difference-density.js';
-import { differenceDensitySurfaceResolution } from '../src/lib/density/difference-density-surface.js';
 import {
-    createSymmetryAwareDifferenceDensitySurfaces,
-} from '../src/lib/density/difference-density-symmetry.js';
+    calculateDifferenceDensityMap,
+    parseDifferenceDensitySource,
+} from '../src/lib/density/difference-density.js';
+import { isosurfaceResolution } from '../src/lib/density/isosurface.js';
+import {
+    createSymmetryAwareIsosurfaces,
+} from '../src/lib/density/symmetry-isosurface.js';
 
 const cifPath = process.argv[2];
 const fcfPath = process.argv[3];
@@ -63,7 +66,11 @@ function median(values) {
 }
 
 const structure = readStructure(fs.readFileSync(cifPath, 'utf8'));
-const densityMap = DifferenceDensityMap.fromCIF(fs.readFileSync(fcfPath, 'utf8'));
+const densityMap = calculateDifferenceDensityMap(parseDifferenceDensitySource(
+    fs.readFileSync(fcfPath, 'utf8'),
+    0,
+    { inputMode: 'fcf' },
+));
 // The FCF cell has already passed the density parser's numeric validation and
 // is the exact cell used for sampling; use it for geometry as the viewer does
 // after validating the coordinate/FCF pair.
@@ -79,7 +86,7 @@ const baseOptions = {
     maxResolution: 96,
     maxPolyCount: 100000,
 };
-baseOptions.resolution = differenceDensitySurfaceResolution(grownStructure, baseOptions);
+baseOptions.resolution = isosurfaceResolution(grownStructure, baseOptions);
 
 const observations = { direct: [], symmetry: [] };
 for (let run = 0; run < runCount; run++) {
@@ -88,7 +95,7 @@ for (let run = 0; run < runCount; run++) {
         : [['symmetry', true], ['direct', false]];
     for (const [name, useSymmetry] of variants) {
         const started = performance.now();
-        const group = createSymmetryAwareDifferenceDensitySurfaces(
+        const group = createSymmetryAwareIsosurfaces(
             densityMap,
             grownStructure,
             { ...baseOptions, useSymmetry },
