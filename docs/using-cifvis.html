@@ -34,8 +34,8 @@
             color: #555;
         }
     </style>
-  <script type="module" crossorigin src="/cifvis/assets/docsUsing.CnwGb0rJ.js"></script>
-  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.Czbltm6F.js">
+  <script type="module" crossorigin src="/cifvis/assets/docsUsing.BIRHBrnR.js"></script>
+  <link rel="modulepreload" crossorigin href="/cifvis/assets/src.mXrd9IXO.js">
   <link rel="stylesheet" crossorigin href="/cifvis/assets/docs.YuSW9pHW.css">
 </head>
 <body>
@@ -124,6 +124,11 @@ const firstLabel = atomSite.getIndex('_atom_site.label', 0); // one row</code></
                 <code>1.234(5)</code> notation for display.
             </p>
             <p>
+                An unterminated final semicolon-delimited text field is accepted as ending at EOF so embedded SHELX
+                HKL data can still be inspected, but the parser emits a console warning with the opening line number.
+                This is recovery from a malformed CIF, not silent validation of it.
+            </p>
+            <p>
                 If a CIF file is malformed, <code>tryToFixCifBlock(block)</code> attempts common repairs (reconciling
                 atom labels, guessing missing symmetry operations) before you retry <code>CrystalStructure.fromCIF</code>:
             </p>
@@ -177,12 +182,25 @@ if (!result.success) {
                 <tr><td><code>viewer.cycleModifierMode(name)</code></td><td>Advances a filter to its next applicable mode and re-renders correctly &mdash; the simplest way to wire a toggle button.</td></tr>
                 <tr><td><code>viewer.numberModifierModes(name)</code></td><td>Number of applicable modes for the current structure; use it to decide whether to show a toggle at all.</td></tr>
                 <tr><td><code>viewer.updateStructure()</code></td><td>Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's <code>.mode</code>.</td></tr>
-                <tr><td><code>viewer.selections.onChange(callback)</code></td><td>The only event hook. Callback receives <code>[{type: 'atom'|'bond'|'hbond', data, color}]</code>.</td></tr>
+                <tr><td><code>viewer.selections.onChange(callback)</code></td><td>Selection event hook. Callback receives <code>[{type: 'atom'|'bond'|'hbond', data, color}]</code>.</td></tr>
                 <tr><td><code>viewer.selectAtoms(labels)</code></td><td>Programmatic selection by atom label.</td></tr>
                 <tr><td><code>viewer.setAtomLabels(show)</code></td><td>Shows all, non-hydrogen, or selected atom labels. Selection entries may override text and priority.</td></tr>
                 <tr><td><code>viewer.updateAtomLabelOptions(options)</code></td><td>Updates label appearance/layout without rebuilding the structure.</td></tr>
                 <tr><td><code>viewer.clearAtomLabels()</code></td><td>Hides atom labels.</td></tr>
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
+                <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
+                <tr><td><code>viewer.loadCube(text, options)</code></td><td>Loads a cell-matched Gaussian Cube grid in the density worker and progressively displays its isosurface.</td></tr>
+                <tr><td><code>viewer.addScalarField(field, options)</code></td><td>Adds an already calculated <code>ScalarFieldGrid</code>.</td></tr>
+                <tr><td><code>viewer.loadScalarFieldSources(sources)</code></td><td>Loads an ordered mixture of difference-density, Cube, and direct scalar-field definitions.</td></tr>
+                <tr><td><code>viewer.getScalarFields()</code></td><td>Returns renderer-independent metadata for the loaded field collection.</td></tr>
+                <tr><td><code>viewer.setActiveScalarField(indexOrId)</code></td><td>Selects a field while restoring its own contour and appearance settings.</td></tr>
+                <tr><td><code>viewer.cycleScalarField()</code></td><td>Advances through the loaded fields and one hidden state.</td></tr>
+                <tr><td><code>viewer.onScalarFieldUpdate(callback)</code></td><td>Subscribes to source-independent <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
+                <tr><td><code>viewer.updateIsosurfaceOptions(options)</code></td><td>Changes contours/appearance while retaining the scalar grid. A visibility-only update does not rebuild surfaces.</td></tr>
+                <tr><td><code>viewer.updateContourLineOptions(options)</code></td><td>Enables/disables a line-only planar section or changes its plane, levels, and line appearance while retaining the scalar grid.</td></tr>
+                <tr><td><code>viewer.setIsosurfaceVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without source parsing, FFT, or marching-cubes work.</td></tr>
+                <tr><td><code>viewer.clearScalarField(indexOrId)</code></td><td>Discards one field, defaulting to the active entry.</td></tr>
+                <tr><td><code>viewer.clearScalarFields()</code></td><td>Discards the complete field collection.</td></tr>
                 <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
                 <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
                 <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>
@@ -209,6 +227,194 @@ await viewer.loadStructure();   // requiresCameraUpdate === true for SymmetryGro
                 </div>
             </div>
             <p id="custom-gui-selection">Click an atom or bond in the viewer above to see selection data here.</p>
+        </section>
+
+        <section id="difference-density">
+            <h2>Difference and deformation density</h2>
+            <p>
+                Density work is deliberately separate from basic structure loading. In a browser it runs after the
+                coordinate structure has been built and rendered, using a dedicated worker by default. The worker can
+                read standard FCF coefficients, merged <code>_refln</code> intensities, unmerged
+                <code>_diffrn_refln</code> intensities, embedded <code>_iucr_refine_fcf_details</code>, and multiline
+                SHELX HKL data. Unmerged sources are symmetry-merged and systematic absences are removed.
+            </p>
+            <pre><code>const loaded = await viewer.loadCIF(cifText, 0, {
+    differenceDensity: true,
+});
+
+// Coordinates are already installed here; density finishes asynchronously.
+const density = await loaded.differenceDensity;</code></pre>
+            <p>
+                With <code>inputMode: "auto"</code>, explicit FCF coefficients are preferred. If none are advertised,
+                CifVis fits an observed-intensity scale, calculates IAM structure factors/phases from the already-built
+                coordinate model, applies supported SHELXL extinction correction, and forms an Fo&minus;Fc map. The IAM
+                uses occupancies, literal isotropic/anisotropic ADPs (non-positive-definite ADPs are reported but not
+                changed), symmetry mates, and special-position deduplication.
+            </p>
+            <pre><code>const stop = viewer.onScalarFieldUpdate(update =&gt; {
+    if (update.type === 'update') {
+        console.log(update.progress, update.polygonCount, update.sigma);
+    }
+});
+
+viewer.updateIsosurfaceOptions({ sigmaLevel: 2.5 });
+viewer.updateContourLineOptions({
+    enabled: true,
+    plane: { atoms: ['C1', 'C2', 'O1'] },
+    contourCount: 20,
+});
+viewer.setIsosurfaceVisibility(false); // instant: retains field + meshes
+viewer.setIsosurfaceVisibility(true);
+viewer.clearScalarField();
+stop();</code></pre>
+            <h3>Multiple fields and source types</h3>
+            <p>
+                Source loaders append to an ordered collection. The density button cycles through each field and then
+                through a hidden state. Every field retains its own absolute or sigma contour, colours, opacity, and
+                tessellation options. Reusing a <code>fieldId</code> updates that entry instead of adding a duplicate.
+            </p>
+            <pre><code>await viewer.loadScalarFieldSources([
+    {
+        type: 'difference-density',
+        id: 'fo-fc',
+        name: 'Fo-Fc',
+        text: fcfText,
+        options: { sigmaLevel: 3 },
+    },
+    {
+        type: 'cube',
+        id: 'homo',
+        name: 'HOMO',
+        text: cubeText,
+        options: { property: 'orbital', level: 0.03 },
+    },
+]);
+
+viewer.setActiveScalarField('fo-fc');
+viewer.cycleScalarField();
+console.log(viewer.getScalarFields());</code></pre>
+            <h3>Gaussian Cube grids</h3>
+            <p>
+                Load the coordinate CIF first, then overlay a Cube whose three voxel-axis spans describe the same
+                unit cell. Positive voxel counts use Bohr coordinates and negative counts use Å. For
+                <code>property: "density"</code> or <code>"signed-density"</code>, Bohr-based values are converted
+                from e/bohr³ to e/Å³. Cube parsing remains in the density worker and emits the same progressive
+                events as reflection-derived maps.
+            </p>
+            <pre><code>await viewer.loadCIF(coordinateCif);
+const result = await viewer.loadCube(cubeText, {
+    property: 'density',
+    level: 0.3,
+    datasetIndex: 0,
+});</code></pre>
+            <p>
+                The supported property modes are <code>density</code>, <code>signed-density</code>,
+                <code>orbital</code>, <code>potential</code>, and <code>generic</code>. Electron density defaults to
+                one positive contour; the other modes are signed. Use <code>valueScale</code>,
+                <code>displayLabel</code>, and <code>quantityName</code> when the Cube property or units are not
+                encoded in the file. Multi-orbital files use <code>datasetIndex</code>. The viewer validates the
+                Cube cell before appending or updating the collection entry.
+            </p>
+            <p>
+                UI code should treat these events as the public boundary. Progress events include
+                <code>stepIndex</code>/<code>totalSteps</code>; display-bearing events include <code>available</code>,
+                <code>visible</code>, <code>level</code>, <code>sigmaLevel</code>, <code>fieldCount</code>,
+                <code>activeFieldIndex</code>, <code>activeFieldId</code>, and <code>activeFieldName</code>. The
+                <code>display</code> event reports contour, appearance, and active-entry changes. A UI therefore does
+                not need to inspect renderer groups, grid objects, or other fields under <code>viewer.state</code>.
+            </p>
+
+            <h3>Planar contour lines</h3>
+            <p>
+                Set <code>contourLines.enabled</code> to replace the 3D mesh with marching-squares lines sampled on a
+                Cartesian plane. Define the plane with three or more atom labels, use the best-fit plane through all
+                displayed atoms, or provide an explicit origin and normal. The contour adapter never draws a filled
+                plane, so existing viewer and widget background colours are preserved. The default plane grid uses
+                tricubic interpolation, and four line intervals fit inside the ordinary surface level. For a
+                3&sigma; map this begins at 0.75&sigma; instead of jumping from 3&sigma; directly to 6&sigma;.
+                For progressive worker loads, plane sampling and Marching Squares are renderer-independent worker
+                tasks. The main thread receives packed endpoints and only creates the Three.js line objects.
+            </p>
+            <pre><code>const viewer = new CrystalViewer(container, {
+    contourLines: {
+        enabled: true,
+        plane: { atoms: ['C1', 'C2', 'O1'] },
+        contourCount: 20,
+    },
+});
+
+// Alternatives:
+// plane: { mode: 'best-fit' }
+// plane: { coordinateSystem: 'fractional', origin: [0,0,0.5], normal: [0,0,1] }
+
+viewer.updateContourLineOptions({ plane: { atoms: ['N1', 'C2', 'C3'] } });</code></pre>
+            <p>
+                The playground query flag accepts <code>?contours=best-fit</code>,
+                <code>?contours=atoms:C1,C2,O1</code>, <code>?contours=frac:0,0,0.5:0,0,1</code>, or the equivalent
+                <code>cart:</code> form.
+            </p>
+
+            <h3>Custom quantum-crystallographic coefficients</h3>
+            <p>
+                <code>coefficientColumns</code> accepts one or two amplitudes with a common or split phase, or direct
+                crystallographic A/B columns. Any explicitly configured or self-described custom loop is classified as
+                deformation density, giving it light-blue/orange defaults distinct from green/red Fo&minus;Fc maps.
+                Custom coefficients retain F(000) unless explicitly omitted.
+            </p>
+            <pre><code>await viewer.loadDifferenceDensity(cifText, 0, {
+    coefficientColumns: {
+        amplitudes: ['_refln_F_multipole', '_refln_F_iam'],
+        phases: ['_refln_phase_multipole', '_refln_phase_iam'],
+        phaseUnit: 'degrees',
+    },
+});
+
+// Equivalent direct-complex form:
+// a: ['_refln_A_multipole', '_refln_A_iam']
+// b: ['_refln_B_multipole', '_refln_B_iam']</code></pre>
+            <p>
+                A self-contained CIF can map a custom loop with
+                <code>_cifvis_difference_density_loop</code>, <code>_h</code>, <code>_k</code>, <code>_l</code>,
+                <code>_a</code>, and <code>_b</code> tags. Anomalous-dispersion correction supports CIF-preferred
+                site/type values, internal Cu/Mo tables, exact inversion/Friedel phase tests, configurable operands,
+                and <code>phaseDetection: false</code> for deliberate deformation coefficients.
+            </p>
+            <pre><code>npm run generate:deformation-cif -- coordinates.cif calculated.fcf deformation.cif</code></pre>
+            <p>
+                The generator preserves the coordinate CIF's positions and ADPs, calculates a neutral-atom IAM at
+                that model, and appends a self-described calculated-minus-IAM complex coefficient loop. The output
+                is a single distributable CIF; source filenames are recorded as basenames, not parent-directory paths.
+            </p>
+
+            <h3>Progressive display and symmetry</h3>
+            <p>
+                The first display uses all selected reflections on the initial FFT grid. The worker then installs the
+                final oversampled grid and increases surface tessellation according to <code>progressiveSteps</code>;
+                later steps do not move the density. Surface resolution grows with the Cartesian draw size up to
+                <code>maxResolution</code>. Exactly symmetry-equivalent disconnected regions can reuse geometry, while
+                intersecting clipping masks are polygonized as one field so bridges have no internal seams.
+                Planar-line mode applies the same progressive fractions to its investigation grid in the worker, so
+                the first contour plot is cheaper and later updates add line detail without blocking plane sampling
+                on the rendering thread.
+            </p>
+            <p>
+                Internally, every source produces the same renderer-independent <code>ScalarFieldGrid</code>, with
+                separate source, field-kind, units, contour, and boundary metadata. Dedicated Three.js isosurface and
+                contour-line adapters own rendering and disposal; <code>CrystalViewer</code> only coordinates the source,
+                displayed structure, events, and render requests. This keeps Cube density, deformation density,
+                orbitals, potentials, and future scalar fields out of the Fo&minus;Fc-specific API.
+            </p>
+            <p>
+                See <a href="./options-reference.html">Options Reference</a> for every setting. The package root and
+                <code>cifvis/nobrowser</code> also export <code>ScalarFieldGrid</code>,
+                <code>parseDifferenceDensitySource</code>, <code>calculateDifferenceDensityMap</code>,
+                <code>createCifDifferenceDensityDataset</code>, generic isosurface and planar-contour builders, the
+                <code>ThreeIsosurfaceLayer</code> and <code>ThreeContourLineLayer</code> adapters, IAM helpers, reflection readers, and
+                separate <code>DEFAULT_DIFFERENCE_DENSITY_OPTIONS</code>,
+                <code>DEFAULT_SCALAR_FIELD_OPTIONS</code>, <code>DEFAULT_ISOSURFACE_OPTIONS</code>, and
+                <code>DEFAULT_CONTOUR_LINE_OPTIONS</code>
+                objects for lower-level use.
+            </p>
         </section>
 
         <section>
