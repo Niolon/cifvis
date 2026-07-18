@@ -340,6 +340,10 @@ export class CifViewWidget extends HTMLElement {
             ? ` · ${Number(density.sigmaLevel.toPrecision(3))}σ`
             : '';
         const visible = density.visible;
+        const fieldPosition = density.fieldCount > 1 && density.activeFieldIndex >= 0
+            ? ` · ${density.activeFieldIndex + 1}/${density.fieldCount}`
+            : '';
+        const action = visible ? density.fieldCount > 1 ? 'Cycle/hide' : 'Hide' : 'Show';
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `control-button density-level${loading ? ' density-loading' : ''}`;
@@ -362,13 +366,13 @@ export class CifViewWidget extends HTMLElement {
                     `${density.stepIndex + 1} of ${density.totalSteps}`
                 : `Calculating ${density.quantityName}`
             : density.quantityName === 'difference density'
-                ? `${visible ? 'Hide' : 'Show'} difference density ` +
-                    `(Δρ ±${level} e Å⁻³${sigma})`
-                : `${visible ? 'Hide' : 'Show'} ${density.quantityName} ` +
-                    `(${density.signed ? '±' : ''}${level}${sigma})`;
+                ? `${action} difference density ` +
+                    `(Δρ ±${level} e Å⁻³${sigma}${fieldPosition})`
+                : `${action} ${density.quantityName} ` +
+                    `(${density.signed ? '±' : ''}${level}${sigma}${fieldPosition})`;
         button.addEventListener('click', () => {
             if (density.available) {
-                this.viewer.setIsosurfaceVisibility(!density.visible);
+                this.viewer.cycleScalarField();
             }
         });
         this.buttonContainer.appendChild(button);

@@ -128,6 +128,13 @@ function updateScalarFieldLevelDisplay() {
     element.classList.toggle('density-loading', loading);
     element.setAttribute('aria-busy', String(loading));
     const visible = scalarFieldDisplay.visible;
+    const fieldPosition = scalarFieldDisplay.fieldCount > 1 &&
+        scalarFieldDisplay.activeFieldIndex >= 0
+        ? ` · ${scalarFieldDisplay.activeFieldIndex + 1}/${scalarFieldDisplay.fieldCount}`
+        : '';
+    const action = visible
+        ? scalarFieldDisplay.fieldCount > 1 ? 'Cycle/hide' : 'Hide'
+        : 'Show';
     element.setAttribute('aria-pressed', String(visible));
     element.title = loading
         ? scalarFieldDisplay.totalSteps
@@ -135,7 +142,8 @@ function updateScalarFieldLevelDisplay() {
                 `${scalarFieldDisplay.stepIndex + 1} of ${scalarFieldDisplay.totalSteps}`
             : `Calculating ${scalarFieldDisplay.quantityName}`
         : labels
-            ? `${visible ? 'Hide' : 'Show'} ${scalarFieldDisplay.quantityName} (${labels.full})`
+            ? `${action} ${scalarFieldDisplay.quantityName} ` +
+                `(${labels.full}${fieldPosition})`
             : '';
 }
 
@@ -275,9 +283,10 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
  * Cell compatibility and density progress are owned and reported by the viewer.
  * @param {string} cifText - Reflection-only CIF/FCF contents.
  * @param {number|string} [cifBlock] - Reflection block index or name.
+ * @param {string} [fileName] - Source filename used as collection identity.
  * @returns {Promise<void>}
  */
-async function loadPlaygroundDifferenceDensity(cifText, cifBlock = 0) {
+async function loadPlaygroundDifferenceDensity(cifText, cifBlock = 0, fileName = '') {
     if (!playgroundHasStructure) {
         updateStatus('Load a coordinate CIF before adding a reflection-only CIF/FCF.', 'error');
         return;
@@ -285,7 +294,10 @@ async function loadPlaygroundDifferenceDensity(cifText, cifBlock = 0) {
 
     const loadSequence = ++playgroundLoadSequence;
     clearStatus();
-    const result = await viewer.loadDifferenceDensity(cifText, cifBlock);
+    const result = await viewer.loadDifferenceDensity(cifText, cifBlock, {
+        fieldId: fileName ? `file:${fileName}` : undefined,
+        fieldName: fileName || 'Difference density',
+    });
     if (loadSequence !== playgroundLoadSequence || result.cancelled) {
         return;
     }
@@ -309,7 +321,11 @@ async function loadPlaygroundCube(cubeText, fileName = '') {
     const loadSequence = ++playgroundLoadSequence;
     clearStatus();
     const property = /(?:density|charge|rho)/i.test(fileName) ? 'density' : 'generic';
-    const result = await viewer.loadCube(cubeText, { property });
+    const result = await viewer.loadCube(cubeText, {
+        property,
+        fieldId: fileName ? `file:${fileName}` : undefined,
+        fieldName: fileName || property,
+    });
     if (loadSequence !== playgroundLoadSequence || result.cancelled) {
         return;
     }
@@ -341,7 +357,7 @@ async function loadPlaygroundText(cifText, fileName = '') {
         return;
     }
     if (reflectionBlock !== null) {
-        await loadPlaygroundDifferenceDensity(cifText, reflectionBlock);
+        await loadPlaygroundDifferenceDensity(cifText, reflectionBlock, fileName);
         return;
     }
     updateStatus('No atom coordinates or supported reflection data found.', 'error');
@@ -420,7 +436,7 @@ function initializeBlockSelector() {
 function initializeDensityLevelButton() {
     document.getElementById('density-level').addEventListener('click', () => {
         if (scalarFieldDisplay.available) {
-            viewer.setIsosurfaceVisibility(!scalarFieldDisplay.visible);
+            viewer.cycleScalarField();
         }
     });
 }

@@ -188,10 +188,16 @@ if (!result.success) {
                 <tr><td><code>viewer.getAtomLabelLayout()</code></td><td>Returns placed labels and labels omitted because no space was available.</td></tr>
                 <tr><td><code>viewer.loadDifferenceDensity(text, block, options)</code></td><td>Loads explicit FCF/custom coefficients or observed reflections plus IAM phases and progressively displays the map.</td></tr>
                 <tr><td><code>viewer.loadCube(text, options)</code></td><td>Loads a cell-matched Gaussian Cube grid in the density worker and progressively displays its isosurface.</td></tr>
+                <tr><td><code>viewer.addScalarField(field, options)</code></td><td>Adds an already calculated <code>ScalarFieldGrid</code>.</td></tr>
+                <tr><td><code>viewer.loadScalarFieldSources(sources)</code></td><td>Loads an ordered mixture of difference-density, Cube, and direct scalar-field definitions.</td></tr>
+                <tr><td><code>viewer.getScalarFields()</code></td><td>Returns renderer-independent metadata for the loaded field collection.</td></tr>
+                <tr><td><code>viewer.setActiveScalarField(indexOrId)</code></td><td>Selects a field while restoring its own contour and appearance settings.</td></tr>
+                <tr><td><code>viewer.cycleScalarField()</code></td><td>Advances through the loaded fields and one hidden state.</td></tr>
                 <tr><td><code>viewer.onScalarFieldUpdate(callback)</code></td><td>Subscribes to source-independent <code>started</code>, <code>update</code>, <code>complete</code>, <code>display</code>, <code>visibility</code>, <code>cleared</code>, <code>cancelled</code>, and <code>error</code> events.</td></tr>
                 <tr><td><code>viewer.updateIsosurfaceOptions(options)</code></td><td>Changes contours/appearance while retaining the scalar grid. A visibility-only update does not rebuild surfaces.</td></tr>
                 <tr><td><code>viewer.setIsosurfaceVisibility(visible)</code></td><td>Shows or hides the existing surface meshes without source parsing, FFT, or marching-cubes work.</td></tr>
-                <tr><td><code>viewer.clearScalarField()</code></td><td>Discards the current scalar field and surface meshes.</td></tr>
+                <tr><td><code>viewer.clearScalarField(indexOrId)</code></td><td>Discards one field, defaulting to the active entry.</td></tr>
+                <tr><td><code>viewer.clearScalarFields()</code></td><td>Discards the complete field collection.</td></tr>
                 <tr><td><code>viewer.requestRender()</code></td><td>Forces a redraw when <code>renderMode: 'onDemand'</code>.</td></tr>
                 <tr><td><code>viewer.controls.handleResize()</code></td><td>Call after any layout change that resizes the container.</td></tr>
                 <tr><td><code>viewer.dispose()</code></td><td>Releases Three.js/GPU resources and event listeners. Required on teardown.</td></tr>
@@ -253,6 +259,32 @@ viewer.setIsosurfaceVisibility(false); // instant: retains field + meshes
 viewer.setIsosurfaceVisibility(true);
 viewer.clearScalarField();
 stop();</code></pre>
+            <h3>Multiple fields and source types</h3>
+            <p>
+                Source loaders append to an ordered collection. The density button cycles through each field and then
+                through a hidden state. Every field retains its own absolute or sigma contour, colours, opacity, and
+                tessellation options. Reusing a <code>fieldId</code> updates that entry instead of adding a duplicate.
+            </p>
+            <pre><code>await viewer.loadScalarFieldSources([
+    {
+        type: 'difference-density',
+        id: 'fo-fc',
+        name: 'Fo-Fc',
+        text: fcfText,
+        options: { sigmaLevel: 3 },
+    },
+    {
+        type: 'cube',
+        id: 'homo',
+        name: 'HOMO',
+        text: cubeText,
+        options: { property: 'orbital', level: 0.03 },
+    },
+]);
+
+viewer.setActiveScalarField('fo-fc');
+viewer.cycleScalarField();
+console.log(viewer.getScalarFields());</code></pre>
             <h3>Gaussian Cube grids</h3>
             <p>
                 Load the coordinate CIF first, then overlay a Cube whose three voxel-axis spans describe the same
@@ -273,14 +305,15 @@ const result = await viewer.loadCube(cubeText, {
                 one positive contour; the other modes are signed. Use <code>valueScale</code>,
                 <code>displayLabel</code>, and <code>quantityName</code> when the Cube property or units are not
                 encoded in the file. Multi-orbital files use <code>datasetIndex</code>. The viewer validates the
-                Cube cell before replacing the current map.
+                Cube cell before appending or updating the collection entry.
             </p>
             <p>
                 UI code should treat these events as the public boundary. Progress events include
                 <code>stepIndex</code>/<code>totalSteps</code>; display-bearing events include <code>available</code>,
-                <code>visible</code>, <code>level</code>, and <code>sigmaLevel</code>. The <code>display</code> event reports
-                contour or appearance changes. A UI therefore does not need to inspect renderer groups, map objects,
-                or other fields under <code>viewer.state</code>.
+                <code>visible</code>, <code>level</code>, <code>sigmaLevel</code>, <code>fieldCount</code>,
+                <code>activeFieldIndex</code>, <code>activeFieldId</code>, and <code>activeFieldName</code>. The
+                <code>display</code> event reports contour, appearance, and active-entry changes. A UI therefore does
+                not need to inspect renderer groups, grid objects, or other fields under <code>viewer.state</code>.
             </p>
 
             <h3>Custom quantum-crystallographic coefficients</h3>

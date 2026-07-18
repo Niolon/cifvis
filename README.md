@@ -104,25 +104,52 @@ in the dedicated density worker after structure construction. `inputMode:
 the coefficients from the CIF observations and IAM calculation; use `'fcf'` or
 `'cif-iam'` to force either path.
 
-Once a map is displayed, the widget and playground add a compact two-line
-control beside the other display buttons. It shows `Δρ/eÅ⁻³` and the signed
-contour magnitude; clicking it hides or restores the existing surfaces without
-rerunning reflection processing, the FFT, or marching cubes. Code-driven UIs
-can do the same with
+Once a field is displayed, the widget and playground add a compact two-line
+control beside the other display buttons. It shows the active quantity and
+contour magnitude. Repeated clicks cycle through every loaded field and then a
+hidden state, without rerunning source processing or the FFT. Code-driven UIs
+can select or cycle fields with `setActiveScalarField()` and
+`cycleScalarField()`, or control visibility directly with
 `viewer.updateIsosurfaceOptions({ visible: false })` or
 `viewer.setIsosurfaceVisibility(false)`. Use
-`viewer.clearScalarField()` to discard the field entirely. Source calculation,
+`viewer.clearScalarField()` to discard one entry and `viewer.clearScalarFields()`
+to discard the collection. Source calculation,
 worker execution, and presentation defaults are configured separately through
 `differenceDensity`, `scalarField`, and `isosurface` constructor options.
+
+Different source types can be declared together. Each entry retains its own
+contour and appearance options:
+
+```javascript
+await viewer.loadScalarFieldSources([
+  {
+    type: 'difference-density',
+    id: 'fo-fc',
+    name: 'Fo-Fc',
+    text: fcfText,
+    options: { sigmaLevel: 3 },
+  },
+  {
+    type: 'cube',
+    id: 'homo',
+    name: 'HOMO',
+    text: orbitalCubeText,
+    options: { property: 'orbital', level: 0.03 },
+  },
+]);
+```
+
+Individual `loadDifferenceDensity()`, `loadCube()`, and `addScalarField()` calls
+also append. Supply `fieldId` to update an existing entry instead, and
+`fieldName` to give it a UI-facing name.
 
 The playground inspects uploaded multi-block CIFs and shows a block selector
 only when more than one top-level `data_` block is present. The widget uses its
 existing `block="index-or-name"` attribute, and direct viewer calls pass the
 same selector as the second argument to `loadCIF` or `loadDifferenceDensity`.
-After a coordinate structure is loaded, dropping a reflection-only `.cif` or
-`.fcf` onto the playground updates its difference density without replacing the
-structure. The viewer rejects the update when the reflection and structure
-unit cells do not match.
+After a coordinate structure is loaded, dropping reflection-only `.cif`,
+`.fcf`, or Cube files onto the playground appends fields without replacing the
+structure. The viewer rejects an entry when its unit cell does not match.
 
 Gaussian Cube grids can be overlaid in the same way after loading their
 coordinate CIF. Parsing stays in the density worker, the Cube cell must match

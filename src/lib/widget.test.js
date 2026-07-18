@@ -80,6 +80,7 @@ describe('CifViewWidget', () => {
             onScalarFieldUpdate: vi.fn(),
             updateIsosurfaceOptions: vi.fn(),
             setIsosurfaceVisibility: vi.fn(),
+            cycleScalarField: vi.fn(),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -247,7 +248,7 @@ describe('CifViewWidget', () => {
             .toBe('Test Structure');
 
         level.click();
-        expect(mockCrystalViewer.setIsosurfaceVisibility).toHaveBeenCalledWith(false);
+        expect(mockCrystalViewer.cycleScalarField).toHaveBeenCalled();
 
         mockDensityCallback({ type: 'cleared' });
         expect(widget.querySelector('.density-level')).toBeNull();
@@ -275,6 +276,44 @@ describe('CifViewWidget', () => {
 
         mockDensityCallback({ type: 'error', error: 'Failed' });
         expect(widget.querySelector('.density-level')).toBeNull();
+    });
+
+    test('updates the compact control as the active scalar field cycles', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'complete',
+            visible: true,
+            level: 0.12,
+            sigmaLevel: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
+            fieldCount: 2,
+            activeFieldIndex: 0,
+            activeFieldId: 'difference',
+        });
+        expect(widget.querySelector('.density-level').title).toContain('1/2');
+
+        mockDensityCallback({
+            type: 'display',
+            visible: true,
+            level: 0.03,
+            sigmaLevel: null,
+            displayLabel: 'ψ',
+            quantityName: 'orbital',
+            signed: true,
+            fieldCount: 2,
+            activeFieldIndex: 1,
+            activeFieldId: 'homo',
+        });
+        const button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('ψ');
+        expect(button.querySelector('.density-value').textContent).toBe('±0.03');
+        expect(button.title).toContain('2/2');
+        button.click();
+        expect(mockCrystalViewer.cycleScalarField).toHaveBeenCalled();
     });
 
     test('uses Cube quantity metadata in the compact density control', () => {

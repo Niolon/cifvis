@@ -632,6 +632,8 @@ export class CrystalViewer {
             ortepObjects: new Map(),
             structureCenter: new THREE.Vector3(),
             scalarField: null,
+            scalarFields: [],
+            activeScalarFieldIndex: -1,
             isosurfaceResolutionFraction: 1,
             currentStructureFactorModel: null,
         };
@@ -641,6 +643,11 @@ export class CrystalViewer {
         this.scalarFieldWorker = null;
         this.scalarFieldPendingResolve = null;
         this.scalarFieldMainThreadLoadId = null;
+        this.scalarFieldLoadTarget = null;
+        this.scalarFieldIdSequence = 0;
+        this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity };
+        this.defaultScalarFieldOptions = { ...this.options.scalarField };
+        this.defaultIsosurfaceOptions = { ...this.options.isosurface };
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
@@ -747,10 +754,13 @@ export class CrystalViewer {
             }
             // Density data belongs to a specific coordinate model/cell. A new
             // coordinate CIF must never inherit the previous FCF implicitly.
-            const hadScalarField = Boolean(this.state.scalarField);
+            const hadScalarField = this.state.scalarFields.length > 0;
             this.cancelScalarFieldLoad('Coordinate structure changed');
             this.isosurfaceLayer.clear();
             this.state.scalarField = null;
+            this.state.scalarFields = [];
+            this.state.activeScalarFieldIndex = -1;
+            this.scalarFieldLoadTarget = null;
             if (hadScalarField) {
                 this.notifyScalarFieldUpdate({ type: 'cleared' });
             }
@@ -798,7 +808,7 @@ export class CrystalViewer {
      * updates reuse that grid and refine only its surface tessellation.
      * @param {string} fcfText - LIST 6/8-style FCF text.
      * @param {number|string} [fcfBlock] - FCF block index or name.
-     * @param {object} [options] - Partial difference-density display options.
+     * @param {object} [options] - Calculation, isosurface, and collection options.
      * @returns {Promise<object>} Load result and map statistics.
      */
     async loadDifferenceDensity(fcfText, fcfBlock = 0, options = {}) {
@@ -810,27 +820,33 @@ export class CrystalViewer {
         }
 
         this.cancelScalarFieldLoad('Superseded by a new FCF load');
-        this.isosurfaceLayer.clear();
-        this.state.scalarField = null;
         this.options.differenceDensity = {
-            ...this.options.differenceDensity,
+            ...this.defaultDifferenceDensityOptions,
             ...optionSubset(options, defaultSettings.differenceDensity),
         };
-        this.options.isosurface = {
-            ...this.options.isosurface,
+        const isosurfaceOptions = {
+            ...this.defaultIsosurfaceOptions,
             ...optionSubset(options, defaultSettings.isosurface, ['level', 'sign']),
         };
         this.options.scalarField = {
-            ...this.options.scalarField,
+            ...this.defaultScalarFieldOptions,
             ...optionSubset(options, defaultSettings.scalarField),
         };
-        this.isosurfaceLayer.setOptions(this.options.isosurface);
         const loadId = ++this.scalarFieldLoadSequence;
+        const target = this.prepareScalarFieldLoad(
+            loadId,
+            options,
+            isosurfaceOptions,
+            'Difference density',
+        );
         this.notifyScalarFieldUpdate({
             type: 'started',
             loadId,
-            visible: this.options.isosurface.visible,
-            sigmaLevel: this.options.isosurface.sigmaLevel,
+            visible: isosurfaceOptions.visible,
+            sigmaLevel: isosurfaceOptions.sigmaLevel,
+            pendingFieldId: target.fieldId,
+            pendingFieldName: target.fieldName,
+            ...this.scalarFieldCollectionState(),
         });
 
         if (this.options.scalarField.useWorker && typeof Worker !== 'undefined') {
@@ -845,7 +861,7 @@ export class CrystalViewer {
      * default. Use `property: "orbital"|"potential"|"generic"` for other
      * scalar quantities, and `datasetIndex` for multi-orbital files.
      * @param {string} cubeText - Complete Gaussian Cube file contents.
-     * @param {object} [options] - Cube parsing and density display options.
+     * @param {object} [options] - Cube parsing, isosurface, and collection options.
      * @returns {Promise<object>} Load result and map statistics.
      */
     async loadCube(cubeText, options = {}) {
@@ -860,8 +876,6 @@ export class CrystalViewer {
         }
 
         this.cancelScalarFieldLoad('Superseded by a new Cube load');
-        this.isosurfaceLayer.clear();
-        this.state.scalarField = null;
         const cubeOptionNames = new Set([
             'property', 'datasetIndex', 'valueScale', 'valueUnit',
             'displayLabel', 'quantityName', 'periodic', 'level', 'sign',
@@ -871,19 +885,18 @@ export class CrystalViewer {
             defaultSettings.isosurface,
             ['level', 'sign'],
         );
-        this.options.isosurface = {
-            ...this.options.isosurface,
+        const isosurfaceOptions = {
+            ...this.defaultIsosurfaceOptions,
             ...displayOptions,
         };
         // Absolute Cube level/sign live on the loaded map. Do not inherit an
         // override that may have been applied to a previous Fourier map.
-        delete this.options.isosurface.level;
-        delete this.options.isosurface.sign;
+        delete isosurfaceOptions.level;
+        delete isosurfaceOptions.sign;
         this.options.scalarField = {
-            ...this.options.scalarField,
+            ...this.defaultScalarFieldOptions,
             ...optionSubset(options, defaultSettings.scalarField),
         };
-        this.isosurfaceLayer.setOptions(this.options.isosurface);
         const cubeOptions = Object.fromEntries(
             Object.entries(definedOptions(options))
                 .filter(([name]) => cubeOptionNames.has(name)),
@@ -897,15 +910,24 @@ export class CrystalViewer {
             generic: { displayLabel: 'Cube', quantityName: 'Cube field', signed: true },
         }[property] ?? { displayLabel: 'Cube', quantityName: 'Cube field', signed: true };
         const loadId = ++this.scalarFieldLoadSequence;
+        const target = this.prepareScalarFieldLoad(
+            loadId,
+            options,
+            isosurfaceOptions,
+            cubeOptions.quantityName ?? propertyDisplay.quantityName,
+        );
         this.notifyScalarFieldUpdate({
             type: 'started',
             loadId,
-            visible: this.options.isosurface.visible,
+            visible: isosurfaceOptions.visible,
             sigmaLevel: null,
             sourceType: 'cube',
             displayLabel: cubeOptions.displayLabel ?? propertyDisplay.displayLabel,
             quantityName: cubeOptions.quantityName ?? propertyDisplay.quantityName,
             signed: cubeOptions.sign === 'positive' ? false : propertyDisplay.signed,
+            pendingFieldId: target.fieldId,
+            pendingFieldName: target.fieldName,
+            ...this.scalarFieldCollectionState(),
         });
 
         if (this.options.scalarField.useWorker && typeof Worker !== 'undefined') {
@@ -917,7 +939,8 @@ export class CrystalViewer {
     /**
      * Subscribes to scalar-field events (`started`, `update`, `complete`, `display`,
      * `visibility`, `cleared`, `error`, and `cancelled`). Display-bearing events
-     * expose level/visibility fields so UIs need not inspect renderer state.
+     * expose level/visibility and active-field collection metadata so UIs need
+     * not inspect renderer state.
      * @param {function(object): void} callback - Update listener.
      * @returns {function(): void} Function that removes the listener.
      */
@@ -963,7 +986,12 @@ export class CrystalViewer {
                 }
                 const message = error?.message || String(error);
                 console.error('Error loading difference density:', error);
-                this.notifyScalarFieldUpdate({ type: 'error', loadId, error: message });
+                this.notifyScalarFieldUpdate({
+                    type: 'error',
+                    loadId,
+                    error: message,
+                    ...this.scalarFieldDisplayState(),
+                });
                 this.finishScalarFieldWorker();
                 resolve({ success: false, error: message });
             };
@@ -1014,7 +1042,7 @@ export class CrystalViewer {
                 fcfText,
                 fcfBlock,
                 datasetOptions: this.differenceDensityDatasetOptions(),
-                steps: this.options.isosurface.progressiveSteps,
+                steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
                 gridOversampling: this.options.differenceDensity.gridOversampling,
@@ -1041,7 +1069,12 @@ export class CrystalViewer {
                 }
                 const message = error?.message || String(error);
                 console.error('Error loading Cube field:', error);
-                this.notifyScalarFieldUpdate({ type: 'error', loadId, error: message });
+                this.notifyScalarFieldUpdate({
+                    type: 'error',
+                    loadId,
+                    error: message,
+                    ...this.scalarFieldDisplayState(),
+                });
                 this.finishScalarFieldWorker();
                 resolve({ success: false, error: message });
             };
@@ -1090,7 +1123,7 @@ export class CrystalViewer {
                 loadId,
                 cubeText,
                 cubeOptions,
-                steps: this.options.isosurface.progressiveSteps,
+                steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
             });
         });
     }
@@ -1112,7 +1145,7 @@ export class CrystalViewer {
                 this.differenceDensityDatasetOptions(),
             );
             const progression = createDifferenceDensityProgression(dataset, {
-                steps: this.options.isosurface.progressiveSteps,
+                steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
                 reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
                 initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
                 gridOversampling: this.options.differenceDensity.gridOversampling,
@@ -1144,7 +1177,12 @@ export class CrystalViewer {
                 return { success: false, cancelled: true, error: 'Difference-density load cancelled' };
             }
             console.error('Error loading difference density:', error);
-            this.notifyScalarFieldUpdate({ type: 'error', loadId, error: error.message });
+            this.notifyScalarFieldUpdate({
+                type: 'error',
+                loadId,
+                error: error.message,
+                ...this.scalarFieldDisplayState(),
+            });
             return { success: false, error: error.message };
         } finally {
             if (this.scalarFieldMainThreadLoadId === loadId) {
@@ -1189,7 +1227,12 @@ export class CrystalViewer {
                 return { success: false, cancelled: true, error: 'Cube load cancelled' };
             }
             console.error('Error loading Cube field:', error);
-            this.notifyScalarFieldUpdate({ type: 'error', loadId, error: error.message });
+            this.notifyScalarFieldUpdate({
+                type: 'error',
+                loadId,
+                error: error.message,
+                ...this.scalarFieldDisplayState(),
+            });
             return { success: false, error: error.message };
         } finally {
             if (this.scalarFieldMainThreadLoadId === loadId) {
@@ -1237,7 +1280,122 @@ export class CrystalViewer {
 
     /** @returns {number[]} Valid ordered surface-resolution fractions. */
     normalizedIsosurfaceSteps() {
-        return normalizeIsosurfaceSteps(this.options.isosurface.progressiveSteps);
+        const steps = this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ??
+            this.defaultIsosurfaceOptions.progressiveSteps;
+        return normalizeIsosurfaceSteps(steps);
+    }
+
+    /**
+     * Defines where the next progressive worker result belongs in the field collection.
+     * @param {number|null} loadId - Progressive-load identifier, or null for a direct field.
+     * @param {object} options - Per-source options.
+     * @param {object} isosurfaceOptions - Presentation snapshot retained with the field.
+     * @param {string} defaultName - Human-readable fallback name.
+     * @returns {object} Prepared collection target.
+     * @private
+     */
+    prepareScalarFieldLoad(loadId, options, isosurfaceOptions, defaultName) {
+        const requestedId = options.fieldId;
+        const fieldId = requestedId === undefined || requestedId === null
+            ? `scalar-field-${++this.scalarFieldIdSequence}`
+            : String(requestedId);
+        if (fieldId.length === 0) {
+            throw new Error('fieldId must not be empty');
+        }
+        this.scalarFieldLoadTarget = {
+            loadId,
+            fieldId,
+            fieldName: String(options.fieldName ?? defaultName),
+            activate: options.activate !== false,
+            isosurfaceOptions: { ...isosurfaceOptions },
+        };
+        return this.scalarFieldLoadTarget;
+    }
+
+    /** @returns {object[]} Public metadata for every loaded field, without grid values. */
+    getScalarFields() {
+        return this.state.scalarFields.map((entry, index) => ({
+            id: entry.id,
+            name: entry.name,
+            sourceType: entry.field.sourceType,
+            fieldKind: entry.field.fieldKind,
+            displayLabel: entry.field.displayLabel,
+            quantityName: entry.field.quantityName,
+            active: index === this.state.activeScalarFieldIndex,
+            visible: index === this.state.activeScalarFieldIndex &&
+                this.isosurfaceLayer.group?.visible !== false,
+        }));
+    }
+
+    /** @returns {object} Collection metadata included in public field events. */
+    scalarFieldCollectionState() {
+        const index = this.state.activeScalarFieldIndex;
+        const entry = this.state.scalarFields[index] ?? null;
+        return {
+            fieldCount: this.state.scalarFields.length,
+            activeFieldIndex: index,
+            activeFieldId: entry?.id ?? null,
+            activeFieldName: entry?.name ?? null,
+        };
+    }
+
+    /**
+     * Installs one collection entry into the Three.js adapter.
+     * @param {number} index - Collection index.
+     * @param {boolean} [visible] - Whether its surface should be shown.
+     * @returns {object} Surface statistics.
+     * @private
+     */
+    activateScalarFieldIndex(index, visible = true) {
+        const entry = this.state.scalarFields[index];
+        if (!entry) {
+            throw new Error(`No scalar field exists at index ${index}`);
+        }
+        this.state.activeScalarFieldIndex = index;
+        this.state.scalarField = entry.field;
+        this.state.isosurfaceResolutionFraction = entry.resolutionFraction;
+        entry.isosurfaceOptions.visible = visible;
+        this.options.isosurface = { ...entry.isosurfaceOptions };
+        this.isosurfaceLayer.setOptions(this.options.isosurface);
+        this.isosurfaceLayer.setField(entry.field, entry.resolutionFraction);
+        this.isosurfaceLayer.setStructure(this.state.displayStructure);
+        return this.isosurfaceLayer.rebuild() ?? {};
+    }
+
+    /**
+     * Adds or updates the collection entry targeted by a progressive load.
+     * @param {ScalarFieldGrid} field - New grid state.
+     * @param {number} resolutionFraction - Current surface-resolution fraction.
+     * @returns {{index:number, surfaceStatistics:object}} Stored entry and rendering result.
+     * @private
+     */
+    storeProgressiveScalarField(field, resolutionFraction) {
+        const target = this.scalarFieldLoadTarget ?? this.prepareScalarFieldLoad(
+            null,
+            {},
+            this.defaultIsosurfaceOptions,
+            field.quantityName ?? 'Scalar field',
+        );
+        let index = this.state.scalarFields.findIndex(entry => entry.id === target.fieldId);
+        const entry = {
+            id: target.fieldId,
+            name: target.fieldName,
+            field,
+            resolutionFraction,
+            isosurfaceOptions: { ...target.isosurfaceOptions },
+        };
+        if (index === -1) {
+            index = this.state.scalarFields.length;
+            this.state.scalarFields.push(entry);
+        } else {
+            this.state.scalarFields[index] = entry;
+        }
+        const shouldActivate = target.activate || this.state.activeScalarFieldIndex === index ||
+            this.state.activeScalarFieldIndex === -1;
+        const surfaceStatistics = shouldActivate
+            ? this.activateScalarFieldIndex(index, entry.isosurfaceOptions.visible !== false)
+            : {};
+        return { index, surfaceStatistics };
     }
 
     /**
@@ -1256,11 +1414,11 @@ export class CrystalViewer {
     applyProgressiveScalarField(field, message) {
         this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
             field.sourceType === 'cube' ? 'Cube' : 'FCF');
-        this.state.scalarField = field;
-        this.state.isosurfaceResolutionFraction = message.surfaceResolutionFraction ?? 1;
-        this.isosurfaceLayer.setField(field, this.state.isosurfaceResolutionFraction);
-        this.isosurfaceLayer.setStructure(this.state.displayStructure);
-        const surfaceStatistics = this.isosurfaceLayer.rebuild() ?? {};
+        const resolutionFraction = message.surfaceResolutionFraction ?? 1;
+        const { index, surfaceStatistics } = this.storeProgressiveScalarField(
+            field,
+            resolutionFraction,
+        );
         const display = this.scalarFieldDisplayState();
         this.requestRender();
         this.notifyScalarFieldUpdate({
@@ -1269,7 +1427,7 @@ export class CrystalViewer {
             progress: (message.stepIndex + 1) / message.totalSteps,
             resolutionFraction: field.resolutionFraction,
             gridOversampling: field.gridOversampling,
-            surfaceResolutionFraction: this.state.isosurfaceResolutionFraction,
+            surfaceResolutionFraction: resolutionFraction,
             surfaceResolution: surfaceStatistics.resolution ?? 0,
             dimensions: [...field.dimensions],
             reflectionCount: field.reflectionCount,
@@ -1311,6 +1469,7 @@ export class CrystalViewer {
             stitchTimeMs: surfaceStatistics.stitchTimeMs ?? 0,
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
+            loadedFieldIndex: index,
             ...display,
         });
     }
@@ -1387,7 +1546,10 @@ export class CrystalViewer {
 
     /** @returns {object} Renderer-independent density state exposed to UI listeners. */
     scalarFieldDisplayState() {
-        return this.isosurfaceLayer.displayState;
+        return {
+            ...this.isosurfaceLayer.displayState,
+            ...this.scalarFieldCollectionState(),
+        };
     }
 
     /** Terminates the active worker without resolving its already-handled promise. */
@@ -1416,7 +1578,161 @@ export class CrystalViewer {
         const resolve = this.scalarFieldPendingResolve;
         this.scalarFieldPendingResolve = null;
         resolve?.({ success: false, cancelled: true, error: reason });
-        this.notifyScalarFieldUpdate({ type: 'cancelled', loadId, error: reason });
+        this.notifyScalarFieldUpdate({
+            type: 'cancelled',
+            loadId,
+            error: reason,
+            ...this.scalarFieldDisplayState(),
+        });
+    }
+
+    /**
+     * Adds an already calculated scalar grid to the displayed collection.
+     * @param {ScalarFieldGrid} field - Renderer-independent scalar grid.
+     * @param {object} [options] - fieldId, fieldName, activate, and isosurface options.
+     * @returns {object} Successful field result or a validation error.
+     */
+    addScalarField(field, options = {}) {
+        if (!this.state.baseStructure) {
+            return { success: false, error: 'Load a crystal structure before adding a scalar field' };
+        }
+        if (!field?.cell || !Array.isArray(field.dimensions) || typeof field.sample !== 'function') {
+            return { success: false, error: 'addScalarField requires a sampled ScalarFieldGrid' };
+        }
+        try {
+            this.cancelScalarFieldLoad('Superseded by a direct scalar field');
+            const isosurfaceOptions = {
+                ...this.defaultIsosurfaceOptions,
+                ...optionSubset(options, defaultSettings.isosurface, ['level', 'sign']),
+            };
+            this.prepareScalarFieldLoad(
+                null,
+                options,
+                isosurfaceOptions,
+                field.quantityName ?? 'Scalar field',
+            );
+            this.applyProgressiveScalarField(field, {
+                loadId: null,
+                stepIndex: 0,
+                totalSteps: 1,
+                final: true,
+                surfaceResolutionFraction: 1,
+            });
+            const result = this.scalarFieldResult(field);
+            this.notifyScalarFieldUpdate({ type: 'complete', loadId: null, ...result });
+            return result;
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Loads an ordered collection of heterogeneous scalar-field sources.
+     * @param {object[]} sources - Difference-density, Cube, or direct-field definitions.
+     * @returns {Promise<object>} Aggregate result and individual source results.
+     */
+    async loadScalarFieldSources(sources) {
+        if (!Array.isArray(sources) || sources.length === 0) {
+            return { success: false, error: 'loadScalarFieldSources requires a non-empty array' };
+        }
+        const results = [];
+        for (let index = 0; index < sources.length; index++) {
+            const source = sources[index];
+            if (!source || typeof source !== 'object' || Array.isArray(source)) {
+                return { success: false, error: `Invalid scalar-field source at index ${index}`, results };
+            }
+            if (source.options !== undefined &&
+                (source.options === null || typeof source.options !== 'object' ||
+                    Array.isArray(source.options))) {
+                return {
+                    success: false,
+                    error: `Scalar-field source options at index ${index} must be an object`,
+                    results,
+                };
+            }
+            const options = {
+                ...(source.options ?? {}),
+                fieldId: source.fieldId ?? source.id ?? source.options?.fieldId,
+                fieldName: source.fieldName ?? source.name ?? source.options?.fieldName,
+                activate: source.activate ?? source.options?.activate ?? index === sources.length - 1,
+            };
+            let result;
+            if (source.type === 'difference-density') {
+                result = await this.loadDifferenceDensity(source.text, source.block ?? 0, options);
+            } else if (source.type === 'cube') {
+                result = await this.loadCube(source.text, options);
+            } else if (source.type === 'scalar-field') {
+                result = this.addScalarField(source.field, options);
+            } else {
+                return {
+                    success: false,
+                    error: `Unsupported scalar-field source type: ${source.type}`,
+                    results,
+                };
+            }
+            results.push(result);
+            if (!result.success) {
+                return { success: false, error: result.error, results };
+            }
+        }
+        return {
+            success: true,
+            results,
+            fields: this.getScalarFields(),
+            ...this.scalarFieldCollectionState(),
+        };
+    }
+
+    /**
+     * @param {number|string|null} selector - Collection index, field ID, or active-field default.
+     * @returns {number} Selected collection index.
+     */
+    resolveScalarFieldIndex(selector) {
+        if (selector === undefined || selector === null) {
+            return this.state.activeScalarFieldIndex;
+        }
+        if (Number.isInteger(selector)) {
+            return selector;
+        }
+        return this.state.scalarFields.findIndex(entry => entry.id === String(selector));
+    }
+
+    /**
+     * Displays one loaded field by collection index or fieldId.
+     * @param {number|string} selector - Collection index or stable field ID.
+     * @returns {object} Selection result.
+     */
+    setActiveScalarField(selector) {
+        const index = this.resolveScalarFieldIndex(selector);
+        if (index < 0 || index >= this.state.scalarFields.length) {
+            return { success: false, error: `Unknown scalar field: ${selector}` };
+        }
+        this.activateScalarFieldIndex(index, true);
+        this.requestRender();
+        const display = this.scalarFieldDisplayState();
+        this.notifyScalarFieldUpdate({ type: 'display', reason: 'active-field', ...display });
+        return { success: true, ...display };
+    }
+
+    /**
+     * Advances through every field and one hidden state.
+     * @returns {object} New active/visibility state.
+     */
+    cycleScalarField() {
+        const count = this.state.scalarFields.length;
+        if (count === 0) {
+            return { success: false, error: 'No scalar fields are loaded' };
+        }
+        const current = this.state.activeScalarFieldIndex;
+        const visible = Boolean(this.isosurfaceLayer.group) &&
+            this.isosurfaceLayer.group.visible !== false;
+        if (!visible || current < 0) {
+            return this.setActiveScalarField(0);
+        }
+        if (current < count - 1) {
+            return this.setActiveScalarField(current + 1);
+        }
+        return { ...this.setIsosurfaceVisibility(false), ...this.scalarFieldCollectionState() };
     }
 
     /**
@@ -1433,6 +1749,10 @@ export class CrystalViewer {
             ...this.options.isosurface,
             ...updates,
         };
+        const entry = this.state.scalarFields[this.state.activeScalarFieldIndex];
+        if (entry) {
+            entry.isosurfaceOptions = { ...this.options.isosurface };
+        }
         this.isosurfaceLayer.setOptions(this.options.isosurface);
         if (this.state.scalarField && this.state.displayStructure) {
             this.isosurfaceLayer.rebuild();
@@ -1453,22 +1773,79 @@ export class CrystalViewer {
     setIsosurfaceVisibility(visible) {
         const usedVisibility = this.isosurfaceLayer.setVisible(visible);
         this.options.isosurface.visible = usedVisibility;
+        const entry = this.state.scalarFields[this.state.activeScalarFieldIndex];
+        if (entry) {
+            entry.isosurfaceOptions.visible = usedVisibility;
+        }
         this.requestRender();
         this.notifyScalarFieldUpdate({
             type: 'visibility',
             visible: usedVisibility,
+            ...this.scalarFieldCollectionState(),
         });
         return { success: true, visible: usedVisibility };
     }
 
-    /** Removes the loaded scalar field and its isosurfaces. */
-    clearScalarField() {
+    /**
+     * Removes one field by index/fieldId, defaulting to the active field.
+     * @param {number|string} [selector] - Collection index or stable field ID.
+     * @returns {object} Removal result.
+     */
+    clearScalarField(selector) {
+        this.cancelScalarFieldLoad();
+        const index = this.resolveScalarFieldIndex(selector);
+        if (index < 0 || index >= this.state.scalarFields.length) {
+            return { success: false, error: `Unknown scalar field: ${selector}` };
+        }
+        const [removed] = this.state.scalarFields.splice(index, 1);
+        if (this.scalarFieldLoadTarget?.fieldId === removed.id) {
+            this.scalarFieldLoadTarget = null;
+        }
+        if (this.state.scalarFields.length === 0) {
+            this.isosurfaceLayer.clear();
+            this.state.scalarField = null;
+            this.state.activeScalarFieldIndex = -1;
+            this.state.isosurfaceResolutionFraction = 1;
+            this.notifyScalarFieldUpdate({ type: 'cleared' });
+        } else if (index === this.state.activeScalarFieldIndex) {
+            const nextIndex = Math.min(index, this.state.scalarFields.length - 1);
+            this.activateScalarFieldIndex(nextIndex, true);
+            this.notifyScalarFieldUpdate({
+                type: 'display',
+                reason: 'field-removed',
+                removedFieldId: removed.id,
+                ...this.scalarFieldDisplayState(),
+            });
+        } else {
+            if (index < this.state.activeScalarFieldIndex) {
+                this.state.activeScalarFieldIndex--;
+            }
+            this.notifyScalarFieldUpdate({
+                type: 'display',
+                reason: 'field-removed',
+                removedFieldId: removed.id,
+                ...this.scalarFieldDisplayState(),
+            });
+        }
+        this.requestRender();
+        return { success: true, removedFieldId: removed.id, ...this.scalarFieldCollectionState() };
+    }
+
+    /**
+     * Removes every loaded scalar field.
+     * @returns {object} Empty collection state.
+     */
+    clearScalarFields() {
         this.cancelScalarFieldLoad();
         this.isosurfaceLayer.clear();
         this.state.scalarField = null;
+        this.state.scalarFields = [];
+        this.state.activeScalarFieldIndex = -1;
         this.state.isosurfaceResolutionFraction = 1;
+        this.scalarFieldLoadTarget = null;
         this.notifyScalarFieldUpdate({ type: 'cleared' });
         this.requestRender();
+        return { success: true, fieldCount: 0, activeFieldIndex: -1 };
     }
 
     /**

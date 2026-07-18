@@ -196,15 +196,27 @@ describe('CrystalViewer structure centring', () => {
 describe('CrystalViewer progressive difference-density events', () => {
     test('starts a Cube load with source-specific presentation metadata', async () => {
         const viewer = {
-            state: { baseStructure: {}, scalarField: null },
+            state: {
+                baseStructure: {},
+                scalarField: null,
+                scalarFields: [],
+                activeScalarFieldIndex: -1,
+            },
             options: {
                 differenceDensity: {},
                 scalarField: { useWorker: false },
                 isosurface: { visible: true },
             },
             scalarFieldLoadSequence: 0,
+            scalarFieldIdSequence: 0,
+            defaultIsosurfaceOptions: { visible: true, progressiveSteps: [1] },
             cancelScalarFieldLoad: vi.fn(),
-            isosurfaceLayer: { clear: vi.fn(), setOptions: vi.fn() },
+            prepareScalarFieldLoad(...args) {
+                return CrystalViewer.prototype.prepareScalarFieldLoad.call(this, ...args);
+            },
+            scalarFieldCollectionState() {
+                return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
+            },
             notifyScalarFieldUpdate: vi.fn(),
             loadCubeOnMainThread: vi.fn().mockResolvedValue({ success: true }),
         };
@@ -216,7 +228,7 @@ describe('CrystalViewer progressive difference-density events', () => {
         );
 
         expect(result).toEqual({ success: true });
-        expect(viewer.options.isosurface.wireframe).toBe(false);
+        expect(viewer.scalarFieldLoadTarget.isosurfaceOptions.wireframe).toBe(false);
         expect(viewer.loadCubeOnMainThread).toHaveBeenCalledWith(
             'cube text',
             { property: 'density' },
@@ -235,7 +247,7 @@ describe('CrystalViewer progressive difference-density events', () => {
 
     test('does not start density work during an ordinary structure load', async () => {
         const viewer = {
-            state: { scalarField: null },
+            state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
             options: {
                 fixCifErrors: false,
                 differenceDensity: { autoLoad: false },
@@ -261,7 +273,7 @@ describe('CrystalViewer progressive difference-density events', () => {
     test('installs the structure before scheduling automatic density work', async () => {
         const order = [];
         const viewer = {
-            state: { scalarField: null },
+            state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
             options: {
                 fixCifErrors: false,
                 differenceDensity: { autoLoad: true },
@@ -308,6 +320,7 @@ describe('CrystalViewer progressive difference-density events', () => {
     test('normalizes progressive steps and always includes the final surface resolution', () => {
         const viewer = {
             options: { isosurface: { progressiveSteps: [1, 0.5, -1, 0.5, 2] } },
+            defaultIsosurfaceOptions: { progressiveSteps: [1, 0.5, -1, 0.5, 2] },
         };
         expect(CrystalViewer.prototype.normalizedIsosurfaceSteps.call(viewer)).toEqual([0.5, 1]);
     });
@@ -350,10 +363,23 @@ describe('CrystalViewer progressive difference-density events', () => {
                 baseStructure: { cell: {} },
                 displayStructure: {},
                 scalarField: null,
+                scalarFields: [],
+                activeScalarFieldIndex: -1,
+                isosurfaceResolutionFraction: 1,
             },
             options: { isosurface: { resolution: 64 } },
+            defaultIsosurfaceOptions: { resolution: 64, visible: true },
+            scalarFieldIdSequence: 0,
+            scalarFieldLoadTarget: {
+                fieldId: 'difference',
+                fieldName: 'Difference density',
+                activate: true,
+                isosurfaceOptions: { resolution: 64, visible: true },
+            },
             validateScalarFieldCell: vi.fn(),
             isosurfaceLayer: {
+                group: { visible: true },
+                setOptions: vi.fn(),
                 setField: vi.fn(),
                 setStructure: vi.fn(),
                 rebuild() {
@@ -375,6 +401,15 @@ describe('CrystalViewer progressive difference-density events', () => {
             scalarFieldDisplayState() {
                 return CrystalViewer.prototype.scalarFieldDisplayState.call(this);
             },
+            scalarFieldCollectionState() {
+                return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
+            },
+            activateScalarFieldIndex(...args) {
+                return CrystalViewer.prototype.activateScalarFieldIndex.call(this, ...args);
+            },
+            storeProgressiveScalarField(...args) {
+                return CrystalViewer.prototype.storeProgressiveScalarField.call(this, ...args);
+            },
             requestRender: vi.fn(),
             notifyScalarFieldUpdate: vi.fn(),
         };
@@ -393,6 +428,7 @@ describe('CrystalViewer progressive difference-density events', () => {
         });
 
         expect(viewer.state.scalarField).toBe(field);
+        expect(viewer.state.scalarFields).toHaveLength(1);
         expect(viewer.notifyScalarFieldUpdate.mock.calls.map(call => call[0]))
             .toMatchObject([
                 {
@@ -414,12 +450,32 @@ describe('CrystalViewer progressive difference-density events', () => {
                     sigmaLevel: 3,
                 },
             ]);
+
+        viewer.scalarFieldLoadTarget = {
+            fieldId: 'orbital',
+            fieldName: 'Orbital',
+            activate: true,
+            isosurfaceOptions: { resolution: 32, visible: true, level: 0.03 },
+        };
+        CrystalViewer.prototype.applyProgressiveScalarField.call(viewer, {
+            ...field,
+            fieldKind: 'orbital',
+            displayLabel: 'ψ',
+            quantityName: 'orbital',
+        }, {
+            stepIndex: 0,
+            totalSteps: 1,
+            final: true,
+            surfaceResolutionFraction: 1,
+        });
+        expect(viewer.state.scalarFields).toHaveLength(2);
+        expect(viewer.state.activeScalarFieldIndex).toBe(1);
     });
 
     test('toggles density visibility without rebuilding its surfaces', () => {
         const group = { visible: true };
         const viewer = {
-            state: { scalarField: {} },
+            state: { scalarField: {}, scalarFields: [], activeScalarFieldIndex: -1 },
             options: { isosurface: { visible: true } },
             isosurfaceLayer: {
                 setVisible(visible) {
@@ -429,6 +485,9 @@ describe('CrystalViewer progressive difference-density events', () => {
             },
             requestRender: vi.fn(),
             notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldCollectionState() {
+                return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
+            },
             setIsosurfaceVisibility(visible) {
                 return CrystalViewer.prototype.setIsosurfaceVisibility.call(this, visible);
             },
@@ -443,6 +502,142 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(group.visible).toBe(false);
         expect(viewer.options.isosurface.visible).toBe(false);
         expect(viewer.notifyScalarFieldUpdate)
-            .toHaveBeenCalledWith({ type: 'visibility', visible: false });
+            .toHaveBeenCalledWith(expect.objectContaining({ type: 'visibility', visible: false }));
+    });
+
+    test('cycles through multiple fields and then through a hidden state', () => {
+        const viewer = {
+            state: {
+                scalarFields: [
+                    {
+                        id: 'difference',
+                        name: 'Difference density',
+                        field: { displayLabel: 'Δρ/eÅ⁻³', quantityName: 'difference density' },
+                        resolutionFraction: 1,
+                        isosurfaceOptions: { level: 0.1, visible: true },
+                    },
+                    {
+                        id: 'orbital',
+                        name: 'Orbital',
+                        field: { displayLabel: 'ψ', quantityName: 'orbital' },
+                        resolutionFraction: 1,
+                        isosurfaceOptions: { level: 0.03, visible: true },
+                    },
+                ],
+                activeScalarFieldIndex: -1,
+                scalarField: null,
+                displayStructure: {},
+                isosurfaceResolutionFraction: 1,
+            },
+            options: { isosurface: {} },
+            isosurfaceLayer: {
+                group: null,
+                options: {},
+                setOptions(options) {
+                    this.options = options;
+                },
+                setField(field) {
+                    this.field = field;
+                },
+                setStructure: vi.fn(),
+                rebuild() {
+                    this.group = { visible: this.options.visible !== false };
+                    this.displayState = {
+                        available: true,
+                        visible: this.group.visible,
+                        level: this.options.level,
+                        displayLabel: this.field.displayLabel,
+                        quantityName: this.field.quantityName,
+                    };
+                    return {};
+                },
+                setVisible(visible) {
+                    this.group.visible = visible;
+                    return visible;
+                },
+            },
+            requestRender: vi.fn(),
+            notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldCollectionState() {
+                return CrystalViewer.prototype.scalarFieldCollectionState.call(this);
+            },
+            scalarFieldDisplayState() {
+                return CrystalViewer.prototype.scalarFieldDisplayState.call(this);
+            },
+            resolveScalarFieldIndex(selector) {
+                return CrystalViewer.prototype.resolveScalarFieldIndex.call(this, selector);
+            },
+            activateScalarFieldIndex(index, visible) {
+                return CrystalViewer.prototype.activateScalarFieldIndex.call(this, index, visible);
+            },
+            setActiveScalarField(selector) {
+                return CrystalViewer.prototype.setActiveScalarField.call(this, selector);
+            },
+            setIsosurfaceVisibility(visible) {
+                return CrystalViewer.prototype.setIsosurfaceVisibility.call(this, visible);
+            },
+        };
+
+        CrystalViewer.prototype.activateScalarFieldIndex.call(viewer, 0);
+        expect(CrystalViewer.prototype.cycleScalarField.call(viewer)).toMatchObject({
+            activeFieldId: 'orbital',
+            visible: true,
+        });
+        expect(viewer.options.isosurface.level).toBe(0.03);
+
+        expect(CrystalViewer.prototype.cycleScalarField.call(viewer)).toMatchObject({
+            activeFieldId: 'orbital',
+            visible: false,
+        });
+        expect(CrystalViewer.prototype.cycleScalarField.call(viewer)).toMatchObject({
+            activeFieldId: 'difference',
+            visible: true,
+        });
+        expect(viewer.options.isosurface.level).toBe(0.1);
+    });
+
+    test('loads heterogeneous source definitions in their declared order', async () => {
+        const viewer = {
+            loadDifferenceDensity: vi.fn().mockResolvedValue({ success: true }),
+            loadCube: vi.fn().mockResolvedValue({ success: true }),
+            addScalarField: vi.fn().mockReturnValue({ success: true }),
+            getScalarFields: vi.fn().mockReturnValue([{ id: 'difference' }, { id: 'orbital' }]),
+            scalarFieldCollectionState: vi.fn().mockReturnValue({
+                fieldCount: 2,
+                activeFieldIndex: 1,
+            }),
+        };
+
+        const result = await CrystalViewer.prototype.loadScalarFieldSources.call(viewer, [
+            {
+                type: 'difference-density',
+                id: 'difference',
+                name: 'Fo-Fc',
+                text: 'data_fcf',
+            },
+            {
+                type: 'cube',
+                id: 'orbital',
+                name: 'HOMO',
+                text: 'cube',
+                options: { property: 'orbital' },
+            },
+        ]);
+
+        expect(result).toMatchObject({ success: true, fieldCount: 2, activeFieldIndex: 1 });
+        expect(viewer.loadDifferenceDensity).toHaveBeenCalledWith(
+            'data_fcf',
+            0,
+            expect.objectContaining({ fieldId: 'difference', fieldName: 'Fo-Fc', activate: false }),
+        );
+        expect(viewer.loadCube).toHaveBeenCalledWith(
+            'cube',
+            expect.objectContaining({
+                property: 'orbital',
+                fieldId: 'orbital',
+                fieldName: 'HOMO',
+                activate: true,
+            }),
+        );
     });
 });

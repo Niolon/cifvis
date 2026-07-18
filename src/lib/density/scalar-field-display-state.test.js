@@ -21,6 +21,11 @@ describe('scalar-field display state', () => {
             displayLabel: 'Δρ/eÅ⁻³',
             quantityName: 'difference density',
             signed: true,
+            fieldCount: 0,
+            activeFieldIndex: -1,
+            activeFieldId: null,
+            activeFieldName: null,
+            pendingFieldName: null,
             level: 0.125,
             sigmaLevel: 3,
             visible: true,
@@ -37,6 +42,11 @@ describe('scalar-field display state', () => {
             displayLabel: 'Δρ/eÅ⁻³',
             quantityName: 'difference density',
             signed: true,
+            fieldCount: 0,
+            activeFieldIndex: -1,
+            activeFieldId: null,
+            activeFieldName: null,
+            pendingFieldName: null,
         });
         expect(state).not.toHaveProperty('map');
 
@@ -90,5 +100,25 @@ describe('scalar-field display state', () => {
         };
         expect(reduceScalarFieldDisplayState(loaded, { type }))
             .toEqual(createScalarFieldDisplayState());
+    });
+
+    test('a failed additional source preserves the already loaded field', () => {
+        const loaded = {
+            ...createScalarFieldDisplayState(),
+            loading: true,
+            available: true,
+            level: 0.2,
+            fieldCount: 1,
+            activeFieldIndex: 0,
+            activeFieldId: 'difference',
+        };
+
+        expect(reduceScalarFieldDisplayState(loaded, { type: 'error' })).toMatchObject({
+            loading: false,
+            available: true,
+            level: 0.2,
+            fieldCount: 1,
+            activeFieldId: 'difference',
+        });
     });
 });

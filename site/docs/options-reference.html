@@ -696,6 +696,22 @@
                             <td>Maximum marching-cubes polygon allocation per generated field. <span class="default-value">Default: 100000</span></td>
                         </tr>
                     </table>
+                    <h3>Common per-source collection options</h3>
+                    <table class="option-table">
+                        <tr><th>Option</th><th>Type</th><th>Description</th></tr>
+                        <tr class="option-row" data-keywords="scalar field id replace update collection">
+                            <td><span class="option-code">fieldId</span></td><td>String</td>
+                            <td>Stable collection identifier. Reusing it updates the existing entry instead of appending a duplicate. <span class="default-value">Default: generated</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="scalar field name label collection">
+                            <td><span class="option-code">fieldName</span></td><td>String</td>
+                            <td>Human-readable source name exposed by collection metadata and events.</td>
+                        </tr>
+                        <tr class="option-row" data-keywords="scalar field activate background collection">
+                            <td><span class="option-code">activate</span></td><td>Boolean</td>
+                            <td>Whether to display the entry as it loads. <span class="default-value">Default: true for individual loads; last entry for loadScalarFieldSources</span></td>
+                        </tr>
+                    </table>
                     <h3><code>loadCube</code> options</h3>
                     <table class="option-table">
                         <tr><th>Option</th><th>Type</th><th>Description</th></tr>
