@@ -239,6 +239,16 @@
                             <td>Color</td>
                             <td>Solid bond and open-bond outline colour in the 2D rendering style. <span class="default-value">Default: "#000000"</span></td>
                         </tr>
+                        <tr class="option-row" data-keywords="2d plot bond white depth outline halo crossing overlap">
+                            <td><span class="option-code">plot2DBondOutlineColor</span><br><span class="option-code">plot2DBondOutlineScale</span></td>
+                            <td>Color / Number</td>
+                            <td>Depth-writing silhouette around 2D bonds, used to separate crossing bonds and ADPs. It is inset at connected atoms to keep their silhouettes clean. Set the scale to <code>1</code> to disable it. <span class="default-value">Defaults: "#ffffff", 1.18</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="2d plot atom element color luminance brightness ceiling readable">
+                            <td><span class="option-code">plot2DColorLuminanceCeiling</span></td>
+                            <td>Number</td>
+                            <td>Maximum relative luminance for element-coloured outlines and hatching in <code>cutout-2d</code>. The entire palette is scaled together so hue and relative brightness are preserved. <span class="default-value">Default: 0.25</span></td>
+                        </tr>
                         <tr class="option-row" data-keywords="2d plot disorder open bond white inner scale part 2">
                             <td><span class="option-code">plot2DOpenBondInnerScale</span></td>
                             <td>Number</td>
@@ -318,6 +328,11 @@
                             <td><span class="option-code">atomLabels.color</span><br><span class="option-code">atomLabels.haloColor</span><br><span class="option-code">atomLabels.haloWidth</span></td>
                             <td>Color / Color / Number</td>
                             <td>Text and contrast-halo appearance. <span class="default-value">Defaults: #111111, #ffffff, 2</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="atom labels atom element color mode luminance brightness readable">
+                            <td><span class="option-code">atomLabels.colorMode</span><br><span class="option-code">atomLabels.atomColorLuminanceCeiling</span></td>
+                            <td>String / Number</td>
+                            <td><code>uniform</code> uses <code>atomLabels.color</code>; <code>atom</code> uses each atom's element colour. The entire element palette is scaled so its brightest colour reaches the configured relative-luminance ceiling without clustering colours there. <span class="default-value">Defaults: "uniform", 0.25</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="atom labels padding distance collision">
                             <td><span class="option-code">atomLabels.atomPadding</span><br><span class="option-code">atomLabels.bondPadding</span><br><span class="option-code">atomLabels.labelPadding</span><br><span class="option-code">atomLabels.viewportPadding</span></td>
@@ -816,6 +831,11 @@
                             <td><span class="option-code">bondColor</span></td>
                             <td>String</td>
                             <td>Default color for bonds. <span class="default-value">Default: "#666666"</span></td>
+                        </tr>
+                        <tr class="option-row" data-keywords="bond color mode uniform split atom element two color">
+                            <td><span class="option-code">bondColorMode</span></td>
+                            <td>String</td>
+                            <td><code>uniform</code> uses <code>bondColor</code>; <code>split</code> colors each 3D bond half like its connected atom. The split mode remains one instanced draw call. <span class="default-value">Default: "uniform"</span></td>
                         </tr>
                         <tr class="option-row" data-keywords="bond color roughness">
                             <td><span class="option-code">bondColorRoughness</span></td>
