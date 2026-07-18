@@ -71,6 +71,15 @@ density modules, `ORTEP3JsStructure`, and `formatValueEsd`) is deliberately DOM-
 construction — only `CrystalViewer` (canvas/WebGL) and `CifViewWidget` (custom element)
 need a browser.
 
+## The playground
+
+The playground under `site/` is deliberately kept readable as reference code for
+driving `CrystalViewer` directly. `site/src/main.js` is a thin, linear boot file (viewer
+lifecycle, file loading, toolbar wiring); `playground-cif-routing.js` classifies
+uploaded CIF/FCF/Cube files; `playground-settings.js` is the pure logic behind the
+settings overlay (it consumes the same generated options metadata as this
+documentation's reference tables); `settings-overlay.js` is its DOM layer.
+
 ## Working on the documentation
 
 The docs you are reading are a VitePress site under `docs/`:

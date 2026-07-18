@@ -10,7 +10,8 @@ import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
 } from './playground-cif-routing.js';
-import { getPlaygroundViewerOptions } from './playground-options.js';
+import { clearStoredOptions, loadStoredOptions } from './playground-settings.js';
+import { initializeSettingsOverlay } from './settings-overlay.js';
 
 /**
  * Updates the status message displayed to the user
@@ -36,13 +37,36 @@ function clearStatus() {
     statusElement.className = '';
 }
 
-// Initialize the viewer
-const viewer = new CrystalViewer(
-    document.body,
-    getPlaygroundViewerOptions(window.location.search),
-);
-viewer.animate();
+// --- Viewer lifecycle -------------------------------------------------------
+// The viewer options come from the settings overlay (persisted in
+// localStorage). Options without a live setter require disposing and
+// recreating the viewer, so construction lives in createViewer() and the
+// event handlers are named functions that can be re-registered.
+
+let viewer = null;
 let scalarFieldDisplay = createScalarFieldDisplayState();
+
+/**
+ * Creates the playground viewer and wires its event handlers.
+ * Corrupt stored options are cleared and construction retried with defaults.
+ * @param {object} optionsPartial - Non-default viewer options
+ * @returns {CrystalViewer} Ready viewer instance
+ */
+function createViewer(optionsPartial) {
+    let created;
+    try {
+        created = new CrystalViewer(document.body, optionsPartial);
+    } catch (error) {
+        console.error('Stored viewer options rejected, falling back to defaults:', error);
+        clearStoredOptions();
+        updateStatus('Stored settings were invalid and have been reset.', 'error');
+        created = new CrystalViewer(document.body, {});
+    }
+    created.animate();
+    created.onScalarFieldUpdate(handleScalarFieldUpdate);
+    created.selections.onChange(handleSelectionsChange);
+    return created;
+}
 
 /** @returns {{level:number, full:string}|null} Formatted density contour description. */
 function currentScalarFieldLevelText() {
@@ -105,11 +129,20 @@ function updateScalarFieldLevelDisplay() {
             : '';
 }
 
-viewer.onScalarFieldUpdate(update => {
+/**
+ * Keeps the density badge in sync with viewer scalar-field events.
+ * @param {object} update - Scalar-field event
+ */
+function handleScalarFieldUpdate(update) {
     scalarFieldDisplay = reduceScalarFieldDisplayState(scalarFieldDisplay, update);
     updateScalarFieldLevelDisplay();
-});
-viewer.selections.onChange(selections => {
+}
+
+/**
+ * Renders the top-right selection info boxes for the current selections.
+ * @param {Array<object>} selections - Current viewer selections
+ */
+function handleSelectionsChange(selections) {
     const container = document.getElementById('selection-container');
     // Remove all existing selections
     while (container.firstChild) {
@@ -162,7 +195,48 @@ viewer.selections.onChange(selections => {
 
         container.appendChild(box);
     });
-});
+}
+
+viewer = createViewer(loadStoredOptions());
+
+/**
+ * Disposes the viewer and rebuilds it with new options, restoring the
+ * current structure, block, and display modes. Used by the settings overlay
+ * for options that have no live setter.
+ * @param {object} optionsPartial - Non-default viewer options
+ * @returns {Promise<void>}
+ */
+async function recreateViewer(optionsPartial) {
+    const previousModes = {
+        hydrogen: viewer.modifiers.hydrogen.mode,
+        disorder: viewer.modifiers.disorder.mode,
+        symmetry: viewer.modifiers.symmetry.mode,
+    };
+    const block = Number(document.getElementById('cif-block-select').value || 0);
+    viewer.dispose();
+    scalarFieldDisplay = createScalarFieldDisplayState();
+    updateScalarFieldLevelDisplay();
+    viewer = createViewer(optionsPartial);
+    if (currentPlaygroundCifText !== null) {
+        await loadPlaygroundCif(currentPlaygroundCifText, block);
+    }
+    // Restore modes the new options did not set themselves; unsupported
+    // modes are skipped by the viewer.
+    const modes = {};
+    if (optionsPartial.hydrogenMode === undefined) {
+        modes.hydrogen = previousModes.hydrogen;
+    }
+    if (optionsPartial.disorderMode === undefined) {
+        modes.disorder = previousModes.disorder;
+    }
+    if (optionsPartial.symmetryMode === undefined) {
+        modes.symmetry = previousModes.symmetry;
+    }
+    if (Object.keys(modes).length > 0) {
+        await viewer.setModifierModes(modes);
+    }
+    adaptButtons();
+}
 
 let playgroundLoadSequence = 0;
 let currentPlaygroundCifText = null;
@@ -453,6 +527,12 @@ function initializeUI() {
     initializeHydrogenButton();
     initializeDisorderButton();
     initializeSymmetryButton();
+    initializeSettingsOverlay({
+        getViewer: () => viewer,
+        recreateViewer,
+        adaptButtons,
+        updateStatus,
+    });
 }
 
 /**
@@ -492,7 +572,10 @@ async function loadInitialStructure() {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        const result = await viewer.loadCIF(await response.text());
+        const cifText = await response.text();
+        // Cache the text so a settings-driven viewer recreation can restore it.
+        currentPlaygroundCifText = cifText;
+        const result = await viewer.loadCIF(cifText);
         if (!result.success) {
             throw new Error(result.error);
         }

@@ -133,8 +133,11 @@ const viewer = new CrystalViewer(container, {
 viewer.updateContourLineOptions({ plane: { atoms: ['N1', 'C2', 'C3'] } });
 ```
 
-The playground query flag accepts `?contours=best-fit`, `?contours=atoms:C1,C2,O1`,
-`?contours=frac:0,0,0.5:0,0,1`, or the equivalent `cart:` form.
+In the [playground](https://niolon.github.io/cifvis/), the same plane definitions can be
+set interactively: open the settings overlay (cogwheel), search for "contour", enable
+**Planar contour lines**, and edit **Contour plane (JSON)** — e.g.
+`{"mode": "best-fit"}`, `{"atoms": ["C1","C2","O1"]}`, or an explicit
+`coordinateSystem`/`origin`/`normal` object.
 
 ## Custom quantum-crystallographic coefficients
 

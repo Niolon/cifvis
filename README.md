@@ -164,9 +164,8 @@ const viewer = new CrystalViewer(container, {
 
 `plane: { mode: 'best-fit' }` uses all displayed atoms. Explicit planes accept
 `{ coordinateSystem: 'fractional'|'cartesian', origin: [x,y,z], normal:
-[x,y,z] }`. The playground exposes the same forms through
-`?contours=best-fit`, `?contours=atoms:C1,C2,O1`,
-`?contours=frac:0,0,0.5:0,0,1`, or the corresponding `cart:` form.
+[x,y,z] }`. The playground exposes the same forms through its settings overlay
+(cogwheel button): enable contour lines and edit the contour-plane JSON there.
 Planar plots use tricubic field sampling and four line intervals per ordinary
 surface level by default; set `interpolation: 'linear'`, `levelSubdivisions: 1`,
 or an explicit `contourStep`/`levels` array when exact legacy spacing is wanted.

@@ -40,9 +40,11 @@ the [Gallery](../gallery/index.md) shows the kinds of applications you can build
 ## Try it
 
 The [interactive playground](https://niolon.github.io/cifvis/) lets you load your own CIF
-file (plus FCF or Gaussian Cube files) and explore it directly. A subset of viewer options
-can be set through URL query parameters, e.g. `?contours=best-fit` for a planar contour
-section.
+file (plus FCF or Gaussian Cube files) and explore it directly. The cogwheel button opens
+a searchable settings overlay covering the full
+[options schema](../reference/index.md); your choices are stored in the browser and can
+be copied as a JSON object ready for `<cifview-widget options='…'>` or the
+`CrystalViewer` constructor.
 
 ## License and citation
 

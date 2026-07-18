@@ -26,14 +26,14 @@ import { assertCellsMatch } from '../density/cell-matching.js';
 import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
 
-const VALID_ATOM_LABEL_PLACEMENT_MODES = [
-    'auto-omit',
-    'quality-omit',
-    'performance-omit',
-    'maximum-coverage',
-];
-const VALID_ATOM_LABEL_CALLOUT_PLACEMENTS = ['structure', 'viewport'];
-const VALID_ATOM_LABEL_COLOR_MODES = ['uniform', 'atom'];
+import {
+    VALID_ATOM_LABEL_CALLOUT_PLACEMENTS,
+    VALID_ATOM_LABEL_COLOR_MODES,
+    VALID_ATOM_LABEL_PLACEMENT_MODES,
+    VALID_BOND_COLOR_MODES,
+    VALID_RENDER_MODES,
+    VALID_RENDER_STYLES,
+} from './option-enums.js';
 
 /**
  * @typedef {object} AtomLabelPlacement
@@ -539,24 +539,21 @@ export class CrystalViewer {
      * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
-        const validRenderModes = ['constant', 'onDemand'];
-        if (options.renderMode && !validRenderModes.includes(options.renderMode)) {
+        if (options.renderMode && !VALID_RENDER_MODES.includes(options.renderMode)) {
             throw new Error(
-                `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
+                `Invalid render mode: "${options.renderMode}". Must be one of: ${VALID_RENDER_MODES.join(', ')}`,
             );
         }
-        const validRenderStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
-        if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
+        if (options.renderStyle && !VALID_RENDER_STYLES.includes(options.renderStyle)) {
             throw new Error(
                 `Invalid render style: "${options.renderStyle}". ` +
-                `Must be one of: ${validRenderStyles.join(', ')}`,
+                `Must be one of: ${VALID_RENDER_STYLES.join(', ')}`,
             );
         }
-        const validBondColorModes = ['uniform', 'split'];
-        if (options.bondColorMode !== undefined && !validBondColorModes.includes(options.bondColorMode)) {
+        if (options.bondColorMode !== undefined && !VALID_BOND_COLOR_MODES.includes(options.bondColorMode)) {
             throw new Error(
                 `Invalid bond color mode: "${options.bondColorMode}". ` +
-                `Must be one of: ${validBondColorModes.join(', ')}`,
+                `Must be one of: ${VALID_BOND_COLOR_MODES.join(', ')}`,
             );
         }
         if (options.plot2DColorLuminanceCeiling !== undefined &&
