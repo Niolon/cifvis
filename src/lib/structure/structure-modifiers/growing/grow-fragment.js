@@ -569,10 +569,13 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
  * @param {Array<object>} newAtoms - The generated atoms.
  * @param {string} identSymmKey - The identity symmetry operation key.
+ * @param {CrystalStructure} [structure] - Source structure whose external bond definitions are completed across
+ * the generated symmetry instances.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
 export function generateSymmetryBonds(
     atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmKey,
+    structure = null,
 ) {
     // Initialize with the original intra-group bonds
     const newBonds = [];
@@ -649,6 +652,63 @@ export function generateSymmetryBonds(
             ));
         }
     });
+
+    // A CIF lists a symmetry-crossing bond from an asymmetric-unit atom to one
+    // symmetry image. Once both fragment instances have been generated, the
+    // complete symmetry orbit of that bond must be present. A connection group
+    // alone cannot provide this: for example, an inversion-completed molecule
+    // may contain both C1-C5' and its distinct mate C1'-C5, even though both
+    // connect the same two fragment instances and therefore share one graph
+    // edge. Generate every external bond definition from each included origin
+    // instance, retaining only bonds whose two resolved atoms are actually in
+    // the completed fragment.
+    if (structure) {
+        const groupByAtomLabel = new Map();
+        const symmetriesByGroup = atomGroups.map(() => new Set([identSymmKey]));
+        const availableAtomIds = new Set(newAtoms.map(atom => atom.uniqueId).filter(Boolean));
+
+        atomGroups.forEach((group, groupIndex) => {
+            group.atoms.forEach(atom => {
+                groupByAtomLabel.set(atom.label, groupIndex);
+                availableAtomIds.add(atom.uniqueId || createAtomId(atom.label, identSymmKey));
+            });
+        });
+        requiredSymmetryInstances.forEach(instance => {
+            const [groupIndexString, symKey] = instance.split('@.@');
+            symmetriesByGroup[Number(groupIndexString)]?.add(symKey);
+        });
+
+        structure.bonds
+            .filter(bond => bond.atom2SiteSymmetry !== '.')
+            .forEach(bond => {
+                const originGroupIndex = groupByAtomLabel.get(bond.atom1Label);
+                if (originGroupIndex === undefined) {
+                    return;
+                }
+
+                const relativeTargetSymmetry = AppliedSymmetry.fromString(bond.atom2SiteSymmetry);
+                for (const originSymKey of symmetriesByGroup[originGroupIndex]) {
+                    const originSymmetry = AppliedSymmetry.fromString(originSymKey);
+                    const targetSymmetry = relativeTargetSymmetry.combine(originSymmetry, structure.symmetry);
+                    const originAtomRaw = createAtomId(bond.atom1Label, originSymKey);
+                    const targetAtomRaw = createAtomId(bond.atom2Label, targetSymmetry.key);
+                    const originAtom = specialPositionAtoms.get(originAtomRaw) || originAtomRaw;
+                    const targetAtom = specialPositionAtoms.get(targetAtomRaw) || targetAtomRaw;
+
+                    if (!availableAtomIds.has(originAtom) || !availableAtomIds.has(targetAtom)) {
+                        continue;
+                    }
+
+                    const bondString = createBondIdentifier(originAtom, targetAtom);
+                    if (!existingBonds.has(bondString)) {
+                        existingBonds.add(bondString);
+                        newBonds.push(new Bond(
+                            originAtom, targetAtom, bond.bondLength, bond.bondLengthSU, '.',
+                        ));
+                    }
+                }
+            });
+    }
 
     // Create set of atom labels for lookup
     const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
@@ -896,7 +956,7 @@ export function growFragment(structure) {
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(
         atomGroups, requiredSymmetryInstances, interGroupBonds,
-        specialPositionAtoms, newAtoms, identSymmKey,
+        specialPositionAtoms, newAtoms, identSymmKey, graphStructure,
     );
 
     // Step 5: Generate hydrogen bonds

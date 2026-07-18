@@ -1409,6 +1409,34 @@ describe('Structure dependent methods', () => {
             expect(bond.atom2SiteSymmetry).toBe('.');
         });
 
+        test('should complete distinct symmetry-equivalent bonds between the same fragment instances', () => {
+            // Regression for naphthalene on an inversion centre. The CIF contains
+            // C1-C5' and C3-C3'; completing the fragment must also produce the
+            // distinct symmetry mate C1'-C5. The mate of C3-C3' is the same bond.
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C', 0.1, 0.1, 0.1)
+                .addAtom('C3', 'C', 0.2, 0.2, 0.2)
+                .addAtom('C5', 'C', 0.3, 0.3, 0.3)
+                .addBond('C1', 'C3', '.')
+                .addBond('C3', 'C5', '.')
+                .addBond('C1', 'C5', '3_555', 1.42, 0.01)
+                .addBond('C3', 'C3', '3_555', 1.43, 0.01);
+            structure = structureHelper.build();
+
+            const { grownStructure } = growFragment(structure);
+
+            expect(grownStructure.atoms.map(atom => atom.uniqueId)).toEqual(expect.arrayContaining([
+                'C1|1_555', 'C3|1_555', 'C5|1_555',
+                'C1|3_555', 'C3|3_555', 'C5|3_555',
+            ]));
+            expect(grownStructure.bonds).toEqual(expect.arrayContaining([
+                expect.objectContaining({ atom1Id: 'C1|1_555', atom2Id: 'C5|3_555' }),
+                expect.objectContaining({ atom1Id: 'C1|3_555', atom2Id: 'C5|1_555' }),
+                expect.objectContaining({ atom1Id: 'C3|1_555', atom2Id: 'C3|3_555' }),
+            ]));
+            expect(grownStructure.bonds).toHaveLength(7);
+        });
+
         test('should handle chain growth A-B@S1, B@S1-C@S_combined', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('A1', 'C', 0.1, 0.1, 0.1) // Group 0
