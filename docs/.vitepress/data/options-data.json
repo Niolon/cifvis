@@ -157,9 +157,9 @@
       "default": "\"#ffffff\""
     },
     {
-      "path": "plot2DBondOutlineScale",
+      "path": "plot2DBondOutlineWidth",
       "type": "Number",
-      "default": "1.18"
+      "default": "2"
     },
     {
       "path": "plot2DColorLuminanceCeiling",
@@ -187,9 +187,9 @@
       "default": "0.18"
     },
     {
-      "path": "plot2DOutlineScale",
+      "path": "plot2DOutlineWidth",
       "type": "Number",
-      "default": "1.035"
+      "default": "1.2"
     },
     {
       "path": "fixCifErrors",

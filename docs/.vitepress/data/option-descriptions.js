@@ -62,7 +62,9 @@ export const descriptions = {
     'plot2DBondOutlineColor': 'Colour of the depth-writing silhouette around 2D bonds, used to ' +
         'separate crossing bonds and ADPs. It is inset at connected atoms to keep their ' +
         'silhouettes clean.',
-    'plot2DBondOutlineScale': 'Scale of the depth-writing bond silhouette. Set to <code>1</code> to disable it.',
+    'plot2DBondOutlineWidth': 'Constant screen-space width, in CSS pixels, of the depth-writing bond ' +
+        'silhouette. Added around every bond regardless of its thickness or the zoom; ' +
+        '<code>0</code> disables it.',
     'plot2DColorLuminanceCeiling': 'Maximum relative luminance for element-coloured outlines and ' +
         'hatching in <code>cutout-2d</code>. The entire palette is scaled together so hue and ' +
         'relative brightness are preserved.',
@@ -76,7 +78,8 @@ export const descriptions = {
     'plot2DOpenBondInnerScale': 'Opaque inner width of open PART 2 bonds relative to a solid bond.',
     'plot2DStripeCount': 'Number of hatch repeats across each 2D section face.',
     'plot2DStripeWidth': 'Element-coloured line width as a fraction of each repeat.',
-    'plot2DOutlineScale': 'Scale multiplier used to expose atom silhouette outlines.',
+    'plot2DOutlineWidth': 'Constant screen-space width, in CSS pixels, of the atom silhouette ' +
+        'outline. Uniform across every atom regardless of ellipsoid size or zoom.',
     'sealCutoutCavity': 'For the cutout render styles, fills the removed octant in the depth buffer ' +
         'so neighbouring atoms or bonds inside the carved cavity are occluded rather than showing ' +
         'through, while the exposed cross-section stays visible. Set false to keep the cavity ' +

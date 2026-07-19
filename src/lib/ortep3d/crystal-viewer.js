@@ -568,11 +568,11 @@ export class CrystalViewer {
                 options.plot2DColorLuminanceFloor <= 1)) {
             throw new Error('plot2DColorLuminanceFloor must be null or a number from 0 to 1');
         }
-        if (options.plot2DBondOutlineScale !== undefined &&
-            !(typeof options.plot2DBondOutlineScale === 'number' &&
-                Number.isFinite(options.plot2DBondOutlineScale) &&
-                options.plot2DBondOutlineScale >= 1)) {
-            throw new Error('plot2DBondOutlineScale must be a finite number greater than or equal to 1');
+        for (const key of ['plot2DBondOutlineWidth', 'plot2DOutlineWidth']) {
+            if (options[key] !== undefined &&
+                !(typeof options[key] === 'number' && Number.isFinite(options[key]) && options[key] >= 0)) {
+                throw new Error(`${key} must be a finite number greater than or equal to 0`);
+            }
         }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
@@ -641,15 +641,15 @@ export class CrystalViewer {
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
             plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
                 defaultSettings.plot2DBondOutlineColor,
-            plot2DBondOutlineScale: options.plot2DBondOutlineScale ??
-                defaultSettings.plot2DBondOutlineScale,
+            plot2DBondOutlineWidth: options.plot2DBondOutlineWidth ??
+                defaultSettings.plot2DBondOutlineWidth,
             plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
                 defaultSettings.plot2DColorLuminanceCeiling,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
                 defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
             plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
-            plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,
+            plot2DOutlineWidth: options.plot2DOutlineWidth ?? defaultSettings.plot2DOutlineWidth,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
             cell: {
                 ...defaultSettings.cell,
@@ -2159,6 +2159,7 @@ export class CrystalViewer {
         const ortep = new ORTEP3JsStructure(structure, this.options);
         const ortep3DGroup = ortep.getGroup();
         this.moleculeContainer.add(ortep3DGroup);
+        ortep3DGroup.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight);
         this.state.currentStructure = ortep3DGroup;
         this.state.displayStructure = structure;
         this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1;
@@ -2430,6 +2431,13 @@ export class CrystalViewer {
 
             // Update the renderer's viewport
             this.renderer.setViewport(0, 0, width, height);
+
+            // Keep screen-space (2D-style) outline widths constant in CSS px.
+            // Uses CSS size, not the device buffer, so image capture (which
+            // enlarges the buffer) scales outlines with the exported figure.
+            this.state?.currentStructure?.setOutlineViewport?.(
+                this.container.clientWidth, this.container.clientHeight,
+            );
         }
         return needResize;
     }

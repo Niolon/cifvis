@@ -15,6 +15,38 @@ const OCTANT_SIGNS = [
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
 const BOND_GEOMETRY_HEIGHT = 0.98;
 
+// Replacement for three's <project_vertex> that expands a silhouette outline
+// by a constant number of CSS pixels in screen space, independent of the
+// object's size or the camera zoom. The offset is applied in clip space along
+// the projected surface normal, so an elongated ellipsoid gets the same
+// outline width as a thin bond.
+const SCREEN_OUTLINE_PROJECT_CHUNK = `
+    vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+    vec4 clipPosition = projectionMatrix * mvPosition;
+    vec3 clipNormal = ( projectionMatrix * vec4( normalize( normalMatrix * normal ), 0.0 ) ).xyz;
+    vec2 outlineDir = length( clipNormal.xy ) > 1e-6 ? normalize( clipNormal.xy ) : vec2( 0.0 );
+    clipPosition.xy += outlineDir * uOutlinePx * 2.0 * clipPosition.w / uOutlineViewport;
+    gl_Position = clipPosition;
+`;
+
+/**
+ * Makes a BackSide outline material draw at a constant CSS-pixel width by
+ * offsetting its silhouette in screen space. The viewport-size uniform object
+ * is shared so one update reaches every outline material.
+ * @param {THREE.Material} material - BackSide outline material to modify
+ * @param {{value: number}} pixelUniform - Outline half-width in CSS pixels
+ * @param {{value: THREE.Vector2}} viewportUniform - Shared CSS viewport size
+ */
+function applyScreenSpaceOutline(material, pixelUniform, viewportUniform) {
+    material.onBeforeCompile = shader => {
+        shader.uniforms.uOutlinePx = pixelUniform;
+        shader.uniforms.uOutlineViewport = viewportUniform;
+        shader.vertexShader = 'uniform float uOutlinePx;\nuniform vec2 uOutlineViewport;\n' +
+            shader.vertexShader.replace('#include <project_vertex>', SCREEN_OUTLINE_PROJECT_CHUNK);
+    };
+    material.customProgramCacheKey = () => 'screen-space-outline-v1';
+}
+
 // Draw order that lets a cutaway atom's depth cap (renderOrder 0) hide bonds
 // and neighbours inside its cavity: the exposed cross-section is painted first
 // (below 0), then the cap seals the opening in depth, then bonds/h-bonds draw
@@ -468,6 +500,14 @@ export class GeometryMaterialCache {
         this.geometries = {};
         this.materials = {};
         this.elementMaterials = {};
+        // Shared CSS viewport size for screen-space outline widths. The viewer
+        // keeps it current via setOutlineViewport(); one object feeds every
+        // outline material's shader.
+        this.outlineViewport = { value: new THREE.Vector2(1, 1) };
+        this.outlinePixels = {
+            atom: { value: this.options.plot2DOutlineWidth ?? 0 },
+            bond: { value: this.options.plot2DBondOutlineWidth ?? 0 },
+        };
         const plot2DPalette = Object.values(this.options.elementProperties)
             .map(property => property.atomColor)
             .filter(Boolean);
@@ -569,6 +609,9 @@ export class GeometryMaterialCache {
                 depthTest: true,
                 depthWrite: true,
             });
+            applyScreenSpaceOutline(
+                this.materials.bondDepthOutline, this.outlinePixels.bond, this.outlineViewport,
+            );
             this.materials.hbond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DLineColor,
             });
@@ -632,11 +675,11 @@ export class GeometryMaterialCache {
                     color: elementLineColor,
                     side: THREE.BackSide,
                 });
+                applyScreenSpaceOutline(outlineMaterial, this.outlinePixels.atom, this.outlineViewport);
                 const atomMaterial = new THREE.MeshBasicMaterial({
                     color: this.options.plot2DAtomColor,
                 });
                 atomMaterial.userData.plot2DOutlineMaterial = outlineMaterial;
-                atomMaterial.userData.plot2DOutlineScale = this.options.plot2DOutlineScale;
                 const ringMaterial = new THREE.MeshBasicMaterial({
                     color: elementLineColor,
                 });
@@ -801,6 +844,16 @@ export class GeometryMaterialCache {
         const merged = mergeGeometries(placedRings);
         placedRings.forEach(ring => ring.dispose());
         return merged;
+    }
+
+    /**
+     * Updates the CSS viewport size used to keep screen-space outline widths
+     * constant. Cheap: writes one shared uniform read by every outline material.
+     * @param {number} width - Container width in CSS pixels
+     * @param {number} height - Container height in CSS pixels
+     */
+    setOutlineViewport(width, height) {
+        this.outlineViewport.value.set(Math.max(1, width), Math.max(1, height));
     }
 
     /**
@@ -1062,9 +1115,8 @@ export class ORTEP3JsStructure {
                         } : null,
                         {
                             material: this.cache.materials.bondDepthOutline,
-                            scale: this.options.plot2DBondOutlineScale,
-                            endpointInset: this.options.bondRadius *
-                                (this.options.plot2DBondOutlineScale - 1),
+                            width: this.options.plot2DBondOutlineWidth,
+                            endpointInset: this.options.bondRadius,
                         },
                     ));
                 } catch (e) {
@@ -1213,6 +1265,8 @@ export class ORTEP3JsStructure {
         checkForNaN(group);
         group.cutawayAtoms = this.atoms3D.filter(atom => atom.isCutaway);
         group.cameraFacingAtoms = group.cutawayAtoms;
+        // Lets the viewer keep screen-space outline widths correct on resize.
+        group.setOutlineViewport = (width, height) => this.cache.setOutlineViewport(width, height);
         group.atomLabelAnchors = this.atoms3D.map(atom3D => {
             let matrix;
             if (atom3D.segments?.[0]?.matrix) {
@@ -1364,8 +1418,9 @@ export class ORTEPAtom extends ORTEPObject {
         this.updateSurfaceRadius();
         const plot2DOutlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
         if (plot2DOutlineMaterial) {
+            // The silhouette width comes from the material's screen-space shader,
+            // so the mesh matches the body (no size-dependent scale factor).
             const outline = new THREE.Mesh(baseAtom, plot2DOutlineMaterial);
-            outline.scale.multiplyScalar(atomMaterial.userData.plot2DOutlineScale);
             outline.userData = { selectable: false, type: '2d-atom-outline' };
             this.add(outline);
             this.plot2DOutline = outline;
@@ -1525,11 +1580,11 @@ export class ORTEPAniAtom extends ORTEPAtom {
         if (this.plot2DOutline) {
             this.remove(this.plot2DOutline);
             const outlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
-            const outlineScale = atomMaterial.userData.plot2DOutlineScale;
+            // Outline width is applied in screen space by the material shader,
+            // so each octant outline matches its shell (only the sign transform).
             this.cutawayOutlines = OCTANT_SIGNS.map((signs, index) => {
                 const outline = new THREE.Mesh(cutaway.octantGeometry, outlineMaterial);
                 setOctantTransform(outline, signs);
-                outline.scale.multiplyScalar(outlineScale);
                 outline.userData = {
                     selectable: false,
                     type: '2d-ellipsoid-outline',
@@ -2121,16 +2176,18 @@ export class ORTEPBond extends ORTEPObject {
             this.add(outline);
             this.openBondOutline = outline;
         }
-        if (depthOutlineStyle && depthOutlineStyle.scale > 1) {
-            const outlineScale = Math.max(1, depthOutlineStyle.scale);
+        if (depthOutlineStyle && depthOutlineStyle.width > 0) {
+            // The outline width is applied in screen space by the material, so
+            // the mesh matches the bond radius (countering any open-bond radial
+            // shrink) and only the length is inset to keep the ends inside atoms.
             const endpointInset = Math.max(0, depthOutlineStyle.endpointInset || 0);
             const lengthScale = bondLength > 0 ?
                 Math.max(0.05, 1 - 2 * endpointInset / bondLength) : 1;
             const depthOutline = new THREE.Mesh(baseBond, depthOutlineStyle.material);
             depthOutline.scale.set(
-                outlineScale / radialParentScale,
+                1 / radialParentScale,
                 lengthScale,
-                outlineScale / radialParentScale,
+                1 / radialParentScale,
             );
             depthOutline.userData = { selectable: false, type: '2d-bond-depth-outline' };
             this.add(depthOutline);

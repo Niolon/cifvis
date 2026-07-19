@@ -39,7 +39,7 @@ const viewer = new CrystalViewer(container, {
     },
     // Tuning knobs for the 2D style:
     plot2DStripeCount: 7,          // hatch repeats per section face
-    plot2DBondOutlineScale: 1.18,  // silhouette separating crossing bonds
+    plot2DBondOutlineWidth: 2,     // constant-px silhouette separating crossing bonds
     plot2DColorLuminanceCeiling: 0.25,
 });
 await viewer.loadCIF(cifText);

@@ -486,7 +486,7 @@ const viewer = new CrystalViewer(container, {
   renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)
   bondColorMode: 'uniform', // 'split': color each 3D bond half like its connected atom
   plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
-  plot2DBondOutlineScale: 1.18, // Small depth-writing white halo at crossings
+  plot2DBondOutlineWidth: 2, // Constant-px depth-writing white halo at crossings
   plot2DStripeCount: 7,
   plot2DStripeWidth: 0.18,
   hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'

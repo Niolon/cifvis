@@ -809,7 +809,8 @@ describe('ORTEP3JsStructure', () => {
             expect(closedBond.material.color.getHexString()).toBe('000000');
             expect(closedBond.openBondOutline).toBeUndefined();
             expect(closedBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
-            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1.18);
+            // Radial scale matches the bond radius; width is added in screen space.
+            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1);
             expect(closedBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             expect(openBond.userData.isOpenDisorderBond).toBe(true);
@@ -825,8 +826,9 @@ describe('ORTEP3JsStructure', () => {
             expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
             expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
             expect(openBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
-            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1.18 / 0.5);
-            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1.18 / 0.5);
+            // Radial scale counters the open-bond shrink (1/0.5) to match the bond.
+            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1 / 0.5);
+            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1 / 0.5);
             expect(openBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             const closedBondScale = new THREE.Vector3();
@@ -837,9 +839,7 @@ describe('ORTEP3JsStructure', () => {
             );
             const endpointInset = closedBondScale.y *
                 (1 - closedBond.bondDepthOutline.scale.y) / 2;
-            expect(endpointInset).toBeCloseTo(
-                defaultSettings.bondRadius * (defaultSettings.plot2DBondOutlineScale - 1),
-            );
+            expect(endpointInset).toBeCloseTo(defaultSettings.bondRadius);
         });
     });
 

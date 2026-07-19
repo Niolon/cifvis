@@ -178,7 +178,9 @@ export default {
     'plot2DLineColor': '#000000',
     'plot2DBondColor': '#000000',
     'plot2DBondOutlineColor': '#ffffff',
-    'plot2DBondOutlineScale': 1.18,
+    // Constant screen-space width (CSS pixels) of the depth-writing bond
+    // silhouette, added around the bond regardless of its thickness. 0 disables it.
+    'plot2DBondOutlineWidth': 2,
     'plot2DColorLuminanceCeiling': 0.25,
     // When set (0-1), replaces the ceiling: the element palette is mixed
     // towards white so its darkest colour reaches this relative luminance -
@@ -187,7 +189,9 @@ export default {
     'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
     'plot2DStripeWidth': 0.18,
-    'plot2DOutlineScale': 1.035,
+    // Constant screen-space width (CSS pixels) of the atom silhouette outline,
+    // uniform across every atom regardless of ellipsoid size.
+    'plot2DOutlineWidth': 1.2,
 
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
