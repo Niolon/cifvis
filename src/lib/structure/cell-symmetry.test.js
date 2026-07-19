@@ -639,6 +639,61 @@ loop_
                 [0, 0, 1],
             ]);
         });
+
+        test('reconstructs operations from space group number when loop is absent', () => {
+            const cifText = 'data_test\n_cell_length_a 5.0\n_space_group_IT_number 14';
+            const cif = new CIF(cifText);
+            const sym = CellSymmetry.fromCIF(cif.getBlock(0));
+
+            expect(sym.spaceGroupNumber).toBe(14);
+            // P21/c standard setting has four general-position operators.
+            expect(sym.symmetryOperations).toHaveLength(4);
+            const strings = sym.symmetryOperations.map(op => op.toSymmetryString());
+            expect(strings).toContain('x,y,z');
+            expect(strings).toContain('-x,-y,-z');
+        });
+
+        test('reconstructs operations from space group name when loop is absent', () => {
+            const cifText = 'data_test\n_symmetry_space_group_name_H-M \'P n m a\'';
+            const cif = new CIF(cifText);
+            const sym = CellSymmetry.fromCIF(cif.getBlock(0));
+
+            // Pnma (No. 62) has eight general-position operators.
+            expect(sym.symmetryOperations).toHaveLength(8);
+        });
+
+        test('matches space group name irrespective of spacing and case', () => {
+            const cifText = 'data_test\n_symmetry_space_group_name_H-M \'P21/C\'';
+            const cif = new CIF(cifText);
+            const sym = CellSymmetry.fromCIF(cif.getBlock(0));
+
+            expect(sym.symmetryOperations).toHaveLength(4);
+        });
+
+        test('does not override an explicit operation loop with the table', () => {
+            const cifText = `
+data_test
+_space_group_IT_number 14
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z
+-x,-y,-z
+`;
+            const cif = new CIF(cifText);
+            const sym = CellSymmetry.fromCIF(cif.getBlock(0));
+
+            // Only the two operators actually written in the CIF, not the full group.
+            expect(sym.symmetryOperations).toHaveLength(2);
+        });
+
+        test('falls back to P1 for an unknown space group', () => {
+            const cifText = 'data_test\n_symmetry_space_group_name_H-M \'Not a group\'';
+            const cif = new CIF(cifText);
+            const sym = CellSymmetry.fromCIF(cif.getBlock(0));
+
+            expect(sym.spaceGroupNumber).toBe(0);
+            expect(sym.symmetryOperations).toHaveLength(1);
+        });
     });
 
     describe('CellSymmetry ID handling', () => {
