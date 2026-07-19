@@ -633,6 +633,7 @@ export class CrystalViewer {
             hydrogenMode: options.hydrogenMode || defaultSettings.hydrogenMode,
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
+            packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
             renderMode: options.renderMode || defaultSettings.renderMode,
             renderStyle: options.renderStyle || defaultSettings.renderStyle,
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
