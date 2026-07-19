@@ -14727,7 +14727,7 @@ var Rd = class {
 		for (let n of this.bonds3D) t(n), e.add(n);
 		this.hbondPool && (this.hbondPool.mesh.renderOrder = Dd, e.add(this.hbondPool.mesh));
 		for (let n of this.hBonds3D) t(n), e.add(n);
-		return Nd(e), e.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), e.cameraFacingAtoms = e.cutawayAtoms, e.setOutlineViewport = (e, t) => this.cache.setOutlineViewport(e, t), e.atomLabelAnchors = this.atoms3D.map((e) => {
+		return Nd(e), e.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), e.cameraFacingAtoms = e.cutawayAtoms, e.orderableAtoms = this.atoms3D, e.setOutlineViewport = (e, t) => this.cache.setOutlineViewport(e, t), e.atomLabelAnchors = this.atoms3D.map((e) => {
 			let t;
 			e.segments?.[0]?.matrix ? t = e.segments[0].matrix.clone() : (e.updateMatrix(), t = e.matrix.clone());
 			let n = new U().setFromMatrixPosition(t), r = new U();
@@ -59361,15 +59361,18 @@ var G_ = class {
 		let e = this.state.currentStructure?.cameraFacingAtoms;
 		e?.length && (this.camera.updateMatrixWorld(), this.moleculeContainer.updateMatrixWorld(!0), e.forEach((e) => {
 			e.updateCutawayOctant(this.camera);
-		}), this.updateCutawayDrawOrder(e));
+		}), this.updateAtomDrawOrder(this.state.currentStructure.orderableAtoms));
 	}
-	updateCutawayDrawOrder(e) {
+	updateAtomDrawOrder(e) {
+		if (!e?.length) return;
 		let t = this.camera.matrixWorldInverse, n = new U();
 		e.map((e) => (e.getWorldPosition(n), {
 			atom: e,
 			depth: n.applyMatrix4(t).z
 		})).sort((e, t) => t.depth - e.depth).forEach(({ atom: e }, t) => {
-			e.cutawayPlanes && (e.cutawayPlanes.renderOrder = 1 + 2 * t), e.cutawayDepthCap && (e.cutawayDepthCap.renderOrder = 2 + 2 * t);
+			e.renderOrder = t;
+			for (let n of e.children) n.renderOrder = t;
+			e.cutawayDepthCap && (e.cutawayDepthCap.renderOrder = t + .5);
 		});
 	}
 	requestRender() {
