@@ -176,6 +176,7 @@ const LABEL_OVERRIDES = {
     'hydrogenMode': 'Hydrogen display',
     'disorderMode': 'Disorder display',
     'symmetryMode': 'Symmetry display',
+    'packingCutoff': 'Cell packing cutoff',
     'atomLabels.show': 'Show labels for',
     'atomLabels.placementMode': 'Placement strategy',
     'atomLabels.text': 'Text overrides (JSON)',
@@ -306,6 +307,7 @@ const NUMBER_CONSTRAINTS = {
     'differenceDensity.reciprocalResolution': { min: 0.05, max: 1, step: 0.05 },
     'atomLabels.fontSize': { min: 6, max: 48, step: 1 },
     'atomLabels.fontWeight': { min: 100, max: 900, step: 100 },
+    'packingCutoff': { min: 1, max: 1.5, step: 0.001 },
 };
 
 /** Numeric rows where an empty input means Infinity. */

@@ -57,7 +57,7 @@ function groupFor(path) {
     if (inside('cell')) {
         return 'cell';
     }
-    if (['hydrogenMode', 'disorderMode', 'symmetryMode'].includes(path)) {
+    if (['hydrogenMode', 'disorderMode', 'symmetryMode', 'packingCutoff'].includes(path)) {
         return 'display-modes';
     }
     if (

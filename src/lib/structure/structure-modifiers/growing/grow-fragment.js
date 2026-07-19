@@ -948,25 +948,56 @@ export function growFragment(structure) {
         networkConnections, structure, identSymmKey,
     );
 
+    // In a periodic structure (an extended chain, layer or framework) growing the
+    // fragment replicates the unit along its periodic lattice directions into an
+    // unbounded block. A periodic replica is, by definition, the same group reached
+    // by the same symmetry operation at a different lattice translation
+    // (see ConnectedGroup.isTranslationalDuplicateOf). So keep a single instance per
+    // (group, operation) - the one nearest the origin - which suppresses replication
+    // along every periodic direction (axis, screw or diagonal) on its own, while
+    // keeping distinct-operation images that build the finite (non-periodic)
+    // directions. For a genuinely molecular fragment each (group, operation) already
+    // occurs once, so nothing is dropped.
+    const bestInstanceByOperation = new Map();
+    for (const instance of requiredSymmetryInstances) {
+        const applied = AppliedSymmetry.fromString(instance.split('@.@')[1]);
+        const operationKey = `${instance.split('@.@')[0]}|${applied.id}`;
+        const magnitude = Math.abs(applied.translation[0])
+            + Math.abs(applied.translation[1]) + Math.abs(applied.translation[2]);
+        const existing = bestInstanceByOperation.get(operationKey);
+        if (!existing || magnitude < existing.magnitude
+            || (magnitude === existing.magnitude && instance < existing.instance)) {
+            bestInstanceByOperation.set(operationKey, { instance, magnitude });
+        }
+    }
+    const grownInstances = new Set([...bestInstanceByOperation.values()].map(entry => entry.instance));
+    // Whether any periodic replica was actually collapsed. When true the fragment was
+    // extended; drop the now-orphaned periodic-image bonds so the result is bounded
+    // and self-consistent. When false the fragment is finite (or already a bounded
+    // repeat unit) and keeps its normal dangling-bond behaviour.
+    const collapsedPeriodicReplicas = grownInstances.size < requiredSymmetryInstances.size;
+
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
-        requiredSymmetryInstances, atomGroups, graphStructure, identSymmKey,
+        grownInstances, atomGroups, graphStructure, identSymmKey,
     );
 
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(
-        atomGroups, requiredSymmetryInstances, interGroupBonds,
+        atomGroups, grownInstances, interGroupBonds,
         specialPositionAtoms, newAtoms, identSymmKey, graphStructure,
     );
 
     // Step 5: Generate hydrogen bonds
     const newHBonds = generateSymmetryHBonds(
-        graphStructure, atomGroups, atomGroupMap, requiredSymmetryInstances,
+        graphStructure, atomGroups, atomGroupMap, grownInstances,
         specialPositionAtoms, atomLabels, identSymmKey,
     );
 
-    // Step 6: Process translation links
-    const translationBonds = processTranslationLinks(
+    // Step 6: Process translation links. When periodic replicas were collapsed the
+    // growth is intentionally clamped, so these periodic-direction connections are
+    // not materialised as dangling bonds; otherwise they behave as before.
+    const translationBonds = collapsedPeriodicReplicas ? [] : processTranslationLinks(
         translationLinks, graphStructure, specialPositionAtoms,
         new Set(newBonds.map(b => createBondIdentifier(b.atom1Id, b.atom2Id))),
     );
@@ -977,11 +1008,27 @@ export function growFragment(structure) {
         newBonds.push(bond);
     }
 
+    const allAtoms = [...graphStructure.atoms, ...newAtoms];
+
+    // Collapsing periodic replicas can orphan bonds/H-bonds that pointed at a dropped
+    // image. Drop those so the result is self-consistent (every bond references a
+    // materialised atom) rather than carrying dangling references.
+    let finalBonds = newBonds;
+    let finalHBonds = newHBonds;
+    if (collapsedPeriodicReplicas) {
+        const materialised = new Set(allAtoms.map(atom => atom.uniqueId));
+        finalBonds = newBonds.filter(bond =>
+            materialised.has(bond.atom1Id) && materialised.has(bond.atom2Id));
+        finalHBonds = newHBonds.filter(hbond =>
+            materialised.has(hbond.donorAtomId) && materialised.has(hbond.hydrogenAtomId)
+            && materialised.has(hbond.acceptorAtomId));
+    }
+
     const grownStructure = new CrystalStructure(
         graphStructure.cell,
-        [...graphStructure.atoms, ...newAtoms],
-        newBonds,
-        newHBonds,
+        allAtoms,
+        finalBonds,
+        finalHBonds,
         graphStructure.symmetry,
     );
 

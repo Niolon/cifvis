@@ -212,6 +212,11 @@
       "path": "symmetryMode",
       "type": "String",
       "default": "\"none\""
+    },
+    {
+      "path": "packingCutoff",
+      "type": "Number",
+      "default": "1"
     }
   ],
   "density": [

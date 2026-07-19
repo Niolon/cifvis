@@ -143,17 +143,25 @@ export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) 
 }
 
 /**
- * Checks if an atom position is within the unit cell (0 ≤ x,y,z < 1).
+ * Checks if an atom position is within the unit cell.
+ *
+ * The upper bound is the packing cutoff: with the default 1.0 an atom sitting on
+ * the far face (fractional 1.0) is treated as the same periodic position as 0.0 and
+ * wrapped in, which keeps the cell contents (Z) correct. Raising it slightly (e.g.
+ * 1.001) instead keeps those upper-border atoms, giving a "closed" packing diagram
+ * at the cost of duplicating face/edge/corner atoms.
  * @param {Atom} atom - Atom to check
+ * @param {number} [cutoff] - Upper fractional bound (packing cutoff)
  * @param {number} [tolerance] - Tolerance for boundary comparisons
  * @returns {boolean} True if atom is within unit cell
  */
-function isWithinUnitCell(atom, tolerance = 1e-6) {
+function isWithinUnitCell(atom, cutoff = 1, tolerance = 1e-6) {
     const { x, y, z } = atom.position;
-    // Atoms at position >= 1 - tolerance should be wrapped to 0 (same periodic position)
-    return x >= -tolerance && x < 1 - tolerance &&
-        y >= -tolerance && y < 1 - tolerance &&
-        z >= -tolerance && z < 1 - tolerance;
+    // Atoms at position >= cutoff - tolerance are wrapped to the same periodic
+    // position one cell lower.
+    return x >= -tolerance && x < cutoff - tolerance &&
+        y >= -tolerance && y < cutoff - tolerance &&
+        z >= -tolerance && z < cutoff - tolerance;
 }
 
 /**
@@ -242,9 +250,12 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms. Used
  *  to avoid duplicates and track translations, as well as special positions.
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {number} [packingCutoff] - Upper fractional bound for cell membership (see isWithinUnitCell)
  * @returns {GrownGroup} New group with grown atoms and updated symmetry string
  */
-export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growAtomsinGroup(
+    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, packingCutoff = 1,
+) {
     const newAtoms = [];
     const transformedAtoms = symmetry.applySymmetry(symmString, grownGroup.atoms);
 
@@ -267,7 +278,7 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
         const preShiftId = atom.uniqueId;
 
         // Check if atom is within unit cell
-        if (moveAtomsInsideCell && !isWithinUnitCell(atom)) {
+        if (moveAtomsInsideCell && !isWithinUnitCell(atom, packingCutoff)) {
             const atomOffsetX = Math.floor(atom.position.x);
             const atomOffsetY = Math.floor(atom.position.y);
             const atomOffsetZ = Math.floor(atom.position.z);
@@ -639,9 +650,12 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
  * @param {string} symmString - The symmetry string to use for the group
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms and bonds
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {number} [packingCutoff] - Upper fractional bound for cell membership (see isWithinUnitCell)
  * @returns {GrownGroup} New group with grown atoms, internal and external bonds, and symmetry string
  */
-export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growGroup(
+    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, packingCutoff = 1,
+) {
     const combinedSymmString = symmetry.combineSymmetryCodes(
         symmString,
         grownGroup.symmString,
@@ -659,6 +673,7 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
         centredSymmString,
         objectTracker,
         moveAtomsInsideCell,
+        packingCutoff,
     );
 
     const grownInternalBonds = growInternalBondsInGroup(
@@ -706,9 +721,13 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
  * @param {CrystalStructure} structure - Input crystal structure
  * @param {boolean} [moveAtomsInsideCell] - Whether to exclude atoms outside unit cell
  * @param {Map<string,string>} [startingSpecialPositions] - Optional special positions map to start with.
+ * @param {number} [packingCutoff] - Upper fractional bound for cell membership. 1.0 (default) wraps
+ *  far-face atoms in for a correct Z; a slightly larger value (e.g. 1.001) keeps upper-border atoms.
  * @returns {CrystalStructure} New structure filling the unit cell
  */
-export function growCell(structure, moveAtomsInsideCell = true, startingSpecialPositions = null) {
+export function growCell(
+    structure, moveAtomsInsideCell = true, startingSpecialPositions = null, packingCutoff = 1,
+) {
     let specialPositionMap;
     if (startingSpecialPositions !== null) {
         // If a starting special position is provided, initialize the map with it
@@ -803,6 +822,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 nonTransSymmString,
                 objectTracker,
                 moveAtomsInsideCell,
+                packingCutoff,
             );
             grownAtomsGroups.push(newGrownGroup);
         }

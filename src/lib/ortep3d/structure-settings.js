@@ -198,6 +198,11 @@ export default {
     'disorderMode': 'all',
     'symmetryMode': 'none',
 
+    // Upper fractional bound for unit-cell membership in the cell growth modes.
+    // 1.0 wraps atoms on the far cell face back in, keeping the cell contents (Z)
+    // correct; raise slightly (e.g. 1.001) to instead keep those upper-border atoms.
+    'packingCutoff': 1,
+
     // Difference-electron-density maps are loaded separately from the
     // coordinate CIF and remain opt-in.
     'differenceDensity': {

@@ -711,7 +711,7 @@ export class CrystalViewer {
                 this.options.bondGrowTolerance,
             ),
             disorder: new DisorderFilter(this.options.disorderMode),
-            symmetry: new SymmetryGrower(this.options.symmetryMode),
+            symmetry: new SymmetryGrower(this.options.symmetryMode, this.options.packingCutoff),
             hydrogen: new HydrogenFilter(this.options.hydrogenMode),
         };
 
