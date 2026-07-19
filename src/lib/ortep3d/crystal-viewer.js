@@ -2396,6 +2396,45 @@ export class CrystalViewer {
         cameraFacingAtoms.forEach(atom => {
             atom.updateCutawayOctant(this.camera);
         });
+        this.updateAtomDrawOrder(this.state.currentStructure.orderableAtoms);
+    }
+
+    /**
+     * Orders atoms front-to-back so a nearer cutaway atom fully occludes the
+     * carved-open interior of a farther one. Every part of an atom (its
+     * ellipsoid shells and cross-section) draws before that atom's own depth
+     * cap, and a nearer atom's cap is written before any part of a farther
+     * atom - so pure depth testing hides shells, rings, and cross-sections
+     * seen through a nearer atom's opening while the atom's own interior shows.
+     * @param {Array<object>} atoms - Atom objects to order (front-to-back)
+     * @private
+     */
+    updateAtomDrawOrder(atoms) {
+        if (!atoms?.length) {
+            return;
+        }
+        const viewMatrix = this.camera.matrixWorldInverse;
+        const worldPosition = new THREE.Vector3();
+        const ranked = atoms
+            .map(atom => {
+                atom.getWorldPosition(worldPosition);
+                // The camera looks down -z in view space, so a larger (less
+                // negative) z is nearer the camera.
+                return { atom, depth: worldPosition.applyMatrix4(viewMatrix).z };
+            })
+            .sort((a, b) => b.depth - a.depth);
+
+        ranked.forEach(({ atom }, index) => {
+            atom.renderOrder = index;
+            for (const child of atom.children) {
+                child.renderOrder = index;
+            }
+            // The depth cap draws last within the atom, after its own shells
+            // and cross-section, but before any farther atom.
+            if (atom.cutawayDepthCap) {
+                atom.cutawayDepthCap.renderOrder = index + 0.5;
+            }
+        });
     }
 
     /**

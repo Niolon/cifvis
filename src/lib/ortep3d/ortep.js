@@ -47,12 +47,15 @@ function applyScreenSpaceOutline(material, pixelUniform, viewportUniform) {
     material.customProgramCacheKey = () => 'screen-space-outline-v1';
 }
 
-// Draw order that lets a cutaway atom's depth cap (renderOrder 0) hide bonds
-// and neighbours inside its cavity: the exposed cross-section is painted first
-// (below 0), then the cap seals the opening in depth, then bonds/h-bonds draw
-// last and are depth-culled where they enter the sealed volume.
-const CUTAWAY_PLANE_RENDER_ORDER = -1;
-const BOND_RENDER_ORDER = 1;
+// Draw order for cutaway atoms. So that a nearer atom occludes a farther
+// atom's carved-open interior (its cross-section and cavity), each atom's
+// planes and depth cap are re-ordered per frame by view depth
+// (updateCameraFacingOctants): nearest atom first, planes before its own cap.
+// Shells stay at 0 and bonds/h-bonds draw last, after every cap seals its
+// cavity in depth. These are only the pre-sort defaults.
+const CUTAWAY_PLANE_RENDER_ORDER = 1;
+const CUTAWAY_CAP_RENDER_ORDER = 2;
+const BOND_RENDER_ORDER = 1e6;
 
 /**
  * Local transforms placing the three ADP rings on the ellipsoid's principal
@@ -1265,6 +1268,9 @@ export class ORTEP3JsStructure {
         checkForNaN(group);
         group.cutawayAtoms = this.atoms3D.filter(atom => atom.isCutaway);
         group.cameraFacingAtoms = group.cutawayAtoms;
+        // Every atom, for the per-frame front-to-back draw ordering that makes
+        // a nearer cutaway atom occlude the carved-open interior of farther ones.
+        group.orderableAtoms = this.atoms3D;
         // Lets the viewer keep screen-space outline widths correct on resize.
         group.setOutlineViewport = (width, height) => this.cache.setOutlineViewport(width, height);
         group.atomLabelAnchors = this.atoms3D.map(atom3D => {
@@ -1606,11 +1612,12 @@ export class ORTEPAniAtom extends ORTEPAtom {
 
         if (cutaway.depthCapMaterial) {
             // A depth-only fill of the removed octant. It records the atom as
-            // solid in the depth buffer at renderOrder 0, so bonds and other
-            // atoms (drawn later, at BOND_RENDER_ORDER) that lie inside the
-            // carved cavity are depth-culled instead of showing through, while
-            // the cross-section painted above stays visible.
+            // solid in the depth buffer so bonds and farther atoms that lie
+            // inside the carved cavity are depth-culled instead of showing
+            // through, while this atom's own cross-section (drawn just before
+            // it, per updateCutawayDrawOrder) stays visible.
             const depthCap = new THREE.Mesh(cutaway.octantGeometry, cutaway.depthCapMaterial);
+            depthCap.renderOrder = CUTAWAY_CAP_RENDER_ORDER;
             depthCap.userData = { selectable: false, type: 'ellipsoid-cutaway-depth-cap' };
             this.add(depthCap);
             this.cutawayDepthCap = depthCap;
