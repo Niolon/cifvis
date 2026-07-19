@@ -15,6 +15,13 @@ const OCTANT_SIGNS = [
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
 const BOND_GEOMETRY_HEIGHT = 0.98;
 
+// Draw order that lets a cutaway atom's depth cap (renderOrder 0) hide bonds
+// and neighbours inside its cavity: the exposed cross-section is painted first
+// (below 0), then the cap seals the opening in depth, then bonds/h-bonds draw
+// last and are depth-culled where they enter the sealed volume.
+const CUTAWAY_PLANE_RENDER_ORDER = -1;
+const BOND_RENDER_ORDER = 1;
+
 /**
  * Local transforms placing the three ADP rings on the ellipsoid's principal
  * planes, relative to an untransformed atom at the origin. Identical for
@@ -502,6 +509,15 @@ export class GeometryMaterialCache {
             );
             this.geometries.emptyAtom = new THREE.BufferGeometry();
             this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
+            // Depth-only cap that fills the removed octant in the depth buffer
+            // so neighbouring atoms/bonds inside the carved cavity are occluded
+            // instead of showing through, while the exposed cross-section (drawn
+            // earlier, with a lower renderOrder) stays visible.
+            this.materials.cutawayDepthCap = new THREE.MeshBasicMaterial({
+                colorWrite: false,
+                depthWrite: true,
+                depthTest: true,
+            });
         }
 
         // ADP ring geometry
@@ -889,6 +905,8 @@ export class ORTEP3JsStructure {
                             emptyGeometry: this.cache.geometries.emptyAtom,
                             planeGeometry: this.cache.geometries.cutawayPlanes,
                             planeMaterial: cutawayMaterial,
+                            depthCapMaterial: this.options.sealCutoutCavity
+                                ? this.cache.materials.cutawayDepthCap : null,
                             hysteresis: this.options.atomCutawayHysteresis,
                         },
                     );
@@ -1168,17 +1186,28 @@ export class ORTEP3JsStructure {
             group.add(atom3D);
         }
 
+        // Bonds and h-bonds draw after the cutaway depth caps (renderOrder 0)
+        // so a bond crossing a carved-open ellipsoid is depth-culled inside the
+        // sealed cavity. Traverse covers the 2D style's outline child meshes.
+        const markAsBond = object => object.traverse(child => {
+            child.renderOrder = BOND_RENDER_ORDER;
+        });
+
         if (this.bondPool) {
+            this.bondPool.mesh.renderOrder = BOND_RENDER_ORDER;
             group.add(this.bondPool.mesh);
         }
         for (const bond3D of this.bonds3D) {
+            markAsBond(bond3D);
             group.add(bond3D);
         }
 
         if (this.hbondPool) {
+            this.hbondPool.mesh.renderOrder = BOND_RENDER_ORDER;
             group.add(this.hbondPool.mesh);
         }
         for (const hBond3D of this.hBonds3D) {
+            markAsBond(hBond3D);
             group.add(hBond3D);
         }
         checkForNaN(group);
@@ -1514,8 +1543,24 @@ export class ORTEPAniAtom extends ORTEPAtom {
 
         const planes = new THREE.Mesh(cutaway.planeGeometry, cutaway.planeMaterial);
         planes.userData = { selectable: false, type: 'ellipsoid-cutaway-planes' };
+        // Draw the exposed cross-section before the depth cap (renderOrder 0)
+        // so its colour is written first and survives the cap's depth-only fill.
+        planes.renderOrder = CUTAWAY_PLANE_RENDER_ORDER;
         this.add(planes);
         this.cutawayPlanes = planes;
+
+        if (cutaway.depthCapMaterial) {
+            // A depth-only fill of the removed octant. It records the atom as
+            // solid in the depth buffer at renderOrder 0, so bonds and other
+            // atoms (drawn later, at BOND_RENDER_ORDER) that lie inside the
+            // carved cavity are depth-culled instead of showing through, while
+            // the cross-section painted above stays visible.
+            const depthCap = new THREE.Mesh(cutaway.octantGeometry, cutaway.depthCapMaterial);
+            depthCap.userData = { selectable: false, type: 'ellipsoid-cutaway-depth-cap' };
+            this.add(depthCap);
+            this.cutawayDepthCap = depthCap;
+        }
+
         this.setMissingOctant(7);
     }
 
@@ -1574,6 +1619,10 @@ export class ORTEPAniAtom extends ORTEPAtom {
         this.cutawayOctants.forEach((octant, index) => {
             octant.visible = index !== missingIndex;
         });
+        if (this.cutawayDepthCap) {
+            // The depth cap fills exactly the octant the shells left open.
+            setOctantTransform(this.cutawayDepthCap, OCTANT_SIGNS[missingIndex]);
+        }
         this.cutawayOutlines?.forEach((outline, index) => {
             outline.visible = index !== missingIndex;
         });

@@ -164,6 +164,12 @@ export default {
     //   materials instead of solid ones.
     'renderStyle': 'solid-3d',
 
+    // For the cutout render styles, fill the removed octant in the depth
+    // buffer so neighbouring atoms or bonds inside the carved cavity are
+    // occluded instead of showing through. Set false to keep the cavity
+    // see-through.
+    'sealCutoutCavity': true,
+
     // 'cutout-2d' publication-style renderer settings (outline/hatch colours
     // below are neutral defaults; atom/ring hatch colours still follow
     // per-element colours, see GeometryMaterialCache.getAtomMaterials)

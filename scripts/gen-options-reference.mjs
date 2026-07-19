@@ -60,7 +60,10 @@ function groupFor(path) {
     if (['hydrogenMode', 'disorderMode', 'symmetryMode'].includes(path)) {
         return 'display-modes';
     }
-    if (['renderMode', 'renderStyle', 'fixCifErrors'].includes(path) || path.startsWith('plot2D')) {
+    if (
+        ['renderMode', 'renderStyle', 'fixCifErrors', 'sealCutoutCavity'].includes(path) ||
+        path.startsWith('plot2D')
+    ) {
         return 'rendering';
     }
     if (path.startsWith('hbond')) {

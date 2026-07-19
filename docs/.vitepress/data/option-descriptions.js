@@ -77,6 +77,10 @@ export const descriptions = {
     'plot2DStripeCount': 'Number of hatch repeats across each 2D section face.',
     'plot2DStripeWidth': 'Element-coloured line width as a fraction of each repeat.',
     'plot2DOutlineScale': 'Scale multiplier used to expose atom silhouette outlines.',
+    'sealCutoutCavity': 'For the cutout render styles, fills the removed octant in the depth buffer ' +
+        'so neighbouring atoms or bonds inside the carved cavity are occluded rather than showing ' +
+        'through, while the exposed cross-section stays visible. Set false to keep the cavity ' +
+        'see-through.',
     'fixCifErrors': 'Whether to attempt to fix common errors in CIF files before building the structure.',
 
     // Initial display modes

@@ -1180,6 +1180,82 @@ describe('ORTEPAtom and subclasses', () => {
             cutawayCache.dispose();
         });
 
+        test('seals the removed octant with a depth-only cap that tracks it', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: cutawayCache.materials.cutawayDepthCap,
+                    hysteresis: 0.025,
+                },
+            );
+
+            const cap = ortepAtom.cutawayDepthCap;
+            expect(cap).toBeInstanceOf(THREE.Mesh);
+            // Depth-only: writes depth but no colour.
+            expect(cap.material.colorWrite).toBe(false);
+            expect(cap.material.depthWrite).toBe(true);
+            expect(cap.geometry).toBe(cutawayCache.geometries.atomOctant);
+            // Draw order: cross-section (below 0) before the cap (0) so the
+            // interior stays visible while the cap seals the cavity in depth.
+            expect(ortepAtom.cutawayPlanes.renderOrder).toBeLessThan(cap.renderOrder);
+
+            // The cap fills exactly the octant the shells leave open, so its
+            // sign-reflection scale matches the missing octant and reorients
+            // when the camera-facing octant changes.
+            const capScaleFor = () => cap.scale.toArray().map(Math.sign);
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+            camera.position.set(7, 11, 13);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateMatrixWorld(true);
+            ortepAtom.updateCutawayOctant(camera);
+            const firstScale = capScaleFor();
+
+            camera.position.multiplyScalar(-1);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateCutawayOctant(camera);
+            expect(capScaleFor()).not.toEqual(firstScale);
+            cutawayCache.dispose();
+        });
+
+        test('omits the depth cap when no cap material is provided', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: null,
+                    hysteresis: 0.025,
+                },
+            );
+            expect(ortepAtom.cutawayDepthCap).toBe(undefined);
+            expect(ortepAtom.cutawayOctants).toHaveLength(8);
+            cutawayCache.dispose();
+        });
+
         test('keeps cutaway selection marker synchronized with the missing octant', () => {
             const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [atomMaterial, ringMaterial, planeMaterial] =

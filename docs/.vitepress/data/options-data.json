@@ -127,6 +127,11 @@
       "default": "\"solid-3d\""
     },
     {
+      "path": "sealCutoutCavity",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
       "path": "plot2DBackground",
       "type": "Color",
       "default": "\"#ffffff\""

@@ -20,4 +20,8 @@ These options control how the 3D structure is rendered.
 `viewer.requestRender()` after changing external state from your own code;
 `'constant'` renders continuously.
 
+In the cutout styles, `sealCutoutCavity` (default on) fills the removed octant in the
+depth buffer so a neighbouring atom or bond that lies inside the carved-open cavity is
+occluded instead of showing through, while the exposed cross-section stays visible.
+
 <OptionsTable group="rendering" />
