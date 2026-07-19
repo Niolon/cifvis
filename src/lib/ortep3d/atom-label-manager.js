@@ -929,7 +929,26 @@ export class AtomLabelManager {
     }
 
     draw() {
-        const context = this.context;
+        this.paintLayout(this.context);
+    }
+
+    /**
+     * Paints the current placed-label layout onto a 2D context. Label
+     * coordinates are stored in CSS pixels, so the same layout renders at any
+     * resolution - used by the live overlay (at devicePixelRatio) and by
+     * high-resolution image capture (at an arbitrary scale).
+     * @param {CanvasRenderingContext2D} context - Destination context
+     * @param {number} [scale] - Pixels per CSS pixel; the caller has already
+     *  cleared and set the transform for the live overlay, so this defaults to
+     *  leaving the transform untouched
+     */
+    paintLayout(context, scale = null) {
+        if (scale !== null) {
+            context.setTransform(scale, 0, 0, scale, 0, 0);
+            context.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+        }
         context.lineJoin = 'round';
         context.lineCap = 'round';
         for (const label of this.layout.placed) {
@@ -949,6 +968,14 @@ export class AtomLabelManager {
             context.fillStyle = label.color || this.options.color;
             context.fillText(label.text, label.x, label.y);
         }
+    }
+
+    /**
+     * Whether any atom labels are currently placed and visible.
+     * @returns {boolean} True when the live overlay shows at least one label
+     */
+    hasVisibleLabels() {
+        return this.canvas.style.visibility !== 'hidden' && this.layout.placed.length > 0;
     }
 
     dispose() {

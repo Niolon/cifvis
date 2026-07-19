@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CIF } from '../read-cif/base.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
-import { setupLighting, structureOrientationMatrix } from './staging.js';
+import { resolveCaptureDimensions, setupLighting, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
 import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../structure/structure-modifiers/fixers.js';
@@ -743,7 +743,13 @@ export class CrystalViewer {
         this.cameraController = createCameraController(this.container, this.options);
         this.camera = this.cameraController.camera;
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        // preserveDrawingBuffer keeps the rendered frame readable after
+        // compositing, which captureImage() relies on to grab pixels.
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true,
+        });
         if (this.options.renderStyle === 'cutout-2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
@@ -2426,6 +2432,76 @@ export class CrystalViewer {
             this.renderer.setViewport(0, 0, width, height);
         }
         return needResize;
+    }
+
+    /**
+     * Renders the current view to a standalone canvas at an arbitrary
+     * resolution, for exporting publication-quality images. The molecular
+     * scene and the atom-label overlay are composited together; the framing
+     * matches what is on screen because the capture scales uniformly.
+     * @param {object} [options] - Capture options
+     * @param {number} [options.scale] - Resolution multiplier over the on-screen CSS size
+     * @param {number} [options.longEdge] - Target length of the longer edge in pixels (overrides scale)
+     * @param {string} [options.background] - Background fill: 'transparent' (default), or any CSS colour
+     * @param {boolean} [options.includeLabels] - Whether to draw atom labels (default true)
+     * @returns {HTMLCanvasElement} A canvas holding the rendered image
+     */
+    captureImage({ scale = 2, longEdge = null, background = 'transparent', includeLabels = true } = {}) {
+        const cssWidth = this.container.clientWidth;
+        const cssHeight = this.container.clientHeight;
+        const dimensions = resolveCaptureDimensions(cssWidth, cssHeight, { scale, longEdge });
+
+        const canvas = this.renderer.domElement;
+        const previousWidth = canvas.width;
+        const previousHeight = canvas.height;
+        const previousStyleWidth = canvas.style.width;
+        const previousStyleHeight = canvas.style.height;
+
+        this.renderer.setSize(dimensions.width, dimensions.height, false);
+        this.renderer.setViewport(0, 0, dimensions.width, dimensions.height);
+        this.updateCameraFacingOctants();
+        this.renderer.render(this.scene, this.camera);
+
+        const output = document.createElement('canvas');
+        output.width = dimensions.width;
+        output.height = dimensions.height;
+        const context = output.getContext('2d');
+        if (background && background !== 'transparent') {
+            context.fillStyle = background;
+            context.fillRect(0, 0, dimensions.width, dimensions.height);
+        }
+        context.drawImage(canvas, 0, 0, dimensions.width, dimensions.height);
+
+        if (includeLabels && this.atomLabelManager.hasVisibleLabels()) {
+            this.atomLabelManager.paintLayout(context, dimensions.scale);
+        }
+
+        // Restore the on-screen renderer size and repaint.
+        this.renderer.setSize(previousWidth, previousHeight, false);
+        canvas.style.width = previousStyleWidth;
+        canvas.style.height = previousStyleHeight;
+        this.renderer.setViewport(0, 0, previousWidth, previousHeight);
+        this.needsRender = true;
+
+        return output;
+    }
+
+    /**
+     * Captures the current view as a PNG (or other type) Blob.
+     * @param {object} [options] - Options forwarded to captureImage plus a type
+     * @param {string} [options.type] - Image MIME type (default 'image/png')
+     * @param {number} [options.quality] - Encoder quality for lossy types (0-1)
+     * @returns {Promise<Blob>} The encoded image
+     */
+    captureImageBlob({ type = 'image/png', quality, ...options } = {}) {
+        const canvas = this.captureImage(options);
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(
+                blob => blob ? resolve(blob) : reject(new Error('Image encoding failed')),
+                type,
+                quality,
+            );
+        });
     }
 
     /**

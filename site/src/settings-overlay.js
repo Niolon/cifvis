@@ -36,6 +36,7 @@ const APPLY_DEBOUNCE_MS = 300;
  *  viewer with the given non-default options
  * @param {function(): void} host.adaptButtons - Refreshes the toolbar icons
  * @param {function(string, string=): void} host.updateStatus - Status toast
+ * @param {function(): string} [host.getStructureName] - Base name for exported files
  */
 export function initializeSettingsOverlay(host) {
     const schema = buildSettingsSchema();
@@ -45,6 +46,7 @@ export function initializeSettingsOverlay(host) {
     let applyTimer = null;
     let applying = false;
     let applyQueued = false;
+    const exportConfig = { scale: 2, longEdge: 2000, useLongEdge: false, background: 'transparent', labels: true };
 
     const button = document.getElementById('settings-button');
     button.innerHTML = SVG_ICONS['settings'];
@@ -291,8 +293,11 @@ export function initializeSettingsOverlay(host) {
      */
     function renderBody(body, query) {
         body.replaceChildren();
-        const groups = filterSchema(schema, query);
         const searching = query.trim().length > 0;
+        if (!searching) {
+            body.appendChild(buildExportSection());
+        }
+        const groups = filterSchema(schema, query);
         for (const group of groups) {
             const details = document.createElement('details');
             details.className = 'settings-group';
@@ -525,6 +530,165 @@ export function initializeSettingsOverlay(host) {
      */
     function hasOverride(path) {
         return getPath(partial, path) !== undefined;
+    }
+
+    /**
+     * Builds the "Export image" section: resolution, background, and a
+     * download button for a high-resolution PNG of the current view.
+     * @returns {HTMLElement} Export section (an open <details>)
+     */
+    function buildExportSection() {
+        const details = document.createElement('details');
+        details.className = 'settings-group';
+        details.open = true;
+        const summary = document.createElement('summary');
+        summary.textContent = 'Export image';
+        details.appendChild(summary);
+
+        const hint = document.createElement('div');
+        hint.className = 'settings-hint';
+        hint.textContent = 'Downloads a high-resolution PNG of the current view, including atom labels.';
+        details.appendChild(hint);
+
+        // Resolution: a scale multiplier or an explicit long-edge pixel target.
+        const resolutionRow = settingsRow('Resolution');
+        const scaleSelect = document.createElement('select');
+        scaleSelect.className = 'settings-row-control';
+        for (const value of ['1', '2', '4', 'custom']) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value === 'custom' ? 'Custom long edge…' : `${value}× on-screen`;
+            scaleSelect.appendChild(option);
+        }
+        scaleSelect.value = exportConfig.useLongEdge ? 'custom' : String(exportConfig.scale);
+        resolutionRow.append(scaleSelect);
+        details.appendChild(resolutionRow);
+
+        const longEdgeRow = settingsRow('Long edge (px)');
+        const longEdgeInput = document.createElement('input');
+        longEdgeInput.type = 'number';
+        longEdgeInput.min = '64';
+        longEdgeInput.max = '16384';
+        longEdgeInput.step = '1';
+        longEdgeInput.className = 'settings-row-control';
+        longEdgeInput.value = String(exportConfig.longEdge);
+        longEdgeRow.append(longEdgeInput);
+        longEdgeRow.hidden = !exportConfig.useLongEdge;
+        details.appendChild(longEdgeRow);
+
+        const dimensionNote = document.createElement('div');
+        dimensionNote.className = 'settings-hint';
+        details.appendChild(dimensionNote);
+
+        scaleSelect.addEventListener('change', () => {
+            exportConfig.useLongEdge = scaleSelect.value === 'custom';
+            if (!exportConfig.useLongEdge) {
+                exportConfig.scale = Number(scaleSelect.value);
+            }
+            longEdgeRow.hidden = !exportConfig.useLongEdge;
+            updateDimensionNote();
+        });
+        longEdgeInput.addEventListener('change', () => {
+            const value = Number(longEdgeInput.value);
+            if (Number.isFinite(value) && value >= 64) {
+                exportConfig.longEdge = value;
+                updateDimensionNote();
+            }
+        });
+
+        const backgroundRow = settingsRow('Background');
+        const backgroundSelect = document.createElement('select');
+        backgroundSelect.className = 'settings-row-control';
+        for (const [value, label] of [['transparent', 'Transparent'], ['#ffffff', 'White'], ['#000000', 'Black']]) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            backgroundSelect.appendChild(option);
+        }
+        backgroundSelect.value = exportConfig.background;
+        backgroundSelect.addEventListener('change', () => {
+            exportConfig.background = backgroundSelect.value;
+        });
+        backgroundRow.append(backgroundSelect);
+        details.appendChild(backgroundRow);
+
+        const labelsRow = settingsRow('Include atom labels');
+        const labelsInput = document.createElement('input');
+        labelsInput.type = 'checkbox';
+        labelsInput.className = 'settings-row-control';
+        labelsInput.checked = exportConfig.labels;
+        labelsInput.addEventListener('change', () => {
+            exportConfig.labels = labelsInput.checked;
+        });
+        labelsRow.append(labelsInput);
+        details.appendChild(labelsRow);
+
+        const downloadRow = document.createElement('div');
+        downloadRow.className = 'settings-row';
+        const downloadButton = actionButton('Download PNG', downloadImage);
+        downloadButton.classList.add('settings-download');
+        downloadRow.appendChild(downloadButton);
+        details.appendChild(downloadRow);
+
+        /** Updates the estimated output-size note from the live viewer. */
+        function updateDimensionNote() {
+            const viewer = host.getViewer();
+            const w = viewer?.container?.clientWidth ?? 0;
+            const h = viewer?.container?.clientHeight ?? 0;
+            if (!w || !h) {
+                dimensionNote.textContent = '';
+                return;
+            }
+            const scale = exportConfig.useLongEdge
+                ? exportConfig.longEdge / Math.max(w, h)
+                : exportConfig.scale;
+            const capped = Math.min(scale, 16384 / Math.max(w, h));
+            dimensionNote.textContent =
+                `Output: ${Math.round(w * capped)} × ${Math.round(h * capped)} px`;
+        }
+        updateDimensionNote();
+        return details;
+    }
+
+    /**
+     * Builds a settings row shell with a label.
+     * @param {string} labelText - Row label
+     * @returns {HTMLElement} Row element
+     */
+    function settingsRow(labelText) {
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        const label = document.createElement('label');
+        label.className = 'settings-row-label';
+        label.textContent = labelText;
+        row.append(label);
+        return row;
+    }
+
+    /** Renders the current view and triggers a PNG download. */
+    async function downloadImage() {
+        try {
+            const viewer = host.getViewer();
+            const blob = await viewer.captureImageBlob({
+                scale: exportConfig.scale,
+                longEdge: exportConfig.useLongEdge ? exportConfig.longEdge : null,
+                background: exportConfig.background,
+                includeLabels: exportConfig.labels,
+            });
+            const name = (host.getStructureName?.() || 'structure').replace(/[^\w.-]+/g, '_');
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `${name}.png`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            host.updateStatus('Image downloaded', 'success');
+        } catch (error) {
+            console.error('Image export failed:', error);
+            host.updateStatus(`Image export failed: ${error.message}`, 'error');
+        }
     }
 
     /**

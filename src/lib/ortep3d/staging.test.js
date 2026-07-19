@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
-import { setupLighting, structureOrientationMatrix } from './staging.js';
+import {
+    MAX_CAPTURE_EDGE,
+    resolveCaptureDimensions,
+    setupLighting,
+    structureOrientationMatrix,
+} from './staging.js';
 
 /**
  * Returns direct scene children of a specific light class.
@@ -118,5 +123,30 @@ describe('structureOrientationMatrix', () => {
 
     test('returns null for a group without atoms', () => {
         expect(structureOrientationMatrix(new THREE.Group())).toBe(null);
+    });
+});
+
+describe('resolveCaptureDimensions', () => {
+    test('scales the CSS size by the multiplier', () => {
+        expect(resolveCaptureDimensions(800, 600, { scale: 2 }))
+            .toEqual({ width: 1600, height: 1200, scale: 2 });
+    });
+
+    test('a long-edge target overrides the scale and keeps aspect ratio', () => {
+        const result = resolveCaptureDimensions(800, 400, { scale: 2, longEdge: 2000 });
+        expect(result.width).toBe(2000);
+        expect(result.height).toBe(1000);
+        expect(result.scale).toBeCloseTo(2.5);
+    });
+
+    test('clamps to the maximum supported edge', () => {
+        const result = resolveCaptureDimensions(10000, 5000, { scale: 4 });
+        expect(Math.max(result.width, result.height)).toBe(MAX_CAPTURE_EDGE);
+        expect(result.height).toBe(MAX_CAPTURE_EDGE / 2);
+    });
+
+    test('defaults to 1x and guards against zero sizes', () => {
+        expect(resolveCaptureDimensions(500, 300)).toEqual({ width: 500, height: 300, scale: 1 });
+        expect(resolveCaptureDimensions(0, 0, { scale: 3 })).toEqual({ width: 3, height: 3, scale: 3 });
     });
 });

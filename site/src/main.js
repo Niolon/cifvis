@@ -240,6 +240,7 @@ async function recreateViewer(optionsPartial) {
 
 let playgroundLoadSequence = 0;
 let currentPlaygroundCifText = null;
+let currentPlaygroundName = 'structure';
 let playgroundHasStructure = false;
 
 /**
@@ -382,6 +383,8 @@ async function loadPlaygroundText(cifText, fileName = '') {
     }
     const { coordinateBlock, reflectionBlock } = classifyPlaygroundCif(cifText);
     if (coordinateBlock !== null) {
+        // Remember the base name for exported image filenames.
+        currentPlaygroundName = fileName.replace(/\.[^.]+$/, '') || 'structure';
         await loadPlaygroundCif(
             cifText,
             configurePlaygroundBlocks(cifText, coordinateBlock),
@@ -532,6 +535,7 @@ function initializeUI() {
         recreateViewer,
         adaptButtons,
         updateStatus,
+        getStructureName: () => currentPlaygroundName,
     });
 }
 

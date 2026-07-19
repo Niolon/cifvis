@@ -451,3 +451,15 @@ html, body {
         padding: 12px 0;
     }
 }
+
+.settings-download {
+    font-weight: 600;
+    background: #1565c0;
+    color: white;
+    border-color: #1565c0;
+}
+
+.settings-download:hover {
+    background: #0d47a1;
+    border-color: #0d47a1;
+}

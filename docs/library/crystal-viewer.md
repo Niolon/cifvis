@@ -56,6 +56,8 @@ atoms, bonds, elements), see the [Options Reference](../reference/index.md).
 | `viewer.setIsosurfaceVisibility(visible)` | Shows or hides the existing surface meshes without source parsing, FFT, or marching-cubes work. |
 | `viewer.clearScalarField(indexOrId)` | Discards one field, defaulting to the active entry. |
 | `viewer.clearScalarFields()` | Discards the complete field collection. |
+| `viewer.captureImage(options)` | Renders the current view (scene + atom labels) to a standalone `<canvas>` at an arbitrary resolution. Options: `scale` (multiplier over the on-screen size, default 2), `longEdge` (target px for the longer edge, overrides `scale`), `background` (`'transparent'` or any CSS colour), `includeLabels` (default true). |
+| `viewer.captureImageBlob(options)` | As `captureImage`, but resolves to a PNG (or `type`) `Blob` ready to download. |
 | `viewer.requestRender()` | Forces a redraw when `renderMode: 'onDemand'`. |
 | `viewer.controls.handleResize()` | Call after any layout change that resizes the container. |
 | `viewer.dispose()` | Releases Three.js/GPU resources and event listeners. Required on teardown. |

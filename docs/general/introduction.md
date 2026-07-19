@@ -44,7 +44,9 @@ file (plus FCF or Gaussian Cube files) and explore it directly. The cogwheel but
 a searchable settings overlay covering the full
 [options schema](../reference/index.md); your choices are stored in the browser and can
 be copied as a JSON object ready for `<cifview-widget options='…'>` or the
-`CrystalViewer` constructor.
+`CrystalViewer` constructor. The same overlay can **export a high-resolution PNG** of the
+current view (with atom labels and an optional transparent background) for figures —
+backed by [`viewer.captureImage()`](../library/crystal-viewer.md) in the library.
 
 ## License and citation
 
