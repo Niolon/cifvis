@@ -24,6 +24,8 @@ export const VALID_ATOM_LABEL_COLOR_MODES = Object.freeze(['uniform', 'atom']);
 
 export const VALID_SELECTION_MODES = Object.freeze(['single', 'multiple']);
 
+export const VALID_CAMERA_TYPES = Object.freeze(['orthographic', 'perspective']);
+
 export const VALID_HYDROGEN_MODES = Object.freeze(['none', 'constant', 'anisotropic']);
 
 export const VALID_SYMMETRY_MODES = Object.freeze([

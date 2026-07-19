@@ -13,7 +13,8 @@
 
 export const descriptions = {
     // Camera
-    'camera.type': 'Camera projection type. Currently <code>orthographic</code>.',
+    'camera.type': 'Camera projection type: <code>orthographic</code> (parallel projection, the ' +
+        'crystallographic convention) or <code>perspective</code> (uses <code>camera.fov</code>).',
     'camera.minDistance': 'Minimum camera distance when zooming.',
     'camera.maxDistance': 'Maximum camera distance when zooming.',
     'camera.wheelZoomSpeed': 'Speed of zooming when using the mouse wheel.',

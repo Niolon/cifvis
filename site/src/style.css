@@ -11,9 +11,11 @@ html, body {
     top: 20px;
     left: 20px;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     z-index: 1000;
     border: none;
+    max-width: calc(100vw - 40px);
 }
 
 .button-container > [hidden] {
@@ -166,6 +168,11 @@ html, body {
     padding: 4vh 16px;
 }
 
+/* display: flex above would override the hidden attribute's default. */
+.settings-overlay[hidden] {
+    display: none;
+}
+
 .settings-panel {
     background: rgba(255, 255, 255, 0.97);
     border-radius: 8px;
@@ -173,6 +180,7 @@ html, body {
     width: 100%;
     max-width: 680px;
     max-height: 88vh;
+    max-height: 88dvh;
     display: flex;
     flex-direction: column;
     font-family: system-ui, -apple-system, sans-serif;
@@ -193,6 +201,7 @@ html, body {
 .settings-title-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
@@ -350,6 +359,64 @@ html, body {
 }
 
 @media (max-width: 560px) {
+    .button-container {
+        top: 10px;
+        left: 10px;
+        gap: 8px;
+        max-width: calc(100vw - 20px);
+    }
+
+    .control-button {
+        width: 44px;
+        height: 44px;
+        padding: 8px;
+    }
+
+    #cif-block-select,
+    #density-level {
+        height: 44px;
+    }
+
+    #density-level {
+        width: 44px;
+        min-width: 44px;
+    }
+
+    #status-message {
+        top: 64px;
+        left: 10px;
+        right: 10px;
+    }
+
+    .selection-container {
+        top: auto;
+        bottom: 10px;
+        right: 10px;
+        max-width: min(300px, 60vw);
+        max-height: 45vh;
+        overflow-y: auto;
+    }
+
+    /* Full-screen settings panel on phones. */
+    .settings-overlay {
+        padding: 0;
+    }
+
+    .settings-panel {
+        max-width: none;
+        border-radius: 0;
+        height: 100%;
+        max-height: none;
+    }
+
+    .settings-header {
+        padding: 10px 12px 8px;
+    }
+
+    .settings-body {
+        padding: 8px 12px 16px;
+    }
+
     .settings-row {
         grid-template-columns: 1fr auto auto;
     }
@@ -357,5 +424,30 @@ html, body {
     .settings-row-label {
         grid-column: 1 / -1;
         white-space: normal;
+    }
+
+    .settings-row-control {
+        min-width: 0;
+    }
+}
+
+/* Larger touch targets on coarse-pointer devices. */
+@media (pointer: coarse) {
+    .settings-action {
+        padding: 9px 12px;
+    }
+
+    .settings-row-reset,
+    .settings-row-help {
+        font-size: 16px;
+        padding: 6px 8px;
+    }
+
+    .settings-row-control {
+        min-height: 36px;
+    }
+
+    .settings-group > summary {
+        padding: 12px 0;
     }
 }

@@ -77,13 +77,18 @@ function threeMatrixToMathJS(matrix) {
  * @returns {THREE.Matrix4|null} Rotation matrix to orient structure, or null if no atoms found
  */
 export function structureOrientationMatrix(structureGroup) {
-    // Extract atom positions
+    // Extract atom positions. Pooled/instanced atoms (default solid-3d style)
+    // keep their Object3D at the origin and carry the real transform in their
+    // instance matrix, so read the translation from there when present.
     const positions = [];
     const center = new THREE.Vector3();
     structureGroup.traverse(obj => {
         if(obj.userData?.type === 'atom') {
-            positions.push(obj.position.clone());
-            center.add(obj.position);
+            const position = obj.segments?.[0]?.matrix
+                ? new THREE.Vector3().setFromMatrixPosition(obj.segments[0].matrix)
+                : obj.position.clone();
+            positions.push(position);
+            center.add(position);
         }
     });
     
