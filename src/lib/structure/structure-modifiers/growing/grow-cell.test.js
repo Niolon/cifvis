@@ -12,6 +12,7 @@ import {
     growInternalHBondsInGroup,
     growExternalBondsInGroup,
     growExternalHBondsInGroup,
+    addPackingBorderAtoms,
 } from './grow-cell.js';
 
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
@@ -1511,5 +1512,96 @@ describe('growCell integration tests', () => {
             position: [atom.position.x, atom.position.y, atom.position.z],
         }))).toEqual(originalAtoms);
         expect(structure.bonds.map(bond => [bond.atom1Id, bond.atom2Id])).toEqual(originalBonds);
+    });
+});
+
+describe('addPackingBorderAtoms', () => {
+    const cell = new UnitCell(5, 5, 5, 90, 90, 90);
+    const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+
+    test('is a no-op for a cutoff of 1 or less', () => {
+        const structure = new CrystalStructure(
+            cell, [new Atom('A1', 'C', new FractPosition(0, 0, 0))], [], [], symmetry,
+        );
+
+        expect(addPackingBorderAtoms(structure, 1).atoms).toHaveLength(1);
+        expect(addPackingBorderAtoms(structure, 0.9).atoms).toHaveLength(1);
+    });
+
+    test('duplicates a corner atom onto all 7 border combinations', () => {
+        const structure = new CrystalStructure(
+            cell, [new Atom('A1', 'C', new FractPosition(0, 0, 0))], [], [], symmetry,
+        );
+
+        const result = addPackingBorderAtoms(structure, 1.001);
+
+        expect(result.atoms).toHaveLength(8);
+        const positions = result.atoms
+            .map(atom => [atom.position.x, atom.position.y, atom.position.z].join(','))
+            .sort();
+        expect(positions).toEqual([
+            '0,0,0', '0,0,1', '0,1,0', '0,1,1', '1,0,0', '1,0,1', '1,1,0', '1,1,1',
+        ]);
+        // Duplicates carry no bonds of their own.
+        expect(result.bonds).toHaveLength(0);
+    });
+
+    test('duplicates a face atom (single near axis) onto one border copy', () => {
+        const structure = new CrystalStructure(
+            cell, [new Atom('A1', 'C', new FractPosition(0, 0.5, 0.5))], [], [], symmetry,
+        );
+
+        const result = addPackingBorderAtoms(structure, 1.001);
+
+        expect(result.atoms).toHaveLength(2);
+        const positions = result.atoms
+            .map(atom => [atom.position.x, atom.position.y, atom.position.z].join(','))
+            .sort();
+        expect(positions).toEqual(['0,0.5,0.5', '1,0.5,0.5']);
+    });
+
+    test('leaves an interior atom untouched', () => {
+        const structure = new CrystalStructure(
+            cell, [new Atom('A1', 'C', new FractPosition(0.5, 0.5, 0.5))], [], [], symmetry,
+        );
+
+        expect(addPackingBorderAtoms(structure, 1.001).atoms).toHaveLength(1);
+    });
+
+    test('preserves existing bonds unchanged', () => {
+        const atoms = [
+            new Atom('A1', 'C', new FractPosition(0, 0.1, 0.1)),
+            new Atom('A2', 'O', new FractPosition(0.05, 0.1, 0.1)),
+        ];
+        const bonds = [new Bond('A1', 'A2', 1.4, 0.01, '.')];
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+
+        const result = addPackingBorderAtoms(structure, 1.001);
+
+        expect(result.atoms.length).toBeGreaterThan(2);
+        expect(result.bonds).toHaveLength(1);
+        expect(result.bonds[0]).toBe(bonds[0]);
+    });
+
+    test('reproduces the full NaCl (Fm-3m) closed cell', () => {
+        // The rock-salt asymmetric unit sits exactly on low faces (Na at the
+        // origin, Cl at the face/edge centres), so a cutoff of 1.001 should
+        // reproduce the complete 27-atom closed packing diagram.
+        const naclSymmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+        const atoms = [
+            new Atom('Na1', 'Na', new FractPosition(0, 0, 0)),
+            new Atom('Na2', 'Na', new FractPosition(0, 0.5, 0.5)),
+            new Atom('Na3', 'Na', new FractPosition(0.5, 0, 0.5)),
+            new Atom('Na4', 'Na', new FractPosition(0.5, 0.5, 0)),
+            new Atom('Cl1', 'Cl', new FractPosition(0, 0, 0.5)),
+            new Atom('Cl2', 'Cl', new FractPosition(0, 0.5, 0)),
+            new Atom('Cl3', 'Cl', new FractPosition(0.5, 0, 0)),
+            new Atom('Cl4', 'Cl', new FractPosition(0.5, 0.5, 0.5)),
+        ];
+        const structure = new CrystalStructure(cell, atoms, [], [], naclSymmetry);
+
+        const result = addPackingBorderAtoms(structure, 1.001);
+
+        expect(result.atoms).toHaveLength(27);
     });
 });

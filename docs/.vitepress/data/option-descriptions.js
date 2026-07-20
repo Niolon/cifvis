@@ -92,10 +92,10 @@ export const descriptions = {
         '<code>group&lt;rank&gt;of&lt;total&gt;</code> value.',
     'symmetryMode': '<code>none</code>, <code>hbonds</code>, <code>fragment</code>, ' +
         '<code>fragment-hbonds</code>, <code>cell</code>, or <code>fragment-cell</code>.',
-    'packingCutoff': 'Upper fractional bound for unit-cell membership in the cell modes. ' +
-        '<code>1</code> (default) wraps atoms on the far cell face back in, keeping the cell ' +
-        'contents (Z) correct; raise slightly (e.g. <code>1.001</code>) to keep atoms sitting ' +
-        'on the upper border.',
+    'packingCutoff': '<code>1</code> (default) shows the canonical, Z-correct unit cell. A value ' +
+        'above <code>1</code> (e.g. <code>1.001</code>) additionally duplicates atoms sitting ' +
+        'within that margin of a low cell face onto the matching high face(s), for a "closed" ' +
+        'packing diagram with atoms on every face, edge and corner. The duplicates are unbonded.',
 
     // Atom labels
     'atomLabels.show': {

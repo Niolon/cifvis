@@ -1,5 +1,6 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
+import { FractPosition } from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
@@ -143,25 +144,17 @@ export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) 
 }
 
 /**
- * Checks if an atom position is within the unit cell.
- *
- * The upper bound is the packing cutoff: with the default 1.0 an atom sitting on
- * the far face (fractional 1.0) is treated as the same periodic position as 0.0 and
- * wrapped in, which keeps the cell contents (Z) correct. Raising it slightly (e.g.
- * 1.001) instead keeps those upper-border atoms, giving a "closed" packing diagram
- * at the cost of duplicating face/edge/corner atoms.
+ * Checks if an atom position is within the unit cell (0 <= x,y,z < 1).
  * @param {Atom} atom - Atom to check
- * @param {number} [cutoff] - Upper fractional bound (packing cutoff)
  * @param {number} [tolerance] - Tolerance for boundary comparisons
  * @returns {boolean} True if atom is within unit cell
  */
-function isWithinUnitCell(atom, cutoff = 1, tolerance = 1e-6) {
+function isWithinUnitCell(atom, tolerance = 1e-6) {
     const { x, y, z } = atom.position;
-    // Atoms at position >= cutoff - tolerance are wrapped to the same periodic
-    // position one cell lower.
-    return x >= -tolerance && x < cutoff - tolerance &&
-        y >= -tolerance && y < cutoff - tolerance &&
-        z >= -tolerance && z < cutoff - tolerance;
+    // Atoms at position >= 1 - tolerance should be wrapped to 0 (same periodic position)
+    return x >= -tolerance && x < 1 - tolerance &&
+        y >= -tolerance && y < 1 - tolerance &&
+        z >= -tolerance && z < 1 - tolerance;
 }
 
 /**
@@ -250,12 +243,9 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms. Used
  *  to avoid duplicates and track translations, as well as special positions.
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
- * @param {number} [packingCutoff] - Upper fractional bound for cell membership (see isWithinUnitCell)
  * @returns {GrownGroup} New group with grown atoms and updated symmetry string
  */
-export function growAtomsinGroup(
-    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, packingCutoff = 1,
-) {
+export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
     const newAtoms = [];
     const transformedAtoms = symmetry.applySymmetry(symmString, grownGroup.atoms);
 
@@ -278,7 +268,7 @@ export function growAtomsinGroup(
         const preShiftId = atom.uniqueId;
 
         // Check if atom is within unit cell
-        if (moveAtomsInsideCell && !isWithinUnitCell(atom, packingCutoff)) {
+        if (moveAtomsInsideCell && !isWithinUnitCell(atom)) {
             const atomOffsetX = Math.floor(atom.position.x);
             const atomOffsetY = Math.floor(atom.position.y);
             const atomOffsetZ = Math.floor(atom.position.z);
@@ -650,12 +640,9 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
  * @param {string} symmString - The symmetry string to use for the group
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms and bonds
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
- * @param {number} [packingCutoff] - Upper fractional bound for cell membership (see isWithinUnitCell)
  * @returns {GrownGroup} New group with grown atoms, internal and external bonds, and symmetry string
  */
-export function growGroup(
-    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, packingCutoff = 1,
-) {
+export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
     const combinedSymmString = symmetry.combineSymmetryCodes(
         symmString,
         grownGroup.symmString,
@@ -673,7 +660,6 @@ export function growGroup(
         centredSymmString,
         objectTracker,
         moveAtomsInsideCell,
-        packingCutoff,
     );
 
     const grownInternalBonds = growInternalBondsInGroup(
@@ -721,13 +707,9 @@ export function growGroup(
  * @param {CrystalStructure} structure - Input crystal structure
  * @param {boolean} [moveAtomsInsideCell] - Whether to exclude atoms outside unit cell
  * @param {Map<string,string>} [startingSpecialPositions] - Optional special positions map to start with.
- * @param {number} [packingCutoff] - Upper fractional bound for cell membership. 1.0 (default) wraps
- *  far-face atoms in for a correct Z; a slightly larger value (e.g. 1.001) keeps upper-border atoms.
  * @returns {CrystalStructure} New structure filling the unit cell
  */
-export function growCell(
-    structure, moveAtomsInsideCell = true, startingSpecialPositions = null, packingCutoff = 1,
-) {
+export function growCell(structure, moveAtomsInsideCell = true, startingSpecialPositions = null) {
     let specialPositionMap;
     if (startingSpecialPositions !== null) {
         // If a starting special position is provided, initialize the map with it
@@ -822,7 +804,6 @@ export function growCell(
                 nonTransSymmString,
                 objectTracker,
                 moveAtomsInsideCell,
-                packingCutoff,
             );
             grownAtomsGroups.push(newGrownGroup);
         }
@@ -1167,6 +1148,80 @@ export function growCell(
         centredAtoms,
         centredBonds,
         centredHBonds,
+        structure.symmetry,
+    );
+}
+
+/**
+ * Adds duplicate copies of atoms sitting near a low cell face (fractional 0) on the
+ * matching high face (fractional 1), for a "closed" packing diagram that shows atoms
+ * on every face, edge and corner of the box instead of only the canonical, Z-correct
+ * [0,1) cell.
+ *
+ * This is deliberately atoms-only: the duplicates carry no bonds of their own (a
+ * border copy of a bonded atom would otherwise need its whole coordination re-derived
+ * across the boundary, which is out of scope here). Existing bonds are left exactly
+ * as grown; only extra, unbonded atoms are appended.
+ * @param {CrystalStructure} structure - A structure already grown to the canonical
+ *  [0,1) unit cell (as returned by {@link growCell}).
+ * @param {number} packingCutoff - Upper fractional bound for cell membership. Values
+ *  <= 1 are a no-op (the canonical cell already is the result); e.g. 1.001 duplicates
+ *  atoms within 0.001 of a low face onto the corresponding high face(s).
+ * @returns {CrystalStructure} Structure with the border duplicates appended
+ */
+export function addPackingBorderAtoms(structure, packingCutoff) {
+    const margin = packingCutoff - 1;
+    if (!(margin > 0)) {
+        return structure;
+    }
+
+    const extraAtoms = [];
+    for (const atom of structure.atoms) {
+        const { x, y, z } = atom.position;
+        // Axes where this atom is within margin of the low face; duplicating along
+        // each combination of these axes reproduces face, edge and corner copies.
+        const nearAxes = [];
+        if (x < margin) {
+            nearAxes.push(0);
+        }
+        if (y < margin) {
+            nearAxes.push(1);
+        }
+        if (z < margin) {
+            nearAxes.push(2);
+        }
+        if (nearAxes.length === 0) {
+            continue;
+        }
+
+        // Every non-empty subset of the near axes (bit i => shift that axis by +1).
+        for (let mask = 1; mask < (1 << nearAxes.length); mask++) {
+            const shift = [0, 0, 0];
+            for (let bit = 0; bit < nearAxes.length; bit++) {
+                if (mask & (1 << bit)) {
+                    shift[nearAxes[bit]] = 1;
+                }
+            }
+
+            const position = new FractPosition(x + shift[0], y + shift[1], z + shift[2]);
+            const appliedSymmetry = (atom.appliedSymmetry ? atom.appliedSymmetry.copy() : null) ||
+                new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+            appliedSymmetry.translation[0] += shift[0];
+            appliedSymmetry.translation[1] += shift[1];
+            appliedSymmetry.translation[2] += shift[2];
+            appliedSymmetry._updateKey();
+
+            extraAtoms.push(new Atom(
+                atom.label, atom.atomType, position, atom.adp, atom.disorderGroup, appliedSymmetry,
+            ));
+        }
+    }
+
+    return new CrystalStructure(
+        structure.cell,
+        [...structure.atoms, ...extraAtoms],
+        structure.bonds,
+        structure.hBonds,
         structure.symmetry,
     );
 }

@@ -3,7 +3,7 @@ import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
 import { growFragment } from './growing/grow-fragment.js';
-import { growCell } from './growing/grow-cell.js';
+import { growCell, addPackingBorderAtoms } from './growing/grow-cell.js';
 import { chemicalBonds } from '../bond-classification.js';
 import {
     filterBondsByGeometry,
@@ -341,12 +341,13 @@ export class SymmetryGrower extends BaseFilter {
             specialPositionAtoms = growthResult.specialPositionAtoms;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
-            workStructure = growCell(workStructure, true, null, this.packingCutoff);
+            workStructure = addPackingBorderAtoms(growCell(workStructure), this.packingCutoff);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
             const growthResult = growFragment(workStructure);
             specialPositionAtoms = growthResult.specialPositionAtoms;
-            workStructure = growCell(
-                growthResult.grownStructure, false, specialPositionAtoms, this.packingCutoff,
+            workStructure = addPackingBorderAtoms(
+                growCell(growthResult.grownStructure, false, specialPositionAtoms),
+                this.packingCutoff,
             );
             // Fragment-cell contains only complete components centred in the unit
             // cell. Periodic H-bond partner shells belong to fragment-hbonds mode.

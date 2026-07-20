@@ -44,11 +44,12 @@ console.log(grown.atoms.length);
 
 ### Atoms on the cell border
 
-By default the `cell` modes use a **packing cutoff** of `1.0`: an atom sitting on the far
-cell face (fractional coordinate 1.0) is treated as the same periodic position as 0.0 and
-wrapped back in, so the cell contents (Z) stay correct. For a "closed" packing diagram that
-also draws the atoms on the upper faces, edges and corners, raise the cutoff slightly — this
-duplicates those border atoms, so Z is no longer exact.
+By default the `cell` modes use a **packing cutoff** of `1.0`: the canonical unit cell, where
+every atom has a single, Z-correct copy in `[0, 1)`. Raising the cutoff slightly (e.g. `1.001`)
+additionally duplicates atoms that sit within that margin of a low cell face — 0, an edge, or a
+corner — onto the matching high face(s), for a "closed" packing diagram with atoms visible on
+every side of the box. These duplicates are atoms only (no new bonds are drawn for them), and Z
+is no longer exact once they're included.
 
 ::: code-group
 
