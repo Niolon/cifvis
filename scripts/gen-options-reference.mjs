@@ -72,7 +72,7 @@ function groupFor(path) {
     if (path.startsWith('bond')) {
         return 'bonds';
     }
-    if (path.startsWith('atom')) {
+    if (path.startsWith('atom') || path === 'ellipsoidProbability') {
         return 'atom-visualization';
     }
     throw new Error(`No reference group defined for option path: ${path}`);

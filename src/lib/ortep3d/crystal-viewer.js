@@ -602,6 +602,7 @@ export class CrystalViewer {
                     ...(atomLabelOptions.text || {}),
                 },
             },
+            ellipsoidProbability: options.ellipsoidProbability ?? defaultSettings.ellipsoidProbability,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
