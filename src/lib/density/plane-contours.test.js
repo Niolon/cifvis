@@ -102,6 +102,55 @@ describe('planar scalar-field contours', () => {
         expect(smoothField.sample).not.toHaveBeenCalled();
     });
 
+    test('limits contour sampling to a configurable distance from displayed atoms', () => {
+        const oscillatingField = {
+            sigma: 1,
+            surfaceSign: 'positive',
+            sample: x => Math.sin(2 * Math.PI * x * 6),
+        };
+        const sharedOptions = {
+            plane: { atoms: ['C1', 'C2', 'C3'] },
+            padding: 5,
+            resolution: 40,
+            maxResolution: 40,
+            levels: [0.5],
+            depthOffset: 0,
+        };
+        const unclipped = calculatePlanarContours(oscillatingField, planarStructure(), {
+            ...sharedOptions,
+            maxAtomDistance: -1,
+        });
+        const clipped = calculatePlanarContours(oscillatingField, planarStructure(), {
+            ...sharedOptions,
+            maxAtomDistance: 2.5,
+        });
+        const farthestFromOrigin = segments => Math.max(...segments.flat().map(point => Math.hypot(
+            point[0] - unclipped.plane.origin[0],
+            point[1] - unclipped.plane.origin[1],
+        )));
+
+        expect(clipped.positiveSegments.length).toBeLessThan(unclipped.positiveSegments.length);
+        expect(farthestFromOrigin(clipped.positiveSegments))
+            .toBeLessThan(farthestFromOrigin(unclipped.positiveSegments));
+    });
+
+    test('treats null maxAtomDistance as an unclipped rectangle', () => {
+        const contours = calculatePlanarContours(field, planarStructure(), {
+            plane: { atoms: ['C1', 'C2', 'C3'] },
+            padding: 1,
+            resolution: 24,
+            maxResolution: 24,
+            contourStep: 0.1,
+            contourCount: 3,
+            depthOffset: 0,
+            maxAtomDistance: null,
+        });
+
+        expect(contours.levels).toEqual([0.1, 0.2, 0.30000000000000004]);
+        expect(contours.positiveSegments.length).toBeGreaterThan(0);
+        expect(contours.negativeSegments.length).toBeGreaterThan(0);
+    });
+
     test('rejects missing and collinear atom plane definitions', () => {
         expect(() => resolveContourPlane(planarStructure(), {
             atoms: ['C1', 'C2', 'missing'],
@@ -152,6 +201,59 @@ describe('planar scalar-field contours', () => {
         expect(layer.group.children.every(child => child.material.linewidth === 1.5)).toBe(true);
         layer.dispose();
         expect(parent.children).toHaveLength(0);
+    });
+
+    test('Three.js adapter adds a halo pass behind each contour line when haloWidth is set', () => {
+        const parent = new THREE.Group();
+        const layer = new ThreeContourLineLayer(parent, {
+            plane: { atoms: ['C1', 'C2', 'C3'] },
+            padding: 1,
+            resolution: 20,
+            maxResolution: 20,
+            contourStep: 0.1,
+            contourCount: 2,
+            positiveColor: '#00ff00',
+            negativeColor: '#ff0000',
+            opacity: 1,
+            lineWidth: 1.5,
+            haloColor: '#ffffff',
+            haloWidth: 1,
+            depthOffset: 0,
+        });
+        layer.setField(field);
+        layer.setStructure(planarStructure());
+
+        layer.rebuild();
+
+        const haloLines = layer.group.children.filter(child => child.name.includes('halo'));
+        const foregroundLines = layer.group.children.filter(child => !child.name.includes('halo'));
+        expect(haloLines.length).toBe(foregroundLines.length);
+        expect(haloLines.every(child => child.material.linewidth === 3.5)).toBe(true);
+        expect(haloLines.every(child => child.renderOrder === -1)).toBe(true);
+    });
+
+    test('Three.js adapter omits the halo pass when haloWidth is not positive', () => {
+        const parent = new THREE.Group();
+        const layer = new ThreeContourLineLayer(parent, {
+            plane: { atoms: ['C1', 'C2', 'C3'] },
+            padding: 1,
+            resolution: 20,
+            maxResolution: 20,
+            contourStep: 0.1,
+            contourCount: 2,
+            positiveColor: '#00ff00',
+            negativeColor: '#ff0000',
+            opacity: 1,
+            lineWidth: 1.5,
+            haloWidth: 0,
+            depthOffset: 0,
+        });
+        layer.setField(field);
+        layer.setStructure(planarStructure());
+
+        layer.rebuild();
+
+        expect(layer.group.children.some(child => child.name.includes('halo'))).toBe(false);
     });
 
     test('Three.js adapter installs packed worker output without recalculating contours', () => {

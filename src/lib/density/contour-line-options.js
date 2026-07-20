@@ -2,6 +2,7 @@ export const DEFAULT_CONTOUR_LINE_OPTIONS = Object.freeze({
     enabled: false,
     plane: Object.freeze({ mode: 'best-fit' }),
     padding: 1.5,
+    maxAtomDistance: 2.5,
     resolution: 256,
     gridSpacing: 0.04,
     maxResolution: 512,
@@ -15,6 +16,8 @@ export const DEFAULT_CONTOUR_LINE_OPTIONS = Object.freeze({
     zeroColor: '#666666',
     lineColor: null,
     lineWidth: 1.5,
+    haloColor: '#ffffff',
+    haloWidth: 1,
     opacity: 1,
     depthOffset: 0.02,
 });
