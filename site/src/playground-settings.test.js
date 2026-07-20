@@ -88,6 +88,10 @@ describe('labels', () => {
         expect(plainDescription('Use <code>auto-omit</code> &mdash; adaptive.')).toBe('Use auto-omit — adaptive.');
         expect(plainDescription({ type: 'Number', description: 'In &Aring;.' })).toBe('In Å.');
     });
+
+    test('never leaves a complete tag behind for overlapping/nested angle brackets', () => {
+        expect(plainDescription('<scr<script>ipt>alert(1)</scr<script>ipt>')).not.toMatch(/<[a-z]+>/i);
+    });
 });
 
 describe('path helpers', () => {

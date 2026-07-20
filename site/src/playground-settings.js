@@ -258,7 +258,15 @@ const HTML_ENTITIES = {
  */
 export function plainDescription(entry) {
     const html = typeof entry === 'string' ? entry : entry?.description ?? '';
-    let text = html.replace(/<[^>]+>/g, '');
+    // Loop to a fixed point rather than stripping tags in a single pass: a
+    // single pass can leave a new, unintended tag behind when the input
+    // contains overlapping/nested angle brackets (e.g. "<scr<script>ipt>").
+    let text = html;
+    let previous;
+    do {
+        previous = text;
+        text = text.replace(/<[^>]+>/g, '');
+    } while (text !== previous);
     for (const [entity, replacement] of Object.entries(HTML_ENTITIES)) {
         text = text.split(entity).join(replacement);
     }
