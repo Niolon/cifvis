@@ -18088,6 +18088,7 @@ var fd = Object.freeze({
 	hydrogenMode: "none",
 	disorderMode: "all",
 	symmetryMode: "none",
+	packingCutoff: 1,
 	differenceDensity: { ...hd },
 	scalarField: { ...gd },
 	isosurface: { ..._d },
@@ -26574,11 +26575,24 @@ function Ah(e) {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = wh(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Th(a, e, i), { specialPositionAtoms: l, newAtoms: u } = Eh(s, n, t, i), { newBonds: d, atomLabels: f } = Dh(n, s, c, l, u, i, t), p = Oh(t, n, r, s, l, f, i), m = kh(o, t, l, new Set(d.map((e) => gh(e.atom1Id, e.atom2Id))));
-	for (let e of m) d.push(e);
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = wh(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Th(a, e, i), l = /* @__PURE__ */ new Map();
+	for (let e of s) {
+		let t = uh.fromString(e.split("@.@")[1]), n = `${e.split("@.@")[0]}|${t.id}`, r = Math.abs(t.translation[0]) + Math.abs(t.translation[1]) + Math.abs(t.translation[2]), i = l.get(n);
+		(!i || r < i.magnitude || r === i.magnitude && e < i.instance) && l.set(n, {
+			instance: e,
+			magnitude: r
+		});
+	}
+	let u = new Set([...l.values()].map((e) => e.instance)), d = u.size < s.size, { specialPositionAtoms: f, newAtoms: p } = Eh(u, n, t, i), { newBonds: m, atomLabels: h } = Dh(n, u, c, f, p, i, t), g = Oh(t, n, r, u, f, h, i), _ = d ? [] : kh(o, t, f, new Set(m.map((e) => gh(e.atom1Id, e.atom2Id))));
+	for (let e of _) m.push(e);
+	let v = [...t.atoms, ...p], y = m, b = g;
+	if (d) {
+		let e = new Set(v.map((e) => e.uniqueId));
+		y = m.filter((t) => e.has(t.atom1Id) && e.has(t.atom2Id)), b = g.filter((t) => e.has(t.donorAtomId) && e.has(t.hydrogenAtomId) && e.has(t.acceptorAtomId));
+	}
 	return {
-		grownStructure: new ze(t.cell, [...t.atoms, ...u], d, p, t.symmetry),
-		specialPositionAtoms: l
+		grownStructure: new ze(t.cell, v, y, b, t.symmetry),
+		specialPositionAtoms: f
 	};
 }
 //#endregion
@@ -26634,9 +26648,9 @@ function Fh(e, t, n) {
 	}
 	return Array.from(i);
 }
-function Ih(e, t = 1e-6) {
-	let { x: n, y: r, z: i } = e.position;
-	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
+function Ih(e, t = 1, n = 1e-6) {
+	let { x: r, y: i, z: a } = e.position;
+	return r >= -n && r < t - n && i >= -n && i < t - n && a >= -n && a < t - n;
 }
 function Lh(e, t = 3) {
 	let n = e.position.x.toFixed(t), r = e.position.y.toFixed(t), i = e.position.z.toFixed(t);
@@ -26653,22 +26667,22 @@ function Rh(e, t, n) {
 		newString: `${l}_${d}`
 	};
 }
-function zh(e, t, n, r, i) {
-	let a = [], o = t.applySymmetry(n, e.atoms);
-	for (let s = 0; s < o.length; s++) {
-		let c = o[s], l = e.atoms[s], u = n;
-		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = uh.fromString(u);
-		let d = c.uniqueId;
-		if (i && !Ih(c)) {
-			let e = Math.floor(c.position.x), n = Math.floor(c.position.y), i = Math.floor(c.position.z);
-			c.position.x -= e, c.position.y -= n, c.position.z -= i, c.appliedSymmetry.translation[0] -= e, c.appliedSymmetry.translation[1] -= n, c.appliedSymmetry.translation[2] -= i, c.appliedSymmetry._updateKey();
-			let a = c.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
-			r.atomTranslations.set(d, [a, o]);
+function zh(e, t, n, r, i, a = 1) {
+	let o = [], s = t.applySymmetry(n, e.atoms);
+	for (let c = 0; c < s.length; c++) {
+		let l = s[c], u = e.atoms[c], d = n;
+		u.appliedSymmetry && u.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (d = t.combineSymmetryCodes(n, u.appliedSymmetry.key)), l.appliedSymmetry = uh.fromString(d);
+		let f = l.uniqueId;
+		if (i && !Ih(l, a)) {
+			let e = Math.floor(l.position.x), n = Math.floor(l.position.y), i = Math.floor(l.position.z);
+			l.position.x -= e, l.position.y -= n, l.position.z -= i, l.appliedSymmetry.translation[0] -= e, l.appliedSymmetry.translation[1] -= n, l.appliedSymmetry.translation[2] -= i, l.appliedSymmetry._updateKey();
+			let a = l.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
+			r.atomTranslations.set(f, [a, o]);
 		}
-		let f = c.uniqueId, p = Lh(c), m = r.atomMap.get(p);
-		m ? r.specialPositionMap.set(f, m) : (r.atomMap.set(p, f), a.push(c));
+		let p = l.uniqueId, m = Lh(l), h = r.atomMap.get(m);
+		h ? r.specialPositionMap.set(p, h) : (r.atomMap.set(m, p), o.push(l));
 	}
-	return a;
+	return o;
 }
 function Bh(e, t, n, r) {
 	let i = [];
@@ -26761,121 +26775,121 @@ function Uh(e, t, n, r) {
 	}
 	return i;
 }
-function Wh(e, t, n, r, i) {
-	let { newCentre: a, newString: o } = Rh(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function Wh(e, t, n, r, i, a = 1) {
+	let { newCentre: o, newString: s } = Rh(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: zh(e, t, o, r, i),
-		internalBonds: Bh(e, t, o, r),
-		internalHBonds: Vh(e, t, o, r),
-		externalBonds: Hh(e, t, o, r),
-		externalHBonds: Uh(e, t, o, r),
-		symmString: o,
-		groupCentre: a
+		atoms: zh(e, t, s, r, i, a),
+		internalBonds: Bh(e, t, s, r),
+		internalHBonds: Vh(e, t, s, r),
+		externalBonds: Hh(e, t, s, r),
+		externalHBonds: Uh(e, t, s, r),
+		symmString: s,
+		groupCentre: o
 	};
 }
-function Gh(e, t = !0, n = null) {
-	let r;
-	if (r = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new ze(e.cell, [], [], [], e.symmetry);
-	let i = e.calculateConnectedGroups(), a = i.map((t) => {
-		let n = Fh(t, e, r);
+function Gh(e, t = !0, n = null, r = 1) {
+	let i;
+	if (i = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new ze(e.cell, [], [], [], e.symmetry);
+	let a = e.calculateConnectedGroups(), o = a.map((t) => {
+		let n = Fh(t, e, i);
 		return Array.from(Mh(e.symmetry, n));
-	}), o = i.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), s = i.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), c = {
+	}), s = a.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), c = a.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), l = {
 		atomMap: /* @__PURE__ */ new Map(),
 		createdBonds: /* @__PURE__ */ new Set(),
 		createdHBonds: /* @__PURE__ */ new Set(),
-		specialPositionMap: r,
+		specialPositionMap: i,
 		atomTranslations: /* @__PURE__ */ new Map()
-	}, l = [];
-	for (let n = 0; n < i.length; n++) {
-		let r = i[n], u = a[n], d = Ph(r.atoms), f = u[0], p = {
-			atoms: r.atoms,
-			internalBonds: r.bonds,
-			internalHBonds: r.hBonds,
-			symmString: `${f}_555`,
-			groupCentre: d,
-			externalBonds: o[n],
-			externalHBonds: s[n]
+	}, u = [];
+	for (let n = 0; n < a.length; n++) {
+		let i = a[n], d = o[n], f = Ph(i.atoms), p = d[0], m = {
+			atoms: i.atoms,
+			internalBonds: i.bonds,
+			internalHBonds: i.hBonds,
+			symmString: `${p}_555`,
+			groupCentre: f,
+			externalBonds: s[n],
+			externalHBonds: c[n]
 		};
-		for (let n of u) {
-			let r = `${n}_555`, i = Wh(p, e.symmetry, r, c, t);
-			l.push(i);
+		for (let n of d) {
+			let i = `${n}_555`, a = Wh(m, e.symmetry, i, l, t, r);
+			u.push(a);
 		}
 	}
-	let u = [...t ? [] : e.symmetry.applySymmetry(`${e.symmetry.identitySymOpId}_555`, e.atoms).map((t, n) => (t.appliedSymmetry = e.atoms[n].appliedSymmetry?.copy() || null, t)), ...l.flatMap((e) => e.atoms)], d = /* @__PURE__ */ new Map();
-	for (let e of u) d.has(e.uniqueId) || d.set(e.uniqueId, e);
-	let f = Array.from(d.values()), p = [...t ? [] : e.bonds.map((e) => new Ne(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...l.flatMap((e) => e.internalBonds)], m = [...t ? [] : e.hBonds.map((e) => new Pe(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...l.flatMap((e) => e.internalHBonds)], h = new Set(f.map((e) => e.uniqueId));
-	l.forEach((e) => {
+	let d = [...t ? [] : e.symmetry.applySymmetry(`${e.symmetry.identitySymOpId}_555`, e.atoms).map((t, n) => (t.appliedSymmetry = e.atoms[n].appliedSymmetry?.copy() || null, t)), ...u.flatMap((e) => e.atoms)], f = /* @__PURE__ */ new Map();
+	for (let e of d) f.has(e.uniqueId) || f.set(e.uniqueId, e);
+	let p = Array.from(f.values()), m = [...t ? [] : e.bonds.map((e) => new Ne(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...u.flatMap((e) => e.internalBonds)], h = [...t ? [] : e.hBonds.map((e) => new Pe(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...u.flatMap((e) => e.internalHBonds)], g = new Set(p.map((e) => e.uniqueId));
+	u.forEach((e) => {
 		e.externalBonds.forEach((e) => {
-			let t = c.specialPositionMap.get(e.atom1Id) || e.atom1Id;
-			c.atomTranslations.has(t) && ([t] = c.atomTranslations.get(t));
-			let n = c.specialPositionMap.get(e.atom2Id) || e.atom2Id;
-			if (c.atomTranslations.has(n) && ([n] = c.atomTranslations.get(n)), h.has(t) && h.has(n) && t !== n) {
+			let t = l.specialPositionMap.get(e.atom1Id) || e.atom1Id;
+			l.atomTranslations.has(t) && ([t] = l.atomTranslations.get(t));
+			let n = l.specialPositionMap.get(e.atom2Id) || e.atom2Id;
+			if (l.atomTranslations.has(n) && ([n] = l.atomTranslations.get(n)), g.has(t) && g.has(n) && t !== n) {
 				let r = new Ne(t, n, e.bondLength, e.bondLengthSU, ".");
-				p.push(r);
-			} else if (h.has(t)) {
+				m.push(r);
+			} else if (g.has(t)) {
 				let n = new Ne(t, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry);
-				p.push(n);
+				m.push(n);
 			}
 		}), e.externalHBonds.forEach((e) => {
-			let t = null, n = c.specialPositionMap.get(e.donorAtomId) || e.donorAtomId;
-			h.has(n) || (n = c.specialPositionMap.get(n) || n, c.atomTranslations.has(n) && ([n, t] = c.atomTranslations.get(n)));
-			let r = null, i = c.specialPositionMap.get(e.hydrogenAtomId) || e.hydrogenAtomId;
-			h.has(i) || (i = c.specialPositionMap.get(i) || i, c.atomTranslations.has(i) && ([i, r] = c.atomTranslations.get(i)));
+			let t = null, n = l.specialPositionMap.get(e.donorAtomId) || e.donorAtomId;
+			g.has(n) || (n = l.specialPositionMap.get(n) || n, l.atomTranslations.has(n) && ([n, t] = l.atomTranslations.get(n)));
+			let r = null, i = l.specialPositionMap.get(e.hydrogenAtomId) || e.hydrogenAtomId;
+			g.has(i) || (i = l.specialPositionMap.get(i) || i, l.atomTranslations.has(i) && ([i, r] = l.atomTranslations.get(i)));
 			let a;
-			if (a = !e.acceptorAtomSymmetry || e.acceptorAtomSymmetry === "." ? e.acceptorAtomId : `${e.acceptorAtomId.split("|")[0]}|${e.acceptorAtomSymmetry}`, !h.has(a) && (a = c.specialPositionMap.get(a) || a, c.atomTranslations.has(a))) {
-				let [e, n] = c.atomTranslations.get(a);
+			if (a = !e.acceptorAtomSymmetry || e.acceptorAtomSymmetry === "." ? e.acceptorAtomId : `${e.acceptorAtomId.split("|")[0]}|${e.acceptorAtomSymmetry}`, !g.has(a) && (a = l.specialPositionMap.get(a) || a, l.atomTranslations.has(a))) {
+				let [e, n] = l.atomTranslations.get(a);
 				t === n && r === n && (a = e);
 			}
-			if (h.has(n) && h.has(i) && h.has(a)) {
+			if (g.has(n) && g.has(i) && g.has(a)) {
 				let t = new Pe(n, i, a, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".");
-				m.push(t);
-			} else if (h.has(n) && h.has(i)) {
+				h.push(t);
+			} else if (g.has(n) && g.has(i)) {
 				let t = new Pe(n, i, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry);
-				m.push(t);
+				h.push(t);
 			}
 		});
 	});
-	let g = new Map(f.map((e) => [e.uniqueId, e])), _ = /* @__PURE__ */ new Map(), v = (t) => {
-		let n = _.get(t.uniqueId);
-		return n || (n = t.position.toCartesian(e.cell), _.set(t.uniqueId, n)), n;
-	}, y = (e) => {
+	let _ = new Map(p.map((e) => [e.uniqueId, e])), v = /* @__PURE__ */ new Map(), y = (t) => {
+		let n = v.get(t.uniqueId);
+		return n || (n = t.position.toCartesian(e.cell), v.set(t.uniqueId, n)), n;
+	}, b = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
 		if (e.bondLength > jh) return !1;
-		let t = g.get(e.atom1Id), n = g.get(e.atom2Id);
+		let t = _.get(e.atom1Id), n = _.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
-		let r = v(t), i = v(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
+		let r = y(t), i = y(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
 		return a <= e.bondLength + o;
-	}, b = p.filter((e) => {
-		let t = h.has(e.atom1Id), n = e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
-		return t && (h.has(e.atom2Id) || n) && y(e);
-	}), x = m.filter((e) => h.has(e.donorAtomId) && h.has(e.hydrogenAtomId)), S = b, C = new ze(e.cell, f, S, x, e.symmetry), w = /* @__PURE__ */ new Map();
-	for (let e of C.calculateConnectedGroups()) {
+	}, x = m.filter((e) => {
+		let t = g.has(e.atom1Id), n = e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
+		return t && (g.has(e.atom2Id) || n) && b(e);
+	}), S = h.filter((e) => g.has(e.donorAtomId) && g.has(e.hydrogenAtomId)), C = x, w = new ze(e.cell, p, C, S, e.symmetry), T = /* @__PURE__ */ new Map();
+	for (let e of w.calculateConnectedGroups()) {
 		let t = Ph(e.atoms).toArray().map((e) => Math.floor(e));
 		for (let n of e.atoms) {
 			let e = n.uniqueId;
-			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), w.set(e, n.uniqueId);
+			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), T.set(e, n.uniqueId);
 		}
 	}
-	let T = [], E = /* @__PURE__ */ new Map(), D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map();
-	for (let e of f) {
-		let t = Lh(e), n = D.get(e.uniqueId) || E.get(t);
-		n ? O.set(e.uniqueId, n) : (E.set(t, e.uniqueId), D.set(e.uniqueId, e.uniqueId), T.push(e));
+	let E = [], D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map(), k = /* @__PURE__ */ new Map();
+	for (let e of p) {
+		let t = Lh(e), n = O.get(e.uniqueId) || D.get(t);
+		n ? k.set(e.uniqueId, n) : (D.set(t, e.uniqueId), O.set(e.uniqueId, e.uniqueId), E.push(e));
 	}
-	for (let [e, t] of w) w.set(e, O.get(t) || t);
-	let k = [], A = /* @__PURE__ */ new Set();
-	for (let e of b) {
-		let t = w.get(e.atom1Id) || e.atom1Id, n = w.get(e.atom2Id) || e.atom2Id;
+	for (let [e, t] of T) T.set(e, k.get(t) || t);
+	let A = [], j = /* @__PURE__ */ new Set();
+	for (let e of x) {
+		let t = T.get(e.atom1Id) || e.atom1Id, n = T.get(e.atom2Id) || e.atom2Id;
 		if (t === n) continue;
 		let r = gh(t, n);
-		A.has(r) || (e.atom1Id = t, e.atom2Id = n, k.push(e), A.add(r));
+		j.has(r) || (e.atom1Id = t, e.atom2Id = n, A.push(e), j.add(r));
 	}
-	let j = [], ee = /* @__PURE__ */ new Set();
-	for (let e of x) {
-		e.donorAtomId = w.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = w.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = w.get(e.acceptorAtomId) || e.acceptorAtomId;
+	let ee = [], M = /* @__PURE__ */ new Set();
+	for (let e of S) {
+		e.donorAtomId = T.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = T.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = T.get(e.acceptorAtomId) || e.acceptorAtomId;
 		let t = _h(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
-		ee.has(t) || (j.push(e), ee.add(t));
+		M.has(t) || (ee.push(e), M.add(t));
 	}
-	return new ze(e.cell, T, k, j, e.symmetry);
+	return new ze(e.cell, E, A, ee, e.symmetry);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
@@ -27175,8 +27189,8 @@ var ng = class e extends sh {
 		FRAGMENT_CELL: "fragment-cell"
 	});
 	static PREFERRED_FALLBACK_ORDER = [e.MODES.FRAGMENT, e.MODES.CELL];
-	constructor(t = e.MODES.NONE) {
-		super(e.MODES, t, "SymmetryGrower", e.PREFERRED_FALLBACK_ORDER);
+	constructor(t = e.MODES.NONE, n = 1) {
+		super(e.MODES, t, "SymmetryGrower", e.PREFERRED_FALLBACK_ORDER), this.packingCutoff = n;
 	}
 	get requiresCameraUpdate() {
 		return !0;
@@ -27191,10 +27205,10 @@ var ng = class e extends sh {
 			let e = Ah(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = Gh(n);
+		if (this.mode === e.MODES.CELL) n = Gh(n, !0, null, this.packingCutoff);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
 			let e = Ah(n);
-			r = e.specialPositionAtoms, n = Gh(e.grownStructure, !1, r), n = eg(n);
+			r = e.specialPositionAtoms, n = Gh(e.grownStructure, !1, r, this.packingCutoff), n = eg(n);
 		}
 		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, $h(n, n.bonds), n.hBonds, n.symmetry)), n = tg(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, $h(n, n.bonds), n.hBonds, n.symmetry), n = eg(n))), n;
 	}
@@ -27318,7 +27332,155 @@ var ng = class e extends sh {
 				}
 			}
 		}
-		return n;
+		return this.generateSymmetryBonds(e, t, o, c, n), n;
+	}
+	generateSymmetryBonds(e, t, n, r, i) {
+		let { cell: a, atoms: o, symmetry: s } = e, c = s?.symmetryOperations;
+		if (!c || c.length === 0 || r <= 0) return;
+		let l = [];
+		for (let [e, t] of s.operationIds.entries()) l[t] = e;
+		let u = s.identitySymOpId, d = s.operationIds.get(u), f = a.fractToCartMatrix.toArray(), p = (e) => [
+			f[0][0] * e[0] + f[0][1] * e[1] + f[0][2] * e[2],
+			f[1][0] * e[0] + f[1][1] * e[1] + f[1][2] * e[2],
+			f[2][0] * e[0] + f[2][1] * e[1] + f[2][2] * e[2]
+		], m = p([
+			1,
+			0,
+			0
+		]), h = p([
+			0,
+			1,
+			0
+		]), g = p([
+			0,
+			0,
+			1
+		]), _ = P(a.fractToCartMatrix).toArray(), v = [
+			0,
+			1,
+			2
+		].map((e) => r * Math.hypot(_[e][0], _[e][1], _[e][2])), y = (e, t) => {
+			if (t >= .5) return [
+				-1,
+				0,
+				1
+			];
+			let n = [0];
+			return e < t && n.push(1), e > 1 - t && n.push(-1), n;
+		}, b = r, x = (e, t, n) => `${e},${t},${n}`, S = (e) => Math.floor(e / b), C = o.map((e) => [
+			e.position.x,
+			e.position.y,
+			e.position.z
+		]), w = Array(o.length), T = /* @__PURE__ */ new Set(), E = [];
+		for (let e = 0; e < o.length; e++) {
+			let t = Math.floor(C[e][0]), n = Math.floor(C[e][1]), r = Math.floor(C[e][2]), i = p([
+				C[e][0] - t,
+				C[e][1] - n,
+				C[e][2] - r
+			]), a = S(i[0]), o = S(i[1]), s = S(i[2]);
+			w[e] = {
+				hx: t,
+				hy: n,
+				hz: r,
+				homeCart: i,
+				ix: a,
+				iy: o,
+				iz: s
+			}, (t !== 0 || n !== 0 || r !== 0) && E.push(e);
+			for (let e = -1; e <= 1; e++) for (let t = -1; t <= 1; t++) for (let n = -1; n <= 1; n++) T.add(x(a + e, o + t, s + n));
+		}
+		let D = /* @__PURE__ */ new Map();
+		for (let e = 0; e < o.length; e++) for (let t = 0; t < c.length; t++) {
+			let n = c[t].applyToPoint(C[e]), r = Math.floor(n[0]), i = Math.floor(n[1]), a = Math.floor(n[2]), o = n[0] - r, s = n[1] - i, l = n[2] - a, u = p([
+				o,
+				s,
+				l
+			]);
+			for (let n of y(o, v[0])) for (let c of y(s, v[1])) for (let f of y(l, v[2])) {
+				let p = -r + n, _ = -i + c, v = -a + f;
+				if (t === d && p === 0 && _ === 0 && v === 0) continue;
+				let y = u[0] + n * m[0] + c * h[0] + f * g[0], b = u[1] + n * m[1] + c * h[1] + f * g[1], C = u[2] + n * m[2] + c * h[2] + f * g[2], w = x(S(y), S(b), S(C));
+				if (!T.has(w)) continue;
+				let E = D.get(w);
+				E || (E = [], D.set(w, E)), E.push({
+					atomIndex: e,
+					opIndex: t,
+					tx: p,
+					ty: _,
+					tz: v,
+					fract: [
+						o + n,
+						s + c,
+						l + f
+					],
+					cartX: y,
+					cartY: b,
+					cartZ: C
+				});
+			}
+		}
+		let O = /* @__PURE__ */ new Set();
+		for (let e = 0; e < o.length; e++) {
+			let { hx: r, hy: a, hz: s, homeCart: c, ix: d, iy: f, iz: p } = w[e];
+			if (r !== 0 || a !== 0 || s !== 0) continue;
+			let m = o[e], h = n.get(m.atomType);
+			for (let g = -1; g <= 1; g++) for (let _ = -1; _ <= 1; _++) for (let v = -1; v <= 1; v++) {
+				let y = D.get(x(d + g, f + _, p + v));
+				if (y) for (let d of y) {
+					let f = d.atomIndex;
+					if (e > f) continue;
+					let p = o[f];
+					if (!He(m, p)) continue;
+					let g = this.getMaxBondDistance(h, n.get(p.atomType), t), _ = c[0] - d.cartX, v = c[1] - d.cartY, y = c[2] - d.cartZ;
+					if (Math.abs(_) > g || Math.abs(v) > g || Math.abs(y) > g) continue;
+					let b = _ * _ + v * v + y * y;
+					if (b > g * g || b <= 1e-8) continue;
+					let x = Math.sqrt(b), S = d.tx + r, C = d.ty + a, w = d.tz + s, T = l[d.opIndex];
+					if (T === u && S === 0 && C === 0 && w === 0) continue;
+					let E = `${e}|${f}|${Math.round((d.fract[0] + r) * 1e4)},${Math.round((d.fract[1] + a) * 1e4)},${Math.round((d.fract[2] + s) * 1e4)}`;
+					if (O.has(E)) continue;
+					O.add(E);
+					let D = Te(T, [
+						S,
+						C,
+						w
+					]);
+					`${p.label}|${D}` !== m.uniqueId && i.add(new Ne(m.uniqueId, p.label, x, null, D));
+				}
+			}
+		}
+		for (let e of E) {
+			let r = o[e], a = n.get(r.atomType), s = p(C[e]);
+			for (let d = e; d < o.length; d++) {
+				let f = o[d];
+				if (!He(r, f)) continue;
+				let _ = this.getMaxBondDistance(a, n.get(f.atomType), t);
+				for (let t = 0; t < c.length; t++) {
+					let n = l[t], a = c[t].applyToPoint(C[d]), o = Math.round(C[e][0] - a[0]), v = Math.round(C[e][1] - a[1]), y = Math.round(C[e][2] - a[2]), b = p([
+						a[0] + o,
+						a[1] + v,
+						a[2] + y
+					]);
+					for (let t = -1; t <= 1; t++) for (let c = -1; c <= 1; c++) for (let l = -1; l <= 1; l++) {
+						let p = o + t, x = v + c, S = y + l;
+						if (n === u && p === 0 && x === 0 && S === 0) continue;
+						let C = s[0] - (b[0] + t * m[0] + c * h[0] + l * g[0]), w = s[1] - (b[1] + t * m[1] + c * h[1] + l * g[1]), T = s[2] - (b[2] + t * m[2] + c * h[2] + l * g[2]);
+						if (Math.abs(C) > _ || Math.abs(w) > _ || Math.abs(T) > _) continue;
+						let E = C * C + w * w + T * T;
+						if (E > _ * _ || E <= 1e-8) continue;
+						let D = `${e}|${d}|${Math.round((a[0] + p) * 1e4)},${Math.round((a[1] + x) * 1e4)},${Math.round((a[2] + S) * 1e4)}`;
+						if (O.has(D)) continue;
+						O.add(D);
+						let k = Te(n, [
+							p,
+							x,
+							S
+						]);
+						`${f.label}|${k}` !== r.uniqueId && i.add(new Ne(r.uniqueId, f.label, Math.sqrt(E), null, k));
+					}
+				}
+			}
+		}
 	}
 	apply(t) {
 		this.ensureValidMode(t);
@@ -62259,6 +62421,7 @@ var X_ = class {
 			hydrogenMode: t.hydrogenMode || Q.hydrogenMode,
 			disorderMode: t.disorderMode || Q.disorderMode,
 			symmetryMode: t.symmetryMode || Q.symmetryMode,
+			packingCutoff: t.packingCutoff ?? Q.packingCutoff,
 			renderMode: t.renderMode || Q.renderMode,
 			renderStyle: t.renderStyle || Q.renderStyle,
 			plot2DBackground: t.plot2DBackground || Q.plot2DBackground,
@@ -62314,7 +62477,7 @@ var X_ = class {
 			addhydrogen: new sg(),
 			missingbonds: new og(this.options.elementProperties, this.options.bondGrowTolerance),
 			disorder: new rg(this.options.disorderMode),
-			symmetry: new ig(this.options.symmetryMode),
+			symmetry: new ig(this.options.symmetryMode, this.options.packingCutoff),
 			hydrogen: new ng(this.options.hydrogenMode)
 		}, this.selections = new X_(this.options), this.setupScene(), this.isosurfaceLayer = new f_(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new z_(this.moleculeContainer, {
 			...this.options.isosurface,
