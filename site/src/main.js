@@ -568,7 +568,7 @@ function adaptButtons() {
 
 initializeUI();
 
-/** Loads the playground's original disorder example without density work. */
+/** Loads the playground's original disorder example, including density work if supported. */
 async function loadInitialStructure() {
     try {
         const baseUrl = import.meta.env.BASE_URL;
@@ -579,12 +579,22 @@ async function loadInitialStructure() {
         const cifText = await response.text();
         // Cache the text so a settings-driven viewer recreation can restore it.
         currentPlaygroundCifText = cifText;
-        const result = await viewer.loadCIF(cifText);
+        const calculateDensity = hasSupportedReflectionData(cifText);
+        const result = await viewer.loadCIF(cifText, 0, {
+            differenceDensity: calculateDensity,
+        });
         if (!result.success) {
             throw new Error(result.error);
         }
         playgroundHasStructure = true;
         adaptButtons();
+        if (!result.differenceDensityStarted) {
+            return;
+        }
+        const density = await result.differenceDensity;
+        if (!density.success) {
+            updateStatus(`Structure loaded; difference density failed: ${density.error}`, 'error');
+        }
     } catch (error) {
         console.error('Error loading initial structure:', error);
         updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');
