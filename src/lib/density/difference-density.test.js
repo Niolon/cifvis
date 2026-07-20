@@ -97,6 +97,30 @@ _refine_ls_extinction_expression
  'Fc*=kFc[1+0.001xFc^2lambda^3/sin(2theta)]^-1/4'`,
 );
 
+const CIF_WITH_SOLVENT_MASK = CIF_WITH_OBSERVED_INTENSITIES.replace(
+    '_cell_angle_gamma 90',
+    `_cell_angle_gamma 90
+_shelx_fab_file
+;
+1 0 0 3.0 -1.0
+2 0 0 -0.5 0.25
+;`,
+);
+
+const CIF_WITH_SOLVENT_MASK_VOIDS = CIF_WITH_SOLVENT_MASK.replace(
+    '_shelx_fab_file',
+    `loop_
+_smtbx_masks_void_nr
+_smtbx_masks_void_average_x
+_smtbx_masks_void_average_y
+_smtbx_masks_void_average_z
+_smtbx_masks_void_volume
+_smtbx_masks_void_count_electrons
+_smtbx_masks_void_content
+1 0.0 0.0 0.5 100.0 20.0 ?
+_shelx_fab_file`,
+);
+
 const CIF_WITH_EXTINCTION_CORRECTED_EMBEDDED_FCF = CIF_WITH_SHELXL_EXTINCTION.replace(
     `loop_
  _refln_index_h
@@ -408,10 +432,92 @@ describe('difference-density scalar fields', () => {
         })).toThrow(/either amplitudes\/phases or A\/B/);
     });
 
+    test('applies a SHELXL solvent-mask (_shelx_fab_file) correction to IAM Fcalc', () => {
+        const corrected = createCifDifferenceDensityDataset(CIF_WITH_SOLVENT_MASK);
+        const uncorrected = createCifDifferenceDensityDataset(
+            CIF_WITH_SOLVENT_MASK,
+            0,
+            { solventMaskCorrection: false },
+        );
+
+        expect(corrected.solventMaskCorrection).toMatchObject({
+            enabled: true,
+            requested: 'auto',
+            source: 'shelx-fab-file',
+            fabReflectionCount: 2,
+            appliedReflectionCount: 2,
+        });
+        expect(uncorrected.solventMaskCorrection).toMatchObject({
+            enabled: false,
+            requested: false,
+            fabReflectionCount: 0,
+            appliedReflectionCount: 0,
+        });
+        expect(corrected.intensityScale).not.toBe(uncorrected.intensityScale);
+        expect(corrected.scaleR1).not.toBe(uncorrected.scaleR1);
+    });
+
+    test('surfaces _smtbx_masks_void summary alongside the FAB correction', () => {
+        const dataset = createCifDifferenceDensityDataset(CIF_WITH_SOLVENT_MASK_VOIDS);
+
+        expect(dataset.solventMaskCorrection).toMatchObject({
+            enabled: true,
+            voidCount: 1,
+            totalElectrons: 20,
+        });
+    });
+
+    test('leaves Fcalc unaffected for CIFs without a solvent-mask correction', () => {
+        const withoutMask = createCifDifferenceDensityDataset(CIF_WITH_OBSERVED_INTENSITIES);
+
+        expect(withoutMask.solventMaskCorrection).toMatchObject({
+            enabled: false,
+            requested: 'auto',
+            fabReflectionCount: 0,
+            appliedReflectionCount: 0,
+        });
+    });
+
+    test('throws when a solvent-mask correction is explicitly required but absent', () => {
+        expect(() => createCifDifferenceDensityDataset(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { solventMaskCorrection: true },
+        )).toThrow(/no _shelx_fab_file/);
+    });
+
     test('reports missing calculated phases clearly', () => {
         const withoutPhase = P1_FCF
             .replace(' _refln_phase_calc\n', '')
             .replace(' 1 0 0 4 1 0\n', ' 1 0 0 4 1\n');
         expect(() => mapFromFcf(withoutPhase)).toThrow(/phase_calc/);
+    });
+
+    test('applies a solvent-mask correction across multiple reflections and yields a finite map', () => {
+        const cif = CIF_WITH_OBSERVED_INTENSITIES.replace(
+            'loop_\n _refln_index_h',
+            `_shelx_fab_file
+;
+1 0 0 3.0 -1.0
+2 0 0 -0.5 0.25
+;
+loop_\n _refln_index_h`,
+        ).replace(
+            ' 1 0 0 100 2\n 2 0 0 25 1',
+            ' 1 0 0 100 2\n 2 0 0 25 1\n 3 0 0 9 0.6\n 0 1 0 16 0.8',
+        );
+        const corrected = createCifDifferenceDensityDataset(cif);
+        const uncorrected = createCifDifferenceDensityDataset(cif, 0, {
+            solventMaskCorrection: false,
+        });
+
+        expect(corrected.solventMaskCorrection.enabled).toBe(true);
+        // Only reflections (1,0,0) and (2,0,0) have a FAB entry, out of 4 observed.
+        expect(corrected.solventMaskCorrection.appliedReflectionCount).toBe(2);
+        expect(corrected.reflectionCount).toBe(4);
+        expect(corrected.intensityScale).not.toBeCloseTo(uncorrected.intensityScale, 6);
+
+        const map = calculateDifferenceDensityMap(corrected, 0.3);
+        expect([...map.values].every(Number.isFinite)).toBe(true);
     });
 });

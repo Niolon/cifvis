@@ -45,6 +45,15 @@ An uncorrected anomalous contribution can be detected from inversion/Friedel
 constraints, with Olex metadata as fallback; f′/f″ values from the coordinate CIF take
 precedence over the internal Cu/Mo tables.
 
+If the structure was refined with a SHELXL solvent mask (`MASK`, e.g. via Olex2's
+"bypass" or PLATON SQUEEZE-style workflows) and the CIF embeds the resulting
+`_shelx_fab_file`, CifVis adds that per-reflection mask contribution to the IAM Fcalc
+before forming Fo−Fc, matching what SHELXL used during refinement. This only applies to
+the observed-reflections-plus-IAM path: an explicit FCF's `F_calc` column already
+includes any mask contribution baked in. A `_smtbx_masks_void_*` void summary, when
+present, is surfaced alongside the correction for context but is not itself used
+numerically.
+
 ## Progressive display
 
 Reflection parsing, IAM calculation, FFT, and surface generation run in a dedicated Web
