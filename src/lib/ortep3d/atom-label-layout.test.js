@@ -97,6 +97,26 @@ describe('atom label colors', () => {
         expect(customOxygen).toBe('#336699');
         expect(partialCarbon).toBe('#000000');
     });
+
+    test('lifts atom colors towards white when a luminance floor is set', () => {
+        const labelOptions = {
+            colorMode: 'atom',
+            color: '#eeeeee',
+            atomColorLuminanceCeiling: 0.25,
+            atomColorLuminanceFloor: 0.35,
+        };
+        const carbon = resolveAtomLabelColor(
+            { atomType: 'C' }, labelOptions, defaultSettings.elementProperties,
+        );
+        const hydrogen = resolveAtomLabelColor(
+            { atomType: 'H' }, labelOptions, defaultSettings.elementProperties,
+        );
+
+        // Carbon is the darkest default color (#000000): lifted to the floor.
+        expect(colorLuminance(new THREE.Color(carbon))).toBeCloseTo(0.35, 2);
+        // Already-bright colors stay brighter and are not darkened by the ceiling.
+        expect(colorLuminance(new THREE.Color(hydrogen))).toBeGreaterThan(0.35);
+    });
 });
 
 /**

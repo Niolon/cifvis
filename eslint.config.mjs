@@ -85,6 +85,10 @@ export default [
         },
     },
     {
-        ignores: ['dist/*', 'node_modules/*', 'cod/*', 'coverage/*', 'src/lib/generated/*', 'out', 'jsdoc-out/*'],
+        ignores: [
+            'dist/*', 'node_modules/*', 'cod/*', 'coverage/*',
+            'src/lib/generated/*', 'out', 'jsdoc-out/*',
+            '**/.vitepress/cache/**/*', '**/.vitepress/dist/**/*',
+        ],
     },
 ];

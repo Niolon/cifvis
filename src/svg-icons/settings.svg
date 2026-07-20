@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="17.850384mm"
+   height="17.850386mm"
+   viewBox="0 0 17.850384 17.850386"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <g id="layer1">
+    <circle
+       style="fill:none;stroke:#000000;stroke-width:1.35;stroke-opacity:1"
+       cx="8.925192"
+       cy="8.925193"
+       r="4.1" />
+    <circle
+       style="fill:#000000;stroke:none"
+       cx="8.925192"
+       cy="8.925193"
+       r="1.55" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 13.625192,8.925193 H 15.325192" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 4.225192,8.925193 H 2.525192" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 8.925192,13.625193 V 15.325193" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 8.925192,4.225193 V 2.525193" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 12.248592,12.248593 13.450692,13.450693" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 5.601792,5.601793 4.399692,4.399693" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 12.248592,5.601793 13.450692,4.399693" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.7;stroke-linecap:round;stroke-opacity:1"
+       d="M 5.601792,12.248593 4.399692,13.450693" />
+  </g>
+</svg>

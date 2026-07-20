@@ -37,6 +37,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "docs": "jsdoc -c jsdoc.json",
+    "gen:options": "node scripts/gen-options-reference.mjs",
+    "docs:dev": "npm run generate-svg-icons && npm run gen:options && vitepress dev docs",
+    "docs:build": "npm run generate-svg-icons && npm run gen:options && vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "bench": "node benchmark/speed.mjs",
     "prebench:labels": "npm run build:alldeps",
     "bench:labels": "node benchmark/labels.mjs",
@@ -66,6 +70,7 @@
     "mathjs": "^15.2.0",
     "playwright-core": "^1.61.1",
     "vite": "^8.1.4",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.10"
   }
 }

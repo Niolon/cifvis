@@ -77,13 +77,18 @@ function threeMatrixToMathJS(matrix) {
  * @returns {THREE.Matrix4|null} Rotation matrix to orient structure, or null if no atoms found
  */
 export function structureOrientationMatrix(structureGroup) {
-    // Extract atom positions
+    // Extract atom positions. Pooled/instanced atoms (default solid-3d style)
+    // keep their Object3D at the origin and carry the real transform in their
+    // instance matrix, so read the translation from there when present.
     const positions = [];
     const center = new THREE.Vector3();
     structureGroup.traverse(obj => {
         if(obj.userData?.type === 'atom') {
-            positions.push(obj.position.clone());
-            center.add(obj.position);
+            const position = obj.segments?.[0]?.matrix
+                ? new THREE.Vector3().setFromMatrixPosition(obj.segments[0].matrix)
+                : obj.position.clone();
+            positions.push(position);
+            center.add(position);
         }
     });
     
@@ -139,8 +144,39 @@ export function structureOrientationMatrix(structureGroup) {
     // Give it a slight angle
     rotationMatrix.premultiply(new THREE.Matrix4().makeRotationX(Math.PI / 8));
     rotationMatrix.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 48));
-    
+
     return rotationMatrix;
+}
+
+/** Largest square image dimension WebGL/canvas backends reliably support. */
+export const MAX_CAPTURE_EDGE = 16384;
+
+/**
+ * Resolves the pixel dimensions of a captured image from the on-screen CSS
+ * size, a scale multiplier, and an optional target for the longest edge.
+ * A longEdge target overrides the scale; the result preserves aspect ratio
+ * and is clamped to MAX_CAPTURE_EDGE.
+ * @param {number} cssWidth - Container CSS width in pixels
+ * @param {number} cssHeight - Container CSS height in pixels
+ * @param {object} [options] - Capture sizing options
+ * @param {number} [options.scale] - Multiplier over the CSS size
+ * @param {number} [options.longEdge] - Target length of the longer edge in pixels
+ * @returns {{width: number, height: number, scale: number}} Pixel dimensions and the applied scale
+ */
+export function resolveCaptureDimensions(cssWidth, cssHeight, options = {}) {
+    const safeWidth = Math.max(1, Math.floor(cssWidth));
+    const safeHeight = Math.max(1, Math.floor(cssHeight));
+    let scale = Number.isFinite(options.scale) && options.scale > 0 ? options.scale : 1;
+    if (Number.isFinite(options.longEdge) && options.longEdge > 0) {
+        scale = options.longEdge / Math.max(safeWidth, safeHeight);
+    }
+    const maxScale = MAX_CAPTURE_EDGE / Math.max(safeWidth, safeHeight);
+    scale = Math.min(scale, maxScale);
+    return {
+        width: Math.max(1, Math.round(safeWidth * scale)),
+        height: Math.max(1, Math.round(safeHeight * scale)),
+        scale,
+    };
 }
 
 /**

@@ -809,7 +809,8 @@ describe('ORTEP3JsStructure', () => {
             expect(closedBond.material.color.getHexString()).toBe('000000');
             expect(closedBond.openBondOutline).toBeUndefined();
             expect(closedBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
-            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1.18);
+            // Radial scale matches the bond radius; width is added in screen space.
+            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1);
             expect(closedBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             expect(openBond.userData.isOpenDisorderBond).toBe(true);
@@ -825,8 +826,9 @@ describe('ORTEP3JsStructure', () => {
             expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
             expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
             expect(openBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
-            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1.18 / 0.5);
-            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1.18 / 0.5);
+            // Radial scale counters the open-bond shrink (1/0.5) to match the bond.
+            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1 / 0.5);
+            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1 / 0.5);
             expect(openBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             const closedBondScale = new THREE.Vector3();
@@ -837,9 +839,7 @@ describe('ORTEP3JsStructure', () => {
             );
             const endpointInset = closedBondScale.y *
                 (1 - closedBond.bondDepthOutline.scale.y) / 2;
-            expect(endpointInset).toBeCloseTo(
-                defaultSettings.bondRadius * (defaultSettings.plot2DBondOutlineScale - 1),
-            );
+            expect(endpointInset).toBeCloseTo(defaultSettings.bondRadius);
         });
     });
 
@@ -1177,6 +1177,82 @@ describe('ORTEPAtom and subclasses', () => {
 
             expect(ortepAtom.missingOctantIndex).not.toBe(firstMissingOctant);
             expect(ortepAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            cutawayCache.dispose();
+        });
+
+        test('seals the removed octant with a depth-only cap that tracks it', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: cutawayCache.materials.cutawayDepthCap,
+                    hysteresis: 0.025,
+                },
+            );
+
+            const cap = ortepAtom.cutawayDepthCap;
+            expect(cap).toBeInstanceOf(THREE.Mesh);
+            // Depth-only: writes depth but no colour.
+            expect(cap.material.colorWrite).toBe(false);
+            expect(cap.material.depthWrite).toBe(true);
+            expect(cap.geometry).toBe(cutawayCache.geometries.atomOctant);
+            // Draw order: cross-section (below 0) before the cap (0) so the
+            // interior stays visible while the cap seals the cavity in depth.
+            expect(ortepAtom.cutawayPlanes.renderOrder).toBeLessThan(cap.renderOrder);
+
+            // The cap fills exactly the octant the shells leave open, so its
+            // sign-reflection scale matches the missing octant and reorients
+            // when the camera-facing octant changes.
+            const capScaleFor = () => cap.scale.toArray().map(Math.sign);
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+            camera.position.set(7, 11, 13);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateMatrixWorld(true);
+            ortepAtom.updateCutawayOctant(camera);
+            const firstScale = capScaleFor();
+
+            camera.position.multiplyScalar(-1);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateCutawayOctant(camera);
+            expect(capScaleFor()).not.toEqual(firstScale);
+            cutawayCache.dispose();
+        });
+
+        test('omits the depth cap when no cap material is provided', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: null,
+                    hysteresis: 0.025,
+                },
+            );
+            expect(ortepAtom.cutawayDepthCap).toBe(undefined);
+            expect(ortepAtom.cutawayOctants).toHaveLength(8);
             cutawayCache.dispose();
         });
 
@@ -1714,6 +1790,42 @@ describe('ORTEPBondInstance', () => {
         expect(bondInstance.userData.isOpenDisorderBond).toBe(false);
         expect(bondInstance.segments).toHaveLength(1);
         expect(bondInstance.segments[0].pool).toBe(pool);
+    });
+
+    test('keeps the wrapper local matrix identity, storing the placement only in segments/fullMatrix', () => {
+        // Regression: the wrapper's own `matrix` must stay identity, matching
+        // ORTEPAtomInstance. PooledSelectableObject sets matrixAutoUpdate=false, so
+        // if the wrapper's local matrix carried the bond placement, its matrixWorld
+        // would pick that up via the normal Three.js update cascade as soon as a
+        // rotating ancestor forced a recompute - and the raycast redirect's
+        // `this.matrixWorld * segment.matrix` would then apply the placement twice,
+        // breaking bond selection after any rotation (while atoms stayed correct).
+        const bondInstance = buildBondInstance();
+
+        expect(bondInstance.matrix.elements).toEqual(new THREE.Matrix4().elements);
+        expect(bondInstance.fullMatrix.elements).toEqual(bondInstance.segments[0].matrix.elements);
+    });
+
+    test('raycast redirect applies the bond placement once, matching the render, after a parent rotation', () => {
+        // Regression for the bug above, exercised end-to-end: after an ancestor
+        // (standing in for the rotating molecule container) forces a matrixWorld
+        // recompute, the wrapper's matrixWorld must equal the ancestor's alone, so
+        // combining it with segment.matrix in the raycast redirect reproduces
+        // exactly the transform rendered into the shared InstancedMesh - not that
+        // transform applied twice.
+        const bondInstance = buildBondInstance();
+        const parent = new THREE.Object3D();
+        parent.add(bondInstance);
+        parent.rotation.set(0.4, 0.7, 0.2);
+        parent.updateMatrixWorld(true);
+
+        expect(bondInstance.matrixWorld.elements).toEqual(parent.matrixWorld.elements);
+
+        const raycastCombined = new THREE.Matrix4()
+            .multiplyMatrices(bondInstance.matrixWorld, bondInstance.segments[0].matrix);
+        const renderedTransform = new THREE.Matrix4()
+            .multiplyMatrices(parent.matrixWorld, bondInstance.segments[0].matrix);
+        expect(raycastCombined.elements).toEqual(renderedTransform.elements);
     });
 
     test('registers the same transform calcBondTransform would produce', () => {

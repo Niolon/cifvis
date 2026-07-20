@@ -245,7 +245,7 @@ export class ViewerControls {
         
         const intersects = this.raycaster.intersectObjects(selectableObjects)
             .filter(i => i.object.userData?.selectable);
-        
+
         if (intersects.length > 0) {
             this.viewer.selections.handle(intersects[0].object);
         } else if (timeSinceLastInteraction < this.doubleClickDelay) {

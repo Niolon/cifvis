@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CIF } from '../read-cif/base.js';
 import { CrystalStructure } from '../structure/crystal.js';
 import { ORTEP3JsStructure } from './ortep.js';
-import { setupLighting, structureOrientationMatrix } from './staging.js';
+import { resolveCaptureDimensions, setupLighting, structureOrientationMatrix } from './staging.js';
 import defaultSettings from './structure-settings.js';
 import { ViewerControls } from './viewer-controls.js';
 import { BondGenerator, AtomLabelFilter, IsolatedHydrogenFixer } from '../structure/structure-modifiers/fixers.js';
@@ -26,14 +26,14 @@ import { assertCellsMatch } from '../density/cell-matching.js';
 import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
 
-const VALID_ATOM_LABEL_PLACEMENT_MODES = [
-    'auto-omit',
-    'quality-omit',
-    'performance-omit',
-    'maximum-coverage',
-];
-const VALID_ATOM_LABEL_CALLOUT_PLACEMENTS = ['structure', 'viewport'];
-const VALID_ATOM_LABEL_COLOR_MODES = ['uniform', 'atom'];
+import {
+    VALID_ATOM_LABEL_CALLOUT_PLACEMENTS,
+    VALID_ATOM_LABEL_COLOR_MODES,
+    VALID_ATOM_LABEL_PLACEMENT_MODES,
+    VALID_BOND_COLOR_MODES,
+    VALID_RENDER_MODES,
+    VALID_RENDER_STYLES,
+} from './option-enums.js';
 
 /**
  * @typedef {object} AtomLabelPlacement
@@ -106,6 +106,11 @@ function validateAtomLabelOptions(options) {
         !(typeof options.atomColorLuminanceCeiling === 'number' &&
             options.atomColorLuminanceCeiling >= 0 && options.atomColorLuminanceCeiling <= 1)) {
         throw new Error('atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1');
+    }
+    if (options.atomColorLuminanceFloor !== undefined && options.atomColorLuminanceFloor !== null &&
+        !(typeof options.atomColorLuminanceFloor === 'number' &&
+            options.atomColorLuminanceFloor >= 0 && options.atomColorLuminanceFloor <= 1)) {
+        throw new Error('atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1');
     }
     if (options.show !== undefined && !isValidAtomLabelSelection(options.show)) {
         throw new Error(
@@ -534,24 +539,21 @@ export class CrystalViewer {
      * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
-        const validRenderModes = ['constant', 'onDemand'];
-        if (options.renderMode && !validRenderModes.includes(options.renderMode)) {
+        if (options.renderMode && !VALID_RENDER_MODES.includes(options.renderMode)) {
             throw new Error(
-                `Invalid render mode: "${options.renderMode}". Must be one of: ${validRenderModes.join(', ')}`,
+                `Invalid render mode: "${options.renderMode}". Must be one of: ${VALID_RENDER_MODES.join(', ')}`,
             );
         }
-        const validRenderStyles = ['solid-3d', 'cutout-3d', 'cutout-2d'];
-        if (options.renderStyle && !validRenderStyles.includes(options.renderStyle)) {
+        if (options.renderStyle && !VALID_RENDER_STYLES.includes(options.renderStyle)) {
             throw new Error(
                 `Invalid render style: "${options.renderStyle}". ` +
-                `Must be one of: ${validRenderStyles.join(', ')}`,
+                `Must be one of: ${VALID_RENDER_STYLES.join(', ')}`,
             );
         }
-        const validBondColorModes = ['uniform', 'split'];
-        if (options.bondColorMode !== undefined && !validBondColorModes.includes(options.bondColorMode)) {
+        if (options.bondColorMode !== undefined && !VALID_BOND_COLOR_MODES.includes(options.bondColorMode)) {
             throw new Error(
                 `Invalid bond color mode: "${options.bondColorMode}". ` +
-                `Must be one of: ${validBondColorModes.join(', ')}`,
+                `Must be one of: ${VALID_BOND_COLOR_MODES.join(', ')}`,
             );
         }
         if (options.plot2DColorLuminanceCeiling !== undefined &&
@@ -560,11 +562,17 @@ export class CrystalViewer {
                 options.plot2DColorLuminanceCeiling <= 1)) {
             throw new Error('plot2DColorLuminanceCeiling must be a number from 0 to 1');
         }
-        if (options.plot2DBondOutlineScale !== undefined &&
-            !(typeof options.plot2DBondOutlineScale === 'number' &&
-                Number.isFinite(options.plot2DBondOutlineScale) &&
-                options.plot2DBondOutlineScale >= 1)) {
-            throw new Error('plot2DBondOutlineScale must be a finite number greater than or equal to 1');
+        if (options.plot2DColorLuminanceFloor !== undefined && options.plot2DColorLuminanceFloor !== null &&
+            !(typeof options.plot2DColorLuminanceFloor === 'number' &&
+                options.plot2DColorLuminanceFloor >= 0 &&
+                options.plot2DColorLuminanceFloor <= 1)) {
+            throw new Error('plot2DColorLuminanceFloor must be null or a number from 0 to 1');
+        }
+        for (const key of ['plot2DBondOutlineWidth', 'plot2DOutlineWidth']) {
+            if (options[key] !== undefined &&
+                !(typeof options[key] === 'number' && Number.isFinite(options[key]) && options[key] >= 0)) {
+                throw new Error(`${key} must be a finite number greater than or equal to 0`);
+            }
         }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
@@ -625,6 +633,7 @@ export class CrystalViewer {
             hydrogenMode: options.hydrogenMode || defaultSettings.hydrogenMode,
             disorderMode: options.disorderMode || defaultSettings.disorderMode,
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
+            packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
             renderMode: options.renderMode || defaultSettings.renderMode,
             renderStyle: options.renderStyle || defaultSettings.renderStyle,
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
@@ -633,15 +642,15 @@ export class CrystalViewer {
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
             plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
                 defaultSettings.plot2DBondOutlineColor,
-            plot2DBondOutlineScale: options.plot2DBondOutlineScale ??
-                defaultSettings.plot2DBondOutlineScale,
+            plot2DBondOutlineWidth: options.plot2DBondOutlineWidth ??
+                defaultSettings.plot2DBondOutlineWidth,
             plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
                 defaultSettings.plot2DColorLuminanceCeiling,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
                 defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
             plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
-            plot2DOutlineScale: options.plot2DOutlineScale ?? defaultSettings.plot2DOutlineScale,
+            plot2DOutlineWidth: options.plot2DOutlineWidth ?? defaultSettings.plot2DOutlineWidth,
             fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
             cell: {
                 ...defaultSettings.cell,
@@ -703,7 +712,7 @@ export class CrystalViewer {
                 this.options.bondGrowTolerance,
             ),
             disorder: new DisorderFilter(this.options.disorderMode),
-            symmetry: new SymmetryGrower(this.options.symmetryMode),
+            symmetry: new SymmetryGrower(this.options.symmetryMode, this.options.packingCutoff),
             hydrogen: new HydrogenFilter(this.options.hydrogenMode),
         };
 
@@ -735,7 +744,13 @@ export class CrystalViewer {
         this.cameraController = createCameraController(this.container, this.options);
         this.camera = this.cameraController.camera;
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        // preserveDrawingBuffer keeps the rendered frame readable after
+        // compositing, which captureImage() relies on to grab pixels.
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true,
+        });
         if (this.options.renderStyle === 'cutout-2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
@@ -2076,11 +2091,10 @@ export class CrystalViewer {
 
         // Calculate initial rotation
         const rotation = structureOrientationMatrix(this.state.currentStructure);
-        if (this.container.clientHeight > this.container.clientWidth) {
-            rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
-        }
-
         if (rotation) {
+            if (this.container.clientHeight > this.container.clientWidth) {
+                rotation.premultiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+            }
             this.moleculeContainer.setRotationFromMatrix(rotation);
             this.moleculeContainer.updateMatrix();
         }
@@ -2146,6 +2160,7 @@ export class CrystalViewer {
         const ortep = new ORTEP3JsStructure(structure, this.options);
         const ortep3DGroup = ortep.getGroup();
         this.moleculeContainer.add(ortep3DGroup);
+        ortep3DGroup.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight);
         this.state.currentStructure = ortep3DGroup;
         this.state.displayStructure = structure;
         this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1;
@@ -2354,13 +2369,17 @@ export class CrystalViewer {
      * @private
      */
     animate() {
+        if (this.options === null) {
+            // dispose() ran after this frame was scheduled; stop the loop.
+            return;
+        }
         if (this.options.renderMode === 'constant' || this.needsRender) {
             this.updateCameraFacingOctants();
             this.renderer.render(this.scene, this.camera);
             this.atomLabelManager.scheduleUpdate();
             this.needsRender = false;
         }
-        requestAnimationFrame(this.animate.bind(this));
+        this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
     }
 
     /**
@@ -2377,6 +2396,45 @@ export class CrystalViewer {
         this.moleculeContainer.updateMatrixWorld(true);
         cameraFacingAtoms.forEach(atom => {
             atom.updateCutawayOctant(this.camera);
+        });
+        this.updateAtomDrawOrder(this.state.currentStructure.orderableAtoms);
+    }
+
+    /**
+     * Orders atoms front-to-back so a nearer cutaway atom fully occludes the
+     * carved-open interior of a farther one. Every part of an atom (its
+     * ellipsoid shells and cross-section) draws before that atom's own depth
+     * cap, and a nearer atom's cap is written before any part of a farther
+     * atom - so pure depth testing hides shells, rings, and cross-sections
+     * seen through a nearer atom's opening while the atom's own interior shows.
+     * @param {Array<object>} atoms - Atom objects to order (front-to-back)
+     * @private
+     */
+    updateAtomDrawOrder(atoms) {
+        if (!atoms?.length) {
+            return;
+        }
+        const viewMatrix = this.camera.matrixWorldInverse;
+        const worldPosition = new THREE.Vector3();
+        const ranked = atoms
+            .map(atom => {
+                atom.getWorldPosition(worldPosition);
+                // The camera looks down -z in view space, so a larger (less
+                // negative) z is nearer the camera.
+                return { atom, depth: worldPosition.applyMatrix4(viewMatrix).z };
+            })
+            .sort((a, b) => b.depth - a.depth);
+
+        ranked.forEach(({ atom }, index) => {
+            atom.renderOrder = index;
+            for (const child of atom.children) {
+                child.renderOrder = index;
+            }
+            // The depth cap draws last within the atom, after its own shells
+            // and cross-section, but before any farther atom.
+            if (atom.cutawayDepthCap) {
+                atom.cutawayDepthCap.renderOrder = index + 0.5;
+            }
         });
     }
 
@@ -2413,8 +2471,85 @@ export class CrystalViewer {
 
             // Update the renderer's viewport
             this.renderer.setViewport(0, 0, width, height);
+
+            // Keep screen-space (2D-style) outline widths constant in CSS px.
+            // Uses CSS size, not the device buffer, so image capture (which
+            // enlarges the buffer) scales outlines with the exported figure.
+            this.state?.currentStructure?.setOutlineViewport?.(
+                this.container.clientWidth, this.container.clientHeight,
+            );
         }
         return needResize;
+    }
+
+    /**
+     * Renders the current view to a standalone canvas at an arbitrary
+     * resolution, for exporting publication-quality images. The molecular
+     * scene and the atom-label overlay are composited together; the framing
+     * matches what is on screen because the capture scales uniformly.
+     * @param {object} [options] - Capture options
+     * @param {number} [options.scale] - Resolution multiplier over the on-screen CSS size
+     * @param {number} [options.longEdge] - Target length of the longer edge in pixels (overrides scale)
+     * @param {string} [options.background] - Background fill: 'transparent' (default), or any CSS colour
+     * @param {boolean} [options.includeLabels] - Whether to draw atom labels (default true)
+     * @returns {HTMLCanvasElement} A canvas holding the rendered image
+     */
+    captureImage({ scale = 2, longEdge = null, background = 'transparent', includeLabels = true } = {}) {
+        const cssWidth = this.container.clientWidth;
+        const cssHeight = this.container.clientHeight;
+        const dimensions = resolveCaptureDimensions(cssWidth, cssHeight, { scale, longEdge });
+
+        const canvas = this.renderer.domElement;
+        const previousWidth = canvas.width;
+        const previousHeight = canvas.height;
+        const previousStyleWidth = canvas.style.width;
+        const previousStyleHeight = canvas.style.height;
+
+        this.renderer.setSize(dimensions.width, dimensions.height, false);
+        this.renderer.setViewport(0, 0, dimensions.width, dimensions.height);
+        this.updateCameraFacingOctants();
+        this.renderer.render(this.scene, this.camera);
+
+        const output = document.createElement('canvas');
+        output.width = dimensions.width;
+        output.height = dimensions.height;
+        const context = output.getContext('2d');
+        if (background && background !== 'transparent') {
+            context.fillStyle = background;
+            context.fillRect(0, 0, dimensions.width, dimensions.height);
+        }
+        context.drawImage(canvas, 0, 0, dimensions.width, dimensions.height);
+
+        if (includeLabels && this.atomLabelManager.hasVisibleLabels()) {
+            this.atomLabelManager.paintLayout(context, dimensions.scale);
+        }
+
+        // Restore the on-screen renderer size and repaint.
+        this.renderer.setSize(previousWidth, previousHeight, false);
+        canvas.style.width = previousStyleWidth;
+        canvas.style.height = previousStyleHeight;
+        this.renderer.setViewport(0, 0, previousWidth, previousHeight);
+        this.needsRender = true;
+
+        return output;
+    }
+
+    /**
+     * Captures the current view as a PNG (or other type) Blob.
+     * @param {object} [options] - Options forwarded to captureImage plus a type
+     * @param {string} [options.type] - Image MIME type (default 'image/png')
+     * @param {number} [options.quality] - Encoder quality for lossy types (0-1)
+     * @returns {Promise<Blob>} The encoded image
+     */
+    captureImageBlob({ type = 'image/png', quality, ...options } = {}) {
+        const canvas = this.captureImage(options);
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(
+                blob => blob ? resolve(blob) : reject(new Error('Image encoding failed')),
+                type,
+                quality,
+            );
+        });
     }
 
     /**
@@ -2495,6 +2630,9 @@ export class CrystalViewer {
      * ```
      */
     dispose() {
+        if (this.animationFrameId !== undefined) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
         this.cancelScalarFieldLoad('Viewer disposed');
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();

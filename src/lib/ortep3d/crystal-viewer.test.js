@@ -106,9 +106,15 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
-    test('rejects an invalid 2D bond outline scale', () => {
-        expect(() => new CrystalViewer({}, { plot2DBondOutlineScale: 0.99 })).toThrow(
-            'plot2DBondOutlineScale must be a finite number greater than or equal to 1',
+    test('rejects a negative 2D bond outline width', () => {
+        expect(() => new CrystalViewer({}, { plot2DBondOutlineWidth: -1 })).toThrow(
+            'plot2DBondOutlineWidth must be a finite number greater than or equal to 0',
+        );
+    });
+
+    test('rejects a negative 2D atom outline width', () => {
+        expect(() => new CrystalViewer({}, { plot2DOutlineWidth: -0.5 })).toThrow(
+            'plot2DOutlineWidth must be a finite number greater than or equal to 0',
         );
     });
 });

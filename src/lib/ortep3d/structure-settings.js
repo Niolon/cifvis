@@ -164,6 +164,12 @@ export default {
     //   materials instead of solid ones.
     'renderStyle': 'solid-3d',
 
+    // For the cutout render styles, fill the removed octant in the depth
+    // buffer so neighbouring atoms or bonds inside the carved cavity are
+    // occluded instead of showing through. Set false to keep the cavity
+    // see-through.
+    'sealCutoutCavity': true,
+
     // 'cutout-2d' publication-style renderer settings (outline/hatch colours
     // below are neutral defaults; atom/ring hatch colours still follow
     // per-element colours, see GeometryMaterialCache.getAtomMaterials)
@@ -172,17 +178,30 @@ export default {
     'plot2DLineColor': '#000000',
     'plot2DBondColor': '#000000',
     'plot2DBondOutlineColor': '#ffffff',
-    'plot2DBondOutlineScale': 1.18,
+    // Constant screen-space width (CSS pixels) of the depth-writing bond
+    // silhouette, added around the bond regardless of its thickness. 0 disables it.
+    'plot2DBondOutlineWidth': 2,
     'plot2DColorLuminanceCeiling': 0.25,
+    // When set (0-1), replaces the ceiling: the element palette is mixed
+    // towards white so its darkest colour reaches this relative luminance -
+    // for dark plot2DBackground values.
+    'plot2DColorLuminanceFloor': null,
     'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
     'plot2DStripeWidth': 0.18,
-    'plot2DOutlineScale': 1.035,
+    // Constant screen-space width (CSS pixels) of the atom silhouette outline,
+    // uniform across every atom regardless of ellipsoid size.
+    'plot2DOutlineWidth': 1.2,
 
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
     'disorderMode': 'all',
     'symmetryMode': 'none',
+
+    // Upper fractional bound for unit-cell membership in the cell growth modes.
+    // 1.0 wraps atoms on the far cell face back in, keeping the cell contents (Z)
+    // correct; raise slightly (e.g. 1.001) to instead keep those upper-border atoms.
+    'packingCutoff': 1,
 
     // Difference-electron-density maps are loaded separately from the
     // coordinate CIF and remain opt-in.
@@ -236,6 +255,10 @@ export default {
         'colorMode': 'uniform',
         'color': '#111111',
         'atomColorLuminanceCeiling': 0.25,
+        // When set (0-1), replaces the ceiling: label colours are mixed
+        // towards white so the darkest element colour reaches this relative
+        // luminance - for labels on dark backgrounds.
+        'atomColorLuminanceFloor': null,
         'haloColor': '#ffffff',
         'haloWidth': 2,
         'leaderLines': 'auto',

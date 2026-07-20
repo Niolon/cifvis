@@ -5,6 +5,7 @@ import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
 import { decodePositionCode, encodePositionCode } from './position-code.js';
 import { CifBlock } from '../read-cif/base.js';
+import { lookupSpaceGroup } from './space-group-lookup.js';
 
 /**
  * Formats a decimal number as a fraction with specified allowed denominators
@@ -673,9 +674,27 @@ export class CellSymmetry {
                 symmetryOperations,
                 operationIds,
             );
-        } else {
-            console.warn('No symmetry operations found in CIF block, will use P1');
-            return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
         }
+
+        // No explicit operation loop: try to reconstruct the operators from the
+        // space-group number or name using the standard-setting table. This is a
+        // fallback only reached when the CIF provides no operations of its own, so
+        // it never overrides operators actually present in the file.
+        const tableEntry = lookupSpaceGroup({ number: spaceGroupNumber, name: spaceGroupName });
+        if (tableEntry) {
+            console.warn(
+                'No symmetry operations found in CIF block; reconstructing them from space group '
+                + `${tableEntry.symbol_cif} (No. ${tableEntry.number}) assuming the standard `
+                + 'International Tables setting.',
+            );
+            return new CellSymmetry(
+                spaceGroupName !== 'Unknown' ? spaceGroupName : tableEntry.symbol_cif,
+                spaceGroupNumber || tableEntry.number,
+                tableEntry.operations.map(op => new SymmetryOperation(op)),
+            );
+        }
+
+        console.warn('No symmetry operations found in CIF block, will use P1');
+        return new CellSymmetry('Unknown', 0, [new SymmetryOperation('x,y,z')]);
     }
 }

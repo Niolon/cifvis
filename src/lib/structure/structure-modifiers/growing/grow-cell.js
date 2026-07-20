@@ -1,5 +1,6 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
+import { FractPosition } from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
@@ -143,7 +144,7 @@ export function getGrownSymmetriesofGroup(group, structure, specialPositionMap) 
 }
 
 /**
- * Checks if an atom position is within the unit cell (0 ≤ x,y,z < 1).
+ * Checks if an atom position is within the unit cell (0 <= x,y,z < 1).
  * @param {Atom} atom - Atom to check
  * @param {number} [tolerance] - Tolerance for boundary comparisons
  * @returns {boolean} True if atom is within unit cell
@@ -1147,6 +1148,80 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         centredAtoms,
         centredBonds,
         centredHBonds,
+        structure.symmetry,
+    );
+}
+
+/**
+ * Adds duplicate copies of atoms sitting near a low cell face (fractional 0) on the
+ * matching high face (fractional 1), for a "closed" packing diagram that shows atoms
+ * on every face, edge and corner of the box instead of only the canonical, Z-correct
+ * [0,1) cell.
+ *
+ * This is deliberately atoms-only: the duplicates carry no bonds of their own (a
+ * border copy of a bonded atom would otherwise need its whole coordination re-derived
+ * across the boundary, which is out of scope here). Existing bonds are left exactly
+ * as grown; only extra, unbonded atoms are appended.
+ * @param {CrystalStructure} structure - A structure already grown to the canonical
+ *  [0,1) unit cell (as returned by {@link growCell}).
+ * @param {number} packingCutoff - Upper fractional bound for cell membership. Values
+ *  <= 1 are a no-op (the canonical cell already is the result); e.g. 1.001 duplicates
+ *  atoms within 0.001 of a low face onto the corresponding high face(s).
+ * @returns {CrystalStructure} Structure with the border duplicates appended
+ */
+export function addPackingBorderAtoms(structure, packingCutoff) {
+    const margin = packingCutoff - 1;
+    if (!(margin > 0)) {
+        return structure;
+    }
+
+    const extraAtoms = [];
+    for (const atom of structure.atoms) {
+        const { x, y, z } = atom.position;
+        // Axes where this atom is within margin of the low face; duplicating along
+        // each combination of these axes reproduces face, edge and corner copies.
+        const nearAxes = [];
+        if (x < margin) {
+            nearAxes.push(0);
+        }
+        if (y < margin) {
+            nearAxes.push(1);
+        }
+        if (z < margin) {
+            nearAxes.push(2);
+        }
+        if (nearAxes.length === 0) {
+            continue;
+        }
+
+        // Every non-empty subset of the near axes (bit i => shift that axis by +1).
+        for (let mask = 1; mask < (1 << nearAxes.length); mask++) {
+            const shift = [0, 0, 0];
+            for (let bit = 0; bit < nearAxes.length; bit++) {
+                if (mask & (1 << bit)) {
+                    shift[nearAxes[bit]] = 1;
+                }
+            }
+
+            const position = new FractPosition(x + shift[0], y + shift[1], z + shift[2]);
+            const appliedSymmetry = (atom.appliedSymmetry ? atom.appliedSymmetry.copy() : null) ||
+                new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+            appliedSymmetry.translation[0] += shift[0];
+            appliedSymmetry.translation[1] += shift[1];
+            appliedSymmetry.translation[2] += shift[2];
+            appliedSymmetry._updateKey();
+
+            extraAtoms.push(new Atom(
+                atom.label, atom.atomType, position, atom.adp, atom.disorderGroup, appliedSymmetry,
+            ));
+        }
+    }
+
+    return new CrystalStructure(
+        structure.cell,
+        [...structure.atoms, ...extraAtoms],
+        structure.bonds,
+        structure.hBonds,
         structure.symmetry,
     );
 }

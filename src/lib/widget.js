@@ -18,6 +18,10 @@ const defaultStyles = `
     background: var(--cifvis-bg, #fafafa);
     border-radius: var(--cifvis-radius, 8px);
     overflow: hidden;
+    /* Contain all internal z-indexes (buttons, overlays) in the widget's own
+       stacking context so they can never paint over the host page's sticky
+       headers, menus, or modals. */
+    isolation: isolate;
   }
 
   cifview-widget .crystal-container {
@@ -81,7 +85,7 @@ const defaultStyles = `
     right: 16px;
     display: flex;
     gap: 8px;
-    z-index: 1000;
+    z-index: 3;
   }
 
   cifview-widget .control-button {
@@ -107,6 +111,46 @@ const defaultStyles = `
   cifview-widget .control-button svg {
     width: 24px;
     height: 24px;
+    filter: var(--cifvis-icon-filter, none);
+  }
+
+  /* Built-in dark theme. All selectors are wrapped in :where() so they have
+     zero specificity: any author rule or custom property set on the page
+     still wins. The dark values apply automatically with the OS/browser
+     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;
+     .cifvis-light forces the light defaults back. The default button icons
+     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -
+     set it to none when supplying colourful custom icons. */
+  @media (prefers-color-scheme: dark) {
+    :where(cifview-widget) {
+      --cifvis-bg: #1e1e2f;
+      --cifvis-caption-bg: #2a2a3d;
+      --cifvis-caption-border: #3a3a52;
+      --cifvis-caption-color: #e8e8f0;
+      --cifvis-button-bg: rgba(58, 58, 82, 0.9);
+      --cifvis-button-hover-bg: #4a4a66;
+      --cifvis-icon-filter: invert(1) brightness(0.88);
+    }
+  }
+
+  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {
+    --cifvis-bg: #1e1e2f;
+    --cifvis-caption-bg: #2a2a3d;
+    --cifvis-caption-border: #3a3a52;
+    --cifvis-caption-color: #e8e8f0;
+    --cifvis-button-bg: rgba(58, 58, 82, 0.9);
+    --cifvis-button-hover-bg: #4a4a66;
+    --cifvis-icon-filter: invert(1) brightness(0.88);
+  }
+
+  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {
+    --cifvis-bg: #fafafa;
+    --cifvis-caption-bg: #ffffff;
+    --cifvis-caption-border: #eaeaea;
+    --cifvis-caption-color: #333;
+    --cifvis-button-bg: rgba(255, 255, 255, 0.9);
+    --cifvis-button-hover-bg: #ffffff;
+    --cifvis-icon-filter: none;
   }
 `;
 
@@ -670,7 +714,7 @@ export class CifViewWidget extends HTMLElement {
                 const errorDiv = document.createElement('div');
                 errorDiv.style.position = 'absolute';
                 errorDiv.style.inset = '0';
-                errorDiv.style.zIndex = '2000';
+                errorDiv.style.zIndex = '4';
                 errorDiv.style.display = 'flex';
                 errorDiv.style.justifyContent = 'center';
                 errorDiv.style.alignItems = 'center';

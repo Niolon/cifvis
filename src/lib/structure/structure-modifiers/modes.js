@@ -3,7 +3,7 @@ import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
 import { growFragment } from './growing/grow-fragment.js';
-import { growCell } from './growing/grow-cell.js';
+import { growCell, addPackingBorderAtoms } from './growing/grow-cell.js';
 import { chemicalBonds } from '../bond-classification.js';
 import {
     filterBondsByGeometry,
@@ -298,9 +298,13 @@ export class SymmetryGrower extends BaseFilter {
     /**
      * Creates a new symmetry grower
      * @param {SymmetryGrower.MODES} [mode] - Initial mode for growing symmetry
+     * @param {number} [packingCutoff] - Upper fractional bound for cell membership in the cell modes.
+     *  1.0 (default) wraps far-face atoms in for a correct Z; a slightly larger value (e.g. 1.001)
+     *  keeps atoms sitting on the upper cell border.
      */
-    constructor(mode = SymmetryGrower.MODES.NONE) {
+    constructor(mode = SymmetryGrower.MODES.NONE, packingCutoff = 1) {
         super(SymmetryGrower.MODES, mode, 'SymmetryGrower', SymmetryGrower.PREFERRED_FALLBACK_ORDER);
+        this.packingCutoff = packingCutoff;
     }
 
     get requiresCameraUpdate() {
@@ -337,11 +341,14 @@ export class SymmetryGrower extends BaseFilter {
             specialPositionAtoms = growthResult.specialPositionAtoms;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
-            workStructure = growCell(workStructure);
+            workStructure = addPackingBorderAtoms(growCell(workStructure), this.packingCutoff);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
             const growthResult = growFragment(workStructure);
             specialPositionAtoms = growthResult.specialPositionAtoms;
-            workStructure = growCell(growthResult.grownStructure, false, specialPositionAtoms);
+            workStructure = addPackingBorderAtoms(
+                growCell(growthResult.grownStructure, false, specialPositionAtoms),
+                this.packingCutoff,
+            );
             // Fragment-cell contains only complete components centred in the unit
             // cell. Periodic H-bond partner shells belong to fragment-hbonds mode.
             workStructure = reconcileHBondsByGeometry(workStructure);

@@ -4,7 +4,12 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { layoutAtomLabels } from './atom-label-layout.js';
 import AtomLabelWorker from './atom-label-worker.js?worker&inline';
 import defaultSettings from './structure-settings.js';
-import { paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
+import {
+    liftColorLuminance,
+    paletteLuminanceLift,
+    paletteLuminanceScale,
+    scaleColorLuminance,
+} from './color-utils.js';
 
 const layoutOptionKeys = [
     'atomPadding',
@@ -77,16 +82,35 @@ function normalizeRequestedLabels(show) {
  * @returns {number} Shared linear RGB scale
  */
 export function atomLabelPaletteLuminanceScale(elementProperties, ceiling) {
+    return paletteLuminanceScale(collectAtomLabelPalette(elementProperties), ceiling);
+}
+
+/**
+ * Calculates the shared white-mix lift for the configured atom-colour palette
+ * against a relative-luminance floor (dark backgrounds).
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @param {number} floor - Palette relative-luminance floor
+ * @returns {number} Shared white-mix fraction
+ */
+export function atomLabelPaletteLuminanceLift(elementProperties, floor) {
+    return paletteLuminanceLift(collectAtomLabelPalette(elementProperties), floor);
+}
+
+/**
+ * Collects the active atom-colour palette across default and custom elements.
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @returns {string[]} Palette colours
+ */
+function collectAtomLabelPalette(elementProperties) {
     const activeElementProperties = elementProperties || {};
     const paletteSymbols = new Set([
         ...Object.keys(defaultSettings.elementProperties),
         ...Object.keys(activeElementProperties),
     ]);
-    const palette = [...paletteSymbols]
+    return [...paletteSymbols]
         .map(symbol => activeElementProperties[symbol]?.atomColor ??
             defaultSettings.elementProperties[symbol]?.atomColor)
         .filter(Boolean);
-    return paletteLuminanceScale(palette, ceiling);
 }
 
 /**
@@ -112,12 +136,24 @@ export function resolveAtomLabelColor(atom, options, elementProperties, paletteS
     if (!atomColor) {
         return options.color;
     }
-    const scale = paletteScale ?? atomLabelPaletteLuminanceScale(
-        activeElementProperties,
-        options.atomColorLuminanceCeiling,
-    );
-    const color = scaleColorLuminance(atomColor, scale);
-    if (scale === 1) {
+    const floor = options.atomColorLuminanceFloor;
+    let color;
+    let identity;
+    if (floor !== null && floor !== undefined) {
+        // A configured floor replaces the ceiling: brighten the palette
+        // towards white for dark backgrounds instead of darkening it.
+        const lift = paletteScale ?? atomLabelPaletteLuminanceLift(activeElementProperties, floor);
+        color = liftColorLuminance(atomColor, lift);
+        identity = lift === 0;
+    } else {
+        const scale = paletteScale ?? atomLabelPaletteLuminanceScale(
+            activeElementProperties,
+            options.atomColorLuminanceCeiling,
+        );
+        color = scaleColorLuminance(atomColor, scale);
+        identity = scale === 1;
+    }
+    if (identity) {
         return `#${color.getHexString(THREE.SRGBColorSpace)}`;
     }
     const srgb = color.clone().convertLinearToSRGB();
@@ -650,10 +686,13 @@ export class AtomLabelManager {
         }
         const key = atom.atomType;
         this.atomLabelColorCache ||= new Map();
-        this.atomLabelColorScale ??= atomLabelPaletteLuminanceScale(
-            this.viewer.options.elementProperties,
-            this.options.atomColorLuminanceCeiling,
-        );
+        const floor = this.options.atomColorLuminanceFloor;
+        this.atomLabelColorScale ??= floor !== null && floor !== undefined
+            ? atomLabelPaletteLuminanceLift(this.viewer.options.elementProperties, floor)
+            : atomLabelPaletteLuminanceScale(
+                this.viewer.options.elementProperties,
+                this.options.atomColorLuminanceCeiling,
+            );
         if (!this.atomLabelColorCache.has(key)) {
             this.atomLabelColorCache.set(key, resolveAtomLabelColor(
                 atom,
@@ -890,7 +929,26 @@ export class AtomLabelManager {
     }
 
     draw() {
-        const context = this.context;
+        this.paintLayout(this.context);
+    }
+
+    /**
+     * Paints the current placed-label layout onto a 2D context. Label
+     * coordinates are stored in CSS pixels, so the same layout renders at any
+     * resolution - used by the live overlay (at devicePixelRatio) and by
+     * high-resolution image capture (at an arbitrary scale).
+     * @param {CanvasRenderingContext2D} context - Destination context
+     * @param {number} [scale] - Pixels per CSS pixel; the caller has already
+     *  cleared and set the transform for the live overlay, so this defaults to
+     *  leaving the transform untouched
+     */
+    paintLayout(context, scale = null) {
+        if (scale !== null) {
+            context.setTransform(scale, 0, 0, scale, 0, 0);
+            context.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+        }
         context.lineJoin = 'round';
         context.lineCap = 'round';
         for (const label of this.layout.placed) {
@@ -910,6 +968,14 @@ export class AtomLabelManager {
             context.fillStyle = label.color || this.options.color;
             context.fillText(label.text, label.x, label.y);
         }
+    }
+
+    /**
+     * Whether any atom labels are currently placed and visible.
+     * @returns {boolean} True when the live overlay shows at least one label
+     */
+    hasVisibleLabels() {
+        return this.canvas.style.visibility !== 'hidden' && this.layout.placed.length > 0;
     }
 
     dispose() {

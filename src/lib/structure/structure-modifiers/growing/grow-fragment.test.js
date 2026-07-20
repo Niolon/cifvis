@@ -1493,33 +1493,33 @@ describe('Structure dependent methods', () => {
             // 4. C1|2_565 - omitted N1|1_575 from translationLink
             expect(grownStructure.bonds.length).toBe(4);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
-                expect.objectContaining({ 
+                expect.objectContaining({
                     atom1Id: 'C1|1_555',
                     atom2Id: 'N1|2_555',
-                    atom2SiteSymmetry: '.', 
-                    bondLength: 1.5, 
+                    atom2SiteSymmetry: '.',
+                    bondLength: 1.5,
                     bondLengthSU: 0.01,
                 }),
-                expect.objectContaining({ 
+                expect.objectContaining({
                     atom1Id: 'N1|1_555',
                     atom2Id: 'C1|2_565',
-                    atom2SiteSymmetry: '.', 
-                    bondLength: 1.5, 
-                    bondLengthSU: 0.01, 
+                    atom2SiteSymmetry: '.',
+                    bondLength: 1.5,
+                    bondLengthSU: 0.01,
                 }),
-                expect.objectContaining({ 
+                expect.objectContaining({
                     atom1Id: 'N1|2_555',
                     atom2Id: 'C1|1_575',
-                    atom2SiteSymmetry: '1_575', 
-                    bondLength: 1.5, 
-                    bondLengthSU: 0.01, 
+                    atom2SiteSymmetry: '1_575',
+                    bondLength: 1.5,
+                    bondLengthSU: 0.01,
                 }),
-                expect.objectContaining({ 
+                expect.objectContaining({
                     atom1Id: 'C1|2_565',
                     atom2Id: 'N1|1_575',
                     atom2SiteSymmetry: '1_575',
-                    bondLength: 1.5, 
-                    bondLengthSU: 0.01, 
+                    bondLength: 1.5,
+                    bondLengthSU: 0.01,
                 }),
             ]));
         });
