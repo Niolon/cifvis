@@ -2,6 +2,7 @@
 import { Bond } from '../bonds.js';
 import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } from '../crystal.js';
 import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
+import { encodePositionCode } from '../position-code.js';
 import { BaseFilter } from './base.js';
 import * as math from '../../math-lite.js';
 
@@ -355,7 +356,328 @@ export class BondGenerator extends BaseFilter {
             }
         }
 
+        this.generateSymmetryBonds(structure, elementProperties, elementMap, maxPossibleDistance, generatedBonds);
+
         return generatedBonds;
+    }
+
+    /**
+     * Adds bonds to symmetry-equivalent positions to an existing set of generated
+     * bonds. The Cartesian pass in {@link BondGenerator#generateBonds} only bonds
+     * atoms materialised in the same cell, so for structures whose bonds cross a
+     * symmetry element - ionic/extended solids, or moieties on special positions -
+     * the asymmetric unit contains no in-range pair and those bonds are found only
+     * by testing symmetry images of the atoms.
+     *
+     * Each such bond is emitted once, anchored on the lower-indexed atom (atom1 in
+     * the home cell, 1_555), carrying a position code that points at the symmetry
+     * equivalent of atom2. The partner atom is not materialised here: the renderer
+     * skips a bond until both endpoints exist, and the symmetry growers materialise
+     * the partner and resolve the code when the user grows the structure.
+     * Performance: like the intra-cell pass, this uses a uniform spatial grid so
+     * only same/neighbouring-cell candidates are compared, rather than every
+     * atom/operation/translation triple. Every symmetry image of every atom is
+     * wrapped into the home cell (plus boundary copies so periodic neighbours land
+     * in adjacent grid cells) and bucketed once; each home atom then queries only
+     * its 27 neighbouring cells. Cost is roughly linear in atoms x operations
+     * instead of quadratic in atoms.
+     * @private
+     * @param {CrystalStructure} structure - Structure to analyze
+     * @param {object} elementProperties - Element property definitions
+     * @param {Map<string, string>} elementMap - Resolved element symbol per atomType
+     * @param {number} maxPossibleDistance - Largest possible bond distance among elements present
+     * @param {Set<Bond>} generatedBonds - Set to add generated bonds to
+     */
+    generateSymmetryBonds(structure, elementProperties, elementMap, maxPossibleDistance, generatedBonds) {
+        const { cell, atoms, symmetry } = structure;
+        const operations = symmetry?.symmetryOperations;
+        if (!operations || operations.length === 0 || maxPossibleDistance <= 0) {
+            return;
+        }
+
+        // Reverse the id->index map so a generated code can name its operation.
+        const idByIndex = [];
+        for (const [id, index] of symmetry.operationIds.entries()) {
+            idByIndex[index] = id;
+        }
+        const identityId = symmetry.identitySymOpId;
+        const identityOpIndex = symmetry.operationIds.get(identityId);
+
+        // Inline the fractional->cartesian product with plain numbers; this runs
+        // in the hot loops, so it avoids allocating a FractPosition per call.
+        const m = cell.fractToCartMatrix.toArray();
+        const toCart = fract => [
+            m[0][0] * fract[0] + m[0][1] * fract[1] + m[0][2] * fract[2],
+            m[1][0] * fract[0] + m[1][1] * fract[1] + m[1][2] * fract[2],
+            m[2][0] * fract[0] + m[2][1] * fract[1] + m[2][2] * fract[2],
+        ];
+        // Cartesian lattice vectors, so a lattice shift is a cheap linear combination.
+        const va = toCart([1, 0, 0]);
+        const vb = toCart([0, 1, 0]);
+        const vc = toCart([0, 0, 1]);
+
+        // Rigorous per-axis fractional reach of a cartesian sphere of the bond cutoff,
+        // used to decide which cell-boundary copies of an image can reach a home atom.
+        const cartToFract = math.inv(cell.fractToCartMatrix).toArray();
+        const marginFrac = [0, 1, 2].map(r =>
+            maxPossibleDistance * Math.hypot(cartToFract[r][0], cartToFract[r][1], cartToFract[r][2]),
+        );
+        const axisShifts = (w, margin) => {
+            if (margin >= 0.5) {
+                return [-1, 0, 1];
+            }
+            const shifts = [0];
+            if (w < margin) {
+                shifts.push(1); // near face 0 -> copy near face 1
+            }
+            if (w > 1 - margin) {
+                shifts.push(-1); // near face 1 -> copy near face 0
+            }
+            return shifts;
+        };
+
+        const cellSize = maxPossibleDistance;
+        const cellKey = (ix, iy, iz) => `${ix},${iy},${iz}`;
+        const cellIndex = coord => Math.floor(coord / cellSize);
+
+        // Precompute each home atom wrapped into the cell. Only the asymmetric-unit
+        // atoms are ever an endpoint, so an image can bond only if it falls in the
+        // +/-1 neighbourhood of some home atom's grid cell; anything outside every
+        // such neighbourhood is irrelevant and is neither stored nor scanned. The
+        // wrap shift is folded back into the emitted code so it stays relative to the
+        // atom's real (1_555) position.
+        const fracts = atoms.map(atom => [atom.position.x, atom.position.y, atom.position.z]);
+        const homeInfo = new Array(atoms.length);
+        const relevantCells = new Set();
+        const outOfCell = [];
+        for (let i = 0; i < atoms.length; i++) {
+            const hx = Math.floor(fracts[i][0]);
+            const hy = Math.floor(fracts[i][1]);
+            const hz = Math.floor(fracts[i][2]);
+            const homeCart = toCart([fracts[i][0] - hx, fracts[i][1] - hy, fracts[i][2] - hz]);
+            const ix = cellIndex(homeCart[0]);
+            const iy = cellIndex(homeCart[1]);
+            const iz = cellIndex(homeCart[2]);
+            homeInfo[i] = { hx, hy, hz, homeCart, ix, iy, iz };
+            if (hx !== 0 || hy !== 0 || hz !== 0) {
+                outOfCell.push(i);
+            }
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        relevantCells.add(cellKey(ix + dx, iy + dy, iz + dz));
+                    }
+                }
+            }
+        }
+
+        // Build a grid of symmetry-image sites, keeping only those in a relevant cell.
+        const grid = new Map();
+        for (let j = 0; j < atoms.length; j++) {
+            for (let opIndex = 0; opIndex < operations.length; opIndex++) {
+                const image = operations[opIndex].applyToPoint(fracts[j]);
+                const fx = Math.floor(image[0]);
+                const fy = Math.floor(image[1]);
+                const fz = Math.floor(image[2]);
+                const wx = image[0] - fx;
+                const wy = image[1] - fy;
+                const wz = image[2] - fz;
+                const wrappedCart = toCart([wx, wy, wz]);
+                for (const sx of axisShifts(wx, marginFrac[0])) {
+                    for (const sy of axisShifts(wy, marginFrac[1])) {
+                        for (const sz of axisShifts(wz, marginFrac[2])) {
+                            const tx = -fx + sx;
+                            const ty = -fy + sy;
+                            const tz = -fz + sz;
+                            // For the pure identity operation a net-zero-translation
+                            // copy is the atom in its own cell: it only ever yields the
+                            // intra-cell bond (already handled) or a skipped self bond,
+                            // so interior atoms need no identity site at all. This is
+                            // what keeps periodic (e.g. P1) structures cheap: only
+                            // near-border atoms produce identity images.
+                            if (opIndex === identityOpIndex && tx === 0 && ty === 0 && tz === 0) {
+                                continue;
+                            }
+                            const cartX = wrappedCart[0] + sx * va[0] + sy * vb[0] + sz * vc[0];
+                            const cartY = wrappedCart[1] + sx * va[1] + sy * vb[1] + sz * vc[1];
+                            const cartZ = wrappedCart[2] + sx * va[2] + sy * vb[2] + sz * vc[2];
+                            const key = cellKey(cellIndex(cartX), cellIndex(cartY), cellIndex(cartZ));
+                            if (!relevantCells.has(key)) {
+                                continue;
+                            }
+                            let bucket = grid.get(key);
+                            if (!bucket) {
+                                bucket = [];
+                                grid.set(key, bucket);
+                            }
+                            bucket.push({
+                                atomIndex: j,
+                                opIndex,
+                                tx,
+                                ty,
+                                tz,
+                                fract: [wx + sx, wy + sy, wz + sz],
+                                cartX,
+                                cartY,
+                                cartZ,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Query each home atom against its own and neighbouring grid cells.
+        const seen = new Set();
+        for (let i = 0; i < atoms.length; i++) {
+            const { hx, hy, hz, homeCart, ix, iy, iz } = homeInfo[i];
+            // Out-of-cell home atoms are handled by the direct fallback below, which
+            // is their sole source of bonds (avoids a second, float-divergent dedup
+            // key for the same bond).
+            if (hx !== 0 || hy !== 0 || hz !== 0) {
+                continue;
+            }
+            const atom1 = atoms[i];
+            const el1 = elementMap.get(atom1.atomType);
+
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        const bucket = grid.get(cellKey(ix + dx, iy + dy, iz + dz));
+                        if (!bucket) {
+                            continue;
+                        }
+                        for (const site of bucket) {
+                            const j = site.atomIndex;
+                            // Emit each unordered asymmetric pair once, anchored on the
+                            // lower-indexed atom (atom1, home cell, 1_555).
+                            if (i > j) {
+                                continue;
+                            }
+                            const atom2 = atoms[j];
+                            if (!disorderGroupsCompatible(atom1, atom2)) {
+                                continue;
+                            }
+                            const maxDistance = this.getMaxBondDistance(
+                                el1, elementMap.get(atom2.atomType), elementProperties,
+                            );
+                            const distX = homeCart[0] - site.cartX;
+                            const distY = homeCart[1] - site.cartY;
+                            const distZ = homeCart[2] - site.cartZ;
+                            if (Math.abs(distX) > maxDistance || Math.abs(distY) > maxDistance ||
+                                Math.abs(distZ) > maxDistance) {
+                                continue;
+                            }
+                            const d2 = distX * distX + distY * distY + distZ * distZ;
+                            if (d2 > maxDistance * maxDistance || d2 <= 1e-8) {
+                                continue;
+                            }
+                            const distance = Math.sqrt(d2);
+
+                            const tx = site.tx + hx;
+                            const ty = site.ty + hy;
+                            const tz = site.tz + hz;
+                            const opId = idByIndex[site.opIndex];
+                            // Skip the identity operation in the home cell: atom2 itself
+                            // / the intra-cell bond already handled by the Cartesian pass.
+                            if (opId === identityId && tx === 0 && ty === 0 && tz === 0) {
+                                continue;
+                            }
+
+                            // Dedup by the absolute image position so the same neighbour
+                            // reached by different operations (special positions) or
+                            // boundary copies is only bonded once.
+                            const key = `${i}|${j}|${Math.round((site.fract[0] + hx) * 1e4)},`
+                                + `${Math.round((site.fract[1] + hy) * 1e4)},`
+                                + `${Math.round((site.fract[2] + hz) * 1e4)}`;
+                            if (seen.has(key)) {
+                                continue;
+                            }
+                            seen.add(key);
+
+                            const code = encodePositionCode(opId, [tx, ty, tz]);
+                            // Guard against an atom bonding to its own image.
+                            if (`${atom2.label}|${code}` === atom1.uniqueId) {
+                                continue;
+                            }
+
+                            generatedBonds.add(new Bond(
+                                atom1.uniqueId,
+                                atom2.label,
+                                distance,
+                                null, // No standard uncertainty for generated bonds
+                                code,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Atoms listed outside [0,1) (typically sitting exactly on a cell face)
+        // act as out-of-cell home atoms whose in-cell partners' net-zero identity
+        // images were skipped above. They are rare, so resolve them with a direct
+        // search that shares the dedup set with the grid pass.
+        for (const i of outOfCell) {
+            const atom1 = atoms[i];
+            const el1 = elementMap.get(atom1.atomType);
+            const pos1 = toCart(fracts[i]);
+            for (let j = i; j < atoms.length; j++) {
+                const atom2 = atoms[j];
+                if (!disorderGroupsCompatible(atom1, atom2)) {
+                    continue;
+                }
+                const maxDistance = this.getMaxBondDistance(
+                    el1, elementMap.get(atom2.atomType), elementProperties,
+                );
+                for (let opIndex = 0; opIndex < operations.length; opIndex++) {
+                    const opId = idByIndex[opIndex];
+                    const image = operations[opIndex].applyToPoint(fracts[j]);
+                    const baseTx = Math.round(fracts[i][0] - image[0]);
+                    const baseTy = Math.round(fracts[i][1] - image[1]);
+                    const baseTz = Math.round(fracts[i][2] - image[2]);
+                    // Cartesian of the nearest image; the 27 candidates are cheap
+                    // lattice-vector offsets from it (no per-candidate matrix product).
+                    const baseCart = toCart([image[0] + baseTx, image[1] + baseTy, image[2] + baseTz]);
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dz = -1; dz <= 1; dz++) {
+                                const tx = baseTx + dx;
+                                const ty = baseTy + dy;
+                                const tz = baseTz + dz;
+                                if (opId === identityId && tx === 0 && ty === 0 && tz === 0) {
+                                    continue;
+                                }
+                                const distX = pos1[0] - (baseCart[0] + dx * va[0] + dy * vb[0] + dz * vc[0]);
+                                const distY = pos1[1] - (baseCart[1] + dx * va[1] + dy * vb[1] + dz * vc[1]);
+                                const distZ = pos1[2] - (baseCart[2] + dx * va[2] + dy * vb[2] + dz * vc[2]);
+                                if (Math.abs(distX) > maxDistance || Math.abs(distY) > maxDistance ||
+                                    Math.abs(distZ) > maxDistance) {
+                                    continue;
+                                }
+                                const d2 = distX * distX + distY * distY + distZ * distZ;
+                                if (d2 > maxDistance * maxDistance || d2 <= 1e-8) {
+                                    continue;
+                                }
+                                const key = `${i}|${j}|${Math.round((image[0] + tx) * 1e4)},`
+                                    + `${Math.round((image[1] + ty) * 1e4)},${Math.round((image[2] + tz) * 1e4)}`;
+                                if (seen.has(key)) {
+                                    continue;
+                                }
+                                seen.add(key);
+                                const code = encodePositionCode(opId, [tx, ty, tz]);
+                                if (`${atom2.label}|${code}` === atom1.uniqueId) {
+                                    continue;
+                                }
+                                generatedBonds.add(new Bond(
+                                    atom1.uniqueId, atom2.label, Math.sqrt(d2), null, code,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**

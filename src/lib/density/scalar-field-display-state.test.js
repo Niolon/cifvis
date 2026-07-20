@@ -1,0 +1,124 @@
+import { describe, expect, test } from 'vitest';
+import {
+    createScalarFieldDisplayState,
+    reduceScalarFieldDisplayState,
+} from './scalar-field-display-state.js';
+
+describe('scalar-field display state', () => {
+    test('derives loading, level, and visibility only from public events', () => {
+        let state = createScalarFieldDisplayState();
+        state = reduceScalarFieldDisplayState(state, {
+            type: 'started',
+            visible: true,
+            sigmaLevel: 3,
+        });
+        expect(state).toMatchObject({ loading: true, available: false, visible: true });
+
+        state = reduceScalarFieldDisplayState(state, {
+            type: 'update',
+            stepIndex: 0,
+            totalSteps: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
+            fieldCount: 0,
+            activeFieldIndex: -1,
+            activeFieldId: null,
+            activeFieldName: null,
+            pendingFieldName: null,
+            level: 0.125,
+            sigmaLevel: 3,
+            visible: true,
+            map: { values: new Float32Array(100) },
+        });
+        expect(state).toEqual({
+            loading: true,
+            available: true,
+            visible: true,
+            level: 0.125,
+            sigmaLevel: 3,
+            stepIndex: 0,
+            totalSteps: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
+            fieldCount: 0,
+            activeFieldIndex: -1,
+            activeFieldId: null,
+            activeFieldName: null,
+            pendingFieldName: null,
+        });
+        expect(state).not.toHaveProperty('map');
+
+        state = reduceScalarFieldDisplayState(state, {
+            type: 'visibility',
+            visible: false,
+        });
+        expect(state.visible).toBe(false);
+
+        state = reduceScalarFieldDisplayState(state, {
+            type: 'complete',
+            level: 0.125,
+            sigmaLevel: 3,
+            visible: false,
+        });
+        expect(state).toMatchObject({ loading: false, available: true, visible: false });
+    });
+
+    test('carries Cube presentation metadata without exposing map internals', () => {
+        let state = reduceScalarFieldDisplayState(
+            createScalarFieldDisplayState(),
+            {
+                type: 'started',
+                displayLabel: 'ρ/eÅ⁻³',
+                quantityName: 'electron density',
+                signed: false,
+            },
+        );
+        state = reduceScalarFieldDisplayState(state, {
+            type: 'complete',
+            level: 0.3,
+        });
+
+        expect(state).toMatchObject({
+            displayLabel: 'ρ/eÅ⁻³',
+            quantityName: 'electron density',
+            signed: false,
+            level: 0.3,
+        });
+    });
+
+    test.each(['error', 'cancelled', 'cleared'])('%s clears the UI state', type => {
+        const loaded = {
+            loading: false,
+            available: true,
+            visible: false,
+            level: 0.2,
+            sigmaLevel: 2,
+            stepIndex: 2,
+            totalSteps: 3,
+        };
+        expect(reduceScalarFieldDisplayState(loaded, { type }))
+            .toEqual(createScalarFieldDisplayState());
+    });
+
+    test('a failed additional source preserves the already loaded field', () => {
+        const loaded = {
+            ...createScalarFieldDisplayState(),
+            loading: true,
+            available: true,
+            level: 0.2,
+            fieldCount: 1,
+            activeFieldIndex: 0,
+            activeFieldId: 'difference',
+        };
+
+        expect(reduceScalarFieldDisplayState(loaded, { type: 'error' })).toMatchObject({
+            loading: false,
+            available: true,
+            level: 0.2,
+            fieldCount: 1,
+            activeFieldId: 'difference',
+        });
+    });
+});

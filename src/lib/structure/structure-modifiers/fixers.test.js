@@ -1,10 +1,26 @@
 import { CrystalStructure, UnitCell, Atom } from '../crystal.js';
 import { FractPosition } from '../position.js';
 import { Bond } from '../bonds.js';
+import { CellSymmetry, SymmetryOperation } from '../cell-symmetry.js';
+import { CIF } from '../../read-cif/base.js';
 import {
     AtomLabelFilter, BondGenerator, IsolatedHydrogenFixer,
 } from './fixers.js';
+import { SymmetryGrower } from './modes.js';
 import { MockStructure } from './base.test.js';
+
+/**
+ * Pins a mock structure to P1 symmetry. The default MockStructure carries
+ * P2_1/m; several BondGenerator tests exercise only the intra-cell Cartesian
+ * pass, so P1 keeps the symmetry-equivalent pass (covered by its own tests)
+ * from adding correct-but-unrelated bonds.
+ * @param {CrystalStructure} structure - Structure to modify in place
+ * @returns {CrystalStructure} The same structure with P1 symmetry
+ */
+function asP1(structure) {
+    structure.symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+    return structure;
+}
 
 describe('AtomLabelFilter', () => {
     let mockStructure;
@@ -194,11 +210,11 @@ describe('BondGenerator', () => {
         });
 
         test('REPLACE generates new bonds replacing existing ones', () => {
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0)
                 .addAtom('O1', 'O', 0.1, 0, 0)
                 .addBond('C1', 'O1', '.', 1.5, 0.01)  // Bond with custom parameters
-                .build();
+                .build());
 
             generator.mode = BondGenerator.MODES.REPLACE;
             const result = generator.apply(structure);
@@ -322,10 +338,10 @@ describe('BondGenerator', () => {
 
     describe('bond generation behavior', () => {
         test('generates bonds between nearby atoms', () => {
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0)
                 .addAtom('O1', 'O', 0.1, 0, 0)  // Close enough for bond
-                .build();
+                .build());
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
@@ -336,10 +352,10 @@ describe('BondGenerator', () => {
         });
 
         test('can handle ion atom types', () => {
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C1+', 0, 0, 0)
                 .addAtom('O1', 'O-2', 0.1, 0, 0)
-                .build();
+                .build());
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
@@ -419,10 +435,10 @@ describe('BondGenerator', () => {
         });
 
         test('bonds disorder-group-0 atoms to any group', () => {
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0, 0)
                 .addAtom('O1', 'O', 0.1, 0, 0, 2)
-                .build();
+                .build());
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
@@ -431,10 +447,10 @@ describe('BondGenerator', () => {
         });
 
         test('bonds atoms in the same nonzero disorder group', () => {
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C', 0, 0, 0, 1)
                 .addAtom('O1', 'O', 0.1, 0, 0, 1)
-                .build();
+                .build());
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
@@ -445,13 +461,13 @@ describe('BondGenerator', () => {
         test('grid-hashing finds the same bonds as a brute-force scan for atoms spread across cells', () => {
             // Cell is large relative to bonding radii, so atoms placed across
             // the fractional range fall into different spatial grid cells.
-            const structure = new MockStructure()
+            const structure = asP1(new MockStructure()
                 .addAtom('C1', 'C', 0.01, 0.01, 0.01)
                 .addAtom('O1', 'O', 0.02, 0.01, 0.01) // bonds to C1
                 .addAtom('C2', 'C', 0.5, 0.5, 0.5)
                 .addAtom('O2', 'O', 0.501, 0.5, 0.5) // bonds to C2
-                .addAtom('N1', 'N', 0.99, 0.99, 0.99)
-                .build();
+                .addAtom('N1', 'N', 0.7, 0.7, 0.7) // isolated: far from all atoms and their images
+                .build());
 
             generator.mode = BondGenerator.MODES.CREATE;
             const result = generator.apply(structure);
@@ -463,6 +479,149 @@ describe('BondGenerator', () => {
                 'C1|1_555-O1|1_555',
                 'C2|1_555-O2|1_555',
             ]);
+        });
+    });
+
+    describe('symmetry-equivalent bond perception', () => {
+        test('does not add symmetry bonds for a molecule bonded within the cell (P1)', () => {
+            const structure = asP1(new MockStructure()
+                .addAtom('C1', 'C', 0.1, 0.1, 0.1)
+                .addAtom('O1', 'O', 0.12, 0.1, 0.1)
+                .build());
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            expect(result.bonds).toHaveLength(1);
+            expect(result.bonds[0].atom2SiteSymmetry).toBe('.');
+        });
+
+        test('bonds an atom to a symmetry image when no in-cell partner is in range', () => {
+            // C1 and O1 are far apart within the cell, but the inversion image of
+            // O1 lands ~1.4 A from C1, so the only bond crosses the inversion centre.
+            const cell = new UnitCell(5, 5, 5, 90, 90, 90);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0.1, 0.1, 0.1)),
+                new Atom('O1', 'O', new FractPosition(0.62, 0.9, 0.9)),
+            ];
+            const symmetry = new CellSymmetry('P-1', 2, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ]);
+            const structure = new CrystalStructure(cell, atoms, [], [], symmetry);
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            const symmetryBonds = result.bonds.filter(bond => bond.atom2SiteSymmetry !== '.');
+            expect(symmetryBonds.length).toBeGreaterThan(0);
+            for (const bond of symmetryBonds) {
+                // The emitted code must resolve against the space group, and the
+                // anchor is always a home-cell (1_555) atom.
+                expect(() => symmetry.parsePositionCode(bond.atom2SiteSymmetry)).not.toThrow();
+                expect(bond.atom1Id.endsWith('|1_555')).toBe(true);
+            }
+            // The C1-O1 contact across the inversion centre is among them.
+            const hasCrossSymmetryCO = symmetryBonds.some(bond =>
+                bond.atom1Id.split('|')[0] === 'C1' && bond.atom2Id.split('|')[0] === 'O1');
+            expect(hasCrossSymmetryCO).toBe(true);
+        });
+
+        test('does not bond an atom to itself across a symmetry element', () => {
+            const cell = new UnitCell(5, 5, 5, 90, 90, 90);
+            // An atom on a general position; its own images must never self-bond.
+            const atoms = [new Atom('C1', 'C', new FractPosition(0.1, 0.1, 0.1))];
+            const symmetry = new CellSymmetry('P-1', 2, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ]);
+            const structure = new CrystalStructure(cell, atoms, [], [], symmetry);
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            for (const bond of result.bonds) {
+                expect(bond.atom1Id).not.toBe(bond.atom2Id);
+            }
+        });
+
+        test('finds periodic bonds for an atom listed on a cell face (out-of-cell fallback)', () => {
+            // A1 sits exactly on the +x face (fractional 1.0), so it is an
+            // out-of-cell home atom; its periodic bond to B1 near x=0 is only found
+            // via the direct fallback, not the border-pruned grid pass.
+            const cell = new UnitCell(3, 3, 3, 90, 90, 90);
+            const atoms = [
+                new Atom('A1', 'C', new FractPosition(1.0, 0.5, 0.5)),
+                new Atom('B1', 'O', new FractPosition(0.1, 0.5, 0.5)),
+            ];
+            const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+            const structure = new CrystalStructure(cell, atoms, [], [], symmetry);
+
+            generator.mode = BondGenerator.MODES.CREATE;
+            const result = generator.apply(structure);
+
+            const aToB = result.bonds.find(bond =>
+                bond.atom1Id === 'A1|1_555' && bond.atom2Id.split('|')[0] === 'B1'
+                && bond.atom2SiteSymmetry !== '.');
+            expect(aToB).toBeDefined();
+            expect(() => symmetry.parsePositionCode(aToB.atom2SiteSymmetry)).not.toThrow();
+        });
+
+        test('perceives NaCl coordination via symmetry and renders it after cell growth', () => {
+            // Real Fm-3m NaCl with no symmetry-operation loop: the operators are
+            // reconstructed from the space-group number, and the Na-Cl bonds only
+            // exist to symmetry-equivalent Cl atoms.
+            const cifText = [
+                'data_nacl',
+                '_cell_length_a 5.6402',
+                '_cell_length_b 5.6402',
+                '_cell_length_c 5.6402',
+                '_cell_angle_alpha 90',
+                '_cell_angle_beta 90',
+                '_cell_angle_gamma 90',
+                '_symmetry_Int_Tables_number 225',
+                '_symmetry_space_group_name_H-M \'Fm-3m\'',
+                'loop_',
+                '_atom_site_type_symbol',
+                '_atom_site_label',
+                '_atom_site_fract_x',
+                '_atom_site_fract_y',
+                '_atom_site_fract_z',
+                'Na Na1 0 0 0',
+                'Cl Cl1 0.5 0.5 0.5',
+            ].join('\n');
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+            const nonMolecularProps = { Na: { radius: 1.66 }, Cl: { radius: 1.02 } };
+
+            const bondGenerator = new BondGenerator(nonMolecularProps, 0.45);
+            bondGenerator.mode = BondGenerator.MODES.CREATE;
+            const perceived = bondGenerator.apply(structure);
+
+            // Six octahedral Na-Cl contacts, each to a symmetry-equivalent Cl.
+            expect(perceived.bonds).toHaveLength(6);
+            expect(perceived.bonds.every(bond => bond.atom2SiteSymmetry !== '.')).toBe(true);
+            expect(perceived.bonds.every(bond => bond.atom1Id === 'Na1|1_555')).toBe(true);
+
+            // After cell growth the partner Cl atoms are materialised, so the bonds
+            // become renderable (both endpoints present).
+            const grown = new SymmetryGrower('cell').apply(perceived);
+            expect(grown.atoms).toHaveLength(8);
+            const atomIds = new Set(grown.atoms.map(atom => atom.uniqueId));
+            const renderable = grown.bonds.filter(
+                bond => atomIds.has(bond.atom1Id) && atomIds.has(bond.atom2Id),
+            );
+            expect(renderable.length).toBeGreaterThan(0);
+
+            // Fragment growth on this 3D-periodic structure must stay bounded: the
+            // periodic replicas (same operation, different lattice translation) are
+            // collapsed to one per operation instead of expanding into a block. The
+            // result is small and self-consistent (no bonds to missing atoms).
+            const fragment = new SymmetryGrower('fragment').apply(perceived);
+            expect(fragment.atoms.length).toBeLessThanOrEqual(8);
+            const fragmentIds = new Set(fragment.atoms.map(atom => atom.uniqueId));
+            expect(fragment.bonds.every(
+                bond => fragmentIds.has(bond.atom1Id) && fragmentIds.has(bond.atom2Id),
+            )).toBe(true);
         });
     });
 

@@ -5,6 +5,7 @@ import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
+import { liftColorLuminance, paletteLuminanceLift, paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
 
 const OCTANT_SIGNS = [
     [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
@@ -12,6 +13,49 @@ const OCTANT_SIGNS = [
 ];
 
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
+const BOND_GEOMETRY_HEIGHT = 0.98;
+
+// Replacement for three's <project_vertex> that expands a silhouette outline
+// by a constant number of CSS pixels in screen space, independent of the
+// object's size or the camera zoom. The offset is applied in clip space along
+// the projected surface normal, so an elongated ellipsoid gets the same
+// outline width as a thin bond.
+const SCREEN_OUTLINE_PROJECT_CHUNK = `
+    vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+    vec4 clipPosition = projectionMatrix * mvPosition;
+    vec3 clipNormal = ( projectionMatrix * vec4( normalize( normalMatrix * normal ), 0.0 ) ).xyz;
+    vec2 outlineDir = length( clipNormal.xy ) > 1e-6 ? normalize( clipNormal.xy ) : vec2( 0.0 );
+    clipPosition.xy += outlineDir * uOutlinePx * 2.0 * clipPosition.w / uOutlineViewport;
+    gl_Position = clipPosition;
+`;
+
+/**
+ * Makes a BackSide outline material draw at a constant CSS-pixel width by
+ * offsetting its silhouette in screen space. The viewport-size uniform object
+ * is shared so one update reaches every outline material.
+ * @param {THREE.Material} material - BackSide outline material to modify
+ * @param {{value: number}} pixelUniform - Outline half-width in CSS pixels
+ * @param {{value: THREE.Vector2}} viewportUniform - Shared CSS viewport size
+ */
+function applyScreenSpaceOutline(material, pixelUniform, viewportUniform) {
+    material.onBeforeCompile = shader => {
+        shader.uniforms.uOutlinePx = pixelUniform;
+        shader.uniforms.uOutlineViewport = viewportUniform;
+        shader.vertexShader = 'uniform float uOutlinePx;\nuniform vec2 uOutlineViewport;\n' +
+            shader.vertexShader.replace('#include <project_vertex>', SCREEN_OUTLINE_PROJECT_CHUNK);
+    };
+    material.customProgramCacheKey = () => 'screen-space-outline-v1';
+}
+
+// Draw order for cutaway atoms. So that a nearer atom occludes a farther
+// atom's carved-open interior (its cross-section and cavity), each atom's
+// planes and depth cap are re-ordered per frame by view depth
+// (updateCameraFacingOctants): nearest atom first, planes before its own cap.
+// Shells stay at 0 and bonds/h-bonds draw last, after every cap seals its
+// cavity in depth. These are only the pre-sort defaults.
+const CUTAWAY_PLANE_RENDER_ORDER = 1;
+const CUTAWAY_CAP_RENDER_ORDER = 2;
+const BOND_RENDER_ORDER = 1e6;
 
 /**
  * Local transforms placing the three ADP rings on the ellipsoid's principal
@@ -309,11 +353,15 @@ export class InstancedPool {
     /**
      * Registers a new instance transform, returning its stable index.
      * @param {THREE.Matrix4} matrix - World-space instance transform
+     * @param {THREE.Color|null} [color] - Optional per-instance material colour
      * @returns {number} Index assigned to this instance
      */
-    register(matrix) {
+    register(matrix, color = null) {
         const index = this.nextIndex++;
         this.mesh.setMatrixAt(index, matrix);
+        if (color) {
+            this.mesh.setColorAt(index, color);
+        }
         return index;
     }
 
@@ -323,6 +371,9 @@ export class InstancedPool {
      */
     finalize() {
         this.mesh.instanceMatrix.needsUpdate = true;
+        if (this.mesh.instanceColor) {
+            this.mesh.instanceColor.needsUpdate = true;
+        }
         this.mesh.computeBoundingSphere();
     }
 
@@ -452,6 +503,26 @@ export class GeometryMaterialCache {
         this.geometries = {};
         this.materials = {};
         this.elementMaterials = {};
+        // Shared CSS viewport size for screen-space outline widths. The viewer
+        // keeps it current via setOutlineViewport(); one object feeds every
+        // outline material's shader.
+        this.outlineViewport = { value: new THREE.Vector2(1, 1) };
+        this.outlinePixels = {
+            atom: { value: this.options.plot2DOutlineWidth ?? 0 },
+            bond: { value: this.options.plot2DBondOutlineWidth ?? 0 },
+        };
+        const plot2DPalette = Object.values(this.options.elementProperties)
+            .map(property => property.atomColor)
+            .filter(Boolean);
+        const plot2DFloor = this.options.plot2DColorLuminanceFloor;
+        // A configured floor replaces the ceiling: the palette is mixed
+        // towards white for dark backgrounds instead of darkened.
+        this.plot2DElementColorScale = plot2DFloor !== null && plot2DFloor !== undefined
+            ? 1
+            : paletteLuminanceScale(plot2DPalette, this.options.plot2DColorLuminanceCeiling);
+        this.plot2DElementColorLift = plot2DFloor !== null && plot2DFloor !== undefined
+            ? paletteLuminanceLift(plot2DPalette, plot2DFloor)
+            : 0;
 
         this.initializeGeometries();
         this.initializeMaterials();
@@ -481,6 +552,15 @@ export class GeometryMaterialCache {
             );
             this.geometries.emptyAtom = new THREE.BufferGeometry();
             this.geometries.cutawayPlanes = this.createCutawayPlanes(octantSections * 4);
+            // Depth-only cap that fills the removed octant in the depth buffer
+            // so neighbouring atoms/bonds inside the carved cavity are occluded
+            // instead of showing through, while the exposed cross-section (drawn
+            // earlier, with a lower renderOrder) stays visible.
+            this.materials.cutawayDepthCap = new THREE.MeshBasicMaterial({
+                colorWrite: false,
+                depthWrite: true,
+                depthTest: true,
+            });
         }
 
         // ADP ring geometry
@@ -488,10 +568,12 @@ export class GeometryMaterialCache {
         this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing);
 
         // Bond geometry
+        const bondGeometryHeight = this.options.renderStyle === 'cutout-2d' ?
+            1 : BOND_GEOMETRY_HEIGHT;
         this.geometries.bond = new THREE.CylinderGeometry(
             this.options.bondRadius,
             this.options.bondRadius,
-            0.98,
+            bondGeometryHeight,
             this.options.bondSections,
             1,
             true,
@@ -524,6 +606,15 @@ export class GeometryMaterialCache {
                 color: this.options.plot2DBondColor,
                 side: THREE.BackSide,
             });
+            this.materials.bondDepthOutline = new THREE.MeshBasicMaterial({
+                color: this.options.plot2DBondOutlineColor,
+                side: THREE.BackSide,
+                depthTest: true,
+                depthWrite: true,
+            });
+            applyScreenSpaceOutline(
+                this.materials.bondDepthOutline, this.outlinePixels.bond, this.outlineViewport,
+            );
             this.materials.hbond = new THREE.MeshBasicMaterial({
                 color: this.options.plot2DLineColor,
             });
@@ -532,7 +623,7 @@ export class GeometryMaterialCache {
 
         // Base bond material
         this.materials.bond = new THREE.MeshStandardMaterial({
-            color: this.options.bondColor,
+            color: this.options.bondColorMode === 'split' ? 0xffffff : this.options.bondColor,
             roughness: this.options.bondColorRoughness,
             metalness: this.options.bondColorMetalness,
         });
@@ -577,17 +668,21 @@ export class GeometryMaterialCache {
             const plotKey = `${elementType}_2d_materials`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
-                const elementLineColor = ['H', 'D'].includes(elementType) ?
+                const rawElementLineColor = ['H', 'D'].includes(elementType) ?
                     this.options.plot2DLineColor : elementProperty.atomColor;
+                const elementLineColor = liftColorLuminance(
+                    scaleColorLuminance(rawElementLineColor, this.plot2DElementColorScale),
+                    this.plot2DElementColorLift,
+                );
                 const outlineMaterial = new THREE.MeshBasicMaterial({
                     color: elementLineColor,
                     side: THREE.BackSide,
                 });
+                applyScreenSpaceOutline(outlineMaterial, this.outlinePixels.atom, this.outlineViewport);
                 const atomMaterial = new THREE.MeshBasicMaterial({
                     color: this.options.plot2DAtomColor,
                 });
                 atomMaterial.userData.plot2DOutlineMaterial = outlineMaterial;
-                atomMaterial.userData.plot2DOutlineScale = this.options.plot2DOutlineScale;
                 const ringMaterial = new THREE.MeshBasicMaterial({
                     color: elementLineColor,
                 });
@@ -755,6 +850,16 @@ export class GeometryMaterialCache {
     }
 
     /**
+     * Updates the CSS viewport size used to keep screen-space outline widths
+     * constant. Cheap: writes one shared uniform read by every outline material.
+     * @param {number} width - Container width in CSS pixels
+     * @param {number} height - Container height in CSS pixels
+     */
+    setOutlineViewport(width, height) {
+        this.outlineViewport.value.set(Math.max(1, width), Math.max(1, height));
+    }
+
+    /**
      * Cleans up all cached resources.
      */
     dispose() {
@@ -856,6 +961,8 @@ export class ORTEP3JsStructure {
                             emptyGeometry: this.cache.geometries.emptyAtom,
                             planeGeometry: this.cache.geometries.cutawayPlanes,
                             planeMaterial: cutawayMaterial,
+                            depthCapMaterial: this.options.sealCutoutCavity
+                                ? this.cache.materials.cutawayDepthCap : null,
                             hysteresis: this.options.atomCutawayHysteresis,
                         },
                     );
@@ -1009,6 +1116,11 @@ export class ORTEP3JsStructure {
                             outlineMaterial: this.cache.materials.openBondOutline,
                             innerScale: this.options.plot2DOpenBondInnerScale,
                         } : null,
+                        {
+                            material: this.cache.materials.bondDepthOutline,
+                            width: this.options.plot2DBondOutlineWidth,
+                            endpointInset: this.options.bondRadius,
+                        },
                     ));
                 } catch (e) {
                     if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -1022,6 +1134,13 @@ export class ORTEP3JsStructure {
             // front (pass 1) to size the pool before any instance is
             // registered (pass 2), since InstancedMesh cannot grow after creation.
             const bondMatricesByBond = [];
+            const splitBondColors = this.options.bondColorMode === 'split';
+            const atomColorsById = splitBondColors ? new Map() : null;
+            if (atomColorsById) {
+                for (const [atomId, atom] of atomsById) {
+                    atomColorsById.set(atomId, this.cache.getAtomMaterials(atom.atomType)[0].color);
+                }
+            }
             for (const bond of drawnBonds) {
                 try {
                     const matrix = ORTEPBondInstance.computeMatrix(
@@ -1030,7 +1149,11 @@ export class ORTEP3JsStructure {
                         getCartesianPosition,
                         getRenderedAtom,
                     );
-                    bondMatricesByBond.push([bond, matrix]);
+                    const colors = atomColorsById ? [
+                        atomColorsById.get(bond.atom1Id),
+                        atomColorsById.get(bond.atom2Id),
+                    ] : null;
+                    bondMatricesByBond.push([bond, matrix, colors]);
                 } catch (e) {
                     if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
                         throw e;
@@ -1041,11 +1164,11 @@ export class ORTEP3JsStructure {
             this.bondPool = bondMatricesByBond.length > 0 ? new InstancedPool(
                 this.cache.geometries.bond,
                 this.cache.materials.bond,
-                bondMatricesByBond.length,
+                bondMatricesByBond.length * (splitBondColors ? 2 : 1),
             ) : null;
 
-            for (const [bond, matrix] of bondMatricesByBond) {
-                this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix));
+            for (const [bond, matrix, colors] of bondMatricesByBond) {
+                this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix, colors));
             }
             this.bondPool?.finalize();
         }
@@ -1118,22 +1241,38 @@ export class ORTEP3JsStructure {
             group.add(atom3D);
         }
 
+        // Bonds and h-bonds draw after the cutaway depth caps (renderOrder 0)
+        // so a bond crossing a carved-open ellipsoid is depth-culled inside the
+        // sealed cavity. Traverse covers the 2D style's outline child meshes.
+        const markAsBond = object => object.traverse(child => {
+            child.renderOrder = BOND_RENDER_ORDER;
+        });
+
         if (this.bondPool) {
+            this.bondPool.mesh.renderOrder = BOND_RENDER_ORDER;
             group.add(this.bondPool.mesh);
         }
         for (const bond3D of this.bonds3D) {
+            markAsBond(bond3D);
             group.add(bond3D);
         }
 
         if (this.hbondPool) {
+            this.hbondPool.mesh.renderOrder = BOND_RENDER_ORDER;
             group.add(this.hbondPool.mesh);
         }
         for (const hBond3D of this.hBonds3D) {
+            markAsBond(hBond3D);
             group.add(hBond3D);
         }
         checkForNaN(group);
         group.cutawayAtoms = this.atoms3D.filter(atom => atom.isCutaway);
         group.cameraFacingAtoms = group.cutawayAtoms;
+        // Every atom, for the per-frame front-to-back draw ordering that makes
+        // a nearer cutaway atom occlude the carved-open interior of farther ones.
+        group.orderableAtoms = this.atoms3D;
+        // Lets the viewer keep screen-space outline widths correct on resize.
+        group.setOutlineViewport = (width, height) => this.cache.setOutlineViewport(width, height);
         group.atomLabelAnchors = this.atoms3D.map(atom3D => {
             let matrix;
             if (atom3D.segments?.[0]?.matrix) {
@@ -1285,8 +1424,9 @@ export class ORTEPAtom extends ORTEPObject {
         this.updateSurfaceRadius();
         const plot2DOutlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
         if (plot2DOutlineMaterial) {
+            // The silhouette width comes from the material's screen-space shader,
+            // so the mesh matches the body (no size-dependent scale factor).
             const outline = new THREE.Mesh(baseAtom, plot2DOutlineMaterial);
-            outline.scale.multiplyScalar(atomMaterial.userData.plot2DOutlineScale);
             outline.userData = { selectable: false, type: '2d-atom-outline' };
             this.add(outline);
             this.plot2DOutline = outline;
@@ -1319,7 +1459,7 @@ export class ORTEPAtom extends ORTEPObject {
      * @returns {number} Distance to the atom surface
      */
     getSurfaceDistanceAlong(direction) {
-        if (direction.lengthSq() === 0 || this.surfaceRadius === 0) {
+        if (this.isSolidFallback || direction.lengthSq() === 0 || this.surfaceRadius === 0) {
             return 0;
         }
 
@@ -1376,6 +1516,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
     ) {
         super(atom, unitCell, baseAtom, atomMaterial);
         if ([atom.adp.u11, atom.adp.u22, atom.adp.u33].some(val => val <= 0)) {
+            this.isSolidFallback = true;
             this.geometry = new THREE.TetrahedronGeometry(0.8);
             if (this.plot2DOutline) {
                 this.plot2DOutline.geometry = this.geometry;
@@ -1384,6 +1525,7 @@ export class ORTEPAniAtom extends ORTEPAtom {
         } else {
             const ellipsoidMatrix = getThreeEllipsoidMatrix(atom.adp, unitCell);
             if (ellipsoidMatrix.toArray().includes(NaN)) {
+                this.isSolidFallback = true;
                 this.geometry = new THREE.TetrahedronGeometry(0.8);
                 if (this.plot2DOutline) {
                     this.plot2DOutline.geometry = this.geometry;
@@ -1444,11 +1586,11 @@ export class ORTEPAniAtom extends ORTEPAtom {
         if (this.plot2DOutline) {
             this.remove(this.plot2DOutline);
             const outlineMaterial = atomMaterial.userData.plot2DOutlineMaterial;
-            const outlineScale = atomMaterial.userData.plot2DOutlineScale;
+            // Outline width is applied in screen space by the material shader,
+            // so each octant outline matches its shell (only the sign transform).
             this.cutawayOutlines = OCTANT_SIGNS.map((signs, index) => {
                 const outline = new THREE.Mesh(cutaway.octantGeometry, outlineMaterial);
                 setOctantTransform(outline, signs);
-                outline.scale.multiplyScalar(outlineScale);
                 outline.userData = {
                     selectable: false,
                     type: '2d-ellipsoid-outline',
@@ -1462,8 +1604,25 @@ export class ORTEPAniAtom extends ORTEPAtom {
 
         const planes = new THREE.Mesh(cutaway.planeGeometry, cutaway.planeMaterial);
         planes.userData = { selectable: false, type: 'ellipsoid-cutaway-planes' };
+        // Draw the exposed cross-section before the depth cap (renderOrder 0)
+        // so its colour is written first and survives the cap's depth-only fill.
+        planes.renderOrder = CUTAWAY_PLANE_RENDER_ORDER;
         this.add(planes);
         this.cutawayPlanes = planes;
+
+        if (cutaway.depthCapMaterial) {
+            // A depth-only fill of the removed octant. It records the atom as
+            // solid in the depth buffer so bonds and farther atoms that lie
+            // inside the carved cavity are depth-culled instead of showing
+            // through, while this atom's own cross-section (drawn just before
+            // it, per updateCutawayDrawOrder) stays visible.
+            const depthCap = new THREE.Mesh(cutaway.octantGeometry, cutaway.depthCapMaterial);
+            depthCap.renderOrder = CUTAWAY_CAP_RENDER_ORDER;
+            depthCap.userData = { selectable: false, type: 'ellipsoid-cutaway-depth-cap' };
+            this.add(depthCap);
+            this.cutawayDepthCap = depthCap;
+        }
+
         this.setMissingOctant(7);
     }
 
@@ -1522,6 +1681,10 @@ export class ORTEPAniAtom extends ORTEPAtom {
         this.cutawayOctants.forEach((octant, index) => {
             octant.visible = index !== missingIndex;
         });
+        if (this.cutawayDepthCap) {
+            // The depth cap fills exactly the octant the shells left open.
+            setOctantTransform(this.cutawayDepthCap, OCTANT_SIGNS[missingIndex]);
+        }
         this.cutawayOutlines?.forEach((outline, index) => {
             outline.visible = index !== missingIndex;
         });
@@ -1621,6 +1784,7 @@ export class ORTEPIsoAtom extends ORTEPAtom {
             throw new Error('Atom must have isotropic displacement parameters (UIsoADP)');
         }
         if (atom.adp.uiso <= 0.0) {
+            this.isSolidFallback = true;
             this.geometry = new THREE.TetrahedronGeometry(1);
             this.updateSurfaceRadius();
         } else {
@@ -1802,6 +1966,9 @@ export class PooledSelectableObject extends THREE.Object3D {
 
         this.highlightMeshes = this.segments.map(segment => {
             const highlightMaterial = segment.pool.mesh.material.clone();
+            if (segment.color && highlightMaterial.color) {
+                highlightMaterial.color.copy(segment.color);
+            }
             highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
             segment.pool.hideInstance(segment.index);
             const mesh = new THREE.Mesh(segment.pool.mesh.geometry, highlightMaterial);
@@ -1967,6 +2134,7 @@ export class ORTEPBond extends ORTEPObject {
      * @param {function(string): THREE.Vector3} [getCartesianPosition] - Cached atom-position resolver
      * @param {function(string): THREE.Object3D} [getRenderedAtom] - Rendered atom resolver for surface trimming
      * @param {object|null} [openStyle] - Optional opaque fill and outline setup
+     * @param {object|null} [depthOutlineStyle] - Optional depth-writing silhouette outline
      */
     constructor(
         bond,
@@ -1976,6 +2144,7 @@ export class ORTEPBond extends ORTEPObject {
         getCartesianPosition = null,
         getRenderedAtom = null,
         openStyle = null,
+        depthOutlineStyle = null,
     ) {
         super(baseBond, baseBondMaterial);
         let atom1position;
@@ -1998,10 +2167,13 @@ export class ORTEPBond extends ORTEPObject {
             );
         }
         const bondTransform = calcBondTransform(atom1position, atom2position);
+        const bondLength = atom1position.distanceTo(atom2position);
 
         this.applyMatrix4(bondTransform);
+        let radialParentScale = 1;
         if (openStyle) {
             const innerScale = THREE.MathUtils.clamp(openStyle.innerScale, 0.05, 0.95);
+            radialParentScale = innerScale;
             this.scale.x *= innerScale;
             this.scale.z *= innerScale;
 
@@ -2010,6 +2182,23 @@ export class ORTEPBond extends ORTEPObject {
             outline.userData = { selectable: false, type: '2d-open-bond-outline' };
             this.add(outline);
             this.openBondOutline = outline;
+        }
+        if (depthOutlineStyle && depthOutlineStyle.width > 0) {
+            // The outline width is applied in screen space by the material, so
+            // the mesh matches the bond radius (countering any open-bond radial
+            // shrink) and only the length is inset to keep the ends inside atoms.
+            const endpointInset = Math.max(0, depthOutlineStyle.endpointInset || 0);
+            const lengthScale = bondLength > 0 ?
+                Math.max(0.05, 1 - 2 * endpointInset / bondLength) : 1;
+            const depthOutline = new THREE.Mesh(baseBond, depthOutlineStyle.material);
+            depthOutline.scale.set(
+                1 / radialParentScale,
+                lengthScale,
+                1 / radialParentScale,
+            );
+            depthOutline.userData = { selectable: false, type: '2d-bond-depth-outline' };
+            this.add(depthOutline);
+            this.bondDepthOutline = depthOutline;
         }
         this.userData = {
             type: 'bond',
@@ -2200,6 +2389,19 @@ export class ORTEPGroupObject extends THREE.Group {
  */
 export class ORTEPBondInstance extends PooledSelectableObject {
     /**
+     * Splits a full bond transform into two exactly adjoining half transforms.
+     * @param {THREE.Matrix4} matrix - Full bond transform
+     * @returns {THREE.Matrix4[]} First-atom and second-atom half transforms
+     */
+    static computeSplitMatrices(matrix) {
+        const halfScale = new THREE.Matrix4().makeScale(1, 0.5, 1);
+        const centerOffset = BOND_GEOMETRY_HEIGHT / 4;
+        return [-centerOffset, centerOffset].map(offset => matrix.clone()
+            .multiply(new THREE.Matrix4().makeTranslation(0, offset, 0))
+            .multiply(halfScale));
+    }
+
+    /**
      * Computes a bond's world-space transform, without creating any
      * rendering resources. Used both to size the shared InstancedPool before
      * any instance is registered, and to register into it.
@@ -2237,8 +2439,9 @@ export class ORTEPBondInstance extends PooledSelectableObject {
      * @param {Bond} bond - Bond data
      * @param {InstancedPool} pool - Shared pool for all regular bonds
      * @param {THREE.Matrix4} matrix - Precomputed bond transform
+     * @param {THREE.Color[]|null} [colors] - Optional atom colours for the two bond halves
      */
-    constructor(bond, pool, matrix) {
+    constructor(bond, pool, matrix, colors = null) {
         super();
         this.userData = {
             type: 'bond',
@@ -2246,7 +2449,29 @@ export class ORTEPBondInstance extends PooledSelectableObject {
             selectable: true,
             isOpenDisorderBond: false,
         };
-        this.segments = [{ pool, matrix, index: pool.register(matrix) }];
+        // Keep the full (unsplit) transform for the selection marker, which spans
+        // the whole bond regardless of split colouring. This must NOT be assigned
+        // to `this.matrix`: PooledSelectableObject relies on the wrapper's own
+        // local matrix staying identity (matrixAutoUpdate is false, so nothing
+        // else resets it), with all positioning carried in `segment.matrix`
+        // instead. Setting `this.matrix` here previously meant the wrapper's own
+        // matrixWorld picked up this transform via the normal Three.js update
+        // cascade as soon as an ancestor (the rotating molecule container) forced
+        // a recompute, after which the raycast redirect's
+        // `this.matrixWorld * segment.matrix` applied the bond's placement twice -
+        // correct only by accident before the first rotation, when matrixWorld
+        // was still untouched identity.
+        this.fullMatrix = matrix;
+        const segmentMatrices = colors ? ORTEPBondInstance.computeSplitMatrices(matrix) : [matrix];
+        this.segments = segmentMatrices.map((segmentMatrix, index) => {
+            const segmentColor = colors?.[index] || null;
+            return {
+                pool,
+                matrix: segmentMatrix,
+                index: pool.register(segmentMatrix, segmentColor),
+                color: segmentColor?.clone() || null,
+            };
+        });
     }
 
     /**
@@ -2258,7 +2483,7 @@ export class ORTEPBondInstance extends PooledSelectableObject {
     createSelectionMarker(color, options) {
         const segment = this.segments[0];
         const outlineMesh = new THREE.Mesh(segment.pool.mesh.geometry, this.createSelectionMaterial(color));
-        outlineMesh.applyMatrix4(segment.matrix);
+        outlineMesh.applyMatrix4(this.fullMatrix);
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
         outlineMesh.scale.z *= options.selection.bondMarkerMult;
         outlineMesh.userData.selectable = false;

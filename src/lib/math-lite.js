@@ -368,7 +368,7 @@ function jacobiEigenSymmetric3(M) {
 /**
  * mathjs-compatible eigs() for real symmetric 3x3 matrices.
  * @param {Matrix|number[][]} m - Symmetric 3x3 matrix
- * @returns {{values: number[], eigenvectors: {value: number, vector: Matrix}[]}} Result
+ * @returns {object} Result
  *  matching the subset of mathjs's eigs() output shape used by this codebase
  */
 export function eigs(m) {

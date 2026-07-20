@@ -13,7 +13,10 @@ import {
     AtomLabelManager,
     findSmallRings,
     projectedAtomIntersectsViewport,
+    resolveAtomLabelColor,
 } from './atom-label-manager.js';
+import defaultSettings from './structure-settings.js';
+import { colorLuminance } from './color-utils.js';
 
 const options = {
     placementMode: 'auto-omit',
@@ -41,6 +44,80 @@ const options = {
     leaderBondCrossingPenalty: 25,
     maxVisible: Infinity,
 };
+
+describe('atom label colors', () => {
+    test('uses the configured uniform color by default', () => {
+        const color = resolveAtomLabelColor(
+            { atomType: 'S' },
+            { colorMode: 'uniform', color: '#123456', atomColorLuminanceCeiling: 0.25 },
+            defaultSettings.elementProperties,
+        );
+
+        expect(color).toBe('#123456');
+    });
+
+    test('scales atom colors as one palette without clustering at the ceiling', () => {
+        const labelOptions = {
+            colorMode: 'atom',
+            color: '#111111',
+            atomColorLuminanceCeiling: 0.25,
+        };
+        const hydrogen = resolveAtomLabelColor(
+            { atomType: 'H' }, labelOptions, defaultSettings.elementProperties,
+        );
+        const sulfur = resolveAtomLabelColor(
+            { atomType: 'S' }, labelOptions, defaultSettings.elementProperties,
+        );
+        const oxygen = resolveAtomLabelColor(
+            { atomType: 'O' }, labelOptions, defaultSettings.elementProperties,
+        );
+
+        expect(colorLuminance(new THREE.Color(hydrogen))).toBeLessThanOrEqual(0.25);
+        expect(colorLuminance(new THREE.Color(sulfur))).toBeLessThan(
+            colorLuminance(new THREE.Color(hydrogen)),
+        );
+        expect(colorLuminance(new THREE.Color(oxygen))).toBeLessThan(
+            colorLuminance(new THREE.Color(sulfur)),
+        );
+    });
+
+    test('uses custom element atom colors and falls back to default partial properties', () => {
+        const labelOptions = {
+            colorMode: 'atom',
+            color: '#111111',
+            atomColorLuminanceCeiling: 1,
+        };
+        const customOxygen = resolveAtomLabelColor(
+            { atomType: 'O' }, labelOptions, { O: { atomColor: '#336699' } },
+        );
+        const partialCarbon = resolveAtomLabelColor(
+            { atomType: 'C' }, labelOptions, { C: { ringColor: '#ffffff' } },
+        );
+
+        expect(customOxygen).toBe('#336699');
+        expect(partialCarbon).toBe('#000000');
+    });
+
+    test('lifts atom colors towards white when a luminance floor is set', () => {
+        const labelOptions = {
+            colorMode: 'atom',
+            color: '#eeeeee',
+            atomColorLuminanceCeiling: 0.25,
+            atomColorLuminanceFloor: 0.35,
+        };
+        const carbon = resolveAtomLabelColor(
+            { atomType: 'C' }, labelOptions, defaultSettings.elementProperties,
+        );
+        const hydrogen = resolveAtomLabelColor(
+            { atomType: 'H' }, labelOptions, defaultSettings.elementProperties,
+        );
+
+        // Carbon is the darkest default color (#000000): lifted to the floor.
+        expect(colorLuminance(new THREE.Color(carbon))).toBeCloseTo(0.35, 2);
+        // Already-bright colors stay brighter and are not darkened by the ceiling.
+        expect(colorLuminance(new THREE.Color(hydrogen))).toBeGreaterThan(0.35);
+    });
+});
 
 /**
  * Creates a compact projected-label fixture.

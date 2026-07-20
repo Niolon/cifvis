@@ -1,4 +1,3 @@
-/** @typedef {import('./cell-symmetry.js').CellSymmetry} CellSymmetry */
 import { decodePositionCode, encodePositionCode } from './position-code.js';
 
 export class AppliedSymmetry {
@@ -45,7 +44,7 @@ export class AppliedSymmetry {
 
     /**
      * Generates standard Jones-Faithful notation (e.g. "1-x,1/2+y,z")
-     * @param {CellSymmetry} cellSymmetry - The crystal's symmetry object
+     * @param {object} cellSymmetry - The crystal's symmetry object
      * @returns {string} Jones-Faithful symmetry string
      */
     toJonesFaithful(cellSymmetry) {
@@ -62,7 +61,7 @@ export class AppliedSymmetry {
     /**
      * Combines this symmetry with another (this applied first, then other)
      * @param {AppliedSymmetry} other - The outer symmetry operation
-     * @param {CellSymmetry} cellSymmetry - The crystal's symmetry object
+     * @param {object} cellSymmetry - The crystal's symmetry object
      * @returns {AppliedSymmetry} Combined symmetry
      */
     combine(other, cellSymmetry) {

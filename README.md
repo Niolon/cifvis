@@ -1,157 +1,93 @@
 # CifVis - Crystal Structure Visualisation
 
-A JavaScript library and web components for visualizing crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the cif. If you want an interactive explanation how to quickly get a structure on your website, [click here](https://niolon.github.io/cifvis/docs/widget-usage.html), an interactive viewer that allows you to load your own structure from CIF is available [here](https://niolon.github.io/cifvis/). Everything from CIF parsing, to structure construction, to display, is done locally on your browser using JavaScript, there is no server component.
+A JavaScript library and web component for visualising crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the CIF. Everything &mdash; CIF parsing, structure construction, and display &mdash; runs locally in the browser; there is no server component.
 
-## Documentation
-
-The [full documentation hub](https://niolon.github.io/cifvis/docs/index.html) (also under `site/docs/` in this repo) covers:
-
-- [Developing with CifVis](https://niolon.github.io/cifvis/docs/using-cifvis.html) &mdash; parsing CIF files (Blocks, entries, Loops), driving `CrystalViewer` directly to build a custom GUI, using Filters, and using CifVis structures in your own Three.js scene.
-- [Widget Usage](https://niolon.github.io/cifvis/docs/widget-usage.html) &mdash; the `<cifview-widget>` component: attributes, display modes, and styling it (light DOM, CSS custom properties).
-- [Options Reference](https://niolon.github.io/cifvis/docs/options-reference.html) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
-- [Developing CifVis](https://niolon.github.io/cifvis/docs/developing-cifvis.html) &mdash; the lay of the land for contributors: what lives in each source folder and how the layers depend on each other.
-
-For the full generated API reference (every exported class/method), run `npm run docs` to build it locally at `jsdoc-out/index.html`.
+- **Try it:** [interactive viewer](https://niolon.github.io/cifvis/) &mdash; load your own CIF.
+- **Add it to your site:** [interactive widget walkthrough](https://niolon.github.io/cifvis/docs/widget-usage.html).
 
 ## Features
 
 - Interactive 3D visualisation of crystal structures
-- Support for anisotropic displacement parameters (ADPs)
-- Display of bonds and hydrogen bonds
-- Disorder group handling
-- Crystal symmetry growing of structures 
+- Anisotropic displacement parameters (ADPs), bonds, and hydrogen bonds
+- Disorder group handling and crystal symmetry growing
+- Difference- and deformation-density maps and contour sections
+- Gaussian Cube overlays
+- Coupled comparison viewers
+- Collision-free atom labels
 - Touch and mouse controls
-- Widget for complete packaged solution
+- Self-contained web component
 
-## Usage
-### Node library
-CifVis is available on npm and installing it into a project is as simple as executing:
+## Documentation
+
+The [full documentation site](https://niolon.github.io/cifvis/docs/) is the source of truth for everything below. It is a VitePress site under `docs/`; run `npm run docs:dev` to serve it locally.
+
+- [General](https://niolon.github.io/cifvis/docs/general/introduction.html) &mdash; what CifVis is and the shared concepts (CIF model, structure model, Filters, density theory).
+- [Widget](https://niolon.github.io/cifvis/docs/widget/getting-started.html) &mdash; the `<cifview-widget>` component: attributes, loading data, display modes, density, styling.
+- [JS Library](https://niolon.github.io/cifvis/docs/library/getting-started.html) &mdash; parsing CIFs, driving `CrystalViewer`, density maps, Filters, coupled viewers, Three.js integration.
+- [Atom Labels](https://niolon.github.io/cifvis/docs/labels/) &mdash; activating labels and how placement works.
+- [Options Reference](https://niolon.github.io/cifvis/docs/reference/) &mdash; the full `options` schema shared by `CrystalViewer` and the widget.
+- [Gallery](https://niolon.github.io/cifvis/docs/gallery/) &mdash; live examples with widget and library code.
+- [Developing CifVis](https://niolon.github.io/cifvis/docs/contributing/) &mdash; source layout and how the layers fit together.
+
+For the generated API reference (every exported class/method), run `npm run docs` to build it at `jsdoc-out/index.html`.
+
+## Installation
 
 ```bash
 npm install cifvis
 ```
 
-### Web Component
-For a comprehensive list of options and the use of the widget, look at the interactive explanation [here](https://niolon.github.io/cifvis/docs/widget-usage.html).
+## Quick start
+
+### Web component
 
 ```html
-<cifview-widget 
-  src="structure.cif"
-  caption="Crystal Structure"
-  hydrogen-mode="none">
-</cifview-widget>
+<cifview-widget src="structure.cif" caption="Crystal Structure"></cifview-widget>
 
 <script type="module">
   import { CifViewWidget } from 'cifvis';
 </script>
 ```
 
+See the [widget docs](https://niolon.github.io/cifvis/docs/widget/getting-started.html) for attributes, options, and styling.
 
-### Basic Viewer
+### Library
+
 ```html
 <div id="viewer"></div>
 <script type="module">
   import { CrystalViewer } from 'cifvis';
-  
+
   const viewer = new CrystalViewer(document.getElementById('viewer'));
-  viewer.loadStructure(cifContent);
+  await viewer.loadCIF(cifContent);
 </script>
 ```
 
-
-
-### API Reference
-
-The package exports the following:
-
-```javascript
-import { 
-  CrystalViewer,   // Main viewer class
-  CIF,             // CIF file parser
-  CrystalStructure, // Crystal structure data model
-  ORTEP3JsStructure, // ORTEP-style structure visualisation
-  CifViewWidget,    // Web component
-  formatValueEsd    // Utility for formatting values with ESDs
-} from 'cifvis';
-```
-
-#### CrystalViewer Options
-
-```javascript
-const viewer = new CrystalViewer(container, {
-  camera: {
-    zoomSpeed: 0.1,
-    fov: 45,
-  },
-  selection: {
-    mode: 'multiple', // or 'single'
-    markerMult: 1.3,
-    bondMarkerMult: 1.7
-  },
-  interaction: {
-    rotationSpeed: 5,
-    clickThreshold: 200
-  },
-  atomCutawayStripeCount: 7, // Horizontal hatch lines across each cutaway disc
-  atomCutawayStripeWidth: 0.5, // Equal atom-colour stripe and contrasting gap widths
-  atomLabels: {
-    show: ['C1', { id: 'O1', text: 'O(carbonyl)', priority: 10 }],
-    placementMode: 'auto-omit', // adaptive; or quality, performance, maximum coverage
-    calloutPlacement: 'structure', // compact; 'viewport' uses the full width
-    maxConnectorLength: 250, // optional hard CSS-pixel ceiling
-    fontSize: 14,
-  },
-  renderStyle: 'solid-3d', // 'cutout-3d': camera-facing ORTEP octant cutaway; 'cutout-2d': publication plot (always cutaway; PART 2 bonds are outline-only)
-  plot2DOpenBondInnerScale: 0.5, // Opaque white width inside open PART 2 bonds
-  plot2DStripeCount: 7,
-  plot2DStripeWidth: 0.18,
-  hydrogenMode: 'none',    // 'none', 'constant', 'anisotropic'
-  disorderMode: 'all',     // 'all', 'group1of2', 'group2of2', ... "group<rank>of<total>" per disorder group in the structure
-  symmetryMode: 'bonds-no-hbonds-no' // See symmetry modes below
-});
-```
+The package also exports `CIF`, `CrystalStructure`, `ORTEP3JsStructure`, `formatValueEsd`, and `coupleViewerInteractions`. See the [library docs](https://niolon.github.io/cifvis/docs/library/getting-started.html) for the full API, density maps, and coupled viewers.
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Run unit tests
-npm test
-
-# Run test on a database folder (will create a logs subfolder in integration-tests)
-npm run test:database-modifiers -- /folder/of/database && npm run test:database-ortep -- /folder/of/database
-
-# Build for production
-npm run build
-
-# build for production including dependencies
-npm run build:alldeps
-
-# benchmark atom-label layout (uses the shipped demo CIFs by default)
-npm run bench:labels
+npm install       # install dependencies
+npm run dev       # start development server
+npm test          # run unit tests
+npm run build     # build for production
+npm run deploy    # build and publish the GitHub Pages deployment
 ```
 
-## Browser Support
+Additional benchmark and integration-test scripts are documented in the [contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+## Browser support
 
-WebGL support is required.
+Chrome, Firefox, Safari, and Edge (latest). WebGL is required.
 
 ## License
 
-This project is licensed under the Mozilla Public License Version 2.0 - see the [LICENSE](LICENSE.md) file for details.
+Licensed under the Mozilla Public License Version 2.0 &mdash; see [LICENSE](LICENSE.md).
 
 ## Citation
 
-If you use this software in academic work, please cite it like this until a proper publication has been written up:
+If you use this software in academic work, please cite it like this until a proper publication is available:
 
 ```bibtex
 @software{cifvis,

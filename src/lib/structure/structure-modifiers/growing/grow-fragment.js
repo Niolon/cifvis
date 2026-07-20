@@ -569,10 +569,13 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
  * @param {Map<string, string>} specialPositionAtoms - Map of special position atoms.
  * @param {Array<object>} newAtoms - The generated atoms.
  * @param {string} identSymmKey - The identity symmetry operation key.
+ * @param {CrystalStructure} [structure] - Source structure whose external bond definitions are completed across
+ * the generated symmetry instances.
  * @returns {{newBonds: Array<Bond>, atomLabels: Set<string>}} New bonds and set of atom labels.
  */
 export function generateSymmetryBonds(
     atomGroups, requiredSymmetryInstances, interGroupBonds, specialPositionAtoms, newAtoms, identSymmKey,
+    structure = null,
 ) {
     // Initialize with the original intra-group bonds
     const newBonds = [];
@@ -649,6 +652,63 @@ export function generateSymmetryBonds(
             ));
         }
     });
+
+    // A CIF lists a symmetry-crossing bond from an asymmetric-unit atom to one
+    // symmetry image. Once both fragment instances have been generated, the
+    // complete symmetry orbit of that bond must be present. A connection group
+    // alone cannot provide this: for example, an inversion-completed molecule
+    // may contain both C1-C5' and its distinct mate C1'-C5, even though both
+    // connect the same two fragment instances and therefore share one graph
+    // edge. Generate every external bond definition from each included origin
+    // instance, retaining only bonds whose two resolved atoms are actually in
+    // the completed fragment.
+    if (structure) {
+        const groupByAtomLabel = new Map();
+        const symmetriesByGroup = atomGroups.map(() => new Set([identSymmKey]));
+        const availableAtomIds = new Set(newAtoms.map(atom => atom.uniqueId).filter(Boolean));
+
+        atomGroups.forEach((group, groupIndex) => {
+            group.atoms.forEach(atom => {
+                groupByAtomLabel.set(atom.label, groupIndex);
+                availableAtomIds.add(atom.uniqueId || createAtomId(atom.label, identSymmKey));
+            });
+        });
+        requiredSymmetryInstances.forEach(instance => {
+            const [groupIndexString, symKey] = instance.split('@.@');
+            symmetriesByGroup[Number(groupIndexString)]?.add(symKey);
+        });
+
+        structure.bonds
+            .filter(bond => bond.atom2SiteSymmetry !== '.')
+            .forEach(bond => {
+                const originGroupIndex = groupByAtomLabel.get(bond.atom1Label);
+                if (originGroupIndex === undefined) {
+                    return;
+                }
+
+                const relativeTargetSymmetry = AppliedSymmetry.fromString(bond.atom2SiteSymmetry);
+                for (const originSymKey of symmetriesByGroup[originGroupIndex]) {
+                    const originSymmetry = AppliedSymmetry.fromString(originSymKey);
+                    const targetSymmetry = relativeTargetSymmetry.combine(originSymmetry, structure.symmetry);
+                    const originAtomRaw = createAtomId(bond.atom1Label, originSymKey);
+                    const targetAtomRaw = createAtomId(bond.atom2Label, targetSymmetry.key);
+                    const originAtom = specialPositionAtoms.get(originAtomRaw) || originAtomRaw;
+                    const targetAtom = specialPositionAtoms.get(targetAtomRaw) || targetAtomRaw;
+
+                    if (!availableAtomIds.has(originAtom) || !availableAtomIds.has(targetAtom)) {
+                        continue;
+                    }
+
+                    const bondString = createBondIdentifier(originAtom, targetAtom);
+                    if (!existingBonds.has(bondString)) {
+                        existingBonds.add(bondString);
+                        newBonds.push(new Bond(
+                            originAtom, targetAtom, bond.bondLength, bond.bondLengthSU, '.',
+                        ));
+                    }
+                }
+            });
+    }
 
     // Create set of atom labels for lookup
     const atomLabels = new Set(newAtoms.map(a => a.uniqueId));
@@ -888,25 +948,56 @@ export function growFragment(structure) {
         networkConnections, structure, identSymmKey,
     );
 
+    // In a periodic structure (an extended chain, layer or framework) growing the
+    // fragment replicates the unit along its periodic lattice directions into an
+    // unbounded block. A periodic replica is, by definition, the same group reached
+    // by the same symmetry operation at a different lattice translation
+    // (see ConnectedGroup.isTranslationalDuplicateOf). So keep a single instance per
+    // (group, operation) - the one nearest the origin - which suppresses replication
+    // along every periodic direction (axis, screw or diagonal) on its own, while
+    // keeping distinct-operation images that build the finite (non-periodic)
+    // directions. For a genuinely molecular fragment each (group, operation) already
+    // occurs once, so nothing is dropped.
+    const bestInstanceByOperation = new Map();
+    for (const instance of requiredSymmetryInstances) {
+        const applied = AppliedSymmetry.fromString(instance.split('@.@')[1]);
+        const operationKey = `${instance.split('@.@')[0]}|${applied.id}`;
+        const magnitude = Math.abs(applied.translation[0])
+            + Math.abs(applied.translation[1]) + Math.abs(applied.translation[2]);
+        const existing = bestInstanceByOperation.get(operationKey);
+        if (!existing || magnitude < existing.magnitude
+            || (magnitude === existing.magnitude && instance < existing.instance)) {
+            bestInstanceByOperation.set(operationKey, { instance, magnitude });
+        }
+    }
+    const grownInstances = new Set([...bestInstanceByOperation.values()].map(entry => entry.instance));
+    // Whether any periodic replica was actually collapsed. When true the fragment was
+    // extended; drop the now-orphaned periodic-image bonds so the result is bounded
+    // and self-consistent. When false the fragment is finite (or already a bounded
+    // repeat unit) and keeps its normal dangling-bond behaviour.
+    const collapsedPeriodicReplicas = grownInstances.size < requiredSymmetryInstances.size;
+
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
-        requiredSymmetryInstances, atomGroups, graphStructure, identSymmKey,
+        grownInstances, atomGroups, graphStructure, identSymmKey,
     );
 
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(
-        atomGroups, requiredSymmetryInstances, interGroupBonds,
-        specialPositionAtoms, newAtoms, identSymmKey,
+        atomGroups, grownInstances, interGroupBonds,
+        specialPositionAtoms, newAtoms, identSymmKey, graphStructure,
     );
 
     // Step 5: Generate hydrogen bonds
     const newHBonds = generateSymmetryHBonds(
-        graphStructure, atomGroups, atomGroupMap, requiredSymmetryInstances,
+        graphStructure, atomGroups, atomGroupMap, grownInstances,
         specialPositionAtoms, atomLabels, identSymmKey,
     );
 
-    // Step 6: Process translation links
-    const translationBonds = processTranslationLinks(
+    // Step 6: Process translation links. When periodic replicas were collapsed the
+    // growth is intentionally clamped, so these periodic-direction connections are
+    // not materialised as dangling bonds; otherwise they behave as before.
+    const translationBonds = collapsedPeriodicReplicas ? [] : processTranslationLinks(
         translationLinks, graphStructure, specialPositionAtoms,
         new Set(newBonds.map(b => createBondIdentifier(b.atom1Id, b.atom2Id))),
     );
@@ -917,11 +1008,27 @@ export function growFragment(structure) {
         newBonds.push(bond);
     }
 
+    const allAtoms = [...graphStructure.atoms, ...newAtoms];
+
+    // Collapsing periodic replicas can orphan bonds/H-bonds that pointed at a dropped
+    // image. Drop those so the result is self-consistent (every bond references a
+    // materialised atom) rather than carrying dangling references.
+    let finalBonds = newBonds;
+    let finalHBonds = newHBonds;
+    if (collapsedPeriodicReplicas) {
+        const materialised = new Set(allAtoms.map(atom => atom.uniqueId));
+        finalBonds = newBonds.filter(bond =>
+            materialised.has(bond.atom1Id) && materialised.has(bond.atom2Id));
+        finalHBonds = newHBonds.filter(hbond =>
+            materialised.has(hbond.donorAtomId) && materialised.has(hbond.hydrogenAtomId)
+            && materialised.has(hbond.acceptorAtomId));
+    }
+
     const grownStructure = new CrystalStructure(
         graphStructure.cell,
-        [...graphStructure.atoms, ...newAtoms],
-        newBonds,
-        newHBonds,
+        allAtoms,
+        finalBonds,
+        finalHBonds,
         graphStructure.symmetry,
     );
 

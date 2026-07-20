@@ -164,6 +164,12 @@ export default {
     //   materials instead of solid ones.
     'renderStyle': 'solid-3d',
 
+    // For the cutout render styles, fill the removed octant in the depth
+    // buffer so neighbouring atoms or bonds inside the carved cavity are
+    // occluded instead of showing through. Set false to keep the cavity
+    // see-through.
+    'sealCutoutCavity': true,
+
     // 'cutout-2d' publication-style renderer settings (outline/hatch colours
     // below are neutral defaults; atom/ring hatch colours still follow
     // per-element colours, see GeometryMaterialCache.getAtomMaterials)
@@ -171,15 +177,67 @@ export default {
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
     'plot2DBondColor': '#000000',
+    'plot2DBondOutlineColor': '#ffffff',
+    // Constant screen-space width (CSS pixels) of the depth-writing bond
+    // silhouette, added around the bond regardless of its thickness. 0 disables it.
+    'plot2DBondOutlineWidth': 2,
+    'plot2DColorLuminanceCeiling': 0.25,
+    // When set (0-1), replaces the ceiling: the element palette is mixed
+    // towards white so its darkest colour reaches this relative luminance -
+    // for dark plot2DBackground values.
+    'plot2DColorLuminanceFloor': null,
     'plot2DOpenBondInnerScale': 0.5,
     'plot2DStripeCount': 7,
     'plot2DStripeWidth': 0.18,
-    'plot2DOutlineScale': 1.035,
+    // Constant screen-space width (CSS pixels) of the atom silhouette outline,
+    // uniform across every atom regardless of ellipsoid size.
+    'plot2DOutlineWidth': 1.2,
 
     // starting values for hydrogen, disorder and symmetry display
     'hydrogenMode': 'none',
     'disorderMode': 'all',
     'symmetryMode': 'none',
+
+    // Upper fractional bound for unit-cell membership in the cell growth modes.
+    // 1.0 wraps atoms on the far cell face back in, keeping the cell contents (Z)
+    // correct; raise slightly (e.g. 1.001) to instead keep those upper-border atoms.
+    'packingCutoff': 1,
+
+    // Difference-electron-density maps are loaded separately from the
+    // coordinate CIF and remain opt-in.
+    'differenceDensity': {
+        ...DEFAULT_DIFFERENCE_DENSITY_OPTIONS,
+        // Structure construction always completes first. When enabled, density
+        // parsing/calculation is scheduled afterwards in the density worker.
+        // auto first tries explicit FCF coefficients and then CIF observations
+        // plus an IAM Fcalc. The individual modes can be forced for diagnostics.
+        // Correct raw observed intensities using a reported SHELXL EXTI model.
+        // Set false for deliberately uncorrected/custom observed amplitudes.
+        // null keeps SHELXL Fo-Fc auto-detection. Custom deformation-density
+        // columns can provide amplitudes/phases or direct A/B coefficients.
+        // Detect an uncorrected anomalous contribution from inversion/Friedel
+        // constraints, with Olex metadata as fallback. Coordinate-CIF f'/f''
+        // values take precedence over internal tables.
+        // All reflections are used from the start. The normal grid gives a
+        // quick first display; the worker then replaces it with the final
+        // oversampled grid before refining only the surface tessellation.
+        // Final surface resolution grows with physical draw size to maintain
+        // approximately this spacing, bounded by resolution/maxResolution.
+    },
+
+    'scalarField': {
+        ...DEFAULT_SCALAR_FIELD_OPTIONS,
+    },
+
+    'isosurface': {
+        ...DEFAULT_ISOSURFACE_OPTIONS,
+    },
+
+    // Optional line-only section through any loaded scalar field. No plane
+    // geometry or fill is rendered, so the viewer/widget background is kept.
+    'contourLines': {
+        ...DEFAULT_CONTOUR_LINE_OPTIONS,
+    },
 
     'bondGrowTolerance': 0.45,
 
@@ -194,7 +252,13 @@ export default {
         'fontSize': 14,
         'fontWeight': 500,
         'fontFamily': 'system-ui, -apple-system, sans-serif',
+        'colorMode': 'uniform',
         'color': '#111111',
+        'atomColorLuminanceCeiling': 0.25,
+        // When set (0-1), replaces the ceiling: label colours are mixed
+        // towards white so the darkest element colour reaches this relative
+        // luminance - for labels on dark backgrounds.
+        'atomColorLuminanceFloor': null,
         'haloColor': '#ffffff',
         'haloWidth': 2,
         'leaderLines': 'auto',
@@ -247,6 +311,7 @@ export default {
     // Bond visualisation settings
     'bondRadius': 0.05,
     'bondSections': 15,
+    'bondColorMode': 'uniform',
     'bondColor': '#666666',
     'bondColorRoughness': 0.3,
     'bondColorMetalness': 0.1,
@@ -274,3 +339,7 @@ export default {
 
     'elementProperties': elementProperties,
 };
+import { DEFAULT_DIFFERENCE_DENSITY_OPTIONS } from '../density/difference-density-options.js';
+import { DEFAULT_SCALAR_FIELD_OPTIONS } from '../density/scalar-field-options.js';
+import { DEFAULT_ISOSURFACE_OPTIONS } from '../density/isosurface-options.js';
+import { DEFAULT_CONTOUR_LINE_OPTIONS } from '../density/contour-line-options.js';

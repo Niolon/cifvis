@@ -1,5 +1,16 @@
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import * as math from '../math-lite.js';
+
+let rectAreaLightUniformsInitialized = false;
+
+/** Initializes the WebGL area-light lookup textures once per module load. */
+function ensureRectAreaLightUniforms() {
+    if (!rectAreaLightUniformsInitialized) {
+        RectAreaLightUniformsLib.init();
+        rectAreaLightUniformsInitialized = true;
+    }
+}
 
 /**
  * Calculates the normal vector to the best-fit (mean) plane through a set of 3D points
@@ -66,13 +77,18 @@ function threeMatrixToMathJS(matrix) {
  * @returns {THREE.Matrix4|null} Rotation matrix to orient structure, or null if no atoms found
  */
 export function structureOrientationMatrix(structureGroup) {
-    // Extract atom positions
+    // Extract atom positions. Pooled/instanced atoms (default solid-3d style)
+    // keep their Object3D at the origin and carry the real transform in their
+    // instance matrix, so read the translation from there when present.
     const positions = [];
     const center = new THREE.Vector3();
     structureGroup.traverse(obj => {
         if(obj.userData?.type === 'atom') {
-            positions.push(obj.position.clone());
-            center.add(obj.position);
+            const position = obj.segments?.[0]?.matrix
+                ? new THREE.Vector3().setFromMatrixPosition(obj.segments[0].matrix)
+                : obj.position.clone();
+            positions.push(position);
+            center.add(position);
         }
     });
     
@@ -128,42 +144,76 @@ export function structureOrientationMatrix(structureGroup) {
     // Give it a slight angle
     rotationMatrix.premultiply(new THREE.Matrix4().makeRotationX(Math.PI / 8));
     rotationMatrix.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 48));
-    
+
     return rotationMatrix;
+}
+
+/** Largest square image dimension WebGL/canvas backends reliably support. */
+export const MAX_CAPTURE_EDGE = 16384;
+
+/**
+ * Resolves the pixel dimensions of a captured image from the on-screen CSS
+ * size, a scale multiplier, and an optional target for the longest edge.
+ * A longEdge target overrides the scale; the result preserves aspect ratio
+ * and is clamped to MAX_CAPTURE_EDGE.
+ * @param {number} cssWidth - Container CSS width in pixels
+ * @param {number} cssHeight - Container CSS height in pixels
+ * @param {object} [options] - Capture sizing options
+ * @param {number} [options.scale] - Multiplier over the CSS size
+ * @param {number} [options.longEdge] - Target length of the longer edge in pixels
+ * @returns {{width: number, height: number, scale: number}} Pixel dimensions and the applied scale
+ */
+export function resolveCaptureDimensions(cssWidth, cssHeight, options = {}) {
+    const safeWidth = Math.max(1, Math.floor(cssWidth));
+    const safeHeight = Math.max(1, Math.floor(cssHeight));
+    let scale = Number.isFinite(options.scale) && options.scale > 0 ? options.scale : 1;
+    if (Number.isFinite(options.longEdge) && options.longEdge > 0) {
+        scale = options.longEdge / Math.max(safeWidth, safeHeight);
+    }
+    const maxScale = MAX_CAPTURE_EDGE / Math.max(safeWidth, safeHeight);
+    scale = Math.min(scale, maxScale);
+    return {
+        width: Math.max(1, Math.round(safeWidth * scale)),
+        height: Math.max(1, Math.round(safeHeight * scale)),
+        scale,
+    };
 }
 
 /**
  * Sets up scene lighting optimized for molecular visualization based on structure dimensions.
- * Creates a combination of ambient light, main directional light, and fill lights.
+ * Creates a studio-style square softbox with inexpensive ambient and directional fill lights.
  * @param {THREE.Scene} scene - The scene to add lights to
  * @param {THREE.Object3D} ortep3DGroup - The molecular structure object to light
+ * @param {THREE.Box3} [structureExtent] - Precomputed rendered bounds, when available
  */
-export function setupLighting(scene, ortep3DGroup) {
+export function setupLighting(scene, ortep3DGroup, structureExtent) {
     // Remove all existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
-    let maxLength = 6;
-    ortep3DGroup.traverse(obj => {
-        if(obj.userData?.type === 'atom' && obj.position.length() > maxLength) {
-            maxLength = obj.position.length();
-        }
-    });
-    const lightDistance = maxLength * 2;
+
+    // Reuse the viewer's bounds calculation where possible. This also handles
+    // pooled/instanced atoms, whose selectable Object3Ds remain at the origin.
+    const extent = structureExtent || new THREE.Box3().setFromObject(ortep3DGroup);
+    const extentSize = extent.getSize(new THREE.Vector3());
+    const structureRadius = Math.max(extentSize.length() * 0.5, 6);
+    const lightDistance = structureRadius * 2.5;
     
     // Base ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     scene.add(ambientLight);
     
-    // Main shadow-casting light - always from fixed position since structure rotates
-    const mainLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI * 0.27, 0.6);
-    mainLight.position.set(0, -0.5, lightDistance * 2);
+    // A single square area light gives broad, studio-soft highlights. Its size
+    // and distance scale together, keeping illumination stable for large models.
+    ensureRectAreaLightUniforms();
+    const softboxSize = structureRadius * 2.25;
+    const mainLight = new THREE.RectAreaLight(0xffffff, 5, softboxSize, softboxSize);
+    mainLight.position.set(-lightDistance * 0.6, -lightDistance * 0.5, lightDistance);
     mainLight.lookAt(new THREE.Vector3(0, 0, 0));
     scene.add(mainLight);
 
-    // Additional fill lights for better depth perception
+    // A cheap directional fill and rim retain depth without adding more area lights.
     const fillLights = [
-        { pos: [-1, -0.5, 1], intensity: 0.4 },
-        { pos: [1, -0.5, 1], intensity: 0.4 },
-        { pos: [0, -0.5, 1], intensity: 0.3 },
+        { pos: [1, -0.25, 0.75], intensity: 0.2 },
+        { pos: [0.5, 0.8, -0.5], intensity: 0.3 },
     ];
 
     fillLights.forEach(({ pos, intensity }) => {

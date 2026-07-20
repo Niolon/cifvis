@@ -72,6 +72,24 @@ class AbstractCameraController {
         this.camera.position.copy(this.basePosition);
         this.camera.lookAt(this.cameraTarget);
     }
+
+    /**
+     * Captures camera pan and zoom relative to this viewer's fitted size.
+     * @abstract
+     * @returns {object} Size-independent camera state
+     */
+    getCoupledViewState() {
+        throw new Error('getCoupledViewState() must be implemented by subclass');
+    }
+
+    /**
+     * Applies size-independent camera state captured from another viewer.
+     * @abstract
+     * @param {object} _state - Coupled camera state
+     */
+    applyCoupledViewState(_state) {
+        throw new Error('applyCoupledViewState() must be implemented by subclass');
+    }
 }
 
 /**
@@ -176,6 +194,33 @@ class PerspectiveCameraController extends AbstractCameraController {
         // Move camera in view plane
         this.camera.position.addScaledVector(right, moveX);
         this.camera.position.addScaledVector(up, moveY);
+    }
+
+    /** @returns {object} Camera position normalized by fitted distance. */
+    getCoupledViewState() {
+        const baseDistance = this.basePosition?.length() || this.camera.position.length() || 1;
+        return {
+            type: 'perspective',
+            position: this.camera.position.toArray(),
+            positionScale: this.camera.position.clone().divideScalar(baseDistance).toArray(),
+            quaternion: this.camera.quaternion.toArray(),
+        };
+    }
+
+    /** @param {object} state - Size-independent peer camera state. */
+    applyCoupledViewState(state) {
+        const baseDistance = this.basePosition?.length() || this.camera.position.length() || 1;
+        if (state.type === 'perspective') {
+            this.camera.position.fromArray(state.position);
+        } else {
+            this.camera.position.set(
+                state.pan[0] * baseDistance,
+                state.pan[1] * baseDistance,
+                state.zoomScale * baseDistance,
+            );
+        }
+        this.camera.quaternion.fromArray(state.quaternion);
+        this.camera.updateMatrixWorld();
     }
     
     /**
@@ -305,6 +350,45 @@ class OrthographicCameraController extends AbstractCameraController {
         // Move camera in view plane
         this.camera.position.addScaledVector(right, moveX);
         this.camera.position.addScaledVector(up, moveY);
+    }
+
+    /** @returns {object} Camera pan and zoom normalized by fitted frustum size. */
+    getCoupledViewState() {
+        const baseSize = this.baseSize || this.camera.top || 1;
+        const basePosition = this.basePosition || new THREE.Vector3(0, 0, this.camera.position.z);
+        return {
+            type: 'orthographic',
+            position: this.camera.position.toArray(),
+            orthoSize: this.camera.top,
+            pan: [
+                (this.camera.position.x - basePosition.x) / baseSize,
+                (this.camera.position.y - basePosition.y) / baseSize,
+            ],
+            zoomScale: this.camera.top / baseSize,
+            quaternion: this.camera.quaternion.toArray(),
+        };
+    }
+
+    /** @param {object} state - Size-independent peer camera state. */
+    applyCoupledViewState(state) {
+        const baseSize = this.baseSize || this.camera.top || 1;
+        const basePosition = this.basePosition || new THREE.Vector3(0, 0, this.camera.position.z);
+        if (state.type === 'orthographic') {
+            this.camera.position.fromArray(state.position);
+            this.setOrthoSize(state.orthoSize);
+        } else {
+            const pan = state.positionScale.slice(0, 2);
+            const zoomScale = new THREE.Vector3(...state.positionScale).length();
+            this.camera.position.set(
+                basePosition.x + pan[0] * baseSize,
+                basePosition.y + pan[1] * baseSize,
+                basePosition.z,
+            );
+            this.setOrthoSize(baseSize * zoomScale);
+        }
+        this.camera.quaternion.fromArray(state.quaternion);
+        this.camera.updateProjectionMatrix();
+        this.camera.updateMatrixWorld();
     }
     
     /**

@@ -375,7 +375,7 @@ describe('SymmetryGrower', () => {
             expect(repeated.hBonds).toHaveLength(result.hBonds.length);
         });
 
-        test('keeps both H-bonds from a molecule completed across a special position', () => {
+        test('keeps the complete incoming H-bond orbit for urea special positions', () => {
             const cifContent = readFileSync('site/public/cif/urea.cif', 'utf8');
             const urea = CrystalStructure.fromCIF(new CIF(cifContent).getBlock(0));
             const result = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT_HBONDS)
@@ -398,6 +398,34 @@ describe('SymmetryGrower', () => {
                 acceptorAtomId: 'O|1_555',
                 acceptorAtomSymmetry: '.',
             }));
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|3_656',
+                hydrogenAtomId: 'Hb|3_656',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
+            expect(result.hBonds).toContainEqual(expect.objectContaining({
+                donorAtomId: 'N|2_466',
+                hydrogenAtomId: 'Hb|2_466',
+                acceptorAtomId: 'O|1_555',
+                acceptorAtomSymmetry: '.',
+            }));
+            expect(result.hBonds.filter(hBond =>
+                hBond.acceptorAtomId === 'O|1_555',
+            )).toHaveLength(4);
+
+            const atomPositionKeys = result.atoms.map(atom => [
+                atom.label,
+                atom.position.x.toFixed(6),
+                atom.position.y.toFixed(6),
+                atom.position.z.toFixed(6),
+            ].join('|'));
+            expect(new Set(atomPositionKeys).size).toBe(result.atoms.length);
+
+            const bondKeys = result.bonds.map(bond =>
+                [bond.atom1Id, bond.atom2Id].sort().join('|'),
+            );
+            expect(new Set(bondKeys).size).toBe(result.bonds.length);
         });
 
         test('combines fragment and cell growth in FRAGMENT_CELL mode', () => {

@@ -9,14 +9,10 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: resolve(__dirname, '../site/index.html'),
-                docsIndex: resolve(__dirname, '../site/docs/index.html'),
-                docsWidget: resolve(__dirname, '../site/docs/widget-usage.html'),
-                docsOptions: resolve(__dirname, '../site/docs/options-reference.html'),
-                docsUsing: resolve(__dirname, '../site/docs/using-cifvis.html'),
-                docsDeveloping: resolve(__dirname, '../site/docs/developing-cifvis.html'),
+                // The documentation is a VitePress site under docs/ and is
+                // built separately via `npm run docs:build`.
             },
             output: {
-                inlineDynamicImports: false,
                 // Ensure files go to the main dist directory
                 dir: resolve(__dirname, '../dist'),
                 // Ensure assets are placed directly in the output directory
@@ -27,6 +23,7 @@ export default defineConfig({
         },
         // Specify the output directory
         outDir: '../dist',
+        emptyOutDir: true,
     },
     // Specify the root directory for file resolution
     root: resolve(__dirname, '../site'),

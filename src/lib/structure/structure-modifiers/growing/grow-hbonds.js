@@ -4,6 +4,130 @@ import { CrystalStructure } from '../../crystal.js';
 import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
 
+const equivalentPositionCodeCaches = new WeakMap();
+const inversePositionCodeCaches = new WeakMap();
+const reciprocalPositionCodeCaches = new WeakMap();
+
+/**
+ * @param {object} position - Fractional position
+ * @returns {string} Rounded coordinate key
+ */
+function coordinateKey(position) {
+    return `${Math.round(position.x * 1e8)},${Math.round(position.y * 1e8)},${Math.round(position.z * 1e8)}`;
+}
+
+/**
+ * @param {object} symmetry - Cell symmetry instance
+ * @param {string} positionCode - Position code to invert
+ * @returns {string} Inverse position code
+ */
+function cachedInversePositionCode(symmetry, positionCode) {
+    let cache = inversePositionCodeCaches.get(symmetry);
+    if (!cache) {
+        cache = new Map();
+        inversePositionCodeCaches.set(symmetry, cache);
+    }
+    if (!cache.has(positionCode)) {
+        cache.set(positionCode, symmetry.invertPositionCode(positionCode));
+    }
+    return cache.get(positionCode);
+}
+
+/**
+ * Finds every position code that places an atom at the same absolute fractional
+ * position as a requested code. Atoms on special positions can have several
+ * such codes, and each inverse can correspond to a distinct reciprocal donor.
+ * @param {CrystalStructure} structure - Structure providing the symmetry group
+ * @param {object} atom - Asymmetric-unit atom to transform
+ * @param {string} positionCode - Requested absolute position code
+ * @returns {string[]} Equivalent absolute position codes
+ */
+export function equivalentPositionCodes(structure, atom, positionCode) {
+    let cache = equivalentPositionCodeCaches.get(structure.symmetry);
+    if (!cache) {
+        cache = new Map();
+        equivalentPositionCodeCaches.set(structure.symmetry, cache);
+    }
+    const sourceKey = coordinateKey(atom.position);
+    const exactCacheKey = `code|${sourceKey}|${positionCode}`;
+    if (cache.has(exactCacheKey)) {
+        return cache.get(exactCacheKey);
+    }
+
+    const transformedPosition = structure.symmetry.applySymmetry(positionCode, [atom])[0].position;
+    const cacheKey = `position|${sourceKey}|${coordinateKey(transformedPosition)}`;
+    if (cache.has(cacheKey)) {
+        const equivalentCodes = cache.get(cacheKey);
+        cache.set(exactCacheKey, equivalentCodes);
+        return equivalentCodes;
+    }
+
+    const target = [transformedPosition.x, transformedPosition.y, transformedPosition.z];
+    const source = [atom.position.x, atom.position.y, atom.position.z];
+    const equivalentCodes = [];
+
+    for (const [operationId, operationIndex] of structure.symmetry.operationIds) {
+        const operation = structure.symmetry.symmetryOperations[operationIndex];
+        const operationPosition = operation.applyToPoint(source);
+        const translation = target.map((coordinate, index) => coordinate - operationPosition[index]);
+        if (translation.every(value => Math.abs(value - Math.round(value)) < 1e-5)) {
+            equivalentCodes.push(new AppliedSymmetry(
+                operationId,
+                translation.map(value => Math.round(value)),
+            ).key);
+        }
+    }
+
+    cache.set(cacheKey, equivalentCodes);
+    cache.set(exactCacheKey, equivalentCodes);
+    return equivalentCodes;
+}
+
+/**
+ * Returns unique reciprocal operations for an H-bond definition, cached by
+ * symmetry object and absolute endpoint positions.
+ * @param {CrystalStructure} structure - Structure providing symmetry
+ * @param {HBond} hBond - External H-bond definition
+ * @param {object} donorAtom - Donor atom instance
+ * @param {object} hydrogenAtom - Hydrogen atom instance
+ * @param {string[]} equivalentAcceptorCodes - Codes for the same acceptor site
+ * @returns {Array<{inverseSymmetry: string, positionKey: string}>} Reciprocal representatives
+ */
+function reciprocalPositionCodes(structure, hBond, donorAtom, hydrogenAtom, equivalentAcceptorCodes) {
+    let cache = reciprocalPositionCodeCaches.get(structure.symmetry);
+    if (!cache) {
+        cache = new Map();
+        reciprocalPositionCodeCaches.set(structure.symmetry, cache);
+    }
+    const cacheKey = [
+        hBond.donorAtomLabel,
+        hBond.hydrogenAtomLabel,
+        hBond.acceptorAtomLabel,
+        coordinateKey(donorAtom.position),
+        coordinateKey(hydrogenAtom.position),
+        equivalentAcceptorCodes.join(','),
+    ].join('|');
+    if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
+    }
+
+    const reciprocalCodes = [];
+    const positions = new Set();
+    for (const equivalentAcceptorCode of equivalentAcceptorCodes) {
+        const inverseSymmetry = cachedInversePositionCode(structure.symmetry, equivalentAcceptorCode);
+        const [reciprocalDonor, reciprocalHydrogen] = structure.symmetry.applySymmetry(
+            inverseSymmetry, [donorAtom, hydrogenAtom],
+        );
+        const positionKey = `${coordinateKey(reciprocalDonor.position)},${coordinateKey(reciprocalHydrogen.position)}`;
+        if (!positions.has(positionKey)) {
+            positions.add(positionKey);
+            reciprocalCodes.push({ inverseSymmetry, positionKey });
+        }
+    }
+    cache.set(cacheKey, reciprocalCodes);
+    return reciprocalCodes;
+}
+
 /**
  * Keeps chemically plausible bonds whose displayed endpoints reproduce the CIF distance.
  * Unresolved external metadata is retained but does not participate in connectivity.
@@ -166,7 +290,27 @@ export function reconcileHBondsByGeometry(structure) {
  */
 export function growExternalHBonds(structure, specialPositionAtoms = new Map()) {
     const groups = structure.calculateConnectedGroups();
-    const resolveSpecialPosition = atomId => specialPositionAtoms.get(atomId) || atomId;
+    const grownSpecialPositionAtoms = new Map();
+    const resolveSpecialPosition = (atomId) => {
+        const resolvedStartingId = specialPositionAtoms.get(atomId) || atomId;
+        return grownSpecialPositionAtoms.get(resolvedStartingId) ||
+            grownSpecialPositionAtoms.get(atomId) || resolvedStartingId;
+    };
+    const atomsById = new Map(structure.atoms.map(atom => [atom.uniqueId, atom]));
+    const atomsByLabel = new Map();
+    const groupByAtomId = new Map();
+    const groupByAtomLabel = new Map();
+    groups.forEach((group, groupIndex) => {
+        group.atoms.forEach(atom => {
+            groupByAtomId.set(atom.uniqueId, groupIndex);
+            if (!groupByAtomLabel.has(atom.label)) {
+                groupByAtomLabel.set(atom.label, groupIndex);
+            }
+            if (!atomsByLabel.has(atom.label)) {
+                atomsByLabel.set(atom.label, atom);
+            }
+        });
+    });
 
     const growableHBonds = [];
     const finalHBonds = [];
@@ -203,10 +347,8 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
     // molecule can be transformed together.
     const externalHBondsByGroup = groups.map(() => []);
     for (const hBond of growableHBonds) {
-        const donorGroupIndex = groups.findIndex(group =>
-            group.atoms.some(atom => atom.uniqueId === hBond.donorAtomId),
-        );
-        if (donorGroupIndex !== -1) {
+        const donorGroupIndex = groupByAtomId.get(hBond.donorAtomId);
+        if (donorGroupIndex !== undefined) {
             externalHBondsByGroup[donorGroupIndex].push(hBond);
         }
     }
@@ -216,15 +358,30 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
     const finalAtoms = [...structure.atoms];
     const finalBonds = [...structure.bonds];
     const finalAtomIds = new Set(finalAtoms.map(atom => atom.uniqueId));
+    const finalAtomIdsByPosition = new Map(finalAtoms.map(atom => [
+        `${atom.label}|${coordinateKey(atom.position)}`,
+        atom.uniqueId,
+    ]));
+    const finalBondIds = new Set(finalBonds.map(bond =>
+        [resolveSpecialPosition(bond.atom1Id), resolveSpecialPosition(bond.atom2Id)].sort().join('|'),
+    ));
     const finalHBondIds = new Set(finalHBonds.map(hBond =>
         `${hBond.donorAtomId}|${hBond.hydrogenAtomId}|${hBond.acceptorAtomId}`,
     ));
+    const reciprocalHBondPositions = new Set();
     const transformedExternalHBonds = [];
     const addFinalHBond = hBond => {
         const identifier = `${hBond.donorAtomId}|${hBond.hydrogenAtomId}|${hBond.acceptorAtomId}`;
         if (!finalHBondIds.has(identifier)) {
             finalHBonds.push(hBond);
             finalHBondIds.add(identifier);
+        }
+    };
+    const addFinalBond = (bond) => {
+        const identifier = [bond.atom1Id, bond.atom2Id].sort().join('|');
+        if (!finalBondIds.has(identifier)) {
+            finalBonds.push(bond);
+            finalBondIds.add(identifier);
         }
     };
 
@@ -255,18 +412,29 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
             }
 
             atom.appliedSymmetry = AppliedSymmetry.fromString(combinedSymm);
-            if (!finalAtomIds.has(atom.uniqueId)) {
+            const atomPositionKey = `${atom.label}|${coordinateKey(atom.position)}`;
+            const positionAtomId = finalAtomIdsByPosition.get(atomPositionKey);
+            if (positionAtomId) {
+                if (positionAtomId !== atom.uniqueId) {
+                    grownSpecialPositionAtoms.set(atom.uniqueId, positionAtomId);
+                }
+            } else if (!finalAtomIds.has(atom.uniqueId)) {
                 finalAtoms.push(atom);
                 finalAtomIds.add(atom.uniqueId);
+                finalAtomIdsByPosition.set(atomPositionKey, atom.uniqueId);
             }
         }
 
         group.bonds
             .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
             .forEach(bond => {
-                finalBonds.push(new Bond(
-                    combineAtomId(bond.atom1Id, symOpLabel, structure.symmetry),
-                    combineAtomId(bond.atom2Id, symOpLabel, structure.symmetry),
+                addFinalBond(new Bond(
+                    resolveSpecialPosition(combineAtomId(
+                        bond.atom1Id, symOpLabel, structure.symmetry,
+                    )),
+                    resolveSpecialPosition(combineAtomId(
+                        bond.atom2Id, symOpLabel, structure.symmetry,
+                    )),
                     bond.bondLength,
                     bond.bondLengthSU,
                     '.',
@@ -331,14 +499,15 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
         // of checks in structure.calculateConnectedGroups()
         // Extract base label from acceptorAtomId (e.g., 'N1|2_555' -> 'N1')
         const acceptorGroupBaseLabel = hBond.acceptorAtomId.split('|')[0];
-        const acceptorGroupIndex = groups.findIndex(
-            group => group.atoms.some(atom => atom.label === acceptorGroupBaseLabel),
-        );
-        if (acceptorGroupIndex === -1) {
+        const acceptorGroupIndex = groupByAtomLabel.get(acceptorGroupBaseLabel);
+        if (acceptorGroupIndex === undefined) {
             throw new Error(
                 `Cannot grow H-bond: acceptor atom ${acceptorGroupBaseLabel} is not in the structure`,
             );
         }
+
+        const symOpLabel = hBond.acceptorAtomSymmetry;
+        growGroup(acceptorGroupIndex, symOpLabel);
 
         // Add the now-internal H-bond only after its acceptor has been validated.
         addFinalHBond(new HBond(
@@ -358,40 +527,56 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
             '.',
         ));
 
-        const symOpLabel = hBond.acceptorAtomSymmetry;
-        growGroup(acceptorGroupIndex, symOpLabel);
-
-        // Also grow the periodic equivalent pointing into the base acceptor. Applying
-        // the inverse acceptor transform to the complete interaction maps A(sym) back
-        // to A(identity), and places the donor/hydrogen at the reciprocal image.
-        const donorGroupIndex = groups.findIndex(group =>
-            group.atoms.some(atom => atom.uniqueId === hBond.donorAtomId),
-        );
-        if (donorGroupIndex === -1) {
+        // Also grow the periodic equivalents pointing into the base acceptor.
+        // An acceptor on a special position can have multiple position codes at
+        // the same absolute site. Their inverses can place donors at distinct
+        // reciprocal images, so inverting only the literal CIF code loses part
+        // of the H-bond orbit (as for the two Hb donors accepted by urea O).
+        const donorGroupIndex = groupByAtomId.get(hBond.donorAtomId);
+        if (donorGroupIndex === undefined) {
             throw new Error(
                 `Cannot grow reciprocal H-bond: donor atom ${hBond.donorAtomId} is not in the structure`,
             );
         }
-        const inverseSymmetry = structure.symmetry.invertPositionCode(symOpLabel);
-        growGroup(donorGroupIndex, inverseSymmetry);
-        addFinalHBond(new HBond(
-            resolveSpecialPosition(combineAtomId(
-                hBond.donorAtomId, inverseSymmetry, structure.symmetry,
-            )),
-            resolveSpecialPosition(combineAtomId(
-                hBond.hydrogenAtomId, inverseSymmetry, structure.symmetry,
-            )),
-            `${acceptorBaseLabel}|${structure.symmetry.identitySymOpId}_555`,
-            hBond.donorHydrogenDistance,
-            hBond.donorHydrogenDistanceSU,
-            hBond.acceptorHydrogenDistance,
-            hBond.acceptorHydrogenDistanceSU,
-            hBond.donorAcceptorDistance,
-            hBond.donorAcceptorDistanceSU,
-            hBond.hBondAngle,
-            hBond.hBondAngleSU,
-            '.',
-        ));
+        const acceptorAtom = atomsByLabel.get(acceptorBaseLabel);
+        const equivalentAcceptorCodes = equivalentPositionCodes(structure, acceptorAtom, symOpLabel);
+        const donorAtom = atomsById.get(hBond.donorAtomId);
+        const hydrogenAtom = atomsById.get(hBond.hydrogenAtomId);
+        const reciprocalCodes = reciprocalPositionCodes(
+            structure, hBond, donorAtom, hydrogenAtom, equivalentAcceptorCodes,
+        );
+        for (const { inverseSymmetry, positionKey: reciprocalPositionKey } of reciprocalCodes) {
+            const positionKey = [
+                hBond.donorAtomLabel,
+                hBond.hydrogenAtomLabel,
+                acceptorBaseLabel,
+                reciprocalPositionKey,
+            ].join('|');
+            if (reciprocalHBondPositions.has(positionKey)) {
+                continue;
+            }
+            reciprocalHBondPositions.add(positionKey);
+
+            growGroup(donorGroupIndex, inverseSymmetry);
+            addFinalHBond(new HBond(
+                resolveSpecialPosition(combineAtomId(
+                    hBond.donorAtomId, inverseSymmetry, structure.symmetry,
+                )),
+                resolveSpecialPosition(combineAtomId(
+                    hBond.hydrogenAtomId, inverseSymmetry, structure.symmetry,
+                )),
+                `${acceptorBaseLabel}|${structure.symmetry.identitySymOpId}_555`,
+                hBond.donorHydrogenDistance,
+                hBond.donorHydrogenDistanceSU,
+                hBond.acceptorHydrogenDistance,
+                hBond.acceptorHydrogenDistanceSU,
+                hBond.donorAcceptorDistance,
+                hBond.donorAcceptorDistanceSU,
+                hBond.hBondAngle,
+                hBond.hBondAngleSU,
+                '.',
+            ));
+        }
     }
 
     // A symmetry-completed donor molecule can carry more than the single H-bond that

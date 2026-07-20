@@ -12,6 +12,7 @@ import { FractPosition } from '../structure/position.js';
 import { UAnisoADP, UIsoADP } from '../structure/adp.js';
 import defaultSettings from './structure-settings.js';
 import { matrix as buildMatrix } from '../math-lite.js';
+import { colorLuminance, scaleColorLuminance } from './color-utils.js';
 
 describe('Transformation Functions', () => {
     describe('getThreeEllipsoidMatrix', () => {
@@ -201,6 +202,21 @@ describe('GeometryMaterialCache', () => {
             expect(cache.materials.hbond.color).toBeDefined();
         });
 
+        test('keeps the configured uniform bond color by default', () => {
+            expect(cache.options.bondColorMode).toBe('uniform');
+            expect(cache.materials.bond.color.getHexString()).toBe(
+                new THREE.Color(defaultSettings.bondColor).getHexString(),
+            );
+        });
+
+        test('uses a white base material so split instance colors are unchanged', () => {
+            const splitCache = new GeometryMaterialCache({ bondColorMode: 'split' });
+
+            expect(splitCache.materials.bond.color.getHex()).toBe(0xffffff);
+
+            splitCache.dispose();
+        });
+
         test('initializes with custom options', () => {
             const customOptions = {
                 atomDetail: 4,
@@ -322,16 +338,47 @@ describe('GeometryMaterialCache', () => {
             expect(carbon.color.getHexString()).toBe('ffffff');
             expect(oxygen.color.getHexString()).toBe('ffffff');
             expect(carbonRing.color.getHexString()).toBe('000000');
-            expect(oxygenRing.color.getHexString()).toBe('ff0d0d');
+            expect(oxygenRing.color.getHexString()).toBe(
+                scaleColorLuminance(
+                    defaultSettings.elementProperties.O.atomColor,
+                    plotCache.plot2DElementColorScale,
+                ).getHexString(),
+            );
             expect(carbonHatch.userData.plot2DHatch.color.getHexString()).toBe('000000');
-            expect(oxygenHatch.userData.plot2DHatch.color.getHexString()).toBe('ff0d0d');
+            expect(oxygenHatch.userData.plot2DHatch.color.getHexString())
+                .toBe(oxygenRing.color.getHexString());
             expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
             expect(plotCache.materials.openBond.color.getHexString()).toBe('ffffff');
             expect(plotCache.materials.openBond.transparent).toBe(false);
             expect(plotCache.materials.openBond.depthWrite).toBe(true);
             expect(plotCache.materials.openBondOutline.color.getHexString()).toBe('000000');
             expect(plotCache.materials.openBondOutline.side).toBe(THREE.BackSide);
+            expect(plotCache.materials.bondDepthOutline.color.getHexString()).toBe('ffffff');
+            expect(plotCache.materials.bondDepthOutline.side).toBe(THREE.BackSide);
+            expect(plotCache.materials.bondDepthOutline.depthTest).toBe(true);
+            expect(plotCache.materials.bondDepthOutline.depthWrite).toBe(true);
             expect(plotCache.geometries.cutawayPlanes).toBeInstanceOf(THREE.BufferGeometry);
+
+            plotCache.geometries.bond.computeBoundingBox();
+            expect(
+                plotCache.geometries.bond.boundingBox.max.y -
+                plotCache.geometries.bond.boundingBox.min.y,
+            ).toBeCloseTo(1);
+
+            plotCache.dispose();
+        });
+
+        test('caps bright element colors in the 2D plot while preserving their hue', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [, sulfurRing, sulfurHatch] = plotCache.getAtomMaterials('S');
+
+            expect(colorLuminance(sulfurRing.color)).toBeCloseTo(
+                colorLuminance(defaultSettings.elementProperties.S.atomColor) *
+                    plotCache.plot2DElementColorScale,
+                6,
+            );
+            expect(sulfurHatch.userData.plot2DHatch.color.getHexString())
+                .toBe(sulfurRing.color.getHexString());
 
             plotCache.dispose();
         });
@@ -554,6 +601,63 @@ describe('ORTEP3JsStructure', () => {
             expect(structure.hBonds3D).toHaveLength(1);
         });
 
+        test('keeps one uncolored instance per bond in the default uniform mode', () => {
+            expect(structure.options.bondColorMode).toBe('uniform');
+            expect(structure.bondPool.mesh.count).toBe(1);
+            expect(structure.bondPool.mesh.instanceColor).toBeNull();
+            expect(structure.bonds3D[0].segments).toHaveLength(1);
+        });
+
+        test('renders split bonds as two atom-colored halves in one instanced pool', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                bondColorMode: 'split',
+            });
+
+            const bond = structure.bonds3D[0];
+            const firstColor = new THREE.Color();
+            const secondColor = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, firstColor);
+            structure.bondPool.mesh.getColorAt(1, secondColor);
+
+            expect(structure.bondPool.mesh.count).toBe(2);
+            expect(bond.segments).toHaveLength(2);
+            expect(firstColor.getHexString()).toBe(
+                new THREE.Color(defaultSettings.elementProperties.C.atomColor).getHexString(),
+            );
+            expect(secondColor.getHexString()).toBe(
+                new THREE.Color(defaultSettings.elementProperties.O.atomColor).getHexString(),
+            );
+            expect(structure.getGroup().children.filter(child => child === structure.bondPool.mesh))
+                .toHaveLength(1);
+
+            structure.cache.geometries.bond.computeBoundingBox();
+            const halfHeight = structure.cache.geometries.bond.boundingBox.max.y;
+            const firstMidpoint = new THREE.Vector3(0, halfHeight, 0)
+                .applyMatrix4(bond.segments[0].matrix);
+            const secondMidpoint = new THREE.Vector3(0, -halfHeight, 0)
+                .applyMatrix4(bond.segments[1].matrix);
+            expect(firstMidpoint.distanceTo(secondMidpoint)).toBeLessThan(1e-6);
+        });
+
+        test('uses customized connected-atom colors for split bonds', () => {
+            structure.dispose();
+            structure = new ORTEP3JsStructure(mockCrystalStructure, {
+                bondColorMode: 'split',
+                elementProperties: {
+                    C: { atomColor: '#123456' },
+                    O: { atomColor: '#fedcba' },
+                },
+            });
+
+            const firstColor = new THREE.Color();
+            const secondColor = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, firstColor);
+            structure.bondPool.mesh.getColorAt(1, secondColor);
+            expect(firstColor.getHexString()).toBe(new THREE.Color('#123456').getHexString());
+            expect(secondColor.getHexString()).toBe(new THREE.Color('#fedcba').getHexString());
+        });
+
         test('creates group with correct structure', () => {
             const group = structure.getGroup();
             expect(group).toBeInstanceOf(THREE.Group);
@@ -605,6 +709,28 @@ describe('ORTEP3JsStructure', () => {
             expect(ortep.atoms3D[0]).toBeInstanceOf(ORTEPAniAtom);
             expect(ortep.atoms3D[0]).not.toBeInstanceOf(ORTEPAniAtomInstance);
             expect(ortep.atoms3D[0].geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        });
+
+        test('keeps cutout-2d bonds at full length between solid NPD fallback atoms', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const npdAdp = () => new UAnisoADP(0.01, -0.02, 0.03, 0.001, 0.002, 0.003);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0, 0, 0), npdAdp()),
+                new Atom('C2', 'C', new FractPosition(0.12, 0, 0), npdAdp()),
+            ];
+            const npdStructure = new CrystalStructure(
+                cell,
+                atoms,
+                [new Bond('C1', 'C2', 1.2, 0.01, '.')],
+            );
+            const ortep = new ORTEP3JsStructure(npdStructure, {
+                renderStyle: 'cutout-2d',
+            });
+
+            expect(ortep.atoms3D.every(atom => atom.isSolidFallback)).toBe(true);
+            expect(ortep.bonds3D).toHaveLength(1);
+            expect(ortep.bonds3D[0].scale.y).toBeCloseTo(1.2);
+            ortep.dispose();
         });
 
         test('exposes cutaway atoms for camera-facing updates', () => {
@@ -682,6 +808,10 @@ describe('ORTEP3JsStructure', () => {
             expect(closedBond.userData.isOpenDisorderBond).toBe(false);
             expect(closedBond.material.color.getHexString()).toBe('000000');
             expect(closedBond.openBondOutline).toBeUndefined();
+            expect(closedBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
+            // Radial scale matches the bond radius; width is added in screen space.
+            expect(closedBond.bondDepthOutline.scale.x).toBeCloseTo(1);
+            expect(closedBond.bondDepthOutline.scale.y).toBeLessThan(1);
 
             expect(openBond.userData.isOpenDisorderBond).toBe(true);
             expect(openBond.material.color.getHexString()).toBe('ffffff');
@@ -695,6 +825,21 @@ describe('ORTEP3JsStructure', () => {
             expect(openBond.scale.z).toBeCloseTo(0.5);
             expect(openBond.openBondOutline.scale.x).toBeCloseTo(2);
             expect(openBond.openBondOutline.scale.z).toBeCloseTo(2);
+            expect(openBond.bondDepthOutline).toBeInstanceOf(THREE.Mesh);
+            // Radial scale counters the open-bond shrink (1/0.5) to match the bond.
+            expect(openBond.bondDepthOutline.scale.x).toBeCloseTo(1 / 0.5);
+            expect(openBond.bondDepthOutline.scale.z).toBeCloseTo(1 / 0.5);
+            expect(openBond.bondDepthOutline.scale.y).toBeLessThan(1);
+
+            const closedBondScale = new THREE.Vector3();
+            closedBond.matrix.decompose(
+                new THREE.Vector3(),
+                new THREE.Quaternion(),
+                closedBondScale,
+            );
+            const endpointInset = closedBondScale.y *
+                (1 - closedBond.bondDepthOutline.scale.y) / 2;
+            expect(endpointInset).toBeCloseTo(defaultSettings.bondRadius);
         });
     });
 
@@ -937,6 +1082,7 @@ describe('ORTEPAtom and subclasses', () => {
 
             // Should fall back to tetrahedron geometry
             expect(ortepAtom.geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+            expect(ortepAtom.getSurfaceDistanceAlong(new THREE.Vector3(1, 0, 0))).toBe(0);
         });
 
         test('falls back to tetrahedron geometry for a non-positive u22 ' +
@@ -1031,6 +1177,82 @@ describe('ORTEPAtom and subclasses', () => {
 
             expect(ortepAtom.missingOctantIndex).not.toBe(firstMissingOctant);
             expect(ortepAtom.cutawayOctants.filter(octant => octant.visible)).toHaveLength(7);
+            cutawayCache.dispose();
+        });
+
+        test('seals the removed octant with a depth-only cap that tracks it', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: cutawayCache.materials.cutawayDepthCap,
+                    hysteresis: 0.025,
+                },
+            );
+
+            const cap = ortepAtom.cutawayDepthCap;
+            expect(cap).toBeInstanceOf(THREE.Mesh);
+            // Depth-only: writes depth but no colour.
+            expect(cap.material.colorWrite).toBe(false);
+            expect(cap.material.depthWrite).toBe(true);
+            expect(cap.geometry).toBe(cutawayCache.geometries.atomOctant);
+            // Draw order: cross-section (below 0) before the cap (0) so the
+            // interior stays visible while the cap seals the cavity in depth.
+            expect(ortepAtom.cutawayPlanes.renderOrder).toBeLessThan(cap.renderOrder);
+
+            // The cap fills exactly the octant the shells leave open, so its
+            // sign-reflection scale matches the missing octant and reorients
+            // when the camera-facing octant changes.
+            const capScaleFor = () => cap.scale.toArray().map(Math.sign);
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+            camera.position.set(7, 11, 13);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateMatrixWorld(true);
+            ortepAtom.updateCutawayOctant(camera);
+            const firstScale = capScaleFor();
+
+            camera.position.multiplyScalar(-1);
+            camera.lookAt(0, 0, 0);
+            camera.updateMatrixWorld();
+            ortepAtom.updateCutawayOctant(camera);
+            expect(capScaleFor()).not.toEqual(firstScale);
+            cutawayCache.dispose();
+        });
+
+        test('omits the depth cap when no cap material is provided', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C');
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: null,
+                    hysteresis: 0.025,
+                },
+            );
+            expect(ortepAtom.cutawayDepthCap).toBe(undefined);
+            expect(ortepAtom.cutawayOctants).toHaveLength(8);
             cutawayCache.dispose();
         });
 
@@ -1570,6 +1792,42 @@ describe('ORTEPBondInstance', () => {
         expect(bondInstance.segments[0].pool).toBe(pool);
     });
 
+    test('keeps the wrapper local matrix identity, storing the placement only in segments/fullMatrix', () => {
+        // Regression: the wrapper's own `matrix` must stay identity, matching
+        // ORTEPAtomInstance. PooledSelectableObject sets matrixAutoUpdate=false, so
+        // if the wrapper's local matrix carried the bond placement, its matrixWorld
+        // would pick that up via the normal Three.js update cascade as soon as a
+        // rotating ancestor forced a recompute - and the raycast redirect's
+        // `this.matrixWorld * segment.matrix` would then apply the placement twice,
+        // breaking bond selection after any rotation (while atoms stayed correct).
+        const bondInstance = buildBondInstance();
+
+        expect(bondInstance.matrix.elements).toEqual(new THREE.Matrix4().elements);
+        expect(bondInstance.fullMatrix.elements).toEqual(bondInstance.segments[0].matrix.elements);
+    });
+
+    test('raycast redirect applies the bond placement once, matching the render, after a parent rotation', () => {
+        // Regression for the bug above, exercised end-to-end: after an ancestor
+        // (standing in for the rotating molecule container) forces a matrixWorld
+        // recompute, the wrapper's matrixWorld must equal the ancestor's alone, so
+        // combining it with segment.matrix in the raycast redirect reproduces
+        // exactly the transform rendered into the shared InstancedMesh - not that
+        // transform applied twice.
+        const bondInstance = buildBondInstance();
+        const parent = new THREE.Object3D();
+        parent.add(bondInstance);
+        parent.rotation.set(0.4, 0.7, 0.2);
+        parent.updateMatrixWorld(true);
+
+        expect(bondInstance.matrixWorld.elements).toEqual(parent.matrixWorld.elements);
+
+        const raycastCombined = new THREE.Matrix4()
+            .multiplyMatrices(bondInstance.matrixWorld, bondInstance.segments[0].matrix);
+        const renderedTransform = new THREE.Matrix4()
+            .multiplyMatrices(parent.matrixWorld, bondInstance.segments[0].matrix);
+        expect(raycastCombined.elements).toEqual(renderedTransform.elements);
+    });
+
     test('registers the same transform calcBondTransform would produce', () => {
         const bondInstance = buildBondInstance();
 
@@ -1605,6 +1863,25 @@ describe('ORTEPBondInstance', () => {
         restoredStored.elements.forEach((value, i) => {
             expect(value).toBeCloseTo(originalMatrix.elements[i], 6);
         });
+    });
+
+    test('preserves both half colors while a split bond is selected', () => {
+        pool = new InstancedPool(mockGeometry, mockMaterial, 2);
+        const matrix = ORTEPBondInstance.computeMatrix(mockBond, mockCrystalStructure);
+        const colors = [new THREE.Color('#112233'), new THREE.Color('#aabbcc')];
+        const bondInstance = new ORTEPBondInstance(mockBond, pool, matrix, colors);
+        pool.finalize();
+
+        bondInstance.select(0xff0000, mockOptions);
+
+        expect(bondInstance.segments).toHaveLength(2);
+        expect(bondInstance.highlightMeshes).toHaveLength(2);
+        expect(bondInstance.highlightMeshes[0].material.color.getHexString()).toBe(
+            colors[0].getHexString(),
+        );
+        expect(bondInstance.highlightMeshes[1].material.color.getHexString()).toBe(
+            colors[1].getHexString(),
+        );
     });
 
     test('creates a correctly scaled selection marker', () => {

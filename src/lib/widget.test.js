@@ -38,7 +38,14 @@ customElements.define('cifview-widget', CifViewWidget);
 describe('CifViewWidget', () => {
     let mockCrystalViewer;
     let mockSelectionCallback;
+    let mockDensityCallback;
     let mockFetch;
+
+    test('uses kebab-case for every public widget attribute', () => {
+        for (const attribute of CifViewWidget.observedAttributes) {
+            expect(attribute).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
+        }
+    });
 
     beforeEach(() => {
         // Reset mocks
@@ -57,6 +64,15 @@ describe('CifViewWidget', () => {
                 }
             }),
             cycleModifierMode: vi.fn().mockResolvedValue({ success: true, mode: 'constant' }),
+            setModifierMode: vi.fn().mockImplementation(async (name, mode) => {
+                mockCrystalViewer.modifiers[name].mode = mode;
+                if (mockCrystalViewer.modifiers[name].requiresCameraUpdate) {
+                    await mockCrystalViewer.loadStructure();
+                } else {
+                    await mockCrystalViewer.updateStructure();
+                }
+                return { success: true, mode };
+            }),
             numberModifierModes: vi.fn().mockReturnValue(3),
             updateStructure: vi.fn().mockResolvedValue({ success: true }),
             loadStructure: vi.fn().mockResolvedValue({ success: true }),
@@ -70,6 +86,11 @@ describe('CifViewWidget', () => {
             selections: {
                 onChange: vi.fn(),
             },
+            onScalarFieldUpdate: vi.fn(),
+            onModifierModeChange: vi.fn(),
+            updateIsosurfaceOptions: vi.fn(),
+            setIsosurfaceVisibility: vi.fn(),
+            cycleScalarField: vi.fn(),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -88,9 +109,15 @@ describe('CifViewWidget', () => {
 
         // Mock selection callback storage
         mockSelectionCallback = null;
+        mockDensityCallback = null;
         mockCrystalViewer.selections.onChange.mockImplementation(callback => {
             mockSelectionCallback = callback;
         });
+        mockCrystalViewer.onScalarFieldUpdate.mockImplementation(callback => {
+            mockDensityCallback = callback;
+            return vi.fn();
+        });
+        mockCrystalViewer.onModifierModeChange.mockReturnValue(vi.fn());
 
         // Mock fetch - now returning data that will pass CIF validation
         mockFetch = vi.fn().mockResolvedValue({
@@ -206,6 +233,119 @@ describe('CifViewWidget', () => {
         expect(caption.innerHTML).toContain('C1-O1: 1.5 ± SU Å');
         expect(caption.innerHTML).toContain('color:#ff0000');
         expect(caption.innerHTML).toContain('color:#00ff00');
+    });
+
+    test('shows the active density level next to the other controls', () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('caption', 'Test Structure');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'complete',
+            available: true,
+            visible: true,
+            level: 0.12345,
+            sigmaLevel: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+        });
+
+        const level = widget.querySelector('.density-level');
+        expect(level.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
+        expect(level.querySelector('.density-value').textContent).toBe('±0.123');
+        expect(level.title).toContain('Δρ ±0.123 e Å⁻³ · 3σ');
+        expect(level.parentElement).toBe(widget.buttonContainer);
+        expect(widget.querySelector('.crystal-caption').textContent)
+            .toBe('Test Structure');
+
+        level.click();
+        expect(mockCrystalViewer.cycleScalarField).toHaveBeenCalled();
+
+        mockDensityCallback({ type: 'cleared' });
+        expect(widget.querySelector('.density-level')).toBeNull();
+    });
+
+    test('shows density progress in the compact control while loading', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'started',
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+        });
+        let button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('Δρ/eÅ⁻³');
+        expect(button.querySelector('.density-value').textContent).toBe('…');
+        expect(button.classList.contains('density-loading')).toBe(true);
+        expect(button.getAttribute('aria-busy')).toBe('true');
+
+        mockDensityCallback({ type: 'update', stepIndex: 1, totalSteps: 3 });
+        button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-value').textContent).toBe('2/3');
+        expect(button.title).toContain('step 2 of 3');
+
+        mockDensityCallback({ type: 'error', error: 'Failed' });
+        expect(widget.querySelector('.density-level')).toBeNull();
+    });
+
+    test('updates the compact control as the active scalar field cycles', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'complete',
+            visible: true,
+            level: 0.12,
+            sigmaLevel: 3,
+            displayLabel: 'Δρ/eÅ⁻³',
+            quantityName: 'difference density',
+            signed: true,
+            fieldCount: 2,
+            activeFieldIndex: 0,
+            activeFieldId: 'difference',
+        });
+        expect(widget.querySelector('.density-level').title).toContain('1/2');
+
+        mockDensityCallback({
+            type: 'display',
+            visible: true,
+            level: 0.03,
+            sigmaLevel: null,
+            displayLabel: 'ψ',
+            quantityName: 'orbital',
+            signed: true,
+            fieldCount: 2,
+            activeFieldIndex: 1,
+            activeFieldId: 'homo',
+        });
+        const button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('ψ');
+        expect(button.querySelector('.density-value').textContent).toBe('±0.03');
+        expect(button.title).toContain('2/2');
+        button.click();
+        expect(mockCrystalViewer.cycleScalarField).toHaveBeenCalled();
+    });
+
+    test('uses Cube quantity metadata in the compact density control', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+
+        mockDensityCallback({
+            type: 'complete',
+            available: true,
+            visible: true,
+            level: 0.3,
+            sigmaLevel: null,
+            displayLabel: 'ρ/eÅ⁻³',
+            quantityName: 'electron density',
+            signed: false,
+        });
+
+        const button = widget.querySelector('.density-level');
+        expect(button.querySelector('.density-unit').textContent).toBe('ρ/eÅ⁻³');
+        expect(button.querySelector('.density-value').textContent).toBe('0.3');
+        expect(button.title).toContain('electron density (0.3)');
     });
 
     test('cleans up on disconnect', () => {
@@ -523,6 +663,10 @@ describe('CifViewWidget', () => {
             selection: {
                 mode: 'single',
             },
+            contourLines: {
+                enabled: true,
+                plane: { atoms: ['C1', 'C2', 'N1'] },
+            },
             elementProperties: {
                 'C': { radius: 0.8 },
                 'N': { radius: 0.7 },
@@ -545,6 +689,10 @@ describe('CifViewWidget', () => {
             selection: {
                 mode: 'single',
                 markerMult: 1.3,
+            },
+            contourLines: {
+                enabled: true,
+                plane: { atoms: ['C1', 'C2', 'N1'] },
             },
             elementProperties: expect.objectContaining({
                 'C': { radius: 0.8, atomColor: '#000000' },

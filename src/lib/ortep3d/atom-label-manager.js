@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import { chemicalBonds } from '../structure/bond-classification.js';
+import { inferElementFromLabel } from '../structure/crystal.js';
 import { layoutAtomLabels } from './atom-label-layout.js';
 import AtomLabelWorker from './atom-label-worker.js?worker&inline';
+import defaultSettings from './structure-settings.js';
+import {
+    liftColorLuminance,
+    paletteLuminanceLift,
+    paletteLuminanceScale,
+    scaleColorLuminance,
+} from './color-utils.js';
 
 const layoutOptionKeys = [
     'atomPadding',
@@ -68,6 +76,94 @@ function normalizeRequestedLabels(show) {
 }
 
 /**
+ * Calculates the shared scale for the configured atom-colour palette.
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @param {number} ceiling - Palette relative-luminance ceiling
+ * @returns {number} Shared linear RGB scale
+ */
+export function atomLabelPaletteLuminanceScale(elementProperties, ceiling) {
+    return paletteLuminanceScale(collectAtomLabelPalette(elementProperties), ceiling);
+}
+
+/**
+ * Calculates the shared white-mix lift for the configured atom-colour palette
+ * against a relative-luminance floor (dark backgrounds).
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @param {number} floor - Palette relative-luminance floor
+ * @returns {number} Shared white-mix fraction
+ */
+export function atomLabelPaletteLuminanceLift(elementProperties, floor) {
+    return paletteLuminanceLift(collectAtomLabelPalette(elementProperties), floor);
+}
+
+/**
+ * Collects the active atom-colour palette across default and custom elements.
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @returns {string[]} Palette colours
+ */
+function collectAtomLabelPalette(elementProperties) {
+    const activeElementProperties = elementProperties || {};
+    const paletteSymbols = new Set([
+        ...Object.keys(defaultSettings.elementProperties),
+        ...Object.keys(activeElementProperties),
+    ]);
+    return [...paletteSymbols]
+        .map(symbol => activeElementProperties[symbol]?.atomColor ??
+            defaultSettings.elementProperties[symbol]?.atomColor)
+        .filter(Boolean);
+}
+
+/**
+ * Resolves one label's text colour, optionally following its atom colour with
+ * a palette-wide luminance scale for readability against the halo/background.
+ * @param {object} atom - Atom represented by the label
+ * @param {object} options - Atom-label display options
+ * @param {object} elementProperties - Active per-element viewer properties
+ * @param {number|null} [paletteScale] - Precomputed shared palette scale
+ * @returns {string} CSS colour string
+ */
+export function resolveAtomLabelColor(atom, options, elementProperties, paletteScale = null) {
+    if (options.colorMode !== 'atom') {
+        return options.color;
+    }
+    const activeElementProperties = elementProperties || {};
+    let elementType = atom.atomType;
+    if (!activeElementProperties[elementType] && !defaultSettings.elementProperties[elementType]) {
+        elementType = inferElementFromLabel(atom.atomType);
+    }
+    const atomColor = activeElementProperties[elementType]?.atomColor ??
+        defaultSettings.elementProperties[elementType]?.atomColor;
+    if (!atomColor) {
+        return options.color;
+    }
+    const floor = options.atomColorLuminanceFloor;
+    let color;
+    let identity;
+    if (floor !== null && floor !== undefined) {
+        // A configured floor replaces the ceiling: brighten the palette
+        // towards white for dark backgrounds instead of darkening it.
+        const lift = paletteScale ?? atomLabelPaletteLuminanceLift(activeElementProperties, floor);
+        color = liftColorLuminance(atomColor, lift);
+        identity = lift === 0;
+    } else {
+        const scale = paletteScale ?? atomLabelPaletteLuminanceScale(
+            activeElementProperties,
+            options.atomColorLuminanceCeiling,
+        );
+        color = scaleColorLuminance(atomColor, scale);
+        identity = scale === 1;
+    }
+    if (identity) {
+        return `#${color.getHexString(THREE.SRGBColorSpace)}`;
+    }
+    const srgb = color.clone().convertLinearToSRGB();
+    const channels = [srgb.r, srgb.g, srgb.b]
+        .map(channel => Math.floor(THREE.MathUtils.clamp(channel, 0, 1) * 255))
+        .map(channel => channel.toString(16).padStart(2, '0'));
+    return `#${channels.join('')}`;
+}
+
+/**
  * Matches either a base CIF label or a symmetry-qualified atom ID.
  * @param {string} selector - Atom selector
  * @param {object} atom - Atom data
@@ -106,7 +202,7 @@ export function projectedAtomIntersectsViewport(anchor, viewport) {
 /**
  * Finds chordless five-to-seven-member cycles in a structure's chemical graph.
  * This is a bounded geometric hint, not an aromaticity assignment.
- * @param {import('../structure/crystal.js').CrystalStructure} structure - Displayed structure
+ * @param {object} structure - Displayed structure
  * @returns {Array<string[]>} Rings represented by ordered atom IDs
  */
 export function findSmallRings(structure) {
@@ -167,7 +263,7 @@ export function findSmallRings(structure) {
  */
 export class AtomLabelManager {
     /**
-     * @param {import('./crystal-viewer.js').CrystalViewer} viewer - Owning viewer
+     * @param {object} viewer - Owning viewer
      */
     constructor(viewer) {
         this.viewer = viewer;
@@ -178,6 +274,8 @@ export class AtomLabelManager {
         this.displayStructure = null;
         this.bondNeighbours = new Map();
         this.measurementCache = new Map();
+        this.atomLabelColorCache = new Map();
+        this.atomLabelColorScale = null;
         this.lastLayoutTime = 0;
         this.forceNextLayout = true;
         this.lastMoleculeMatrix = null;
@@ -250,6 +348,8 @@ export class AtomLabelManager {
         }
         this.previousPlacements.clear();
         this.measurementCache.clear();
+        this.atomLabelColorCache.clear();
+        this.atomLabelColorScale = null;
         this.invalidateLayout();
     }
 
@@ -321,7 +421,9 @@ export class AtomLabelManager {
         if (this.disposed) {
             return;
         }
-        if (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning) {
+        const interacting = this.viewer.controls?.isInteracting?.() ??
+            (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning);
+        if (interacting) {
             this.endLoadingIndicator();
         }
         this.clearStaleFrame();
@@ -574,6 +676,35 @@ export class AtomLabelManager {
     }
 
     /**
+     * Returns the cached display colour for an atom label.
+     * @param {object} atom - Displayed atom
+     * @returns {string} CSS colour
+     */
+    getAtomLabelColor(atom) {
+        if (this.options.colorMode !== 'atom') {
+            return this.options.color;
+        }
+        const key = atom.atomType;
+        this.atomLabelColorCache ||= new Map();
+        const floor = this.options.atomColorLuminanceFloor;
+        this.atomLabelColorScale ??= floor !== null && floor !== undefined
+            ? atomLabelPaletteLuminanceLift(this.viewer.options.elementProperties, floor)
+            : atomLabelPaletteLuminanceScale(
+                this.viewer.options.elementProperties,
+                this.options.atomColorLuminanceCeiling,
+            );
+        if (!this.atomLabelColorCache.has(key)) {
+            this.atomLabelColorCache.set(key, resolveAtomLabelColor(
+                atom,
+                this.options,
+                this.viewer.options.elementProperties,
+                this.atomLabelColorScale,
+            ));
+        }
+        return this.atomLabelColorCache.get(key);
+    }
+
+    /**
      * Projects and measures labels, then delegates collision placement to a
      * worker when available.
      * @returns {Promise<object>} The accepted current layout
@@ -592,7 +723,8 @@ export class AtomLabelManager {
         this.viewer.camera.updateMatrixWorld();
         this.viewer.moleculeContainer.updateMatrixWorld(true);
         const now = performance.now();
-        const interacting = this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning;
+        const interacting = this.viewer.controls?.isInteracting?.() ??
+            (this.viewer.controls?.state.isDragging || this.viewer.controls?.state.isPanning);
         const requests = this.resolveRequests();
         const deferUntilInteractionEnds = interacting &&
             (this.options.placementMode === 'maximum-coverage' ||
@@ -653,6 +785,7 @@ export class AtomLabelManager {
             return {
                 id: request.atom.uniqueId,
                 text: request.text,
+                color: this.getAtomLabelColor(request.atom),
                 x: anchor.x,
                 y: anchor.y,
                 z: anchor.z,
@@ -796,7 +929,26 @@ export class AtomLabelManager {
     }
 
     draw() {
-        const context = this.context;
+        this.paintLayout(this.context);
+    }
+
+    /**
+     * Paints the current placed-label layout onto a 2D context. Label
+     * coordinates are stored in CSS pixels, so the same layout renders at any
+     * resolution - used by the live overlay (at devicePixelRatio) and by
+     * high-resolution image capture (at an arbitrary scale).
+     * @param {CanvasRenderingContext2D} context - Destination context
+     * @param {number} [scale] - Pixels per CSS pixel; the caller has already
+     *  cleared and set the transform for the live overlay, so this defaults to
+     *  leaving the transform untouched
+     */
+    paintLayout(context, scale = null) {
+        if (scale !== null) {
+            context.setTransform(scale, 0, 0, scale, 0, 0);
+            context.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+        }
         context.lineJoin = 'round';
         context.lineCap = 'round';
         for (const label of this.layout.placed) {
@@ -813,9 +965,17 @@ export class AtomLabelManager {
                 context.lineWidth = this.options.haloWidth * 2;
                 context.strokeText(label.text, label.x, label.y);
             }
-            context.fillStyle = this.options.color;
+            context.fillStyle = label.color || this.options.color;
             context.fillText(label.text, label.x, label.y);
         }
+    }
+
+    /**
+     * Whether any atom labels are currently placed and visible.
+     * @returns {boolean} True when the live overlay shows at least one label
+     */
+    hasVisibleLabels() {
+        return this.canvas.style.visibility !== 'hidden' && this.layout.placed.length > 0;
     }
 
     dispose() {
