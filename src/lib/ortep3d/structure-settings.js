@@ -296,6 +296,7 @@ export default {
     },
 
     // atom visualisation Settings
+    'ellipsoidProbability': 0.5,
     'atomDetail': 3,
     'atomCutawayHysteresis': 0.025,
     'atomCutawayStripeCount': 7,

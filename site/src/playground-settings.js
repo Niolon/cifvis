@@ -185,6 +185,7 @@ const LABEL_OVERRIDES = {
     'atomLabels.atomColorLuminanceFloor': 'Colour luminance floor (dark backgrounds)',
     'atomLabels.maxConnectorLength': 'Longest allowed connector (px)',
     'atomLabels.maxVisible': 'Maximum visible labels',
+    'ellipsoidProbability': 'ADP ellipsoid probability',
     'atomDetail': 'Geometry detail (1-5)',
     'atomConstantRadiusMultiplier': 'Constant-radius sphere size',
     'atomCutawayHysteresis': 'Cutaway direction hysteresis',
@@ -297,6 +298,7 @@ const ENUM_VALUES = {
 
 /** Numeric input constraints: path → {min, max, step}. */
 const NUMBER_CONSTRAINTS = {
+    'ellipsoidProbability': { min: 0.01, max: 0.99, step: 0.01 },
     'atomDetail': { min: 1, max: 5, step: 1 },
     'plot2DColorLuminanceCeiling': { min: 0, max: 1, step: 0.01 },
     'plot2DColorLuminanceFloor': { min: 0, max: 1, step: 0.01 },

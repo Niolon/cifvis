@@ -727,6 +727,11 @@
   ],
   "atom-visualization": [
     {
+      "path": "ellipsoidProbability",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
       "path": "atomDetail",
       "type": "Number",
       "default": "3"

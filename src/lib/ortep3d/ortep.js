@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import defaultSettings from './structure-settings.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
-import { UAnisoADP, UIsoADP } from '../structure/adp.js';
+import { UAnisoADP, UIsoADP, ellipsoidProbabilityScale } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
 import { liftColorLuminance, paletteLuminanceLift, paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
 
@@ -499,7 +499,7 @@ export class GeometryMaterialCache {
             },
         };
 
-        this.scaling = 1.5384;
+        this.scaling = ellipsoidProbabilityScale(this.options.ellipsoidProbability);
         this.geometries = {};
         this.materials = {};
         this.elementMaterials = {};

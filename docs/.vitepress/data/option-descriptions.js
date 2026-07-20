@@ -177,6 +177,9 @@ export const descriptions = {
     'atomLabels.maxVisible': 'Maximum labels attempted; excess labels are reported as hidden.',
 
     // Atom visualization
+    'ellipsoidProbability': 'Displayed probability for anisotropic displacement (ADP) ellipsoids, ' +
+        'in (0, 1). The RMS ellipsoid is scaled by the chi-squared(3) quantile at this probability; ' +
+        '0.5 gives the conventional 50% probability ellipsoid.',
     'atomDetail': 'Level of detail for atom geometry (1&ndash;5).',
     'atomCutawayHysteresis': 'Direction threshold that prevents cutaway octants flickering near an axis.',
     'atomCutawayStripeCount': 'Number of hatch repeats across each cutaway disc.',

@@ -1,5 +1,5 @@
 import { det } from '../math-lite.js';
-import { UIsoADP, UAnisoADP, ADPFactory } from './adp.js';
+import { UIsoADP, UAnisoADP, ADPFactory, ellipsoidProbabilityScale } from './adp.js';
 import { UnitCell } from './crystal.js';
 import { CIF } from '../read-cif/base.js';
 
@@ -386,5 +386,29 @@ C1 C 0 0 0 custom
             
             expect(adp).toBeNull();
         });
+    });
+});
+
+describe('ellipsoidProbabilityScale', () => {
+    test('matches the conventional 50% probability ellipsoid scale factor', () => {
+        expect(ellipsoidProbabilityScale(0.5)).toBeCloseTo(1.5382, 3);
+    });
+
+    test('increases monotonically with probability', () => {
+        const low = ellipsoidProbabilityScale(0.3);
+        const mid = ellipsoidProbabilityScale(0.5);
+        const high = ellipsoidProbabilityScale(0.9);
+        const veryHigh = ellipsoidProbabilityScale(0.99);
+
+        expect(low).toBeLessThan(mid);
+        expect(mid).toBeLessThan(high);
+        expect(high).toBeLessThan(veryHigh);
+    });
+
+    test('rejects probabilities outside (0, 1)', () => {
+        expect(() => ellipsoidProbabilityScale(0)).toThrow('between 0 and 1');
+        expect(() => ellipsoidProbabilityScale(1)).toThrow('between 0 and 1');
+        expect(() => ellipsoidProbabilityScale(-0.1)).toThrow('between 0 and 1');
+        expect(() => ellipsoidProbabilityScale(NaN)).toThrow('between 0 and 1');
     });
 });

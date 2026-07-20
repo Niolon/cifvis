@@ -114,6 +114,64 @@ export class UAnisoADP {
 }
 
 /**
+ * @param {number} x - Input value
+ * @returns {number} erf(x) via the Abramowitz & Stegun 7.1.26 rational approximation.
+ */
+function erf(x) {
+    const sign = x < 0 ? -1 : 1;
+    const absX = Math.abs(x);
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const p = 0.3275911;
+    const t = 1 / (1 + p * absX);
+    const polynomial = ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t;
+    return sign * (1 - polynomial * Math.exp(-absX * absX));
+}
+
+/**
+ * @param {number} x - Point at which to evaluate the CDF
+ * @returns {number} CDF of the chi-squared distribution with 3 degrees of freedom at x.
+ */
+function chiSquare3CDF(x) {
+    if (x <= 0) {
+        return 0;
+    }
+    return erf(Math.sqrt(x / 2)) - Math.sqrt(2 * x / Math.PI) * Math.exp(-x / 2);
+}
+
+/**
+ * Converts a target ellipsoid display probability into the RMS-ellipsoid
+ * scale factor k (applied to the sqrt(eigenvalue) semi-axes from
+ * {@link UAnisoADP#getEllipsoidMatrix}), so that a sphere of radius k drawn
+ * around an atom with these displacement parameters encloses the requested
+ * fraction of the atom's positional probability density. k^2 is the
+ * chi-squared(3) quantile at that probability; found by bisection on the
+ * closed-form chi-squared(3) CDF, since it has no elementary inverse.
+ * @param {number} probability - Target probability in (0, 1); 0.5 gives the
+ *  conventional 50% probability ellipsoid (k &approx; 1.5382).
+ * @returns {number} RMS-ellipsoid scale factor k
+ */
+export function ellipsoidProbabilityScale(probability) {
+    if (!(Number.isFinite(probability) && probability > 0 && probability < 1)) {
+        throw new Error('Ellipsoid probability must be a finite number between 0 and 1');
+    }
+    let low = 0;
+    let high = 100;
+    for (let iteration = 0; iteration < 100; iteration++) {
+        const mid = (low + high) / 2;
+        if (chiSquare3CDF(mid) < probability) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    return Math.sqrt((low + high) / 2);
+}
+
+/**
  * Factory class for creating appropriate ADP objects from CIF data.
  * Handles both isotropic and anisotropic displacement parameters in various formats.
  */
