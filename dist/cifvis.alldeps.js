@@ -19043,7 +19043,7 @@ var $d = class e extends Zr {
 			bondData: t,
 			selectable: !0,
 			isOpenDisorderBond: !1
-		}, this.matrix = r;
+		}, this.fullMatrix = r;
 		let a = i ? e.computeSplitMatrices(r) : [r];
 		this.segments = a.map((e, t) => {
 			let r = i?.[t] || null;
@@ -19057,7 +19057,7 @@ var $d = class e extends Zr {
 	}
 	createSelectionMarker(e, t) {
 		let n = this.segments[0], r = new Y(n.pool.mesh.geometry, this.createSelectionMaterial(e));
-		return r.applyMatrix4(this.matrix), r.scale.x *= t.selection.bondMarkerMult, r.scale.z *= t.selection.bondMarkerMult, r.userData.selectable = !1, r;
+		return r.applyMatrix4(this.fullMatrix), r.scale.x *= t.selection.bondMarkerMult, r.scale.z *= t.selection.bondMarkerMult, r.userData.selectable = !1, r;
 	}
 }, af = class extends $d {
 	static computeSegmentMatrices(e, t, n, r, i = null, a = null) {

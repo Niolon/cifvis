@@ -7261,7 +7261,7 @@ var dn = class t extends sn {
 			bondData: e,
 			selectable: !0,
 			isOpenDisorderBond: !1
-		}, this.matrix = r;
+		}, this.fullMatrix = r;
 		let a = i ? t.computeSplitMatrices(r) : [r];
 		this.segments = a.map((e, t) => {
 			let r = i?.[t] || null;
@@ -7275,7 +7275,7 @@ var dn = class t extends sn {
 	}
 	createSelectionMarker(t, n) {
 		let r = this.segments[0], i = new e.Mesh(r.pool.mesh.geometry, this.createSelectionMaterial(t));
-		return i.applyMatrix4(this.matrix), i.scale.x *= n.selection.bondMarkerMult, i.scale.z *= n.selection.bondMarkerMult, i.userData.selectable = !1, i;
+		return i.applyMatrix4(this.fullMatrix), i.scale.x *= n.selection.bondMarkerMult, i.scale.z *= n.selection.bondMarkerMult, i.userData.selectable = !1, i;
 	}
 }, fn = class extends sn {
 	static computeSegmentMatrices(t, n, r, i, a = null, o = null) {
