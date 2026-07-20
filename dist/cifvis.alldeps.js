@@ -17607,6 +17607,7 @@ var fd = Object.freeze({
 	enabled: !1,
 	plane: Object.freeze({ mode: "best-fit" }),
 	padding: 1.5,
+	maxAtomDistance: 2.5,
 	resolution: 256,
 	gridSpacing: .04,
 	maxResolution: 512,
@@ -17620,6 +17621,8 @@ var fd = Object.freeze({
 	zeroColor: "#666666",
 	lineColor: null,
 	lineWidth: 1.5,
+	haloColor: "#ffffff",
+	haloWidth: 1,
 	opacity: 1,
 	depthOffset: .02
 }), yd = Object.fromEntries(Object.entries({
@@ -21059,7 +21062,14 @@ function gm(e) {
 		v: sm(om(e, t), "Contour plane basis")
 	};
 }
-function _m(e) {
+function _m(e, t, n) {
+	for (let r of t) {
+		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
+		if (t * t + i * i + a * a <= n) return !0;
+	}
+	return !1;
+}
+function vm(e) {
 	let t = e.cell.fractToCartMatrix.toArray();
 	return e.atoms.map((e) => fm(t, [
 		e.position.x,
@@ -21067,11 +21077,11 @@ function _m(e) {
 		e.position.z
 	]));
 }
-function vm(e, t = { mode: "best-fit" }, n = 1.5) {
+function ym(e, t = { mode: "best-fit" }, n = 1.5) {
 	if (!e?.atoms?.length) throw Error("A contour plane requires a displayed structure");
 	let r = typeof t == "string" ? { mode: t } : Array.isArray(t) ? { atoms: t } : t ?? { mode: "best-fit" };
 	if (r.mode !== void 0 && r.mode !== "best-fit") throw Error("Contour plane mode must be \"best-fit\"");
-	let i = e.cell.fractToCartMatrix.toArray(), a = _m(e), o = a;
+	let i = e.cell.fractToCartMatrix.toArray(), a = vm(e), o = a;
 	if (r.atoms) {
 		if (!Array.isArray(r.atoms) || r.atoms.length < 3) throw Error("A contour plane atom definition requires at least three labels");
 		o = r.atoms.map((t) => {
@@ -21112,14 +21122,14 @@ function vm(e, t = { mode: "best-fit" }, n = 1.5) {
 		bounds: g
 	};
 }
-function ym(e, t, n, r = 0) {
+function bm(e, t, n, r = 0) {
 	return cm(cm(e.origin, um(e.u, t)), cm(um(e.v, n), um(e.normal, r)));
 }
-function bm(e, t, n, r, i) {
+function xm(e, t, n, r, i) {
 	let a = n === r ? .5 : Math.max(0, Math.min(1, (i - n) / (r - n)));
 	return [e[0] + (t[0] - e[0]) * a, e[1] + (t[1] - e[1]) * a];
 }
-function xm(e, t, n, r, i) {
+function Sm(e, t, n, r, i) {
 	let [a, o] = t, s = (n.bounds.u[1] - n.bounds.u[0]) / (a - 1), c = (n.bounds.v[1] - n.bounds.v[0]) / (o - 1), l = [];
 	for (let t = 0; t < o - 1; t++) for (let o = 0; o < a - 1; o++) {
 		let u = n.bounds.u[0] + o * s, d = u + s, f = n.bounds.v[0] + t * c, p = f + c, m = [
@@ -21145,17 +21155,17 @@ function xm(e, t, n, r, i) {
 				let [i, a] = t[n];
 				(_[i] < e && _[a] >= e || _[a] < e && _[i] >= e) && r.push({
 					edge: n,
-					point: bm(m[i], m[a], _[i], _[a], e)
+					point: xm(m[i], m[a], _[i], _[a], e)
 				});
 			}
 			let a = [];
 			r.length === 2 ? a = [[r[0], r[1]]] : r.length === 4 && (a = _.reduce((e, t) => e + t, 0) / 4 >= e ? [[r[0], r[1]], [r[2], r[3]]] : [[r[0], r[3]], [r[1], r[2]]]);
-			for (let [e, t] of a) l.push([ym(n, e.point[0], e.point[1], i), ym(n, t.point[0], t.point[1], i)]);
+			for (let [e, t] of a) l.push([bm(n, e.point[0], e.point[1], i), bm(n, t.point[0], t.point[1], i)]);
 		}
 	}
 	return l;
 }
-function Sm(e, t) {
+function Cm(e, t) {
 	if (Array.isArray(t.levels)) {
 		let e = [...new Set(t.levels.map((e) => Math.abs(Number(e))))].filter((e) => Number.isFinite(e) && e > 0).sort((e, t) => e - t);
 		if (e.length === 0) throw Error("Contour line levels must contain positive finite values");
@@ -21168,52 +21178,58 @@ function Sm(e, t) {
 	if (!Number.isFinite(a)) throw Error("Contour line count must be a positive integer");
 	return Array.from({ length: a }, (e, t) => i * (t + 1));
 }
-function Cm(e, t, n = {}) {
+function wm(e, t, n = {}) {
 	let r = im(), i = {
 		...vd,
 		...n
-	}, a = vm(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
+	}, a = ym(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
 	if (!(Number.isFinite(u) && u > 0)) throw Error("Contour line grid spacing must be a positive number");
 	if (!(Number.isFinite(c) && Number.isFinite(l))) throw Error("Contour line resolutions must be finite numbers");
 	let d = [o, s].map((e) => Math.min(l, Math.max(c, Math.ceil(e / u) + 1))), f = new Float32Array(d[0] * d[1]), p = P(t.cell.fractToCartMatrix), m = dm(j(p, a.origin)), h = dm(j(p, a.u)), g = dm(j(p, a.v)), _ = i.interpolation;
 	if (!["linear", "tricubic"].includes(_)) throw Error("Contour line interpolation must be \"linear\" or \"tricubic\"");
-	let v = _ === "tricubic" && typeof e.sampleCubic == "function" ? (...t) => e.sampleCubic(...t) : (...t) => e.sample(...t), y = im();
+	let v = _ === "tricubic" && typeof e.sampleCubic == "function" ? (...t) => e.sampleCubic(...t) : (...t) => e.sample(...t), y = i.maxAtomDistance, b = y !== null && Number(y) >= 0;
+	if (y !== null && !Number.isFinite(Number(y))) throw Error("Contour line maxAtomDistance must be null or a finite number");
+	let x = b ? vm(t) : null, S = b ? Number(y) ** 2 : 0, C = im();
 	for (let e = 0; e < d[1]; e++) {
 		let t = a.bounds.v[0] + e / (d[1] - 1) * s;
 		for (let n = 0; n < d[0]; n++) {
-			let r = a.bounds.u[0] + n / (d[0] - 1) * o, i = m.map((e, n) => e + h[n] * r + g[n] * t);
-			f[e * d[0] + n] = v(...i);
+			let r = a.bounds.u[0] + n / (d[0] - 1) * o, i = e * d[0] + n;
+			if (b && !_m(bm(a, r, t), x, S)) {
+				f[i] = NaN;
+				continue;
+			}
+			f[i] = v(...m.map((e, n) => e + h[n] * r + g[n] * t));
 		}
 	}
-	let b = im(), x = Sm(e, i), S = i.sign ?? e.surfaceSign ?? "both";
+	let w = im(), T = Cm(e, i), E = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
 		"both"
-	].includes(S)) throw Error("Contour line sign must be \"positive\", \"negative\", or \"both\"");
-	let C = Number(i.depthOffset);
-	if (!Number.isFinite(C)) throw Error("Contour line depth offset must be a finite number");
-	let w = S === "negative" ? [] : xm(f, d, a, x, C), T = S === "positive" ? [] : xm(f, d, a, x.map((e) => -e), C), E = i.zeroLine ? xm(f, d, a, [0], C) : [], D = im();
+	].includes(E)) throw Error("Contour line sign must be \"positive\", \"negative\", or \"both\"");
+	let D = Number(i.depthOffset);
+	if (!Number.isFinite(D)) throw Error("Contour line depth offset must be a finite number");
+	let O = E === "negative" ? [] : Sm(f, d, a, T, D), k = E === "positive" ? [] : Sm(f, d, a, T.map((e) => -e), D), A = i.zeroLine ? Sm(f, d, a, [0], D) : [], ee = im();
 	return {
 		plane: a,
 		dimensions: d,
-		levels: x,
-		level: x[0],
-		positiveSegments: w,
-		negativeSegments: T,
-		zeroSegments: E,
-		segmentCount: w.length + T.length + E.length,
+		levels: T,
+		level: T[0],
+		positiveSegments: O,
+		negativeSegments: k,
+		zeroSegments: A,
+		segmentCount: O.length + k.length + A.length,
 		timings: {
-			planeSetupTimeMs: y - r,
-			samplingTimeMs: b - y,
-			contourExtractionTimeMs: D - b,
-			totalTimeMs: D - r
+			planeSetupTimeMs: C - r,
+			samplingTimeMs: w - C,
+			contourExtractionTimeMs: ee - w,
+			totalTimeMs: ee - r
 		}
 	};
 }
 //#endregion
 //#region node_modules/three/examples/jsm/objects/MarchingCubes.js
-var wm = class extends Y {
+var Tm = class extends Y {
 	constructor(e, t, n = !1, r = !1, i = 1e4) {
 		let a = new ia();
 		super(a, t), this.isMarchingCubes = !0;
@@ -21263,12 +21279,12 @@ var wm = class extends Y {
 		function h(e, t, n, r, i) {
 			let a = r + 1, u = r + o.yd, h = r + o.zd, _ = a + o.yd, v = a + o.zd, y = r + o.yd + o.zd, b = a + o.yd + o.zd, x = 0, S = o.field[r], C = o.field[a], w = o.field[u], T = o.field[_], E = o.field[h], D = o.field[v], O = o.field[y], k = o.field[b];
 			S < i && (x |= 1), C < i && (x |= 2), w < i && (x |= 8), T < i && (x |= 4), E < i && (x |= 16), D < i && (x |= 32), O < i && (x |= 128), k < i && (x |= 64);
-			let A = Tm[x];
+			let A = Em[x];
 			if (A === 0) return 0;
 			let j = o.delta, ee = e + j, M = t + j, N = n + j;
 			A & 1 && (m(r), m(a), d(r * 3, 0, i, e, t, n, S, C, r, a)), A & 2 && (m(a), m(_), f(a * 3, 3, i, ee, t, n, C, T, a, _)), A & 4 && (m(u), m(_), d(u * 3, 6, i, e, M, n, w, T, u, _)), A & 8 && (m(r), m(u), f(r * 3, 9, i, e, t, n, S, w, r, u)), A & 16 && (m(h), m(v), d(h * 3, 12, i, e, t, N, E, D, h, v)), A & 32 && (m(v), m(b), f(v * 3, 15, i, ee, t, N, D, k, v, b)), A & 64 && (m(y), m(b), d(y * 3, 18, i, e, M, N, O, k, y, b)), A & 128 && (m(h), m(y), f(h * 3, 21, i, e, t, N, E, O, h, y)), A & 256 && (m(r), m(h), p(r * 3, 24, i, e, t, n, S, E, r, h)), A & 512 && (m(a), m(v), p(a * 3, 27, i, ee, t, n, C, D, a, v)), A & 1024 && (m(_), m(b), p(_ * 3, 30, i, ee, M, n, T, k, _, b)), A & 2048 && (m(u), m(y), p(u * 3, 33, i, e, M, n, w, O, u, y)), x <<= 4;
 			let te, P, ne, re = 0, ie = 0;
-			for (; Em[x + ie] != -1;) te = x + ie, P = te + 1, ne = te + 2, g(s, c, l, 3 * Em[te], 3 * Em[P], 3 * Em[ne]), ie += 3, re++;
+			for (; Dm[x + ie] != -1;) te = x + ie, P = te + 1, ne = te + 2, g(s, c, l, 3 * Dm[te], 3 * Dm[P], 3 * Dm[ne]), ie += 3, re++;
 			return re;
 		}
 		function g(e, t, n, r, i, a) {
@@ -21358,7 +21374,7 @@ var wm = class extends Y {
 			this.geometry.setDrawRange(0, this.count), a.getAttribute("position").needsUpdate = !0, a.getAttribute("normal").needsUpdate = !0, this.enableUvs && (a.getAttribute("uv").needsUpdate = !0), this.enableColors && (a.getAttribute("color").needsUpdate = !0), this.count / 3 > i && console.warn("THREE.MarchingCubes: Geometry buffers too small for rendering. Please create an instance with a higher poly count.");
 		}, this.init(e);
 	}
-}, Tm = new Int32Array([
+}, Em = new Int32Array([
 	0,
 	265,
 	515,
@@ -21615,7 +21631,7 @@ var wm = class extends Y {
 	515,
 	265,
 	0
-]), Em = new Int32Array([
+]), Dm = new Int32Array([
 	-1,
 	-1,
 	-1,
@@ -25715,14 +25731,14 @@ var wm = class extends Y {
 ]);
 //#endregion
 //#region src/lib/density/isosurface.js
-function Dm(e, t, n, r) {
+function Om(e, t, n, r) {
 	return [
 		e[0][0] * t + e[0][1] * n + e[0][2] * r,
 		e[1][0] * t + e[1][1] * n + e[1][2] * r,
 		e[2][0] * t + e[2][1] * n + e[2][2] * r
 	];
 }
-function Om(e, t) {
+function km(e, t) {
 	if (!e?.atoms?.length) return {
 		minimum: [
 			0,
@@ -25757,43 +25773,43 @@ function Om(e, t) {
 		maximum: i
 	};
 }
-function km(e, t = {}) {
+function Am(e, t = {}) {
 	let n = {
 		..._d,
 		...t
 	}, r = Math.max(8, Math.round(Number(n.resolution))), i = Math.max(r, Math.round(Number(n.maxResolution))), a = Number(n.gridSpacing);
 	if (!(Number.isFinite(a) && a > 0)) throw Error("Isosurface grid spacing must be a positive number");
 	if (!(Number.isFinite(i) && i >= 8)) throw Error("Maximum isosurface resolution must be at least 8");
-	let o = Om(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
+	let o = km(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
 	return Math.min(i, Math.max(r, l));
 }
-function Am(e, t) {
-	let n = e.fractToCartMatrix.toArray(), r = t.maximum.map((e, n) => e - t.minimum[n]), i = Dm(n, ...t.minimum.map((e, t) => e + r[t] / 2));
+function jm(e, t) {
+	let n = e.fractToCartMatrix.toArray(), r = t.maximum.map((e, n) => e - t.minimum[n]), i = Om(n, ...t.minimum.map((e, t) => e + r[t] / 2));
 	return new K().set(n[0][0] * r[0] / 2, n[0][1] * r[1] / 2, n[0][2] * r[2] / 2, i[0], n[1][0] * r[0] / 2, n[1][1] * r[1] / 2, n[1][2] * r[2] / 2, i[1], n[2][0] * r[0] / 2, n[2][1] * r[1] / 2, n[2][2] * r[2] / 2, i[2], 0, 0, 0, 1);
 }
-function jm(e, t, n) {
+function Mm(e, t, n) {
 	for (let r of t) {
 		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
 		if (t * t + i * i + a * a <= n) return !0;
 	}
 	return !1;
 }
-function Mm(e, t, n, r, i) {
-	let a = new wm(e, t, !1, !1, n);
+function Nm(e, t, n, r, i) {
+	let a = new Tm(e, t, !1, !1, n);
 	return a.name = r, a.isolation = i, a.frustumCulled = !1, a.userData = {
 		selectable: !1,
 		type: "isosurface",
 		sign: r.includes("Positive") ? "positive" : "negative"
 	}, a;
 }
-function Nm(e, t, n = {}) {
+function Pm(e, t, n = {}) {
 	let r = performance.now(), i = {
 		..._d,
 		...n
 	}, a = Math.max(8, Math.round(i.resolution)), o = i.level ?? e.defaultLevel ?? i.sigmaLevel * e.sigma;
 	if (!(Number.isFinite(o) && o > 0)) throw Error("Isosurface level must be a positive finite number");
 	if (!(Number.isFinite(i.radius) && i.radius > 0)) throw Error("Isosurface radius must be a positive finite number");
-	let s = Om(t, i.radius), c = i.sign ?? e.surfaceSign ?? "both";
+	let s = km(t, i.radius), c = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
@@ -25810,16 +25826,16 @@ function Nm(e, t, n = {}) {
 		metalness: 0
 	}), f = d.clone();
 	f.color.set(i.negativeColor);
-	let p = l ? Mm(a, d, i.maxPolyCount, "PositiveIsosurface", o) : null, m = u ? Mm(a, f, i.maxPolyCount, "NegativeIsosurface", o) : null;
+	let p = l ? Nm(a, d, i.maxPolyCount, "PositiveIsosurface", o) : null, m = u ? Nm(a, f, i.maxPolyCount, "NegativeIsosurface", o) : null;
 	p || d.dispose(), m || f.dispose();
-	let h = s.maximum.map((e, t) => e - s.minimum[t]), g = a / 2, _ = t.cell.fractToCartMatrix.toArray(), v = t.atoms.map((e) => Dm(_, e.position.x, e.position.y, e.position.z)), y = i.radius ** 2;
+	let h = s.maximum.map((e, t) => e - s.minimum[t]), g = a / 2, _ = t.cell.fractToCartMatrix.toArray(), v = t.atoms.map((e) => Om(_, e.position.x, e.position.y, e.position.z)), y = i.radius ** 2;
 	for (let t = 0; t < a; t++) {
 		let n = s.minimum[2] + ((t - g) / g + 1) * h[2] / 2;
 		for (let r = 0; r < a; r++) {
 			let i = s.minimum[1] + ((r - g) / g + 1) * h[1] / 2, o = (t * a + r) * a;
 			for (let t = 0; t < a; t++) {
 				let r = s.minimum[0] + ((t - g) / g + 1) * h[0] / 2;
-				if (!jm(Dm(_, r, i, n), v, y)) continue;
+				if (!Mm(Om(_, r, i, n), v, y)) continue;
 				let a = e.sample(r, i, n);
 				p && (p.field[o + t] = a), m && (m.field[o + t] = -a);
 			}
@@ -25827,7 +25843,7 @@ function Nm(e, t, n = {}) {
 	}
 	let b = performance.now();
 	p?.update(), m?.update();
-	let x = performance.now() - b, S = p ? p.geometry.drawRange.count / 3 : 0, C = m ? m.geometry.drawRange.count / 3 : 0, w = Am(t.cell, s), T = [p, m].filter(Boolean);
+	let x = performance.now() - b, S = p ? p.geometry.drawRange.count / 3 : 0, C = m ? m.geometry.drawRange.count / 3 : 0, w = jm(t.cell, s), T = [p, m].filter(Boolean);
 	for (let e of T) e.matrix.copy(w), e.matrixAutoUpdate = !1;
 	let E = new Qr();
 	E.name = "Isosurface", E.visible = i.visible;
@@ -25857,25 +25873,25 @@ function Nm(e, t, n = {}) {
 }
 //#endregion
 //#region src/lib/density/symmetry-isosurface.js
-var Pm = 1e-4;
-function Fm(e, t) {
+var Fm = 1e-4;
+function Im(e, t) {
 	return [
 		e[0][0] * t[0] + e[0][1] * t[1] + e[0][2] * t[2],
 		e[1][0] * t[0] + e[1][1] * t[1] + e[1][2] * t[2],
 		e[2][0] * t[0] + e[2][1] * t[1] + e[2][2] * t[2]
 	];
 }
-function Im(e, t) {
+function Lm(e, t) {
 	return e.reduce((e, n, r) => e + (n - t[r]) ** 2, 0);
 }
-function Lm(e) {
+function Rm(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function Rm(e, t) {
+function zm(e, t) {
 	let n = e.fractToCartMatrix.toArray();
 	return Math.max(...t.maximum.map((e, r) => (e - t.minimum[r]) * Math.hypot(n[0][r], n[1][r], n[2][r])));
 }
-function zm(e, t) {
+function Bm(e, t) {
 	let n = t;
 	for (; e[n] !== n;) n = e[n];
 	for (; e[t] !== t;) {
@@ -25884,40 +25900,40 @@ function zm(e, t) {
 	}
 	return n;
 }
-function Bm(e, t, n) {
-	let r = zm(e, t), i = zm(e, n);
+function Vm(e, t, n) {
+	let r = Bm(e, t), i = Bm(e, n);
 	r !== i && (e[i] = r);
 }
-function Vm(e, t, n = 0) {
+function Hm(e, t, n = 0) {
 	let r = e?.atoms ?? [];
 	if (r.length === 0) return [];
-	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => Fm(i, [
+	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => Im(i, [
 		e.position.x,
 		e.position.y,
 		e.position.z
 	])), o = r.map((e, t) => t), s = (2 * t + n) ** 2;
-	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) Im(a[e], a[t]) <= s && Bm(o, e, t);
+	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) Lm(a[e], a[t]) <= s && Vm(o, e, t);
 	let c = /* @__PURE__ */ new Map();
 	for (let e = 0; e < r.length; e++) {
-		let t = zm(o, e);
+		let t = Bm(o, e);
 		c.has(t) || c.set(t, { atoms: [] }), c.get(t).atoms.push(r[e]);
 	}
 	return Array.from(c.values());
 }
-function Hm(e, t, n, r, i = "both") {
-	return Vm(e, t);
+function Um(e, t, n, r, i = "both") {
+	return Hm(e, t);
 }
-function Um(e) {
+function Wm(e) {
 	return e.atoms.map((e) => `${e.label}\u0000${e.atomType}\u0000${e.disorderGroup}`).sort().join("");
 }
-function Wm(e, t) {
+function Gm(e, t) {
 	return e.label === t.label && e.atomType === t.atomType && Number(e.disorderGroup) === Number(t.disorderGroup);
 }
-function Gm(e, t, n) {
-	return Lm(j(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
+function Km(e, t, n) {
+	return Rm(j(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
 }
-function Km(e, t, n, r) {
-	let i = e.atoms[0], a = Gm(n, [
+function qm(e, t, n, r) {
+	let i = e.atoms[0], a = Km(n, [
 		0,
 		0,
 		0
@@ -25925,7 +25941,7 @@ function Km(e, t, n, r) {
 		i.position.x,
 		i.position.y,
 		i.position.z
-	]), o = t.atoms.filter((e) => Wm(i, e));
+	]), o = t.atoms.filter((e) => Gm(i, e));
 	for (let i of o) {
 		let o = [
 			i.position.x - a[0],
@@ -25933,18 +25949,18 @@ function Km(e, t, n, r) {
 			i.position.z - a[2]
 		].map(Math.round), s = new Set(t.atoms.map((e, t) => t)), c = !0;
 		for (let i of e.atoms) {
-			let e = Fm(r, Gm(n, o, [
+			let e = Im(r, Km(n, o, [
 				i.position.x,
 				i.position.y,
 				i.position.z
 			])), a = -1;
 			for (let n of s) {
 				let o = t.atoms[n];
-				if (Wm(i, o) && Im(e, Fm(r, [
+				if (Gm(i, o) && Lm(e, Im(r, [
 					o.position.x,
 					o.position.y,
 					o.position.z
-				])) <= Pm ** 2) {
+				])) <= Fm ** 2) {
 					a = n;
 					break;
 				}
@@ -25962,8 +25978,8 @@ function Km(e, t, n, r) {
 	}
 	return null;
 }
-function qm(e, t, n, r) {
-	if (e.atoms.length !== t.atoms.length || Um(e) !== Um(t)) return null;
+function Jm(e, t, n, r) {
+	if (e.atoms.length !== t.atoms.length || Wm(e) !== Wm(t)) return null;
 	let i = n.symmetryOperations ?? [{
 		rotation: [
 			[
@@ -25989,19 +26005,19 @@ function qm(e, t, n, r) {
 		]
 	}];
 	for (let n of i) {
-		let i = Km(e, t, n, r);
+		let i = qm(e, t, n, r);
 		if (i) return i;
 	}
 	return null;
 }
-function Jm(e, t) {
-	let n = e.fractToCartMatrix.toArray(), r = Lm(P(n)), i = Lm(j(n, j(t.rotation, r))), a = Fm(n, t.translation);
+function Ym(e, t) {
+	let n = e.fractToCartMatrix.toArray(), r = Rm(P(n)), i = Rm(j(n, j(t.rotation, r))), a = Im(n, t.translation);
 	return {
 		determinant: te(i),
 		matrix: new K().set(i[0][0], i[0][1], i[0][2], a[0], i[1][0], i[1][1], i[1][2], a[1], i[2][0], i[2][1], i[2][2], a[2], 0, 0, 0, 1)
 	};
 }
-function Ym(e, t = !1) {
+function Xm(e, t = !1) {
 	let n = new ia(), r = e.drawRange.count;
 	for (let [i, a] of Object.entries(e.attributes)) {
 		let e = a.array.slice(0, r * a.itemSize);
@@ -26013,7 +26029,7 @@ function Ym(e, t = !1) {
 	}
 	return n.setDrawRange(0, r), n.computeBoundingBox(), n.computeBoundingSphere(), n;
 }
-function Xm(e, t) {
+function Zm(e, t) {
 	let n = [], r = [], i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Set(), o = 1 / Math.max(t, 2 ** -52), s = 0;
 	for (let t of e) {
 		let e = t.getAttribute("position");
@@ -26048,18 +26064,18 @@ function Xm(e, t) {
 		removedTriangles: s
 	};
 }
-function Zm(e, t) {
+function Qm(e, t) {
 	return {
 		cell: e.cell,
 		atoms: t.atoms
 	};
 }
-function Qm(e, t, n) {
+function $m(e, t, n) {
 	let r = [];
 	for (let i of e) {
 		let e = null, a = null;
 		for (let o of r) {
-			let r = qm(o.representative, i, t, n);
+			let r = Jm(o.representative, i, t, n);
 			if (r) {
 				e = o, a = r;
 				break;
@@ -26101,22 +26117,22 @@ function Qm(e, t, n) {
 	}
 	return r;
 }
-function $m(e, t, n = {}) {
+function eh(e, t, n = {}) {
 	let r = {
 		..._d,
 		...n
 	};
-	if (r.useSymmetry === !1 || !t?.atoms?.length) return Nm(e, t, r);
-	let i = performance.now(), a = Om(t, r.radius), o = Math.max(8, Math.round(r.resolution)), s = Rm(t.cell, a) / Math.max(1, o - 1), c = r.level ?? e.defaultLevel ?? r.sigmaLevel * e.sigma, l = t.cell.fractToCartMatrix.toArray(), u = ["positive", "negative"].map((n) => {
-		let i = Hm(t, r.radius, e, c, n);
+	if (r.useSymmetry === !1 || !t?.atoms?.length) return Pm(e, t, r);
+	let i = performance.now(), a = km(t, r.radius), o = Math.max(8, Math.round(r.resolution)), s = zm(t.cell, a) / Math.max(1, o - 1), c = r.level ?? e.defaultLevel ?? r.sigmaLevel * e.sigma, l = t.cell.fractToCartMatrix.toArray(), u = ["positive", "negative"].map((n) => {
+		let i = Um(t, r.radius, e, c, n);
 		return {
 			sign: n,
 			regions: i,
-			classes: Qm(i, e, l)
+			classes: $m(i, e, l)
 		};
 	}), d = u.reduce((e, t) => e + t.regions.length, 0), f = u.reduce((e, t) => e + t.classes.length, 0), p = d - f;
 	if (p === 0) {
-		let n = Nm(e, t, r);
+		let n = Pm(e, t, r);
 		for (let e of u) n.userData[`${e.sign}DisplayedRegionCount`] = e.regions.length;
 		return n;
 	}
@@ -26131,7 +26147,7 @@ function $m(e, t, n = {}) {
 	};
 	u.forEach((n) => {
 		n.classes.forEach((i) => {
-			let a = Zm(t, i.representative), c = Om(a, r.radius), l = Math.max(8, Math.min(o, Math.ceil(Rm(t.cell, c) / s) + 1)), u = Math.max(2e3, Math.min(r.maxPolyCount, Math.ceil(r.maxPolyCount * (l / o) ** 2 * 2))), d = performance.now(), f = Nm(e, a, {
+			let a = Qm(t, i.representative), c = km(a, r.radius), l = Math.max(8, Math.min(o, Math.ceil(zm(t.cell, c) / s) + 1)), u = Math.max(2e3, Math.min(r.maxPolyCount, Math.ceil(r.maxPolyCount * (l / o) ** 2 * 2))), d = performance.now(), f = Pm(e, a, {
 				...r,
 				resolution: l,
 				maxPolyCount: u,
@@ -26139,14 +26155,14 @@ function $m(e, t, n = {}) {
 			});
 			y += performance.now() - d, v += f.userData.polygonizationTimeMs;
 			let p = f.children[0], m = {
-				regular: Ym(p.geometry),
+				regular: Xm(p.geometry),
 				mirrored: null,
 				material: p.material,
 				matrix: p.matrix.clone()
 			};
 			S[n.sign].push(m.material), p.geometry.dispose(), i.copies.forEach((e) => {
-				let r = Jm(t.cell, e.transform), i = m.regular;
-				r.determinant < 0 && (b++, m.mirrored ??= Ym(m.regular, !0), i = m.mirrored);
+				let r = Ym(t.cell, e.transform), i = m.regular;
+				r.determinant < 0 && (b++, m.mirrored ??= Xm(m.regular, !0), i = m.mirrored);
 				let a = i.clone();
 				a.applyMatrix4(r.matrix.clone().multiply(m.matrix)), a.deleteAttribute("normal"), x[n.sign].push(a);
 			}), m.regular.dispose(), m.mirrored?.dispose();
@@ -26154,7 +26170,7 @@ function $m(e, t, n = {}) {
 	});
 	let C = performance.now(), w = 0;
 	for (let e of ["positive", "negative"]) {
-		let t = Xm(x[e], r.stitchTolerance ?? 1e-4);
+		let t = Zm(x[e], r.stitchTolerance ?? 1e-4);
 		w += t.removedTriangles;
 		let n = S[e][0];
 		S[e].slice(1).forEach((e) => e.dispose());
@@ -26200,17 +26216,17 @@ function $m(e, t, n = {}) {
 }
 //#endregion
 //#region src/lib/fix-cif/reconcile-labels.js
-function eh(e, t = !0) {
+function th(e, t = !0) {
 	if (!e || typeof e != "string") throw Error("Empty atom label");
 	let n = e.toUpperCase().replace(/[()[\]{}]/g, "");
 	if (t && (n = n.replace(/\^[a-zA-Z1-9]+$/, "").replace(/_[a-zA-Z1-9]+$/, "").replace(/_\$\d+$/, "")), n === "") throw Error(`Label "${e}" normalizes to empty string`);
 	return n;
 }
-function th(e, t = !0) {
+function nh(e, t = !0) {
 	let n = /* @__PURE__ */ new Map();
 	e.forEach((e) => {
 		try {
-			let r = eh(e, t);
+			let r = th(e, t);
 			n.has(r) || n.set(r, []), n.get(r).push(e);
 		} catch (e) {
 			console.warn(`Skipping invalid label: ${e.message}`);
@@ -26220,16 +26236,16 @@ function th(e, t = !0) {
 	for (let [e, t] of n.entries()) t.length === 1 ? r.set(e, t[0]) : console.warn(`Multiple labels map to ${e}: ${t.join(", ")}. Skipping mapping.`);
 	return r;
 }
-function nh(e, t, n, r = !0) {
-	let i = th(n, r), a = e.get(t).map((e) => {
-		let t = eh(e, r);
+function rh(e, t, n, r = !0) {
+	let i = nh(n, r), a = e.get(t).map((e) => {
+		let t = th(e, r);
 		return i.has(t) ? i.get(t) : e;
 	});
 	e.data[t] = a;
 }
 //#endregion
 //#region src/lib/fix-cif/guess-symmetry.js
-function rh(e) {
+function ih(e) {
 	if (!e || e === ".") return ".";
 	let t = String(e).trim();
 	if (/^\d+_\d{3}$/.test(t)) return t;
@@ -26244,19 +26260,19 @@ function rh(e) {
 	}
 	return e;
 }
-function ih(e, t) {
-	let n = e.get(t).map((e) => rh(e));
+function ah(e, t) {
+	let n = e.get(t).map((e) => ih(e));
 	e.data[t] = n;
 }
 //#endregion
 //#region src/lib/fix-cif/base.js
-function ah(e, t) {
+function oh(e, t) {
 	for (let n of t) if (e.headerLines.includes(n)) return n;
 	return null;
 }
-function oh(e, t) {
-	if (ah(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
-	let n = ah(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = ah(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
+function sh(e, t) {
+	if (oh(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
+	let n = oh(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = oh(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
 	if (!n || !r) return;
 	let i = e.get(n), a = e.get(r);
 	e.data[n] = i.map((e, t) => {
@@ -26264,52 +26280,52 @@ function oh(e, t) {
 		return /^uani$/i.test(String(e)) && n ? "Uiso" : e;
 	});
 }
-function sh(e, t = !0, n = !0, r = !0) {
+function ch(e, t = !0, n = !0, r = !0) {
 	let i, a;
 	if ((t || n) && (i = e.get("_atom_site"), a = i.get(["_atom_site.label", "_atom_site_label"])), t) {
 		let t = e.get("_atom_site_aniso", !1);
 		if (t) {
-			let e = ah(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-			e ? nh(t, e, a) : oh(i, t);
+			let e = oh(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+			e ? rh(t, e, a) : sh(i, t);
 		}
 	}
 	if (n || r) {
 		let t = e.get("_geom_bond", !1);
-		if (t && (n && (nh(t, ah(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), nh(t, ah(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
-			let e = ah(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
-			e && ih(t, e);
-			let n = ah(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
-			n && ih(t, n);
+		if (t && (n && (rh(t, oh(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), rh(t, oh(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
+			let e = oh(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
+			e && ah(t, e);
+			let n = oh(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
+			n && ah(t, n);
 		}
 		let i = e.get("_geom_hbond", !1);
 		if (i) {
 			if (n) {
-				nh(i, ah(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
-				let e = ah(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
-				e && nh(i, e, a), nh(i, ah(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
+				rh(i, oh(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
+				let e = oh(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
+				e && rh(i, e, a), rh(i, oh(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
 			}
 			if (r) {
-				let e = ah(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
-				e && ih(i, e);
+				let e = oh(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
+				e && ah(i, e);
 			}
 		}
 	}
 }
 //#endregion
 //#region src/lib/disorder-icons.js
-function ch(e, t) {
+function lh(e, t) {
 	if (t === "all") return e.all;
 	if (e[t]) return e[t];
 	let n = /^group(\d+)of\d+$/.exec(t)?.[1];
-	return n ? lh(e, n) : "";
+	return n ? uh(e, n) : "";
 }
-function lh(e, t) {
+function uh(e, t) {
 	let n = e.all.replace(/#000000/g, "#8f8f8f"), r = String(t).length, i = `<text x="8.925192" y="8.925193" text-anchor="middle" dominant-baseline="central" font-size="${r <= 1 ? 9 : Math.max(9 - (r - 1) * 1.5, 5)}" font-family="system-ui, sans-serif" font-weight="bold" fill="#000000">${t}</text>`;
 	return n.replace("</svg>", `${i}</svg>`);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/base.js
-var uh = class e {
+var dh = class e {
 	constructor(t, n, r, i = []) {
 		if (new.target === e) throw TypeError("Cannot instantiate BaseFilter directly");
 		this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(i), this.filterName = r, this._mode = null, this.mode = n;
@@ -26347,16 +26363,16 @@ var uh = class e {
 };
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/util.js
-function dh(e, t) {
+function fh(e, t) {
 	return `${e}|${t}`;
 }
-function fh(e, t, n) {
+function ph(e, t, n) {
 	let r = e.split("|"), i = r[0], a = `${n.identitySymOpId}_555`;
-	return r.length === 2 && (a = r[1]), dh(i, n.combineSymmetryCodes(t, a));
+	return r.length === 2 && (a = r[1]), fh(i, n.combineSymmetryCodes(t, a));
 }
 //#endregion
 //#region src/lib/structure/applied-symmetry.js
-var ph = class e {
+var mh = class e {
 	constructor(e, t) {
 		this.id = e, this.translation = [...t], this._updateKey();
 	}
@@ -26382,7 +26398,7 @@ var ph = class e {
 		let r = n.combineSymmetryCodes(t.key, this.key);
 		return e.fromString(r);
 	}
-}, mh = /* @__PURE__ */ new Set([
+}, hh = /* @__PURE__ */ new Set([
 	"H",
 	"D",
 	"B",
@@ -26399,33 +26415,33 @@ var ph = class e {
 	"Br",
 	"Te",
 	"I"
-]), hh = 4, gh = 1.6;
-function _h(e) {
-	return mh.has(e) ? fd[e] : void 0;
+]), gh = 4, _h = 1.6;
+function vh(e) {
+	return hh.has(e) ? fd[e] : void 0;
 }
-function vh(e, t = e.bonds) {
+function yh(e, t = e.bonds) {
 	let n = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) n.has(t.label) || n.set(t.label, t.atomType);
 	return t.filter((e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > hh) return !1;
+		if (e.bondLength > gh) return !1;
 		let t = n.get(e.atom1Label), r = n.get(e.atom2Label);
 		if (t === void 0 || r === void 0) return !0;
-		let i = _h(t), a = _h(r);
-		return i === void 0 || a === void 0 || e.bondLength <= gh * (i + a);
+		let i = vh(t), a = vh(r);
+		return i === void 0 || a === void 0 || e.bondLength <= _h * (i + a);
 	});
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-fragment.js
-function yh(e, t) {
+function bh(e, t) {
 	return e < t ? `${e}->${t}` : `${t}->${e}`;
 }
-function bh(e, t, n) {
+function xh(e, t, n) {
 	return `${e}-${t}...${n}`;
 }
-var xh = class {
+var Sh = class {
 	constructor(e, t) {
-		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? ph.fromString(t) : t;
+		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? mh.fromString(t) : t;
 	}
 	isTranslationalDuplicateOf(e) {
 		return this.groupIndex === e.groupIndex && this.appliedSymmetry.id === e.appliedSymmetry.id && (this.appliedSymmetry.translation[0] !== e.appliedSymmetry.translation[0] || this.appliedSymmetry.translation[1] !== e.appliedSymmetry.translation[1] || this.appliedSymmetry.translation[2] !== e.appliedSymmetry.translation[2]);
@@ -26433,20 +26449,20 @@ var xh = class {
 	getSymmetryString() {
 		return this.appliedSymmetry.toString();
 	}
-}, Sh = class {
-	constructor(e, t, n, r) {
-		this.originAtom = e.includes("|") ? e : dh(e, "1_555"), this.targetAtom = t.includes("|") ? t : dh(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
-	}
 }, Ch = class {
+	constructor(e, t, n, r) {
+		this.originAtom = e.includes("|") ? e : fh(e, "1_555"), this.targetAtom = t.includes("|") ? t : fh(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
+	}
+}, wh = class {
 	constructor(e, t, n, r, i, a) {
-		this.originIndex = e, this.originSymmetry = typeof t == "string" ? ph.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? ph.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
+		this.originIndex = e, this.originSymmetry = typeof t == "string" ? mh.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? mh.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
 	}
 	getKey() {
 		let e = this.originSymmetry.key, t = this.targetSymmetry.key;
 		return this.originIndex === this.targetIndex ? e < t ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}` : this.originIndex < this.targetIndex ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}`;
 	}
 };
-function wh(e, t, n) {
+function Th(e, t, n) {
 	let r = t.map(() => /* @__PURE__ */ new Map()), i = t.map(() => []);
 	return e.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 		let t = n.get(e.atom1Id) ?? n.get(e.atom1Label), a = e.atom2Id.split("|")[0], o = `${a}|1_555`, s = n.get(o) ?? n.get(a);
@@ -26454,19 +26470,19 @@ function wh(e, t, n) {
 		let c = `${t}->${s}@.@${e.atom2SiteSymmetry}`;
 		if (r[t].has(c)) {
 			let n = r[t].get(c);
-			i[t][n].bonds.push(new Sh(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
+			i[t][n].bonds.push(new Ch(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
 		} else r[t].set(c, i[t].length), i[t].push({
 			targetIndex: s,
-			targetSymmetry: ph.fromString(e.atom2SiteSymmetry),
-			bonds: [new Sh(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
+			targetSymmetry: mh.fromString(e.atom2SiteSymmetry),
+			bonds: [new Ch(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
 		});
 	}), i;
 }
-function Th(e, t) {
+function Eh(e, t) {
 	let n = [], r = /* @__PURE__ */ new Set();
 	return e.forEach((e, i) => {
 		for (let a of e) {
-			let e = new Ch(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
+			let e = new wh(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
 			r.has(o) || (n.push(e), r.add(o));
 		}
 	}), {
@@ -26474,13 +26490,13 @@ function Th(e, t) {
 		processedConnections: r
 	};
 }
-function Eh(e, t, n, r, i) {
-	let a = [], o = [], s = new xh(e.targetIndex, e.targetSymmetry), c = r[e.targetIndex];
+function Dh(e, t, n, r, i) {
+	let a = [], o = [], s = new Sh(e.targetIndex, e.targetSymmetry), c = r[e.targetIndex];
 	for (let r of c) {
-		let s = (typeof r.targetSymmetry == "string" ? ph.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), c = new Ch(e.targetIndex, e.targetSymmetry, r.targetIndex, s, r.bonds, e.creationOriginIndex), l = c.getKey();
+		let s = (typeof r.targetSymmetry == "string" ? mh.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), c = new wh(e.targetIndex, e.targetSymmetry, r.targetIndex, s, r.bonds, e.creationOriginIndex), l = c.getKey();
 		if (i.has(l)) continue;
 		i.add(l);
-		let u = new xh(r.targetIndex, s);
+		let u = new Sh(r.targetIndex, s);
 		n[e.creationOriginIndex].some((e) => u.isTranslationalDuplicateOf(e)) ? o.push(c) : a.push(c);
 	}
 	return {
@@ -26489,14 +26505,14 @@ function Eh(e, t, n, r, i) {
 		foundTranslations: o
 	};
 }
-function Dh(e, t) {
+function Oh(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	t.forEach((e, t) => {
 		e.atoms.forEach((e) => n.set(e.uniqueId, t));
 	});
-	let r = ph.fromString(e.symmetry.identitySymOpId + "_555"), i = wh(e, t, n), { danglingConnections: a, processedConnections: o } = Th(i, r), s = [], c = [], l = t.map(() => []);
+	let r = mh.fromString(e.symmetry.identitySymOpId + "_555"), i = Th(e, t, n), { danglingConnections: a, processedConnections: o } = Eh(i, r), s = [], c = [], l = t.map(() => []);
 	t.forEach((e, t) => {
-		l[t].push(new xh(t, r));
+		l[t].push(new Sh(t, r));
 	});
 	let u = 0, d = 0;
 	for (; d < a.length;) {
@@ -26504,7 +26520,7 @@ function Dh(e, t) {
 			console.error("Max iterations reached in createConnectivity. Possible infinite loop orvery complex structure.");
 			break;
 		}
-		let t = a[d++], n = Eh(t, e, l, i, o);
+		let t = a[d++], n = Dh(t, e, l, i, o);
 		l[t.creationOriginIndex].push(n.newConnectedGroup), a.push(...n.newDanglingConnections), c.push(...n.foundTranslations), s.push(t);
 	}
 	return d < a.length && console.warn(`Connectivity processing stopped due to iteration limit. ${a.length - d} connections remain unprocessed.`), {
@@ -26513,7 +26529,7 @@ function Dh(e, t) {
 		discoveredGroups: l
 	};
 }
-function Oh(e) {
+function kh(e) {
 	let t = /* @__PURE__ */ new Set(), n = [];
 	return e.forEach((e) => {
 		t.add(`${e.originIndex}@.@${e.originSymmetry.key}`), t.add(`${e.targetIndex}@.@${e.targetSymmetry.key}`), e.connectingBonds.forEach((t) => {
@@ -26531,12 +26547,12 @@ function Oh(e) {
 		interGroupBonds: n
 	};
 }
-function kh(e, t, n, r) {
+function Ah(e, t, n, r) {
 	let i = t.map((e) => [[...e.atoms]]), a = /* @__PURE__ */ new Map(), o = [];
 	return e.forEach((e) => {
 		let [a, o] = e.split("@.@");
 		if (o === r) return;
-		let s = Number(a), c = t[s].atoms, l = n.symmetry.applySymmetry(o, c), u = ph.fromString(o);
+		let s = Number(a), c = t[s].atoms, l = n.symmetry.applySymmetry(o, c), u = mh.fromString(o);
 		l.forEach((e) => {
 			e.appliedSymmetry = u;
 		}), i[s].push(l);
@@ -26560,28 +26576,28 @@ function kh(e, t, n, r) {
 		newAtoms: o
 	};
 }
-function Ah(e, t, n, r, i, a, o = null) {
+function jh(e, t, n, r, i, a, o = null) {
 	let s = [];
 	e.forEach((e) => {
 		s.push(...e.bonds);
 	});
 	let c = /* @__PURE__ */ new Set();
 	if (s.forEach((e) => {
-		c.add(yh(e.atom1Id, e.atom2Id));
+		c.add(bh(e.atom1Id, e.atom2Id));
 	}), t.forEach((t) => {
 		let [n, i] = t.split("@.@");
 		i !== a && e[Number(n)].bonds.forEach((e) => {
-			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = dh(t, i), o = dh(n, i), l = r.get(a) || a, u = r.get(o) || o, d = yh(l, u);
+			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = fh(t, i), o = fh(n, i), l = r.get(a) || a, u = r.get(o) || o, d = bh(l, u);
 			c.has(d) || (c.add(d), s.push(new Ne(l, u, e.bondLength, e.bondLengthSU, ".")));
 		});
 	}), n.forEach((e) => {
-		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || ph.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || ph.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? dh(i, a) : dh(i, l.key), f = u.key === a ? dh(o, a) : dh(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : dh(p, a), g = m.includes("|") ? m : dh(m, a), _ = yh(h, g);
+		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || mh.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || mh.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? fh(i, a) : fh(i, l.key), f = u.key === a ? fh(o, a) : fh(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : fh(p, a), g = m.includes("|") ? m : fh(m, a), _ = bh(h, g);
 		c.has(_) || (c.add(_), s.push(new Ne(h, g, e.bondLength, e.bondLengthSU, ".")));
 	}), o) {
 		let n = /* @__PURE__ */ new Map(), l = e.map(() => /* @__PURE__ */ new Set([a])), u = new Set(i.map((e) => e.uniqueId).filter(Boolean));
 		e.forEach((e, t) => {
 			e.atoms.forEach((e) => {
-				n.set(e.label, t), u.add(e.uniqueId || dh(e.label, a));
+				n.set(e.label, t), u.add(e.uniqueId || fh(e.label, a));
 			});
 		}), t.forEach((e) => {
 			let [t, n] = e.split("@.@");
@@ -26589,11 +26605,11 @@ function Ah(e, t, n, r, i, a, o = null) {
 		}), o.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 			let t = n.get(e.atom1Label);
 			if (t === void 0) return;
-			let i = ph.fromString(e.atom2SiteSymmetry);
+			let i = mh.fromString(e.atom2SiteSymmetry);
 			for (let n of l[t]) {
-				let t = ph.fromString(n), a = i.combine(t, o.symmetry), l = dh(e.atom1Label, n), d = dh(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
+				let t = mh.fromString(n), a = i.combine(t, o.symmetry), l = fh(e.atom1Label, n), d = fh(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
 				if (!u.has(f) || !u.has(p)) continue;
-				let m = yh(f, p);
+				let m = bh(f, p);
 				c.has(m) || (c.add(m), s.push(new Ne(f, p, e.bondLength, e.bondLengthSU, ".")));
 			}
 		});
@@ -26603,11 +26619,11 @@ function Ah(e, t, n, r, i, a, o = null) {
 		atomLabels: new Set(i.map((e) => e.uniqueId))
 	};
 }
-function jh(e, t, n, r, i, a, o) {
+function Mh(e, t, n, r, i, a, o) {
 	let s = [], c = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((e) => {
 		let t;
-		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? bh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${bh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
+		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? xh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${xh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
 	});
 	let l = t.map(() => []);
 	return e.hBonds.filter((e) => e.acceptorAtomSymmetry !== ".").forEach((e) => {
@@ -26618,39 +26634,39 @@ function jh(e, t, n, r, i, a, o) {
 		if (u === o) return;
 		let d = Number(r);
 		t[d].hBonds.forEach((e) => {
-			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = dh(t, u), o = dh(n, u), l = dh(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = bh(d, f, p);
+			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = fh(t, u), o = fh(n, u), l = fh(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = xh(d, f, p);
 			c.has(m) || (c.add(m), s.push(new Pe(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
 		}), l[d].forEach((t) => {
-			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = dh(n, u), l = dh(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = dh(m, p), g = i.get(h) || h, _, v;
-			a.has(g) ? (_ = new Pe(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = bh(d, f, g)) : (_ = new Pe(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${bh(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
+			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = fh(n, u), l = fh(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = fh(m, p), g = i.get(h) || h, _, v;
+			a.has(g) ? (_ = new Pe(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = xh(d, f, g)) : (_ = new Pe(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${xh(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
 		});
 	}), s;
 }
-function Mh(e, t, n, r) {
+function Nh(e, t, n, r) {
 	let i = [];
 	return e.forEach((e) => {
 		for (let t of e.connectingBonds) {
-			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = dh(a, e.originSymmetry.key), c = dh(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = yh(l, u);
+			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = fh(a, e.originSymmetry.key), c = fh(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = bh(l, u);
 			r.has(f) || (r.add(f), i.push(new Ne(l, u, t.bondLength, t.bondLengthSU, d)));
 		}
 	}), i;
 }
-function Nh(e) {
-	let t = new ze(e.cell, e.atoms, vh(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
+function Ph(e) {
+	let t = new ze(e.cell, e.atoms, yh(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Dh(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Oh(a, e, i), l = /* @__PURE__ */ new Map();
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Oh(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = kh(a, e, i), l = /* @__PURE__ */ new Map();
 	for (let e of s) {
-		let t = ph.fromString(e.split("@.@")[1]), n = `${e.split("@.@")[0]}|${t.id}`, r = Math.abs(t.translation[0]) + Math.abs(t.translation[1]) + Math.abs(t.translation[2]), i = l.get(n);
+		let t = mh.fromString(e.split("@.@")[1]), n = `${e.split("@.@")[0]}|${t.id}`, r = Math.abs(t.translation[0]) + Math.abs(t.translation[1]) + Math.abs(t.translation[2]), i = l.get(n);
 		(!i || r < i.magnitude || r === i.magnitude && e < i.instance) && l.set(n, {
 			instance: e,
 			magnitude: r
 		});
 	}
-	let u = new Set([...l.values()].map((e) => e.instance)), d = u.size < s.size, { specialPositionAtoms: f, newAtoms: p } = kh(u, n, t, i), { newBonds: m, atomLabels: h } = Ah(n, u, c, f, p, i, t), g = jh(t, n, r, u, f, h, i), _ = d ? [] : Mh(o, t, f, new Set(m.map((e) => yh(e.atom1Id, e.atom2Id))));
+	let u = new Set([...l.values()].map((e) => e.instance)), d = u.size < s.size, { specialPositionAtoms: f, newAtoms: p } = Ah(u, n, t, i), { newBonds: m, atomLabels: h } = jh(n, u, c, f, p, i, t), g = Mh(t, n, r, u, f, h, i), _ = d ? [] : Nh(o, t, f, new Set(m.map((e) => bh(e.atom1Id, e.atom2Id))));
 	for (let e of _) m.push(e);
 	let v = [...t.atoms, ...p], y = m, b = g;
 	if (d) {
@@ -26664,8 +26680,8 @@ function Nh(e) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-cell.js
-var Ph = 4;
-function Fh(e, t) {
+var Fh = 4;
+function Ih(e, t) {
 	let n = /* @__PURE__ */ new Set([e.identitySymOpId]), r = /* @__PURE__ */ new Set();
 	for (let n of t) {
 		let t = e.combineSymmetryCodes(n + "_555", e.identitySymOpId + "_555");
@@ -26674,7 +26690,7 @@ function Fh(e, t) {
 	for (let [t] of e.operationIds) n.has(t) || r.has(t) || n.add(t);
 	return n;
 }
-function Ih(e) {
+function Lh(e) {
 	if (e.length === 0) return {
 		minX: 0,
 		maxX: 1,
@@ -26697,15 +26713,15 @@ function Ih(e) {
 		maxZ: o
 	};
 }
-function Lh(e) {
-	let t = Ih(e);
+function Rh(e) {
+	let t = Lh(e);
 	return A([
 		(t.minX + t.maxX) / 2,
 		(t.minY + t.maxY) / 2,
 		(t.minZ + t.maxZ) / 2
 	]);
 }
-function Rh(e, t, n) {
+function zh(e, t, n) {
 	let r = t.symmetry.identitySymOpId, i = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) t.appliedSymmetry ? i.add(t.appliedSymmetry.id) : i.add(r);
 	let a = new Set(e.atoms.map((e) => e.uniqueId));
@@ -26715,15 +26731,15 @@ function Rh(e, t, n) {
 	}
 	return Array.from(i);
 }
-function zh(e, t = 1e-6) {
+function Bh(e, t = 1e-6) {
 	let { x: n, y: r, z: i } = e.position;
 	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
 }
-function Bh(e, t = 3) {
+function Vh(e, t = 3) {
 	let n = e.position.x.toFixed(t), r = e.position.y.toFixed(t), i = e.position.z.toFixed(t);
 	return `${e.label}_x${n}_y${r}_z${i}`;
 }
-function Vh(e, t, n) {
+function Hh(e, t, n) {
 	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = ee(ee(j(r.rotMatrix, A(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), l = t.split("_")[0], u = (t.split("_")[1] || "555").split("").map((e) => parseInt(e, 10)), d = `${u[0] - o}${u[1] - s}${u[2] - c}`;
 	return {
 		newCentre: M(a, A([
@@ -26734,30 +26750,30 @@ function Vh(e, t, n) {
 		newString: `${l}_${d}`
 	};
 }
-function Hh(e, t, n, r, i) {
+function Uh(e, t, n, r, i) {
 	let a = [], o = t.applySymmetry(n, e.atoms);
 	for (let s = 0; s < o.length; s++) {
 		let c = o[s], l = e.atoms[s], u = n;
-		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = ph.fromString(u);
+		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = mh.fromString(u);
 		let d = c.uniqueId;
-		if (i && !zh(c)) {
+		if (i && !Bh(c)) {
 			let e = Math.floor(c.position.x), n = Math.floor(c.position.y), i = Math.floor(c.position.z);
 			c.position.x -= e, c.position.y -= n, c.position.z -= i, c.appliedSymmetry.translation[0] -= e, c.appliedSymmetry.translation[1] -= n, c.appliedSymmetry.translation[2] -= i, c.appliedSymmetry._updateKey();
 			let a = c.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
 			r.atomTranslations.set(d, [a, o]);
 		}
-		let f = c.uniqueId, p = Bh(c), m = r.atomMap.get(p);
+		let f = c.uniqueId, p = Vh(c), m = r.atomMap.get(p);
 		m ? r.specialPositionMap.set(f, m) : (r.atomMap.set(p, f), a.push(c));
 	}
 	return a;
 }
-function Uh(e, t, n, r) {
+function Wh(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalBonds) {
-		let e = fh(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = fh(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
+		let e = ph(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = ph(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
 		if (o !== c) {
 			if (!r.atomTranslations.has(o) && !r.atomTranslations.has(c)) {
-				let e = yh(o, c);
+				let e = bh(o, c);
 				if (!r.createdBonds.has(e)) {
 					let t = new Ne(o, c, a.bondLength, a.bondLengthSU, ".");
 					i.push(t), r.createdBonds.add(e);
@@ -26765,7 +26781,7 @@ function Uh(e, t, n, r) {
 			} else if (r.atomTranslations.has(o) && r.atomTranslations.has(c)) {
 				let [e, t] = r.atomTranslations.get(o), [n, s] = r.atomTranslations.get(c);
 				if (t === s) {
-					let t = yh(e, n);
+					let t = bh(e, n);
 					if (!r.createdBonds.has(t)) {
 						let o = new Ne(e, n, a.bondLength, a.bondLengthSU, ".");
 						i.push(o), r.createdBonds.add(t);
@@ -26776,16 +26792,16 @@ function Uh(e, t, n, r) {
 	}
 	return i;
 }
-function Wh(e, t, n, r) {
+function Gh(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalHBonds) {
-		let e = r.specialPositionMap.get(fh(a.donorAtomId, n, t)) || fh(a.donorAtomId, n, t), o = r.specialPositionMap.get(fh(a.hydrogenAtomId, n, t)) || fh(a.hydrogenAtomId, n, t), s;
+		let e = r.specialPositionMap.get(ph(a.donorAtomId, n, t)) || ph(a.donorAtomId, n, t), o = r.specialPositionMap.get(ph(a.hydrogenAtomId, n, t)) || ph(a.hydrogenAtomId, n, t), s;
 		if (a.acceptorAtomSymmetry && a.acceptorAtomSymmetry !== ".") {
 			let e = `${a.acceptorAtomId.split("|")[0]}|${t.combineSymmetryCodes(n, a.acceptorAtomSymmetry)}`;
 			s = r.specialPositionMap.get(e) || e;
-		} else s = r.specialPositionMap.get(fh(a.acceptorAtomId, n, t)) || fh(a.acceptorAtomId, n, t);
+		} else s = r.specialPositionMap.get(ph(a.acceptorAtomId, n, t)) || ph(a.acceptorAtomId, n, t);
 		if (!r.atomTranslations.has(e) && !r.atomTranslations.has(o) && !r.atomTranslations.has(s)) {
-			let t = bh(e, o, s);
+			let t = xh(e, o, s);
 			if (!r.createdHBonds.has(t)) {
 				let n = new Pe(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 				r.createdHBonds.add(t), i.push(n);
@@ -26793,7 +26809,7 @@ function Wh(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) && r.atomTranslations.has(o) && r.atomTranslations.has(s)) {
 			let [t, n] = r.atomTranslations.get(e), [c, l] = r.atomTranslations.get(o), [u, d] = r.atomTranslations.get(s);
 			if (n === l && l === d) {
-				let e = bh(t, c, u);
+				let e = xh(t, c, u);
 				if (!r.createdHBonds.has(e)) {
 					let n = new Pe(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 					r.createdHBonds.add(e), i.push(n);
@@ -26803,17 +26819,17 @@ function Wh(e, t, n, r) {
 	}
 	return i;
 }
-function Gh(e, t, n, r) {
+function Kh(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalBonds) {
-		let e = r.specialPositionMap.get(fh(a.atom1Id, n, t)) || fh(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
+		let e = r.specialPositionMap.get(ph(a.atom1Id, n, t)) || ph(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
 		if (r.atomTranslations.has(e)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e), o = t.combineSymmetryCodes(n, o);
 		}
 		let c = `${s}|${o}`;
 		c = r.specialPositionMap.get(c) || c;
-		let l = yh(e, c);
+		let l = bh(e, c);
 		if (!r.createdBonds.has(l)) {
 			let t = new Ne(e, c, a.bondLength, a.bondLengthSU, o);
 			i.push(t), r.createdBonds.add(l);
@@ -26821,10 +26837,10 @@ function Gh(e, t, n, r) {
 	}
 	return i;
 }
-function Kh(e, t, n, r) {
+function qh(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalHBonds) {
-		let e = r.specialPositionMap.get(fh(a.donorAtomId, n, t)) || fh(a.donorAtomId, n, t), o = r.specialPositionMap.get(fh(a.hydrogenAtomId, n, t)) || fh(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
+		let e = r.specialPositionMap.get(ph(a.donorAtomId, n, t)) || ph(a.donorAtomId, n, t), o = r.specialPositionMap.get(ph(a.hydrogenAtomId, n, t)) || ph(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
 		if (r.atomTranslations.has(e) && r.atomTranslations.has(o)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e);
@@ -26834,7 +26850,7 @@ function Kh(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) || r.atomTranslations.has(o)) continue;
 		let c = `${a.acceptorAtomId.split("|")[0]}|${s}`;
 		if (e.split("|")[1] === s) continue;
-		let l = bh(e, o, c);
+		let l = xh(e, o, c);
 		if (!r.createdHBonds.has(l)) {
 			let t = new Pe(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
 			i.push(t), r.createdHBonds.add(l);
@@ -26842,24 +26858,24 @@ function Kh(e, t, n, r) {
 	}
 	return i;
 }
-function qh(e, t, n, r, i) {
-	let { newCentre: a, newString: o } = Vh(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function Jh(e, t, n, r, i) {
+	let { newCentre: a, newString: o } = Hh(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: Hh(e, t, o, r, i),
-		internalBonds: Uh(e, t, o, r),
-		internalHBonds: Wh(e, t, o, r),
-		externalBonds: Gh(e, t, o, r),
-		externalHBonds: Kh(e, t, o, r),
+		atoms: Uh(e, t, o, r, i),
+		internalBonds: Wh(e, t, o, r),
+		internalHBonds: Gh(e, t, o, r),
+		externalBonds: Kh(e, t, o, r),
+		externalHBonds: qh(e, t, o, r),
 		symmString: o,
 		groupCentre: a
 	};
 }
-function Jh(e, t = !0, n = null) {
+function Yh(e, t = !0, n = null) {
 	let r;
 	if (r = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new ze(e.cell, [], [], [], e.symmetry);
 	let i = e.calculateConnectedGroups(), a = i.map((t) => {
-		let n = Rh(t, e, r);
-		return Array.from(Fh(e.symmetry, n));
+		let n = zh(t, e, r);
+		return Array.from(Ih(e.symmetry, n));
 	}), o = i.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), s = i.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), c = {
 		atomMap: /* @__PURE__ */ new Map(),
 		createdBonds: /* @__PURE__ */ new Set(),
@@ -26868,7 +26884,7 @@ function Jh(e, t = !0, n = null) {
 		atomTranslations: /* @__PURE__ */ new Map()
 	}, l = [];
 	for (let n = 0; n < i.length; n++) {
-		let r = i[n], u = a[n], d = Lh(r.atoms), f = u[0], p = {
+		let r = i[n], u = a[n], d = Rh(r.atoms), f = u[0], p = {
 			atoms: r.atoms,
 			internalBonds: r.bonds,
 			internalHBonds: r.hBonds,
@@ -26878,7 +26894,7 @@ function Jh(e, t = !0, n = null) {
 			externalHBonds: s[n]
 		};
 		for (let n of u) {
-			let r = `${n}_555`, i = qh(p, e.symmetry, r, c, t);
+			let r = `${n}_555`, i = Jh(p, e.symmetry, r, c, t);
 			l.push(i);
 		}
 	}
@@ -26921,7 +26937,7 @@ function Jh(e, t = !0, n = null) {
 		return n || (n = t.position.toCartesian(e.cell), _.set(t.uniqueId, n)), n;
 	}, y = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Ph) return !1;
+		if (e.bondLength > Fh) return !1;
 		let t = g.get(e.atom1Id), n = g.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
 		let r = v(t), i = v(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
@@ -26931,7 +26947,7 @@ function Jh(e, t = !0, n = null) {
 		return t && (h.has(e.atom2Id) || n) && y(e);
 	}), x = m.filter((e) => h.has(e.donorAtomId) && h.has(e.hydrogenAtomId)), S = b, C = new ze(e.cell, f, S, x, e.symmetry), w = /* @__PURE__ */ new Map();
 	for (let e of C.calculateConnectedGroups()) {
-		let t = Lh(e.atoms).toArray().map((e) => Math.floor(e));
+		let t = Rh(e.atoms).toArray().map((e) => Math.floor(e));
 		for (let n of e.atoms) {
 			let e = n.uniqueId;
 			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), w.set(e, n.uniqueId);
@@ -26939,7 +26955,7 @@ function Jh(e, t = !0, n = null) {
 	}
 	let T = [], E = /* @__PURE__ */ new Map(), D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map();
 	for (let e of f) {
-		let t = Bh(e), n = D.get(e.uniqueId) || E.get(t);
+		let t = Vh(e), n = D.get(e.uniqueId) || E.get(t);
 		n ? O.set(e.uniqueId, n) : (E.set(t, e.uniqueId), D.set(e.uniqueId, e.uniqueId), T.push(e));
 	}
 	for (let [e, t] of w) w.set(e, O.get(t) || t);
@@ -26947,18 +26963,18 @@ function Jh(e, t = !0, n = null) {
 	for (let e of b) {
 		let t = w.get(e.atom1Id) || e.atom1Id, n = w.get(e.atom2Id) || e.atom2Id;
 		if (t === n) continue;
-		let r = yh(t, n);
+		let r = bh(t, n);
 		A.has(r) || (e.atom1Id = t, e.atom2Id = n, k.push(e), A.add(r));
 	}
 	let j = [], ee = /* @__PURE__ */ new Set();
 	for (let e of x) {
 		e.donorAtomId = w.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = w.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = w.get(e.acceptorAtomId) || e.acceptorAtomId;
-		let t = bh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
+		let t = xh(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
 		ee.has(t) || (j.push(e), ee.add(t));
 	}
 	return new ze(e.cell, T, k, j, e.symmetry);
 }
-function Yh(e, t) {
+function Xh(e, t) {
 	let n = t - 1;
 	if (!(n > 0)) return e;
 	let r = [];
@@ -26971,7 +26987,7 @@ function Yh(e, t) {
 				0
 			];
 			for (let e = 0; e < s.length; e++) n & 1 << e && (c[s[e]] = 1);
-			let l = new ve(i + c[0], a + c[1], o + c[2]), u = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new ph(e.symmetry.identitySymOpId, [
+			let l = new ve(i + c[0], a + c[1], o + c[2]), u = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new mh(e.symmetry.identitySymOpId, [
 				0,
 				0,
 				0
@@ -26983,20 +26999,20 @@ function Yh(e, t) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
-var Xh = /* @__PURE__ */ new WeakMap(), Zh = /* @__PURE__ */ new WeakMap(), Qh = /* @__PURE__ */ new WeakMap();
-function $h(e) {
+var Zh = /* @__PURE__ */ new WeakMap(), Qh = /* @__PURE__ */ new WeakMap(), $h = /* @__PURE__ */ new WeakMap();
+function eg(e) {
 	return `${Math.round(e.x * 1e8)},${Math.round(e.y * 1e8)},${Math.round(e.z * 1e8)}`;
 }
-function eg(e, t) {
-	let n = Zh.get(e);
-	return n || (n = /* @__PURE__ */ new Map(), Zh.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
+function tg(e, t) {
+	let n = Qh.get(e);
+	return n || (n = /* @__PURE__ */ new Map(), Qh.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
 }
-function tg(e, t, n) {
-	let r = Xh.get(e.symmetry);
-	r || (r = /* @__PURE__ */ new Map(), Xh.set(e.symmetry, r));
-	let i = $h(t.position), a = `code|${i}|${n}`;
+function ng(e, t, n) {
+	let r = Zh.get(e.symmetry);
+	r || (r = /* @__PURE__ */ new Map(), Zh.set(e.symmetry, r));
+	let i = eg(t.position), a = `code|${i}|${n}`;
 	if (r.has(a)) return r.get(a);
-	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${$h(o)}`;
+	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${eg(o)}`;
 	if (r.has(s)) {
 		let e = r.get(s);
 		return r.set(a, e), e;
@@ -27012,25 +27028,25 @@ function tg(e, t, n) {
 	], u = [];
 	for (let [t, n] of e.symmetry.operationIds) {
 		let r = e.symmetry.symmetryOperations[n].applyToPoint(l), i = c.map((e, t) => e - r[t]);
-		i.every((e) => Math.abs(e - Math.round(e)) < 1e-5) && u.push(new ph(t, i.map((e) => Math.round(e))).key);
+		i.every((e) => Math.abs(e - Math.round(e)) < 1e-5) && u.push(new mh(t, i.map((e) => Math.round(e))).key);
 	}
 	return r.set(s, u), r.set(a, u), u;
 }
-function ng(e, t, n, r, i) {
-	let a = Qh.get(e.symmetry);
-	a || (a = /* @__PURE__ */ new Map(), Qh.set(e.symmetry, a));
+function rg(e, t, n, r, i) {
+	let a = $h.get(e.symmetry);
+	a || (a = /* @__PURE__ */ new Map(), $h.set(e.symmetry, a));
 	let o = [
 		t.donorAtomLabel,
 		t.hydrogenAtomLabel,
 		t.acceptorAtomLabel,
-		$h(n.position),
-		$h(r.position),
+		eg(n.position),
+		eg(r.position),
 		i.join(",")
 	].join("|");
 	if (a.has(o)) return a.get(o);
 	let s = [], c = /* @__PURE__ */ new Set();
 	for (let t of i) {
-		let i = eg(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${$h(a.position)},${$h(o.position)}`;
+		let i = tg(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${eg(a.position)},${eg(o.position)}`;
 		c.has(l) || (c.add(l), s.push({
 			inverseSymmetry: i,
 			positionKey: l
@@ -27038,7 +27054,7 @@ function ng(e, t, n, r, i) {
 	}
 	return a.set(o, s), s;
 }
-function rg(e, t) {
+function ig(e, t) {
 	let n = new Map(e.atoms.map((e) => [e.uniqueId, e])), r = /* @__PURE__ */ new Map();
 	for (let i of t) {
 		let t = n.get(i.atom1Id), a = n.get(i.atom2Id);
@@ -27055,7 +27071,7 @@ function rg(e, t) {
 	}
 	return Array.from(r.values());
 }
-function ig(e) {
+function ag(e) {
 	let t = new Map(e.atoms.map((e) => [e.uniqueId, e])), n = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) n.has(t.label) || n.set(t.label, []), n.get(t.label).push(t);
 	let r = (t, n) => {
@@ -27097,7 +27113,7 @@ function ig(e) {
 	}
 	return new ze(e.cell, e.atoms, e.bonds, o, e.symmetry);
 }
-function ag(e, t = /* @__PURE__ */ new Map()) {
+function og(e, t = /* @__PURE__ */ new Map()) {
 	let n = e.calculateConnectedGroups(), r = /* @__PURE__ */ new Map(), i = (e) => {
 		let n = t.get(e) || e;
 		return r.get(n) || r.get(e) || n;
@@ -27129,7 +27145,7 @@ function ag(e, t = /* @__PURE__ */ new Map()) {
 		let t = s.get(e.donorAtomId);
 		t !== void 0 && f[t].push(e);
 	}
-	let p = /* @__PURE__ */ new Set(), m = [...e.atoms], h = [...e.bonds], g = new Set(m.map((e) => e.uniqueId)), _ = new Map(m.map((e) => [`${e.label}|${$h(e.position)}`, e.uniqueId])), v = new Set(h.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), y = new Set(u.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), b = /* @__PURE__ */ new Set(), x = [], S = (e) => {
+	let p = /* @__PURE__ */ new Set(), m = [...e.atoms], h = [...e.bonds], g = new Set(m.map((e) => e.uniqueId)), _ = new Map(m.map((e) => [`${e.label}|${eg(e.position)}`, e.uniqueId])), v = new Set(h.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), y = new Set(u.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), b = /* @__PURE__ */ new Set(), x = [], S = (e) => {
 		let t = `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`;
 		y.has(t) || (u.push(e), y.add(t));
 	}, C = (e) => {
@@ -27142,28 +27158,28 @@ function ag(e, t = /* @__PURE__ */ new Map()) {
 		let s = n[t], c = e.symmetry.applySymmetry(a, s.atoms);
 		for (let t = 0; t < c.length; t++) {
 			let n = c[t], i = s.atoms[t], o = a;
-			i.appliedSymmetry && i.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (o = e.symmetry.combineSymmetryCodes(a, i.appliedSymmetry.key)), n.appliedSymmetry = ph.fromString(o);
-			let l = `${n.label}|${$h(n.position)}`, u = _.get(l);
+			i.appliedSymmetry && i.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (o = e.symmetry.combineSymmetryCodes(a, i.appliedSymmetry.key)), n.appliedSymmetry = mh.fromString(o);
+			let l = `${n.label}|${eg(n.position)}`, u = _.get(l);
 			u ? u !== n.uniqueId && r.set(n.uniqueId, u) : g.has(n.uniqueId) || (m.push(n), g.add(n.uniqueId), _.set(l, n.uniqueId));
 		}
 		s.bonds.filter(({ atom2SiteSymmetry: e }) => e === ".").forEach((t) => {
-			C(new Ne(i(fh(t.atom1Id, a, e.symmetry)), i(fh(t.atom2Id, a, e.symmetry)), t.bondLength, t.bondLengthSU, "."));
+			C(new Ne(i(ph(t.atom1Id, a, e.symmetry)), i(ph(t.atom2Id, a, e.symmetry)), t.bondLength, t.bondLengthSU, "."));
 		}), [...s.hBonds, ...f[t]].forEach((t) => {
 			if (t.acceptorAtomSymmetry === ".") {
-				S(new Pe(i(fh(t.donorAtomId, a, e.symmetry)), i(fh(t.hydrogenAtomId, a, e.symmetry)), i(fh(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+				S(new Pe(i(ph(t.donorAtomId, a, e.symmetry)), i(ph(t.hydrogenAtomId, a, e.symmetry)), i(ph(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 				return;
 			}
-			x.push(new Pe(i(fh(t.donorAtomId, a, e.symmetry)), i(fh(t.hydrogenAtomId, a, e.symmetry)), i(fh(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+			x.push(new Pe(i(ph(t.donorAtomId, a, e.symmetry)), i(ph(t.hydrogenAtomId, a, e.symmetry)), i(ph(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		});
 	};
 	for (let t of l) {
 		let n = t.acceptorAtomId.split("|")[0], r = t.acceptorAtomId.split("|")[0], l = c.get(r);
 		if (l === void 0) throw Error(`Cannot grow H-bond: acceptor atom ${r} is not in the structure`);
 		let u = t.acceptorAtomSymmetry;
-		w(l, u), S(new Pe(i(t.donorAtomId), i(t.hydrogenAtomId), i(fh(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+		w(l, u), S(new Pe(i(t.donorAtomId), i(t.hydrogenAtomId), i(ph(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		let d = s.get(t.donorAtomId);
 		if (d === void 0) throw Error(`Cannot grow reciprocal H-bond: donor atom ${t.donorAtomId} is not in the structure`);
-		let f = tg(e, o.get(n), u), p = ng(e, t, a.get(t.donorAtomId), a.get(t.hydrogenAtomId), f);
+		let f = ng(e, o.get(n), u), p = rg(e, t, a.get(t.donorAtomId), a.get(t.hydrogenAtomId), f);
 		for (let { inverseSymmetry: r, positionKey: a } of p) {
 			let o = [
 				t.donorAtomLabel,
@@ -27171,7 +27187,7 @@ function ag(e, t = /* @__PURE__ */ new Map()) {
 				n,
 				a
 			].join("|");
-			b.has(o) || (b.add(o), w(d, r), S(new Pe(i(fh(t.donorAtomId, r, e.symmetry)), i(fh(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
+			b.has(o) || (b.add(o), w(d, r), S(new Pe(i(ph(t.donorAtomId, r, e.symmetry)), i(ph(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
 		}
 	}
 	for (let e of x) g.has(e.donorAtomId) && g.has(e.hydrogenAtomId) && g.has(e.acceptorAtomId) && S(e);
@@ -27179,7 +27195,7 @@ function ag(e, t = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/modes.js
-var og = class e extends uh {
+var sg = class e extends dh {
 	static MODES = Object.freeze({
 		NONE: "none",
 		CONSTANT: "constant",
@@ -27218,7 +27234,7 @@ var og = class e extends uh {
 		let n = [e.MODES.NONE];
 		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof Se) && n.push(e.MODES.ANISOTROPIC), n) : n;
 	}
-}, sg = class e extends uh {
+}, cg = class e extends dh {
 	static MODES = Object.freeze({ ALL: "all" });
 	static PREFERRED_FALLBACK_ORDER = [e.MODES.ALL];
 	static modeForGroup(e, t) {
@@ -27269,7 +27285,7 @@ var og = class e extends uh {
 			r[`GROUP${i + 1}`] = e.modeForGroup(i + 1, n.length);
 		}), this.MODES = Object.freeze(r), Object.values(this.MODES);
 	}
-}, cg = class e extends uh {
+}, lg = class e extends dh {
 	static MODES = Object.freeze({
 		NONE: "none",
 		HBONDS: "hbonds",
@@ -27290,17 +27306,17 @@ var og = class e extends uh {
 	}
 	apply(t) {
 		this.ensureValidMode(t);
-		let n = this.mode === e.MODES.NONE ? t : new ze(t.cell, t.atoms, vh(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
+		let n = this.mode === e.MODES.NONE ? t : new ze(t.cell, t.atoms, yh(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
 		if (this.mode === e.MODES.FRAGMENT || this.mode === e.MODES.FRAGMENT_HBONDS) {
-			let e = Nh(n);
+			let e = Ph(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = Yh(Jh(n), this.packingCutoff);
+		if (this.mode === e.MODES.CELL) n = Xh(Yh(n), this.packingCutoff);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
-			let e = Nh(n);
-			r = e.specialPositionAtoms, n = Yh(Jh(e.grownStructure, !1, r), this.packingCutoff), n = ig(n);
+			let e = Ph(n);
+			r = e.specialPositionAtoms, n = Xh(Yh(e.grownStructure, !1, r), this.packingCutoff), n = ag(n);
 		}
-		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, rg(n, n.bonds), n.hBonds, n.symmetry)), n = ag(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, rg(n, n.bonds), n.hBonds, n.symmetry), n = ig(n))), n;
+		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, ig(n, n.bonds), n.hBonds, n.symmetry)), n = og(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new ze(n.cell, n.atoms, ig(n, n.bonds), n.hBonds, n.symmetry), n = ag(n))), n;
 	}
 	getApplicableModes(t) {
 		let n = [
@@ -27312,7 +27328,7 @@ var og = class e extends uh {
 		let r = t.bonds.some((e) => e.atom2SiteSymmetry !== ".");
 		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n;
 	}
-}, lg = class e extends uh {
+}, ug = class e extends dh {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -27354,7 +27370,7 @@ var og = class e extends uh {
 	getApplicableModes() {
 		return Object.values(e.MODES);
 	}
-}, ug = class e extends uh {
+}, dg = class e extends dh {
 	static MODES = Object.freeze({
 		KEEP: "keep",
 		ADD: "add",
@@ -27602,7 +27618,7 @@ var og = class e extends uh {
 			e.MODES.REPLACE
 		] : [e.MODES.CREATE, e.MODES.IGNORE];
 	}
-}, dg = class e extends uh {
+}, fg = class e extends dh {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -27679,7 +27695,7 @@ var og = class e extends uh {
 	getApplicableModes(t) {
 		return t.bonds.length === 0 ? [e.MODES.OFF] : this.findIsolatedHydrogenAtoms(t).length > 0 ? [e.MODES.ON] : [e.MODES.OFF];
 	}
-}, fg = class {
+}, pg = class {
 	static init() {
 		let e = [
 			1,
@@ -60465,32 +60481,32 @@ var og = class e extends uh {
 		return c.needsUpdate = !0, l.needsUpdate = !0, this.LTC_HALF_1 = c, this.LTC_HALF_2 = l, this.LTC_FLOAT_1 = i, this.LTC_FLOAT_2 = a, this;
 	}
 };
-fg.LTC_HALF_1 = null, fg.LTC_HALF_2 = null, fg.LTC_FLOAT_1 = null, fg.LTC_FLOAT_2 = null;
+pg.LTC_HALF_1 = null, pg.LTC_HALF_2 = null, pg.LTC_FLOAT_1 = null, pg.LTC_FLOAT_2 = null;
 //#endregion
 //#region node_modules/three/examples/jsm/lights/RectAreaLightUniformsLib.js
-var pg = class {
+var mg = class {
 	static init() {
-		fg.init();
-		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = fg;
+		pg.init();
+		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = pg;
 		Z.LTC_FLOAT_1 = e, Z.LTC_FLOAT_2 = t, Z.LTC_HALF_1 = n, Z.LTC_HALF_2 = r;
 	}
-}, mg = !1;
-function hg() {
-	mg ||= (pg.init(), !0);
+}, hg = !1;
+function gg() {
+	hg ||= (mg.init(), !0);
 }
-function gg(e) {
+function _g(e) {
 	let t = new U();
 	e.forEach((e) => t.add(e)), t.divideScalar(e.length);
 	let n = new W(), r = new U();
 	e.forEach((e) => {
 		r.copy(e).sub(t), n.elements[0] += r.x * r.x, n.elements[1] += r.x * r.y, n.elements[2] += r.x * r.z, n.elements[3] += r.y * r.x, n.elements[4] += r.y * r.y, n.elements[5] += r.y * r.z, n.elements[6] += r.z * r.x, n.elements[7] += r.z * r.y, n.elements[8] += r.z * r.z;
 	});
-	let { values: i, eigenvectors: a } = fe(_g(n)), o = ue(i);
+	let { values: i, eigenvectors: a } = fe(vg(n)), o = ue(i);
 	if (o <= 0) return console.warn("Could not find a mean plane, expected?"), new U(0, 1, 0);
 	let s = a.filter((e) => e.value === o)[0].vector, c = new U(...s.toArray());
 	return c.normalize(), c;
 }
-function _g(e) {
+function vg(e) {
 	let t = e.elements;
 	return A([
 		[
@@ -60510,7 +60526,7 @@ function _g(e) {
 		]
 	]);
 }
-function vg(e) {
+function yg(e) {
 	let t = [], n = new U();
 	if (e.traverse((e) => {
 		if (e.userData?.type === "atom") {
@@ -60519,7 +60535,7 @@ function vg(e) {
 		}
 	}), t.length === 0) return null;
 	n.divideScalar(t.length);
-	let r = t.map((e) => e.sub(n)), i = gg(r), a = new U(0, 0, 1), o = new rr();
+	let r = t.map((e) => e.sub(n)), i = _g(r), a = new U(0, 0, 1), o = new rr();
 	o.setFromUnitVectors(i, a);
 	let s = new K();
 	s.makeRotationFromQuaternion(o);
@@ -60533,21 +60549,21 @@ function vg(e) {
 	let f = -Math.atan2(d.y, d.x), p = new K().makeRotationZ(f);
 	return s.premultiply(p), s.premultiply(new K().makeRotationX(Math.PI / 8)), s.premultiply(new K().makeRotationY(Math.PI / 48)), s;
 }
-var yg = 16384;
-function bg(e, t, n = {}) {
+var bg = 16384;
+function xg(e, t, n = {}) {
 	let r = Math.max(1, Math.floor(e)), i = Math.max(1, Math.floor(t)), a = Number.isFinite(n.scale) && n.scale > 0 ? n.scale : 1;
 	Number.isFinite(n.longEdge) && n.longEdge > 0 && (a = n.longEdge / Math.max(r, i));
-	let o = yg / Math.max(r, i);
+	let o = bg / Math.max(r, i);
 	return a = Math.min(a, o), {
 		width: Math.max(1, Math.round(r * a)),
 		height: Math.max(1, Math.round(i * a)),
 		scale: a
 	};
 }
-function xg(e, t, n) {
+function Sg(e, t, n) {
 	e.children = e.children.filter((e) => !(e instanceof Qo));
 	let r = (n || new xi().setFromObject(t)).getSize(new U()), i = Math.max(r.length() * .5, 6), a = i * 2.5, o = new ms(16777215, .45);
-	e.add(o), hg();
+	e.add(o), gg();
 	let s = i * 2.25, c = new hs(16777215, 5, s, s);
 	c.position.set(-a * .6, -a * .5, a), c.lookAt(new U(0, 0, 0)), e.add(c), [{
 		pos: [
@@ -60570,7 +60586,7 @@ function xg(e, t, n) {
 }
 //#endregion
 //#region src/lib/ortep3d/viewer-controls.js
-var Sg = class {
+var Cg = class {
 	constructor(e) {
 		this.viewer = e, this.state = {
 			isDragging: !1,
@@ -60772,7 +60788,7 @@ var Sg = class {
 		let e = this.renderer.domElement, { wheel: t, mouseDown: n, mouseMove: r, mouseUp: i, click: a, contextMenu: o, touchStart: s, touchMove: c, touchEnd: l, resize: u } = this.boundHandlers;
 		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u), this.interactionCallbacks.clear(), this.coupledInteractionStates.clear();
 	}
-}, Cg = class e {
+}, wg = class e {
 	constructor(t, n) {
 		if (new.target === e) throw Error("AbstractCamera is an abstract class and cannot be instantiated directly");
 		this.container = t, this.options = n, this.cameraTarget = new U(0, 0, 0), this.createCamera();
@@ -60801,7 +60817,7 @@ var Sg = class {
 	applyCoupledViewState(e) {
 		throw Error("applyCoupledViewState() must be implemented by subclass");
 	}
-}, wg = class extends Cg {
+}, Tg = class extends wg {
 	createCamera() {
 		return this.camera = new us(this.options.fov, this.container.clientWidth / this.container.clientHeight, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
 	}
@@ -60840,7 +60856,7 @@ var Sg = class {
 		let t = this.options.fov;
 		this.container.clientWidth < this.container.clientHeight ? this.camera.fov = 2 * Math.atan(Math.tan(t * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = t, this.camera.updateProjectionMatrix();
 	}
-}, Tg = class extends Cg {
+}, Eg = class extends wg {
 	createCamera() {
 		let e = this.container.clientWidth / this.container.clientHeight, t = this.options.orthoSize || 5;
 		return this.camera = new ds(-t * e, t * e, t, -t, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
@@ -60890,21 +60906,21 @@ var Sg = class {
 		this.camera.top = e, this.camera.bottom = -e, this.camera.left = -e * t, this.camera.right = e * t;
 	}
 };
-function Eg(e, t) {
+function Dg(e, t) {
 	switch ((t.camera?.type || "perspective").toLowerCase()) {
-		case "orthographic": return new Tg(e, t.camera);
-		default: return new wg(e, t.camera);
+		case "orthographic": return new Eg(e, t.camera);
+		default: return new Tg(e, t.camera);
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/cell3d.js
-function Dg(e, t, n, r, i) {
+function Og(e, t, n, r, i) {
 	let a = e.clone().normalize(), o = e.length() - n, s = new Y(new po(i, i, o, 8), new va({ color: t })), c = new Y(new mo(r, n, 8), new va({ color: t })), l = new U(0, 1, 0), u = new rr();
 	u.setFromUnitVectors(l, a), s.applyQuaternion(u), c.applyQuaternion(u), s.position.copy(a.clone().multiplyScalar(o / 2)), c.position.copy(a.clone().multiplyScalar(o + n / 2));
 	let d = new Qr();
 	return d.add(s), d.add(c), d;
 }
-function Og(e, t, n, r) {
+function kg(e, t, n, r) {
 	let i = new Qr(), a = [
 		new U(0, 0, 0),
 		new U(1, 0, 0),
@@ -60938,12 +60954,12 @@ function Og(e, t, n, r) {
 		i.add(n);
 	}), i;
 }
-function kg(e, t) {
-	let { boxColor: n, boxOpacity: r, boxLineWidth: i, arrowColorA: a, arrowColorB: o, arrowColorC: s, arrowHeadLengthMult: c, arrowHeadWidthMult: l, arrowCylinderRadius: u } = t, d = new Qr(), f = e.fractToCartMatrix.toArray(), p = new K(f[0][0], f[0][1], f[0][2], 0, f[1][0], f[1][1], f[1][2], 0, f[2][0], f[2][1], f[2][2], 0, 0, 0, 0, 1), m = Og(p, n, r, i);
+function Ag(e, t) {
+	let { boxColor: n, boxOpacity: r, boxLineWidth: i, arrowColorA: a, arrowColorB: o, arrowColorC: s, arrowHeadLengthMult: c, arrowHeadWidthMult: l, arrowCylinderRadius: u } = t, d = new Qr(), f = e.fractToCartMatrix.toArray(), p = new K(f[0][0], f[0][1], f[0][2], 0, f[1][0], f[1][1], f[1][2], 0, f[2][0], f[2][1], f[2][2], 0, 0, 0, 0, 1), m = kg(p, n, r, i);
 	d.add(m);
 	let h = new U(), g = new U(), _ = new U();
 	p.extractBasis(h, g, _);
-	let { a: v, b: y, c: b } = e, x = Math.max(v, y, b) * c, S = x * l, C = Dg(h, a, x, S, u), w = Dg(g, o, x, S, u), T = Dg(_, s, x, S, u);
+	let { a: v, b: y, c: b } = e, x = Math.max(v, y, b) * c, S = x * l, C = Og(h, a, x, S, u), w = Og(g, o, x, S, u), T = Og(_, s, x, S, u);
 	return d.add(C), d.add(w), d.add(T), d.name = "UnitCell", d.userData = {
 		selectable: !1,
 		cellParameters: {
@@ -60959,14 +60975,14 @@ function kg(e, t) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-layout.js
-function Ag(e, t) {
+function jg(e, t) {
 	return e.left < t.right && e.right > t.left && e.top < t.bottom && e.bottom > t.top;
 }
-function jg(e, t) {
+function Mg(e, t) {
 	let n = Math.max(e.left, Math.min(t.x, e.right)), r = Math.max(e.top, Math.min(t.y, e.bottom)), i = t.x - n, a = t.y - r;
 	return i * i + a * a < t.radius * t.radius;
 }
-function Mg(e, t) {
+function Ng(e, t) {
 	let n = e.radius || 0, r = {
 		left: t.left - n,
 		right: t.right + n,
@@ -60993,16 +61009,16 @@ function Mg(e, t) {
 	}
 	return !0;
 }
-function Ng(e, t) {
+function Pg(e, t) {
 	let n = t.x2 - t.x1, r = t.y2 - t.y1, i = n * n + r * r;
 	if (i === 0) return (e.x - t.x1) ** 2 + (e.y - t.y1) ** 2;
 	let a = Math.max(0, Math.min(1, ((e.x - t.x1) * n + (e.y - t.y1) * r) / i)), o = t.x1 + a * n, s = t.y1 + a * r;
 	return (e.x - o) ** 2 + (e.y - s) ** 2;
 }
-function Pg(e, t, n) {
+function Fg(e, t, n) {
 	return (t.x - e.x) * (n.y - e.y) - (t.y - e.y) * (n.x - e.x);
 }
-function Fg(e, t) {
+function Ig(e, t) {
 	let n = {
 		x: e.x1,
 		y: e.y1
@@ -61015,7 +61031,7 @@ function Fg(e, t) {
 	}, a = {
 		x: t.x2,
 		y: t.y2
-	}, o = Pg(n, r, i), s = Pg(n, r, a), c = Pg(i, a, n), l = Pg(i, a, r);
+	}, o = Fg(n, r, i), s = Fg(n, r, a), c = Fg(i, a, n), l = Fg(i, a, r);
 	return [
 		o,
 		s,
@@ -61023,24 +61039,24 @@ function Fg(e, t) {
 		l
 	].every((e) => Math.abs(e) < 1e-9) ? Math.max(Math.min(e.x1, e.x2), Math.min(t.x1, t.x2)) <= Math.min(Math.max(e.x1, e.x2), Math.max(t.x1, t.x2)) && Math.max(Math.min(e.y1, e.y2), Math.min(t.y1, t.y2)) <= Math.min(Math.max(e.y1, e.y2), Math.max(t.y1, t.y2)) : o * s <= 0 && c * l <= 0;
 }
-function Ig(e, t) {
-	if (Fg(e, t)) return !0;
+function Lg(e, t) {
+	if (Ig(e, t)) return !0;
 	let n = (e.radius || 0) + (t.radius || 0);
-	return Math.min(Ng({
+	return Math.min(Pg({
 		x: e.x1,
 		y: e.y1
-	}, t), Ng({
+	}, t), Pg({
 		x: e.x2,
 		y: e.y2
-	}, t), Ng({
+	}, t), Pg({
 		x: t.x1,
 		y: t.y1
-	}, e), Ng({
+	}, e), Pg({
 		x: t.x2,
 		y: t.y2
 	}, e)) <= n * n;
 }
-function Lg(e) {
+function Rg(e) {
 	let t = e.radius || 0;
 	return {
 		left: Math.min(e.x1, e.x2) - t,
@@ -61049,7 +61065,7 @@ function Lg(e) {
 		bottom: Math.max(e.y1, e.y2) + t
 	};
 }
-function Rg(e) {
+function zg(e) {
 	return {
 		left: e.x - e.radius,
 		right: e.x + e.radius,
@@ -61057,7 +61073,7 @@ function Rg(e) {
 		bottom: e.y + e.radius
 	};
 }
-function zg(e) {
+function Bg(e) {
 	return {
 		left: Math.min(...e.map((e) => e.x)),
 		right: Math.max(...e.map((e) => e.x)),
@@ -61065,8 +61081,8 @@ function zg(e) {
 		bottom: Math.max(...e.map((e) => e.y))
 	};
 }
-function Bg(e, t) {
-	let n = [...e.map(Rg), ...t.map(Lg)];
+function Vg(e, t) {
+	let n = [...e.map(zg), ...t.map(Rg)];
 	return n.length === 0 ? null : n.reduce((e, t) => ({
 		left: Math.min(e.left, t.left),
 		right: Math.max(e.right, t.right),
@@ -61074,7 +61090,7 @@ function Bg(e, t) {
 		bottom: Math.max(e.bottom, t.bottom)
 	}));
 }
-var Vg = class {
+var Hg = class {
 	constructor(e = 64) {
 		this.cellSize = e, this.cells = /* @__PURE__ */ new Map();
 	}
@@ -61099,7 +61115,7 @@ var Vg = class {
 		return [...t];
 	}
 };
-function Hg(e, t) {
+function Ug(e, t) {
 	let n = !1;
 	for (let r = 0, i = t.length - 1; r < t.length; i = r++) {
 		let a = t[r], o = t[i];
@@ -61107,14 +61123,14 @@ function Hg(e, t) {
 	}
 	return n;
 }
-var Ug = Array.from({ length: 16 }, (e, t) => {
+var Wg = Array.from({ length: 16 }, (e, t) => {
 	let n = t * Math.PI / 8;
 	return {
 		x: Math.cos(n),
 		y: Math.sin(n)
 	};
 });
-function Wg(e, t, n, r) {
+function Gg(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = Math.abs(t.x) * i + Math.abs(t.y) * a, s = e.radius + r.atomPadding + o + (n - 1) * r.fallbackDistance, c = e.x + t.x * s, l = e.y + t.y * s, u = r.labelPadding, d = n > 1 ? {
 		x1: e.x + t.x * (e.radius + r.atomPadding),
 		y1: e.y + t.y * (e.radius + r.atomPadding),
@@ -61139,18 +61155,18 @@ function Wg(e, t, n, r) {
 		}
 	};
 }
-function Gg(e, t, n, r, i) {
+function Kg(e, t, n, r, i) {
 	let a = t.preferredDirection || {
 		x: 1,
 		y: -1
 	}, o = (1 - (e.direction.x * a.x + e.direction.y * a.y)) * 50;
-	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Hg(e, t)) && (o += i.ringPenalty), r) {
+	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Ug(e, t)) && (o += i.ringPenalty), r) {
 		let t = e.direction.x * r.direction.x + e.direction.y * r.direction.y;
 		o += (1 - t) * i.movementPenalty;
 	}
 	return o;
 }
-function Kg(e, t, n, r) {
+function qg(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = t - e.x, s = n - e.y, c = Math.hypot(o, s) || 1, l = {
 		x: o / c,
 		y: s / c
@@ -61179,42 +61195,42 @@ function Kg(e, t, n, r) {
 		}
 	};
 }
-function qg(e) {
+function Jg(e) {
 	return e.leaderSegment ? Math.hypot(e.leaderSegment.x2 - e.leaderSegment.x1, e.leaderSegment.y2 - e.leaderSegment.y1) : 0;
 }
-function Jg(e, t) {
+function Yg(e, t) {
 	if (!Number.isFinite(e.z)) return null;
 	let n = Math.max(1, t.performanceNoSpaceCellSize ?? 24);
 	return [Math.floor(e.x / n), Math.floor(e.y / n)].join(":");
 }
-function Yg(e, t, n) {
+function Xg(e, t, n) {
 	return e.left >= n && e.top >= n && e.right <= t.width - n && e.bottom <= t.height - n;
 }
-function Xg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
-	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new Vg(u), f = new Vg(u), p = new Vg(u), m = new Vg(u), h = new Vg(u);
-	t.forEach((e) => d.insert(e, Rg(e))), n.forEach((e) => f.insert(e, Lg(e))), r.forEach((e) => p.insert(e, zg(e)));
-	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = Bg(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
+function Zg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
+	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new Hg(u), f = new Hg(u), p = new Hg(u), m = new Hg(u), h = new Hg(u);
+	t.forEach((e) => d.insert(e, zg(e))), n.forEach((e) => f.insert(e, Rg(e))), r.forEach((e) => p.insert(e, Bg(e)));
+	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = Vg(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
 		if (C.has(e)) return C.get(e);
 		let n = !0;
-		if (qg(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Yg(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => jg(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => Mg(t, e.rect)) && (n = !1), n && e.leaderSegment) {
-			let r = Lg(e.leaderSegment);
-			!b && f.query(r).some((t) => Ig(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && Ng(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
+		if (Jg(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Xg(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => Mg(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => Ng(t, e.rect)) && (n = !1), n && e.leaderSegment) {
+			let r = Rg(e.leaderSegment);
+			!b && f.query(r).some((t) => Lg(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && Pg(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
 		}
 		return C.set(e, n), n;
 	}, E = (e, t) => {
 		if (!T(e, t)) return null;
-		let n = new Set(m.query(e.rect).filter((t) => Ag(e.rect, t.rect)));
-		if (h.query(e.rect).filter((t) => Mg(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
-		let r = Lg(e.leaderSegment);
-		return m.query(r).filter((t) => Mg(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Ig(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
+		let n = new Set(m.query(e.rect).filter((t) => jg(e.rect, t.rect)));
+		if (h.query(e.rect).filter((t) => Ng(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
+		let r = Rg(e.leaderSegment);
+		return m.query(r).filter((t) => Ng(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Lg(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
 	}, D = (e, t) => E(e, t)?.size === 0, O = (e, t) => {
 		let n = {
 			...e,
 			...t
 		};
-		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, Lg(n.leaderSegment)), n;
+		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, Rg(n.leaderSegment)), n;
 	}, k = (e) => {
-		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, Lg(e.leaderSegment));
+		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, Rg(e.leaderSegment));
 	}, A = (e, t, n, r, i) => {
 		for (let a of t) {
 			if (i.remaining-- <= 0) return !1;
@@ -61236,7 +61252,7 @@ function Xg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 		return !1;
 	}, j = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
 	for (let e of y) {
-		let t = _ ? Jg(e, a) : null, n = t === null ? void 0 : w.get(t);
+		let t = _ ? Yg(e, a) : null, n = t === null ? void 0 : w.get(t);
 		if (n !== void 0 && n < e.z - 1e-6) {
 			c.push({
 				id: e.id,
@@ -61246,9 +61262,9 @@ function Xg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			continue;
 		}
 		let r = [], i = b ? Array.from({ length: Math.max(2, a.maximumCoverageDistanceSteps ?? 6) }, (e, t) => t + 1) : [1, 2];
-		for (let t of i) for (let n of Ug) {
-			let i = Wg(e, n, t, a);
-			i.score = Gg(i, e, p.query({
+		for (let t of i) for (let n of Wg) {
+			let i = Gg(e, n, t, a);
+			i.score = Kg(i, e, p.query({
 				left: i.x,
 				right: i.x,
 				top: i.y,
@@ -61273,14 +61289,14 @@ function Xg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			calloutSearch: for (let t of g) for (let c = 0; c < e; c++) for (let e of v) {
 				if (l >= a.calloutSearchLimit || s.length >= a.calloutChoiceLimit) break calloutSearch;
 				l++;
-				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Kg(o, m, t, a);
+				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = qg(o, m, t, a);
 				if (E(h, o) !== null) {
 					h.score = Math.hypot(m - o.x, t - o.y);
-					let e = Lg(h.leaderSegment);
-					h.score += f.query(e).filter((e) => Ig(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
+					let e = Rg(h.leaderSegment);
+					h.score += f.query(e).filter((e) => Lg(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
 				}
 			}
-			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => qg(e) - qg(t) || e.score - t.score);
+			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => Jg(e) - Jg(t) || e.score - t.score);
 			S.set(o.id, y), A(o, y, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) }) || c.push({
 				id: o.id,
 				text: o.text,
@@ -61305,22 +61321,22 @@ function Xg(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-worker.js?worker&inline
-var Zg = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", Qg = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Zg], { type: "text/javascript;charset=utf-8" });
-function $g(e) {
+var Qg = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", $g = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Qg], { type: "text/javascript;charset=utf-8" });
+function e_(e) {
 	let t;
 	try {
-		if (t = Qg && (self.URL || self.webkitURL).createObjectURL(Qg), !t) throw "";
+		if (t = $g && (self.URL || self.webkitURL).createObjectURL($g), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Zg), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Qg), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-manager.js
-var e_ = [
+var t_ = [
 	"atomPadding",
 	"autoPerformanceLabelThreshold",
 	"calloutChoiceLimit",
@@ -61346,26 +61362,26 @@ var e_ = [
 	"spatialCellSize",
 	"viewportPadding"
 ];
-function t_(e) {
-	return Object.fromEntries(e_.map((t) => [t, e[t]]));
-}
 function n_(e) {
-	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
+	return Object.fromEntries(t_.map((t) => [t, e[t]]));
 }
 function r_(e) {
+	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
+}
+function i_(e) {
 	return Array.isArray(e) ? e.map((e) => typeof e == "string" ? { id: e } : e).filter((e) => e && typeof e.id == "string") : [];
 }
-function i_(e, t) {
-	return xd(o_(e), t);
-}
 function a_(e, t) {
-	return Cd(o_(e), t);
+	return xd(s_(e), t);
 }
-function o_(e) {
+function o_(e, t) {
+	return Cd(s_(e), t);
+}
+function s_(e) {
 	let t = e || {};
 	return [.../* @__PURE__ */ new Set([...Object.keys(Q.elementProperties), ...Object.keys(t)])].map((e) => t[e]?.atomColor ?? Q.elementProperties[e]?.atomColor).filter(Boolean);
 }
-function s_(e, t, n, r = null) {
+function c_(e, t, n, r = null) {
 	if (t.colorMode !== "atom") return t.color;
 	let i = n || {}, a = e.atomType;
 	!i[a] && !Q.elementProperties[a] && (a = Le(e.atomType));
@@ -61373,10 +61389,10 @@ function s_(e, t, n, r = null) {
 	if (!o) return t.color;
 	let s = t.atomColorLuminanceFloor, c, l;
 	if (s != null) {
-		let e = r ?? a_(i, s);
+		let e = r ?? o_(i, s);
 		c = wd(o, e), l = e === 0;
 	} else {
-		let e = r ?? i_(i, t.atomColorLuminanceCeiling);
+		let e = r ?? a_(i, t.atomColorLuminanceCeiling);
 		c = Sd(o, e), l = e === 1;
 	}
 	if (l) return `#${c.getHexString(fn)}`;
@@ -61387,10 +61403,10 @@ function s_(e, t, n, r = null) {
 		u.b
 	].map((e) => Math.floor(nr.clamp(e, 0, 1) * 255)).map((e) => e.toString(16).padStart(2, "0")).join("")}`;
 }
-function c_(e, t) {
+function l_(e, t) {
 	return e.includes("|") ? e === t.uniqueId : e === t.label;
 }
-function l_(e) {
+function u_(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) {
 		let r = (n + 1) % e.length;
@@ -61398,13 +61414,13 @@ function l_(e) {
 	}
 	return Math.abs(t) / 2;
 }
-function u_(e, t) {
+function d_(e, t) {
 	return e.z >= -1 && e.z <= 1 && e.x + e.radius >= 0 && e.x - e.radius <= t.width && e.y + e.radius >= 0 && e.y - e.radius <= t.height;
 }
-function d_(e) {
+function f_(e) {
 	if (!e) return [];
 	let t = [...new Map(e.atoms.map((e) => [e.uniqueId, e])).keys()].sort(), n = new Map(t.map((e, t) => [e, t])), r = new Map(t.map((e) => [e, /* @__PURE__ */ new Set()]));
-	for (let t of vh(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
+	for (let t of yh(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
 	let i = [], a = /* @__PURE__ */ new Set();
 	for (let e of t) {
 		let t = [e], o = new Set(t), s = (c) => {
@@ -61420,7 +61436,7 @@ function d_(e) {
 	}
 	return i;
 }
-var f_ = class {
+var p_ = class {
 	constructor(e) {
 		this.viewer = e, this.options = e.options.atomLabels, this.previousPlacements = /* @__PURE__ */ new Map(), this.layout = {
 			placed: [],
@@ -61454,14 +61470,14 @@ var f_ = class {
 		}), this.loadingIndicator.append(t, document.createTextNode("Laying out labels…")), e.container.appendChild(this.loadingIndicator);
 	}
 	setOptions(e) {
-		this.options = e, (!e.showLoadingIndicator || n_(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
+		this.options = e, (!e.showLoadingIndicator || r_(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
 	}
 	setStructure(e) {
 		this.endLoadingIndicator(), this.displayStructure = e, this.rings = null, this.bondNeighbours.clear(), this.previousPlacements.clear(), this.invalidateLayout();
 	}
 	prepareTopology() {
 		if (this.rings === null) {
-			this.rings = d_(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
+			this.rings = f_(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
 			for (let e of this.displayStructure.bonds) this.bondNeighbours.has(e.atom1Id) && this.bondNeighbours.has(e.atom2Id) && (this.bondNeighbours.get(e.atom1Id).add(e.atom2Id), this.bondNeighbours.get(e.atom2Id).add(e.atom1Id));
 		}
 	}
@@ -61523,7 +61539,7 @@ var f_ = class {
 		if (this.options.useWorker === !1 || this.workerUnavailable || typeof Worker > "u") return null;
 		if (this.worker) return this.worker;
 		try {
-			return this.worker = new $g({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
+			return this.worker = new e_({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
 				e.preventDefault?.(), this.handleWorkerFailure(Error(e.message || "Atom-label worker failed"));
 			}, this.worker;
 		} catch (e) {
@@ -61535,7 +61551,7 @@ var f_ = class {
 		(this.canvas.width !== r || this.canvas.height !== i) && (this.canvas.width = r, this.canvas.height = i, this.canvas.style.width = `${t}px`, this.canvas.style.height = `${n}px`);
 	}
 	resolveRequests() {
-		let e = this.displayStructure, t = n_(this.options.show);
+		let e = this.displayStructure, t = r_(this.options.show);
 		if (!e || t === "none") return [];
 		if (t === "all" || t === "non-hydrogen") return e.atoms.filter((e) => t === "all" || !["H", "D"].includes(e.atomType)).map((e) => ({
 			atom: e,
@@ -61545,9 +61561,9 @@ var f_ = class {
 			...e,
 			text: String(e.text).slice(0, 200)
 		}));
-		let n = r_(t), r = [];
+		let n = i_(t), r = [];
 		for (let t of e.atoms) {
-			let e = n.find((e) => c_(e.id, t));
+			let e = n.find((e) => l_(e.id, t));
 			if (!e) continue;
 			let i = e.text ?? this.options.text?.[t.uniqueId] ?? this.options.text?.[t.label] ?? t.label;
 			i !== null && String(i).length > 0 && r.push({
@@ -61625,14 +61641,14 @@ var f_ = class {
 		};
 	}
 	projectRings(e) {
-		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && l_(e) >= 25);
+		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && u_(e) >= 25);
 	}
 	getAtomLabelColor(e) {
 		if (this.options.colorMode !== "atom") return this.options.color;
 		let t = e.atomType;
 		this.atomLabelColorCache ||= /* @__PURE__ */ new Map();
 		let n = this.options.atomColorLuminanceFloor;
-		return this.atomLabelColorScale ??= n == null ? i_(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : a_(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, s_(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
+		return this.atomLabelColorScale ??= n == null ? a_(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : o_(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, c_(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
 	}
 	update() {
 		if (!this.context) return this.completeUpdate(this.layout);
@@ -61652,7 +61668,7 @@ var f_ = class {
 		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
 		let o = this.projectAnchors(), s = i.filter((n) => {
 			let r = o.get(n.atom.uniqueId);
-			return r && u_(r, {
+			return r && d_(r, {
 				width: e,
 				height: t
 			});
@@ -61697,7 +61713,7 @@ var f_ = class {
 				width: e,
 				height: t
 			},
-			options: t_(this.options),
+			options: n_(this.options),
 			previousPlacements: [...this.previousPlacements.entries()]
 		}, u = this.captureLayoutState(e, t), d = this.getWorker();
 		if (!d) {
@@ -61717,7 +61733,7 @@ var f_ = class {
 		}), p;
 	}
 	calculateLayout(e) {
-		return Xg(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
+		return Zg(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
 	}
 	handleWorkerMessage(e) {
 		if (!this.pendingLayout || e.id !== this.pendingLayout.id) return;
@@ -61776,19 +61792,19 @@ var f_ = class {
 };
 //#endregion
 //#region src/lib/density/scalar-field-worker.js?worker
-function p_(e) {
-	return new Worker("/assets/scalar-field-worker-VwGhHDep.js", { name: e?.name });
+function m_(e) {
+	return new Worker("/assets/scalar-field-worker-CzU0i1NA.js", { name: e?.name });
 }
 //#endregion
 //#region src/lib/density/isosurface-progress.js
-function m_(e) {
+function h_(e) {
 	let t = (Array.isArray(e) ? e : [1]).map(Number).filter((e) => Number.isFinite(e) && e > 0 && e <= 1).sort((e, t) => e - t);
 	return t.includes(1) || t.push(1), [...new Set(t)];
 }
 //#endregion
 //#region src/lib/density/difference-density-progress.js
-function h_(e, t = {}) {
-	let n = m_(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
+function g_(e, t = {}) {
+	let n = h_(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
 	return {
 		steps: n,
 		mapAt(t) {
@@ -61802,7 +61818,7 @@ function h_(e, t = {}) {
 }
 //#endregion
 //#region src/lib/ortep3d/three-isosurface-layer.js
-var g_ = class {
+var __ = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null, this.resolutionFraction = 1;
 	}
@@ -61820,11 +61836,11 @@ var g_ = class {
 	}
 	rebuild() {
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let e = km(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
+		let e = Am(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
 			positiveColor: this.options.deformationPositiveColor,
 			negativeColor: this.options.deformationNegativeColor
 		} : {};
-		return this.group = $m(this.field, this.structure, {
+		return this.group = eh(this.field, this.structure, {
 			...this.options,
 			...t,
 			resolution: Math.max(8, Math.round(e * this.resolutionFraction))
@@ -61863,7 +61879,7 @@ var g_ = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, __ = new xi(), v_ = new U(), y_ = class extends gs {
+}, v_ = new xi(), y_ = new U(), b_ = class extends gs {
 	constructor() {
 		super(), this.isLineSegmentsGeometry = !0, this.type = "LineSegmentsGeometry", this.setIndex([
 			0,
@@ -61960,7 +61976,7 @@ var g_ = class {
 	computeBoundingBox() {
 		this.boundingBox === null && (this.boundingBox = new xi());
 		let e = this.attributes.instanceStart, t = this.attributes.instanceEnd;
-		e !== void 0 && t !== void 0 && (this.boundingBox.setFromBufferAttribute(e), __.setFromBufferAttribute(t), this.boundingBox.union(__));
+		e !== void 0 && t !== void 0 && (this.boundingBox.setFromBufferAttribute(e), v_.setFromBufferAttribute(t), this.boundingBox.union(v_));
 	}
 	computeBoundingSphere() {
 		this.boundingSphere === null && (this.boundingSphere = new Xi()), this.boundingBox === null && this.computeBoundingBox();
@@ -61969,7 +61985,7 @@ var g_ = class {
 			let n = this.boundingSphere.center;
 			this.boundingBox.getCenter(n);
 			let r = 0;
-			for (let i = 0, a = e.count; i < a; i++) v_.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(v_)), v_.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(v_));
+			for (let i = 0, a = e.count; i < a; i++) y_.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(y_)), y_.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(y_));
 			this.boundingSphere.radius = Math.sqrt(r), isNaN(this.boundingSphere.radius) && console.error("THREE.LineSegmentsGeometry.computeBoundingSphere(): Computed radius is NaN. The instanced position data is likely to have NaN values.", this);
 		}
 	}
@@ -61992,7 +62008,7 @@ Z.line = {
 	vertexShader: "\n		#include <common>\n		#include <color_pars_vertex>\n		#include <fog_pars_vertex>\n		#include <logdepthbuf_pars_vertex>\n		#include <clipping_planes_pars_vertex>\n\n		uniform float linewidth;\n		uniform vec2 resolution;\n\n		attribute vec3 instanceStart;\n		attribute vec3 instanceEnd;\n\n		attribute vec3 instanceColorStart;\n		attribute vec3 instanceColorEnd;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#ifdef USE_DASH\n\n			uniform float dashScale;\n			attribute float instanceDistanceStart;\n			attribute float instanceDistanceEnd;\n			varying float vLineDistance;\n\n		#endif\n\n		float trimSegmentAlpha( const in vec4 start, const in vec4 end ) {\n\n			// compute the interpolation factor needed to trim the segment so it terminates\n			// between the camera plane and the near plane\n\n			// conservative estimate of the near plane\n			float a = projectionMatrix[ 2 ][ 2 ]; // 3nd entry in 3th column\n			float b = projectionMatrix[ 3 ][ 2 ]; // 3nd entry in 4th column\n\n			// we need different nearEstimate formula for reversed and default depth buffer\n			// a is positive with a reversed depth buffer so it can be used for controlling the code flow\n			float nearEstimate = ( a > 0.0 ) ? ( - b / ( a + 1.0 ) ) : ( - 0.5 * b / a );\n\n			return ( nearEstimate - start.z ) / ( end.z - start.z );\n\n		}\n\n		void main() {\n\n			#ifdef USE_COLOR\n\n				vColor.xyz = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;\n\n			#endif\n\n			float aspect = resolution.x / resolution.y;\n\n			// camera space\n			vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );\n			vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );\n\n			#ifdef USE_DASH\n\n				float lineDistanceStart = dashScale * instanceDistanceStart;\n				float lineDistanceEnd = dashScale * instanceDistanceEnd;\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				worldStart = start.xyz;\n				worldEnd = end.xyz;\n\n			#else\n\n				vUv = uv;\n\n			#endif\n\n			// special case for perspective projection, and segments that terminate either in, or behind, the camera plane\n			// clearly the gpu firmware has a way of addressing this issue when projecting into ndc space\n			// but we need to perform ndc-space calculations in the shader, so we must address this issue directly\n			// perhaps there is a more elegant solution -- WestLangley\n\n			bool perspective = ( projectionMatrix[ 2 ][ 3 ] == - 1.0 ); // 4th entry in the 3rd column\n\n			if ( perspective ) {\n\n				if ( start.z < 0.0 && end.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( start, end );\n					end.xyz = mix( start.xyz, end.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceEnd = mix( lineDistanceStart, lineDistanceEnd, alpha );\n\n					#endif\n\n				} else if ( end.z < 0.0 && start.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( end, start );\n					start.xyz = mix( end.xyz, start.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceStart = mix( lineDistanceEnd, lineDistanceStart, alpha );\n\n					#endif\n\n				}\n\n			}\n\n			#ifdef USE_DASH\n\n				vLineDistance = ( position.y < 0.5 ) ? lineDistanceStart : lineDistanceEnd;\n				vUv = uv;\n\n			#endif\n\n			// clip space\n			vec4 clipStart = projectionMatrix * start;\n			vec4 clipEnd = projectionMatrix * end;\n\n			// ndc space\n			vec3 ndcStart = clipStart.xyz / clipStart.w;\n			vec3 ndcEnd = clipEnd.xyz / clipEnd.w;\n\n			// direction\n			vec2 dir = ndcEnd.xy - ndcStart.xy;\n\n			// account for clip-space aspect ratio\n			dir.x *= aspect;\n			dir = normalize( dir );\n\n			#ifdef WORLD_UNITS\n\n				vec3 worldDir = normalize( end.xyz - start.xyz );\n				vec3 tmpFwd = normalize( mix( start.xyz, end.xyz, 0.5 ) );\n				vec3 worldUp = normalize( cross( worldDir, tmpFwd ) );\n				vec3 worldFwd = cross( worldDir, worldUp );\n				worldPos = position.y < 0.5 ? start: end;\n\n				// height offset\n				float hw = linewidth * 0.5;\n				worldPos.xyz += position.x < 0.0 ? hw * worldUp : - hw * worldUp;\n\n				// don't extend the line if we're rendering dashes because we\n				// won't be rendering the endcaps\n				#ifndef USE_DASH\n\n					// cap extension\n					worldPos.xyz += position.y < 0.5 ? - hw * worldDir : hw * worldDir;\n\n					// add width to the box\n					worldPos.xyz += worldFwd * hw;\n\n					// endcaps\n					if ( position.y > 1.0 || position.y < 0.0 ) {\n\n						worldPos.xyz -= worldFwd * 2.0 * hw;\n\n					}\n\n				#endif\n\n				// project the worldpos\n				vec4 clip = projectionMatrix * worldPos;\n\n				// shift the depth of the projected points so the line\n				// segments overlap neatly\n				vec3 clipPose = ( position.y < 0.5 ) ? ndcStart : ndcEnd;\n				clip.z = clipPose.z * clip.w;\n\n			#else\n\n				vec2 offset = vec2( dir.y, - dir.x );\n				// undo aspect ratio adjustment\n				dir.x /= aspect;\n				offset.x /= aspect;\n\n				// sign flip\n				if ( position.x < 0.0 ) offset *= - 1.0;\n\n				// endcaps\n				if ( position.y < 0.0 ) {\n\n					offset += - dir;\n\n				} else if ( position.y > 1.0 ) {\n\n					offset += dir;\n\n				}\n\n				// adjust for linewidth\n				offset *= linewidth;\n\n				// adjust for clip-space to screen-space conversion // maybe resolution should be based on viewport ...\n				offset /= resolution.y;\n\n				// select end\n				vec4 clip = ( position.y < 0.5 ) ? clipStart : clipEnd;\n\n				// back to clip space\n				offset *= clip.w;\n\n				clip.xy += offset;\n\n			#endif\n\n			gl_Position = clip;\n\n			vec4 mvPosition = ( position.y < 0.5 ) ? start : end; // this is an approximation\n\n			#include <logdepthbuf_vertex>\n			#include <clipping_planes_vertex>\n			#include <fog_vertex>\n\n		}\n		",
 	fragmentShader: "\n		uniform vec3 diffuse;\n		uniform float opacity;\n		uniform float linewidth;\n\n		#ifdef USE_DASH\n\n			uniform float dashOffset;\n			uniform float dashSize;\n			uniform float gapSize;\n\n		#endif\n\n		varying float vLineDistance;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#include <common>\n		#include <color_pars_fragment>\n		#include <fog_pars_fragment>\n		#include <logdepthbuf_pars_fragment>\n		#include <clipping_planes_pars_fragment>\n\n		vec2 closestLineToLine(vec3 p1, vec3 p2, vec3 p3, vec3 p4) {\n\n			float mua;\n			float mub;\n\n			vec3 p13 = p1 - p3;\n			vec3 p43 = p4 - p3;\n\n			vec3 p21 = p2 - p1;\n\n			float d1343 = dot( p13, p43 );\n			float d4321 = dot( p43, p21 );\n			float d1321 = dot( p13, p21 );\n			float d4343 = dot( p43, p43 );\n			float d2121 = dot( p21, p21 );\n\n			float denom = d2121 * d4343 - d4321 * d4321;\n\n			float numer = d1343 * d4321 - d1321 * d4343;\n\n			mua = numer / denom;\n			mua = clamp( mua, 0.0, 1.0 );\n			mub = ( d1343 + d4321 * ( mua ) ) / d4343;\n			mub = clamp( mub, 0.0, 1.0 );\n\n			return vec2( mua, mub );\n\n		}\n\n		void main() {\n\n			float alpha = opacity;\n			vec4 diffuseColor = vec4( diffuse, alpha );\n\n			#include <clipping_planes_fragment>\n\n			#ifdef USE_DASH\n\n				if ( vUv.y < - 1.0 || vUv.y > 1.0 ) discard; // discard endcaps\n\n				if ( mod( vLineDistance + dashOffset, dashSize + gapSize ) > dashSize ) discard; // todo - FIX\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				// Find the closest points on the view ray and the line segment\n				vec3 rayEnd = normalize( worldPos.xyz ) * 1e5;\n				vec3 lineDir = worldEnd - worldStart;\n				vec2 params = closestLineToLine( worldStart, worldEnd, vec3( 0.0, 0.0, 0.0 ), rayEnd );\n\n				vec3 p1 = worldStart + lineDir * params.x;\n				vec3 p2 = rayEnd * params.y;\n				vec3 delta = p1 - p2;\n				float len = length( delta );\n				float norm = len / linewidth;\n\n				#ifndef USE_DASH\n\n					#ifdef USE_ALPHA_TO_COVERAGE\n\n						float dnorm = fwidth( norm );\n						alpha = 1.0 - smoothstep( 0.5 - dnorm, 0.5 + dnorm, norm );\n\n					#else\n\n						if ( norm > 0.5 ) {\n\n							discard;\n\n						}\n\n					#endif\n\n				#endif\n\n			#else\n\n				#ifdef USE_ALPHA_TO_COVERAGE\n\n					// artifacts appear on some hardware if a derivative is taken within a conditional\n					float a = vUv.x;\n					float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n					float len2 = a * a + b * b;\n					float dlen = fwidth( len2 );\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						alpha = 1.0 - smoothstep( 1.0 - dlen, 1.0 + dlen, len2 );\n\n					}\n\n				#else\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						float a = vUv.x;\n						float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n						float len2 = a * a + b * b;\n\n						if ( len2 > 1.0 ) discard;\n\n					}\n\n				#endif\n\n			#endif\n\n			#include <logdepthbuf_fragment>\n			#include <color_fragment>\n\n			gl_FragColor = vec4( diffuseColor.rgb, alpha );\n\n			#include <tonemapping_fragment>\n			#include <colorspace_fragment>\n			#include <fog_fragment>\n			#include <premultiplied_alpha_fragment>\n\n		}\n		"
 };
-var b_ = class extends jo {
+var x_ = class extends jo {
 	constructor(e) {
 		super({
 			type: "LineMaterial",
@@ -62068,19 +62084,19 @@ var b_ = class extends jo {
 	set alphaToCoverage(e) {
 		this.defines && (e === !0 !== this.alphaToCoverage && (this.needsUpdate = !0), e === !0 ? this.defines.USE_ALPHA_TO_COVERAGE = "" : delete this.defines.USE_ALPHA_TO_COVERAGE);
 	}
-}, x_ = new br(), S_ = new U(), C_ = new U(), w_ = new br(), T_ = new br(), E_ = new br(), D_ = new U(), O_ = new K(), k_ = new Gs(), A_ = new U(), j_ = new xi(), M_ = new Xi(), N_ = new br(), P_, F_;
-function I_(e, t, n) {
-	return N_.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), N_.multiplyScalar(1 / N_.w), N_.x = F_ / n.width, N_.y = F_ / n.height, N_.applyMatrix4(e.projectionMatrixInverse), N_.multiplyScalar(1 / N_.w), Math.abs(Math.max(N_.x, N_.y));
+}, S_ = new br(), C_ = new U(), w_ = new U(), T_ = new br(), E_ = new br(), D_ = new br(), O_ = new U(), k_ = new K(), A_ = new Gs(), j_ = new U(), M_ = new xi(), N_ = new Xi(), P_ = new br(), F_, I_;
+function L_(e, t, n) {
+	return P_.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), P_.multiplyScalar(1 / P_.w), P_.x = I_ / n.width, P_.y = I_ / n.height, P_.applyMatrix4(e.projectionMatrixInverse), P_.multiplyScalar(1 / P_.w), Math.abs(Math.max(P_.x, P_.y));
 }
-function L_(e, t) {
+function R_(e, t) {
 	let n = e.matrixWorld, r = e.geometry, i = r.attributes.instanceStart, a = r.attributes.instanceEnd, o = Math.min(r.instanceCount, i.count);
 	for (let r = 0, s = o; r < s; r++) {
-		k_.start.fromBufferAttribute(i, r), k_.end.fromBufferAttribute(a, r), k_.applyMatrix4(n);
+		A_.start.fromBufferAttribute(i, r), A_.end.fromBufferAttribute(a, r), A_.applyMatrix4(n);
 		let o = new U(), s = new U();
-		P_.distanceSqToSegment(k_.start, k_.end, s, o), s.distanceTo(o) < F_ * .5 && t.push({
+		F_.distanceSqToSegment(A_.start, A_.end, s, o), s.distanceTo(o) < I_ * .5 && t.push({
 			point: s,
 			pointOnLine: o,
-			distance: P_.origin.distanceTo(s),
+			distance: F_.origin.distanceTo(s),
 			object: e,
 			face: null,
 			faceIndex: r,
@@ -62089,29 +62105,29 @@ function L_(e, t) {
 		});
 	}
 }
-function R_(e, t, n) {
+function z_(e, t, n) {
 	let r = t.projectionMatrix, i = e.material.resolution, a = e.matrixWorld, o = e.geometry, s = o.attributes.instanceStart, c = o.attributes.instanceEnd, l = Math.min(o.instanceCount, s.count), u = -t.near;
-	P_.at(1, E_), E_.w = 1, E_.applyMatrix4(t.matrixWorldInverse), E_.applyMatrix4(r), E_.multiplyScalar(1 / E_.w), E_.x *= i.x / 2, E_.y *= i.y / 2, E_.z = 0, D_.copy(E_), O_.multiplyMatrices(t.matrixWorldInverse, a);
+	F_.at(1, D_), D_.w = 1, D_.applyMatrix4(t.matrixWorldInverse), D_.applyMatrix4(r), D_.multiplyScalar(1 / D_.w), D_.x *= i.x / 2, D_.y *= i.y / 2, D_.z = 0, O_.copy(D_), k_.multiplyMatrices(t.matrixWorldInverse, a);
 	for (let t = 0, o = l; t < o; t++) {
-		if (w_.fromBufferAttribute(s, t), T_.fromBufferAttribute(c, t), w_.w = 1, T_.w = 1, w_.applyMatrix4(O_), T_.applyMatrix4(O_), w_.z > u && T_.z > u) continue;
-		if (w_.z > u) {
-			let e = w_.z - T_.z, t = (w_.z - u) / e;
-			w_.lerp(T_, t);
-		} else if (T_.z > u) {
-			let e = T_.z - w_.z, t = (T_.z - u) / e;
-			T_.lerp(w_, t);
+		if (T_.fromBufferAttribute(s, t), E_.fromBufferAttribute(c, t), T_.w = 1, E_.w = 1, T_.applyMatrix4(k_), E_.applyMatrix4(k_), T_.z > u && E_.z > u) continue;
+		if (T_.z > u) {
+			let e = T_.z - E_.z, t = (T_.z - u) / e;
+			T_.lerp(E_, t);
+		} else if (E_.z > u) {
+			let e = E_.z - T_.z, t = (E_.z - u) / e;
+			E_.lerp(T_, t);
 		}
-		w_.applyMatrix4(r), T_.applyMatrix4(r), w_.multiplyScalar(1 / w_.w), T_.multiplyScalar(1 / T_.w), w_.x *= i.x / 2, w_.y *= i.y / 2, T_.x *= i.x / 2, T_.y *= i.y / 2, k_.start.copy(w_), k_.start.z = 0, k_.end.copy(T_), k_.end.z = 0;
-		let o = k_.closestPointToPointParameter(D_, !0);
-		k_.at(o, A_);
-		let l = nr.lerp(w_.z, T_.z, o), d = l >= -1 && l <= 1, f = D_.distanceTo(A_) < F_ * .5;
+		T_.applyMatrix4(r), E_.applyMatrix4(r), T_.multiplyScalar(1 / T_.w), E_.multiplyScalar(1 / E_.w), T_.x *= i.x / 2, T_.y *= i.y / 2, E_.x *= i.x / 2, E_.y *= i.y / 2, A_.start.copy(T_), A_.start.z = 0, A_.end.copy(E_), A_.end.z = 0;
+		let o = A_.closestPointToPointParameter(O_, !0);
+		A_.at(o, j_);
+		let l = nr.lerp(T_.z, E_.z, o), d = l >= -1 && l <= 1, f = O_.distanceTo(j_) < I_ * .5;
 		if (d && f) {
-			k_.start.fromBufferAttribute(s, t), k_.end.fromBufferAttribute(c, t), k_.start.applyMatrix4(a), k_.end.applyMatrix4(a);
+			A_.start.fromBufferAttribute(s, t), A_.end.fromBufferAttribute(c, t), A_.start.applyMatrix4(a), A_.end.applyMatrix4(a);
 			let r = new U(), i = new U();
-			P_.distanceSqToSegment(k_.start, k_.end, i, r), n.push({
+			F_.distanceSqToSegment(A_.start, A_.end, i, r), n.push({
 				point: i,
 				pointOnLine: r,
-				distance: P_.origin.distanceTo(i),
+				distance: F_.origin.distanceTo(i),
 				object: e,
 				face: null,
 				faceIndex: t,
@@ -62121,13 +62137,13 @@ function R_(e, t, n) {
 		}
 	}
 }
-var z_ = class extends Y {
-	constructor(e = new y_(), t = new b_({ color: Math.random() * 16777215 })) {
+var B_ = class extends Y {
+	constructor(e = new b_(), t = new x_({ color: Math.random() * 16777215 })) {
 		super(e, t), this.isLineSegments2 = !0, this.type = "LineSegments2";
 	}
 	computeLineDistances() {
 		let e = this.geometry, t = e.attributes.instanceStart, n = e.attributes.instanceEnd, r = new Float32Array(2 * t.count);
-		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) S_.fromBufferAttribute(t, e), C_.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + S_.distanceTo(C_);
+		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) C_.fromBufferAttribute(t, e), w_.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + C_.distanceTo(w_);
 		let i = new Ns(r, 2, 1);
 		return e.setAttribute("instanceDistanceStart", new sa(i, 1, 0)), e.setAttribute("instanceDistanceEnd", new sa(i, 1, 1)), this;
 	}
@@ -62135,32 +62151,30 @@ var z_ = class extends Y {
 		let n = this.material.worldUnits, r = e.camera;
 		if (r === null && !n && console.error("LineSegments2: \"Raycaster.camera\" needs to be set in order to raycast against LineSegments2 while worldUnits is set to false."), n === !1 && (this.material.resolution.x === 0 || this.material.resolution.y === 0)) return;
 		let i = e.params.Line2 === void 0 ? 0 : e.params.Line2.threshold || 0;
-		P_ = e.ray;
+		F_ = e.ray;
 		let a = this.matrixWorld, o = this.geometry, s = this.material;
-		F_ = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), M_.copy(o.boundingSphere).applyMatrix4(a);
+		I_ = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), N_.copy(o.boundingSphere).applyMatrix4(a);
 		let c;
-		if (c = n ? F_ * .5 : I_(r, Math.max(r.near, M_.distanceToPoint(P_.origin)), s.resolution), M_.radius += c, P_.intersectsSphere(M_) === !1) return;
-		o.boundingBox === null && o.computeBoundingBox(), j_.copy(o.boundingBox).applyMatrix4(a);
+		if (c = n ? I_ * .5 : L_(r, Math.max(r.near, N_.distanceToPoint(F_.origin)), s.resolution), N_.radius += c, F_.intersectsSphere(N_) === !1) return;
+		o.boundingBox === null && o.computeBoundingBox(), M_.copy(o.boundingBox).applyMatrix4(a);
 		let l;
-		l = n ? F_ * .5 : I_(r, Math.max(r.near, j_.distanceToPoint(P_.origin)), s.resolution), j_.expandByScalar(l), P_.intersectsBox(j_) !== !1 && (n ? L_(this, t) : R_(this, r, t));
+		l = n ? I_ * .5 : L_(r, Math.max(r.near, M_.distanceToPoint(F_.origin)), s.resolution), M_.expandByScalar(l), F_.intersectsBox(M_) !== !1 && (n ? R_(this, t) : z_(this, r, t));
 	}
 	onBeforeRender(e) {
 		let t = this.material.uniforms;
-		t && t.resolution && (e.getViewport(x_), this.material.uniforms.resolution.value.set(x_.z, x_.w));
+		t && t.resolution && (e.getViewport(S_), this.material.uniforms.resolution.value.set(S_.z, S_.w));
 	}
-};
-//#endregion
-//#region src/lib/ortep3d/three-contour-line-layer.js
-function B_() {
+}, V_ = 0, H_ = 1;
+function U_() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function V_(e) {
+function W_(e) {
 	return ArrayBuffer.isView(e) ? e : new Float32Array(e.flat(2));
 }
-function H_(e) {
+function G_(e) {
 	return ArrayBuffer.isView(e) ? e.length / 6 : e.length;
 }
-var U_ = class {
+var K_ = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null;
 	}
@@ -62177,35 +62191,56 @@ var U_ = class {
 		};
 	}
 	addSegments(e, t, n, r) {
-		let i = H_(t);
+		let i = G_(t);
 		if (i === 0) return;
-		let a = new y_();
-		a.setPositions(V_(t));
-		let o = new z_(a, new b_({
+		let a = W_(t);
+		if (this.options.haloWidth > 0) {
+			let t = new b_();
+			t.setPositions(a);
+			let r = new B_(t, new x_({
+				color: this.options.haloColor,
+				linewidth: this.options.lineWidth + 2 * this.options.haloWidth,
+				opacity: this.options.opacity,
+				transparent: this.options.opacity < 1,
+				depthWrite: !1,
+				worldUnits: !1,
+				alphaToCoverage: this.options.opacity >= 1,
+				polygonOffset: !0,
+				polygonOffsetFactor: V_,
+				polygonOffsetUnits: H_
+			}));
+			r.name = `${n[0].toUpperCase()}${n.slice(1)} contour halo`, r.renderOrder = -1, e.add(r);
+		}
+		let o = new b_();
+		o.setPositions(a);
+		let s = new B_(o, new x_({
 			color: r,
 			linewidth: this.options.lineWidth,
 			opacity: this.options.opacity,
 			transparent: this.options.opacity < 1,
-			depthWrite: !1,
+			depthWrite: !0,
 			worldUnits: !1,
-			alphaToCoverage: !0
+			alphaToCoverage: this.options.opacity >= 1,
+			polygonOffset: !0,
+			polygonOffsetFactor: V_,
+			polygonOffsetUnits: H_
 		}));
-		o.name = `${n[0].toUpperCase()}${n.slice(1)} contour lines`, o.userData.sign = n, o.userData.segmentCount = i, e.add(o);
+		s.name = `${n[0].toUpperCase()}${n.slice(1)} contour lines`, s.userData.sign = n, s.userData.segmentCount = i, e.add(s);
 	}
 	rebuild() {
-		let e = B_();
+		let e = U_();
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let t = Cm(this.field, this.structure, this.options);
+		let t = wm(this.field, this.structure, this.options);
 		return this.buildContours(t, e);
 	}
 	rebuildFromContours(e) {
-		let t = B_();
+		let t = U_();
 		return this.clearMesh(), !this.field || !e ? null : this.buildContours(e, t);
 	}
 	buildContours(e, t) {
-		let n = this.field.fieldKind === "deformation-density", r = this.options.lineColor ?? (n ? this.options.deformationPositiveColor : this.options.positiveColor), i = this.options.lineColor ?? (n ? this.options.deformationNegativeColor : this.options.negativeColor), a = B_(), o = new Qr();
+		let n = this.field.fieldKind === "deformation-density", r = this.options.lineColor ?? (n ? this.options.deformationPositiveColor : this.options.positiveColor), i = this.options.lineColor ?? (n ? this.options.deformationNegativeColor : this.options.negativeColor), a = U_(), o = new Qr();
 		o.name = "Planar contour lines", this.addSegments(o, e.positiveSegments, "positive", r), this.addSegments(o, e.negativeSegments, "negative", i), this.addSegments(o, e.zeroSegments, "zero", this.options.zeroColor);
-		let s = B_();
+		let s = U_();
 		return o.userData = {
 			displayMode: "contour-lines",
 			level: e.level,
@@ -62214,9 +62249,9 @@ var U_ = class {
 			dimensions: e.dimensions,
 			plane: e.plane,
 			segmentCount: e.segmentCount,
-			positiveSegmentCount: H_(e.positiveSegments),
-			negativeSegmentCount: H_(e.negativeSegments),
-			zeroSegmentCount: H_(e.zeroSegments),
+			positiveSegmentCount: G_(e.positiveSegments),
+			negativeSegmentCount: G_(e.negativeSegments),
+			zeroSegmentCount: G_(e.zeroSegments),
 			polygonCount: 0,
 			resolution: Math.max(...e.dimensions),
 			planeSetupTimeMs: e.timings.planeSetupTimeMs,
@@ -62262,16 +62297,16 @@ var U_ = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, W_ = Object.freeze(["constant", "onDemand"]), G_ = Object.freeze([
+}, q_ = Object.freeze(["constant", "onDemand"]), J_ = Object.freeze([
 	"solid-3d",
 	"cutout-3d",
 	"cutout-2d"
-]), K_ = Object.freeze(["uniform", "split"]), q_ = Object.freeze([
+]), Y_ = Object.freeze(["uniform", "split"]), X_ = Object.freeze([
 	"auto-omit",
 	"quality-omit",
 	"performance-omit",
 	"maximum-coverage"
-]), J_ = Object.freeze(["structure", "viewport"]), Y_ = Object.freeze(["uniform", "atom"]);
+]), Z_ = Object.freeze(["structure", "viewport"]), Q_ = Object.freeze(["uniform", "atom"]);
 Object.freeze(["single", "multiple"]), Object.freeze(["orthographic", "perspective"]), Object.freeze([
 	"none",
 	"constant",
@@ -62286,28 +62321,28 @@ Object.freeze(["single", "multiple"]), Object.freeze(["orthographic", "perspecti
 ]);
 //#endregion
 //#region src/lib/ortep3d/crystal-viewer.js
-function X_(e) {
+function $_(e) {
 	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
 }
-function Z_(e) {
-	if (e.placementMode !== void 0 && !q_.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${q_.join(", ")}`);
-	if (e.calloutPlacement !== void 0 && !J_.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${J_.join(", ")}`);
-	if (e.colorMode !== void 0 && !Y_.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${Y_.join(", ")}`);
+function ev(e) {
+	if (e.placementMode !== void 0 && !X_.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${X_.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !Z_.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${Z_.join(", ")}`);
+	if (e.colorMode !== void 0 && !Q_.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${Q_.join(", ")}`);
 	if (e.atomColorLuminanceCeiling !== void 0 && !(typeof e.atomColorLuminanceCeiling == "number" && e.atomColorLuminanceCeiling >= 0 && e.atomColorLuminanceCeiling <= 1)) throw Error("atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1");
 	if (e.atomColorLuminanceFloor !== void 0 && e.atomColorLuminanceFloor !== null && !(typeof e.atomColorLuminanceFloor == "number" && e.atomColorLuminanceFloor >= 0 && e.atomColorLuminanceFloor <= 1)) throw Error("atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1");
-	if (e.show !== void 0 && !X_(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+	if (e.show !== void 0 && !$_(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
 	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
 	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
 }
-function Q_(e) {
+function tv(e) {
 	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
 }
-function $_(e, t, n = []) {
+function nv(e, t, n = []) {
 	let r = /* @__PURE__ */ new Set([...Object.keys(t), ...n]);
-	return Object.fromEntries(Object.entries(Q_(e)).filter(([e]) => r.has(e)));
+	return Object.fromEntries(Object.entries(tv(e)).filter(([e]) => r.has(e)));
 }
-var ev = class {
+var rv = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -62448,16 +62483,16 @@ var ev = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, tv = class {
+}, iv = class {
 	constructor(e, t = {}) {
-		if (t.renderMode && !W_.includes(t.renderMode)) throw Error(`Invalid render mode: "${t.renderMode}". Must be one of: ${W_.join(", ")}`);
-		if (t.renderStyle && !G_.includes(t.renderStyle)) throw Error(`Invalid render style: "${t.renderStyle}". Must be one of: ${G_.join(", ")}`);
-		if (t.bondColorMode !== void 0 && !K_.includes(t.bondColorMode)) throw Error(`Invalid bond color mode: "${t.bondColorMode}". Must be one of: ${K_.join(", ")}`);
+		if (t.renderMode && !q_.includes(t.renderMode)) throw Error(`Invalid render mode: "${t.renderMode}". Must be one of: ${q_.join(", ")}`);
+		if (t.renderStyle && !J_.includes(t.renderStyle)) throw Error(`Invalid render style: "${t.renderStyle}". Must be one of: ${J_.join(", ")}`);
+		if (t.bondColorMode !== void 0 && !Y_.includes(t.bondColorMode)) throw Error(`Invalid bond color mode: "${t.bondColorMode}". Must be one of: ${Y_.join(", ")}`);
 		if (t.plot2DColorLuminanceCeiling !== void 0 && !(typeof t.plot2DColorLuminanceCeiling == "number" && t.plot2DColorLuminanceCeiling >= 0 && t.plot2DColorLuminanceCeiling <= 1)) throw Error("plot2DColorLuminanceCeiling must be a number from 0 to 1");
 		if (t.plot2DColorLuminanceFloor !== void 0 && t.plot2DColorLuminanceFloor !== null && !(typeof t.plot2DColorLuminanceFloor == "number" && t.plot2DColorLuminanceFloor >= 0 && t.plot2DColorLuminanceFloor <= 1)) throw Error("plot2DColorLuminanceFloor must be null or a number from 0 to 1");
 		for (let e of ["plot2DBondOutlineWidth", "plot2DOutlineWidth"]) if (t[e] !== void 0 && !(typeof t[e] == "number" && Number.isFinite(t[e]) && t[e] >= 0)) throw Error(`${e} must be a finite number greater than or equal to 0`);
-		Z_(t.atomLabels || {});
-		let n = Q_(t.atomLabels || {});
+		ev(t.atomLabels || {});
+		let n = tv(t.atomLabels || {});
 		this.container = e;
 		let r = t.camera?.initialPosition ?? Q.camera.initialPosition;
 		this.options = {
@@ -62532,19 +62567,19 @@ var ev = class {
 			},
 			differenceDensity: {
 				...Q.differenceDensity,
-				...Q_(t.differenceDensity || {})
+				...tv(t.differenceDensity || {})
 			},
 			scalarField: {
 				...Q.scalarField,
-				...Q_(t.scalarField || {})
+				...tv(t.scalarField || {})
 			},
 			isosurface: {
 				...Q.isosurface,
-				...Q_(t.isosurface || {})
+				...tv(t.isosurface || {})
 			},
 			contourLines: {
 				...Q.contourLines,
-				...Q_(t.contourLines || {})
+				...tv(t.contourLines || {})
 			}
 		}, this.state = {
 			isDragging: !1,
@@ -62563,19 +62598,19 @@ var ev = class {
 			contourDisplayVersion: 0,
 			currentStructureFactorModel: null
 		}, this.scalarFieldUpdateCallbacks = /* @__PURE__ */ new Set(), this.modifierModeCallbacks = /* @__PURE__ */ new Set(), this.scalarFieldLoadSequence = 0, this.scalarFieldWorker = null, this.scalarFieldPendingResolve = null, this.scalarFieldMainThreadLoadId = null, this.scalarFieldLoadTarget = null, this.scalarFieldIdSequence = 0, this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity }, this.defaultScalarFieldOptions = { ...this.options.scalarField }, this.defaultIsosurfaceOptions = { ...this.options.isosurface }, this.modifiers = {
-			removeatoms: new lg(),
-			addhydrogen: new dg(),
-			missingbonds: new ug(this.options.elementProperties, this.options.bondGrowTolerance),
-			disorder: new sg(this.options.disorderMode),
-			symmetry: new cg(this.options.symmetryMode, this.options.packingCutoff),
-			hydrogen: new og(this.options.hydrogenMode)
-		}, this.selections = new ev(this.options), this.setupScene(), this.isosurfaceLayer = new g_(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new U_(this.moleculeContainer, {
+			removeatoms: new ug(),
+			addhydrogen: new fg(),
+			missingbonds: new dg(this.options.elementProperties, this.options.bondGrowTolerance),
+			disorder: new cg(this.options.disorderMode),
+			symmetry: new lg(this.options.symmetryMode, this.options.packingCutoff),
+			hydrogen: new sg(this.options.hydrogenMode)
+		}, this.selections = new rv(this.options), this.setupScene(), this.isosurfaceLayer = new __(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new K_(this.moleculeContainer, {
 			...this.options.isosurface,
 			...this.options.contourLines
-		}), this.atomLabelManager = new f_(this), this.controls = new Sg(this), this.animate(), this.needsRender = !0;
+		}), this.atomLabelManager = new p_(this), this.controls = new Cg(this), this.animate(), this.needsRender = !0;
 	}
 	setupScene() {
-		this.scene = new oi(), this.cameraController = Eg(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new ld({
+		this.scene = new oi(), this.cameraController = Dg(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new ld({
 			antialias: !0,
 			alpha: !0,
 			preserveDrawingBuffer: !0
@@ -62602,7 +62637,7 @@ var ev = class {
 			} catch (e) {
 				if (this.options.fixCifErrors) throw e;
 				try {
-					sh(i), a = ze.fromCIF(i);
+					ch(i), a = ze.fromCIF(i);
 				} catch {
 					throw e;
 				}
@@ -62652,15 +62687,15 @@ var ev = class {
 		};
 		this.cancelScalarFieldLoad("Superseded by a new FCF load"), this.options.differenceDensity = {
 			...this.defaultDifferenceDensityOptions,
-			...$_(n, Q.differenceDensity)
+			...nv(n, Q.differenceDensity)
 		};
 		let r = {
 			...this.defaultIsosurfaceOptions,
-			...$_(n, Q.isosurface, ["level", "sign"])
+			...nv(n, Q.isosurface, ["level", "sign"])
 		};
 		this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...$_(n, Q.scalarField)
+			...nv(n, Q.scalarField)
 		};
 		let i = ++this.scalarFieldLoadSequence, a = this.prepareScalarFieldLoad(i, n, r, "Difference density");
 		return this.notifyScalarFieldUpdate({
@@ -62700,15 +62735,15 @@ var ev = class {
 			"periodic",
 			"level",
 			"sign"
-		]), r = $_(t, Q.isosurface, ["level", "sign"]), i = {
+		]), r = nv(t, Q.isosurface, ["level", "sign"]), i = {
 			...this.defaultIsosurfaceOptions,
 			...r
 		};
 		delete i.level, delete i.sign, this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...$_(t, Q.scalarField)
+			...nv(t, Q.scalarField)
 		};
-		let a = Object.fromEntries(Object.entries(Q_(t)).filter(([e]) => n.has(e))), o = {
+		let a = Object.fromEntries(Object.entries(tv(t)).filter(([e]) => n.has(e))), o = {
 			density: {
 				displayLabel: "ρ/eÅ⁻³",
 				quantityName: "electron density",
@@ -62766,7 +62801,7 @@ var ev = class {
 	}
 	loadDifferenceDensityInWorker(e, t, n) {
 		return new Promise((r) => {
-			let i = new p_();
+			let i = new m_();
 			this.scalarFieldWorker = i, this.scalarFieldPendingResolve = r;
 			let a = (e) => {
 				if (n !== this.scalarFieldLoadSequence) return;
@@ -62820,7 +62855,7 @@ var ev = class {
 	}
 	loadCubeInWorker(e, t, n) {
 		return new Promise((r) => {
-			let i = new p_();
+			let i = new m_();
 			this.scalarFieldWorker = i, this.scalarFieldPendingResolve = r;
 			let a = (e) => {
 				if (n !== this.scalarFieldLoadSequence) return;
@@ -62871,7 +62906,7 @@ var ev = class {
 	async loadDifferenceDensityOnMainThread(e, t, n) {
 		this.scalarFieldMainThreadLoadId = n;
 		try {
-			let r = h_(Vp(e, t, this.differenceDensityDatasetOptions()), {
+			let r = g_(Vp(e, t, this.differenceDensityDatasetOptions()), {
 				steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
 				reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
 				initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -62986,7 +63021,7 @@ var ev = class {
 		};
 	}
 	normalizedIsosurfaceSteps() {
-		return m_(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
+		return h_(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
 	}
 	prepareScalarFieldLoad(e, t, n, r) {
 		let i = t.fieldId, a = i == null ? `scalar-field-${++this.scalarFieldIdSequence}` : String(i);
@@ -63244,7 +63279,7 @@ var ev = class {
 			this.cancelScalarFieldLoad("Superseded by a direct scalar field");
 			let n = {
 				...this.defaultIsosurfaceOptions,
-				...$_(t, Q.isosurface, ["level", "sign"])
+				...nv(t, Q.isosurface, ["level", "sign"])
 			};
 			this.prepareScalarFieldLoad(null, t, n, e.quantityName ?? "Scalar field"), this.applyProgressiveScalarField(e, {
 				loadId: null,
@@ -63344,7 +63379,7 @@ var ev = class {
 		};
 	}
 	updateIsosurfaceOptions(e = {}) {
-		let t = Q_(e);
+		let t = tv(e);
 		if (Object.keys(t).length === 1 && Object.hasOwn(t, "visible")) return this.setIsosurfaceVisibility(t.visible);
 		this.options.isosurface = {
 			...this.options.isosurface,
@@ -63359,7 +63394,7 @@ var ev = class {
 	updateContourLineOptions(e = {}) {
 		return this.options.contourLines = {
 			...this.options.contourLines,
-			...Q_(e)
+			...tv(e)
 		}, this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1, this.state.scalarField && this.state.displayStructure && (this.rebuildScalarFieldDisplay(), this.requestRender(), this.notifyScalarFieldUpdate({
 			type: "display",
 			...this.scalarFieldDisplayState()
@@ -63419,10 +63454,10 @@ var ev = class {
 	}
 	async loadStructure(e = this.state.baseStructure) {
 		this.state.baseStructure = e, this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-		let t = vg(this.state.currentStructure);
+		let t = yg(this.state.currentStructure);
 		t && (this.container.clientHeight > this.container.clientWidth && t.premultiply(new K().makeRotationZ(Math.PI / 2)), this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), this.moleculeContainer.updateMatrixWorld(!0);
 		let n = new xi().setFromObject(this.state.currentStructure);
-		return n.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), xg(this.scene, this.state.currentStructure, n), this.requestRender(), { success: !0 };
+		return n.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), Sg(this.scene, this.state.currentStructure, n), this.requestRender(), { success: !0 };
 	}
 	async updateStructure() {
 		try {
@@ -63440,7 +63475,7 @@ var ev = class {
 		let e = this.state.baseStructure, t = !1;
 		for (let n of Object.values(this.modifiers)) e = n.apply(e), t ||= n.drawCell;
 		if (t) {
-			let t = kg(e.cell, this.options.cell);
+			let t = Ag(e.cell, this.options.cell);
 			this.moleculeContainer.add(t);
 		}
 		let n = new Wd(e, this.options).getGroup();
@@ -63560,7 +63595,7 @@ var ev = class {
 		return i && (this.renderer.setSize(n, r, !1), e.style.width = `${this.container.clientWidth}px`, e.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, n, r), this.state?.currentStructure?.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight)), i;
 	}
 	captureImage({ scale: e = 2, longEdge: t = null, background: n = "transparent", includeLabels: r = !0 } = {}) {
-		let i = this.container.clientWidth, a = this.container.clientHeight, o = bg(i, a, {
+		let i = this.container.clientWidth, a = this.container.clientHeight, o = xg(i, a, {
 			scale: e,
 			longEdge: t
 		}), s = this.renderer.domElement, c = s.width, l = s.height, u = s.style.width, d = s.style.height;
@@ -63580,12 +63615,12 @@ var ev = class {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
 	setAtomLabels(e) {
-		if (!X_(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		if (!$_(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
 	}
 	updateAtomLabelOptions(e) {
-		Z_(e);
-		let t = Q_(e);
+		ev(e);
+		let t = tv(e);
 		this.options.atomLabels = {
 			...this.options.atomLabels,
 			...t,
@@ -63609,27 +63644,27 @@ var ev = class {
 };
 //#endregion
 //#region src/lib/ortep3d/viewer-interaction-coupling.js
-function nv(e) {
+function av(e) {
 	let t = e?.viewer || e;
 	if (!t?.controls?.onInteraction || typeof t.controls.applyCoupledInteraction != "function" || typeof t.requestRender != "function") throw Error("Coupled participants must be CrystalViewer or initialized cifview-widget instances");
 	return t;
 }
-function rv(e) {
+function ov(e) {
 	return typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 0);
 }
-function iv(e) {
+function sv(e) {
 	typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e);
 }
-var av = [
+var cv = [
 	"hydrogen",
 	"disorder",
 	"symmetry"
-], ov = class {
+], lv = class {
 	constructor(e = []) {
 		this.viewers = /* @__PURE__ */ new Map(), this.pendingInteractions = [], this.pendingFrame = null, this.pendingModeUpdate = Promise.resolve(), e.forEach((e) => this.add(e));
 	}
 	add(e) {
-		let t = nv(e);
+		let t = av(e);
 		if (this.viewers.has(t)) return this;
 		let n = t.controls.onInteraction((e) => {
 			this.enqueue(t, e);
@@ -63642,9 +63677,9 @@ var av = [
 		}), this;
 	}
 	async synchronizeFrom(e) {
-		let t = nv(e);
+		let t = av(e);
 		if (!this.viewers.has(t)) throw Error("The synchronization source must belong to this coupling");
-		let n = Object.fromEntries(av.map((e) => [e, t.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
+		let n = Object.fromEntries(cv.map((e) => [e, t.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
 		return await Promise.all([...this.viewers.keys()].filter((e) => e !== t).map((e) => e.setModifierModes?.(n, { broadcast: !1 }))), this.synchronizeViewFrom(t), this;
 	}
 	synchronizeViewFrom(e) {
@@ -63666,17 +63701,17 @@ var av = [
 				this.pendingInteractions[n] = {
 					source: e,
 					interaction: t
-				}, this.pendingFrame === null && (this.pendingFrame = rv(() => this.flush()));
+				}, this.pendingFrame === null && (this.pendingFrame = ov(() => this.flush()));
 				return;
 			}
 		}
 		this.pendingInteractions.push({
 			source: e,
 			interaction: t
-		}), this.pendingFrame === null && (this.pendingFrame = rv(() => this.flush()));
+		}), this.pendingFrame === null && (this.pendingFrame = ov(() => this.flush()));
 	}
 	enqueueModeChange(e, t) {
-		t.coupled || !av.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
+		t.coupled || !cv.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
 			this.viewers.has(e) && (await Promise.all([...this.viewers.keys()].filter((t) => t !== e).map((e) => e.setModifierModes?.({ [t.modifierName]: t.mode }, { broadcast: !1 }))), this.viewers.has(e) && this.synchronizeViewFrom(e));
 		}).catch((e) => {
 			console.error("Coupled modifier mode update failed:", e);
@@ -63686,7 +63721,7 @@ var av = [
 		this.flush(), await this.pendingModeUpdate;
 	}
 	flush() {
-		if (this.pendingFrame !== null && (iv(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
+		if (this.pendingFrame !== null && (sv(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
 		let e = this.pendingInteractions;
 		this.pendingInteractions = [];
 		let t = /* @__PURE__ */ new Set();
@@ -63694,7 +63729,7 @@ var av = [
 		t.forEach((e) => e.requestRender());
 	}
 	dispose() {
-		this.pendingFrame !== null && (iv(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
+		this.pendingFrame !== null && (sv(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
 		let e = [...this.viewers.keys()];
 		this.viewers.forEach(({ stopInteraction: e, stopMode: t }) => {
 			e(), t();
@@ -63703,12 +63738,12 @@ var av = [
 		});
 	}
 };
-function sv(...e) {
-	return new ov(e.length === 1 && Array.isArray(e[0]) ? e[0] : e);
+function uv(...e) {
+	return new lv(e.length === 1 && Array.isArray(e[0]) ? e[0] : e);
 }
 //#endregion
 //#region src/lib/generated/svg-icons.js
-var cv = {
+var dv = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -63732,7 +63767,7 @@ var cv = {
 };
 //#endregion
 //#region src/lib/density/scalar-field-display-state.js
-function lv() {
+function fv() {
 	return {
 		loading: !1,
 		available: !1,
@@ -63751,9 +63786,9 @@ function lv() {
 		pendingFieldName: null
 	};
 }
-function uv(e, t) {
+function pv(e, t) {
 	if (t.type === "started") return {
-		...lv(),
+		...fv(),
 		loading: !0,
 		visible: t.visible ?? !0,
 		sigmaLevel: t.sigmaLevel ?? null,
@@ -63768,7 +63803,7 @@ function uv(e, t) {
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: t.pendingFieldName ?? null
 	};
-	if (t.type === "cleared") return lv();
+	if (t.type === "cleared") return fv();
 	if (["error", "cancelled"].includes(t.type)) return e.fieldCount > 0 ? {
 		...e,
 		loading: !1,
@@ -63784,7 +63819,7 @@ function uv(e, t) {
 		activeFieldId: t.activeFieldId ?? e.activeFieldId,
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: null
-	} : lv();
+	} : fv();
 	if (t.type === "visibility") return {
 		...e,
 		visible: !!t.visible,
@@ -63820,7 +63855,7 @@ function uv(e, t) {
 }
 //#endregion
 //#region src/lib/widget.js
-var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", fv = class extends HTMLElement {
+var mv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", hv = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -63839,13 +63874,13 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = dv, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = mv, document.head.appendChild(e);
 		}
-		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = lv(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
+		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = fv(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...cv,
+			...dv,
 			...this.customIcons
 		};
 	}
@@ -63856,7 +63891,7 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new tv(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new iv(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
 		r ? await this.loadFromUrl(r, a) : i && await this.loadFromString(i, a);
 	}
@@ -63865,7 +63900,7 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	}
 	connectViewerEvents() {
 		this.stopScalarFieldUpdates?.(), this.stopModifierModeUpdates?.(), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
-			this.scalarFieldDisplay = uv(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+			this.scalarFieldDisplay = pv(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
 		}) ?? null, this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
 			this.setupButtons();
 		}) ?? null, this.viewer.selections.onChange((e) => {
@@ -63982,7 +64017,7 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		i && (i.setAttribute("alt", r), i.setAttribute("role", "img"), i.setAttribute("aria-label", r));
 	}
 	getIcon(e, t) {
-		return e === "disorder" ? ch(this.icons.disorder, t) : this.icons[e]?.[t] || "";
+		return e === "disorder" ? lh(this.icons.disorder, t) : this.icons[e]?.[t] || "";
 	}
 	async attributeChangedCallback(e, t, n) {
 		if (this.viewer) switch (e) {
@@ -64017,7 +64052,7 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 			case "options":
 				if (this.parseOptions(), this.parseInitialAtomLabels(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.viewer.dispose(), this.viewer = new tv(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons(), this.updateCaption());
+					this.viewer.dispose(), this.viewer = new iv(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons(), this.updateCaption());
 				}
 				break;
 			case "block": {
@@ -64117,9 +64152,9 @@ var dv = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", fv);
+	window.customElements.define("cifview-widget", hv);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { lg as AtomLabelFilter, Jp as BOHR_TO_ANGSTROM, ug as BondGenerator, w as CIF, fv as CifViewWidget, ze as CrystalStructure, tv as CrystalViewer, vd as DEFAULT_CONTOUR_LINE_OPTIONS, hd as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, _d as DEFAULT_ISOSURFACE_OPTIONS, gd as DEFAULT_SCALAR_FIELD_OPTIONS, sg as DisorderFilter, og as HydrogenFilter, Wd as ORTEP3JsStructure, vp as ScalarFieldGrid, cg as SymmetryGrower, U_ as ThreeContourLineLayer, g_ as ThreeIsosurfaceLayer, ov as ViewerInteractionCoupling, qp as calculateDifferenceDensityMap, Jf as calculateIAMStructureFactors, Cm as calculatePlanarContours, Vm as connectedIsosurfaceRegions, sv as coupleViewerInteractions, zp as createCifDifferenceDensityDataset, qf as createIAMStructureFactorCalculator, Nm as createIsosurfaces, $m as createSymmetryAwareIsosurfaces, Lf as evaluateCromerMann, of as formatValueEsd, lh as generateDisorderGroupIcon, ch as getDisorderIcon, dp as isSystematicAbsence, Om as isosurfaceBounds, km as isosurfaceResolution, kf as lookupAnomalousDispersion, If as lookupCromerMann, fp as mergeReflectionIntensities, rm as parseCube, Vp as parseDifferenceDensitySource, pp as readReflectionIntensities, vm as resolveContourPlane, sh as tryToFixCifBlock };
+export { ug as AtomLabelFilter, Jp as BOHR_TO_ANGSTROM, dg as BondGenerator, w as CIF, hv as CifViewWidget, ze as CrystalStructure, iv as CrystalViewer, vd as DEFAULT_CONTOUR_LINE_OPTIONS, hd as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, _d as DEFAULT_ISOSURFACE_OPTIONS, gd as DEFAULT_SCALAR_FIELD_OPTIONS, cg as DisorderFilter, sg as HydrogenFilter, Wd as ORTEP3JsStructure, vp as ScalarFieldGrid, lg as SymmetryGrower, K_ as ThreeContourLineLayer, __ as ThreeIsosurfaceLayer, lv as ViewerInteractionCoupling, qp as calculateDifferenceDensityMap, Jf as calculateIAMStructureFactors, wm as calculatePlanarContours, Hm as connectedIsosurfaceRegions, uv as coupleViewerInteractions, zp as createCifDifferenceDensityDataset, qf as createIAMStructureFactorCalculator, Pm as createIsosurfaces, eh as createSymmetryAwareIsosurfaces, Lf as evaluateCromerMann, of as formatValueEsd, uh as generateDisorderGroupIcon, lh as getDisorderIcon, dp as isSystematicAbsence, km as isosurfaceBounds, Am as isosurfaceResolution, kf as lookupAnomalousDispersion, If as lookupCromerMann, fp as mergeReflectionIntensities, rm as parseCube, Vp as parseDifferenceDensitySource, pp as readReflectionIntensities, ym as resolveContourPlane, ch as tryToFixCifBlock };
