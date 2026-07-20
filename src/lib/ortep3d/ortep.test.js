@@ -1792,6 +1792,42 @@ describe('ORTEPBondInstance', () => {
         expect(bondInstance.segments[0].pool).toBe(pool);
     });
 
+    test('keeps the wrapper local matrix identity, storing the placement only in segments/fullMatrix', () => {
+        // Regression: the wrapper's own `matrix` must stay identity, matching
+        // ORTEPAtomInstance. PooledSelectableObject sets matrixAutoUpdate=false, so
+        // if the wrapper's local matrix carried the bond placement, its matrixWorld
+        // would pick that up via the normal Three.js update cascade as soon as a
+        // rotating ancestor forced a recompute - and the raycast redirect's
+        // `this.matrixWorld * segment.matrix` would then apply the placement twice,
+        // breaking bond selection after any rotation (while atoms stayed correct).
+        const bondInstance = buildBondInstance();
+
+        expect(bondInstance.matrix.elements).toEqual(new THREE.Matrix4().elements);
+        expect(bondInstance.fullMatrix.elements).toEqual(bondInstance.segments[0].matrix.elements);
+    });
+
+    test('raycast redirect applies the bond placement once, matching the render, after a parent rotation', () => {
+        // Regression for the bug above, exercised end-to-end: after an ancestor
+        // (standing in for the rotating molecule container) forces a matrixWorld
+        // recompute, the wrapper's matrixWorld must equal the ancestor's alone, so
+        // combining it with segment.matrix in the raycast redirect reproduces
+        // exactly the transform rendered into the shared InstancedMesh - not that
+        // transform applied twice.
+        const bondInstance = buildBondInstance();
+        const parent = new THREE.Object3D();
+        parent.add(bondInstance);
+        parent.rotation.set(0.4, 0.7, 0.2);
+        parent.updateMatrixWorld(true);
+
+        expect(bondInstance.matrixWorld.elements).toEqual(parent.matrixWorld.elements);
+
+        const raycastCombined = new THREE.Matrix4()
+            .multiplyMatrices(bondInstance.matrixWorld, bondInstance.segments[0].matrix);
+        const renderedTransform = new THREE.Matrix4()
+            .multiplyMatrices(parent.matrixWorld, bondInstance.segments[0].matrix);
+        expect(raycastCombined.elements).toEqual(renderedTransform.elements);
+    });
+
     test('registers the same transform calcBondTransform would produce', () => {
         const bondInstance = buildBondInstance();
 

@@ -2449,7 +2449,19 @@ export class ORTEPBondInstance extends PooledSelectableObject {
             selectable: true,
             isOpenDisorderBond: false,
         };
-        this.matrix = matrix;
+        // Keep the full (unsplit) transform for the selection marker, which spans
+        // the whole bond regardless of split colouring. This must NOT be assigned
+        // to `this.matrix`: PooledSelectableObject relies on the wrapper's own
+        // local matrix staying identity (matrixAutoUpdate is false, so nothing
+        // else resets it), with all positioning carried in `segment.matrix`
+        // instead. Setting `this.matrix` here previously meant the wrapper's own
+        // matrixWorld picked up this transform via the normal Three.js update
+        // cascade as soon as an ancestor (the rotating molecule container) forced
+        // a recompute, after which the raycast redirect's
+        // `this.matrixWorld * segment.matrix` applied the bond's placement twice -
+        // correct only by accident before the first rotation, when matrixWorld
+        // was still untouched identity.
+        this.fullMatrix = matrix;
         const segmentMatrices = colors ? ORTEPBondInstance.computeSplitMatrices(matrix) : [matrix];
         this.segments = segmentMatrices.map((segmentMatrix, index) => {
             const segmentColor = colors?.[index] || null;
@@ -2471,7 +2483,7 @@ export class ORTEPBondInstance extends PooledSelectableObject {
     createSelectionMarker(color, options) {
         const segment = this.segments[0];
         const outlineMesh = new THREE.Mesh(segment.pool.mesh.geometry, this.createSelectionMaterial(color));
-        outlineMesh.applyMatrix4(this.matrix);
+        outlineMesh.applyMatrix4(this.fullMatrix);
         outlineMesh.scale.x *= options.selection.bondMarkerMult;
         outlineMesh.scale.z *= options.selection.bondMarkerMult;
         outlineMesh.userData.selectable = false;
