@@ -376,6 +376,11 @@
       "default": "1.5"
     },
     {
+      "path": "contourLines.maxAtomDistance",
+      "type": "Number",
+      "default": "2.5"
+    },
+    {
       "path": "contourLines.resolution",
       "type": "Number",
       "default": "256"
@@ -439,6 +444,16 @@
       "path": "contourLines.lineWidth",
       "type": "Number",
       "default": "1.5"
+    },
+    {
+      "path": "contourLines.haloColor",
+      "type": "Color",
+      "default": "\"#ffffff\""
+    },
+    {
+      "path": "contourLines.haloWidth",
+      "type": "Number",
+      "default": "1"
     },
     {
       "path": "contourLines.opacity",

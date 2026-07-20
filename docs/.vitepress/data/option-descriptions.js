@@ -258,6 +258,12 @@ export const descriptions = {
         'definition (see below). Explicit atom lists require three non-collinear atoms; best-fit ' +
         'mode uses a stable crystallographic fallback for one- or two-atom structures.',
     'contourLines.padding': 'Automatic in-plane padding around all displayed atoms, in &Aring;.',
+    'contourLines.maxAtomDistance': {
+        type: 'Number|null',
+        description: 'Discards samples farther than this distance from any displayed atom, in ' +
+            '&Aring;, keeping the drawn contours from spanning empty space. Null or a negative ' +
+            'value keeps the unclipped padded rectangle.',
+    },
     'contourLines.resolution': 'Minimum samples per in-plane axis.',
     'contourLines.gridSpacing': 'Target Cartesian sample spacing in &Aring;.',
     'contourLines.maxResolution': 'Per-axis sample cap.',
@@ -289,6 +295,10 @@ export const descriptions = {
             'positive and negative colours from <code>isosurface</code>.',
     },
     'contourLines.lineWidth': 'Screen-space line width in pixels.',
+    'contourLines.haloColor': 'Colour of the outline drawn behind each contour line for ' +
+        'legibility over the structure.',
+    'contourLines.haloWidth': 'Additional screen-space width in pixels on each side of a contour ' +
+        'line for its halo outline. Zero or a negative value disables the halo.',
     'contourLines.opacity': 'Contour line opacity.',
     'contourLines.depthOffset': 'Offset along the plane normal in &Aring; to reduce overlap artefacts.',
 
