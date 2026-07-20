@@ -9,6 +9,7 @@ import { readReflectionIntensities } from './reflection-intensities.js';
 import { createShelxlExtinctionCorrection } from './extinction-correction.js';
 import { multiplyReflectionIndex, reciprocalSymmetryKernel } from './reciprocal-symmetry.js';
 import { ScalarFieldGrid } from './scalar-field.js';
+import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -152,6 +153,52 @@ function customCoefficientReader(loop, columns) {
             };
         },
     };
+}
+
+/** @returns {string|null} Raw text of a SHELXL solvent-mask FAB correction file. */
+function shelxFabText(block) {
+    block.parse();
+    const key = Object.keys(block.data).find(name => /shelx.*fab_file/i.test(name));
+    return key ? block.data[key] : null;
+}
+
+/** @returns {object|null} Per-reflection h/k/l and A/B mask corrections. */
+function readShelxFabCorrections(block) {
+    const text = shelxFabText(block);
+    if (typeof text !== 'string') {
+        return null;
+    }
+    const h = [];
+    const k = [];
+    const l = [];
+    const real = [];
+    const imaginary = [];
+    for (const line of text.split('\n')) {
+        const fields = line.trim().split(/\s+/).map(Number);
+        if (fields.length < 5 || fields.slice(0, 5).some(value => !Number.isFinite(value))) {
+            continue;
+        }
+        const [hv, kv, lv, a, b] = fields;
+        h.push(hv);
+        k.push(kv);
+        l.push(lv);
+        real.push(a);
+        imaginary.push(b);
+    }
+    return h.length > 0 ? { h, k, l, real, imaginary } : null;
+}
+
+/** @returns {object|null} Summary of smtbx/PLATON-style solvent-mask voids. */
+function readSolventMaskVoidSummary(block) {
+    const loop = optionalLoop(block, '_smtbx_masks_void');
+    const electrons = loopColumn(loop, [
+        '_smtbx_masks_void.count_electrons', '_smtbx_masks_void_count_electrons',
+    ]);
+    if (!electrons) {
+        return null;
+    }
+    const totalElectrons = electrons.reduce((sum, value) => sum + (finiteNumber(value) ?? 0), 0);
+    return { voidCount: electrons.length, totalElectrons };
 }
 
 /** @returns {number} Sign used to remove anomalous scattering from a selected operand. */
@@ -482,6 +529,52 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const coordinateBlock = typeof coordinateCifBlock === 'number'
         ? coordinateCif.getBlock(coordinateCifBlock)
         : coordinateCif.getBlockByName(coordinateCifBlock);
+    const requestedSolventMask = options.solventMaskCorrection ?? 'auto';
+    if (![true, false, 'auto'].includes(requestedSolventMask)) {
+        throw new Error('solventMaskCorrection must be "auto", true, or false');
+    }
+    const fab = requestedSolventMask !== false ? readShelxFabCorrections(coordinateBlock) : null;
+    let maskCorrectedCalculated = calculated;
+    let solventMaskAppliedCount = 0;
+    if (fab) {
+        const maskCoefficients = expandReflectionCoefficients(
+            fab.h,
+            fab.k,
+            fab.l,
+            i => ({ real: fab.real[i], imaginary: fab.imaginary[i] }),
+            symmetry,
+            false,
+        );
+        maskCorrectedCalculated = calculated.map((entry, index) => {
+            const observation = observed.reflections[index];
+            const correction = maskCoefficients.get(
+                `${observation.h},${observation.k},${observation.l}`,
+            );
+            if (!correction) {
+                return entry;
+            }
+            solventMaskAppliedCount++;
+            const real = entry.real + correction.real;
+            const imaginary = entry.imaginary + correction.imaginary;
+            return {
+                ...entry,
+                real,
+                imaginary,
+                amplitude: Math.hypot(real, imaginary),
+                phase: Math.atan2(imaginary, real) * 180 / Math.PI,
+            };
+        });
+    } else if (requestedSolventMask === true) {
+        throw new Error('solventMaskCorrection was requested but no _shelx_fab_file was found');
+    }
+    const solventMaskCorrection = {
+        enabled: Boolean(fab),
+        requested: requestedSolventMask,
+        source: 'shelx-fab-file',
+        fabReflectionCount: fab?.h.length ?? 0,
+        appliedReflectionCount: solventMaskAppliedCount,
+        ...readSolventMaskVoidSummary(coordinateBlock),
+    };
     const requestedExtinction = options.extinctionCorrection ?? 'auto';
     if (!['auto', true, false].includes(requestedExtinction) &&
         typeof requestedExtinction !== 'number' &&
@@ -498,7 +591,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         cell,
         calculator.metadata.wavelength,
         observed.reflections,
-        calculated,
+        maskCorrectedCalculated,
         embeddedFcfAlreadyCorrected ? false :
             requestedExtinction === 'auto' ? true : requestedExtinction,
     );
@@ -507,7 +600,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     }
     const fitted = fitObservedIntensityScale(
         observed.reflections,
-        calculated,
+        maskCorrectedCalculated,
         options.intensityScale,
         extinction.factors,
     );
@@ -516,7 +609,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     let scaleResidualDenominator = 0;
     const coefficientAt = index => {
         const observation = observed.reflections[index];
-        const fCalculated = calculated[index];
+        const fCalculated = maskCorrectedCalculated[index];
         const scaledIntensity = fitted.scale * observation.intensity /
             extinction.factors[index] ** 2;
         if (scaledIntensity < 0) {
@@ -558,6 +651,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         negativeIntensityCount,
         observations: observed.metadata,
         iam: calculator.metadata,
+        solventMaskCorrection,
         reflectionPolicy: {
             mergeFriedel: observed.metadata.mergeFriedel,
             includeAnomalous: calculator.metadata.includeAnomalous,
@@ -1078,6 +1172,7 @@ export function calculateDifferenceDensityMap(dataset, resolutionFraction = 1, g
         iam: dataset.iam,
         reflectionPolicy: dataset.reflectionPolicy,
         extinctionCorrection: dataset.extinctionCorrection,
+        solventMaskCorrection: dataset.solventMaskCorrection,
         symmetryOperations: dataset.symmetryOperations,
         resolutionFraction,
         gridOversampling,
