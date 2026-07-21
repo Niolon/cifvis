@@ -1,3 +1,7 @@
+// Single cif/fcf pair direct-vs-symmetry-aware isosurface timing. Needs a
+// real reflection file (.fcf), which COD does not provide - see
+// cod-sample.mjs / analysis/density-pipeline-cod.mjs's --fcf-dir for the
+// COD-scale synthetic-data counterpart to this benchmark.
 /* eslint-disable jsdoc/require-param -- local benchmark helpers */
 import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';

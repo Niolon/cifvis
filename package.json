@@ -45,8 +45,6 @@
     "prebench:labels": "npm run build:alldeps",
     "bench:labels": "node benchmark/labels.mjs",
     "bench:density-symmetry": "node benchmark/difference-density-symmetry.mjs",
-    "bench:density-cod": "node benchmark/density-pipeline-cod.mjs",
-    "bench:density-fit": "node benchmark/fit-density-heuristic.mjs",
     "bench:contours": "node benchmark/contour-lines.mjs",
     "bench:iam": "node benchmark/iam.mjs"
   },
