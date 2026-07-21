@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Single cif/cube pair contour-line timing. Invoked directly for one
+// structure, or via analysis/density-summary.mjs for a consolidated cross-density-
+// pipeline report alongside difference-density-symmetry.mjs and
+// analysis/density-pipeline-cod.mjs.
 /* eslint-disable jsdoc/require-param -- local benchmark helpers */
 import fs from 'node:fs';
 import * as THREE from 'three';
