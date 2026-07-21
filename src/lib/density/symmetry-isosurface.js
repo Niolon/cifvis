@@ -5,6 +5,7 @@ import {
     createIsosurfaces,
     DEFAULT_ISOSURFACE_OPTIONS,
     isosurfaceBounds,
+    wireframeFromSurface,
 } from './isosurface.js';
 
 const POSITION_TOLERANCE_ANGSTROM = 1e-4;
@@ -468,6 +469,9 @@ export function createSymmetryAwareIsosurfaces(
                     resolution: regionResolution,
                     maxPolyCount: regionMaxPolyCount,
                     sign: plan.sign,
+                    // Region patches must stay triangulated for stitching; the
+                    // final stitched mesh is converted to line edges below.
+                    keepTriangles: true,
                 },
             );
             marchingCubesTimeMs += performance.now() - regionStarted;
@@ -513,12 +517,18 @@ export function createSymmetryAwareIsosurfaces(
         removedDuplicateTriangleCount += stitched.removedTriangles;
         const material = surfaceMaterials[sign][0];
         surfaceMaterials[sign].slice(1).forEach(extraMaterial => extraMaterial.dispose());
+        const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
         const surface = new THREE.Mesh(stitched.geometry, material);
         surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}Isosurface`;
         surface.userData = { selectable: false, type: 'isosurface', sign };
-        surface.frustumCulled = false;
-        group.add(surface);
-        const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
+        if (usedOptions.wireframe) {
+            const lines = wireframeFromSurface(surface, material.color, usedOptions.opacity);
+            surface.geometry.dispose();
+            material.dispose();
+            group.add(lines);
+        } else {
+            group.add(surface);
+        }
         if (sign === 'positive') {
             positivePolygonCount = polygons;
         } else {

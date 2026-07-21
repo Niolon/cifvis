@@ -328,12 +328,12 @@
     {
       "path": "isosurface.positiveColor",
       "type": "Color",
-      "default": "\"#36b566\""
+      "default": "\"#267e47\""
     },
     {
       "path": "isosurface.negativeColor",
       "type": "Color",
-      "default": "\"#d94b64\""
+      "default": "\"#992a3e\""
     },
     {
       "path": "isosurface.deformationPositiveColor",

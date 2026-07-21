@@ -115,12 +115,62 @@ function isNearDisplayedAtom(cartesian, atomCoordinates, radiusSquared) {
     return false;
 }
 
+/**
+ * Replaces a triangulated surface mesh with a true edge-line representation.
+ * Drawing wireframe via a fully triangulated GL_LINE mesh rasterizes every
+ * triangle edge (including internal diagonals) every frame; extracting real
+ * edges once at rebuild time yields far fewer line segments and lets the GPU
+ * skip per-fragment PBR shading entirely.
+ * @param {THREE.Mesh} surface - Triangulated surface, kept for triangle-count statistics.
+ * @param {THREE.Color} color - Wireframe line color.
+ * @param {number} opacity - Wireframe line opacity.
+ * @returns {THREE.LineSegments} Edge-line replacement carrying the surface's name/userData/matrix.
+ */
+export function wireframeFromSurface(surface, color, opacity) {
+    const trimmed = surface.geometry.index
+        ? surface.geometry
+        : trimToDrawRange(surface.geometry);
+    const edges = new THREE.EdgesGeometry(trimmed);
+    if (trimmed !== surface.geometry) {
+        trimmed.dispose();
+    }
+    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+        color,
+        transparent: opacity < 1,
+        opacity,
+    }));
+    lines.name = surface.name;
+    lines.userData = surface.userData;
+    lines.matrix.copy(surface.matrix);
+    lines.matrixAutoUpdate = surface.matrixAutoUpdate;
+    return lines;
+}
+
+/** @returns {THREE.BufferGeometry} Copy of a non-indexed geometry trimmed to its draw range. */
+function trimToDrawRange(geometry) {
+    const { start, count } = geometry.drawRange;
+    const trimmed = new THREE.BufferGeometry();
+    for (const [attributeName, attribute] of Object.entries(geometry.attributes)) {
+        trimmed.setAttribute(
+            attributeName,
+            new THREE.BufferAttribute(
+                attribute.array.slice(
+                    start * attribute.itemSize,
+                    (start + count) * attribute.itemSize,
+                ),
+                attribute.itemSize,
+                attribute.normalized,
+            ),
+        );
+    }
+    return trimmed;
+}
+
 /** @returns {MarchingCubes} Configured scalar-field surface. */
 function createSurface(resolution, material, maxPolyCount, name, level) {
     const surface = new MarchingCubes(resolution, material, false, false, maxPolyCount);
     surface.name = name;
     surface.isolation = level;
-    surface.frustumCulled = false;
     surface.userData = {
         selectable: false,
         type: 'isosurface',
@@ -157,16 +207,22 @@ export function createIsosurfaces(field, structure, options = {}) {
     }
     const renderPositive = sign !== 'negative';
     const renderNegative = sign !== 'positive';
-    const positiveMaterial = new THREE.MeshStandardMaterial({
+    // Wireframe mode only rasterizes unlit line edges, so PBR shading (MeshStandardMaterial)
+    // is wasted per-fragment work on mobile GPUs; MeshBasicMaterial skips lighting entirely.
+    const MaterialClass = usedOptions.wireframe ? THREE.MeshBasicMaterial : THREE.MeshStandardMaterial;
+    const materialOptions = {
         color: usedOptions.positiveColor,
         transparent: usedOptions.opacity < 1,
         opacity: usedOptions.opacity,
         wireframe: usedOptions.wireframe,
         side: THREE.DoubleSide,
         depthWrite: usedOptions.opacity >= 1,
-        roughness: 0.35,
-        metalness: 0,
-    });
+    };
+    if (!usedOptions.wireframe) {
+        materialOptions.roughness = 0.35;
+        materialOptions.metalness = 0;
+    }
+    const positiveMaterial = new MaterialClass(materialOptions);
     const negativeMaterial = positiveMaterial.clone();
     negativeMaterial.color.set(usedOptions.negativeColor);
 
@@ -265,6 +321,14 @@ export function createIsosurfaces(field, structure, options = {}) {
         marchingCubesTimeMs: generationTimeMs,
         generationTimeMs,
     };
-    group.add(...surfaces);
+    const renderedSurfaces = usedOptions.wireframe && !usedOptions.keepTriangles
+        ? surfaces.map(surface => {
+            const lines = wireframeFromSurface(surface, surface.material.color, usedOptions.opacity);
+            surface.geometry.dispose();
+            surface.material.dispose();
+            return lines;
+        })
+        : surfaces;
+    group.add(...renderedSurfaces);
     return group;
 }
