@@ -471,18 +471,54 @@ export class BondGenerator extends BaseFilter {
             }
         }
 
-        // Build a grid of symmetry-image sites, keeping only those in a relevant cell.
-        const grid = new Map();
-        for (let j = 0; j < atoms.length; j++) {
+        // Cache the complete, ordered operation result for exact source
+        // coordinates. Mixed-occupancy sites commonly list several atom labels at
+        // the same position, so they can safely share these transformations.
+        const imageCache = new Map();
+        const imagesByAtom = new Array(atoms.length);
+        const transformedImages = fract => {
+            const sourceKey = fract.join(',');
+            const cached = imageCache.get(sourceKey);
+            if (cached) {
+                return cached;
+            }
+            const images = new Array(operations.length);
             for (let opIndex = 0; opIndex < operations.length; opIndex++) {
-                const image = operations[opIndex].applyToPoint(fracts[j]);
+                const image = operations[opIndex].applyToPoint(fract);
                 const fx = Math.floor(image[0]);
                 const fy = Math.floor(image[1]);
                 const fz = Math.floor(image[2]);
                 const wx = image[0] - fx;
                 const wy = image[1] - fy;
                 const wz = image[2] - fz;
-                const wrappedCart = toCart([wx, wy, wz]);
+                images[opIndex] = {
+                    opIndex, image, fx, fy, fz, wx, wy, wz,
+                    wrappedCart: toCart([wx, wy, wz]),
+                };
+            }
+            imageCache.set(sourceKey, images);
+            return images;
+        };
+
+        // Build a grid of symmetry-image sites, keeping only those in a relevant
+        // cell. Special-position operations can place the same atom at the exact
+        // same site. Deduplicate those only after they reach the same bucket, in
+        // original operation order. This preserves the representative operation
+        // code selected by the historical late `seen` check, which is significant
+        // to downstream fragment growth.
+        const grid = new Map();
+        // CIF multiplicity is optional (and often unreliable in real files).
+        // A small asymmetric unit relative to its symmetry group is a strong
+        // indicator that special positions can make operation images redundant.
+        // The workload floor avoids Set bookkeeping for trivial structures where
+        // scanning the duplicate sites is cheaper than maintaining the index.
+        const deduplicateGridSites = atoms.length <= operations.length
+            && atoms.length * operations.length >= 1024;
+        const gridSiteKeys = deduplicateGridSites ? new Map() : null;
+        for (let j = 0; j < atoms.length; j++) {
+            const images = transformedImages(fracts[j]);
+            imagesByAtom[j] = images;
+            for (const { opIndex, fx, fy, fz, wx, wy, wz, wrappedCart } of images) {
                 for (const sx of axisShifts(wx, marginFrac[0])) {
                     for (const sy of axisShifts(wy, marginFrac[1])) {
                         for (const sz of axisShifts(wz, marginFrac[2])) {
@@ -509,6 +545,19 @@ export class BondGenerator extends BaseFilter {
                             if (!bucket) {
                                 bucket = [];
                                 grid.set(key, bucket);
+                                if (deduplicateGridSites) {
+                                    gridSiteKeys.set(key, new Set());
+                                }
+                            }
+                            if (deduplicateGridSites) {
+                                const siteKey = `${j}|${Math.round((wx + sx) * 1e10)},`
+                                    + `${Math.round((wy + sy) * 1e10)},`
+                                    + `${Math.round((wz + sz) * 1e10)}`;
+                                const bucketSiteKeys = gridSiteKeys.get(key);
+                                if (bucketSiteKeys.has(siteKey)) {
+                                    continue;
+                                }
+                                bucketSiteKeys.add(siteKey);
                             }
                             bucket.push({
                                 atomIndex: j,
@@ -630,9 +679,8 @@ export class BondGenerator extends BaseFilter {
                 const maxDistance = this.getMaxBondDistance(
                     el1, elementMap.get(atom2.atomType), elementProperties,
                 );
-                for (let opIndex = 0; opIndex < operations.length; opIndex++) {
+                for (const { opIndex, image } of imagesByAtom[j]) {
                     const opId = idByIndex[opIndex];
-                    const image = operations[opIndex].applyToPoint(fracts[j]);
                     const baseTx = Math.round(fracts[i][0] - image[0]);
                     const baseTy = Math.round(fracts[i][1] - image[1]);
                     const baseTz = Math.round(fracts[i][2] - image[2]);
