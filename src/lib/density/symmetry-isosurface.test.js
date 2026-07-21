@@ -87,7 +87,7 @@ describe('symmetry-aware isosurfaces', () => {
         const group = createSymmetryAwareIsosurfaces(
             densityMap(),
             structure,
-            surfaceOptions,
+            { ...surfaceOptions, wireframe: false },
         );
 
         expect(group.userData.improperTransformCount).toBe(2);

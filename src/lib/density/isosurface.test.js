@@ -50,7 +50,20 @@ describe('isosurfaces', () => {
         expect(group.userData.level).toBeCloseTo(0.1);
         expect(group.userData.bounds.minimum[0]).toBeCloseTo(0.3);
         expect(group.userData.bounds.maximum[0]).toBeCloseTo(0.7);
-        expect(group.children.every(child => child.material.wireframe)).toBe(true);
+        expect(group.children.every(child => child.isLineSegments)).toBe(true);
+    });
+
+    test('renders solid meshes when wireframe display is disabled', () => {
+        const group = createIsosurfaces(densityMap, structureAt(0.5), {
+            resolution: 8,
+            radius: 2,
+            sigmaLevel: 1,
+            maxPolyCount: 2000,
+            wireframe: false,
+        });
+
+        expect(group.children.every(child => child.isMesh)).toBe(true);
+        expect(group.children.every(child => !child.material.wireframe)).toBe(true);
     });
 
     test('honours a Cube map absolute level and positive-only surface', () => {
