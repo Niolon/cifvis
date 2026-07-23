@@ -1,6 +1,6 @@
 import * as math from '../math-lite.js';
 import { Atom, UnitCell } from './crystal.js';
-import { FractPosition } from './position.js';
+import { FractPosition, positionsCoincide } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
 import { decodePositionCode, encodePositionCode } from './position-code.js';
@@ -583,9 +583,7 @@ export class CellSymmetry {
         const specialPositions  = [];
         const filteredAtoms = [];
         newAtoms.forEach((atom, i) => {
-            const isSpecial =  Math.abs(atom.position.x - atoms[i].position.x) * unitCell.a < 1e-3
-                && Math.abs(atom.position.y - atoms[i].position.y) * unitCell.b < 1e-3
-                && Math.abs(atom.position.z - atoms[i].position.z) * unitCell.c < 1e-3;
+            const isSpecial = positionsCoincide(atom.position, atoms[i].position, unitCell, 1e-3);
 
             if (isSpecial) {
                 specialPositions.push(atom.label);

@@ -102,6 +102,38 @@ export class FractPosition extends BasePosition {
 }
 
 /**
+ * Wraps a fractional position's coordinates into the [0, 1) range, i.e. into the
+ * reference unit cell. Used before comparing positions that may differ by whole
+ * lattice translations but represent the same crystallographic point.
+ * @param {FractPosition} position - Fractional position to wrap
+ * @returns {FractPosition} New position with each coordinate wrapped into [0, 1)
+ */
+export function wrapFractional(position) {
+    const wrap = value => ((value % 1) + 1) % 1;
+    return new FractPosition(wrap(position.x), wrap(position.y), wrap(position.z));
+}
+
+/**
+ * Central routine for "do these two positions represent the same physical point in
+ * the crystal" - the question special-position detection, symmetry-duplicate atom
+ * collapsing, and symmetry-orbit duplicate detection all need answered consistently.
+ * Wraps both positions into the reference cell (so a whole-lattice-translation apart
+ * still counts as coincident) and compares true Euclidean distance in Cartesian space
+ * (so the tolerance is a physical distance, not a per-axis approximation that ignores
+ * non-orthogonal cell angles).
+ * @param {FractPosition} position1 - First fractional position
+ * @param {FractPosition} position2 - Second fractional position
+ * @param {UnitCell} unitCell - Unit cell for Cartesian conversion
+ * @param {number} [tolerance] - Maximum Cartesian distance (in Å) to count as coincident
+ * @returns {boolean} Whether the two positions coincide within tolerance
+ */
+export function positionsCoincide(position1, position2, unitCell, tolerance = 1e-3) {
+    const cart1 = wrapFractional(position1).toCartesian(unitCell);
+    const cart2 = wrapFractional(position2).toCartesian(unitCell);
+    return Math.hypot(cart1.x - cart2.x, cart1.y - cart2.y, cart1.z - cart2.z) < tolerance;
+}
+
+/**
  * Represents a position in Cartesian coordinates
  * @augments BasePosition
  */
