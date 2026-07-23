@@ -245,7 +245,7 @@ describe('SymmetryGrower', () => {
     });
 
     describe('getApplicableModes', () => {
-        test('returns only basic modes for structure without symmetry', () => {
+        test('returns only basic modes for structure without growable bonds/HBonds', () => {
             const structure = MockStructure.createDefault().build();
             const grower = new SymmetryGrower();
 
@@ -253,7 +253,6 @@ describe('SymmetryGrower', () => {
             expect(modes).toEqual([
                 SymmetryGrower.MODES.NONE,
                 SymmetryGrower.MODES.CELL,
-                SymmetryGrower.MODES.FRAGMENT_CELL,
             ]);
         });
 

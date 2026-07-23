@@ -386,10 +386,11 @@ export class SymmetryGrower extends BaseFilter {
      * @returns {Array<string>} Array of applicable mode names
      */
     getApplicableModes(structure) {
-        const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL, SymmetryGrower.MODES.FRAGMENT_CELL];
+        const modes = [SymmetryGrower.MODES.NONE];
         const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
 
         if (!hasSymmetry) {
+            modes.push(SymmetryGrower.MODES.CELL);
             return modes;
         }
 
@@ -406,6 +407,13 @@ export class SymmetryGrower extends BaseFilter {
             } else {
                 modes.push(SymmetryGrower.MODES.HBONDS);
             }
+        }
+
+        modes.push(SymmetryGrower.MODES.CELL);
+        // Without a growable fragment, fragment growth is a no-op and this mode
+        // would just duplicate CELL's output under a different name.
+        if (hasGrowableBonds) {
+            modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
         }
 
         return modes;
