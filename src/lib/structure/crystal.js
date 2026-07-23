@@ -272,31 +272,38 @@ export class CrystalStructure {
             const acceptorId = hbond.acceptorAtomId || hbond.acceptorAtomLabel;
 
             const donorAtom = resolveAtom(donorId);
-            const acceptorAtom = resolveAtom(acceptorId);
-            if (!donorAtom || !acceptorAtom) {
-                continue;
-            }
-            // Skip hbonds to symmetry equivalent positions for initial grouping
-            if (hbond.acceptorAtomSymmetry !== '.' && hbond.acceptorAtomSymmetry !== null) {
+            if (!donorAtom) {
                 continue;
             }
 
-            // Get or create groups for involved atoms
+            // The D-H bond is covalent regardless of where the acceptor sits -
+            // even a symmetry-external H-bond (acceptor on another periodic
+            // image) has a normal donor-hydrogen bond within the asymmetric
+            // unit. Keep the hydrogen in the donor's group so symmetry growth
+            // carries it along, even when a CIF only lists it via _geom_hbond
+            // and not _geom_bond.
             const donorGroup = getAtomGroup(donorAtom);
-            donorGroup.hBonds.add(hbond);
             donorGroup.atoms.add(donorAtom);
             atomGroupMap.set(donorAtom.uniqueId, donorGroup);
 
-            // The D-H bond is covalent even when a CIF only lists it via
-            // _geom_hbond and not _geom_bond. Keep the hydrogen in the donor's
-            // group so symmetry growth carries it along with its donor instead
-            // of leaving it as an unconnected singleton.
             const hydrogenAtom = hydrogenId ? resolveAtom(hydrogenId) : undefined;
             if (hydrogenAtom) {
                 donorGroup.atoms.add(hydrogenAtom);
                 atomGroupMap.set(hydrogenAtom.uniqueId, donorGroup);
             }
 
+            // Only an internal H-bond (acceptor in the same asymmetric unit)
+            // can link the acceptor into the same group for initial grouping;
+            // a symmetry-external acceptor is handled separately during growth.
+            if (hbond.acceptorAtomSymmetry !== '.' && hbond.acceptorAtomSymmetry !== null) {
+                continue;
+            }
+            const acceptorAtom = resolveAtom(acceptorId);
+            if (!acceptorAtom) {
+                continue;
+            }
+
+            donorGroup.hBonds.add(hbond);
             if (atomGroupMap.has(acceptorAtom.uniqueId)) {
                 const acceptorGroup = getAtomGroup(acceptorAtom);
                 acceptorGroup.hBonds.add(hbond);
