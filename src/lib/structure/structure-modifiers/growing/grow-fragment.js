@@ -121,6 +121,55 @@ export class ConnectedGroup {
     }
 }
 
+// groupInstancesCoincide is called from exploreConnection's duplicate check for every
+// prospective connection against every already-discovered instance in its creation-origin
+// bucket - the same (groupIndex, operation) instance is compared over and over as the BFS
+// proceeds. Caching its symmetry-transformed atom positions turns that from a full
+// per-atom matrix transform (applyToAtom, the dominant cost in fragment growth per
+// profiling) on every comparison into a one-time computation per instance.
+//
+// Keyed on the atomGroups array identity rather than structure.symmetry: the same
+// symmetry object is reused across many distinct atomGroups (e.g. once per Hydrogen x
+// Disorder x Symmetry mode combination when testing one structure), and caching by
+// symmetry object alone would silently return another call's atoms.
+const groupInstancePositionCaches = new WeakMap();
+
+/**
+ * Resolves, and caches, the symmetry-transformed positions of every atom in a group
+ * instance.
+ *
+ * Cached (and resolved) by operation ID alone, dropping the instance's specific integer
+ * lattice translation: groupInstancesCoincide compares positions through
+ * {@link positionsCoincide}, which wraps into the reference cell first, so wrap(p + n)
+ * === wrap(p) for any integer lattice translation n - the translation component of a
+ * symmetry key can never change the coincidence verdict, only the operation ID can (see
+ * CellSymmetry.applySymmetry: it adds the operation's own, possibly-fractional
+ * transVector, then separately the position code's integer translation - wrapping erases
+ * only the latter). So every translated variant of the same operation reaches the same
+ * cache entry instead of paying its own per-atom matrix transform - the exact situation
+ * a BFS exploring many lattice translations of a handful of operations hits hardest.
+ * @param {CrystalStructure} structure - Crystal structure providing symmetry
+ * @param {Array<object>} atomGroups - Original asymmetric-unit atom groups
+ * @param {ConnectedGroup} group - The symmetry instance to resolve
+ * @returns {object[]} The group's atoms transformed by this instance's operation (at the
+ *  reference/zero lattice translation - sufficient for a wrapped position comparison)
+ */
+function resolveGroupInstancePositions(structure, atomGroups, group) {
+    let cache = groupInstancePositionCaches.get(atomGroups);
+    if (!cache) {
+        cache = new Map();
+        groupInstancePositionCaches.set(atomGroups, cache);
+    }
+    const key = `${group.groupIndex}@${group.appliedSymmetry.id}`;
+    if (!cache.has(key)) {
+        cache.set(
+            key,
+            structure.symmetry.applySymmetry(group.appliedSymmetry.id, atomGroups[group.groupIndex].atoms),
+        );
+    }
+    return cache.get(key);
+}
+
 /**
  * Whether two symmetry instances of the same original atom group occupy the exact
  * same physical positions - e.g. because both applied operations belong to that
@@ -147,8 +196,8 @@ export function groupInstancesCoincide(structure, atomGroups, groupA, groupB) {
     if (atoms.length === 0) {
         return false;
     }
-    const positionsA = structure.symmetry.applySymmetry(groupA.appliedSymmetry.key, atoms);
-    const positionsB = structure.symmetry.applySymmetry(groupB.appliedSymmetry.key, atoms);
+    const positionsA = resolveGroupInstancePositions(structure, atomGroups, groupA);
+    const positionsB = resolveGroupInstancePositions(structure, atomGroups, groupB);
     return positionsA.every((atomA, i) => positionsCoincide(atomA.position, positionsB[i].position, structure.cell));
 }
 
