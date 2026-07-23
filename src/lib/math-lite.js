@@ -108,7 +108,48 @@ export function matrix(data) {
 }
 
 /**
- * Matrix/vector/scalar multiplication (mat*mat, mat*vec, or mat*scalar).
+ * @param {number[][]} A - 3x3 matrix
+ * @param {number[][]} B - 3x3 matrix
+ * @returns {number[][]} A*B
+ */
+function multiplyMat3x3(A, B) {
+    const result = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            result[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+        }
+    }
+    return result;
+}
+
+/**
+ * @param {number[][]} A - 3x3 matrix
+ * @param {number[]} B - 3-vector
+ * @returns {number[]} A*B
+ */
+function multiplyMat3Vec3(A, B) {
+    return [
+        A[0][0] * B[0] + A[0][1] * B[1] + A[0][2] * B[2],
+        A[1][0] * B[0] + A[1][1] * B[1] + A[1][2] * B[2],
+        A[2][0] * B[0] + A[2][1] * B[1] + A[2][2] * B[2],
+    ];
+}
+
+/**
+ * @param {NDArray} X - A matrix (array of arrays)
+ * @returns {boolean} Whether X is exactly 3x3
+ */
+function is3x3(X) {
+    return X.length === 3 && X[0].length === 3 && X[1].length === 3 && X[2].length === 3;
+}
+
+/**
+ * Matrix/vector/scalar multiplication (mat*mat, mat*vec, or mat*scalar). Hand-unrolled
+ * fast paths for 3x3*3x3 and 3x3*3-vector - the only shapes this module ever sees (see
+ * the module comment) - avoid the closure/iterator overhead of the generic map/reduce
+ * fallback, which profiling showed as the dominant cost of symmetry growth on structures
+ * with many atoms/operations (each applyToAtom call multiplies a 3x3 rotation matrix,
+ * and anisotropic ADP transforms chain two more 3x3*3x3 multiplies on top of that).
  * @param {Matrix|Array|number} a - Left operand
  * @param {Matrix|Array|number} b - Right operand
  * @returns {Matrix|Array|number} The product, wrapped in a Matrix if either
@@ -123,9 +164,13 @@ export function multiply(a, b) {
     } else if (typeof A === 'number') {
         result = Array.isArray(B[0]) ? B.map(row => row.map(v => v * A)) : B.map(v => v * A);
     } else if (Array.isArray(A[0]) && Array.isArray(B[0])) {
-        result = A.map((row, i) => row.map((_, j) => row.reduce((sum, _v, k) => sum + A[i][k] * B[k][j], 0)));
+        result = (is3x3(A) && is3x3(B))
+            ? multiplyMat3x3(A, B)
+            : A.map((row, i) => row.map((_, j) => row.reduce((sum, _v, k) => sum + A[i][k] * B[k][j], 0)));
     } else if (Array.isArray(A[0])) {
-        result = A.map(row => row.reduce((sum, v, k) => sum + v * B[k], 0));
+        result = (is3x3(A) && B.length === 3)
+            ? multiplyMat3Vec3(A, B)
+            : A.map(row => row.reduce((sum, v, k) => sum + v * B[k], 0));
     } else {
         throw new Error('multiply: unsupported operand shapes');
     }

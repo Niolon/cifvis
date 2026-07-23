@@ -11,13 +11,43 @@ import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 const logsDir = join(scriptDir, 'logs');
+const chunkLogsDir = join(logsDir, 'modifiers-chunked');
 
-const config = {
-    logFile: join(logsDir, 'modifier-test-results.log'),
-    errorLogFile: join(logsDir, 'modifier-test-errors.log'),
-    modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
-    verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
-    summaryFile: join(logsDir, 'modifier-test-summary.log'),
+/**
+ * Generates the log filenames for a specific range of processed files. Used both for
+ * a full (unranged) run, writing directly to the top-level log files, and for a single
+ * chunk of a parallel run - see run-modifiers-tests-parallel.sh, which fans out several
+ * of these processes concurrently, each covering a disjoint file range, then merges
+ * their per-chunk outputs into the same top-level files aggregate-modifier-stats.mjs
+ * produces.
+ * @param {number} [startIndex] - The starting index of the file range (omit for a full run).
+ * @param {number} [endIndex] - The ending index of the file range (omit for a full run).
+ * @returns {object} Paths to the log, error, modifier, verbose, summary, and stats files.
+ */
+export function getLogFilenames(startIndex, endIndex) {
+    if (startIndex === undefined && endIndex === undefined) {
+        return {
+            logFile: join(logsDir, 'modifier-test-results.log'),
+            errorLogFile: join(logsDir, 'modifier-test-errors.log'),
+            modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
+            verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
+            summaryFile: join(logsDir, 'modifier-test-summary.log'),
+            statsFile: join(logsDir, 'modifier-test-stats.json'),
+        };
+    }
+    const rangeStr = `${startIndex}-${endIndex}`;
+    return {
+        logFile: join(chunkLogsDir, `modifier-test-results-${rangeStr}.log`),
+        errorLogFile: join(chunkLogsDir, `modifier-test-errors-${rangeStr}.log`),
+        modifierLogFile: join(chunkLogsDir, `modifier-test-modifiers-${rangeStr}.log`),
+        verboseLogFile: join(chunkLogsDir, `modifier-test-verbose-${rangeStr}.log`),
+        summaryFile: join(chunkLogsDir, `modifier-test-summary-${rangeStr}.log`),
+        statsFile: join(chunkLogsDir, `modifier-test-stats-${rangeStr}.json`),
+    };
+}
+
+let config = {
+    ...getLogFilenames(),
     batchSize: 1000,
     interimReportFrequency: 5000, // Report every 1000 structures
 };
@@ -96,11 +126,15 @@ function writeSummaryToFile(summaryText, filePath) {
 }
 
 /**
- * Generates a summary of the testing process with statistics.
+ * Generates a summary of the testing process with statistics. Pure function of `stats`
+ * so aggregate-modifier-stats.mjs can reuse it to format a merged multi-chunk summary
+ * identically to a single-process run's.
+ * @param {typeof stats} statsToReport - The statistics object to format.
  * @param {boolean} [isInterim] - Whether this is an interim or final summary.
  * @returns {string} The formatted summary text with statistics.
  */
-function generateSummary(isInterim = false) {
+export function generateSummary(statsToReport, isInterim = false) {
+    const stats = statsToReport;
     const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
     
     // Calculate percentage of unhandled structure errors
@@ -403,7 +437,7 @@ async function testCIFFile(filePath) {
 
     // Check if we should generate an interim report
     if (stats.totalFiles % config.interimReportFrequency === 0) {
-        const interimSummary = generateSummary(true);
+        const interimSummary = generateSummary(stats, true);
         console.log(interimSummary);
         ///writeSummaryToFile(interimSummary, config.logFile);
     }
@@ -451,16 +485,31 @@ async function findCIFFiles(dir) {
  * Main function that executes the testing process.
  * Finds all CIF files in the specified directory, processes them in batches,
  * and generates summary statistics.
+ *
+ * With only a target directory given, processes every file and writes the
+ * top-level logs. With a start/end index pair also given (used by
+ * run-modifiers-tests-parallel.sh to fan work out across several concurrent
+ * processes), processes only that slice of the file list and writes to
+ * per-chunk log files instead, including a JSON stats dump that
+ * aggregate-modifier-stats.mjs later merges back into the top-level logs.
  */
 async function main() {
+    const startIndex = process.argv[3] === undefined ? undefined : parseInt(process.argv[3]);
+    const endIndex = process.argv[4] === undefined ? undefined : parseInt(process.argv[4]);
+    const isChunk = startIndex !== undefined;
+    config = { ...config, ...getLogFilenames(startIndex, endIndex) };
+
     if (!existsSync(logsDir)) {
         mkdirSync(logsDir);
+    }
+    if (isChunk && !existsSync(chunkLogsDir)) {
+        mkdirSync(chunkLogsDir);
     }
 
     const startTime = Date.now();
     const targetDir = process.argv[2] || './cod';
     const resolvedPath = resolve(targetDir);
-    
+
     console.log(`Starting CIF testing in directory: ${resolvedPath}`);
     logMessage(`Starting CIF testing in directory: ${resolvedPath}`);
 
@@ -483,6 +532,12 @@ async function main() {
         console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
         logMessage(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
 
+        if (isChunk) {
+            files = files.slice(startIndex, endIndex);
+            console.log(`Processing ${files.length} files in requested range ${startIndex}-${endIndex}`);
+            logMessage(`Processing ${files.length} files in requested range ${startIndex}-${endIndex}`);
+        }
+
         let processedIndex = 0;
         while (processedIndex < files.length) {
             processedIndex = await processBatch(files, processedIndex);
@@ -494,11 +549,12 @@ async function main() {
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(1);
         logMessage(`Testing completed in ${duration} seconds`);
-        
+
         // Write final summary
-        const finalSummary = generateSummary(false);
+        const finalSummary = generateSummary(stats, false);
         console.log(finalSummary);
         writeSummaryToFile(finalSummary, config.summaryFile);
+        writeFileSync(config.statsFile, JSON.stringify(stats, null, 2));
 
     } finally {
         console.warn = originalWarn;
