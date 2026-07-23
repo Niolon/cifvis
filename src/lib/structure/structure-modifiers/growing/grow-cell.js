@@ -6,6 +6,7 @@ import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
 import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from './../../applied-symmetry.js';
+import { decodePositionCode, encodePositionCode } from '../../position-code.js';
 
 const MAX_DISPLAYED_BOND_LENGTH = 4;
 
@@ -194,21 +195,16 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
     const offsetY = Math.floor(transformedCentre.get([1]));
     const offsetZ = Math.floor(transformedCentre.get([2]));
 
-    const originalSymmetry = symmString.split('_')[0];
+    const { id: originalSymmetry, translation } = decodePositionCode(symmString);
 
-    const originalTranslationString = symmString.split('_')[1] || '555';
-    const translationParts = originalTranslationString.split('').map(part => {
-        return parseInt(part, 10); // Default to 5 if part is not a number
-    });
-
-    const newTranslationString = (
-        `${translationParts[0] - offsetX}`
-        + `${translationParts[1] - offsetY}`
-        + `${translationParts[2] - offsetZ}`
-    );
+    const newTranslation = [
+        translation[0] - offsetX,
+        translation[1] - offsetY,
+        translation[2] - offsetZ,
+    ];
 
     const offsetCentre = math.subtract(transformedCentre, math.matrix([offsetX, offsetY, offsetZ]));
-    return { newCentre: offsetCentre, newString: `${originalSymmetry}_${newTranslationString}` };
+    return { newCentre: offsetCentre, newString: encodePositionCode(originalSymmetry, newTranslation) };
 }
 
 /**
@@ -1068,7 +1064,12 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         structure.cell,
         finalAtoms,
         centringBonds,
-        filteredHBonds,
+        // H-bonds must not join otherwise disconnected components for centring
+        // purposes (see comment above), and calculateConnectedGroups() now
+        // folds a hydrogen atom into its donor's group for internal H-bonds -
+        // correct for real connectivity, but not what this centring-only pass
+        // wants. Omit H-bonds here so grouping reflects covalent bonds alone.
+        [],
         structure.symmetry,
     );
     const atomIdMap = new Map();

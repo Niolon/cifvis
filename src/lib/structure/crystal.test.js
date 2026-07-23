@@ -207,8 +207,11 @@ C4 C 0 0 0 .`;
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
         const groups = structure.calculateConnectedGroups();
 
-        expect(groups).toHaveLength(2);
-        expect(groups[0].atoms).toHaveLength(3);
+        // The D-H bond is covalent even though it's only listed via the H-bond
+        // (H1 is not in `bonds`), so H1 joins O1's group instead of forming its
+        // own singleton.
+        expect(groups).toHaveLength(1);
+        expect(groups[0].atoms).toHaveLength(4);
     });
 
     test('findConnectedGroups handles complex connectivity correctly', () => {
@@ -238,23 +241,23 @@ C4 C 0 0 0 .`;
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
         const groups = structure.calculateConnectedGroups();
 
-        // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds
+        // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds (H1 joins
+        // via the covalent D-H bond implied by the internal H-bond)
         // Group 2: P1 alone (unconnected)
         // Group 3: F1 alone (only symmetry connections)
-        expect(groups).toHaveLength(4);
+        expect(groups).toHaveLength(3);
 
         // Find main connected group
         const mainGroup = groups.find(g => g.atoms.length > 1);
-        expect(mainGroup.atoms).toHaveLength(3);  // C1, O1, N1
-        expect(mainGroup.atoms.map(a => a.label).sort()).toEqual(['C1', 'N1', 'O1']);
+        expect(mainGroup.atoms).toHaveLength(4);  // C1, O1, N1, H1
+        expect(mainGroup.atoms.map(a => a.label).sort()).toEqual(['C1', 'H1', 'N1', 'O1']);
         expect(mainGroup.bonds).toHaveLength(2);  // C1-O1, O1-N1
         expect(mainGroup.hBonds).toHaveLength(1); // O1-H1-N1
 
         // Check isolated atoms are in their own groups
         const singleAtomGroups = groups.filter(g => g.atoms.length === 1);
-        expect(singleAtomGroups).toHaveLength(3);
-        //const test = singleAtomGroups.map(g => g.atoms[0].label).sort();
-        expect(singleAtomGroups.map(g => g.atoms[0].label).sort()).toEqual(['F1', 'H1', 'P1']);
+        expect(singleAtomGroups).toHaveLength(2);
+        expect(singleAtomGroups.map(g => g.atoms[0].label).sort()).toEqual(['F1', 'P1']);
         expect(singleAtomGroups.every(g => g.bonds.length === 0)).toBe(true);
         expect(singleAtomGroups.every(g => g.hBonds.length === 0)).toBe(true);
     });
