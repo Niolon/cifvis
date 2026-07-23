@@ -268,6 +268,7 @@ export class CrystalStructure {
         // Process hydrogen bonds
         for (const hbond of this.hBonds) {
             const donorId = hbond.donorAtomId || hbond.donorAtomLabel;
+            const hydrogenId = hbond.hydrogenAtomId;
             const acceptorId = hbond.acceptorAtomId || hbond.acceptorAtomLabel;
 
             const donorAtom = resolveAtom(donorId);
@@ -283,6 +284,18 @@ export class CrystalStructure {
             // Get or create groups for involved atoms
             const donorGroup = getAtomGroup(donorAtom);
             donorGroup.hBonds.add(hbond);
+            donorGroup.atoms.add(donorAtom);
+            atomGroupMap.set(donorAtom.uniqueId, donorGroup);
+
+            // The D-H bond is covalent even when a CIF only lists it via
+            // _geom_hbond and not _geom_bond. Keep the hydrogen in the donor's
+            // group so symmetry growth carries it along with its donor instead
+            // of leaving it as an unconnected singleton.
+            const hydrogenAtom = hydrogenId ? resolveAtom(hydrogenId) : undefined;
+            if (hydrogenAtom) {
+                donorGroup.atoms.add(hydrogenAtom);
+                atomGroupMap.set(hydrogenAtom.uniqueId, donorGroup);
+            }
 
             if (atomGroupMap.has(acceptorAtom.uniqueId)) {
                 const acceptorGroup = getAtomGroup(acceptorAtom);

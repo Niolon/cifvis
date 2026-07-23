@@ -542,6 +542,12 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
         const equivalentAcceptorCodes = equivalentPositionCodes(structure, acceptorAtom, symOpLabel);
         const donorAtom = atomsById.get(hBond.donorAtomId);
         const hydrogenAtom = atomsById.get(hBond.hydrogenAtomId);
+        if (!donorAtom || !hydrogenAtom) {
+            throw new Error(
+                'Cannot grow reciprocal H-bond: donor or hydrogen atom of '
+                + `${hBond.donorAtomId}-${hBond.hydrogenAtomId} is not in the structure`,
+            );
+        }
         const reciprocalCodes = reciprocalPositionCodes(
             structure, hBond, donorAtom, hydrogenAtom, equivalentAcceptorCodes,
         );
