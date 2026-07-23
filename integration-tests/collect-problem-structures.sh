@@ -39,6 +39,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         filename=$(basename "$filepath")
         basename="${filename%.cif}"
         cp "$filepath" "$PROBLEM_DIR/moderr_$basename.cif"
+    elif [[ $line =~ "Connectivity Error in "(/[^\"]+\.cif) ]]; then
+        filepath="${BASH_REMATCH[1]}"
+        filename=$(basename "$filepath")
+        basename="${filename%.cif}"
+        cp "$filepath" "$PROBLEM_DIR/connerr_$basename.cif"
     fi
 done < "integration-tests/logs/modifier-test-errors.log"
 

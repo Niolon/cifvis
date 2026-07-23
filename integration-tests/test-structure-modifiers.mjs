@@ -66,6 +66,7 @@ const stats = {
         },
         symmetry: 0,
         modifier: 0,
+        connectivity: 0,
     },
 };
 
@@ -73,6 +74,12 @@ const originalWarn = console.warn;
 let suppressedWarnings = [];
 console.warn = (...args) => {
     suppressedWarnings.push(args.join(' '));
+};
+
+const originalError = console.error;
+let capturedErrors = [];
+console.error = (...args) => {
+    capturedErrors.push(args.join(' '));
 };
 
 /**
@@ -148,7 +155,8 @@ Error Breakdown:
     - Missing H-bond atoms: ${stats.errors.CrystalStructureFixed.bondProblems.missingHBondAtom}
     - Invalid H-bond symmetry: ${stats.errors.CrystalStructureFixed.bondProblems.invalidHBondSymmetry}
   • Other errors (logged): ${stats.errors.CrystalStructureFixed.otherAndLogged}
-- Symmetry errors: ${stats.errors.symmetry}`;
+- Symmetry errors: ${stats.errors.symmetry}
+- Connectivity errors (e.g. max iterations reached): ${stats.errors.connectivity}`;
 
     return summaryText;
 }
@@ -239,6 +247,7 @@ async function testCIFFile(filePath) {
     stats.totalFiles++;
     const fileContent = readFileSync(filePath, 'utf8');
     suppressedWarnings = [];
+    capturedErrors = [];
     
     const results = {
         path: filePath,
@@ -377,12 +386,19 @@ async function testCIFFile(filePath) {
     }
 
     if (results.modifierErrors.length > 0) {
-        const errorLog = `${filePath} modifier errors:\n` + 
-            results.modifierErrors.map(err => 
+        const errorLog = `${filePath} modifier errors:\n` +
+            results.modifierErrors.map(err =>
                 `Modes: H=${err.modes.hydrogenMode}, D=${err.modes.disorderMode}, ` +
                 `S=${err.modes.symmetryMode}\nError: ${err.error}`,
             ).join('\n---\n');
         logMessage(errorLog, config.modifierLogFile);
+    }
+
+    if (capturedErrors.length > 0) {
+        stats.errors.connectivity += capturedErrors.length;
+        capturedErrors.forEach(errMsg => {
+            logMessage(`Connectivity Error in ${filePath}: ${errMsg}`, config.errorLogFile);
+        });
     }
 
     // Check if we should generate an interim report
@@ -486,6 +502,7 @@ async function main() {
 
     } finally {
         console.warn = originalWarn;
+        console.error = originalError;
     }
 }
 
