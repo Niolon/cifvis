@@ -3,6 +3,7 @@ import { Bond, HBond } from '../../bonds.js';
 import { createAtomId } from './util.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
 import { chemicalBonds } from '../../bond-classification.js';
+import { positionsCoincide } from '../../position.js';
 
 /**
  * @typedef {object} SeedConnection
@@ -118,6 +119,37 @@ export class ConnectedGroup {
     getSymmetryString() {
         return this.appliedSymmetry.toString();
     }
+}
+
+/**
+ * Whether two symmetry instances of the same original atom group occupy the exact
+ * same physical positions - e.g. because both applied operations belong to that
+ * atom's (or group's) site-symmetry stabiliser on a special position. On a
+ * high-multiplicity Wyckoff position, dozens of distinct operation IDs can all map
+ * a group back onto itself; {@link ConnectedGroup#isTranslationalDuplicateOf} only
+ * catches the same operation ID reached at a different lattice translation, so it
+ * misses this case entirely and lets the BFS in {@link createConnectivity} re-explore
+ * the same atoms under every one of those operations. This is the central routine
+ * for that check - it reuses {@link positionsCoincide}, the same position-equality
+ * primitive used elsewhere for special-position detection, so "same point in the
+ * crystal" is defined consistently everywhere it matters.
+ * @param {CrystalStructure} structure - Crystal structure providing symmetry and cell metrics.
+ * @param {Array<object>} atomGroups - Original asymmetric-unit atom groups (from calculateConnectedGroups).
+ * @param {ConnectedGroup} groupA - First symmetry instance.
+ * @param {ConnectedGroup} groupB - Second symmetry instance.
+ * @returns {boolean} True if both instances place every atom of the group at the same position.
+ */
+export function groupInstancesCoincide(structure, atomGroups, groupA, groupB) {
+    if (groupA.groupIndex !== groupB.groupIndex) {
+        return false;
+    }
+    const atoms = atomGroups[groupA.groupIndex].atoms;
+    if (atoms.length === 0) {
+        return false;
+    }
+    const positionsA = structure.symmetry.applySymmetry(groupA.appliedSymmetry.key, atoms);
+    const positionsB = structure.symmetry.applySymmetry(groupB.appliedSymmetry.key, atoms);
+    return positionsA.every((atomA, i) => positionsCoincide(atomA.position, positionsB[i].position, structure.cell));
 }
 
 /**
@@ -293,6 +325,8 @@ export function initializeExploration(seedConnectionsPerGroup, identSymm) {
  * @param {Array<Array<SeedConnection>>} seedConnectionsPerGroup - The initial connections for each group type.
  * @param {Set<string>} processedConnections - Set of unique keys for connections already processed or queued. This
  * function adds new connection keys to this set as they are encountered.
+ * @param {Array<object>} atomGroups - Original asymmetric-unit atom groups, needed to resolve real positions for
+ *  special-position duplicate detection.
  * @returns {ExplorationStepResult} Results of processing the step.
  */
 export function exploreConnection(
@@ -301,6 +335,7 @@ export function exploreConnection(
     discoveredGroups,
     seedConnectionsPerGroup,
     processedConnections,
+    atomGroups,
 ) {
     const newDanglingConnections = [];
     const foundTranslations = [];
@@ -344,14 +379,28 @@ export function exploreConnection(
 
         // Check if this resulting group is a translational duplicate of an existing group
         // within the same creationOriginIndex set
-        const translationPresent = discoveredGroups[currentConnection.creationOriginIndex].some(existing => {
+        const existingInstances = discoveredGroups[currentConnection.creationOriginIndex];
+        const translationPresent = existingInstances.some(existing => {
             return resultingGroup.isTranslationalDuplicateOf(existing);
         });
 
-        // Add to the appropriate list based on translation check
+        // A different (non-translationally-related) operation can still place the group at
+        // the exact same physical position when that operation belongs to the group's own
+        // site-symmetry stabiliser - e.g. every atom sitting on a high-multiplicity special
+        // position. isTranslationalDuplicateOf only compares operation IDs, so it can't see
+        // this; groupInstancesCoincide resolves real positions and catches it. Skipped when a
+        // translational duplicate was already found - no need for the extra position check.
+        const positionDuplicate = !translationPresent && existingInstances.some(existing =>
+            groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
+        );
+
+        // Add to the appropriate list based on translation/position checks. A position
+        // duplicate reached via a redundant operation isn't a new node to explore and isn't a
+        // periodic continuation either (unlike a translation duplicate) - it's silently
+        // dropped rather than queued or recorded as a dangling bond stub.
         if (translationPresent) {
             foundTranslations.push(prospectiveConnection);
-        } else {
+        } else if (!positionDuplicate) {
             newDanglingConnections.push(prospectiveConnection);
         }
     }
@@ -368,6 +417,8 @@ export function exploreConnection(
  * @param {Array<object>} atomGroups - Created distinct groups of interconnected atoms.
  * @returns {ConnectivityAnalysisResult} - Object containing the list of bond groups used to build the connected
  *  network, bond groups leading to translational duplicates, and the discovered group instances.
+ * @throws {Error} If the symmetry orbit does not complete within the iteration limit, indicating an
+ *  extended/periodic bonded network (e.g. zeolite, MOF, perovskite) rather than a finite molecule.
  */
 export function createConnectivity(structure, atomGroups) {
     const atomGroupMap = new Map();
@@ -405,10 +456,21 @@ export function createConnectivity(structure, atomGroups) {
     let connectionIndex = 0;
     while (connectionIndex < danglingConnections.length) {
         if (safetyCounter++ > MAXITER) {
-            console.error(
-                'Max iterations reached in createConnectivity. Possible infinite loop orvery complex structure.',
+            // A finite molecular fragment's symmetry orbit terminates once every
+            // reachable (group, operation) pair has been discovered and periodic
+            // duplicates are collapsed (see the translational-duplicate check
+            // above). Still growing after MAXITER steps means the bonded network
+            // is genuinely unbounded in 3D - e.g. a zeolite, MOF, or perovskite
+            // framework - not a moderately complex finite molecule. Fragment
+            // growth has no finite answer for such structures, so surface that
+            // instead of silently returning a truncated, visually broken result.
+            throw new Error(
+                'createConnectivity exceeded the iteration limit '
+                + `(${MAXITER}) without completing the symmetry orbit. This structure's `
+                + 'bonded network is likely an extended/periodic framework (e.g. zeolite, '
+                + 'MOF, perovskite) rather than a finite molecule, so fragment growth is not '
+                + 'well-defined for it.',
             );
-            break; // Exit loop to prevent freezing
         }
 
         // Advancing an index preserves FIFO order without shifting the remaining
@@ -422,6 +484,7 @@ export function createConnectivity(structure, atomGroups) {
             discoveredGroups,
             seedConnectionsPerGroup,
             processedConnections, // Pass the set to be mutated
+            atomGroups,
         );
 
         // Add the newly found connected group to our tracking list
@@ -435,14 +498,6 @@ export function createConnectivity(structure, atomGroups) {
 
         // Record the bond group that was successfully processed
         networkConnections.push(currentConnection);
-    }
-
-    if (connectionIndex < danglingConnections.length) {
-        console.warn(
-            'Connectivity processing stopped due to iteration limit. ' +
-            `${danglingConnections.length - connectionIndex} ` +
-            'connections remain unprocessed.',
-        );
     }
 
     return { networkConnections, translationLinks, discoveredGroups };
@@ -535,10 +590,7 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
                     const isIdentity = symmGroupIdx === 0; // First group is identity
                     let specPos = false; // Assume not special position initially
                     for (const keptSymmAtom of keptSymmAtoms) {
-                        // Use a small tolerance for floating point comparisons
-                        specPos = Math.abs(keptSymmAtom.position.x - symmAtom.position.x) * structure.cell.a < 1e-4 &&
-                            Math.abs(keptSymmAtom.position.y - symmAtom.position.y) * structure.cell.b < 1e-4 &&
-                            Math.abs(keptSymmAtom.position.z - symmAtom.position.z) * structure.cell.c < 1e-4;
+                        specPos = positionsCoincide(keptSymmAtom.position, symmAtom.position, structure.cell, 1e-4);
                         if (specPos) {
                             // Map the duplicate atom ID to the kept atom ID
                             specialPositionAtoms.set(symmAtom.uniqueId, keptSymmAtom.uniqueId);

@@ -431,9 +431,10 @@ describe('Structure dependent methods', () => {
             const result = exploreConnection(
                 currentConnection, 
                 structure, 
-                discoveredGroups, 
-                seedConnectionsPerGroup, 
+                discoveredGroups,
+                seedConnectionsPerGroup,
                 processedConnections,
+                atomGroups,
             );
 
             // New connected group should be Group 1 @ 2_565 (target symmetry)
@@ -465,9 +466,10 @@ describe('Structure dependent methods', () => {
             const result = exploreConnection(
                 currentConnection, 
                 structure, 
-                discoveredGroups, 
-                seedConnectionsPerGroup, 
+                discoveredGroups,
+                seedConnectionsPerGroup,
                 processedConnections,
+                atomGroups,
             );
 
             expect(result.newConnectedGroup.groupIndex).toBe(1);
@@ -494,9 +496,10 @@ describe('Structure dependent methods', () => {
             const result = exploreConnection(
                 currentConnection, 
                 structure, 
-                discoveredGroups, 
-                seedConnectionsPerGroup, 
+                discoveredGroups,
+                seedConnectionsPerGroup,
                 processedConnections,
+                atomGroups,
             );
 
             expect(result.newConnectedGroup.groupIndex).toBe(1); // N1
@@ -534,9 +537,10 @@ describe('Structure dependent methods', () => {
             const result = exploreConnection(
                 currentConnection, 
                 structure, 
-                discoveredGroups, 
-                seedConnectionsPerGroup, 
+                discoveredGroups,
+                seedConnectionsPerGroup,
                 processedConnections,
+                atomGroups,
             );
 
             expect(result.newDanglingConnections.length).toBe(0); // Should be skipped
