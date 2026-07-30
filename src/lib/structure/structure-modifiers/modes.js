@@ -410,11 +410,7 @@ export class SymmetryGrower extends BaseFilter {
         }
 
         modes.push(SymmetryGrower.MODES.CELL);
-        // Without a growable fragment, fragment growth is a no-op and this mode
-        // would just duplicate CELL's output under a different name.
-        if (hasGrowableBonds) {
-            modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
-        }
+        modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
 
         return modes;
     }
