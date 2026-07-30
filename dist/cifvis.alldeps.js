@@ -27478,7 +27478,7 @@ var Og = class e extends kh {
 		let n = [e.MODES.NONE];
 		if (!(t.symmetry && t.symmetry.symmetryOperations.length > 0)) return n.push(e.MODES.CELL), n;
 		let r = t.bonds.some((e) => e.atom2SiteSymmetry !== ".");
-		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n.push(e.MODES.CELL), r && n.push(e.MODES.FRAGMENT_CELL), n;
+		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n.push(e.MODES.CELL), n.push(e.MODES.FRAGMENT_CELL), n;
 	}
 }, jg = class e extends kh {
 	static MODES = Object.freeze({
