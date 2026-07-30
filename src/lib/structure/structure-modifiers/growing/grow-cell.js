@@ -703,9 +703,12 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
  * @param {CrystalStructure} structure - Input crystal structure
  * @param {boolean} [moveAtomsInsideCell] - Whether to exclude atoms outside unit cell
  * @param {Map<string,string>} [startingSpecialPositions] - Optional special positions map to start with.
+ * @param {number} [packingCutoff] - Optional upper bound for closed-cell border copies.
  * @returns {CrystalStructure} New structure filling the unit cell
  */
-export function growCell(structure, moveAtomsInsideCell = true, startingSpecialPositions = null) {
+export function growCell(
+    structure, moveAtomsInsideCell = true, startingSpecialPositions = null, packingCutoff = 1,
+) {
     let specialPositionMap;
     if (startingSpecialPositions !== null) {
         // If a starting special position is provided, initialize the map with it
@@ -826,8 +829,8 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             finalAtomsByUniqueId.set(atom.uniqueId, atom);
         }
     }
-    const finalAtoms = Array.from(finalAtomsByUniqueId.values());
-    const finalBonds = [
+    let finalAtoms = Array.from(finalAtomsByUniqueId.values());
+    let finalBonds = [
         ...(!moveAtomsInsideCell ? structure.bonds.map(bond => new Bond(
             bond.atom1Id,
             bond.atom2Id,
@@ -854,7 +857,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         )) : []),
         ...grownAtomsGroups.flatMap(group => group.internalHBonds),
     ];
-    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+    let finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
 
     grownAtomsGroups.forEach(group => {
         // Add external bonds and H-bonds to the potential maps
@@ -989,6 +992,23 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             }
         });
     });
+
+    // In ordinary cell mode, add the optional closed-cell border copies before
+    // filtering bonds. At this point finalBonds still contains the chemically
+    // correct periodic links whose wrapped endpoints would otherwise be removed
+    // as long display bonds, so the helper can reconnect them to the new copies.
+    if (moveAtomsInsideCell && packingCutoff > 1) {
+        const packedStructure = addPackingBorderAtoms(new CrystalStructure(
+            structure.cell,
+            finalAtoms,
+            finalBonds,
+            finalHBonds,
+            structure.symmetry,
+        ), packingCutoff, structure.bonds);
+        finalAtoms = packedStructure.atoms;
+        finalBonds = packedStructure.bonds;
+        finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+    }
 
     const finalAtomsById = new Map(finalAtoms.map(atom => [atom.uniqueId, atom]));
     const cartesianPositions = new Map();
@@ -1144,10 +1164,38 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         }
     }
 
+    // Border-copy bonds are selected before component centring. A later
+    // duplicate collapse can remap an endpoint onto a different periodic image,
+    // so validate those reconstructed cell-mode bonds once more against their
+    // final displayed coordinates. Leave the canonical cutoff path untouched.
+    const centredAtomsById = moveAtomsInsideCell && packingCutoff > 1
+        ? new Map(centredAtoms.map(atom => [atom.uniqueId, atom]))
+        : null;
+    const finalCentredBonds = moveAtomsInsideCell && packingCutoff > 1
+        ? centredBonds.filter(bond => {
+            if (!Number.isFinite(bond.bondLength) || bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
+                return false;
+            }
+            const atom1 = centredAtomsById.get(bond.atom1Id);
+            const atom2 = centredAtomsById.get(bond.atom2Id);
+            if (!atom1 || !atom2) {
+                return false;
+            }
+            const position1 = atom1.position.toCartesian(structure.cell);
+            const position2 = atom2.position.toCartesian(structure.cell);
+            const length = Math.hypot(
+                position1.x - position2.x,
+                position1.y - position2.y,
+                position1.z - position2.z,
+            );
+            return Math.abs(length - bond.bondLength) <= Math.max(0.15, bond.bondLength * 0.1);
+        })
+        : centredBonds;
+
     return new CrystalStructure(
         structure.cell,
         centredAtoms,
-        centredBonds,
+        finalCentredBonds,
         centredHBonds,
         structure.symmetry,
     );
@@ -1159,24 +1207,35 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
  * on every face, edge and corner of the box instead of only the canonical, Z-correct
  * [0,1) cell.
  *
- * This is deliberately atoms-only: the duplicates carry no bonds of their own (a
- * border copy of a bonded atom would otherwise need its whole coordination re-derived
- * across the boundary, which is out of scope here). Existing bonds are left exactly
- * as grown; only extra, unbonded atoms are appended.
+ * Bonds are reconstructed where a copied endpoint gives a geometry-compatible
+ * representation of a pending cell bond. This avoids drawing the long wrapped
+ * bond in the canonical cell while still closing molecules at the border.
  * @param {CrystalStructure} structure - A structure already grown to the canonical
  *  [0,1) unit cell (as returned by {@link growCell}).
  * @param {number} packingCutoff - Upper fractional bound for cell membership. Values
  *  <= 1 are a no-op (the canonical cell already is the result); e.g. 1.001 duplicates
  *  atoms within 0.001 of a low face onto the corresponding high face(s).
+ * @param {Bond[]} [sourceBonds] - Chemical bond records from before cell growth.
  * @returns {CrystalStructure} Structure with the border duplicates appended
  */
-export function addPackingBorderAtoms(structure, packingCutoff) {
+export function addPackingBorderAtoms(structure, packingCutoff, sourceBonds = []) {
     const margin = packingCutoff - 1;
     if (!(margin > 0)) {
         return structure;
     }
 
     const extraAtoms = [];
+    const atomCandidates = new Map();
+    const atomCandidatesByLabel = new Map();
+    const copiedAtomIds = new Set();
+    for (const atom of structure.atoms) {
+        const candidates = atomCandidates.get(atom.uniqueId) || [];
+        candidates.push(atom);
+        atomCandidates.set(atom.uniqueId, candidates);
+        const labelCandidates = atomCandidatesByLabel.get(atom.label) || [];
+        labelCandidates.push(atom);
+        atomCandidatesByLabel.set(atom.label, labelCandidates);
+    }
     for (const atom of structure.atoms) {
         const { x, y, z } = atom.position;
         // Axes where this atom is within margin of the low face; duplicating along
@@ -1212,16 +1271,185 @@ export function addPackingBorderAtoms(structure, packingCutoff) {
             appliedSymmetry.translation[2] += shift[2];
             appliedSymmetry._updateKey();
 
-            extraAtoms.push(new Atom(
+            const copiedAtom = new Atom(
                 atom.label, atom.atomType, position, atom.adp, atom.disorderGroup, appliedSymmetry,
-            ));
+            );
+            extraAtoms.push(copiedAtom);
+            atomCandidates.get(atom.uniqueId).push(copiedAtom);
+            atomCandidatesByLabel.get(atom.label).push(copiedAtom);
+            copiedAtomIds.add(copiedAtom.uniqueId);
+        }
+    }
+
+    const existingBondIds = new Set();
+    for (const bond of structure.bonds) {
+        existingBondIds.add(createBondIdentifier(bond.atom1Id, bond.atom2Id));
+    }
+    const extraBonds = [];
+    const isCompatiblePair = (atom1, atom2, bond) => {
+        if (!Number.isFinite(bond.bondLength) || bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
+            return false;
+        }
+        const position1 = atom1.position.toCartesian(structure.cell);
+        const position2 = atom2.position.toCartesian(structure.cell);
+        const length = Math.hypot(
+            position1.x - position2.x,
+            position1.y - position2.y,
+            position1.z - position2.z,
+        );
+        return Math.abs(length - bond.bondLength) <= Math.max(0.15, bond.bondLength * 0.1);
+    };
+    for (const bond of [...structure.bonds, ...sourceBonds]) {
+        const atom1Candidates = atomCandidates.get(bond.atom1Id) ||
+            atomCandidatesByLabel.get(bond.atom1Label);
+        const atom2Candidates = atomCandidates.get(bond.atom2Id) ||
+            atomCandidatesByLabel.get(bond.atom2Label);
+        if (!atom1Candidates || !atom2Candidates) {
+            continue;
+        }
+        for (const atom1 of atom1Candidates) {
+            for (const atom2 of atom2Candidates) {
+                if (atom1.uniqueId === atom2.uniqueId ||
+                    (!copiedAtomIds.has(atom1.uniqueId) && !copiedAtomIds.has(atom2.uniqueId)) ||
+                    !isCompatiblePair(atom1, atom2, bond)) {
+                    continue;
+                }
+                const bondId = createBondIdentifier(atom1.uniqueId, atom2.uniqueId);
+                if (existingBondIds.has(bondId)) {
+                    continue;
+                }
+                extraBonds.push(new Bond(
+                    atom1.uniqueId,
+                    atom2.uniqueId,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    '.',
+                ));
+                existingBondIds.add(bondId);
+            }
         }
     }
 
     return new CrystalStructure(
         structure.cell,
         [...structure.atoms, ...extraAtoms],
-        structure.bonds,
+        [...structure.bonds, ...extraBonds],
+        structure.hBonds,
+        structure.symmetry,
+    );
+}
+
+/**
+ * Adds complete translated covalent components whose centres enter the extended
+ * packing box. Fragment-cell uses this rather than atom-by-atom face duplication:
+ * a near-face atom must not pull in part of a molecule whose centre is outside the
+ * requested cutoff.
+ * @param {CrystalStructure} structure - Canonical fragment-cell structure.
+ * @param {number} packingCutoff - Upper fractional bound for component centres.
+ * @returns {CrystalStructure} Structure with complete centroid-qualified copies.
+ */
+export function addPackingBorderComponents(structure, packingCutoff) {
+    const margin = packingCutoff - 1;
+    if (!(margin > 0)) {
+        return structure;
+    }
+
+    // H-bond acceptors describe intermolecular contacts in this mode and must
+    // not merge otherwise separate molecules. A donor-hydrogen pair, however,
+    // is part of one molecular component even when a CIF records it only in the
+    // H-bond loop and not in _geom_bond.
+    const componentBonds = [
+        ...structure.bonds,
+        ...structure.hBonds.map(hbond => new Bond(
+            hbond.donorAtomId,
+            hbond.hydrogenAtomId,
+            null,
+            null,
+            '.',
+        )),
+    ];
+    const covalentStructure = new CrystalStructure(
+        structure.cell,
+        structure.atoms,
+        componentBonds,
+        [],
+        structure.symmetry,
+    );
+    const extraAtoms = [];
+    const extraBonds = [];
+    const existingBondIds = new Set(structure.bonds.map(bond =>
+        createBondIdentifier(bond.atom1Id, bond.atom2Id),
+    ));
+
+    for (const group of covalentStructure.calculateConnectedGroups()) {
+        const centre = getFragmentCentre(group.atoms).toArray();
+        const nearAxes = [];
+        for (let axis = 0; axis < 3; axis++) {
+            if (centre[axis] < margin) {
+                nearAxes.push(axis);
+            }
+        }
+        if (nearAxes.length === 0) {
+            continue;
+        }
+
+        for (let mask = 1; mask < (1 << nearAxes.length); mask++) {
+            const shift = [0, 0, 0];
+            for (let bit = 0; bit < nearAxes.length; bit++) {
+                if (mask & (1 << bit)) {
+                    shift[nearAxes[bit]] = 1;
+                }
+            }
+            const copiedIds = new Map();
+            for (const atom of group.atoms) {
+                const position = new FractPosition(
+                    atom.position.x + shift[0],
+                    atom.position.y + shift[1],
+                    atom.position.z + shift[2],
+                );
+                const appliedSymmetry = (atom.appliedSymmetry ? atom.appliedSymmetry.copy() : null) ||
+                    new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+                appliedSymmetry.translation[0] += shift[0];
+                appliedSymmetry.translation[1] += shift[1];
+                appliedSymmetry.translation[2] += shift[2];
+                appliedSymmetry._updateKey();
+                const copiedAtom = new Atom(
+                    atom.label,
+                    atom.atomType,
+                    position,
+                    atom.adp,
+                    atom.disorderGroup,
+                    appliedSymmetry,
+                );
+                copiedIds.set(atom.uniqueId, copiedAtom.uniqueId);
+                extraAtoms.push(copiedAtom);
+            }
+            for (const bond of structure.bonds) {
+                const atom1Id = copiedIds.get(bond.atom1Id);
+                const atom2Id = copiedIds.get(bond.atom2Id);
+                if (!atom1Id || !atom2Id || atom1Id === atom2Id) {
+                    continue;
+                }
+                const bondId = createBondIdentifier(atom1Id, atom2Id);
+                if (existingBondIds.has(bondId)) {
+                    continue;
+                }
+                extraBonds.push(new Bond(
+                    atom1Id,
+                    atom2Id,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    '.',
+                ));
+                existingBondIds.add(bondId);
+            }
+        }
+    }
+
+    return new CrystalStructure(
+        structure.cell,
+        [...structure.atoms, ...extraAtoms],
+        [...structure.bonds, ...extraBonds],
         structure.hBonds,
         structure.symmetry,
     );

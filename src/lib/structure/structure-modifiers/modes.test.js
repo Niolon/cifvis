@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
-import { CrystalStructure, UnitCell } from '../crystal.js';
+import { Atom, CrystalStructure, UnitCell } from '../crystal.js';
 import { CellSymmetry, SymmetryOperation } from '../cell-symmetry.js';
+import { FractPosition } from '../position.js';
+import { Bond } from '../bonds.js';
 import { CIF } from '../../read-cif/base.js';
 import {
     HydrogenFilter, DisorderFilter, SymmetryGrower,
@@ -453,6 +455,35 @@ describe('SymmetryGrower', () => {
                 atomIds.has(hbond.hydrogenAtomId) &&
                 atomIds.has(hbond.acceptorAtomId),
             )).toBe(true);
+        });
+
+        test('extends fragment-cell by complete centroid-qualified components', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+            const atoms = [
+                new Atom('C1', 'C', new FractPosition(0.001, 0.4, 0.4)),
+                new Atom('O1', 'O', new FractPosition(0.009, 0.4, 0.4)),
+                new Atom('N1', 'N', new FractPosition(0.4, 0.001, 0.4)),
+                new Atom('H1', 'H', new FractPosition(0.4, 0.009, 0.4)),
+                new Atom('C2', 'C', new FractPosition(0.001, 0.7, 0.7)),
+                new Atom('H2', 'H', new FractPosition(0.039, 0.7, 0.7)),
+            ];
+            const bonds = [
+                new Bond('C1', 'O1', 0.08, 0.01, '.'),
+                new Bond('N1', 'H1', 0.08, 0.01, '.'),
+                new Bond('C2', 'H2', 0.38, 0.01, '.'),
+            ];
+            const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+            const result = new SymmetryGrower(
+                SymmetryGrower.MODES.FRAGMENT_CELL,
+                1.01,
+            ).apply(structure);
+
+            expect(result.atoms).toHaveLength(10);
+            expect(result.bonds).toHaveLength(5);
+            expect(result.atoms.filter(atom => atom.label === 'C1')).toHaveLength(2);
+            expect(result.atoms.filter(atom => atom.label === 'O1')).toHaveLength(2);
+            expect(result.atoms.filter(atom => atom.label === 'H2')).toHaveLength(1);
         });
 
         test('validates mode before applying', () => {

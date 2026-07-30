@@ -48,8 +48,10 @@ By default the `cell` modes use a **packing cutoff** of `1.0`: the canonical uni
 every atom has a single, Z-correct copy in `[0, 1)`. Raising the cutoff slightly (e.g. `1.001`)
 additionally duplicates atoms that sit within that margin of a low cell face — 0, an edge, or a
 corner — onto the matching high face(s), for a "closed" packing diagram with atoms visible on
-every side of the box. These duplicates are atoms only (no new bonds are drawn for them), and Z
-is no longer exact once they're included.
+every side of the box. Bonds are added only when a copied endpoint reproduces the reported bond
+length, so wrapped across-cell lines are not drawn. In `fragment-cell` mode, the same cutoff adds
+complete covalently connected fragments whose centroids enter the extended box rather than
+individual near-face atoms. Z is no longer exact once extra copies are included.
 
 ::: code-group
 

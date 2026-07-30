@@ -3,7 +3,7 @@ import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
 import { growFragment } from './growing/grow-fragment.js';
-import { growCell, addPackingBorderAtoms } from './growing/grow-cell.js';
+import { growCell, addPackingBorderComponents } from './growing/grow-cell.js';
 import { chemicalBonds } from '../bond-classification.js';
 import {
     filterBondsByGeometry,
@@ -341,11 +341,11 @@ export class SymmetryGrower extends BaseFilter {
             specialPositionAtoms = growthResult.specialPositionAtoms;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
-            workStructure = addPackingBorderAtoms(growCell(workStructure), this.packingCutoff);
+            workStructure = growCell(workStructure, true, null, this.packingCutoff);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
             const growthResult = growFragment(workStructure);
             specialPositionAtoms = growthResult.specialPositionAtoms;
-            workStructure = addPackingBorderAtoms(
+            workStructure = addPackingBorderComponents(
                 growCell(growthResult.grownStructure, false, specialPositionAtoms),
                 this.packingCutoff,
             );
