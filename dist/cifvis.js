@@ -14738,13 +14738,13 @@ function ja(e, t = e.bonds) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-fragment.js
-function Ma(e, t) {
+function X(e, t) {
 	return e < t ? `${e}->${t}` : `${t}->${e}`;
 }
-function Na(e, t, n) {
+function Ma(e, t, n) {
 	return `${e}-${t}...${n}`;
 }
-var Pa = class {
+var Na = class {
 	constructor(e, t) {
 		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? Y.fromString(t) : t;
 	}
@@ -14754,23 +14754,23 @@ var Pa = class {
 	getSymmetryString() {
 		return this.appliedSymmetry.toString();
 	}
-}, Fa = /* @__PURE__ */ new WeakMap();
-function Ia(e, t, n) {
-	let r = Fa.get(t);
-	r || (r = /* @__PURE__ */ new Map(), Fa.set(t, r));
+}, Pa = /* @__PURE__ */ new WeakMap();
+function Fa(e, t, n) {
+	let r = Pa.get(t);
+	r || (r = /* @__PURE__ */ new Map(), Pa.set(t, r));
 	let i = `${n.groupIndex}@${n.appliedSymmetry.id}`;
 	return r.has(i) || r.set(i, e.symmetry.applySymmetry(n.appliedSymmetry.id, t[n.groupIndex].atoms)), r.get(i);
 }
-function La(e, t, n, r) {
+function Ia(e, t, n, r) {
 	if (n.groupIndex !== r.groupIndex || t[n.groupIndex].atoms.length === 0) return !1;
-	let i = Ia(e, t, n), a = Ia(e, t, r);
+	let i = Fa(e, t, n), a = Fa(e, t, r);
 	return i.every((t, n) => Ze(t.position, a[n].position, e.cell));
 }
-var Ra = class {
+var La = class {
 	constructor(e, t, n, r) {
 		this.originAtom = e.includes("|") ? e : q(e, "1_555"), this.targetAtom = t.includes("|") ? t : q(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
 	}
-}, za = class {
+}, Ra = class {
 	constructor(e, t, n, r, i, a) {
 		this.originIndex = e, this.originSymmetry = typeof t == "string" ? Y.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? Y.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
 	}
@@ -14779,7 +14779,7 @@ var Ra = class {
 		return this.originIndex === this.targetIndex ? e < t ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}` : this.originIndex < this.targetIndex ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}`;
 	}
 };
-function Ba(e, t, n) {
+function za(e, t, n) {
 	let r = t.map(() => /* @__PURE__ */ new Map()), i = t.map(() => []);
 	return e.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 		let t = n.get(e.atom1Id) ?? n.get(e.atom1Label), a = e.atom2Id.split("|")[0], o = `${a}|1_555`, s = n.get(o) ?? n.get(a);
@@ -14787,19 +14787,19 @@ function Ba(e, t, n) {
 		let c = `${t}->${s}@.@${e.atom2SiteSymmetry}`;
 		if (r[t].has(c)) {
 			let n = r[t].get(c);
-			i[t][n].bonds.push(new Ra(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
+			i[t][n].bonds.push(new La(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
 		} else r[t].set(c, i[t].length), i[t].push({
 			targetIndex: s,
 			targetSymmetry: Y.fromString(e.atom2SiteSymmetry),
-			bonds: [new Ra(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
+			bonds: [new La(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
 		});
 	}), i;
 }
-function Va(e, t) {
+function Ba(e, t) {
 	let n = [], r = /* @__PURE__ */ new Set();
 	return e.forEach((e, i) => {
 		for (let a of e) {
-			let e = new za(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
+			let e = new Ra(i, t, a.targetIndex, a.targetSymmetry, a.bonds, i), o = e.getKey();
 			r.has(o) || (n.push(e), r.add(o));
 		}
 	}), {
@@ -14807,13 +14807,13 @@ function Va(e, t) {
 		processedConnections: r
 	};
 }
-function Ha(e, t, n, r, i, a) {
-	let o = [], s = [], c = new Pa(e.targetIndex, e.targetSymmetry), l = r[e.targetIndex];
+function Va(e, t, n, r, i, a) {
+	let o = [], s = [], c = new Na(e.targetIndex, e.targetSymmetry), l = r[e.targetIndex];
 	for (let r of l) {
-		let c = (typeof r.targetSymmetry == "string" ? Y.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), l = new za(e.targetIndex, e.targetSymmetry, r.targetIndex, c, r.bonds, e.creationOriginIndex), u = l.getKey();
+		let c = (typeof r.targetSymmetry == "string" ? Y.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), l = new Ra(e.targetIndex, e.targetSymmetry, r.targetIndex, c, r.bonds, e.creationOriginIndex), u = l.getKey();
 		if (i.has(u)) continue;
 		i.add(u);
-		let d = new Pa(r.targetIndex, c), f = n[e.creationOriginIndex], p = f.some((e) => d.isTranslationalDuplicateOf(e)), m = !p && f.some((e) => La(t, a, d, e));
+		let d = new Na(r.targetIndex, c), f = n[e.creationOriginIndex], p = f.some((e) => d.isTranslationalDuplicateOf(e)), m = !p && f.some((e) => Ia(t, a, d, e));
 		p ? s.push(l) : m || o.push(l);
 	}
 	return {
@@ -14822,19 +14822,19 @@ function Ha(e, t, n, r, i, a) {
 		foundTranslations: s
 	};
 }
-function Ua(e, t) {
+function Ha(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	t.forEach((e, t) => {
 		e.atoms.forEach((e) => n.set(e.uniqueId, t));
 	});
-	let r = Y.fromString(e.symmetry.identitySymOpId + "_555"), i = Ba(e, t, n), { danglingConnections: a, processedConnections: o } = Va(i, r), s = [], c = [], l = t.map(() => []);
+	let r = Y.fromString(e.symmetry.identitySymOpId + "_555"), i = za(e, t, n), { danglingConnections: a, processedConnections: o } = Ba(i, r), s = [], c = [], l = t.map(() => []);
 	t.forEach((e, t) => {
-		l[t].push(new Pa(t, r));
+		l[t].push(new Na(t, r));
 	});
 	let u = 0, d = 1e4, f = 0;
 	for (; f < a.length;) {
 		if (u++ > d) throw Error(`createConnectivity exceeded the iteration limit (${d}) without completing the symmetry orbit. This structure's bonded network is likely an extended/periodic framework (e.g. zeolite, MOF, perovskite) rather than a finite molecule, so fragment growth is not well-defined for it.`);
-		let n = a[f++], r = Ha(n, e, l, i, o, t);
+		let n = a[f++], r = Va(n, e, l, i, o, t);
 		l[n.creationOriginIndex].push(r.newConnectedGroup), a.push(...r.newDanglingConnections), c.push(...r.foundTranslations), s.push(n);
 	}
 	return {
@@ -14843,7 +14843,7 @@ function Ua(e, t) {
 		discoveredGroups: l
 	};
 }
-function Wa(e) {
+function Ua(e) {
 	let t = /* @__PURE__ */ new Set(), n = [];
 	return e.forEach((e) => {
 		t.add(`${e.originIndex}@.@${e.originSymmetry.key}`), t.add(`${e.targetIndex}@.@${e.targetSymmetry.key}`), e.connectingBonds.forEach((t) => {
@@ -14861,7 +14861,7 @@ function Wa(e) {
 		interGroupBonds: n
 	};
 }
-function Ga(e, t, n, r) {
+function Wa(e, t, n, r) {
 	let i = t.map((e) => [[...e.atoms]]), a = /* @__PURE__ */ new Map(), o = [];
 	return e.forEach((e) => {
 		let [a, o] = e.split("@.@");
@@ -14890,22 +14890,22 @@ function Ga(e, t, n, r) {
 		newAtoms: o
 	};
 }
-function Ka(e, t, n, r, i, a, o = null) {
+function Ga(e, t, n, r, i, a, o = null) {
 	let s = [];
 	e.forEach((e) => {
 		s.push(...e.bonds);
 	});
 	let c = /* @__PURE__ */ new Set();
 	if (s.forEach((e) => {
-		c.add(Ma(e.atom1Id, e.atom2Id));
+		c.add(X(e.atom1Id, e.atom2Id));
 	}), t.forEach((t) => {
 		let [n, i] = t.split("@.@");
 		i !== a && e[Number(n)].bonds.forEach((e) => {
-			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = q(t, i), o = q(n, i), l = r.get(a) || a, u = r.get(o) || o, d = Ma(l, u);
+			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = q(t, i), o = q(n, i), l = r.get(a) || a, u = r.get(o) || o, d = X(l, u);
 			c.has(d) || (c.add(d), s.push(new B(l, u, e.bondLength, e.bondLengthSU, ".")));
 		});
 	}), n.forEach((e) => {
-		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || Y.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || Y.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? q(i, a) : q(i, l.key), f = u.key === a ? q(o, a) : q(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : q(p, a), g = m.includes("|") ? m : q(m, a), _ = Ma(h, g);
+		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || Y.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || Y.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? q(i, a) : q(i, l.key), f = u.key === a ? q(o, a) : q(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : q(p, a), g = m.includes("|") ? m : q(m, a), _ = X(h, g);
 		c.has(_) || (c.add(_), s.push(new B(h, g, e.bondLength, e.bondLengthSU, ".")));
 	}), o) {
 		let n = /* @__PURE__ */ new Map(), l = e.map(() => /* @__PURE__ */ new Set([a])), u = new Set(i.map((e) => e.uniqueId).filter(Boolean));
@@ -14923,7 +14923,7 @@ function Ka(e, t, n, r, i, a, o = null) {
 			for (let n of l[t]) {
 				let t = Y.fromString(n), a = i.combine(t, o.symmetry), l = q(e.atom1Label, n), d = q(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
 				if (!u.has(f) || !u.has(p)) continue;
-				let m = Ma(f, p);
+				let m = X(f, p);
 				c.has(m) || (c.add(m), s.push(new B(f, p, e.bondLength, e.bondLengthSU, ".")));
 			}
 		});
@@ -14933,11 +14933,11 @@ function Ka(e, t, n, r, i, a, o = null) {
 		atomLabels: new Set(i.map((e) => e.uniqueId))
 	};
 }
-function qa(e, t, n, r, i, a, o) {
+function Ka(e, t, n, r, i, a, o) {
 	let s = [], c = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((e) => {
 		let t;
-		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Na(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Na(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
+		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Ma(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Ma(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
 	});
 	let l = t.map(() => []);
 	return e.hBonds.filter((e) => e.acceptorAtomSymmetry !== ".").forEach((e) => {
@@ -14948,31 +14948,31 @@ function qa(e, t, n, r, i, a, o) {
 		if (u === o) return;
 		let d = Number(r);
 		t[d].hBonds.forEach((e) => {
-			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = q(t, u), o = q(n, u), l = q(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Na(d, f, p);
+			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = q(t, u), o = q(n, u), l = q(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Ma(d, f, p);
 			c.has(m) || (c.add(m), s.push(new V(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
 		}), l[d].forEach((t) => {
 			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = q(n, u), l = q(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = q(m, p), g = i.get(h) || h, _, v;
-			a.has(g) ? (_ = new V(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Na(d, f, g)) : (_ = new V(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Na(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
+			a.has(g) ? (_ = new V(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Ma(d, f, g)) : (_ = new V(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Ma(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
 		});
 	}), s;
 }
-function Ja(e, t, n, r) {
+function qa(e, t, n, r) {
 	let i = [];
 	return e.forEach((e) => {
 		for (let t of e.connectingBonds) {
-			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = q(a, e.originSymmetry.key), c = q(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = Ma(l, u);
+			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = q(a, e.originSymmetry.key), c = q(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = X(l, u);
 			r.has(f) || (r.add(f), i.push(new B(l, u, t.bondLength, t.bondLengthSU, d)));
 		}
 	}), i;
 }
-function Ya(e) {
+function Ja(e) {
 	let t = new H(e.cell, e.atoms, ja(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Ua(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Wa(a, e, i), l = /* @__PURE__ */ new Map();
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Ha(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Ua(a, e, i), l = /* @__PURE__ */ new Map();
 	for (let e of s) {
 		let t = Y.fromString(e.split("@.@")[1]), n = `${e.split("@.@")[0]}|${t.id}`, r = Math.abs(t.translation[0]) + Math.abs(t.translation[1]) + Math.abs(t.translation[2]), i = l.get(n);
 		(!i || r < i.magnitude || r === i.magnitude && e < i.instance) && l.set(n, {
@@ -14980,7 +14980,7 @@ function Ya(e) {
 			magnitude: r
 		});
 	}
-	let u = new Set([...l.values()].map((e) => e.instance)), d = u.size < s.size, { specialPositionAtoms: f, newAtoms: p } = Ga(u, n, t, i), { newBonds: m, atomLabels: h } = Ka(n, u, c, f, p, i, t), g = qa(t, n, r, u, f, h, i), _ = d ? [] : Ja(o, t, f, new Set(m.map((e) => Ma(e.atom1Id, e.atom2Id))));
+	let u = new Set([...l.values()].map((e) => e.instance)), d = u.size < s.size, { specialPositionAtoms: f, newAtoms: p } = Wa(u, n, t, i), { newBonds: m, atomLabels: h } = Ga(n, u, c, f, p, i, t), g = Ka(t, n, r, u, f, h, i), _ = d ? [] : qa(o, t, f, new Set(m.map((e) => X(e.atom1Id, e.atom2Id))));
 	for (let e of _) m.push(e);
 	let v = [...t.atoms, ...p], y = m, b = g;
 	if (d) {
@@ -14994,8 +14994,8 @@ function Ya(e) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-cell.js
-var Xa = 4;
-function Za(e, t) {
+var Ya = 4;
+function Xa(e, t) {
 	let n = /* @__PURE__ */ new Set([e.identitySymOpId]), r = /* @__PURE__ */ new Set();
 	for (let n of t) {
 		let t = e.combineSymmetryCodes(n + "_555", e.identitySymOpId + "_555");
@@ -15004,7 +15004,7 @@ function Za(e, t) {
 	for (let [t] of e.operationIds) n.has(t) || r.has(t) || n.add(t);
 	return n;
 }
-function Qa(e) {
+function Za(e) {
 	if (e.length === 0) return {
 		minX: 0,
 		maxX: 1,
@@ -15027,15 +15027,15 @@ function Qa(e) {
 		maxZ: o
 	};
 }
-function $a(e) {
-	let t = Qa(e);
+function Qa(e) {
+	let t = Za(e);
 	return F([
 		(t.minX + t.maxX) / 2,
 		(t.minY + t.maxY) / 2,
 		(t.minZ + t.maxZ) / 2
 	]);
 }
-function eo(e, t, n) {
+function $a(e, t, n) {
 	let r = t.symmetry.identitySymOpId, i = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) t.appliedSymmetry ? i.add(t.appliedSymmetry.id) : i.add(r);
 	let a = new Set(e.atoms.map((e) => e.uniqueId));
@@ -15045,15 +15045,15 @@ function eo(e, t, n) {
 	}
 	return Array.from(i);
 }
-function to(e, t = 1e-6) {
+function eo(e, t = 1e-6) {
 	let { x: n, y: r, z: i } = e.position;
 	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
 }
-function no(e, t = 3) {
+function to(e, t = 3) {
 	let n = e.position.x.toFixed(t), r = e.position.y.toFixed(t), i = e.position.z.toFixed(t);
 	return `${e.label}_x${n}_y${r}_z${i}`;
 }
-function ro(e, t, n) {
+function no(e, t, n) {
 	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = Ae(Ae(I(r.rotMatrix, F(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), { id: l, translation: u } = ot(t), d = [
 		u[0] - o,
 		u[1] - s,
@@ -15068,30 +15068,30 @@ function ro(e, t, n) {
 		newString: st(l, d)
 	};
 }
-function io(e, t, n, r, i) {
+function ro(e, t, n, r, i) {
 	let a = [], o = t.applySymmetry(n, e.atoms);
 	for (let s = 0; s < o.length; s++) {
 		let c = o[s], l = e.atoms[s], u = n;
 		l.appliedSymmetry && l.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (u = t.combineSymmetryCodes(n, l.appliedSymmetry.key)), c.appliedSymmetry = Y.fromString(u);
 		let d = c.uniqueId;
-		if (i && !to(c)) {
+		if (i && !eo(c)) {
 			let e = Math.floor(c.position.x), n = Math.floor(c.position.y), i = Math.floor(c.position.z);
 			c.position.x -= e, c.position.y -= n, c.position.z -= i, c.appliedSymmetry.translation[0] -= e, c.appliedSymmetry.translation[1] -= n, c.appliedSymmetry.translation[2] -= i, c.appliedSymmetry._updateKey();
 			let a = c.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
 			r.atomTranslations.set(d, [a, o]);
 		}
-		let f = c.uniqueId, p = no(c), m = r.atomMap.get(p);
+		let f = c.uniqueId, p = to(c), m = r.atomMap.get(p);
 		m ? r.specialPositionMap.set(f, m) : (r.atomMap.set(p, f), a.push(c));
 	}
 	return a;
 }
-function ao(e, t, n, r) {
+function io(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalBonds) {
 		let e = J(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = J(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
 		if (o !== c) {
 			if (!r.atomTranslations.has(o) && !r.atomTranslations.has(c)) {
-				let e = Ma(o, c);
+				let e = X(o, c);
 				if (!r.createdBonds.has(e)) {
 					let t = new B(o, c, a.bondLength, a.bondLengthSU, ".");
 					i.push(t), r.createdBonds.add(e);
@@ -15099,7 +15099,7 @@ function ao(e, t, n, r) {
 			} else if (r.atomTranslations.has(o) && r.atomTranslations.has(c)) {
 				let [e, t] = r.atomTranslations.get(o), [n, s] = r.atomTranslations.get(c);
 				if (t === s) {
-					let t = Ma(e, n);
+					let t = X(e, n);
 					if (!r.createdBonds.has(t)) {
 						let o = new B(e, n, a.bondLength, a.bondLengthSU, ".");
 						i.push(o), r.createdBonds.add(t);
@@ -15110,7 +15110,7 @@ function ao(e, t, n, r) {
 	}
 	return i;
 }
-function oo(e, t, n, r) {
+function ao(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalHBonds) {
 		let e = r.specialPositionMap.get(J(a.donorAtomId, n, t)) || J(a.donorAtomId, n, t), o = r.specialPositionMap.get(J(a.hydrogenAtomId, n, t)) || J(a.hydrogenAtomId, n, t), s;
@@ -15119,7 +15119,7 @@ function oo(e, t, n, r) {
 			s = r.specialPositionMap.get(e) || e;
 		} else s = r.specialPositionMap.get(J(a.acceptorAtomId, n, t)) || J(a.acceptorAtomId, n, t);
 		if (!r.atomTranslations.has(e) && !r.atomTranslations.has(o) && !r.atomTranslations.has(s)) {
-			let t = Na(e, o, s);
+			let t = Ma(e, o, s);
 			if (!r.createdHBonds.has(t)) {
 				let n = new V(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 				r.createdHBonds.add(t), i.push(n);
@@ -15127,7 +15127,7 @@ function oo(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) && r.atomTranslations.has(o) && r.atomTranslations.has(s)) {
 			let [t, n] = r.atomTranslations.get(e), [c, l] = r.atomTranslations.get(o), [u, d] = r.atomTranslations.get(s);
 			if (n === l && l === d) {
-				let e = Na(t, c, u);
+				let e = Ma(t, c, u);
 				if (!r.createdHBonds.has(e)) {
 					let n = new V(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 					r.createdHBonds.add(e), i.push(n);
@@ -15137,7 +15137,7 @@ function oo(e, t, n, r) {
 	}
 	return i;
 }
-function so(e, t, n, r) {
+function oo(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalBonds) {
 		let e = r.specialPositionMap.get(J(a.atom1Id, n, t)) || J(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
@@ -15147,7 +15147,7 @@ function so(e, t, n, r) {
 		}
 		let c = `${s}|${o}`;
 		c = r.specialPositionMap.get(c) || c;
-		let l = Ma(e, c);
+		let l = X(e, c);
 		if (!r.createdBonds.has(l)) {
 			let t = new B(e, c, a.bondLength, a.bondLengthSU, o);
 			i.push(t), r.createdBonds.add(l);
@@ -15155,7 +15155,7 @@ function so(e, t, n, r) {
 	}
 	return i;
 }
-function co(e, t, n, r) {
+function so(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalHBonds) {
 		let e = r.specialPositionMap.get(J(a.donorAtomId, n, t)) || J(a.donorAtomId, n, t), o = r.specialPositionMap.get(J(a.hydrogenAtomId, n, t)) || J(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
@@ -15168,7 +15168,7 @@ function co(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) || r.atomTranslations.has(o)) continue;
 		let c = `${a.acceptorAtomId.split("|")[0]}|${s}`;
 		if (e.split("|")[1] === s) continue;
-		let l = Na(e, o, c);
+		let l = Ma(e, o, c);
 		if (!r.createdHBonds.has(l)) {
 			let t = new V(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
 			i.push(t), r.createdHBonds.add(l);
@@ -15176,144 +15176,212 @@ function co(e, t, n, r) {
 	}
 	return i;
 }
-function lo(e, t, n, r, i) {
-	let { newCentre: a, newString: o } = ro(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function co(e, t, n, r, i) {
+	let { newCentre: a, newString: o } = no(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: io(e, t, o, r, i),
-		internalBonds: ao(e, t, o, r),
-		internalHBonds: oo(e, t, o, r),
-		externalBonds: so(e, t, o, r),
-		externalHBonds: co(e, t, o, r),
+		atoms: ro(e, t, o, r, i),
+		internalBonds: io(e, t, o, r),
+		internalHBonds: ao(e, t, o, r),
+		externalBonds: oo(e, t, o, r),
+		externalHBonds: so(e, t, o, r),
 		symmString: o,
 		groupCentre: a
 	};
 }
-function uo(e, t = !0, n = null) {
-	let r;
-	if (r = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new H(e.cell, [], [], [], e.symmetry);
-	let i = e.calculateConnectedGroups(), a = i.map((t) => {
-		let n = eo(t, e, r);
-		return Array.from(Za(e.symmetry, n));
-	}), o = i.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), s = i.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), c = {
+function lo(e, t = !0, n = null, r = 1) {
+	let i;
+	if (i = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new H(e.cell, [], [], [], e.symmetry);
+	let a = e.calculateConnectedGroups(), o = a.map((t) => {
+		let n = $a(t, e, i);
+		return Array.from(Xa(e.symmetry, n));
+	}), s = a.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), c = a.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), l = {
 		atomMap: /* @__PURE__ */ new Map(),
 		createdBonds: /* @__PURE__ */ new Set(),
 		createdHBonds: /* @__PURE__ */ new Set(),
-		specialPositionMap: r,
+		specialPositionMap: i,
 		atomTranslations: /* @__PURE__ */ new Map()
-	}, l = [];
-	for (let n = 0; n < i.length; n++) {
-		let r = i[n], u = a[n], d = $a(r.atoms), f = u[0], p = {
+	}, u = [];
+	for (let n = 0; n < a.length; n++) {
+		let r = a[n], i = o[n], d = Qa(r.atoms), f = i[0], p = {
 			atoms: r.atoms,
 			internalBonds: r.bonds,
 			internalHBonds: r.hBonds,
 			symmString: `${f}_555`,
 			groupCentre: d,
-			externalBonds: o[n],
-			externalHBonds: s[n]
+			externalBonds: s[n],
+			externalHBonds: c[n]
 		};
-		for (let n of u) {
-			let r = `${n}_555`, i = lo(p, e.symmetry, r, c, t);
-			l.push(i);
+		for (let n of i) {
+			let r = `${n}_555`, i = co(p, e.symmetry, r, l, t);
+			u.push(i);
 		}
 	}
-	let u = [...t ? [] : e.symmetry.applySymmetry(`${e.symmetry.identitySymOpId}_555`, e.atoms).map((t, n) => (t.appliedSymmetry = e.atoms[n].appliedSymmetry?.copy() || null, t)), ...l.flatMap((e) => e.atoms)], d = /* @__PURE__ */ new Map();
-	for (let e of u) d.has(e.uniqueId) || d.set(e.uniqueId, e);
-	let f = Array.from(d.values()), p = [...t ? [] : e.bonds.map((e) => new B(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...l.flatMap((e) => e.internalBonds)], m = [...t ? [] : e.hBonds.map((e) => new V(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...l.flatMap((e) => e.internalHBonds)], h = new Set(f.map((e) => e.uniqueId));
-	l.forEach((e) => {
+	let d = [...t ? [] : e.symmetry.applySymmetry(`${e.symmetry.identitySymOpId}_555`, e.atoms).map((t, n) => (t.appliedSymmetry = e.atoms[n].appliedSymmetry?.copy() || null, t)), ...u.flatMap((e) => e.atoms)], f = /* @__PURE__ */ new Map();
+	for (let e of d) f.has(e.uniqueId) || f.set(e.uniqueId, e);
+	let p = Array.from(f.values()), m = [...t ? [] : e.bonds.map((e) => new B(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry)), ...u.flatMap((e) => e.internalBonds)], h = [...t ? [] : e.hBonds.map((e) => new V(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry)), ...u.flatMap((e) => e.internalHBonds)], g = new Set(p.map((e) => e.uniqueId));
+	if (u.forEach((e) => {
 		e.externalBonds.forEach((e) => {
-			let t = c.specialPositionMap.get(e.atom1Id) || e.atom1Id;
-			c.atomTranslations.has(t) && ([t] = c.atomTranslations.get(t));
-			let n = c.specialPositionMap.get(e.atom2Id) || e.atom2Id;
-			if (c.atomTranslations.has(n) && ([n] = c.atomTranslations.get(n)), h.has(t) && h.has(n) && t !== n) {
+			let t = l.specialPositionMap.get(e.atom1Id) || e.atom1Id;
+			l.atomTranslations.has(t) && ([t] = l.atomTranslations.get(t));
+			let n = l.specialPositionMap.get(e.atom2Id) || e.atom2Id;
+			if (l.atomTranslations.has(n) && ([n] = l.atomTranslations.get(n)), g.has(t) && g.has(n) && t !== n) {
 				let r = new B(t, n, e.bondLength, e.bondLengthSU, ".");
-				p.push(r);
-			} else if (h.has(t)) {
+				m.push(r);
+			} else if (g.has(t)) {
 				let n = new B(t, e.atom2Id, e.bondLength, e.bondLengthSU, e.atom2SiteSymmetry);
-				p.push(n);
+				m.push(n);
 			}
 		}), e.externalHBonds.forEach((e) => {
-			let t = null, n = c.specialPositionMap.get(e.donorAtomId) || e.donorAtomId;
-			h.has(n) || (n = c.specialPositionMap.get(n) || n, c.atomTranslations.has(n) && ([n, t] = c.atomTranslations.get(n)));
-			let r = null, i = c.specialPositionMap.get(e.hydrogenAtomId) || e.hydrogenAtomId;
-			h.has(i) || (i = c.specialPositionMap.get(i) || i, c.atomTranslations.has(i) && ([i, r] = c.atomTranslations.get(i)));
+			let t = null, n = l.specialPositionMap.get(e.donorAtomId) || e.donorAtomId;
+			g.has(n) || (n = l.specialPositionMap.get(n) || n, l.atomTranslations.has(n) && ([n, t] = l.atomTranslations.get(n)));
+			let r = null, i = l.specialPositionMap.get(e.hydrogenAtomId) || e.hydrogenAtomId;
+			g.has(i) || (i = l.specialPositionMap.get(i) || i, l.atomTranslations.has(i) && ([i, r] = l.atomTranslations.get(i)));
 			let a;
-			if (a = !e.acceptorAtomSymmetry || e.acceptorAtomSymmetry === "." ? e.acceptorAtomId : `${e.acceptorAtomId.split("|")[0]}|${e.acceptorAtomSymmetry}`, !h.has(a) && (a = c.specialPositionMap.get(a) || a, c.atomTranslations.has(a))) {
-				let [e, n] = c.atomTranslations.get(a);
+			if (a = !e.acceptorAtomSymmetry || e.acceptorAtomSymmetry === "." ? e.acceptorAtomId : `${e.acceptorAtomId.split("|")[0]}|${e.acceptorAtomSymmetry}`, !g.has(a) && (a = l.specialPositionMap.get(a) || a, l.atomTranslations.has(a))) {
+				let [e, n] = l.atomTranslations.get(a);
 				t === n && r === n && (a = e);
 			}
-			if (h.has(n) && h.has(i) && h.has(a)) {
+			if (g.has(n) && g.has(i) && g.has(a)) {
 				let t = new V(n, i, a, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".");
-				m.push(t);
-			} else if (h.has(n) && h.has(i)) {
+				h.push(t);
+			} else if (g.has(n) && g.has(i)) {
 				let t = new V(n, i, e.acceptorAtomId, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, e.acceptorAtomSymmetry);
-				m.push(t);
+				h.push(t);
 			}
 		});
-	});
-	let g = new Map(f.map((e) => [e.uniqueId, e])), _ = /* @__PURE__ */ new Map(), v = (t) => {
-		let n = _.get(t.uniqueId);
-		return n || (n = t.position.toCartesian(e.cell), _.set(t.uniqueId, n)), n;
-	}, y = (e) => {
+	}), t && r > 1) {
+		let t = uo(new H(e.cell, p, m, h, e.symmetry), r, e.bonds);
+		p = t.atoms, m = t.bonds, g = new Set(p.map((e) => e.uniqueId));
+	}
+	let _ = new Map(p.map((e) => [e.uniqueId, e])), v = /* @__PURE__ */ new Map(), y = (t) => {
+		let n = v.get(t.uniqueId);
+		return n || (n = t.position.toCartesian(e.cell), v.set(t.uniqueId, n)), n;
+	}, b = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Xa) return !1;
-		let t = g.get(e.atom1Id), n = g.get(e.atom2Id);
+		if (e.bondLength > Ya) return !1;
+		let t = _.get(e.atom1Id), n = _.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
-		let r = v(t), i = v(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
+		let r = y(t), i = y(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
 		return a <= e.bondLength + o;
-	}, b = p.filter((e) => {
-		let t = h.has(e.atom1Id), n = e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
-		return t && (h.has(e.atom2Id) || n) && y(e);
-	}), x = m.filter((e) => h.has(e.donorAtomId) && h.has(e.hydrogenAtomId)), S = b, C = new H(e.cell, f, S, [], e.symmetry), w = /* @__PURE__ */ new Map();
-	for (let e of C.calculateConnectedGroups()) {
-		let t = $a(e.atoms).toArray().map((e) => Math.floor(e));
+	}, x = m.filter((e) => {
+		let t = g.has(e.atom1Id), n = e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
+		return t && (g.has(e.atom2Id) || n) && b(e);
+	}), S = h.filter((e) => g.has(e.donorAtomId) && g.has(e.hydrogenAtomId)), C = x, w = new H(e.cell, p, C, [], e.symmetry), T = /* @__PURE__ */ new Map();
+	for (let e of w.calculateConnectedGroups()) {
+		let t = Qa(e.atoms).toArray().map((e) => Math.floor(e));
 		for (let n of e.atoms) {
 			let e = n.uniqueId;
-			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), w.set(e, n.uniqueId);
+			n.position.x -= t[0], n.position.y -= t[1], n.position.z -= t[2], n.appliedSymmetry && (n.appliedSymmetry.translation[0] -= t[0], n.appliedSymmetry.translation[1] -= t[1], n.appliedSymmetry.translation[2] -= t[2], n.appliedSymmetry._updateKey()), T.set(e, n.uniqueId);
 		}
 	}
-	let T = [], E = /* @__PURE__ */ new Map(), D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map();
-	for (let e of f) {
-		let t = no(e), n = D.get(e.uniqueId) || E.get(t);
-		n ? O.set(e.uniqueId, n) : (E.set(t, e.uniqueId), D.set(e.uniqueId, e.uniqueId), T.push(e));
+	let E = [], D = /* @__PURE__ */ new Map(), O = /* @__PURE__ */ new Map(), k = /* @__PURE__ */ new Map();
+	for (let e of p) {
+		let t = to(e), n = O.get(e.uniqueId) || D.get(t);
+		n ? k.set(e.uniqueId, n) : (D.set(t, e.uniqueId), O.set(e.uniqueId, e.uniqueId), E.push(e));
 	}
-	for (let [e, t] of w) w.set(e, O.get(t) || t);
-	let k = [], A = /* @__PURE__ */ new Set();
-	for (let e of b) {
-		let t = w.get(e.atom1Id) || e.atom1Id, n = w.get(e.atom2Id) || e.atom2Id;
-		if (t === n) continue;
-		let r = Ma(t, n);
-		A.has(r) || (e.atom1Id = t, e.atom2Id = n, k.push(e), A.add(r));
-	}
-	let j = [], M = /* @__PURE__ */ new Set();
+	for (let [e, t] of T) T.set(e, k.get(t) || t);
+	let A = [], j = /* @__PURE__ */ new Set();
 	for (let e of x) {
-		e.donorAtomId = w.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = w.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = w.get(e.acceptorAtomId) || e.acceptorAtomId;
-		let t = Na(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
-		M.has(t) || (j.push(e), M.add(t));
+		let t = T.get(e.atom1Id) || e.atom1Id, n = T.get(e.atom2Id) || e.atom2Id;
+		if (t === n) continue;
+		let r = X(t, n);
+		j.has(r) || (e.atom1Id = t, e.atom2Id = n, A.push(e), j.add(r));
 	}
-	return new H(e.cell, T, k, j, e.symmetry);
+	let M = [], N = /* @__PURE__ */ new Set();
+	for (let e of S) {
+		e.donorAtomId = T.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = T.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = T.get(e.acceptorAtomId) || e.acceptorAtomId;
+		let t = Ma(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
+		N.has(t) || (M.push(e), N.add(t));
+	}
+	let ee = t && r > 1 ? new Map(E.map((e) => [e.uniqueId, e])) : null, te = t && r > 1 ? A.filter((t) => {
+		if (!Number.isFinite(t.bondLength) || t.bondLength > Ya) return !1;
+		let n = ee.get(t.atom1Id), r = ee.get(t.atom2Id);
+		if (!n || !r) return !1;
+		let i = n.position.toCartesian(e.cell), a = r.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
+		return Math.abs(o - t.bondLength) <= Math.max(.15, t.bondLength * .1);
+	}) : A;
+	return new H(e.cell, E, te, M, e.symmetry);
 }
-function fo(e, t) {
-	let n = t - 1;
-	if (!(n > 0)) return e;
-	let r = [];
+function uo(e, t, n = []) {
+	let r = t - 1;
+	if (!(r > 0)) return e;
+	let i = [], a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) {
-		let { x: i, y: a, z: o } = t.position, s = [];
-		if (i < n && s.push(0), a < n && s.push(1), o < n && s.push(2), s.length !== 0) for (let n = 1; n < 1 << s.length; n++) {
-			let c = [
+		let e = a.get(t.uniqueId) || [];
+		e.push(t), a.set(t.uniqueId, e);
+		let n = o.get(t.label) || [];
+		n.push(t), o.set(t.label, n);
+	}
+	for (let t of e.atoms) {
+		let { x: n, y: c, z: l } = t.position, u = [];
+		if (n < r && u.push(0), c < r && u.push(1), l < r && u.push(2), u.length !== 0) for (let r = 1; r < 1 << u.length; r++) {
+			let d = [
 				0,
 				0,
 				0
 			];
-			for (let e = 0; e < s.length; e++) n & 1 << e && (c[s[e]] = 1);
-			let l = new Ye(i + c[0], a + c[1], o + c[2]), u = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new Y(e.symmetry.identitySymOpId, [
+			for (let e = 0; e < u.length; e++) r & 1 << e && (d[u[e]] = 1);
+			let f = new Ye(n + d[0], c + d[1], l + d[2]), p = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new Y(e.symmetry.identitySymOpId, [
 				0,
 				0,
 				0
 			]);
-			u.translation[0] += c[0], u.translation[1] += c[1], u.translation[2] += c[2], u._updateKey(), r.push(new Ct(t.label, t.atomType, l, t.adp, t.disorderGroup, u));
+			p.translation[0] += d[0], p.translation[1] += d[1], p.translation[2] += d[2], p._updateKey();
+			let m = new Ct(t.label, t.atomType, f, t.adp, t.disorderGroup, p);
+			i.push(m), a.get(t.uniqueId).push(m), o.get(t.label).push(m), s.add(m.uniqueId);
 		}
 	}
-	return new H(e.cell, [...e.atoms, ...r], e.bonds, e.hBonds, e.symmetry);
+	let c = /* @__PURE__ */ new Set();
+	for (let t of e.bonds) c.add(X(t.atom1Id, t.atom2Id));
+	let l = [], u = (t, n, r) => {
+		if (!Number.isFinite(r.bondLength) || r.bondLength > Ya) return !1;
+		let i = t.position.toCartesian(e.cell), a = n.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
+		return Math.abs(o - r.bondLength) <= Math.max(.15, r.bondLength * .1);
+	};
+	for (let t of [...e.bonds, ...n]) {
+		let e = a.get(t.atom1Id) || o.get(t.atom1Label), n = a.get(t.atom2Id) || o.get(t.atom2Label);
+		if (!(!e || !n)) for (let r of e) for (let e of n) {
+			if (r.uniqueId === e.uniqueId || !s.has(r.uniqueId) && !s.has(e.uniqueId) || !u(r, e, t)) continue;
+			let n = X(r.uniqueId, e.uniqueId);
+			c.has(n) || (l.push(new B(r.uniqueId, e.uniqueId, t.bondLength, t.bondLengthSU, ".")), c.add(n));
+		}
+	}
+	return new H(e.cell, [...e.atoms, ...i], [...e.bonds, ...l], e.hBonds, e.symmetry);
+}
+function fo(e, t) {
+	let n = t - 1;
+	if (!(n > 0)) return e;
+	let r = [...e.bonds, ...e.hBonds.map((e) => new B(e.donorAtomId, e.hydrogenAtomId, null, null, "."))], i = new H(e.cell, e.atoms, r, [], e.symmetry), a = [], o = [], s = new Set(e.bonds.map((e) => X(e.atom1Id, e.atom2Id)));
+	for (let t of i.calculateConnectedGroups()) {
+		let r = Qa(t.atoms).toArray(), i = [];
+		for (let e = 0; e < 3; e++) r[e] < n && i.push(e);
+		if (i.length !== 0) for (let n = 1; n < 1 << i.length; n++) {
+			let r = [
+				0,
+				0,
+				0
+			];
+			for (let e = 0; e < i.length; e++) n & 1 << e && (r[i[e]] = 1);
+			let c = /* @__PURE__ */ new Map();
+			for (let n of t.atoms) {
+				let t = new Ye(n.position.x + r[0], n.position.y + r[1], n.position.z + r[2]), i = (n.appliedSymmetry ? n.appliedSymmetry.copy() : null) || new Y(e.symmetry.identitySymOpId, [
+					0,
+					0,
+					0
+				]);
+				i.translation[0] += r[0], i.translation[1] += r[1], i.translation[2] += r[2], i._updateKey();
+				let o = new Ct(n.label, n.atomType, t, n.adp, n.disorderGroup, i);
+				c.set(n.uniqueId, o.uniqueId), a.push(o);
+			}
+			for (let t of e.bonds) {
+				let e = c.get(t.atom1Id), n = c.get(t.atom2Id);
+				if (!e || !n || e === n) continue;
+				let r = X(e, n);
+				s.has(r) || (o.push(new B(e, n, t.bondLength, t.bondLengthSU, ".")), s.add(r));
+			}
+		}
+	}
+	return new H(e.cell, [...e.atoms, ...a], [...e.bonds, ...o], e.hBonds, e.symmetry);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
@@ -15628,13 +15696,13 @@ var Co = class e extends Ea {
 		this.ensureValidMode(t);
 		let n = this.mode === e.MODES.NONE ? t : new H(t.cell, t.atoms, ja(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
 		if (this.mode === e.MODES.FRAGMENT || this.mode === e.MODES.FRAGMENT_HBONDS) {
-			let e = Ya(n);
+			let e = Ja(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = fo(uo(n), this.packingCutoff);
+		if (this.mode === e.MODES.CELL) n = lo(n, !0, null, this.packingCutoff);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
-			let e = Ya(n);
-			r = e.specialPositionAtoms, n = fo(uo(e.grownStructure, !1, r), this.packingCutoff), n = xo(n);
+			let e = Ja(n);
+			r = e.specialPositionAtoms, n = fo(lo(e.grownStructure, !1, r), this.packingCutoff), n = xo(n);
 		}
 		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new H(n.cell, n.atoms, bo(n, n.bonds), n.hBonds, n.symmetry)), n = So(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new H(n.cell, n.atoms, bo(n, n.bonds), n.hBonds, n.symmetry), n = xo(n))), n;
 	}
@@ -50425,19 +50493,19 @@ var Ls = class extends C {
 	set alphaToCoverage(e) {
 		this.defines && (e === !0 !== this.alphaToCoverage && (this.needsUpdate = !0), e === !0 ? this.defines.USE_ALPHA_TO_COVERAGE = "" : delete this.defines.USE_ALPHA_TO_COVERAGE);
 	}
-}, Rs = new A(), zs = new k(), Bs = new k(), X = new A(), Z = new A(), Q = new A(), Vs = new k(), Hs = new v(), $ = new h(), Us = new k(), Ws = new t(), Gs = new w(), Ks = new A(), qs, Js;
-function Ys(e, t, n) {
-	return Ks.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), Ks.multiplyScalar(1 / Ks.w), Ks.x = Js / n.width, Ks.y = Js / n.height, Ks.applyMatrix4(e.projectionMatrixInverse), Ks.multiplyScalar(1 / Ks.w), Math.abs(Math.max(Ks.x, Ks.y));
+}, Rs = new A(), zs = new k(), Bs = new k(), Z = new A(), Q = new A(), Vs = new A(), Hs = new k(), Us = new v(), $ = new h(), Ws = new k(), Gs = new t(), Ks = new w(), qs = new A(), Js, Ys;
+function Xs(e, t, n) {
+	return qs.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), qs.multiplyScalar(1 / qs.w), qs.x = Ys / n.width, qs.y = Ys / n.height, qs.applyMatrix4(e.projectionMatrixInverse), qs.multiplyScalar(1 / qs.w), Math.abs(Math.max(qs.x, qs.y));
 }
-function Xs(e, t) {
+function Zs(e, t) {
 	let n = e.matrixWorld, r = e.geometry, i = r.attributes.instanceStart, a = r.attributes.instanceEnd, o = Math.min(r.instanceCount, i.count);
 	for (let r = 0, s = o; r < s; r++) {
 		$.start.fromBufferAttribute(i, r), $.end.fromBufferAttribute(a, r), $.applyMatrix4(n);
 		let o = new k(), s = new k();
-		qs.distanceSqToSegment($.start, $.end, s, o), s.distanceTo(o) < Js * .5 && t.push({
+		Js.distanceSqToSegment($.start, $.end, s, o), s.distanceTo(o) < Ys * .5 && t.push({
 			point: s,
 			pointOnLine: o,
-			distance: qs.origin.distanceTo(s),
+			distance: Js.origin.distanceTo(s),
 			object: e,
 			face: null,
 			faceIndex: r,
@@ -50446,29 +50514,29 @@ function Xs(e, t) {
 		});
 	}
 }
-function Zs(e, t, n) {
+function Qs(e, t, n) {
 	let r = t.projectionMatrix, i = e.material.resolution, a = e.matrixWorld, o = e.geometry, s = o.attributes.instanceStart, c = o.attributes.instanceEnd, l = Math.min(o.instanceCount, s.count), u = -t.near;
-	qs.at(1, Q), Q.w = 1, Q.applyMatrix4(t.matrixWorldInverse), Q.applyMatrix4(r), Q.multiplyScalar(1 / Q.w), Q.x *= i.x / 2, Q.y *= i.y / 2, Q.z = 0, Vs.copy(Q), Hs.multiplyMatrices(t.matrixWorldInverse, a);
+	Js.at(1, Vs), Vs.w = 1, Vs.applyMatrix4(t.matrixWorldInverse), Vs.applyMatrix4(r), Vs.multiplyScalar(1 / Vs.w), Vs.x *= i.x / 2, Vs.y *= i.y / 2, Vs.z = 0, Hs.copy(Vs), Us.multiplyMatrices(t.matrixWorldInverse, a);
 	for (let t = 0, o = l; t < o; t++) {
-		if (X.fromBufferAttribute(s, t), Z.fromBufferAttribute(c, t), X.w = 1, Z.w = 1, X.applyMatrix4(Hs), Z.applyMatrix4(Hs), X.z > u && Z.z > u) continue;
-		if (X.z > u) {
-			let e = X.z - Z.z, t = (X.z - u) / e;
-			X.lerp(Z, t);
-		} else if (Z.z > u) {
-			let e = Z.z - X.z, t = (Z.z - u) / e;
-			Z.lerp(X, t);
+		if (Z.fromBufferAttribute(s, t), Q.fromBufferAttribute(c, t), Z.w = 1, Q.w = 1, Z.applyMatrix4(Us), Q.applyMatrix4(Us), Z.z > u && Q.z > u) continue;
+		if (Z.z > u) {
+			let e = Z.z - Q.z, t = (Z.z - u) / e;
+			Z.lerp(Q, t);
+		} else if (Q.z > u) {
+			let e = Q.z - Z.z, t = (Q.z - u) / e;
+			Q.lerp(Z, t);
 		}
-		X.applyMatrix4(r), Z.applyMatrix4(r), X.multiplyScalar(1 / X.w), Z.multiplyScalar(1 / Z.w), X.x *= i.x / 2, X.y *= i.y / 2, Z.x *= i.x / 2, Z.y *= i.y / 2, $.start.copy(X), $.start.z = 0, $.end.copy(Z), $.end.z = 0;
-		let o = $.closestPointToPointParameter(Vs, !0);
-		$.at(o, Us);
-		let l = _.lerp(X.z, Z.z, o), d = l >= -1 && l <= 1, f = Vs.distanceTo(Us) < Js * .5;
+		Z.applyMatrix4(r), Q.applyMatrix4(r), Z.multiplyScalar(1 / Z.w), Q.multiplyScalar(1 / Q.w), Z.x *= i.x / 2, Z.y *= i.y / 2, Q.x *= i.x / 2, Q.y *= i.y / 2, $.start.copy(Z), $.start.z = 0, $.end.copy(Q), $.end.z = 0;
+		let o = $.closestPointToPointParameter(Hs, !0);
+		$.at(o, Ws);
+		let l = _.lerp(Z.z, Q.z, o), d = l >= -1 && l <= 1, f = Hs.distanceTo(Ws) < Ys * .5;
 		if (d && f) {
 			$.start.fromBufferAttribute(s, t), $.end.fromBufferAttribute(c, t), $.start.applyMatrix4(a), $.end.applyMatrix4(a);
 			let r = new k(), i = new k();
-			qs.distanceSqToSegment($.start, $.end, i, r), n.push({
+			Js.distanceSqToSegment($.start, $.end, i, r), n.push({
 				point: i,
 				pointOnLine: r,
-				distance: qs.origin.distanceTo(i),
+				distance: Js.origin.distanceTo(i),
 				object: e,
 				face: null,
 				faceIndex: t,
@@ -50478,7 +50546,7 @@ function Zs(e, t, n) {
 		}
 	}
 }
-var Qs = class extends y {
+var $s = class extends y {
 	constructor(e = new Is(), t = new Ls({ color: Math.random() * 16777215 })) {
 		super(e, t), this.isLineSegments2 = !0, this.type = "LineSegments2";
 	}
@@ -50492,30 +50560,30 @@ var Qs = class extends y {
 		let n = this.material.worldUnits, r = e.camera;
 		if (r === null && !n && console.error("LineSegments2: \"Raycaster.camera\" needs to be set in order to raycast against LineSegments2 while worldUnits is set to false."), n === !1 && (this.material.resolution.x === 0 || this.material.resolution.y === 0)) return;
 		let i = e.params.Line2 === void 0 ? 0 : e.params.Line2.threshold || 0;
-		qs = e.ray;
+		Js = e.ray;
 		let a = this.matrixWorld, o = this.geometry, s = this.material;
-		Js = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), Gs.copy(o.boundingSphere).applyMatrix4(a);
+		Ys = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), Ks.copy(o.boundingSphere).applyMatrix4(a);
 		let c;
-		if (c = n ? Js * .5 : Ys(r, Math.max(r.near, Gs.distanceToPoint(qs.origin)), s.resolution), Gs.radius += c, qs.intersectsSphere(Gs) === !1) return;
-		o.boundingBox === null && o.computeBoundingBox(), Ws.copy(o.boundingBox).applyMatrix4(a);
+		if (c = n ? Ys * .5 : Xs(r, Math.max(r.near, Ks.distanceToPoint(Js.origin)), s.resolution), Ks.radius += c, Js.intersectsSphere(Ks) === !1) return;
+		o.boundingBox === null && o.computeBoundingBox(), Gs.copy(o.boundingBox).applyMatrix4(a);
 		let l;
-		l = n ? Js * .5 : Ys(r, Math.max(r.near, Ws.distanceToPoint(qs.origin)), s.resolution), Ws.expandByScalar(l), qs.intersectsBox(Ws) !== !1 && (n ? Xs(this, t) : Zs(this, r, t));
+		l = n ? Ys * .5 : Xs(r, Math.max(r.near, Gs.distanceToPoint(Js.origin)), s.resolution), Gs.expandByScalar(l), Js.intersectsBox(Gs) !== !1 && (n ? Zs(this, t) : Qs(this, r, t));
 	}
 	onBeforeRender(e) {
 		let t = this.material.uniforms;
 		t && t.resolution && (e.getViewport(Rs), this.material.uniforms.resolution.value.set(Rs.z, Rs.w));
 	}
-}, $s = 0, ec = 1;
-function tc() {
+}, ec = 0, tc = 1;
+function nc() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function nc(e) {
+function rc(e) {
 	return ArrayBuffer.isView(e) ? e : new Float32Array(e.flat(2));
 }
-function rc(e) {
+function ic(e) {
 	return ArrayBuffer.isView(e) ? e.length / 6 : e.length;
 }
-var ic = class {
+var ac = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null;
 	}
@@ -50532,13 +50600,13 @@ var ic = class {
 		};
 	}
 	addSegments(e, t, n, r) {
-		let i = rc(t);
+		let i = ic(t);
 		if (i === 0) return;
-		let a = nc(t);
+		let a = rc(t);
 		if (this.options.haloWidth > 0) {
 			let t = new Is();
 			t.setPositions(a);
-			let r = new Qs(t, new Ls({
+			let r = new $s(t, new Ls({
 				color: this.options.haloColor,
 				linewidth: this.options.lineWidth + 2 * this.options.haloWidth,
 				opacity: this.options.opacity,
@@ -50547,14 +50615,14 @@ var ic = class {
 				worldUnits: !1,
 				alphaToCoverage: this.options.opacity >= 1,
 				polygonOffset: !0,
-				polygonOffsetFactor: $s,
-				polygonOffsetUnits: ec
+				polygonOffsetFactor: ec,
+				polygonOffsetUnits: tc
 			}));
 			r.name = `${n[0].toUpperCase()}${n.slice(1)} contour halo`, r.renderOrder = -1, e.add(r);
 		}
 		let o = new Is();
 		o.setPositions(a);
-		let s = new Qs(o, new Ls({
+		let s = new $s(o, new Ls({
 			color: r,
 			linewidth: this.options.lineWidth,
 			opacity: this.options.opacity,
@@ -50563,25 +50631,25 @@ var ic = class {
 			worldUnits: !1,
 			alphaToCoverage: this.options.opacity >= 1,
 			polygonOffset: !0,
-			polygonOffsetFactor: $s,
-			polygonOffsetUnits: ec
+			polygonOffsetFactor: ec,
+			polygonOffsetUnits: tc
 		}));
 		s.name = `${n[0].toUpperCase()}${n.slice(1)} contour lines`, s.userData.sign = n, s.userData.segmentCount = i, e.add(s);
 	}
 	rebuild() {
-		let e = tc();
+		let e = nc();
 		if (this.clearMesh(), !this.field || !this.structure) return null;
 		let t = Ri(this.field, this.structure, this.options);
 		return this.buildContours(t, e);
 	}
 	rebuildFromContours(e) {
-		let t = tc();
+		let t = nc();
 		return this.clearMesh(), !this.field || !e ? null : this.buildContours(e, t);
 	}
 	buildContours(t, n) {
-		let r = this.field.fieldKind === "deformation-density", i = this.options.lineColor ?? (r ? this.options.deformationPositiveColor : this.options.positiveColor), a = this.options.lineColor ?? (r ? this.options.deformationNegativeColor : this.options.negativeColor), o = tc(), s = new e.Group();
+		let r = this.field.fieldKind === "deformation-density", i = this.options.lineColor ?? (r ? this.options.deformationPositiveColor : this.options.positiveColor), a = this.options.lineColor ?? (r ? this.options.deformationNegativeColor : this.options.negativeColor), o = nc(), s = new e.Group();
 		s.name = "Planar contour lines", this.addSegments(s, t.positiveSegments, "positive", i), this.addSegments(s, t.negativeSegments, "negative", a), this.addSegments(s, t.zeroSegments, "zero", this.options.zeroColor);
-		let c = tc();
+		let c = nc();
 		return s.userData = {
 			displayMode: "contour-lines",
 			level: t.level,
@@ -50590,9 +50658,9 @@ var ic = class {
 			dimensions: t.dimensions,
 			plane: t.plane,
 			segmentCount: t.segmentCount,
-			positiveSegmentCount: rc(t.positiveSegments),
-			negativeSegmentCount: rc(t.negativeSegments),
-			zeroSegmentCount: rc(t.zeroSegments),
+			positiveSegmentCount: ic(t.positiveSegments),
+			negativeSegmentCount: ic(t.negativeSegments),
+			zeroSegmentCount: ic(t.zeroSegments),
 			polygonCount: 0,
 			resolution: Math.max(...t.dimensions),
 			planeSetupTimeMs: t.timings.planeSetupTimeMs,
@@ -50638,16 +50706,16 @@ var ic = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, ac = Object.freeze(["constant", "onDemand"]), oc = Object.freeze([
+}, oc = Object.freeze(["constant", "onDemand"]), sc = Object.freeze([
 	"solid-3d",
 	"cutout-3d",
 	"cutout-2d"
-]), sc = Object.freeze(["uniform", "split"]), cc = Object.freeze([
+]), cc = Object.freeze(["uniform", "split"]), lc = Object.freeze([
 	"auto-omit",
 	"quality-omit",
 	"performance-omit",
 	"maximum-coverage"
-]), lc = Object.freeze(["structure", "viewport"]), uc = Object.freeze(["uniform", "atom"]);
+]), uc = Object.freeze(["structure", "viewport"]), dc = Object.freeze(["uniform", "atom"]);
 Object.freeze(["single", "multiple"]), Object.freeze(["orthographic", "perspective"]), Object.freeze([
 	"none",
 	"constant",
@@ -50662,28 +50730,28 @@ Object.freeze(["single", "multiple"]), Object.freeze(["orthographic", "perspecti
 ]);
 //#endregion
 //#region src/lib/ortep3d/crystal-viewer.js
-function dc(e) {
+function fc(e) {
 	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
 }
-function fc(e) {
-	if (e.placementMode !== void 0 && !cc.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${cc.join(", ")}`);
-	if (e.calloutPlacement !== void 0 && !lc.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${lc.join(", ")}`);
-	if (e.colorMode !== void 0 && !uc.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${uc.join(", ")}`);
+function pc(e) {
+	if (e.placementMode !== void 0 && !lc.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${lc.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !uc.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${uc.join(", ")}`);
+	if (e.colorMode !== void 0 && !dc.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${dc.join(", ")}`);
 	if (e.atomColorLuminanceCeiling !== void 0 && !(typeof e.atomColorLuminanceCeiling == "number" && e.atomColorLuminanceCeiling >= 0 && e.atomColorLuminanceCeiling <= 1)) throw Error("atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1");
 	if (e.atomColorLuminanceFloor !== void 0 && e.atomColorLuminanceFloor !== null && !(typeof e.atomColorLuminanceFloor == "number" && e.atomColorLuminanceFloor >= 0 && e.atomColorLuminanceFloor <= 1)) throw Error("atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1");
-	if (e.show !== void 0 && !dc(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+	if (e.show !== void 0 && !fc(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
 	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
 	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
 }
-function pc(e) {
+function mc(e) {
 	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
 }
-function mc(e, t, n = []) {
+function hc(e, t, n = []) {
 	let r = /* @__PURE__ */ new Set([...Object.keys(t), ...n]);
-	return Object.fromEntries(Object.entries(pc(e)).filter(([e]) => r.has(e)));
+	return Object.fromEntries(Object.entries(mc(e)).filter(([e]) => r.has(e)));
 }
-var hc = class {
+var gc = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -50824,16 +50892,16 @@ var hc = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, gc = class {
+}, _c = class {
 	constructor(t, n = {}) {
-		if (n.renderMode && !ac.includes(n.renderMode)) throw Error(`Invalid render mode: "${n.renderMode}". Must be one of: ${ac.join(", ")}`);
-		if (n.renderStyle && !oc.includes(n.renderStyle)) throw Error(`Invalid render style: "${n.renderStyle}". Must be one of: ${oc.join(", ")}`);
-		if (n.bondColorMode !== void 0 && !sc.includes(n.bondColorMode)) throw Error(`Invalid bond color mode: "${n.bondColorMode}". Must be one of: ${sc.join(", ")}`);
+		if (n.renderMode && !oc.includes(n.renderMode)) throw Error(`Invalid render mode: "${n.renderMode}". Must be one of: ${oc.join(", ")}`);
+		if (n.renderStyle && !sc.includes(n.renderStyle)) throw Error(`Invalid render style: "${n.renderStyle}". Must be one of: ${sc.join(", ")}`);
+		if (n.bondColorMode !== void 0 && !cc.includes(n.bondColorMode)) throw Error(`Invalid bond color mode: "${n.bondColorMode}". Must be one of: ${cc.join(", ")}`);
 		if (n.plot2DColorLuminanceCeiling !== void 0 && !(typeof n.plot2DColorLuminanceCeiling == "number" && n.plot2DColorLuminanceCeiling >= 0 && n.plot2DColorLuminanceCeiling <= 1)) throw Error("plot2DColorLuminanceCeiling must be a number from 0 to 1");
 		if (n.plot2DColorLuminanceFloor !== void 0 && n.plot2DColorLuminanceFloor !== null && !(typeof n.plot2DColorLuminanceFloor == "number" && n.plot2DColorLuminanceFloor >= 0 && n.plot2DColorLuminanceFloor <= 1)) throw Error("plot2DColorLuminanceFloor must be null or a number from 0 to 1");
 		for (let e of ["plot2DBondOutlineWidth", "plot2DOutlineWidth"]) if (n[e] !== void 0 && !(typeof n[e] == "number" && Number.isFinite(n[e]) && n[e] >= 0)) throw Error(`${e} must be a finite number greater than or equal to 0`);
-		fc(n.atomLabels || {});
-		let r = pc(n.atomLabels || {});
+		pc(n.atomLabels || {});
+		let r = mc(n.atomLabels || {});
 		this.container = t;
 		let i = n.camera?.initialPosition ?? U.camera.initialPosition;
 		this.options = {
@@ -50909,19 +50977,19 @@ var hc = class {
 			},
 			differenceDensity: {
 				...U.differenceDensity,
-				...pc(n.differenceDensity || {})
+				...mc(n.differenceDensity || {})
 			},
 			scalarField: {
 				...U.scalarField,
-				...pc(n.scalarField || {})
+				...mc(n.scalarField || {})
 			},
 			isosurface: {
 				...U.isosurface,
-				...pc(n.isosurface || {})
+				...mc(n.isosurface || {})
 			},
 			contourLines: {
 				...U.contourLines,
-				...pc(n.contourLines || {})
+				...mc(n.contourLines || {})
 			}
 		}, this.state = {
 			isDragging: !1,
@@ -50946,7 +51014,7 @@ var hc = class {
 			disorder: new wo(this.options.disorderMode),
 			symmetry: new To(this.options.symmetryMode, this.options.packingCutoff),
 			hydrogen: new Co(this.options.hydrogenMode)
-		}, this.selections = new hc(this.options), this.setupScene(), this.isosurfaceLayer = new Ns(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new ic(this.moleculeContainer, {
+		}, this.selections = new gc(this.options), this.setupScene(), this.isosurfaceLayer = new Ns(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new ac(this.moleculeContainer, {
 			...this.options.isosurface,
 			...this.options.contourLines
 		}), this.atomLabelManager = new ks(this), this.controls = new zo(this), this.animate(), this.needsRender = !0;
@@ -51029,15 +51097,15 @@ var hc = class {
 		};
 		this.cancelScalarFieldLoad("Superseded by a new FCF load"), this.options.differenceDensity = {
 			...this.defaultDifferenceDensityOptions,
-			...mc(n, U.differenceDensity)
+			...hc(n, U.differenceDensity)
 		};
 		let r = {
 			...this.defaultIsosurfaceOptions,
-			...mc(n, U.isosurface, ["level", "sign"])
+			...hc(n, U.isosurface, ["level", "sign"])
 		};
 		this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...mc(n, U.scalarField)
+			...hc(n, U.scalarField)
 		};
 		let i = ++this.scalarFieldLoadSequence, a = this.prepareScalarFieldLoad(i, n, r, "Difference density");
 		return this.notifyScalarFieldUpdate({
@@ -51077,15 +51145,15 @@ var hc = class {
 			"periodic",
 			"level",
 			"sign"
-		]), r = mc(t, U.isosurface, ["level", "sign"]), i = {
+		]), r = hc(t, U.isosurface, ["level", "sign"]), i = {
 			...this.defaultIsosurfaceOptions,
 			...r
 		};
 		delete i.level, delete i.sign, this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...mc(t, U.scalarField)
+			...hc(t, U.scalarField)
 		};
-		let a = Object.fromEntries(Object.entries(pc(t)).filter(([e]) => n.has(e))), o = {
+		let a = Object.fromEntries(Object.entries(mc(t)).filter(([e]) => n.has(e))), o = {
 			density: {
 				displayLabel: "ρ/eÅ⁻³",
 				quantityName: "electron density",
@@ -51621,7 +51689,7 @@ var hc = class {
 			this.cancelScalarFieldLoad("Superseded by a direct scalar field");
 			let n = {
 				...this.defaultIsosurfaceOptions,
-				...mc(t, U.isosurface, ["level", "sign"])
+				...hc(t, U.isosurface, ["level", "sign"])
 			};
 			this.prepareScalarFieldLoad(null, t, n, e.quantityName ?? "Scalar field"), this.applyProgressiveScalarField(e, {
 				loadId: null,
@@ -51721,7 +51789,7 @@ var hc = class {
 		};
 	}
 	updateIsosurfaceOptions(e = {}) {
-		let t = pc(e);
+		let t = mc(e);
 		if (Object.keys(t).length === 1 && Object.hasOwn(t, "visible")) return this.setIsosurfaceVisibility(t.visible);
 		this.options.isosurface = {
 			...this.options.isosurface,
@@ -51736,7 +51804,7 @@ var hc = class {
 	updateContourLineOptions(e = {}) {
 		return this.options.contourLines = {
 			...this.options.contourLines,
-			...pc(e)
+			...mc(e)
 		}, this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1, this.state.scalarField && this.state.displayStructure && (this.rebuildScalarFieldDisplay(), this.requestRender(), this.notifyScalarFieldUpdate({
 			type: "display",
 			...this.scalarFieldDisplayState()
@@ -51957,12 +52025,12 @@ var hc = class {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
 	setAtomLabels(e) {
-		if (!dc(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		if (!fc(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
 	}
 	updateAtomLabelOptions(e) {
-		fc(e);
-		let t = pc(e);
+		pc(e);
+		let t = mc(e);
 		this.options.atomLabels = {
 			...this.options.atomLabels,
 			...t,
@@ -51986,27 +52054,27 @@ var hc = class {
 };
 //#endregion
 //#region src/lib/ortep3d/viewer-interaction-coupling.js
-function _c(e) {
+function vc(e) {
 	let t = e?.viewer || e;
 	if (!t?.controls?.onInteraction || typeof t.controls.applyCoupledInteraction != "function" || typeof t.requestRender != "function") throw Error("Coupled participants must be CrystalViewer or initialized cifview-widget instances");
 	return t;
 }
-function vc(e) {
+function yc(e) {
 	return typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 0);
 }
-function yc(e) {
+function bc(e) {
 	typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e);
 }
-var bc = [
+var xc = [
 	"hydrogen",
 	"disorder",
 	"symmetry"
-], xc = class {
+], Sc = class {
 	constructor(e = []) {
 		this.viewers = /* @__PURE__ */ new Map(), this.pendingInteractions = [], this.pendingFrame = null, this.pendingModeUpdate = Promise.resolve(), e.forEach((e) => this.add(e));
 	}
 	add(e) {
-		let t = _c(e);
+		let t = vc(e);
 		if (this.viewers.has(t)) return this;
 		let n = t.controls.onInteraction((e) => {
 			this.enqueue(t, e);
@@ -52019,9 +52087,9 @@ var bc = [
 		}), this;
 	}
 	async synchronizeFrom(e) {
-		let t = _c(e);
+		let t = vc(e);
 		if (!this.viewers.has(t)) throw Error("The synchronization source must belong to this coupling");
-		let n = Object.fromEntries(bc.map((e) => [e, t.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
+		let n = Object.fromEntries(xc.map((e) => [e, t.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
 		return await Promise.all([...this.viewers.keys()].filter((e) => e !== t).map((e) => e.setModifierModes?.(n, { broadcast: !1 }))), this.synchronizeViewFrom(t), this;
 	}
 	synchronizeViewFrom(e) {
@@ -52043,17 +52111,17 @@ var bc = [
 				this.pendingInteractions[n] = {
 					source: e,
 					interaction: t
-				}, this.pendingFrame === null && (this.pendingFrame = vc(() => this.flush()));
+				}, this.pendingFrame === null && (this.pendingFrame = yc(() => this.flush()));
 				return;
 			}
 		}
 		this.pendingInteractions.push({
 			source: e,
 			interaction: t
-		}), this.pendingFrame === null && (this.pendingFrame = vc(() => this.flush()));
+		}), this.pendingFrame === null && (this.pendingFrame = yc(() => this.flush()));
 	}
 	enqueueModeChange(e, t) {
-		t.coupled || !bc.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
+		t.coupled || !xc.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
 			this.viewers.has(e) && (await Promise.all([...this.viewers.keys()].filter((t) => t !== e).map((e) => e.setModifierModes?.({ [t.modifierName]: t.mode }, { broadcast: !1 }))), this.viewers.has(e) && this.synchronizeViewFrom(e));
 		}).catch((e) => {
 			console.error("Coupled modifier mode update failed:", e);
@@ -52063,7 +52131,7 @@ var bc = [
 		this.flush(), await this.pendingModeUpdate;
 	}
 	flush() {
-		if (this.pendingFrame !== null && (yc(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
+		if (this.pendingFrame !== null && (bc(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
 		let e = this.pendingInteractions;
 		this.pendingInteractions = [];
 		let t = /* @__PURE__ */ new Set();
@@ -52071,7 +52139,7 @@ var bc = [
 		t.forEach((e) => e.requestRender());
 	}
 	dispose() {
-		this.pendingFrame !== null && (yc(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
+		this.pendingFrame !== null && (bc(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
 		let e = [...this.viewers.keys()];
 		this.viewers.forEach(({ stopInteraction: e, stopMode: t }) => {
 			e(), t();
@@ -52080,12 +52148,12 @@ var bc = [
 		});
 	}
 };
-function Sc(...e) {
-	return new xc(e.length === 1 && Array.isArray(e[0]) ? e[0] : e);
+function Cc(...e) {
+	return new Sc(e.length === 1 && Array.isArray(e[0]) ? e[0] : e);
 }
 //#endregion
 //#region src/lib/generated/svg-icons.js
-var Cc = {
+var wc = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -52109,7 +52177,7 @@ var Cc = {
 };
 //#endregion
 //#region src/lib/density/scalar-field-display-state.js
-function wc() {
+function Tc() {
 	return {
 		loading: !1,
 		available: !1,
@@ -52128,9 +52196,9 @@ function wc() {
 		pendingFieldName: null
 	};
 }
-function Tc(e, t) {
+function Ec(e, t) {
 	if (t.type === "started") return {
-		...wc(),
+		...Tc(),
 		loading: !0,
 		visible: t.visible ?? !0,
 		sigmaLevel: t.sigmaLevel ?? null,
@@ -52145,7 +52213,7 @@ function Tc(e, t) {
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: t.pendingFieldName ?? null
 	};
-	if (t.type === "cleared") return wc();
+	if (t.type === "cleared") return Tc();
 	if (["error", "cancelled"].includes(t.type)) return e.fieldCount > 0 ? {
 		...e,
 		loading: !1,
@@ -52161,7 +52229,7 @@ function Tc(e, t) {
 		activeFieldId: t.activeFieldId ?? e.activeFieldId,
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: null
-	} : wc();
+	} : Tc();
 	if (t.type === "visibility") return {
 		...e,
 		visible: !!t.visible,
@@ -52197,7 +52265,7 @@ function Tc(e, t) {
 }
 //#endregion
 //#region src/lib/widget.js
-var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", Dc = class extends HTMLElement {
+var Dc = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", Oc = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -52216,13 +52284,13 @@ var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = Ec, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = Dc, document.head.appendChild(e);
 		}
-		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = wc(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
+		this.viewer = null, this.baseCaption = "", this.selections = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = Tc(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...Cc,
+			...wc,
 			...this.customIcons
 		};
 	}
@@ -52233,7 +52301,7 @@ var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new gc(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new _c(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
 		r ? await this.loadFromUrl(r, a) : i && await this.loadFromString(i, a);
 	}
@@ -52242,7 +52310,7 @@ var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	}
 	connectViewerEvents() {
 		this.stopScalarFieldUpdates?.(), this.stopModifierModeUpdates?.(), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
-			this.scalarFieldDisplay = Tc(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+			this.scalarFieldDisplay = Ec(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
 		}) ?? null, this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
 			this.setupButtons();
 		}) ?? null, this.viewer.selections.onChange((e) => {
@@ -52394,7 +52462,7 @@ var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 			case "options":
 				if (this.parseOptions(), this.parseInitialAtomLabels(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.viewer.dispose(), this.viewer = new gc(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons(), this.updateCaption());
+					this.viewer.dispose(), this.viewer = new _c(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.setupButtons(), this.updateCaption());
 				}
 				break;
 			case "block": {
@@ -52494,9 +52562,9 @@ var Ec = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", Dc);
+	window.customElements.define("cifview-widget", Oc);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { Eo as AtomLabelFilter, ci as BOHR_TO_ANGSTROM, Do as BondGenerator, Se as CIF, Dc as CifViewWidget, H as CrystalStructure, gc as CrystalViewer, Nt as DEFAULT_CONTOUR_LINE_OPTIONS, At as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, Mt as DEFAULT_ISOSURFACE_OPTIONS, jt as DEFAULT_SCALAR_FIELD_OPTIONS, wo as DisorderFilter, Co as HydrogenFilter, on as ORTEP3JsStructure, Mr as ScalarFieldGrid, To as SymmetryGrower, ic as ThreeContourLineLayer, Ns as ThreeIsosurfaceLayer, xc as ViewerInteractionCoupling, si as calculateDifferenceDensityMap, cr as calculateIAMStructureFactors, Ri as calculatePlanarContours, ia as connectedIsosurfaceRegions, Sc as coupleViewerInteractions, $r as createCifDifferenceDensityDataset, sr as createIAMStructureFactorCalculator, Xi as createIsosurfaces, ga as createSymmetryAwareIsosurfaces, Zn as evaluateCromerMann, xn as formatValueEsd, Ta as generateDisorderGroupIcon, wa as getDisorderIcon, Tr as isSystematicAbsence, Ui as isosurfaceBounds, Wi as isosurfaceResolution, Un as lookupAnomalousDispersion, Xn as lookupCromerMann, Er as mergeReflectionIntensities, _i as parseCube, ti as parseDifferenceDensitySource, Dr as readReflectionIntensities, Ni as resolveContourPlane, Ca as tryToFixCifBlock };
+export { Eo as AtomLabelFilter, ci as BOHR_TO_ANGSTROM, Do as BondGenerator, Se as CIF, Oc as CifViewWidget, H as CrystalStructure, _c as CrystalViewer, Nt as DEFAULT_CONTOUR_LINE_OPTIONS, At as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, Mt as DEFAULT_ISOSURFACE_OPTIONS, jt as DEFAULT_SCALAR_FIELD_OPTIONS, wo as DisorderFilter, Co as HydrogenFilter, on as ORTEP3JsStructure, Mr as ScalarFieldGrid, To as SymmetryGrower, ac as ThreeContourLineLayer, Ns as ThreeIsosurfaceLayer, Sc as ViewerInteractionCoupling, si as calculateDifferenceDensityMap, cr as calculateIAMStructureFactors, Ri as calculatePlanarContours, ia as connectedIsosurfaceRegions, Cc as coupleViewerInteractions, $r as createCifDifferenceDensityDataset, sr as createIAMStructureFactorCalculator, Xi as createIsosurfaces, ga as createSymmetryAwareIsosurfaces, Zn as evaluateCromerMann, xn as formatValueEsd, Ta as generateDisorderGroupIcon, wa as getDisorderIcon, Tr as isSystematicAbsence, Ui as isosurfaceBounds, Wi as isosurfaceResolution, Un as lookupAnomalousDispersion, Xn as lookupCromerMann, Er as mergeReflectionIntensities, _i as parseCube, ti as parseDifferenceDensitySource, Dr as readReflectionIntensities, Ni as resolveContourPlane, Ca as tryToFixCifBlock };
