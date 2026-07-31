@@ -1119,19 +1119,44 @@ describe('Structure dependent methods', () => {
             expect(newAtoms[0].uniqueId).toBe('C1|2_555');
         });
 
-        test('canonicalizes an atom image independently of lattice translation', () => {
+        test('omits an image that only repeats another after a lattice translation', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C', 0.1, 0.1, 0.1);
             structure = structureHelper.build();
             atomGroups = structure.calculateConnectedGroups();
             const identSymmString = structure.symmetry.identitySymOpId + '_555';
 
-            const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
+            const { specialPositionAtoms, periodicDuplicateAtoms, newAtoms } = generateSymmetryAtoms(
                 new Set(['0@.@1_655']), atomGroups, structure, identSymmString,
             );
 
+            // Not materialised: an unbounded run of lattice repeats is what makes
+            // growth of a periodic structure infinite.
             expect(newAtoms).toHaveLength(0);
-            expect(specialPositionAtoms).toEqual(new Map([['C1|1_655', 'C1|1_555']]));
+            expect(periodicDuplicateAtoms).toEqual(new Set(['C1|1_655']));
+            // But C1|1_655 is a whole cell away from C1|1_555, so it is not the same
+            // site and its ID must not be substituted: doing so relocates any bond
+            // endpoint naming it by a full lattice vector.
+            expect(specialPositionAtoms).toEqual(new Map());
+        });
+
+        test('maps a genuinely coincident image onto the atom it duplicates', () => {
+            // C1 on the inversion centre: the mock's third operation, -x,-y,-z, maps
+            // (0,0,0) back onto itself, so both operations describe one physical atom
+            // and the ID may be rewritten.
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C', 0.0, 0.0, 0.0);
+            structure = structureHelper.build();
+            atomGroups = structure.calculateConnectedGroups();
+            const identSymmString = structure.symmetry.identitySymOpId + '_555';
+
+            const { specialPositionAtoms, periodicDuplicateAtoms, newAtoms } = generateSymmetryAtoms(
+                new Set(['0@.@3_555']), atomGroups, structure, identSymmString,
+            );
+
+            expect(newAtoms).toHaveLength(0);
+            expect(periodicDuplicateAtoms).toEqual(new Set());
+            expect(specialPositionAtoms).toEqual(new Map([['C1|3_555', 'C1|1_555']]));
         });
     });
 

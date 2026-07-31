@@ -5,6 +5,7 @@ import { AppliedSymmetry } from '../../applied-symmetry.js';
 import { chemicalBonds } from '../../bond-classification.js';
 import {
     positionsCoincide,
+    positionsCoincideInSameCell,
     SPECIAL_POSITION_TOLERANCE,
     wrappedCartesianCoordinates,
 } from '../../position.js';
@@ -543,15 +544,19 @@ export function exploreConnection(
         // A group is considered discovered as soon as it is queued. Without this
         // second half of the guard, two different bonds in the same BFS layer can
         // each schedule a different lattice translation before either one reaches
-        // the normal discoveredGroups check.
-        const knownInstances = [...existingInstances, ...pendingInstances];
+        // the normal discoveredGroups check. Both lists are scanned in place: they
+        // grow to the size of the whole fragment, and the canonical-state fast path
+        // below usually answers without consulting them at all, so materialising a
+        // combined array here would allocate once per explored connection.
+        const anyKnownInstance = predicate =>
+            existingInstances.some(predicate) || pendingInstances.some(predicate);
         const canonicalOperationId = canonicalGroupOperations?.[resultingGroup.groupIndex]
             ?.get(resultingGroup.appliedSymmetry.id) || resultingGroup.appliedSymmetry.id;
         const operationKey = `${resultingGroup.groupIndex}|${canonicalOperationId}`;
         const canonicalState = stateByOperation?.[componentIndex]?.get(operationKey);
         const translationPresent = canonicalState
             ? resultingGroup.isTranslationalDuplicateOf(canonicalState)
-            : knownInstances.some(existing => resultingGroup.isTranslationalDuplicateOf(existing));
+            : anyKnownInstance(existing => resultingGroup.isTranslationalDuplicateOf(existing));
 
         // A different (non-translationally-related) operation can still place the group at
         // the exact same physical position when that operation belongs to the group's own
@@ -561,7 +566,7 @@ export function exploreConnection(
         // translational duplicate was already found - no need for the extra position check.
         const positionDuplicate = !translationPresent && (canonicalState
             ? groupInstancesCoincide(structure, atomGroups, resultingGroup, canonicalState)
-            : knownInstances.some(existing =>
+            : anyKnownInstance(existing =>
                 groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
             ));
 
@@ -854,8 +859,9 @@ export function normalizeSymmetryInstances(symmetryInstances) {
  * @param {Array<object>} atomGroups - The atom groups from structure.connectedGroups.
  * @param {CrystalStructure} structure - The crystal structure.
  * @param {string} identSymmKey - The identity symmetry operation key.
- * @returns {{specialPositionAtoms: Map<string, string>, newAtoms: Array<object>}} Map of special position atoms
- * (from -> to) and the generated atoms.
+ * @returns {{specialPositionAtoms: Map<string, string>, periodicDuplicateAtoms: Set<string>,
+ * newAtoms: Array<object>}} Map of special position atoms (from -> to), the IDs of images omitted as
+ * periodic repeats, and the generated atoms.
  */
 export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, structure, identSymmKey) {
     // Store atom groups for each symmetry: [groupIndex][symmInstanceIndex][atomIndex]
@@ -866,6 +872,11 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
     // position as another atom (either the original or from another symm op).
     // It maps the duplicate atom's label to the label of the atom being kept.
     const specialPositionAtoms = new Map();
+    // Images that repeat an already-kept one only after a lattice translation.
+    // They are equally redundant, so they are not materialised either - that is
+    // what keeps growth of a periodic framework finite - but they are recorded
+    // separately because their ID must never be substituted for the kept one.
+    const periodicDuplicateAtoms = new Set();
     const newAtoms = [];
 
     // Generate atoms for all required symmetry instances
@@ -913,7 +924,21 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
                         SPECIAL_POSITION_TOLERANCE,
                     );
                     if (canonicalAtom) {
-                        specialPositionAtoms.set(symmAtom.uniqueId, canonicalAtom.uniqueId);
+                        // The spatial index compares wrapped coordinates, so it
+                        // reports both true special positions and images that are a
+                        // whole lattice translation apart. Only the former are the
+                        // same site: substituting an ID across a lattice translation
+                        // would move a bond endpoint one or more cells away.
+                        if (positionsCoincideInSameCell(
+                            symmAtom.position,
+                            canonicalAtom.position,
+                            structure.cell,
+                            SPECIAL_POSITION_TOLERANCE,
+                        )) {
+                            specialPositionAtoms.set(symmAtom.uniqueId, canonicalAtom.uniqueId);
+                        } else {
+                            periodicDuplicateAtoms.add(symmAtom.uniqueId);
+                        }
                     } else {
                         // Only add non-identity atoms to newAtoms (identity atoms are already in structure.atoms)
                         if (!isIdentity) {
@@ -925,7 +950,7 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
         }
     });
 
-    return { specialPositionAtoms, newAtoms };
+    return { specialPositionAtoms, periodicDuplicateAtoms, newAtoms };
 }
 
 /**
@@ -1334,18 +1359,20 @@ export function growFragment(structure) {
     // directions. For a genuinely molecular fragment each (group, operation) already
     // occurs once, so nothing is dropped.
     const grownInstances = normalizeSymmetryInstances(requiredSymmetryInstances);
-    // A translation link is sufficient evidence of a periodic covalent
-    // continuation, even if its target happened not to enter
-    // requiredSymmetryInstances before the queue was stopped. In both cases a
-    // fragment is a compact representative: never retain a bond to an omitted
-    // periodic image.
-    const compactPeriodicFragment = translationLinks.length > 0
-        || grownInstances.size < requiredSymmetryInstances.size;
 
     // Step 3: Generate symmetry-related atoms and handle special positions
-    const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
+    const { specialPositionAtoms, periodicDuplicateAtoms, newAtoms } = generateSymmetryAtoms(
         grownInstances, atomGroups, graphStructure, identSymmKey,
     );
+
+    // A fragment is a compact representative: never retain a bond to an omitted
+    // periodic image. A translation link is sufficient evidence of a periodic
+    // covalent continuation, even if its target happened not to enter
+    // requiredSymmetryInstances before the queue was stopped. Per-atom periodic
+    // repeats omitted during generation leave bonds dangling the same way.
+    const compactPeriodicFragment = translationLinks.length > 0
+        || grownInstances.size < requiredSymmetryInstances.size
+        || periodicDuplicateAtoms.size > 0;
 
     // Step 4: Generate bonds for symmetry instances
     const { newBonds, atomLabels } = generateSymmetryBonds(

@@ -194,6 +194,36 @@ export function positionsCoincide(position1, position2, unitCell, tolerance = SP
 }
 
 /**
+ * Whether two positions are the same site in the *same* cell, i.e. coincident
+ * without any lattice translation between them.
+ *
+ * This is the stricter counterpart to {@link positionsCoincide}, which answers
+ * "same point of the periodic crystal" and therefore also accepts images a whole
+ * lattice translation apart. Both questions are needed, for different purposes:
+ * periodic equivalence decides which images may be omitted to keep growth finite,
+ * whereas only true coincidence licenses rewriting one atom's ID onto another.
+ * Rewriting an ID across a lattice translation moves a bond endpoint a full cell
+ * or more, which draws a bond spanning the structure.
+ * @param {FractPosition} position1 - First fractional position
+ * @param {FractPosition} position2 - Second fractional position
+ * @param {UnitCell} unitCell - Unit cell for Cartesian conversion
+ * @param {number} [tolerance] - Maximum Cartesian distance (in Å) to count as coincident
+ * @returns {boolean} Whether the positions are the same site with no lattice offset
+ */
+export function positionsCoincideInSameCell(
+    position1, position2, unitCell, tolerance = SPECIAL_POSITION_TOLERANCE,
+) {
+    const matrix = getFractToCartMatrix(unitCell);
+    const x = position1.x - position2.x;
+    const y = position1.y - position2.y;
+    const z = position1.z - position2.z;
+    const dx = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z;
+    const dy = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z;
+    const dz = matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z;
+    return Math.hypot(dx, dy, dz) < tolerance;
+}
+
+/**
  * Represents a position in Cartesian coordinates
  * @augments BasePosition
  */
