@@ -4,6 +4,7 @@ import { ADPFactory } from './adp.js';
 import { PositionFactory } from './position.js';
 import { BondsFactory, Bond, HBond } from './bonds.js';
 import { CifBlock } from '../read-cif/base.js';
+import { findNonIsometricOperations } from './symmetry-metric.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -137,6 +138,25 @@ export class CrystalStructure {
         const bonds = BondsFactory.createBonds(cifBlock, atomLabels);
         const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);
         const symmetry = CellSymmetry.fromCIF(cifBlock);
+
+        // A symmetry operation has to be an isometry of the cell it is declared with;
+        // whether it is depends on the cell, so an operation and a cell can each be
+        // plausible yet contradict one another. Growing such a structure distorts every
+        // symmetry image - bonded pairs come out at the wrong length - and the result
+        // looks like a modelling error rather than the metadata error it is.
+        const nonIsometric = findNonIsometricOperations(symmetry.symmetryOperations, cell);
+        if (nonIsometric.length > 0) {
+            const examples = nonIsometric
+                .slice(0, 5)
+                .map(index => symmetry.symmetryOperations[index].toSymmetryString())
+                .join(', ');
+            throw new Error(
+                `Symmetry operations incompatible with the unit cell: ${nonIsometric.length} of `
+                + `${symmetry.symmetryOperations.length} do not preserve distances in a cell with `
+                + `alpha=${cell.alpha}, beta=${cell.beta}, gamma=${cell.gamma} (${examples}). `
+                + 'The symmetry and the cell cannot both be right.',
+            );
+        }
 
         const bondValidationResult = BondsFactory.validateBonds(bonds, atoms, symmetry);
         const hBondValidationResult = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
