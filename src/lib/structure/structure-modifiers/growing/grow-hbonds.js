@@ -175,7 +175,6 @@ export function filterBondsByGeometry(structure, bonds) {
  * @returns {CrystalStructure} Structure with geometry-compatible H-bonds
  */
 export function reconcileHBondsByGeometry(structure) {
-    const atomsById = new Map(structure.atoms.map(atom => [atom.uniqueId, atom]));
     const atomsByLabel = new Map();
     for (const atom of structure.atoms) {
         if (!atomsByLabel.has(atom.label)) {
@@ -183,86 +182,144 @@ export function reconcileHBondsByGeometry(structure) {
         }
         atomsByLabel.get(atom.label).push(atom);
     }
+
+    // Every candidate atom is resolved into Cartesian space once. The matching below
+    // walks each donor against nearby hydrogens and then nearby acceptors, so a single
+    // H-bond costs many distance evaluations in a grown structure where one label has
+    // hundreds of images; converting a position through the mathjs matrix product on
+    // each of those would allocate two matrices per call.
+    const cartesianByAtom = new Map();
+    for (const atom of structure.atoms) {
+        const cartesian = atom.position.toCartesian(structure.cell);
+        cartesianByAtom.set(atom, [cartesian.x, cartesian.y, cartesian.z]);
+    }
     const distance = (atom1, atom2) => {
-        const cart1 = atom1.position.toCartesian(structure.cell);
-        const cart2 = atom2.position.toCartesian(structure.cell);
-        return Math.hypot(cart1.x - cart2.x, cart1.y - cart2.y, cart1.z - cart2.z);
+        const first = cartesianByAtom.get(atom1);
+        const second = cartesianByAtom.get(atom2);
+        return Math.hypot(
+            first[0] - second[0], first[1] - second[1], first[2] - second[2],
+        );
     };
     const tolerance = target => Math.max(0.15, target * 0.1);
     const compatible = (actual, target) => !Number.isFinite(target) ||
         Math.abs(actual - target) <= tolerance(target);
 
+    // Longest separation any H-bond in this structure asks for, used to size the search
+    // grid so one lookup covers every distance that can matter.
+    const longestTarget = structure.hBonds.reduce((longest, hbond) => Math.max(
+        longest,
+        Number.isFinite(hbond.donorAcceptorDistance) ? hbond.donorAcceptorDistance : 0,
+        Number.isFinite(hbond.acceptorHydrogenDistance) ? hbond.acceptorHydrogenDistance : 0,
+        Number.isFinite(hbond.donorHydrogenDistance) ? hbond.donorHydrogenDistance : 0,
+    ), 0);
+    const searchRadius = longestTarget + tolerance(longestTarget) || 4;
+
+    // One spatial index per label, built on demand. Without it the search is the product
+    // of the three candidate lists - for a few hundred images per label that is hundreds
+    // of millions of comparisons per H-bond record.
+    const gridsByLabel = new Map();
+    const cellKey = (x, y, z) => `${x},${y},${z}`;
+    const gridFor = label => {
+        let grid = gridsByLabel.get(label);
+        if (grid) {
+            return grid;
+        }
+        grid = new Map();
+        for (const atom of atomsByLabel.get(label) || []) {
+            const [x, y, z] = cartesianByAtom.get(atom);
+            const key = cellKey(
+                Math.floor(x / searchRadius),
+                Math.floor(y / searchRadius),
+                Math.floor(z / searchRadius),
+            );
+            const bucket = grid.get(key);
+            if (bucket) {
+                bucket.push(atom);
+            } else {
+                grid.set(key, [atom]);
+            }
+        }
+        gridsByLabel.set(label, grid);
+        return grid;
+    };
+    /**
+     * Atoms of one label lying within the search radius of a point.
+     * @param {string} label - Label to search.
+     * @param {object} origin - Atom whose position centres the search.
+     * @returns {object[]} Candidate atoms.
+     */
+    const near = (label, origin) => {
+        const grid = gridFor(label);
+        const [x, y, z] = cartesianByAtom.get(origin);
+        const baseX = Math.floor(x / searchRadius);
+        const baseY = Math.floor(y / searchRadius);
+        const baseZ = Math.floor(z / searchRadius);
+        const found = [];
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    const bucket = grid.get(cellKey(baseX + dx, baseY + dy, baseZ + dz));
+                    if (bucket) {
+                        found.push(...bucket);
+                    }
+                }
+            }
+        }
+        return found;
+    };
+
+    // Each CIF H-bond describes a geometric relationship, not one particular pair of
+    // images. Wherever the atoms it names are already present at the right distances -
+    // including between two separately generated fragments - that interaction exists and
+    // is drawn. Nothing new is materialised: only atoms already in the structure are
+    // considered, so this adds H-bonds without growing along them.
     const reconciled = [];
     const identifiers = new Set();
     for (const hbond of structure.hBonds) {
         const donorCandidates = atomsByLabel.get(hbond.donorAtomLabel) || [];
-        const hydrogenCandidates = atomsByLabel.get(hbond.hydrogenAtomLabel) || [];
-        const acceptorCandidates = atomsByLabel.get(hbond.acceptorAtomLabel) || [];
-        let best = null;
-
-        let donorHydrogenPairs = [];
-        const currentDonor = atomsById.get(hbond.donorAtomId);
-        const currentHydrogen = atomsById.get(hbond.hydrogenAtomId);
-        if (currentDonor && currentHydrogen &&
-            compatible(distance(currentDonor, currentHydrogen), hbond.donorHydrogenDistance)) {
-            donorHydrogenPairs = [[currentDonor, currentHydrogen]];
-        } else {
-            let bestPair = null;
-            for (const donor of donorCandidates) {
-                for (const hydrogen of hydrogenCandidates) {
-                    const actual = distance(donor, hydrogen);
-                    const error = Math.abs(actual - hbond.donorHydrogenDistance);
-                    if (compatible(actual, hbond.donorHydrogenDistance) &&
-                        (!bestPair || error < bestPair.error)) {
-                        bestPair = { donor, hydrogen, error };
-                    }
-                }
-            }
-            if (bestPair) {
-                donorHydrogenPairs = [[bestPair.donor, bestPair.hydrogen]];
-            }
+        if (donorCandidates.length === 0) {
+            continue;
         }
-
-        for (const [donor, hydrogen] of donorHydrogenPairs) {
-            const donorHydrogenDistance = distance(donor, hydrogen);
-            for (const acceptor of acceptorCandidates) {
-                const acceptorHydrogenDistance = distance(hydrogen, acceptor);
-                const donorAcceptorDistance = distance(donor, acceptor);
-                if (!compatible(acceptorHydrogenDistance, hbond.acceptorHydrogenDistance) ||
-                    !compatible(donorAcceptorDistance, hbond.donorAcceptorDistance)) {
+        for (const donor of donorCandidates) {
+            for (const hydrogen of near(hbond.hydrogenAtomLabel, donor)) {
+                const donorHydrogenDistance = distance(donor, hydrogen);
+                if (!compatible(donorHydrogenDistance, hbond.donorHydrogenDistance)) {
                     continue;
                 }
-                const score = Math.abs(donorHydrogenDistance - hbond.donorHydrogenDistance) +
-                    Math.abs(acceptorHydrogenDistance - hbond.acceptorHydrogenDistance) +
-                    Math.abs(donorAcceptorDistance - hbond.donorAcceptorDistance);
-                if (!best || score < best.score) {
-                    best = { donor, hydrogen, acceptor, score };
+                for (const acceptor of near(hbond.acceptorAtomLabel, hydrogen)) {
+                    if (acceptor === donor || acceptor === hydrogen) {
+                        continue;
+                    }
+                    if (!compatible(
+                        distance(hydrogen, acceptor), hbond.acceptorHydrogenDistance,
+                    ) || !compatible(
+                        distance(donor, acceptor), hbond.donorAcceptorDistance,
+                    )) {
+                        continue;
+                    }
+                    const identifier =
+                        `${donor.uniqueId}|${hydrogen.uniqueId}|${acceptor.uniqueId}`;
+                    if (identifiers.has(identifier)) {
+                        continue;
+                    }
+                    identifiers.add(identifier);
+                    reconciled.push(new HBond(
+                        donor.uniqueId,
+                        hydrogen.uniqueId,
+                        acceptor.uniqueId,
+                        hbond.donorHydrogenDistance,
+                        hbond.donorHydrogenDistanceSU,
+                        hbond.acceptorHydrogenDistance,
+                        hbond.acceptorHydrogenDistanceSU,
+                        hbond.donorAcceptorDistance,
+                        hbond.donorAcceptorDistanceSU,
+                        hbond.hBondAngle,
+                        hbond.hBondAngleSU,
+                        '.',
+                    ));
                 }
             }
         }
-        if (!best) {
-            continue;
-        }
-
-        const identifier = `${best.donor.uniqueId}|${best.hydrogen.uniqueId}|${best.acceptor.uniqueId}`;
-        if (identifiers.has(identifier)) {
-            continue;
-        }
-        identifiers.add(identifier);
-        reconciled.push(new HBond(
-            best.donor.uniqueId,
-            best.hydrogen.uniqueId,
-            best.acceptor.uniqueId,
-            hbond.donorHydrogenDistance,
-            hbond.donorHydrogenDistanceSU,
-            hbond.acceptorHydrogenDistance,
-            hbond.acceptorHydrogenDistanceSU,
-            hbond.donorAcceptorDistance,
-            hbond.donorAcceptorDistanceSU,
-            hbond.hBondAngle,
-            hbond.hBondAngleSU,
-            '.',
-        ));
     }
 
     return new CrystalStructure(
