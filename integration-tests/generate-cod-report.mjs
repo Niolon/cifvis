@@ -34,6 +34,9 @@ function classifyStructureError(message) {
     if (message === 'Empty atom label') {
         return ['Empty atom label'];
     }
+    if (message.includes('Bond lengths inconsistent with the file\'s own coordinates')) {
+        return ['Bond length disagrees with the coordinates and symmetry code in the same file'];
+    }
     if (message.includes('There were errors in the bond or H-bond creation')) {
         const labels = [];
         if (message.includes('Non-existent atoms in bond')) {
@@ -193,6 +196,30 @@ const EXAMPLES_PER_CATEGORY = 15;
 const MAX_DETAIL_LENGTH = 300;
 
 /**
+ * Extra explanation printed under a category heading, for categories whose meaning is
+ * not self-evident from the name alone.
+ */
+const CATEGORY_NOTES = new Map([
+    [
+        'Bond length disagrees with the coordinates and symmetry code in the same file',
+        'Detected without any symmetry growth: both endpoints of each `_geom_bond` entry are '
+        + 'placed using only that file\'s own `_atom_site` coordinates and its own '
+        + '`_geom_bond_site_symmetry` code, then compared against the `_geom_bond_distance` '
+        + 'the same file states. `cifCoordinates` is the distance implied by the file\'s own '
+        + 'data, `cifLabel` is the distance it publishes.\n\n'
+        + 'Across this corpus the fault is almost always in the **translation digits** of the '
+        + 'symmetry code, not in the operation or the distance: the `n` part of `n_klm` names '
+        + 'the right operation, but `klm` is displaced by a whole lattice vector, so the bond '
+        + 'is described as reaching an atom one or more unit cells away from the one that was '
+        + 'actually measured. It is concentrated in centred space groups (F, I, C), where the '
+        + 'centring vector appears to have been applied twice - once via the centred operation '
+        + 'listed in `_symmetry_equiv_pos_as_xyz`, and again in the translation digits. Note '
+        + 'that the symmetry operations themselves are listed correctly, including their '
+        + 'centring components; only the codes referring to them are off.',
+    ],
+]);
+
+/**
  * Strips the exhaustive "here is every atom label in the file" dump that
  * BondsFactory's validators prepend to bond/H-bond errors, keeping just the specific
  * violation lines (e.g. "Non-existent atoms in bond: ..."). That atom dump is only
@@ -249,7 +276,9 @@ function formatMarkdown(report, totalFilesProcessed, stats) {
             + `${autoFixed.toLocaleString()} were successfully auto-corrected by cifvis's CIF-fixer and are `
             + '**not** itemized below (no per-entry detail is logged for those since cifvis already handles '
             + `them transparently). The ${postFix.total.toLocaleString()} that persisted after the fix attempt `
-            + 'are the ones itemized in the categories below, plus unclassified/CIF-parse failures.',
+            + 'are the ones itemized in the categories below, plus unclassified/CIF-parse failures. '
+            + 'Bond-geometry disagreements are counted separately from that total: they are found by '
+            + 'checking a structure that parsed successfully, not while creating it.',
         );
         lines.push('');
     }
@@ -268,6 +297,10 @@ function formatMarkdown(report, totalFilesProcessed, stats) {
         lines.push('');
         lines.push(`${items.length} occurrence(s) across ${uniqueCodIds(items)} distinct COD entries.`);
         lines.push('');
+        if (CATEGORY_NOTES.has(category)) {
+            lines.push(CATEGORY_NOTES.get(category));
+            lines.push('');
+        }
         lines.push('| COD ID | Detail |');
         lines.push('|---|---|');
         const seen = new Set();

@@ -6,7 +6,11 @@ import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/index.nobrowser.js';
+import { repairBondGeometry } from '../src/lib/fix-cif/bond-geometry.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
+import {
+    checkCifBasis, checkGrownBonds, formatBondConsistencyReport,
+} from './lib/bond-consistency.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +37,7 @@ export function getLogFilenames(startIndex, endIndex) {
             verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
             summaryFile: join(logsDir, 'modifier-test-summary.log'),
             statsFile: join(logsDir, 'modifier-test-stats.json'),
+            bondConsistencyLogFile: join(logsDir, 'modifier-test-bond-consistency.log'),
         };
     }
     const rangeStr = `${startIndex}-${endIndex}`;
@@ -43,6 +48,9 @@ export function getLogFilenames(startIndex, endIndex) {
         verboseLogFile: join(chunkLogsDir, `modifier-test-verbose-${rangeStr}.log`),
         summaryFile: join(chunkLogsDir, `modifier-test-summary-${rangeStr}.log`),
         statsFile: join(chunkLogsDir, `modifier-test-stats-${rangeStr}.json`),
+        bondConsistencyLogFile: join(
+            chunkLogsDir, `modifier-test-bond-consistency-${rangeStr}.log`,
+        ),
     };
 }
 
@@ -98,6 +106,37 @@ const stats = {
         modifier: 0,
         connectivity: 0,
     },
+    // Geometric self-consistency of the bonds that growth produces. Split by whether
+    // the source CIF was already inconsistent, because the symmetry orbit of one wrong
+    // input bond is a whole set of wrong output bonds: without the split, a handful of
+    // bad depositions dominate the totals and hide real regressions.
+    bondConsistency: {
+        structuresChecked: 0,
+        structuresWithUnsoundBasis: 0,
+        unsoundBasisBonds: 0,
+        grownStructuresChecked: 0,
+        // Findings on structures whose own CIF verifies - these are ours.
+        soundBasis: {
+            runsWithInconsistentBonds: 0,
+            inconsistentBonds: 0,
+            danglingBonds: 0,
+            repeatedAtomIds: 0,
+        },
+        // Findings on structures that already disagree with themselves - expected.
+        unsoundBasis: {
+            runsWithInconsistentBonds: 0,
+            inconsistentBonds: 0,
+            danglingBonds: 0,
+            repeatedAtomIds: 0,
+        },
+        // Outcome of reconciling an unsound file before growing it.
+        repairs: {
+            recoded: 0,
+            lengthCorrected: 0,
+            dropped: 0,
+            structuresWithDroppedBonds: 0,
+        },
+    },
 };
 
 const originalWarn = console.warn;
@@ -136,6 +175,23 @@ function writeSummaryToFile(summaryText, filePath) {
 export function generateSummary(statsToReport, isInterim = false) {
     const stats = statsToReport;
     const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
+
+    // Tolerate stats files written before bond consistency was tracked, so an older
+    // chunk cannot break aggregation.
+    const bondConsistency = {
+        structuresChecked: 0,
+        structuresWithUnsoundBasis: 0,
+        unsoundBasisBonds: 0,
+        grownStructuresChecked: 0,
+        soundBasis: {},
+        unsoundBasis: {},
+        repairs: {},
+        ...(stats.bondConsistency ?? {}),
+    };
+    const unsoundBasisPercentage = bondConsistency.structuresChecked === 0
+        ? '0.0'
+        : ((bondConsistency.structuresWithUnsoundBasis / bondConsistency.structuresChecked)
+            * 100).toFixed(1);
     
     // Calculate percentage of unhandled structure errors
     const totalStructureErrors = stats.errors.CrystalStructure.total;
@@ -190,7 +246,36 @@ Error Breakdown:
     - Invalid H-bond symmetry: ${stats.errors.CrystalStructureFixed.bondProblems.invalidHBondSymmetry}
   • Other errors (logged): ${stats.errors.CrystalStructureFixed.otherAndLogged}
 - Symmetry errors: ${stats.errors.symmetry}
-- Connectivity errors (e.g. max iterations reached): ${stats.errors.connectivity}`;
+- Connectivity errors (e.g. max iterations reached): ${stats.errors.connectivity}
+
+BOND CONSISTENCY
+----------------
+Every grown bond must span the distance it is labelled with, and name two atoms that
+were actually materialised. Results are split by whether the source CIF verifies
+against its own coordinates, since growth replicates an unsound input faithfully.
+
+- Structures checked: ${bondConsistency.structuresChecked}
+- Structures whose own CIF is inconsistent: ${bondConsistency.structuresWithUnsoundBasis}\
+ (${unsoundBasisPercentage}%), covering ${bondConsistency.unsoundBasisBonds} bonds
+- Grown structures checked: ${bondConsistency.grownStructuresChecked}
+
+• From sound CIFs - these indicate a defect in cifvis:
+  - Runs with findings: ${bondConsistency.soundBasis.runsWithInconsistentBonds}
+  - Bonds drawn at the wrong length: ${bondConsistency.soundBasis.inconsistentBonds}
+  - Bonds naming a missing atom: ${bondConsistency.soundBasis.danglingBonds}
+  - Repeated atom IDs: ${bondConsistency.soundBasis.repeatedAtomIds}
+• From already-inconsistent CIFs - expected, bad input reproduced:
+  - Runs with findings: ${bondConsistency.unsoundBasis.runsWithInconsistentBonds}
+  - Bonds drawn at the wrong length: ${bondConsistency.unsoundBasis.inconsistentBonds}
+  - Bonds naming a missing atom: ${bondConsistency.unsoundBasis.danglingBonds}
+  - Repeated atom IDs: ${bondConsistency.unsoundBasis.repeatedAtomIds}
+
+Unsound files are reconciled before growth, by re-deriving each contradictory bond's
+site-symmetry code from the distance the file publishes:
+  - Site-symmetry codes corrected: ${bondConsistency.repairs.recoded}
+  - Lengths corrected from coordinates (no image matched): ${bondConsistency.repairs.lengthCorrected}
+  - Bonds dropped as irreconcilable: ${bondConsistency.repairs.dropped}\
+ (in ${bondConsistency.repairs.structuresWithDroppedBonds} structures)`;
 
     return summaryText;
 }
@@ -273,6 +358,48 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
 }
 
 /**
+ * Verifies that one grown structure is geometrically self-consistent and records the
+ * outcome against the already-established verdict on the source CIF.
+ *
+ * Findings are counted separately for sound and unsound input. Only the sound-basis
+ * counters indicate a defect in cifvis; the unsound-basis ones track how much bad
+ * input the corpus contains, which is otherwise indistinguishable in the totals.
+ * @param {object} grownStructure - Structure returned by the symmetry grower.
+ * @param {object} basisCheck - Result of checkCifBasis for the source CIF.
+ * @param {string} filePath - CIF being tested, for the log.
+ * @param {object} modes - Active `{hydrogenMode, disorderMode, symmetryMode}`.
+ */
+function checkBondConsistency(grownStructure, basisCheck, filePath, modes) {
+    const grown = checkGrownBonds(grownStructure);
+    stats.bondConsistency.grownStructuresChecked++;
+
+    const findings = grown.inconsistent.length + grown.dangling.length + grown.idCollisions;
+    if (findings === 0) {
+        return;
+    }
+
+    const basisIsUnsound = basisCheck.mismatched.length > 0;
+    const bucket = basisIsUnsound
+        ? stats.bondConsistency.unsoundBasis
+        : stats.bondConsistency.soundBasis;
+    bucket.runsWithInconsistentBonds++;
+    bucket.inconsistentBonds += grown.inconsistent.length;
+    bucket.danglingBonds += grown.dangling.length;
+    bucket.repeatedAtomIds += grown.idCollisions;
+
+    // Growth faithfully replicating an unsound CIF is already accounted for by the
+    // Structure Error raised for that file, and one bad input bond expands into its
+    // whole symmetry orbit - logging every one of those would bury the findings that
+    // are actually cifvis's fault. Only those get an entry here.
+    if (!basisIsUnsound) {
+        logMessage(
+            formatBondConsistencyReport({ filePath, modes, grown, basis: basisCheck }),
+            config.bondConsistencyLogFile,
+        );
+    }
+}
+
+/**
  * Tests a CIF file by parsing it and applying various structure modifiers.
  * @param {string} filePath - The path to the CIF file to test.
  * @returns {object} Results object containing success flags, error information, and modifier errors.
@@ -346,6 +473,49 @@ async function testCIFFile(filePath) {
                 symmetry: new SymmetryGrower(),
             };
 
+            // Established once per file, before any growth, so every mode combination
+            // below is judged against the same verdict on the input. Runs before the
+            // applicable modes are derived, since repairing the bonds can change which
+            // growth modes the structure supports.
+            const basisCheck = checkCifBasis(baseStructure);
+            stats.bondConsistency.structuresChecked++;
+            if (basisCheck.mismatched.length > 0) {
+                stats.bondConsistency.structuresWithUnsoundBasis++;
+                stats.bondConsistency.unsoundBasisBonds += basisCheck.mismatched.length;
+                // A depositor-side defect, not a cifvis one: report it as a Structure
+                // Error so generate-cod-report.mjs picks it up as a COD data-quality
+                // category. The maintainer log below stays reserved for findings cifvis
+                // itself introduced.
+                logMessage(
+                    `Structure Error in ${filePath}: Bond lengths inconsistent with the`
+                    + ` file's own coordinates: ${basisCheck.mismatched.length} of`
+                    + ` ${basisCheck.checked} bonds\n`
+                    + basisCheck.mismatched.slice(0, 5).map(entry => `    ${entry}`).join('\n'),
+                    config.errorLogFile,
+                );
+
+                // Warned about above; now reconcile so the rest of the run exercises
+                // growth on a coherent model instead of re-deriving the same fault in
+                // every mode combination.
+                const repair = repairBondGeometry(baseStructure);
+                baseStructure = repair.structure;
+                stats.bondConsistency.repairs.recoded += repair.repairs.recoded;
+                stats.bondConsistency.repairs.lengthCorrected += repair.repairs.lengthCorrected;
+                stats.bondConsistency.repairs.dropped += repair.repairs.dropped;
+                if (repair.repairs.dropped > 0) {
+                    stats.bondConsistency.repairs.structuresWithDroppedBonds++;
+                }
+                logMessage(
+                    `Bond geometry repaired in ${filePath}: ${repair.repairs.recoded} site-symmetry`
+                    + ` codes corrected, ${repair.repairs.lengthCorrected} lengths corrected,`
+                    + ` ${repair.repairs.dropped} dropped\n`
+                    + repair.repairs.details.slice(0, 3).map(entry => `    ${entry}`).join('\n'),
+                    config.bondConsistencyLogFile,
+                );
+            }
+
+            // Derived after any repair, since reconciling the bonds can change which
+            // growth modes the structure supports.
             const applicableModes = {
                 hydrogen: modifiers.hydrogen.getApplicableModes(baseStructure),
                 disorder: modifiers.disorder.getApplicableModes(baseStructure),
@@ -381,7 +551,11 @@ async function testCIFFile(filePath) {
                                 throw filterError;
                             }
                             modifiers.symmetry.mode = symmetryMode;
-                            modifiers.symmetry.apply(filteredStructure);
+                            const grownStructure = modifiers.symmetry.apply(filteredStructure);
+                            checkBondConsistency(
+                                grownStructure, basisCheck, filePath,
+                                { hydrogenMode, disorderMode, symmetryMode },
+                            );
                         } catch (error) {
                             logMessage(
                                 `Modifier Error in ${filePath}:`
