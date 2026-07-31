@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { UnitCell, CrystalStructure, Atom } from '../structure/crystal.js';
-import { FractPosition } from '../structure/position.js';
-import { Bond } from '../structure/bonds.js';
-import { CellSymmetry, SymmetryOperation } from '../structure/cell-symmetry.js';
+import { UnitCell, CrystalStructure, Atom } from '../crystal.js';
+import { FractPosition } from '../position.js';
+import { Bond } from '../bonds.js';
+import { CellSymmetry, SymmetryOperation } from '../cell-symmetry.js';
 import { repairBondGeometry } from './bond-geometry.js';
 
 const cell = new UnitCell(10, 10, 10, 90, 90, 90);

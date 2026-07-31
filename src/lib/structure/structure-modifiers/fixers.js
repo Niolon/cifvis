@@ -4,6 +4,7 @@ import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } fro
 import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
 import { encodePositionCode } from '../position-code.js';
 import { BaseFilter } from './base.js';
+import { repairBondGeometry } from './bond-geometry.js';
 import * as math from '../../math-lite.js';
 
 /**
@@ -1019,5 +1020,94 @@ export class IsolatedHydrogenFixer extends BaseFilter {
         }
 
         return [IsolatedHydrogenFixer.MODES.OFF];
+    }
+}
+
+/**
+ * Structure modifier that reconciles bonds whose stated length contradicts the
+ * structure's own coordinates and site-symmetry codes.
+ *
+ * A `_geom_bond` entry carries the two atom labels, a site-symmetry code and a distance,
+ * and a file can state all three inconsistently. The distance is the one independently
+ * meaningful piece - it is what was measured - so the code is re-derived from it
+ * wherever some symmetry image reproduces it. Leaving such a bond alone draws it between
+ * the wrong pair of atoms, typically whole unit cells apart.
+ * @augments BaseFilter
+ */
+export class BondGeometryFixer extends BaseFilter {
+    static MODES = Object.freeze({
+        ON: 'on',
+        OFF: 'off',
+    });
+
+    static PREFERRED_FALLBACK_ORDER = [
+        BondGeometryFixer.MODES.ON,
+        BondGeometryFixer.MODES.OFF,
+    ];
+
+    /**
+     * Creates a new bond geometry fixer.
+     * @param {BondGeometryFixer.MODES} [mode] - Initial mode.
+     * @param {object} [options] - Overrides passed to the repair.
+     * @param {number} [options.tolerance] - Maximum accepted length deviation in Å.
+     * @param {number} [options.maxPlausibleBond] - Longest distance accepted from coordinates alone.
+     */
+    constructor(mode = BondGeometryFixer.MODES.OFF, options = {}) {
+        super(
+            BondGeometryFixer.MODES,
+            mode,
+            'BondGeometryFixer',
+            BondGeometryFixer.PREFERRED_FALLBACK_ORDER,
+        );
+        this.options = options;
+        // Populated on each apply/getApplicableModes so a caller can report what was
+        // changed without repeating the work.
+        this.lastRepairs = null;
+    }
+
+    /**
+     * Repairs contradictory bonds, if any.
+     * @param {CrystalStructure} structure - Structure to repair.
+     * @returns {CrystalStructure} Structure with reconciled bonds, or the input unchanged.
+     */
+    apply(structure) {
+        this.ensureValidMode(structure);
+
+        if (this.mode === BondGeometryFixer.MODES.OFF) {
+            this.lastRepairs = null;
+            return structure;
+        }
+
+        const { structure: repaired, repairs } = repairBondGeometry(structure, this.options);
+        this.lastRepairs = repairs;
+
+        // Nothing contradicted itself, so hand back the original rather than an
+        // equivalent copy - downstream caches key on structure identity.
+        if (repairs.recoded === 0 && repairs.lengthCorrected === 0 && repairs.dropped === 0) {
+            return structure;
+        }
+        return repaired;
+    }
+
+    /**
+     * Offers the repair only where the structure actually contradicts itself, so the
+     * mode does not appear for the great majority of files that have nothing to fix.
+     * @param {CrystalStructure} structure - Structure to analyze.
+     * @returns {Array<string>} Applicable mode names.
+     */
+    getApplicableModes(structure) {
+        if (!structure?.bonds?.length) {
+            return [BondGeometryFixer.MODES.OFF];
+        }
+
+        const { repairs } = repairBondGeometry(structure, this.options);
+        this.lastRepairs = repairs;
+        const needsRepair = repairs.recoded > 0
+            || repairs.lengthCorrected > 0
+            || repairs.dropped > 0;
+
+        return needsRepair
+            ? [BondGeometryFixer.MODES.ON, BondGeometryFixer.MODES.OFF]
+            : [BondGeometryFixer.MODES.OFF];
     }
 }

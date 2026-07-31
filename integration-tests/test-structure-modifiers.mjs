@@ -6,7 +6,7 @@ import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/index.nobrowser.js';
-import { repairBondGeometry } from '../src/lib/fix-cif/bond-geometry.js';
+import { repairBondGeometry } from '../src/lib/structure/structure-modifiers/bond-geometry.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 import {
     checkCifBasis, checkGrownBonds, formatBondConsistencyReport,
@@ -38,6 +38,7 @@ export function getLogFilenames(startIndex, endIndex) {
             summaryFile: join(logsDir, 'modifier-test-summary.log'),
             statsFile: join(logsDir, 'modifier-test-stats.json'),
             bondConsistencyLogFile: join(logsDir, 'modifier-test-bond-consistency.log'),
+            slowFileLogFile: join(logsDir, 'modifier-test-slow-files.log'),
         };
     }
     const rangeStr = `${startIndex}-${endIndex}`;
@@ -51,8 +52,14 @@ export function getLogFilenames(startIndex, endIndex) {
         bondConsistencyLogFile: join(
             chunkLogsDir, `modifier-test-bond-consistency-${rangeStr}.log`,
         ),
+        slowFileLogFile: join(chunkLogsDir, `modifier-test-slow-files-${rangeStr}.log`),
     };
 }
+
+/** A file taking longer than this is worth naming individually in the log. */
+const SLOW_FILE_MS = 1000;
+/** A single modifier combination taking longer than this is reported with the file. */
+const SLOW_MODE_MS = 500;
 
 let config = {
     ...getLogFilenames(),
@@ -107,6 +114,18 @@ const stats = {
         symmetry: 0,
         modifier: 0,
         connectivity: 0,
+    },
+    // Processing cost per file. Only sums and counts live here: chunk stats are merged
+    // by adding matching numeric leaves, so a maximum or a top-N list would aggregate
+    // into nonsense. Buckets give the shape of the tail and survive the merge; the
+    // individual offenders go to the slow-file log.
+    timing: {
+        filesTimed: 0,
+        totalMs: 0,
+        slowFiles: 0,
+        filesOver5s: 0,
+        filesOver30s: 0,
+        slowMsTotal: 0,
     },
     // Geometric self-consistency of the bonds that growth produces. Split by whether
     // the source CIF was already inconsistent, because the symmetry orbit of one wrong
@@ -190,6 +209,15 @@ export function generateSummary(statsToReport, isInterim = false) {
         repairs: {},
         ...(stats.bondConsistency ?? {}),
     };
+    const timing = {
+        filesTimed: 0, totalMs: 0, slowFiles: 0, filesOver5s: 0, filesOver30s: 0, slowMsTotal: 0,
+        ...(stats.timing ?? {}),
+    };
+    const meanMs = timing.filesTimed === 0 ? 0 : timing.totalMs / timing.filesTimed;
+    const tailShare = timing.totalMs === 0
+        ? '0.0'
+        : ((timing.slowMsTotal / timing.totalMs) * 100).toFixed(1);
+
     const unsoundBasisPercentage = bondConsistency.structuresChecked === 0
         ? '0.0'
         : ((bondConsistency.structuresWithUnsoundBasis / bondConsistency.structuresChecked)
@@ -250,6 +278,17 @@ Error Breakdown:
   • Other errors (logged): ${stats.errors.CrystalStructureFixed.otherAndLogged}
 - Symmetry errors: ${stats.errors.symmetry}
 - Connectivity errors (e.g. max iterations reached): ${stats.errors.connectivity}
+
+PROCESSING TIME
+---------------
+Individually slow files are named in modifier-test-slow-files.log, each with the
+modifier combinations that took the longest, so the tail can be profiled directly.
+
+- Files timed: ${timing.filesTimed}, total ${(timing.totalMs / 60000).toFixed(1)} min\
+ (mean ${meanMs.toFixed(0)} ms)
+- Files over 1 s: ${timing.slowFiles}, over 5 s: ${timing.filesOver5s},\
+ over 30 s: ${timing.filesOver30s}
+- Share of total time spent in files over 1 s: ${tailShare}%
 
 BOND CONSISTENCY
 ----------------
@@ -408,12 +447,44 @@ function checkBondConsistency(grownStructure, basisCheck, filePath, modes) {
 }
 
 /**
+ * Records how long one file took, and names it in the slow-file log when it stands out.
+ *
+ * A run's cost is dominated by a small tail of structures rather than by the bulk, so
+ * knowing which files those are - and which modifier combination inside them is the
+ * expensive one - is what makes the tail actionable rather than merely slow.
+ * @param {string} filePath - The CIF that was processed.
+ * @param {number} elapsedMs - Wall time spent on it.
+ * @param {string[]} slowModes - Descriptions of individually slow modifier combinations.
+ */
+function recordFileTiming(filePath, elapsedMs, slowModes) {
+    stats.timing.filesTimed++;
+    stats.timing.totalMs += Math.round(elapsedMs);
+    if (elapsedMs < SLOW_FILE_MS) {
+        return;
+    }
+    stats.timing.slowFiles++;
+    stats.timing.slowMsTotal += Math.round(elapsedMs);
+    if (elapsedMs >= 5000) {
+        stats.timing.filesOver5s++;
+    }
+    if (elapsedMs >= 30000) {
+        stats.timing.filesOver30s++;
+    }
+    const detail = slowModes.length > 0
+        ? '\n' + slowModes.map(entry => `    ${entry}`).join('\n')
+        : '';
+    logMessage(`${(elapsedMs / 1000).toFixed(1)}s ${filePath}${detail}`, config.slowFileLogFile);
+}
+
+/**
  * Tests a CIF file by parsing it and applying various structure modifiers.
  * @param {string} filePath - The path to the CIF file to test.
  * @returns {object} Results object containing success flags, error information, and modifier errors.
  */
 async function testCIFFile(filePath) {
     stats.totalFiles++;
+    const fileStartedAt = performance.now();
+    const slowModes = [];
     const fileContent = readFileSync(filePath, 'utf8');
     suppressedWarnings = [];
     capturedErrors = [];
@@ -559,7 +630,16 @@ async function testCIFFile(filePath) {
                                 throw filterError;
                             }
                             modifiers.symmetry.mode = symmetryMode;
+                            const modeStartedAt = performance.now();
                             const grownStructure = modifiers.symmetry.apply(filteredStructure);
+                            const modeMs = performance.now() - modeStartedAt;
+                            if (modeMs >= SLOW_MODE_MS) {
+                                slowModes.push(
+                                    `${modeMs.toFixed(0)}ms H=${hydrogenMode}, D=${disorderMode}, `
+                                    + `S=${symmetryMode} -> ${grownStructure.atoms.length} atoms, `
+                                    + `${grownStructure.bonds.length} bonds`,
+                                );
+                            }
                             checkBondConsistency(
                                 grownStructure, basisCheck, filePath,
                                 { hydrogenMode, disorderMode, symmetryMode },
@@ -616,6 +696,8 @@ async function testCIFFile(filePath) {
             logMessage(`Connectivity Error in ${filePath}: ${errMsg}`, config.errorLogFile);
         });
     }
+
+    recordFileTiming(filePath, performance.now() - fileStartedAt, slowModes);
 
     // Check if we should generate an interim report
     if (stats.totalFiles % config.interimReportFrequency === 0) {

@@ -4,7 +4,7 @@ import { Bond } from '../bonds.js';
 import { CellSymmetry, SymmetryOperation } from '../cell-symmetry.js';
 import { CIF } from '../../read-cif/base.js';
 import {
-    AtomLabelFilter, BondGenerator, IsolatedHydrogenFixer,
+    AtomLabelFilter, BondGenerator, BondGeometryFixer, IsolatedHydrogenFixer,
 } from './fixers.js';
 import { SymmetryGrower } from './modes.js';
 import { MockStructure } from './base.test.js';
@@ -885,5 +885,72 @@ describe('IsolatedHydrogenFixer', () => {
 
         // H3 should bond to C1 as it's closer
         expect(h3Bond.atom1Id === 'O2|1_555' || h3Bond.atom2Id === 'O2|1_555').toBeTruthy();
+    });
+});
+describe('BondGeometryFixer', () => {
+    const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+    const symmetry = new CellSymmetry('P-1', 2, [
+        new SymmetryOperation('x,y,z'),
+        new SymmetryOperation('-x,-y,-z'),
+    ]);
+
+    /**
+     * Builds a two-atom structure 1.5 A apart carrying one bond.
+     * @param {Bond} bond - The bond to include.
+     * @returns {CrystalStructure} Structure for the fixer.
+     */
+    const structureWith = bond => new CrystalStructure(
+        cell,
+        [
+            new Atom('C1', 'C', new FractPosition(0.1, 0.0, 0.0)),
+            new Atom('C2', 'C', new FractPosition(0.25, 0.0, 0.0)),
+        ],
+        [bond],
+        [],
+        symmetry,
+    );
+
+    test('offers only OFF when the structure agrees with itself', () => {
+        const fixer = new BondGeometryFixer();
+        const modes = fixer.getApplicableModes(structureWith(new Bond('C1', 'C2', 1.5, 0.01, '.')));
+
+        expect(modes).toEqual([BondGeometryFixer.MODES.OFF]);
+    });
+
+    test('offers ON when a bond contradicts the coordinates', () => {
+        // Written as reaching the next cell along a, but stated as 1.5 A - which the
+        // untranslated image does reproduce.
+        const fixer = new BondGeometryFixer();
+        const modes = fixer.getApplicableModes(
+            structureWith(new Bond('C1', 'C2', 1.5, 0.01, '1_655')),
+        );
+
+        expect(modes).toContain(BondGeometryFixer.MODES.ON);
+    });
+
+    test('OFF leaves the structure untouched', () => {
+        const structure = structureWith(new Bond('C1', 'C2', 1.5, 0.01, '1_655'));
+        const result = new BondGeometryFixer(BondGeometryFixer.MODES.OFF).apply(structure);
+
+        expect(result).toBe(structure);
+        expect(result.bonds[0].atom2SiteSymmetry).toBe('1_655');
+    });
+
+    test('ON corrects the site symmetry and reports what it did', () => {
+        const fixer = new BondGeometryFixer(BondGeometryFixer.MODES.ON);
+        const result = fixer.apply(structureWith(new Bond('C1', 'C2', 1.5, 0.01, '1_655')));
+
+        expect(result.bonds[0].atom2SiteSymmetry).toBe('1_555');
+        expect(result.bonds[0].bondLength).toBe(1.5);
+        expect(fixer.lastRepairs).toMatchObject({ recoded: 1, lengthCorrected: 0, dropped: 0 });
+    });
+
+    test('ON returns the original structure when there is nothing to repair', () => {
+        // Downstream caches key on structure identity, so a no-op must not produce an
+        // equivalent copy.
+        const structure = structureWith(new Bond('C1', 'C2', 1.5, 0.01, '.'));
+        const result = new BondGeometryFixer(BondGeometryFixer.MODES.ON).apply(structure);
+
+        expect(result).toBe(structure);
     });
 });

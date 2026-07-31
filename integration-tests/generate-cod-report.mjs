@@ -37,6 +37,9 @@ function classifyStructureError(message) {
     if (message.includes('Duplicate atom site labels')) {
         return ['Duplicate _atom_site_label (the same label names more than one site)'];
     }
+    if (message.includes('Symmetry operations incompatible with the unit cell')) {
+        return ['Symmetry operations are not isometries of the unit cell in the same file'];
+    }
     if (message.includes('Bond lengths inconsistent with the file\'s own coordinates')) {
         return ['Bond length disagrees with the coordinates and symmetry code in the same file'];
     }
@@ -203,6 +206,19 @@ const MAX_DETAIL_LENGTH = 300;
  * not self-evident from the name alone.
  */
 const CATEGORY_NOTES = new Map([
+    [
+        'Symmetry operations are not isometries of the unit cell in the same file',
+        'A crystallographic symmetry operation maps the crystal onto itself and therefore '
+        + 'cannot change the distance between two points - but whether a given operation has '
+        + 'that property depends on the cell. A two-fold along **c**, for example, is an '
+        + 'isometry only when alpha and beta are 90 degrees. These files pair operations with '
+        + 'a cell they do not fit, so the operations and the cell cannot both be right.\n\n'
+        + 'The consequence is that every symmetry image comes out distorted: bonds generated '
+        + 'across such an operation are drawn at the wrong length, which looks like a '
+        + 'modelling error rather than the metadata error it is. Most often either the cell '
+        + 'angles belong to a lower-symmetry setting than the space group named, or the '
+        + 'operation list was copied from a different setting of the same group.',
+    ],
     [
         'Duplicate _atom_site_label (the same label names more than one site)',
         '`_atom_site_label` has to identify a site uniquely: `_geom_bond`, `_geom_angle`, '

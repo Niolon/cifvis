@@ -1,6 +1,6 @@
-import { Bond } from '../structure/bonds.js';
-import { CrystalStructure } from '../structure/crystal.js';
-import { decodePositionCode, encodePositionCode } from '../structure/position-code.js';
+import { Bond } from '../bonds.js';
+import { CrystalStructure } from '../crystal.js';
+import { decodePositionCode, encodePositionCode } from '../position-code.js';
 
 /**
  * Largest deviation, in Ångström, between a stated bond length and the distance the
