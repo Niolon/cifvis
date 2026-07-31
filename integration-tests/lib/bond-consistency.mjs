@@ -33,36 +33,64 @@ function distance(first, second) {
 }
 
 /**
+ * Indexes atoms by label, keeping every atom that carries a given label.
+ *
+ * CIFs in the wild do reuse a label for two distinct sites - most often where a
+ * disordered or multi-component model was assembled by hand. A bond naming such a
+ * label is genuinely ambiguous, so validation has to consider all of them rather than
+ * silently resolving to one and reporting a fault that only that choice produces.
+ * @param {object[]} atoms - Atoms to index.
+ * @returns {Map<string, object[]>} Label to every atom carrying it.
+ */
+function indexAtomsByLabel(atoms) {
+    const index = new Map();
+    for (const atom of atoms) {
+        const existing = index.get(atom.label);
+        if (existing) {
+            existing.push(atom);
+        } else {
+            index.set(atom.label, [atom]);
+        }
+    }
+    return index;
+}
+
+/**
  * Places an atom ID of the form `label|symmetryCode` using only the structure's own
  * symmetry operations - no growth involved.
  * @param {object} structure - Structure providing symmetry.
- * @param {Map<string, object>} atomsByLabel - Asymmetric-unit atoms indexed by label.
+ * @param {Map<string, object[]>} atomsByLabel - Asymmetric-unit atoms indexed by label.
  * @param {string} atomId - Atom ID to place.
- * @returns {number[]|null} Fractional coordinates, or null when the ID cannot be resolved.
+ * @returns {number[][]} Fractional coordinates, one entry per atom sharing the label;
+ *  empty when the ID cannot be resolved at all.
  */
 function placeAtomId(structure, atomsByLabel, atomId) {
     const [label, code] = atomId.split('|');
-    const atom = atomsByLabel.get(label);
-    if (!atom) {
-        return null;
+    const candidates = atomsByLabel.get(label);
+    if (!candidates) {
+        return [];
     }
     let decoded;
     try {
         decoded = decodePositionCode(code || '1_555');
     } catch {
-        return null;
+        return [];
     }
     const operationIndex = structure.symmetry.operationIds.get(decoded.id);
     if (operationIndex === undefined) {
-        return null;
+        return [];
     }
-    const image = structure.symmetry.symmetryOperations[operationIndex]
-        .applyToPoint([atom.position.x, atom.position.y, atom.position.z]);
-    return [
-        image[0] + decoded.translation[0],
-        image[1] + decoded.translation[1],
-        image[2] + decoded.translation[2],
-    ];
+    const operation = structure.symmetry.symmetryOperations[operationIndex];
+    return candidates.map(atom => {
+        const image = operation.applyToPoint([
+            atom.position.x, atom.position.y, atom.position.z,
+        ]);
+        return [
+            image[0] + decoded.translation[0],
+            image[1] + decoded.translation[1],
+            image[2] + decoded.translation[2],
+        ];
+    });
 }
 
 /**
@@ -79,7 +107,7 @@ function placeAtomId(structure, atomsByLabel, atomId) {
  *  and a description of each that disagrees with its own stated length.
  */
 export function checkCifBasis(structure) {
-    const atomsByLabel = new Map(structure.atoms.map(atom => [atom.label, atom]));
+    const atomsByLabel = indexAtomsByLabel(structure.atoms);
     const toCartesian = cartesianConverter(structure.cell);
     const mismatched = [];
     let checked = 0;
@@ -88,16 +116,28 @@ export function checkCifBasis(structure) {
         if (bond.bondLength === null || bond.bondLength === undefined) {
             continue;
         }
-        const first = placeAtomId(structure, atomsByLabel, bond.atom1Id);
-        const second = placeAtomId(structure, atomsByLabel, bond.atom2Id);
-        if (!first || !second) {
+        const firstCandidates = placeAtomId(structure, atomsByLabel, bond.atom1Id);
+        const secondCandidates = placeAtomId(structure, atomsByLabel, bond.atom2Id);
+        if (firstCandidates.length === 0 || secondCandidates.length === 0) {
             continue;
         }
         checked++;
-        const spanned = distance(toCartesian(first), toCartesian(second));
-        if (Math.abs(spanned - bond.bondLength) > BOND_LENGTH_TOLERANCE) {
+        // With duplicated labels any pairing is a legitimate reading of the file, so
+        // the bond is only wrong when none of them reproduces the stated length. The
+        // closest pairing is reported, as the most favourable case for the file.
+        let closest = Infinity;
+        for (const first of firstCandidates) {
+            for (const second of secondCandidates) {
+                const spanned = distance(toCartesian(first), toCartesian(second));
+                if (Math.abs(spanned - bond.bondLength)
+                    < Math.abs(closest - bond.bondLength)) {
+                    closest = spanned;
+                }
+            }
+        }
+        if (Math.abs(closest - bond.bondLength) > BOND_LENGTH_TOLERANCE) {
             mismatched.push(
-                `${bond.atom1Id}-${bond.atom2Id} cifCoordinates=${spanned.toFixed(3)}`
+                `${bond.atom1Id}-${bond.atom2Id} cifCoordinates=${closest.toFixed(3)}`
                 + ` cifLabel=${bond.bondLength}`,
             );
         }

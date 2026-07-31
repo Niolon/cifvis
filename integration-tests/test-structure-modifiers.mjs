@@ -70,7 +70,8 @@ const stats = {
             total: 0,
             unitCellParameterMissing: 0,
             noValidAtoms: 0,
-            placeholderCoordinates: 0, 
+            duplicateAtomLabels: 0,
+            placeholderCoordinates: 0,
             uAniProblems: {
                 total: 0,
                 uAniTableMissing: 0,
@@ -88,6 +89,7 @@ const stats = {
         CrystalStructureFixed: {
             total: 0,
             unitCellParameterMissing: 0,
+            duplicateAtomLabels: 0,
             uAniProblems: {
                 total: 0,
                 uAniTableMissing: 0,
@@ -224,6 +226,7 @@ Error Breakdown:
 - Structure creation errors: ${stats.errors.CrystalStructure.total}
   • Missing unit cell parameters: ${stats.errors.CrystalStructure.unitCellParameterMissing}
   • No valid atoms: ${stats.errors.CrystalStructure.noValidAtoms}
+  • Duplicate atom site labels: ${stats.errors.CrystalStructure.duplicateAtomLabels ?? 0}
   • Placeholder coordinates only: ${stats.errors.CrystalStructure.placeholderCoordinates}
   • Anisotropic displacement problems: ${stats.errors.CrystalStructure.uAniProblems.total}
     - Missing Uani tables: ${stats.errors.CrystalStructure.uAniProblems.uAniTableMissing}
@@ -317,6 +320,11 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
     if (errorMessage === 'The cif file contains no valid atoms.') {
         crystalStructureErrors.total++;
         crystalStructureErrors.noValidAtoms++;
+        errorHandled = true;
+    }
+    if (errorMessage.includes('Duplicate atom site labels')) {
+        crystalStructureErrors.total++;
+        crystalStructureErrors.duplicateAtomLabels++;
         errorHandled = true;
     }
     if (errorMessage.includes(', but no atom_site_aniso loop was found')) {

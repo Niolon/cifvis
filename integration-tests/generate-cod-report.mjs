@@ -34,6 +34,9 @@ function classifyStructureError(message) {
     if (message === 'Empty atom label') {
         return ['Empty atom label'];
     }
+    if (message.includes('Duplicate atom site labels')) {
+        return ['Duplicate _atom_site_label (the same label names more than one site)'];
+    }
     if (message.includes('Bond lengths inconsistent with the file\'s own coordinates')) {
         return ['Bond length disagrees with the coordinates and symmetry code in the same file'];
     }
@@ -200,6 +203,20 @@ const MAX_DETAIL_LENGTH = 300;
  * not self-evident from the name alone.
  */
 const CATEGORY_NOTES = new Map([
+    [
+        'Duplicate _atom_site_label (the same label names more than one site)',
+        '`_atom_site_label` has to identify a site uniquely: `_geom_bond`, `_geom_angle`, '
+        + '`_geom_hbond` and `_atom_site_aniso` all address atoms by that label alone, and '
+        + 'no other column can break a tie - in the cases seen here the duplicated rows '
+        + 'agree on occupancy, multiplicity, disorder assembly and disorder group, and '
+        + 'differ only in their coordinates.\n\n'
+        + 'A frequent cause is two naming schemes colliding within one file: a manual '
+        + '"hydrogen on N10" label `H10N` against the automatic `H10` + sequential-letter '
+        + 'series (`H10L`, `H10M`, `H10N`, ...) that refinement software generates for the '
+        + 'hydrogens of a different parent atom. Both bonds then exist in `_geom_bond` '
+        + '(`N10 H10N` and `C107 H10N`) while naming different atoms, so any reader has to '
+        + 'guess, and one of the two bonds is necessarily drawn wrong.',
+    ],
     [
         'Bond length disagrees with the coordinates and symmetry code in the same file',
         'Detected without any symmetry growth: both endpoints of each `_geom_bond` entry are '

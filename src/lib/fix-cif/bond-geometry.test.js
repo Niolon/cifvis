@@ -84,6 +84,30 @@ describe('repairBondGeometry', () => {
         expect(result.structure.bonds).toHaveLength(0);
     });
 
+    test('leaves a bond alone when a duplicated label has a reading that fits', () => {
+        // COD 1519817 reuses labels: two distinct sites are both called H10N, and only
+        // one of them is the hydrogen N10 actually bonds to. Resolving the label to a
+        // single atom measured the bond against the wrong site and reported a 10 A
+        // "N-H bond" for a file whose 0.88 A is perfectly standard.
+        const structure = new CrystalStructure(
+            cell,
+            [
+                new Atom('N10', 'N', new FractPosition(0.0, 0.0, 0.0)),
+                // Not the intended partner: 5 A away.
+                new Atom('H10N', 'H', new FractPosition(0.5, 0.0, 0.0)),
+                // The intended partner: 1 A away.
+                new Atom('H10N', 'H', new FractPosition(0.1, 0.0, 0.0)),
+            ],
+            [new Bond('N10', 'H10N', 1.0, 0.01, '.')],
+            [],
+            new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]),
+        );
+        const { structure: repaired, repairs } = repairBondGeometry(structure);
+
+        expect(repairs).toMatchObject({ recoded: 0, lengthCorrected: 0, dropped: 0 });
+        expect(repaired.bonds[0].bondLength).toBe(1.0);
+    });
+
     test('does not modify the input structure', () => {
         const original = structureWith(new Bond('C1', 'C2', 1.5, 0.01, '1_655'));
         repairBondGeometry(original);

@@ -49,7 +49,19 @@ export function repairBondGeometry(structure, options = {}) {
     const tolerance = options.tolerance ?? BOND_GEOMETRY_TOLERANCE;
     const maxPlausibleBond = options.maxPlausibleBond ?? MAX_PLAUSIBLE_BOND;
 
-    const atomsByLabel = new Map(structure.atoms.map(atom => [atom.label, atom]));
+    // Every atom carrying a label, not just one: a CIF may reuse a label for two
+    // distinct sites, and a bond naming it is then ambiguous. Resolving to a single
+    // atom would measure the bond against a site the depositor never meant and
+    // "repair" a file that was never broken.
+    const atomsByLabel = new Map();
+    for (const atom of structure.atoms) {
+        const existing = atomsByLabel.get(atom.label);
+        if (existing) {
+            existing.push(atom);
+        } else {
+            atomsByLabel.set(atom.label, [atom]);
+        }
+    }
     const matrix = structure.cell.fractToCartMatrix.toArray();
     const toCartesian = fract => [
         matrix[0][0] * fract[0] + matrix[0][1] * fract[1] + matrix[0][2] * fract[2],
@@ -61,33 +73,38 @@ export function repairBondGeometry(structure, options = {}) {
     );
 
     /**
-     * Places an atom ID using the structure's own symmetry.
+     * Places an atom ID using the structure's own symmetry, once per atom sharing the
+     * label.
      * @param {string} atomId - ID of the form `label` or `label|code`.
-     * @returns {number[]|null} Fractional coordinates, or null when unresolvable.
+     * @returns {number[][]} Fractional coordinates per candidate; empty when unresolvable.
      */
     const place = atomId => {
         const [label, code] = atomId.split('|');
-        const atom = atomsByLabel.get(label);
-        if (!atom) {
-            return null;
+        const candidates = atomsByLabel.get(label);
+        if (!candidates) {
+            return [];
         }
         let decoded;
         try {
             decoded = decodePositionCode(code || '1_555');
         } catch {
-            return null;
+            return [];
         }
         const index = structure.symmetry.operationIds.get(decoded.id);
         if (index === undefined) {
-            return null;
+            return [];
         }
-        const image = structure.symmetry.symmetryOperations[index]
-            .applyToPoint([atom.position.x, atom.position.y, atom.position.z]);
-        return [
-            image[0] + decoded.translation[0],
-            image[1] + decoded.translation[1],
-            image[2] + decoded.translation[2],
-        ];
+        const operation = structure.symmetry.symmetryOperations[index];
+        return candidates.map(atom => {
+            const image = operation.applyToPoint([
+                atom.position.x, atom.position.y, atom.position.z,
+            ]);
+            return [
+                image[0] + decoded.translation[0],
+                image[1] + decoded.translation[1],
+                image[2] + decoded.translation[2],
+            ];
+        });
     };
 
     /**
@@ -102,34 +119,36 @@ export function repairBondGeometry(structure, options = {}) {
      * the same distance. Otherwise every operation is searched, smallest lattice
      * translation first, so the result is deterministic and as compact as possible.
      * @param {number[]} origin - Cartesian position of the fixed endpoint.
-     * @param {object} target - Asymmetric-unit atom to image.
+     * @param {object[]} targets - Every asymmetric-unit atom carrying the target label.
      * @param {number} statedLength - Distance the bond claims to span.
      * @param {string|null} preferredOperationId - Operation id the file named.
      * @returns {string|null} Position code reproducing the distance, or null.
      */
-    const findIntendedImage = (origin, target, statedLength, preferredOperationId) => {
+    const findIntendedImage = (origin, targets, statedLength, preferredOperationId) => {
         const searchOperation = operationId => {
             const index = structure.symmetry.operationIds.get(operationId);
             if (index === undefined) {
                 return null;
             }
-            const image = structure.symmetry.symmetryOperations[index]
-                .applyToPoint([target.position.x, target.position.y, target.position.z]);
             let best = null;
             let bestMagnitude = Infinity;
-            for (let x = -TRANSLATION_SEARCH_RANGE; x <= TRANSLATION_SEARCH_RANGE; x++) {
-                for (let y = -TRANSLATION_SEARCH_RANGE; y <= TRANSLATION_SEARCH_RANGE; y++) {
-                    for (let z = -TRANSLATION_SEARCH_RANGE; z <= TRANSLATION_SEARCH_RANGE; z++) {
-                        const distance = separation(
-                            origin, toCartesian([image[0] + x, image[1] + y, image[2] + z]),
-                        );
-                        if (Math.abs(distance - statedLength) > tolerance) {
-                            continue;
-                        }
-                        const magnitude = Math.abs(x) + Math.abs(y) + Math.abs(z);
-                        if (magnitude < bestMagnitude) {
-                            bestMagnitude = magnitude;
-                            best = encodePositionCode(operationId, [x, y, z]);
+            for (const target of targets) {
+                const image = structure.symmetry.symmetryOperations[index]
+                    .applyToPoint([target.position.x, target.position.y, target.position.z]);
+                for (let x = -TRANSLATION_SEARCH_RANGE; x <= TRANSLATION_SEARCH_RANGE; x++) {
+                    for (let y = -TRANSLATION_SEARCH_RANGE; y <= TRANSLATION_SEARCH_RANGE; y++) {
+                        for (let z = -TRANSLATION_SEARCH_RANGE; z <= TRANSLATION_SEARCH_RANGE; z++) {
+                            const distance = separation(
+                                origin, toCartesian([image[0] + x, image[1] + y, image[2] + z]),
+                            );
+                            if (Math.abs(distance - statedLength) > tolerance) {
+                                continue;
+                            }
+                            const magnitude = Math.abs(x) + Math.abs(y) + Math.abs(z);
+                            if (magnitude < bestMagnitude) {
+                                bestMagnitude = magnitude;
+                                best = encodePositionCode(operationId, [x, y, z]);
+                            }
                         }
                     }
                 }
@@ -156,14 +175,28 @@ export function repairBondGeometry(structure, options = {}) {
     const repairedBonds = [];
 
     for (const bond of structure.bonds) {
-        const first = place(bond.atom1Id);
-        const second = place(bond.atom2Id);
-        if (bond.bondLength === null || bond.bondLength === undefined || !first || !second) {
+        const firstCandidates = place(bond.atom1Id);
+        const secondCandidates = place(bond.atom2Id);
+        if (bond.bondLength === null || bond.bondLength === undefined
+            || firstCandidates.length === 0 || secondCandidates.length === 0) {
             repairedBonds.push(bond);
             continue;
         }
-        const origin = toCartesian(first);
-        const spanned = separation(origin, toCartesian(second));
+        // Ambiguous labels give several readings of the same bond; any one of them
+        // matching means the file is consistent and must be left alone.
+        let spanned = Infinity;
+        let origin = toCartesian(firstCandidates[0]);
+        for (const first of firstCandidates) {
+            const firstCartesian = toCartesian(first);
+            for (const second of secondCandidates) {
+                const candidateSpan = separation(firstCartesian, toCartesian(second));
+                if (Math.abs(candidateSpan - bond.bondLength)
+                    < Math.abs(spanned - bond.bondLength)) {
+                    spanned = candidateSpan;
+                    origin = firstCartesian;
+                }
+            }
+        }
         if (Math.abs(spanned - bond.bondLength) <= tolerance) {
             repairedBonds.push(bond);
             continue;

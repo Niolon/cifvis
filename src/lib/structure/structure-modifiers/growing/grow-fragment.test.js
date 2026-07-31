@@ -1,10 +1,9 @@
 import { beforeEach, describe, test } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
 import { MockStructure as MockStructureHelper } from '../base.test.js';
 import { Bond } from '../../bonds.js';
-import { CrystalStructure } from '../../crystal.js';
-import { CIF } from '../../../read-cif/base.js';
-import { positionsCoincide } from '../../position.js';
+import { Atom, CrystalStructure, UnitCell } from '../../crystal.js';
+import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
+import { FractPosition, positionsCoincide } from '../../position.js';
 
 import { 
     createBondIdentifier, 
@@ -806,28 +805,125 @@ describe('Structure dependent methods', () => {
         });
     });
 
-    describe('real high-symmetry regression', () => {
-        const codDirectory = process.env.COD_DIR || '/home/niklas/cod/cif';
-        const naxPath = `${codDirectory}/1/50/56/1505694.cif`;
-
-        test.skipIf(!existsSync(naxPath))('NaX 1505694 has no coincident output images or dangling bonds', () => {
-            const nax = CrystalStructure.fromCIF(new CIF(readFileSync(naxPath, 'utf8')).getBlock(0));
-            const { grownStructure } = growFragment(nax);
-            const materialised = new Set(grownStructure.atoms.map(atom => atom.uniqueId));
+    describe('high-symmetry growth invariants', () => {
+        /**
+         * Asserts the properties a grown fragment must always have, whatever the
+         * symmetry: every bond names atoms that were actually materialised, no two
+         * materialised atoms occupy the same point, and every bond spans the distance
+         * it is labelled with. The last is what catches an endpoint resolved to the
+         * wrong symmetry image - the bond is still drawn, just across the model.
+         * @param {CrystalStructure} grownStructure - Output of growFragment.
+         */
+        const expectWellFormed = grownStructure => {
+            const byId = new Map(grownStructure.atoms.map(atom => [atom.uniqueId, atom]));
+            expect(byId.size).toBe(grownStructure.atoms.length);
 
             grownStructure.bonds.forEach(bond => {
-                expect(materialised.has(bond.atom1Id)).toBe(true);
-                expect(materialised.has(bond.atom2Id)).toBe(true);
+                expect(byId.has(bond.atom1Id)).toBe(true);
+                expect(byId.has(bond.atom2Id)).toBe(true);
+                if (bond.bondLength === null || bond.bondLength === undefined) {
+                    return;
+                }
+                const first = byId.get(bond.atom1Id).position.toCartesian(grownStructure.cell);
+                const second = byId.get(bond.atom2Id).position.toCartesian(grownStructure.cell);
+                const spanned = Math.hypot(
+                    first.x - second.x, first.y - second.y, first.z - second.z,
+                );
+                expect(spanned).toBeCloseTo(bond.bondLength, 3);
             });
-            const atomsByLabel = new Map();
-            grownStructure.atoms.forEach(atom => {
-                const images = atomsByLabel.get(atom.label) || [];
-                images.forEach(image => {
-                    expect(positionsCoincide(atom.position, image.position, grownStructure.cell)).toBe(false);
+            grownStructure.atoms.forEach((atom, index) => {
+                grownStructure.atoms.slice(index + 1).forEach(other => {
+                    expect(
+                        positionsCoincide(atom.position, other.position, grownStructure.cell),
+                    ).toBe(false);
                 });
-                images.push(atom);
-                atomsByLabel.set(atom.label, images);
             });
+        };
+
+        test('an atom whose site symmetry maps it onto itself is materialised once', () => {
+            // C1 sits on the inversion centre, so operation 2 reproduces it exactly.
+            // The redundant image must collapse onto the original rather than being
+            // added as a second atom at the same point.
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P-1', 2, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ]);
+            const structure = new CrystalStructure(
+                cell,
+                [
+                    new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+                    new Atom('O1', 'O', new FractPosition(0.15, 0, 0)),
+                ],
+                [new Bond('C1', 'O1', 1.5, 0.01, '.'), new Bond('C1', 'O1', 1.5, 0.01, '2_555')],
+                [],
+                symmetry,
+            );
+            const { grownStructure } = growFragment(structure);
+
+            expectWellFormed(grownStructure);
+            expect(grownStructure.atoms.filter(atom => atom.label === 'C1')).toHaveLength(1);
+            // The inversion-related O1 is a genuinely distinct site and must appear.
+            expect(grownStructure.atoms.filter(atom => atom.label === 'O1')).toHaveLength(2);
+        });
+
+        test('a chain closing on its own lattice translation stays finite', () => {
+            // A -C1-C2- chain running along a: C2 bonds on to the next cell's C1.
+            // Following that link forever would grow an unbounded rod, so the periodic
+            // repeat is not materialised - and the bond reaching it must then be
+            // dropped, not quietly re-pointed at the C1 already in the home cell, which
+            // would draw it a whole cell long.
+            const cell = new UnitCell(6, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+            const structure = new CrystalStructure(
+                cell,
+                [
+                    new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+                    new Atom('C2', 'C', new FractPosition(0.25, 0, 0)),
+                ],
+                [
+                    new Bond('C1', 'C2', 1.5, 0.01, '.'),
+                    new Bond('C2', 'C1', 4.5, 0.01, '1_655'),
+                ],
+                [],
+                symmetry,
+            );
+            const { grownStructure } = growFragment(structure);
+
+            expectWellFormed(grownStructure);
+            expect(grownStructure.atoms).toHaveLength(2);
+        });
+
+        test('several operations mapping a site onto one point yield one atom', () => {
+            // C1 on the 4-fold axis at the origin: all four rotations reproduce it, a
+            // small stand-in for the high-multiplicity Wyckoff sites of a framework.
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P4', 75, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-y,x,z'),
+                new SymmetryOperation('-x,-y,z'),
+                new SymmetryOperation('y,-x,z'),
+            ]);
+            const structure = new CrystalStructure(
+                cell,
+                [
+                    new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+                    new Atom('O1', 'O', new FractPosition(0.15, 0, 0)),
+                ],
+                [
+                    new Bond('C1', 'O1', 1.5, 0.01, '.'),
+                    new Bond('C1', 'O1', 1.5, 0.01, '2_555'),
+                    new Bond('C1', 'O1', 1.5, 0.01, '3_555'),
+                    new Bond('C1', 'O1', 1.5, 0.01, '4_555'),
+                ],
+                [],
+                symmetry,
+            );
+            const { grownStructure } = growFragment(structure);
+
+            expectWellFormed(grownStructure);
+            expect(grownStructure.atoms.filter(atom => atom.label === 'C1')).toHaveLength(1);
+            expect(grownStructure.atoms.filter(atom => atom.label === 'O1')).toHaveLength(4);
         });
     });
 

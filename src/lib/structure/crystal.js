@@ -108,6 +108,31 @@ export class CrystalStructure {
             throw new Error('The cif file contains no valid atoms.');
         }
 
+        // _atom_site_label has to identify a site uniquely: bonds, H-bonds, angles and
+        // the aniso loop all address atoms by label alone, with no other column able to
+        // break a tie. Resolving a repeated label to whichever row came first silently
+        // bonds the wrong pair of atoms, so refuse the file instead of rendering a model
+        // the data does not actually determine.
+        const duplicatedLabels = [];
+        const seenLabels = new Set();
+        for (const atom of atoms) {
+            if (seenLabels.has(atom.label)) {
+                if (!duplicatedLabels.includes(atom.label)) {
+                    duplicatedLabels.push(atom.label);
+                }
+            }
+            seenLabels.add(atom.label);
+        }
+        if (duplicatedLabels.length > 0) {
+            throw new Error(
+                'Duplicate atom site labels: '
+                + `${duplicatedLabels.slice(0, 10).join(', ')}`
+                + `${duplicatedLabels.length > 10 ? ', ...' : ''}. `
+                + 'Every _atom_site_label must name exactly one site, otherwise bonds and '
+                + 'H-bonds referring to it cannot be resolved.',
+            );
+        }
+
         const atomLabels = new Set(atoms.map(atom => atom.label));
         const bonds = BondsFactory.createBonds(cifBlock, atomLabels);
         const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);

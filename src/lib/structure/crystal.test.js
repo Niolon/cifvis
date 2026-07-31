@@ -100,6 +100,35 @@ describe('CrystalStructure', () => {
         expect(structure.hBonds).toEqual([]);
     });
 
+    test('fromCIF refuses a file that reuses an atom site label', () => {
+        // A manual "hydrogen on N10" label colliding with an automatically generated
+        // H10 + letter series, as seen in COD 1519817. Both _geom_bond entries below
+        // name H10N but mean different atoms, so neither can be resolved.
+        const cifText = `
+data_test
+ _cell_length_a 10
+ _cell_length_b 10
+ _cell_length_c 10
+ _cell_angle_alpha 90
+ _cell_angle_beta 90
+ _cell_angle_gamma 90
+
+ loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ N10 N 0 0 0
+ H10N H 0.1 0 0
+ C107 C 0.5 0.5 0.5
+ H10N H 0.6 0.5 0.5
+`;
+        const block = new CIF(cifText).getBlock(0);
+
+        expect(() => CrystalStructure.fromCIF(block)).toThrow(/Duplicate atom site labels: H10N/);
+    });
+
     test('fromCIF creates complete structure', () => {
         const cifText = `
 data_test
