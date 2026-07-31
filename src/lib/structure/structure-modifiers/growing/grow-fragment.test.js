@@ -16,6 +16,7 @@ import {
     generateSymmetryHBonds,
     createConnectivity,
     collectSymmetryRequirements,
+    normalizeSymmetryInstances,
     processTranslationLinks,
     growFragment,
 } from './grow-fragment.js';
@@ -57,6 +58,13 @@ describe('ConnectedGroup', () => {
         expect(group.isTranslationalDuplicateOf(sameGroupDiffTrans)).toBe(true); // Translational duplicate
         expect(group.isTranslationalDuplicateOf(sameGroupDiffSymm)).toBe(false); // Different symmetry op
         expect(group.isTranslationalDuplicateOf(diffGroupSameSymm)).toBe(false); // Different group index
+    });
+
+    test('identifies a diagonal [111] lattice repeat as a translational duplicate', () => {
+        const diagonalRepeat = new ConnectedGroup(0, '2_666');
+        const referenceImage = new ConnectedGroup(0, '2_555');
+
+        expect(diagonalRepeat.isTranslationalDuplicateOf(referenceImage)).toBe(true);
     });
 });
 
@@ -547,6 +555,54 @@ describe('Structure dependent methods', () => {
             expect(result.foundTranslations.length).toBe(0);
             expect(processedConnections.size).toBe(1); // No new keys added
         });
+
+        test('treats an image already queued in the same BFS layer as a periodic duplicate', () => {
+            const bondsForCurrent = [new ConnectingBond('C1', 'N1', 1.5, 0.01)];
+            currentConnection = new ConnectingBondGroup(
+                0, identSymmString, 1, identSymmString, bondsForCurrent, 0,
+            );
+            const bondsForSeed = [new ConnectingBond('N1', 'S1', 1.6, 0.01)];
+            seedConnectionsPerGroup = [
+                [],
+                [{ targetIndex: 2, targetSymmetry: '1_666', bonds: bondsForSeed }],
+                [],
+            ];
+            // Group 2 is not in discoveredGroups[0], so this can only be caught
+            // by the queue-side guard. 1_666 differs from 1_555 in x, y and z.
+            const queuedGroups = [[new ConnectedGroup(2, '1_555')], [], []];
+
+            const result = exploreConnection(
+                currentConnection,
+                structure,
+                discoveredGroups,
+                seedConnectionsPerGroup,
+                processedConnections,
+                atomGroups,
+                queuedGroups,
+            );
+
+            expect(result.newDanglingConnections).toHaveLength(0);
+            expect(result.foundTranslations).toHaveLength(1);
+            expect(result.foundTranslations[0].targetSymmetry.key).toBe('1_666');
+        });
+    });
+
+    describe('normalizeSymmetryInstances', () => {
+        test('selects the nearest full-vector periodic image deterministically', () => {
+            const normalized = normalizeSymmetryInstances(new Set([
+                '0@.@2_666', // [1, 1, 1], not merely a repeat along one cell axis
+                '0@.@2_554', // [0, 0, -1]
+                '0@.@2_556', // [0, 0, 1], same norm; lexical tie-break loses
+                '0@.@3_666', // A different symmetry operation remains distinct
+                '1@.@2_444', // A different asymmetric-unit group remains distinct
+            ]));
+
+            expect(normalized).toEqual(new Set([
+                '0@.@2_554',
+                '0@.@3_666',
+                '1@.@2_444',
+            ]));
+        });
     });
 
     describe('createConnectivity', () => {
@@ -973,6 +1029,21 @@ describe('Structure dependent methods', () => {
             expect(newAtoms).toHaveLength(1);
             expect(newAtoms[0].label).toBe('C1');
             expect(newAtoms[0].uniqueId).toBe('C1|2_555');
+        });
+
+        test('canonicalizes an atom image independently of lattice translation', () => {
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C', 0.1, 0.1, 0.1);
+            structure = structureHelper.build();
+            atomGroups = structure.calculateConnectedGroups();
+            const identSymmString = structure.symmetry.identitySymOpId + '_555';
+
+            const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
+                new Set(['0@.@1_655']), atomGroups, structure, identSymmString,
+            );
+
+            expect(newAtoms).toHaveLength(0);
+            expect(specialPositionAtoms).toEqual(new Map([['C1|1_655', 'C1|1_555']]));
         });
     });
 

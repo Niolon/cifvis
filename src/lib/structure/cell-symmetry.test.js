@@ -408,6 +408,15 @@ _symmetry_equiv_pos_as_xyz
             const sym = new CellSymmetry('P1', 1, ops);
             expect(sym.combineSymmetryCodes('1_655', '1_565')).toBe('1_665');
         });
+
+        test('caches an operation pair independently of its lattice translations', () => {
+            const ops = [new SymmetryOperation('x,y,z')];
+            const sym = new CellSymmetry('P1', 1, ops);
+
+            expect(sym.combineSymmetryCodes('1_655', '1_565')).toBe('1_665');
+            expect(sym.combineSymmetryCodes('1_666', '1_444')).toBe('1_555');
+            expect(sym._combineOperationCache.size).toBe(1);
+        });
     
         test('combines operations with rotations', () => {
             const ops = [

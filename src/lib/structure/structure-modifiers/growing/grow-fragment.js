@@ -3,7 +3,7 @@ import { Bond, HBond } from '../../bonds.js';
 import { createAtomId } from './util.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
 import { chemicalBonds } from '../../bond-classification.js';
-import { positionsCoincide } from '../../position.js';
+import { positionsCoincide, wrappedCartesianCoordinates } from '../../position.js';
 
 /**
  * @typedef {object} SeedConnection
@@ -119,6 +119,22 @@ export class ConnectedGroup {
     getSymmetryString() {
         return this.appliedSymmetry.toString();
     }
+}
+
+/**
+ * Compares two group instances including their integer lattice translation.
+ * This is deliberately distinct from {@link ConnectedGroup#isTranslationalDuplicateOf}:
+ * a queue may contain only one exact instance, whereas a different translation of
+ * the same operation is a periodic continuation and must not be queued at all.
+ * @param {ConnectedGroup} first - First group instance.
+ * @param {ConnectedGroup} second - Second group instance.
+ * @returns {boolean} Whether the instances have the same group, operation and translation.
+ */
+function sameGroupInstance(first, second) {
+    return first.groupIndex === second.groupIndex
+        && first.appliedSymmetry.id === second.appliedSymmetry.id
+        && first.appliedSymmetry.translation.every((value, index) =>
+            value === second.appliedSymmetry.translation[index]);
 }
 
 // groupInstancesCoincide is called from exploreConnection's duplicate check for every
@@ -376,6 +392,9 @@ export function initializeExploration(seedConnectionsPerGroup, identSymm) {
  * function adds new connection keys to this set as they are encountered.
  * @param {Array<object>} atomGroups - Original asymmetric-unit atom groups, needed to resolve real positions for
  *  special-position duplicate detection.
+ * @param {Array<Array<ConnectedGroup>>} [queuedGroups] - Group instances already accepted into the BFS queue but
+ * not yet processed. Including these prevents two routes in the same breadth-first layer from scheduling separate
+ * copies of the same periodic image.
  * @returns {ExplorationStepResult} Results of processing the step.
  */
 export function exploreConnection(
@@ -385,6 +404,7 @@ export function exploreConnection(
     seedConnectionsPerGroup,
     processedConnections,
     atomGroups,
+    queuedGroups = null,
 ) {
     const newDanglingConnections = [];
     const foundTranslations = [];
@@ -429,7 +449,13 @@ export function exploreConnection(
         // Check if this resulting group is a translational duplicate of an existing group
         // within the same creationOriginIndex set
         const existingInstances = discoveredGroups[currentConnection.creationOriginIndex];
-        const translationPresent = existingInstances.some(existing => {
+        const pendingInstances = queuedGroups?.[currentConnection.creationOriginIndex] || [];
+        // A group is considered discovered as soon as it is queued. Without this
+        // second half of the guard, two different bonds in the same BFS layer can
+        // each schedule a different lattice translation before either one reaches
+        // the normal discoveredGroups check.
+        const knownInstances = [...existingInstances, ...pendingInstances];
+        const translationPresent = knownInstances.some(existing => {
             return resultingGroup.isTranslationalDuplicateOf(existing);
         });
 
@@ -439,7 +465,7 @@ export function exploreConnection(
         // position. isTranslationalDuplicateOf only compares operation IDs, so it can't see
         // this; groupInstancesCoincide resolves real positions and catches it. Skipped when a
         // translational duplicate was already found - no need for the extra position check.
-        const positionDuplicate = !translationPresent && existingInstances.some(existing =>
+        const positionDuplicate = !translationPresent && knownInstances.some(existing =>
             groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
         );
 
@@ -451,6 +477,7 @@ export function exploreConnection(
             foundTranslations.push(prospectiveConnection);
         } else if (!positionDuplicate) {
             newDanglingConnections.push(prospectiveConnection);
+            queuedGroups?.[currentConnection.creationOriginIndex].push(resultingGroup);
         }
     }
 
@@ -493,6 +520,12 @@ export function createConnectivity(structure, atomGroups) {
     // Tracks all symmetry instances found for each original group index
     const discoveredGroups = atomGroups.map(() => []);
 
+    // Tracks instances that have been accepted but are still waiting in the
+    // queue. This closes the gap between discovering a candidate and processing
+    // it, which was where diagonal and other multi-axis periodic walks could
+    // repeatedly enqueue fresh translations.
+    const queuedGroups = atomGroups.map(() => []);
+
     // Add the initial identity group for each original group index
     atomGroups.forEach((_, i) => {
         discoveredGroups[i].push(new ConnectedGroup(i, identSymm));
@@ -526,6 +559,26 @@ export function createConnectivity(structure, atomGroups) {
         // queue on every iteration.
         const currentConnection = danglingConnections[connectionIndex++];
 
+        const currentGroup = new ConnectedGroup(
+            currentConnection.targetIndex,
+            currentConnection.targetSymmetry,
+        );
+        const currentPending = queuedGroups[currentConnection.creationOriginIndex];
+        const pendingIndex = currentPending.findIndex(group => sameGroupInstance(group, currentGroup));
+        if (pendingIndex !== -1) {
+            currentPending.splice(pendingIndex, 1);
+        }
+
+        const existingInstances = discoveredGroups[currentConnection.creationOriginIndex];
+        // Initial seed connections are deliberately materialised even when
+        // they lead to a translated image: their representative is needed by
+        // the later compact-image normalization. Queue admission below is the
+        // periodic guard; it prevents *new* duplicate walks while preserving
+        // the established boundary-bond semantics of initial connections.
+        if (!existingInstances.some(group => sameGroupInstance(group, currentGroup))) {
+            existingInstances.push(currentGroup);
+        }
+
         // Process this connection group to find the next connected group and any new bonds
         const stepResult = exploreConnection(
             currentConnection,
@@ -534,10 +587,8 @@ export function createConnectivity(structure, atomGroups) {
             seedConnectionsPerGroup,
             processedConnections, // Pass the set to be mutated
             atomGroups,
+            queuedGroups,
         );
-
-        // Add the newly found connected group to our tracking list
-        discoveredGroups[currentConnection.creationOriginIndex].push(stepResult.newConnectedGroup);
 
         // Add newly found dangling connections to the queue for further processing
         danglingConnections.push(...stepResult.newDanglingConnections);
@@ -581,6 +632,74 @@ export function collectSymmetryRequirements(networkConnections) {
     });
 
     return { requiredSymmetryInstances, interGroupBonds };
+}
+
+/**
+ * Finds the already-kept canonical image of one atom at the same wrapped
+ * crystallographic position. The buckets are only an index: candidates still
+ * undergo the exact Cartesian-distance test, preserving special-position
+ * semantics while avoiding an all-images quadratic scan.
+ * @param {Map<string, Array<{atom: object, coordinates: number[]}>>} buckets - Spatial index for one original atom.
+ * @param {object} atom - Symmetry-generated image being canonicalized.
+ * @param {object} cell - Unit cell used for Cartesian comparison.
+ * @param {number} tolerance - Cartesian coincidence tolerance in Å.
+ * @returns {object|null} Kept canonical atom image, or null when this is new.
+ */
+function findCanonicalAtomImage(buckets, atom, cell, tolerance) {
+    const coordinates = wrappedCartesianCoordinates(atom.position, cell);
+    const bucket = coordinates.map(value => Math.floor(value / tolerance));
+    for (let dx = -1; dx <= 1; dx += 1) {
+        for (let dy = -1; dy <= 1; dy += 1) {
+            for (let dz = -1; dz <= 1; dz += 1) {
+                const key = `${bucket[0] + dx},${bucket[1] + dy},${bucket[2] + dz}`;
+                for (const candidate of buckets.get(key) || []) {
+                    if (Math.hypot(
+                        candidate.coordinates[0] - coordinates[0],
+                        candidate.coordinates[1] - coordinates[1],
+                        candidate.coordinates[2] - coordinates[2],
+                    ) < tolerance) {
+                        return candidate.atom;
+                    }
+                }
+            }
+        }
+    }
+
+    const ownKey = bucket.join(',');
+    const entries = buckets.get(ownKey) || [];
+    entries.push({ atom, coordinates });
+    buckets.set(ownKey, entries);
+    return null;
+}
+
+/**
+ * Selects one compact periodic image for every (asymmetric-unit group,
+ * symmetry-operation) pair. Integer translations are lattice vectors, not
+ * Cartesian axes: the complete three-component L1 norm is therefore used, so
+ * [111], [101], and other diagonal periodic directions are treated exactly the
+ * same as repeats along a, b, or c. The lexical tie-break makes the result
+ * deterministic when equally compact images exist.
+ *
+ * This is intentionally applied after connectivity is known. It changes only
+ * the representative image retained for an already-equivalent periodic copy;
+ * it does not reinterpret the symmetry operation or alter the default cell.
+ * @param {Set<string>} symmetryInstances - `group@.@operation_translation` entries.
+ * @returns {Set<string>} One nearest-origin image per group and operation.
+ */
+export function normalizeSymmetryInstances(symmetryInstances) {
+    const bestInstanceByOperation = new Map();
+    for (const instance of symmetryInstances) {
+        const [groupIndex, symmetryKey] = instance.split('@.@');
+        const applied = AppliedSymmetry.fromString(symmetryKey);
+        const operationKey = `${groupIndex}|${applied.id}`;
+        const magnitude = applied.translation.reduce((sum, value) => sum + Math.abs(value), 0);
+        const existing = bestInstanceByOperation.get(operationKey);
+        if (!existing || magnitude < existing.magnitude
+            || (magnitude === existing.magnitude && instance < existing.instance)) {
+            bestInstanceByOperation.set(operationKey, { instance, magnitude });
+        }
+    }
+    return new Set([...bestInstanceByOperation.values()].map(entry => entry.instance));
 }
 
 /**
@@ -633,22 +752,23 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
             const numOriginalAtoms = g[0].length;
             for (let atomIdx = 0; atomIdx < numOriginalAtoms; ++atomIdx) {
                 const atomsForOriginal = g.map(symmGroup => symmGroup[atomIdx]); // Get atom from all symmetry instances
-                const keptSymmAtoms = []; // Track unique positions found for this original atom
+                // All images of one original atom share one canonical spatial
+                // index. Equivalent operations, including operations differing
+                // only by a lattice translation, resolve to the first retained
+                // atom; later images become direct special-position mappings.
+                const canonicalImages = new Map();
                 for (let symmGroupIdx = 0; symmGroupIdx < atomsForOriginal.length; symmGroupIdx++) {
                     const symmAtom = atomsForOriginal[symmGroupIdx];
                     const isIdentity = symmGroupIdx === 0; // First group is identity
-                    let specPos = false; // Assume not special position initially
-                    for (const keptSymmAtom of keptSymmAtoms) {
-                        specPos = positionsCoincide(keptSymmAtom.position, symmAtom.position, structure.cell, 1e-4);
-                        if (specPos) {
-                            // Map the duplicate atom ID to the kept atom ID
-                            specialPositionAtoms.set(symmAtom.uniqueId, keptSymmAtom.uniqueId);
-                            break; // Found a match, no need to check further kept atoms
-                        }
-                    }
-                    if (!specPos) {
-                        // This atom represents a unique position for this original atom, keep it
-                        keptSymmAtoms.push(symmAtom);
+                    const canonicalAtom = findCanonicalAtomImage(
+                        canonicalImages,
+                        symmAtom,
+                        structure.cell,
+                        1e-4,
+                    );
+                    if (canonicalAtom) {
+                        specialPositionAtoms.set(symmAtom.uniqueId, canonicalAtom.uniqueId);
+                    } else {
                         // Only add non-identity atoms to newAtoms (identity atoms are already in structure.atoms)
                         if (!isIdentity) {
                             newAtoms.push(symmAtom);
@@ -1059,19 +1179,7 @@ export function growFragment(structure) {
     // keeping distinct-operation images that build the finite (non-periodic)
     // directions. For a genuinely molecular fragment each (group, operation) already
     // occurs once, so nothing is dropped.
-    const bestInstanceByOperation = new Map();
-    for (const instance of requiredSymmetryInstances) {
-        const applied = AppliedSymmetry.fromString(instance.split('@.@')[1]);
-        const operationKey = `${instance.split('@.@')[0]}|${applied.id}`;
-        const magnitude = Math.abs(applied.translation[0])
-            + Math.abs(applied.translation[1]) + Math.abs(applied.translation[2]);
-        const existing = bestInstanceByOperation.get(operationKey);
-        if (!existing || magnitude < existing.magnitude
-            || (magnitude === existing.magnitude && instance < existing.instance)) {
-            bestInstanceByOperation.set(operationKey, { instance, magnitude });
-        }
-    }
-    const grownInstances = new Set([...bestInstanceByOperation.values()].map(entry => entry.instance));
+    const grownInstances = normalizeSymmetryInstances(requiredSymmetryInstances);
     // Whether any periodic replica was actually collapsed. When true the fragment was
     // extended; drop the now-orphaned periodic-image bonds so the result is bounded
     // and self-consistent. When false the fragment is finite (or already a bounded

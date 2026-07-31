@@ -320,6 +320,15 @@ export class CellSymmetry {
         
         // Cache for combineSymmetryCodes results
         this._combineSymmetryCodesCache = new Map();
+        // The complete-code cache above cannot help a periodic walk very much:
+        // every new lattice image has a distinct `op_abc` code. Cache the
+        // operation-pair part separately, then apply the integer translations
+        // algebraically for each call. This turns a repeated lookup through a
+        // large space group's operations into one lookup per operation pair.
+        this._combineOperationCache = new Map();
+        this._operationIdsByIndex = new Map(
+            [...this.operationIds.entries()].map(([id, index]) => [index, id]),
+        );
         // Build rotation matrix index
         this._rotationMatrixIndex = new Map();
         this._buildRotationIndex();
@@ -344,23 +353,10 @@ export class CellSymmetry {
         return JSON.stringify(rounded);
     }
 
-    // Instead of string concatenation, use a numeric hash
+    // Use the complete codes as a collision-free key. A hash collision here
+    // would return the symmetry result for an unrelated operation pair.
     _getCacheKey(outerCode, innerCode) {
-        // Simple hash function for two strings
-        const hash1 = this._hashCode(outerCode);
-        const hash2 = this._hashCode(innerCode);
-        // Combine hashes using bit operations
-        return (hash1 << 16) | (hash2 & 0xFFFF);
-    }
-
-    _hashCode(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
-        }
-        return hash;
+        return `${outerCode}\u0000${innerCode}`;
     }
 
     generateEquivalentPositions(point) {
@@ -428,79 +424,74 @@ export class CellSymmetry {
             return cached;
         }
 
-        // Original calculation starts here
-        const { symOp: symOpOuter, transVector: transVecOuterArray } = this.parsePositionCode(symmetryCodeOuter);
-        const { symOp: symOpInner, transVector: transVecInnerArray } = this.parsePositionCode(symmetryCodeInner);
-        const transVecOuter = [
-            transVecOuterArray[0] + symOpOuter.transVector[0],
-            transVecOuterArray[1] + symOpOuter.transVector[1],
-            transVecOuterArray[2] + symOpOuter.transVector[2],
-        ];
-        
-        const transVecInner = [
-            transVecInnerArray[0] + symOpInner.transVector[0],
-            transVecInnerArray[1] + symOpInner.transVector[1],
-            transVecInnerArray[2] + symOpInner.transVector[2],
-        ];
+        const { id: outerId, translation: outerTranslation } = decodePositionCode(symmetryCodeOuter);
+        const { id: innerId, translation: innerTranslation } = decodePositionCode(symmetryCodeInner);
+        const operationKey = `${outerId}\u0000${innerId}`;
+        let operationCombination = this._combineOperationCache.get(operationKey);
 
-        const combinedRotMatrix = this._multiplyMatrices3x3(symOpOuter.rotMatrix, symOpInner.rotMatrix);
+        if (!operationCombination) {
+            const outerIndex = this.operationIds.get(outerId);
+            const innerIndex = this.operationIds.get(innerId);
+            if (outerIndex === undefined || innerIndex === undefined) {
+                const invalidId = outerIndex === undefined ? outerId : innerId;
+                throw new Error(
+                    `Invalid symmetry operation ID in string ${symmetryCodeOuter}: ${invalidId},`
+                    + ' expecting string format "<symOpId>_abc". ID entry in present symOp loop?',
+                );
+            }
 
-        const rotatedInner = this._multiplyMatrixVector3x3(symOpOuter.rotMatrix, transVecInner);
-        const combinedTransVector = [
-            transVecOuter[0] + rotatedInner[0],
-            transVecOuter[1] + rotatedInner[1],
-            transVecOuter[2] + rotatedInner[2],
-        ];
+            // Retain parsePositionCode as the source of the operation objects:
+            // apart from centralising validation, a few consumers deliberately
+            // customise it when working with non-standard symmetry definitions.
+            const { symOp: symOpOuter } = this.parsePositionCode(symmetryCodeOuter);
+            const { symOp: symOpInner } = this.parsePositionCode(symmetryCodeInner);
+            const combinedRotMatrix = this._multiplyMatrices3x3(symOpOuter.rotMatrix, symOpInner.rotMatrix);
+            const rotKey = this._matrixToKey(combinedRotMatrix);
+            const candidateIndices = this._rotationMatrixIndex.get(rotKey);
 
-        // Look up matching operation using index
-        const rotKey = this._matrixToKey(combinedRotMatrix);
-        const candidateIndices = this._rotationMatrixIndex.get(rotKey);
-        
-        if (!candidateIndices) {
+            if (candidateIndices) {
+                // This is the non-integer (operation-only) part of
+                // outer(inner(x)). What remains after subtracting a matching
+                // stored operation must be an integer lattice translation.
+                const rotatedOperationTranslation = this._multiplyMatrixVector3x3(
+                    symOpOuter.rotMatrix,
+                    symOpInner.transVector,
+                );
+                const operationTranslation = symOpOuter.transVector.map(
+                    (value, axis) => value + rotatedOperationTranslation[axis],
+                );
+                for (const index of candidateIndices) {
+                    const candidate = this.symmetryOperations[index];
+                    const offset = operationTranslation.map((value, axis) => value - candidate.transVector[axis]);
+                    if (offset.every(value => Math.abs(value - Math.round(value)) < 1e-5)) {
+                        operationCombination = {
+                            id: this._operationIdsByIndex.get(index),
+                            offset: offset.map(value => Math.round(value)),
+                            outerRotation: symOpOuter.rotMatrix,
+                        };
+                        this._combineOperationCache.set(operationKey, operationCombination);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!operationCombination) {
             throw new Error(
                 'No matching symmetry operation found for combined position codes: '
                 + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
             );
         }
-        
-        // Check translation vectors for candidates
-        for (const i of candidateIndices) {
-            const possibleSymOp = this.symmetryOperations[i];
-            const remainderVector = [
-                combinedTransVector[0] - possibleSymOp.transVector[0],
-                combinedTransVector[1] - possibleSymOp.transVector[1],
-                combinedTransVector[2] - possibleSymOp.transVector[2],
-            ];
-            
-            // Check if translation is integer
-            // CIF symmetry operations are sometimes stored as rounded decimals
-            // (for example 1.16667 instead of 7/6). Allow the last printed decimal
-            // to vary when deciding whether the remaining translation is a lattice vector.
-            const isInteger = remainderVector.every(val =>
-                Math.abs(val - Math.round(val)) < 1e-5,
-            );
-            
-            if (isInteger) {
-                // Find the ID for this operation
-                let symOpId = null;
-                for (const [id, index] of this.operationIds.entries()) {
-                    if (index === i) {
-                        symOpId = id;
-                        break;
-                    }
-                }
-                
-                const roundedDiff = remainderVector.map(val => Math.round(val));
-                const combinedPositionCode = encodePositionCode(symOpId, roundedDiff);
-                this._combineSymmetryCodesCache.set(cacheKey, combinedPositionCode);
-                return combinedPositionCode;
-            }
-        }
-        
-        throw new Error(
-            'No matching symmetry operation found for combined position codes: '
-            + `${symmetryCodeOuter} and ${symmetryCodeInner}`,
+
+        const rotatedInnerTranslation = this._multiplyMatrixVector3x3(
+            operationCombination.outerRotation,
+            innerTranslation,
         );
+        const translation = outerTranslation.map((value, axis) =>
+            value + rotatedInnerTranslation[axis] + operationCombination.offset[axis]);
+        const combinedPositionCode = encodePositionCode(operationCombination.id, translation);
+        this._combineSymmetryCodesCache.set(cacheKey, combinedPositionCode);
+        return combinedPositionCode;
     }
 
     /**

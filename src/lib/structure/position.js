@@ -113,6 +113,54 @@ export function wrapFractional(position) {
     return new FractPosition(wrap(position.x), wrap(position.y), wrap(position.z));
 }
 
+// `positionsCoincide` is used in symmetry-growth inner loops. Retain a plain
+// conversion matrix per cell so equality tests do not allocate temporary
+// FractPosition, CartPosition, and Matrix objects.
+const fractToCartMatrices = new WeakMap();
+
+/**
+ * Gets the plain fractional-to-Cartesian matrix cached for a unit cell.
+ * @param {UnitCell} unitCell - Unit cell whose coordinate basis is needed.
+ * @returns {number[][]} Plain 3×3 fractional-to-Cartesian matrix.
+ */
+function getFractToCartMatrix(unitCell) {
+    let matrix = fractToCartMatrices.get(unitCell);
+    if (!matrix) {
+        matrix = unitCell.fractToCartMatrix.toArray();
+        fractToCartMatrices.set(unitCell, matrix);
+    }
+    return matrix;
+}
+
+/**
+ * Wraps one fractional coordinate into the reference-cell interval [0, 1).
+ * @param {number} value - Fractional coordinate.
+ * @returns {number} Wrapped coordinate.
+ */
+function wrapCoordinate(value) {
+    return ((value % 1) + 1) % 1;
+}
+
+/**
+ * Resolves a fractional position into wrapped Cartesian coordinates without
+ * allocating Position or Matrix objects. Used to index canonical symmetry
+ * images; callers needing only equality should use positionsCoincide directly.
+ * @param {FractPosition} position - Fractional position to transform.
+ * @param {UnitCell} unitCell - Unit cell defining the Cartesian basis.
+ * @returns {number[]} Wrapped Cartesian coordinates in Å.
+ */
+export function wrappedCartesianCoordinates(position, unitCell) {
+    const matrix = getFractToCartMatrix(unitCell);
+    const x = wrapCoordinate(position.x);
+    const y = wrapCoordinate(position.y);
+    const z = wrapCoordinate(position.z);
+    return [
+        matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
+        matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
+        matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z,
+    ];
+}
+
 /**
  * Central routine for "do these two positions represent the same physical point in
  * the crystal" - the question special-position detection, symmetry-duplicate atom
@@ -128,9 +176,17 @@ export function wrapFractional(position) {
  * @returns {boolean} Whether the two positions coincide within tolerance
  */
 export function positionsCoincide(position1, position2, unitCell, tolerance = 1e-3) {
-    const cart1 = wrapFractional(position1).toCartesian(unitCell);
-    const cart2 = wrapFractional(position2).toCartesian(unitCell);
-    return Math.hypot(cart1.x - cart2.x, cart1.y - cart2.y, cart1.z - cart2.z) < tolerance;
+    const matrix = getFractToCartMatrix(unitCell);
+    const x1 = wrapCoordinate(position1.x);
+    const y1 = wrapCoordinate(position1.y);
+    const z1 = wrapCoordinate(position1.z);
+    const x2 = wrapCoordinate(position2.x);
+    const y2 = wrapCoordinate(position2.y);
+    const z2 = wrapCoordinate(position2.z);
+    const dx = matrix[0][0] * (x1 - x2) + matrix[0][1] * (y1 - y2) + matrix[0][2] * (z1 - z2);
+    const dy = matrix[1][0] * (x1 - x2) + matrix[1][1] * (y1 - y2) + matrix[1][2] * (z1 - z2);
+    const dz = matrix[2][0] * (x1 - x2) + matrix[2][1] * (y1 - y2) + matrix[2][2] * (z1 - z2);
+    return Math.hypot(dx, dy, dz) < tolerance;
 }
 
 /**
