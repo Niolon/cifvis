@@ -247,14 +247,18 @@ describe('SymmetryGrower', () => {
     });
 
     describe('getApplicableModes', () => {
-        test('returns only basic modes for structure without growable bonds/HBonds', () => {
+        test('returns only cell-filling modes for structure without growable bonds/HBonds', () => {
             const structure = MockStructure.createDefault().build();
             const grower = new SymmetryGrower();
 
+            // Fragment-cell remains offered without a growable bond: it fills the cell
+            // by whole covalent components, which differs from CELL whenever a molecule
+            // crosses a cell face.
             const modes = grower.getApplicableModes(structure);
             expect(modes).toEqual([
                 SymmetryGrower.MODES.NONE,
                 SymmetryGrower.MODES.CELL,
+                SymmetryGrower.MODES.FRAGMENT_CELL,
             ]);
         });
 

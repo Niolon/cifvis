@@ -824,29 +824,87 @@ function findCanonicalAtomImage(buckets, atom, cell, tolerance) {
 }
 
 /**
+ * How far a group instance's centroid sits from the middle of the reference cell,
+ * in fractional units summed over the three axes.
+ *
+ * Competing images of one (group, operation) pair always differ by whole lattice
+ * translations, so along each axis the candidate coordinates are c, c±1, c±2 ...
+ * and |c - 0.5| is smallest for whichever of them falls in [0, 1). An image lying
+ * inside the cell therefore scores no worse than any alternative on every axis at
+ * once, and so wins the sum outright: growth completes a fragment from in-cell
+ * images wherever one exists, and only reaches outside when the connectivity
+ * offers nothing inside. When it must reach outside, the same measure keeps the
+ * nearest image rather than an arbitrary one.
+ *
+ * Distances stay fractional. Converting to Ångström would weight the axes by their
+ * true lengths, but costs a matrix product per instance to re-rank images that are
+ * whole lattice translations apart.
+ * @param {CrystalStructure} structure - Structure providing the symmetry operations.
+ * @param {Array<object>} atomGroups - Asymmetric-unit covalent groups.
+ * @param {number} groupIndex - Index of the group being placed.
+ * @param {AppliedSymmetry} applied - Operation and lattice translation of the instance.
+ * @returns {number} Total fractional offset of the instance centroid from the cell middle.
+ */
+function offsetFromCellMiddle(structure, atomGroups, groupIndex, applied) {
+    const positions = resolveGroupInstancePositions(
+        structure, atomGroups, new ConnectedGroup(groupIndex, applied),
+    );
+    if (positions.length === 0) {
+        return 0;
+    }
+    let sumX = 0;
+    let sumY = 0;
+    let sumZ = 0;
+    for (const atom of positions) {
+        sumX += atom.position.x;
+        sumY += atom.position.y;
+        sumZ += atom.position.z;
+    }
+    const count = positions.length;
+    const [tx, ty, tz] = applied.translation;
+    return Math.abs(sumX / count + tx - 0.5)
+        + Math.abs(sumY / count + ty - 0.5)
+        + Math.abs(sumZ / count + tz - 0.5);
+}
+
+/**
  * Selects one compact periodic image for every (asymmetric-unit group,
- * symmetry-operation) pair. Integer translations are lattice vectors, not
- * Cartesian axes: the complete three-component L1 norm is therefore used, so
- * [111], [101], and other diagonal periodic directions are treated exactly the
- * same as repeats along a, b, or c. The lexical tie-break makes the result
- * deterministic when equally compact images exist.
+ * symmetry-operation) pair.
+ *
+ * Given the structure and its groups, images are ranked by how far their centroid
+ * sits from the middle of the reference cell, which keeps the in-cell image
+ * wherever one exists (see {@link offsetFromCellMiddle}) and otherwise the nearest
+ * one. Ranking by lattice translation alone cannot do this: a translation of [000]
+ * is nominally "nearest the origin" yet still places the group several cells out
+ * whenever the operation itself does. Without that context the L1 norm of the
+ * translation is used instead, which treats [111], [101] and repeats along a
+ * single axis alike. Either way the lexical tie-break keeps the result
+ * deterministic among equally compact images.
  *
  * This is intentionally applied after connectivity is known. It changes only
  * the representative image retained for an already-equivalent periodic copy;
  * it does not reinterpret the symmetry operation or alter the default cell.
  * @param {Set<string>} symmetryInstances - `group@.@operation_translation` entries.
- * @returns {Set<string>} One nearest-origin image per group and operation.
+ * @param {CrystalStructure} [structure] - Structure providing symmetry and cell metrics.
+ * @param {Array<object>} [atomGroups] - Asymmetric-unit covalent groups.
+ * @returns {Set<string>} One most-compact image per group and operation.
  */
-export function normalizeSymmetryInstances(symmetryInstances) {
+export function normalizeSymmetryInstances(symmetryInstances, structure = null, atomGroups = null) {
+    const useGeometry = Boolean(structure && atomGroups);
     const bestInstanceByOperation = new Map();
     for (const instance of symmetryInstances) {
         const [groupIndex, symmetryKey] = instance.split('@.@');
         const applied = AppliedSymmetry.fromString(symmetryKey);
         const operationKey = `${groupIndex}|${applied.id}`;
-        const magnitude = applied.translation.reduce((sum, value) => sum + Math.abs(value), 0);
+        const magnitude = useGeometry
+            ? offsetFromCellMiddle(structure, atomGroups, Number(groupIndex), applied)
+            : applied.translation.reduce((sum, value) => sum + Math.abs(value), 0);
         const existing = bestInstanceByOperation.get(operationKey);
-        if (!existing || magnitude < existing.magnitude
-            || (magnitude === existing.magnitude && instance < existing.instance)) {
+        // Compared with a tolerance: the overshoot is a fractional distance, so
+        // exact equality would let the lexical tie-break miss on equally compact
+        // images that differ only in floating-point noise.
+        if (!existing || magnitude < existing.magnitude - 1e-9
+            || (Math.abs(magnitude - existing.magnitude) <= 1e-9 && instance < existing.instance)) {
             bestInstanceByOperation.set(operationKey, { instance, magnitude });
         }
     }
@@ -1353,12 +1411,14 @@ export function growFragment(structure) {
     // unbounded block. A periodic replica is, by definition, the same group reached
     // by the same symmetry operation at a different lattice translation
     // (see ConnectedGroup.isTranslationalDuplicateOf). So keep a single instance per
-    // (group, operation) - the one nearest the origin - which suppresses replication
-    // along every periodic direction (axis, screw or diagonal) on its own, while
+    // (group, operation) - the one sitting in, or closest to, the reference cell -
+    // which suppresses replication along every periodic direction on its own, while
     // keeping distinct-operation images that build the finite (non-periodic)
     // directions. For a genuinely molecular fragment each (group, operation) already
     // occurs once, so nothing is dropped.
-    const grownInstances = normalizeSymmetryInstances(requiredSymmetryInstances);
+    const grownInstances = normalizeSymmetryInstances(
+        requiredSymmetryInstances, graphStructure, atomGroups,
+    );
 
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, periodicDuplicateAtoms, newAtoms } = generateSymmetryAtoms(

@@ -410,6 +410,9 @@ export class SymmetryGrower extends BaseFilter {
         }
 
         modes.push(SymmetryGrower.MODES.CELL);
+        // Fragment-cell stays applicable even without a growable bond: it fills the
+        // cell by whole covalent components rather than atom by atom, so it differs
+        // from CELL for any structure with molecules crossing a cell face.
         modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
 
         return modes;

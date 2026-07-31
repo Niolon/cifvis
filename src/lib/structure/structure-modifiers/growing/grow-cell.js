@@ -1,6 +1,11 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
-import { FractPosition, positionsCoincide, SPECIAL_POSITION_TOLERANCE } from '../../position.js';
+import {
+    FractPosition,
+    positionsCoincide,
+    positionsCoincideInSameCell,
+    SPECIAL_POSITION_TOLERANCE,
+} from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
@@ -297,16 +302,33 @@ export function growAtomsinGroup(
         // physical, minimum-image comparison; the legacy key path remains for
         // direct helper callers that do not provide a unit cell.
         let existingAtomId;
+        let periodicRepeat = false;
         if (unitCell && objectTracker.periodicAtomMap) {
             const sourceKey = `${atom.label}|${atom.disorderGroup}`;
             const sameLabelAtoms = objectTracker.periodicAtomMap.get(sourceKey) || [];
-            existingAtomId = sameLabelAtoms.find(candidate => positionsCoincide(
+            const coincident = sameLabelAtoms.find(candidate => positionsCoincide(
                 atom.position,
                 candidate.atom.position,
                 unitCell,
                 SPECIAL_POSITION_TOLERANCE,
-            ))?.id;
-            if (!existingAtomId) {
+            ));
+            if (coincident) {
+                // positionsCoincide answers "same point of the periodic crystal", so it
+                // also matches images a whole lattice translation apart. Those are
+                // equally redundant here and are not kept, but they are not the same
+                // atom: substituting their ID would move a bond endpoint that names
+                // them a full cell or more (see the same split in generateSymmetryAtoms).
+                if (positionsCoincideInSameCell(
+                    atom.position,
+                    coincident.atom.position,
+                    unitCell,
+                    SPECIAL_POSITION_TOLERANCE,
+                )) {
+                    existingAtomId = coincident.id;
+                } else {
+                    periodicRepeat = true;
+                }
+            } else {
                 sameLabelAtoms.push({ atom, id: uniqueId });
                 objectTracker.periodicAtomMap.set(sourceKey, sameLabelAtoms);
             }
@@ -321,7 +343,7 @@ export function growAtomsinGroup(
         if (existingAtomId) {
             // This is a special position - map to existing atom ID
             objectTracker.specialPositionMap.set(uniqueId, existingAtomId);
-        } else {
+        } else if (!periodicRepeat) {
             // New unique position
             newAtoms.push(atom);
         }
@@ -1125,17 +1147,31 @@ export function growCell(
     for (const group of filteredStructure.calculateConnectedGroups()) {
         const centre = getFragmentCentre(group.atoms).toArray();
         const offset = centre.map(value => Math.floor(value));
+        const shifted = offset.some(value => value !== 0);
         for (const atom of group.atoms) {
             const oldId = atom.uniqueId;
-            atom.position.x -= offset[0];
-            atom.position.y -= offset[1];
-            atom.position.z -= offset[2];
-            if (atom.appliedSymmetry) {
-                atom.appliedSymmetry.translation[0] -= offset[0];
-                atom.appliedSymmetry.translation[1] -= offset[1];
-                atom.appliedSymmetry.translation[2] -= offset[2];
-                atom.appliedSymmetry._updateKey();
+            if (shifted) {
+                atom.position.x -= offset[0];
+                atom.position.y -= offset[1];
+                atom.position.z -= offset[2];
+                // An asymmetric-unit atom carries no AppliedSymmetry and reports the
+                // identity ID by default, so without one to adjust the shift would be
+                // invisible: the atom moves a whole cell while its ID still claims
+                // 1_555, and any bond naming it is then drawn across that gap.
+                // Symmetry-generated atoms of one instance share a single
+                // AppliedSymmetry object, so adjust a copy rather than the shared one.
+                const applied = atom.appliedSymmetry
+                    ? atom.appliedSymmetry.copy()
+                    : new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+                applied.translation[0] -= offset[0];
+                applied.translation[1] -= offset[1];
+                applied.translation[2] -= offset[2];
+                applied._updateKey();
+                atom.appliedSymmetry = applied;
             }
+            // Recorded even when nothing moved: the duplicate collapse below
+            // rewrites these entries onto the surviving atom, so an unshifted atom
+            // that turns out to be a duplicate still needs its bonds redirected.
             atomIdMap.set(oldId, atom.uniqueId);
         }
     }
