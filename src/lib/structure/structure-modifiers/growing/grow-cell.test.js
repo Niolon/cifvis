@@ -16,7 +16,7 @@ import {
     addPackingBorderComponents,
 } from './grow-cell.js';
 
-import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
+import { createBondIdentifier, createHBondIdentifier, growFragment } from './grow-fragment.js';
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
 import { FractPosition } from '../../position.js';
@@ -1339,6 +1339,28 @@ describe('growCell integration tests', () => {
             expect(result.atoms[0].label).toBe('C1');
             expect(result.atoms[1].label).toBe('O1');
 
+        });
+
+        test('does not reintroduce a rounded special-position image in fragment-cell growth', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P-1', 2, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ], new Map([['1', 0], ['2', 1]]));
+            const structure = new CrystalStructure(
+                cell,
+                [new Atom('C1', 'C', new FractPosition(0.00004, 0, 0))],
+                [new Bond('C1|1_555', 'C1|2_555', 1.5, 0.01, '2_555')],
+                [],
+                symmetry,
+            );
+
+            const { grownStructure, specialPositionAtoms } = growFragment(structure);
+            const fragmentCell = growCell(grownStructure, false, specialPositionAtoms);
+
+            expect(grownStructure.atoms).toHaveLength(1);
+            expect(fragmentCell.atoms).toHaveLength(1);
+            expect(fragmentCell.bonds).toHaveLength(0);
         });
     });
 

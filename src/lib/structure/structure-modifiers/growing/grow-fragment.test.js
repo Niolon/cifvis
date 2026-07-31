@@ -1,6 +1,10 @@
 import { beforeEach, describe, test } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
 import { MockStructure as MockStructureHelper } from '../base.test.js';
 import { Bond } from '../../bonds.js';
+import { CrystalStructure } from '../../crystal.js';
+import { CIF } from '../../../read-cif/base.js';
+import { positionsCoincide } from '../../position.js';
 
 import { 
     createBondIdentifier, 
@@ -792,11 +796,38 @@ describe('Structure dependent methods', () => {
             expect(translationLinks).toHaveLength(0);
             expect(networkConnections).toHaveLength(groupCount);
             expect(discoveredGroups).toHaveLength(1);
-            expect(discoveredGroups[0]).toHaveLength(groupCount * 2);
+            // Every atom sits exactly on the inversion centre, so the shared
+            // stabiliser signature suppresses the redundant inversion image.
+            expect(discoveredGroups[0]).toHaveLength(groupCount);
             const stateKeys = discoveredGroups[0].map(group =>
                 `${group.groupIndex}|${group.appliedSymmetry.key}`,
             );
             expect(new Set(stateKeys).size).toBe(stateKeys.length);
+        });
+    });
+
+    describe('real high-symmetry regression', () => {
+        const codDirectory = process.env.COD_DIR || '/home/niklas/cod/cif';
+        const naxPath = `${codDirectory}/1/50/56/1505694.cif`;
+
+        test.skipIf(!existsSync(naxPath))('NaX 1505694 has no coincident output images or dangling bonds', () => {
+            const nax = CrystalStructure.fromCIF(new CIF(readFileSync(naxPath, 'utf8')).getBlock(0));
+            const { grownStructure } = growFragment(nax);
+            const materialised = new Set(grownStructure.atoms.map(atom => atom.uniqueId));
+
+            grownStructure.bonds.forEach(bond => {
+                expect(materialised.has(bond.atom1Id)).toBe(true);
+                expect(materialised.has(bond.atom2Id)).toBe(true);
+            });
+            const atomsByLabel = new Map();
+            grownStructure.atoms.forEach(atom => {
+                const images = atomsByLabel.get(atom.label) || [];
+                images.forEach(image => {
+                    expect(positionsCoincide(atom.position, image.position, grownStructure.cell)).toBe(false);
+                });
+                images.push(atom);
+                atomsByLabel.set(atom.label, images);
+            });
         });
     });
 
@@ -1541,6 +1572,33 @@ describe('Structure dependent methods', () => {
             const bondIds = [bond.atom1Id, bond.atom2Id].sort();
             expect(bondIds).toEqual(['C1|1_555', 'C1|2_555'].sort());
             expect(bond.atom2SiteSymmetry).toBe('.');
+        });
+
+        test('collapses a rounded inversion-centre image within the physical tolerance', () => {
+            // In a 10 Å cell inversion maps x=0.00004 to 0.99996. These are
+            // 0.0008 Å apart through the periodic face and must be one site.
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C', 0.00004, 0, 0)
+                .addBond('C1', 'C1', '3_555');
+            structure = structureHelper.build();
+
+            const { grownStructure } = growFragment(structure);
+
+            expect(grownStructure.atoms).toHaveLength(1);
+            expect(grownStructure.bonds).toHaveLength(0);
+        });
+
+        test('retains a genuinely off-centre inversion image beyond the tolerance', () => {
+            // 0.00006 and -0.00006 differ by 0.0012 Å in the same cell.
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C', 0.00006, 0, 0)
+                .addBond('C1', 'C1', '3_555');
+            structure = structureHelper.build();
+
+            const { grownStructure } = growFragment(structure);
+
+            expect(grownStructure.atoms).toHaveLength(2);
+            expect(grownStructure.bonds).toHaveLength(1);
         });
 
         test('should complete distinct symmetry-equivalent bonds between the same fragment instances', () => {

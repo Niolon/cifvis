@@ -3,7 +3,11 @@ import { Bond, HBond } from '../../bonds.js';
 import { createAtomId } from './util.js';
 import { AppliedSymmetry } from '../../applied-symmetry.js';
 import { chemicalBonds } from '../../bond-classification.js';
-import { positionsCoincide, wrappedCartesianCoordinates } from '../../position.js';
+import {
+    positionsCoincide,
+    SPECIAL_POSITION_TOLERANCE,
+    wrappedCartesianCoordinates,
+} from '../../position.js';
 
 /**
  * @typedef {object} SeedConnection
@@ -215,6 +219,36 @@ export function groupInstancesCoincide(structure, atomGroups, groupA, groupB) {
     const positionsA = resolveGroupInstancePositions(structure, atomGroups, groupA);
     const positionsB = resolveGroupInstancePositions(structure, atomGroups, groupB);
     return positionsA.every((atomA, i) => positionsCoincide(atomA.position, positionsB[i].position, structure.cell));
+}
+
+/**
+ * Collapses the site-symmetry stabiliser of every asymmetric-unit group into
+ * one deterministic operation signature. The computation is done once before
+ * graph traversal, so high-symmetry centres cannot repeatedly rediscover the
+ * same group through different operation IDs.
+ * @param {CrystalStructure} structure - Structure providing all symmetry operations.
+ * @param {Array<object>} atomGroups - Asymmetric-unit covalent groups.
+ * @returns {Array<Map<string, string>>} Raw operation ID to canonical operation ID for each group.
+ */
+export function getCanonicalGroupOperations(structure, atomGroups) {
+    const operationIds = Array.from(structure.symmetry.operationIds.keys());
+    return atomGroups.map((_, groupIndex) => {
+        const canonicalByOperation = new Map();
+        const representatives = [];
+        for (const operationId of operationIds) {
+            const candidate = new ConnectedGroup(groupIndex, `${operationId}_555`);
+            const representative = representatives.find(existing =>
+                groupInstancesCoincide(structure, atomGroups, candidate, existing),
+            );
+            if (representative) {
+                canonicalByOperation.set(operationId, representative.appliedSymmetry.id);
+            } else {
+                representatives.push(candidate);
+                canonicalByOperation.set(operationId, operationId);
+            }
+        }
+        return canonicalByOperation;
+    });
 }
 
 /**
@@ -447,6 +481,7 @@ export function initializeExploration(seedConnectionsPerGroup, identSymm, compon
  * copies of the same periodic image.
  * @param {Array<Map<string, ConnectedGroup>>} [stateByOperation] - Canonical state representative for each
  * `groupIndex|operationId` in a quotient component. This makes ordinary and translational duplicate checks O(1).
+ * @param {Array<Map<string, string>>} [canonicalGroupOperations] - Site-symmetry operation signatures by group.
  * @returns {ExplorationStepResult} Results of processing the step.
  */
 export function exploreConnection(
@@ -458,6 +493,7 @@ export function exploreConnection(
     atomGroups,
     queuedGroups = null,
     stateByOperation = null,
+    canonicalGroupOperations = null,
 ) {
     const newDanglingConnections = [];
     const foundTranslations = [];
@@ -509,7 +545,9 @@ export function exploreConnection(
         // each schedule a different lattice translation before either one reaches
         // the normal discoveredGroups check.
         const knownInstances = [...existingInstances, ...pendingInstances];
-        const operationKey = `${resultingGroup.groupIndex}|${resultingGroup.appliedSymmetry.id}`;
+        const canonicalOperationId = canonicalGroupOperations?.[resultingGroup.groupIndex]
+            ?.get(resultingGroup.appliedSymmetry.id) || resultingGroup.appliedSymmetry.id;
+        const operationKey = `${resultingGroup.groupIndex}|${canonicalOperationId}`;
         const canonicalState = stateByOperation?.[componentIndex]?.get(operationKey);
         const translationPresent = canonicalState
             ? resultingGroup.isTranslationalDuplicateOf(canonicalState)
@@ -522,7 +560,7 @@ export function exploreConnection(
         // this; groupInstancesCoincide resolves real positions and catches it. Skipped when a
         // translational duplicate was already found - no need for the extra position check.
         const positionDuplicate = !translationPresent && (canonicalState
-            ? sameGroupInstance(resultingGroup, canonicalState)
+            ? groupInstancesCoincide(structure, atomGroups, resultingGroup, canonicalState)
             : knownInstances.some(existing =>
                 groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
             ));
@@ -565,6 +603,7 @@ export function createConnectivity(structure, atomGroups) {
     // Find all initial connections defined in the bond list
     const seedConnectionsPerGroup = getSeedConnections(structure, atomGroups, atomGroupMap);
     const { componentByGroup, groupsByComponent } = getConnectivityComponents(seedConnectionsPerGroup);
+    const canonicalGroupOperations = getCanonicalGroupOperations(structure, atomGroups);
 
     // Set up the initial processing queue and processed set
     const { danglingConnections, processedConnections } = initializeExploration(
@@ -603,7 +642,8 @@ export function createConnectivity(structure, atomGroups) {
         const componentIndex = componentByGroup[i];
         const identityGroup = new ConnectedGroup(i, identSymm);
         discoveredGroups[componentIndex].push(identityGroup);
-        stateByOperation[componentIndex].set(`${i}|${identSymm.id}`, identityGroup);
+        const canonicalOperationId = canonicalGroupOperations[i].get(identSymm.id) || identSymm.id;
+        stateByOperation[componentIndex].set(`${i}|${canonicalOperationId}`, identityGroup);
     });
 
     // Process the queue iteratively using breadth-first search
@@ -625,7 +665,9 @@ export function createConnectivity(structure, atomGroups) {
         }
 
         const existingInstances = discoveredGroups[componentIndex];
-        const operationKey = `${currentGroup.groupIndex}|${currentGroup.appliedSymmetry.id}`;
+        const canonicalOperationId = canonicalGroupOperations[currentGroup.groupIndex]
+            .get(currentGroup.appliedSymmetry.id) || currentGroup.appliedSymmetry.id;
+        const operationKey = `${currentGroup.groupIndex}|${canonicalOperationId}`;
         const canonicalState = stateByOperation[componentIndex].get(operationKey);
         if (canonicalState && currentGroup.isTranslationalDuplicateOf(canonicalState)) {
             // Periodicity is ordinary input, not an iteration failure. Retain the
@@ -640,6 +682,12 @@ export function createConnectivity(structure, atomGroups) {
         if (!canonicalState) {
             existingInstances.push(currentGroup);
             stateByOperation[componentIndex].set(operationKey, currentGroup);
+        } else if (!sameGroupInstance(currentGroup, canonicalState)
+            && groupInstancesCoincide(structure, atomGroups, currentGroup, canonicalState)) {
+            if (connectionIndex <= initialConnectionCount) {
+                networkConnections.push(currentConnection);
+            }
+            continue;
         }
 
         // Process this connection group to find the next connected group and any new bonds
@@ -652,6 +700,7 @@ export function createConnectivity(structure, atomGroups) {
             atomGroups,
             queuedGroups,
             stateByOperation,
+            canonicalGroupOperations,
         );
 
         // Add newly found dangling connections to the queue for further processing
@@ -698,11 +747,37 @@ export function collectSymmetryRequirements(networkConnections) {
     return { requiredSymmetryInstances, interGroupBonds };
 }
 
+const periodicCartesianTranslations = new WeakMap();
+
 /**
- * Finds the already-kept canonical image of one atom at the same wrapped
- * crystallographic position. The buckets are only an index: candidates still
- * undergo the exact Cartesian-distance test, preserving special-position
- * semantics while avoiding an all-images quadratic scan.
+ * Gets all neighbouring unit-cell translations in Cartesian coordinates.
+ * @param {object} cell - Unit cell defining the fractional basis.
+ * @returns {number[][]} Cartesian translations for the surrounding 3×3×3 cells.
+ */
+function getPeriodicCartesianTranslations(cell) {
+    let translations = periodicCartesianTranslations.get(cell);
+    if (!translations) {
+        const matrix = cell.fractToCartMatrix.toArray();
+        translations = [];
+        for (let x = -1; x <= 1; x += 1) {
+            for (let y = -1; y <= 1; y += 1) {
+                for (let z = -1; z <= 1; z += 1) {
+                    translations.push([
+                        matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
+                        matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
+                        matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z,
+                    ]);
+                }
+            }
+        }
+        periodicCartesianTranslations.set(cell, translations);
+    }
+    return translations;
+}
+
+/**
+ * Finds the already-kept canonical image of one atom at the same periodic
+ * crystallographic position without a linear scan over all symmetry images.
  * @param {Map<string, Array<{atom: object, coordinates: number[]}>>} buckets - Spatial index for one original atom.
  * @param {object} atom - Symmetry-generated image being canonicalized.
  * @param {object} cell - Unit cell used for Cartesian comparison.
@@ -711,6 +786,8 @@ export function collectSymmetryRequirements(networkConnections) {
  */
 function findCanonicalAtomImage(buckets, atom, cell, tolerance) {
     const coordinates = wrappedCartesianCoordinates(atom.position, cell);
+    // Canonical atoms are indexed at their 26 neighbouring lattice images, so
+    // one ordinary local query also discovers images on opposite cell faces.
     const bucket = coordinates.map(value => Math.floor(value / tolerance));
     for (let dx = -1; dx <= 1; dx += 1) {
         for (let dy = -1; dy <= 1; dy += 1) {
@@ -729,10 +806,15 @@ function findCanonicalAtomImage(buckets, atom, cell, tolerance) {
         }
     }
 
-    const ownKey = bucket.join(',');
-    const entries = buckets.get(ownKey) || [];
-    entries.push({ atom, coordinates });
-    buckets.set(ownKey, entries);
+    // Store all neighbouring periodic images, so a later atom can always use
+    // one ordinary local bucket lookup regardless of which cell face it lies on.
+    for (const translation of getPeriodicCartesianTranslations(cell)) {
+        const translatedCoordinates = coordinates.map((value, index) => value + translation[index]);
+        const ownKey = translatedCoordinates.map(value => Math.floor(value / tolerance)).join(',');
+        const entries = buckets.get(ownKey) || [];
+        entries.push({ atom, coordinates: translatedCoordinates });
+        buckets.set(ownKey, entries);
+    }
     return null;
 }
 
@@ -828,7 +910,7 @@ export function generateSymmetryAtoms(requiredSymmetryInstances, atomGroups, str
                         canonicalImages,
                         symmAtom,
                         structure.cell,
-                        1e-4,
+                        SPECIAL_POSITION_TOLERANCE,
                     );
                     if (canonicalAtom) {
                         specialPositionAtoms.set(symmAtom.uniqueId, canonicalAtom.uniqueId);
@@ -929,6 +1011,10 @@ export function generateSymmetryBonds(
         const atom1 = mappedAtom1.includes('|') ? mappedAtom1 : createAtomId(mappedAtom1, identSymmKey);
         const atom2 = mappedAtom2.includes('|') ? mappedAtom2 : createAtomId(mappedAtom2, identSymmKey);
 
+        if (atom1 === atom2) {
+            return;
+        }
+
         const bondString = createBondIdentifier(atom1, atom2);
         if (!existingBonds.has(bondString)) {
             existingBonds.add(bondString);
@@ -979,6 +1065,10 @@ export function generateSymmetryBonds(
                     const targetAtomRaw = createAtomId(bond.atom2Label, targetSymmetry.key);
                     const originAtom = specialPositionAtoms.get(originAtomRaw) || originAtomRaw;
                     const targetAtom = specialPositionAtoms.get(targetAtomRaw) || targetAtomRaw;
+
+                    if (originAtom === targetAtom) {
+                        continue;
+                    }
 
                     if (!availableAtomIds.has(originAtom) || !availableAtomIds.has(targetAtom)) {
                         continue;

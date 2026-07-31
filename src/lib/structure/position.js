@@ -118,6 +118,9 @@ export function wrapFractional(position) {
 // FractPosition, CartPosition, and Matrix objects.
 const fractToCartMatrices = new WeakMap();
 
+/** Physical tolerance used when symmetry images represent one special position. */
+export const SPECIAL_POSITION_TOLERANCE = 1e-3;
+
 /**
  * Gets the plain fractional-to-Cartesian matrix cached for a unit cell.
  * @param {UnitCell} unitCell - Unit cell whose coordinate basis is needed.
@@ -175,17 +178,18 @@ export function wrappedCartesianCoordinates(position, unitCell) {
  * @param {number} [tolerance] - Maximum Cartesian distance (in Å) to count as coincident
  * @returns {boolean} Whether the two positions coincide within tolerance
  */
-export function positionsCoincide(position1, position2, unitCell, tolerance = 1e-3) {
+export function positionsCoincide(position1, position2, unitCell, tolerance = SPECIAL_POSITION_TOLERANCE) {
     const matrix = getFractToCartMatrix(unitCell);
-    const x1 = wrapCoordinate(position1.x);
-    const y1 = wrapCoordinate(position1.y);
-    const z1 = wrapCoordinate(position1.z);
-    const x2 = wrapCoordinate(position2.x);
-    const y2 = wrapCoordinate(position2.y);
-    const z2 = wrapCoordinate(position2.z);
-    const dx = matrix[0][0] * (x1 - x2) + matrix[0][1] * (y1 - y2) + matrix[0][2] * (z1 - z2);
-    const dy = matrix[1][0] * (x1 - x2) + matrix[1][1] * (y1 - y2) + matrix[1][2] * (z1 - z2);
-    const dz = matrix[2][0] * (x1 - x2) + matrix[2][1] * (y1 - y2) + matrix[2][2] * (z1 - z2);
+    // Choose the nearest periodic image before converting to Cartesian space.
+    // Comparing wrapped coordinates directly treats 0.99999 and 0.00001 as a
+    // full unit-cell apart, even though they are separated by only 0.00002 in
+    // fractional space.
+    const x = position1.x - position2.x - Math.round(position1.x - position2.x);
+    const y = position1.y - position2.y - Math.round(position1.y - position2.y);
+    const z = position1.z - position2.z - Math.round(position1.z - position2.z);
+    const dx = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z;
+    const dy = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z;
+    const dz = matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z;
     return Math.hypot(dx, dy, dz) < tolerance;
 }
 

@@ -1,6 +1,6 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
-import { FractPosition } from '../../position.js';
+import { FractPosition, positionsCoincide, SPECIAL_POSITION_TOLERANCE } from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
@@ -210,6 +210,8 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
 /**
  * @typedef {object} CreatedObjectTracker
  * @property {Map<string, string>} atomMap - Maps atom position keys to atom labels
+ * @property {Map<string, Array<{atom: Atom, id: string}>>} periodicAtomMap - Canonical atoms by source label and
+ * disorder group.
  * @property {Set<string>} createdBonds - Set of created bond identifiers
  * @property {Set<string>} createdHBonds - Set of created hydrogen bond identifiers
  * @property {Map<string, string>} specialPositionMap - Maps original atom labels to kept atom labels for duplicates
@@ -239,9 +241,12 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms. Used
  *  to avoid duplicates and track translations, as well as special positions.
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {object} [unitCell] - Unit cell for periodic special-position comparison.
  * @returns {GrownGroup} New group with grown atoms and updated symmetry string
  */
-export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growAtomsinGroup(
+    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, unitCell = null,
+) {
     const newAtoms = [];
     const transformedAtoms = symmetry.applySymmetry(symmString, grownGroup.atoms);
 
@@ -288,16 +293,36 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
 
         const uniqueId = atom.uniqueId;
 
-        // Check for special positions (duplicates)
-        const posKey = getAtomPositionKey(atom);
-        const existingAtomId = objectTracker.atomMap.get(posKey);
+        // Check for special positions (duplicates). Full cell growth supplies a
+        // physical, minimum-image comparison; the legacy key path remains for
+        // direct helper callers that do not provide a unit cell.
+        let existingAtomId;
+        if (unitCell && objectTracker.periodicAtomMap) {
+            const sourceKey = `${atom.label}|${atom.disorderGroup}`;
+            const sameLabelAtoms = objectTracker.periodicAtomMap.get(sourceKey) || [];
+            existingAtomId = sameLabelAtoms.find(candidate => positionsCoincide(
+                atom.position,
+                candidate.atom.position,
+                unitCell,
+                SPECIAL_POSITION_TOLERANCE,
+            ))?.id;
+            if (!existingAtomId) {
+                sameLabelAtoms.push({ atom, id: uniqueId });
+                objectTracker.periodicAtomMap.set(sourceKey, sameLabelAtoms);
+            }
+        } else {
+            const posKey = getAtomPositionKey(atom);
+            existingAtomId = objectTracker.atomMap.get(posKey);
+            if (!existingAtomId) {
+                objectTracker.atomMap.set(posKey, uniqueId);
+            }
+        }
 
         if (existingAtomId) {
             // This is a special position - map to existing atom ID
             objectTracker.specialPositionMap.set(uniqueId, existingAtomId);
         } else {
             // New unique position
-            objectTracker.atomMap.set(posKey, uniqueId);
             newAtoms.push(atom);
         }
     }
@@ -636,9 +661,10 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
  * @param {string} symmString - The symmetry string to use for the group
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms and bonds
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {object} [unitCell] - Unit cell for periodic special-position comparison.
  * @returns {GrownGroup} New group with grown atoms, internal and external bonds, and symmetry string
  */
-export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, unitCell = null) {
     const combinedSymmString = symmetry.combineSymmetryCodes(
         symmString,
         grownGroup.symmString,
@@ -656,6 +682,7 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
         centredSymmString,
         objectTracker,
         moveAtomsInsideCell,
+        unitCell,
     );
 
     const grownInternalBonds = growInternalBondsInGroup(
@@ -764,6 +791,7 @@ export function growCell(
 
     const objectTracker = {
         atomMap,
+        periodicAtomMap: new Map(),
         createdBonds: new Set(), // createdBonds
         createdHBonds: new Set(), // createdHBonds
         specialPositionMap, // specialPositionMap
@@ -803,6 +831,7 @@ export function growCell(
                 nonTransSymmString,
                 objectTracker,
                 moveAtomsInsideCell,
+                structure.cell,
             );
             grownAtomsGroups.push(newGrownGroup);
         }
