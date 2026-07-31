@@ -4,6 +4,7 @@ import { FractPosition, positionsCoincide } from './position.js';
 import { UAnisoADP, UIsoADP } from './adp.js';
 import { CifLoop } from '../read-cif/loop.js';
 import { decodePositionCode, encodePositionCode } from './position-code.js';
+import { isRhombohedralCell, toRhombohedralSetting } from './rhombohedral-setting.js';
 import { CifBlock } from '../read-cif/base.js';
 import { lookupSpaceGroup } from './space-group-lookup.js';
 
@@ -671,15 +672,34 @@ export class CellSymmetry {
         // it never overrides operators actually present in the file.
         const tableEntry = lookupSpaceGroup({ number: spaceGroupNumber, name: spaceGroupName });
         if (tableEntry) {
+            // The table gives R-centred groups on hexagonal axes, the International
+            // Tables standard. A CIF may instead describe the same group on primitive
+            // rhombohedral axes, recognisable from the cell alone (a = b = c with equal
+            // angles other than 90 degrees). Those operators are not interchangeable:
+            // the hexagonal rotation parts are isometries only of the hexagonal metric,
+            // so using them here silently distorts every symmetry image.
+            let operations = tableEntry.operations;
+            let setting = 'standard International Tables setting';
+            if (tableEntry.symbol_cif.trim().startsWith('R')) {
+                let cell = null;
+                try {
+                    cell = UnitCell.fromCIF(cifBlock);
+                } catch {
+                    cell = null;
+                }
+                if (isRhombohedralCell(cell)) {
+                    operations = toRhombohedralSetting(tableEntry.operations);
+                    setting = 'rhombohedral axes, matching the cell given in the file';
+                }
+            }
             console.warn(
                 'No symmetry operations found in CIF block; reconstructing them from space group '
-                + `${tableEntry.symbol_cif} (No. ${tableEntry.number}) assuming the standard `
-                + 'International Tables setting.',
+                + `${tableEntry.symbol_cif} (No. ${tableEntry.number}) assuming the ${setting}.`,
             );
             return new CellSymmetry(
                 spaceGroupName !== 'Unknown' ? spaceGroupName : tableEntry.symbol_cif,
                 spaceGroupNumber || tableEntry.number,
-                tableEntry.operations.map(op => new SymmetryOperation(op)),
+                operations.map(op => new SymmetryOperation(op)),
             );
         }
 
