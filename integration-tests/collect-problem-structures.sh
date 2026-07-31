@@ -47,4 +47,23 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "integration-tests/logs/modifier-test-errors.log"
 
+# Process modifier-test-bond-consistency.log. This log holds only findings that the
+# source CIF does not account for - a structure that verifies against its own
+# coordinates but still grows into bonds of the wrong length, or bonds naming an atom
+# that was never materialised. These are cifvis's own defects, so unlike the other
+# categories the aim is to drive this set to empty.
+BOND_LOG="integration-tests/logs/modifier-test-bond-consistency.log"
+if [[ -f "$BOND_LOG" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ $line =~ "Bond consistency in "(/[^\"]+\.cif) ]]; then
+            filepath="${BASH_REMATCH[1]}"
+            filename=$(basename "$filepath")
+            basename="${filename%.cif}"
+            cp "$filepath" "$PROBLEM_DIR/bonderr_$basename.cif"
+        fi
+    done < "$BOND_LOG"
+fi
+
 echo "Problematic CIF files have been copied to $PROBLEM_DIR"
+echo "  bonderr_ (cifvis defects, target: zero): $(ls "$PROBLEM_DIR"/bonderr_*.cif 2>/dev/null | wc -l)"
+echo "  total:                                   $(ls "$PROBLEM_DIR"/*.cif 2>/dev/null | wc -l)"

@@ -399,6 +399,13 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
 
         const group = groups[groupIndex];
         const symmetryAtoms = structure.symmetry.applySymmetry(symOpLabel, group.atoms);
+        // Records, per source atom, the ID the image was actually filed under. The
+        // bonds below are then expressed in terms of those IDs instead of deriving a
+        // code for themselves: the two derivations can disagree - the atom composes
+        // through its own appliedSymmetry, a bond through the code embedded in its
+        // endpoint ID - and a bond that names an image nobody created is left pointing
+        // at nothing.
+        const grownIdBySourceId = new Map();
         for (let i = 0; i < symmetryAtoms.length; i++) {
             const atom = symmetryAtoms[i];
             const originalAtom = group.atoms[i];
@@ -418,23 +425,30 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
                 if (positionAtomId !== atom.uniqueId) {
                     grownSpecialPositionAtoms.set(atom.uniqueId, positionAtomId);
                 }
-            } else if (!finalAtomIds.has(atom.uniqueId)) {
-                finalAtoms.push(atom);
-                finalAtomIds.add(atom.uniqueId);
-                finalAtomIdsByPosition.set(atomPositionKey, atom.uniqueId);
+                grownIdBySourceId.set(originalAtom.uniqueId, positionAtomId);
+            } else {
+                if (!finalAtomIds.has(atom.uniqueId)) {
+                    finalAtoms.push(atom);
+                    finalAtomIds.add(atom.uniqueId);
+                    finalAtomIdsByPosition.set(atomPositionKey, atom.uniqueId);
+                }
+                grownIdBySourceId.set(originalAtom.uniqueId, atom.uniqueId);
             }
         }
 
         group.bonds
             .filter(({ atom2SiteSymmetry }) => atom2SiteSymmetry === '.')
             .forEach(bond => {
+                const atom1Id = grownIdBySourceId.get(bond.atom1Id);
+                const atom2Id = grownIdBySourceId.get(bond.atom2Id);
+                if (!atom1Id || !atom2Id) {
+                    // An endpoint outside this group instance - it belongs to whichever
+                    // group owns it, and is grown with that one.
+                    return;
+                }
                 addFinalBond(new Bond(
-                    resolveSpecialPosition(combineAtomId(
-                        bond.atom1Id, symOpLabel, structure.symmetry,
-                    )),
-                    resolveSpecialPosition(combineAtomId(
-                        bond.atom2Id, symOpLabel, structure.symmetry,
-                    )),
+                    resolveSpecialPosition(atom1Id),
+                    resolveSpecialPosition(atom2Id),
                     bond.bondLength,
                     bond.bondLengthSU,
                     '.',

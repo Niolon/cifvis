@@ -100,6 +100,34 @@ describe('CrystalStructure', () => {
         expect(structure.hBonds).toEqual([]);
     });
 
+    test('an H-bond hydrogen already in a group merges the groups rather than joining both', () => {
+        // H1 is covalently bonded to C1, and is also the hydrogen of an H-bond whose
+        // donor O1 sits in a separate group. The D-H bond joins the two, so they must
+        // become one group: listing H1 in both makes symmetry growth generate it once
+        // per group, leaving two atoms sharing an ID at the same point.
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        const atoms = [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+            new Atom('H1', 'H', new FractPosition(0.1, 0, 0)),
+            new Atom('O1', 'O', new FractPosition(0.3, 0, 0)),
+            new Atom('N1', 'N', new FractPosition(0.5, 0, 0)),
+        ];
+        const structure = new CrystalStructure(
+            cell,
+            atoms,
+            [new Bond('C1', 'H1', 1.0, 0.01, '.'), new Bond('O1', 'N1', 1.4, 0.01, '.')],
+            [new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.01, 2.9, 0.01, 170, 1, '.')],
+        );
+
+        const groups = structure.calculateConnectedGroups();
+        const membership = groups.filter(group =>
+            [...group.atoms].some(atom => atom.label === 'H1'));
+
+        expect(membership).toHaveLength(1);
+        const allGrouped = groups.flatMap(group => [...group.atoms].map(atom => atom.uniqueId));
+        expect(new Set(allGrouped).size).toBe(allGrouped.length);
+    });
+
     test('fromCIF refuses a file that reuses an atom site label', () => {
         // A manual "hydrogen on N10" label colliding with an automatically generated
         // H10 + letter series, as seen in COD 1519817. Both _geom_bond entries below

@@ -313,6 +313,25 @@ export class CrystalStructure {
 
             const hydrogenAtom = hydrogenId ? resolveAtom(hydrogenId) : undefined;
             if (hydrogenAtom) {
+                // The hydrogen may already sit in a group through its covalent bond. The
+                // D-H bond then joins that group to the donor's, exactly as a covalent
+                // bond between them would: merge the two rather than listing the atom in
+                // both, which would otherwise generate it once per group during symmetry
+                // growth and leave two atoms sharing one ID at one position.
+                const hydrogenGroup = atomGroupMap.get(hydrogenAtom.uniqueId);
+                if (hydrogenGroup && hydrogenGroup !== donorGroup) {
+                    for (const atom of hydrogenGroup.atoms) {
+                        donorGroup.atoms.add(atom);
+                        atomGroupMap.set(atom.uniqueId, donorGroup);
+                    }
+                    for (const groupBond of hydrogenGroup.bonds) {
+                        donorGroup.bonds.add(groupBond);
+                    }
+                    for (const groupHBond of hydrogenGroup.hBonds) {
+                        donorGroup.hBonds.add(groupHBond);
+                    }
+                    groups.splice(groups.indexOf(hydrogenGroup), 1);
+                }
                 donorGroup.atoms.add(hydrogenAtom);
                 atomGroupMap.set(hydrogenAtom.uniqueId, donorGroup);
             }

@@ -910,22 +910,48 @@ export function growCell(
     ];
     let finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
 
+    /**
+     * Adds a lattice translation to an atom ID's position code.
+     * @param {string} atomId - ID of the form `label|code`.
+     * @param {number[]} shift - Integer lattice vector to add.
+     * @returns {string} The shifted ID.
+     */
+    const shiftAtomId = (atomId, shift) => {
+        if (shift[0] === 0 && shift[1] === 0 && shift[2] === 0) {
+            return atomId;
+        }
+        const [label, code] = atomId.split('|');
+        const { id, translation } = decodePositionCode(
+            code || `${structure.symmetry.identitySymOpId}_555`,
+        );
+        return `${label}|${encodePositionCode(id, [
+            translation[0] + shift[0], translation[1] + shift[1], translation[2] + shift[2],
+        ])}`;
+    };
+
     grownAtomsGroups.forEach(group => {
         // Add external bonds and H-bonds to the potential maps
         group.externalBonds.forEach(bond => {
             // Resolve atom1Id through translations and special positions
             let atom1Id = objectTracker.specialPositionMap.get(bond.atom1Id) || bond.atom1Id;
+            // Moving an atom into the cell moves one end of every bond it holds. A bond
+            // is a geometric relation, so the other end has to travel with it: shifting
+            // the two independently leaves the bond joining a pair that was never
+            // measured, at a distance that no longer matches its stated length. Whether
+            // the partner is still inside the cell afterwards is then decided below.
+            let cellShift = [0, 0, 0];
             if (objectTracker.atomTranslations.has(atom1Id)) {
-                [atom1Id] = objectTracker.atomTranslations.get(atom1Id);
+                const [shiftedId, translationCode] = objectTracker.atomTranslations.get(atom1Id);
+                atom1Id = shiftedId;
+                cellShift = decodePositionCode(translationCode).translation;
             }
 
             // growExternalBondsInGroup has already combined the group's symmetry with
             // atom2SiteSymmetry. Recombining here applies the operation twice and can
             // connect an atom to the wrong periodic image across the entire cell.
-            let atom2Id = objectTracker.specialPositionMap.get(bond.atom2Id) || bond.atom2Id;
-            if (objectTracker.atomTranslations.has(atom2Id)) {
-                [atom2Id] = objectTracker.atomTranslations.get(atom2Id);
-            }
+            const atom2Resolved = objectTracker.specialPositionMap.get(bond.atom2Id)
+                || bond.atom2Id;
+            const atom2Id = shiftAtomId(atom2Resolved, cellShift);
             // Do NOT normalize to _555 - atoms at different translations are different positions
 
             // For external bonds, only create if both atoms exist and are not at same position
