@@ -9,6 +9,7 @@ import {
     ConnectingBond, 
     ConnectingBondGroup,
     getSeedConnections,
+    getConnectivityComponents,
     initializeExploration,
     exploreConnection,
     generateSymmetryAtoms,
@@ -32,6 +33,20 @@ describe('Helper Functions', () => {
     test('createHBondIdentifier correctly formats labels', () => {
         expect(createHBondIdentifier('D@1', 'H@1', 'A@2')).toBe('D@1-H@1...A@2');
         expect(createHBondIdentifier('O1', 'H1A', 'N2|2_655')).toBe('O1-H1A...N2|2_655');
+    });
+});
+
+describe('Quotient connectivity components', () => {
+    test('shares a component across directed symmetry connections and keeps isolated groups separate', () => {
+        const { componentByGroup, groupsByComponent } = getConnectivityComponents([
+            [{ targetIndex: 1 }],
+            [{ targetIndex: 2 }],
+            [],
+            [],
+        ]);
+
+        expect(componentByGroup).toEqual([0, 0, 0, 1]);
+        expect(groupsByComponent).toEqual([[0, 1, 2], [3]]);
     });
 });
 
@@ -655,7 +670,7 @@ describe('Structure dependent methods', () => {
             );
             expect(cbg_N1_to_C1_symm).toBeDefined();
             expect(cbg_N1_to_C1_symm.originSymmetry.key).toBe(identSymmString);
-            expect(cbg_N1_to_C1_symm.creationOriginIndex).toBe(1);
+            expect(cbg_N1_to_C1_symm.creationOriginIndex).toBe(0);
             expect(cbg_N1_to_C1_symm.connectingBonds[0].originAtom).toBe('N1|1_555');
             expect(cbg_N1_to_C1_symm.connectingBonds[0].targetAtom).toBe('C1|2_556');
 
@@ -681,26 +696,20 @@ describe('Structure dependent methods', () => {
                       bg.targetIndex === 1 && bg.targetSymmetry.key === '1_566',
             );
             expect(tl_from_C1_at_2_556).toBeDefined();
-            expect(tl_from_C1_at_2_556.creationOriginIndex).toBe(1); // Path started from N1
+            expect(tl_from_C1_at_2_556.creationOriginIndex).toBe(0); // Shared quotient component
             expect(tl_from_C1_at_2_556.connectingBonds[0].originAtom).toBe('C1|1_555');
             expect(tl_from_C1_at_2_556.connectingBonds[0].targetAtom).toBe('N1|2_555');
 
             // Assertions for discoveredGroups
-            expect(discoveredGroups.length).toBe(2); // For Group 0 (C1) and Group 1 (N1)
+            expect(discoveredGroups.length).toBe(1); // One shared C1/N1 quotient component
 
-            // Discovered groups for creationOriginIndex 0 (path starting from C1|1_555)
-            // Should contain C1|1_555 (identity) and N1|2_555 (from C1 -> N1|2_555 connection)
-            expect(discoveredGroups[0].length).toBe(2);
+            // Identity images of both ASU groups are seeded once, followed by
+            // the two non-identity images found from the directed seeds.
+            expect(discoveredGroups[0].length).toBe(4);
             expect(discoveredGroups[0]).toEqual(expect.arrayContaining([
                 expect.objectContaining({ groupIndex: 0, appliedSymmetry: expect.objectContaining({ key: '1_555' }) }),
-                expect.objectContaining({ groupIndex: 1, appliedSymmetry: expect.objectContaining({ key: '2_555' }) }),
-            ]));
-
-            // Discovered groups for creationOriginIndex 1 (path starting from N1|1_555)
-            // Should contain N1|1_555 (identity) and C1|2_565 (from N1 -> C1|2_565 connection)
-            expect(discoveredGroups[1].length).toBe(2);
-            expect(discoveredGroups[1]).toEqual(expect.arrayContaining([
                 expect.objectContaining({ groupIndex: 1, appliedSymmetry: expect.objectContaining({ key: '1_555' }) }),
+                expect.objectContaining({ groupIndex: 1, appliedSymmetry: expect.objectContaining({ key: '2_555' }) }),
                 expect.objectContaining({ groupIndex: 0, appliedSymmetry: expect.objectContaining({ key: '2_556' }) }),
             ]));
         });
@@ -725,7 +734,7 @@ describe('Structure dependent methods', () => {
             expect(discoveredGroups[0][0].getSymmetryString()).toBe(identSymmString);
         });
 
-        test('should complete for a simple case without hitting iteration limits', () => {
+        test('should complete a finite quotient component in one shared traversal', () => {
             structureHelper = new MockStructureHelper()
                 .addAtom('C1', 'C').addAtom('N1', 'N').addBond('C1', 'N1', '2_555');
             structure = structureHelper.build();
@@ -736,10 +745,58 @@ describe('Structure dependent methods', () => {
             );
             expect(networkConnections.length).toBe(1); // C1|1_555 -> N1|2_555
             expect(translationLinks.length).toBe(0);
-            // Discovered for C1's path: C1|1_555 (initial), N1|2_555 (new)
-            expect(discoveredGroups[0].length).toBe(2);
-            // Discovered for N1's path: N1|1_555 (initial)
-            expect(discoveredGroups[1].length).toBe(1);
+            // C1 and N1 identity images are seeded together; N1|2_555 is
+            // explored once for their shared component.
+            expect(discoveredGroups).toHaveLength(1);
+            expect(discoveredGroups[0]).toHaveLength(3);
+        });
+
+        test('keeps an initial directed periodic seed while stopping its expansion', () => {
+            structureHelper = new MockStructureHelper()
+                .addAtom('C1', 'C')
+                .addBond('C1', 'C1', '1_565');
+            structure = structureHelper.build();
+            atomGroups = structure.calculateConnectedGroups();
+
+            const { networkConnections, translationLinks, discoveredGroups } = createConnectivity(
+                structure, atomGroups,
+            );
+
+            expect(networkConnections).toHaveLength(1);
+            expect(translationLinks).toHaveLength(1);
+            expect(discoveredGroups).toHaveLength(1);
+            expect(discoveredGroups[0]).toHaveLength(1);
+        });
+
+        test('grows a many-seed symmetry-assembled cage once without duplicate states', () => {
+            // With the former per-ASU-root traversal, every one of these 128
+            // directed seeds walked the full 128-member quotient ring (>10,000
+            // total visits) before another seed repeated the same work. Inversion
+            // has finite order, so this is a finite symmetry cage, not a periodic
+            // continuation.
+            const groupCount = 128;
+            structureHelper = new MockStructureHelper();
+            for (let index = 0; index < groupCount; index += 1) {
+                structureHelper.addAtom(`C${index}`, 'C');
+            }
+            for (let index = 0; index < groupCount; index += 1) {
+                structureHelper.addBond(`C${index}`, `C${(index + 1) % groupCount}`, '3_555');
+            }
+            structure = structureHelper.build();
+            atomGroups = structure.calculateConnectedGroups();
+
+            const { networkConnections, translationLinks, discoveredGroups } = createConnectivity(
+                structure, atomGroups,
+            );
+
+            expect(translationLinks).toHaveLength(0);
+            expect(networkConnections).toHaveLength(groupCount);
+            expect(discoveredGroups).toHaveLength(1);
+            expect(discoveredGroups[0]).toHaveLength(groupCount * 2);
+            const stateKeys = discoveredGroups[0].map(group =>
+                `${group.groupIndex}|${group.appliedSymmetry.key}`,
+            );
+            expect(new Set(stateKeys).size).toBe(stateKeys.length);
         });
     });
 
@@ -1476,7 +1533,9 @@ describe('Structure dependent methods', () => {
                 expect.arrayContaining(['C1|1_555', 'C1|2_555']),
             );
 
-            expect(grownStructure.bonds.length).toBe(2);
+            // The second screw-related continuation is periodic and is not
+            // represented as a dangling fragment bond.
+            expect(grownStructure.bonds.length).toBe(1);
             const bond = grownStructure.bonds[0];
             // Order might vary due to createBondIdentifier
             const bondIds = [bond.atom1Id, bond.atom2Id].sort();
@@ -1561,12 +1620,12 @@ describe('Structure dependent methods', () => {
                 'C1|1_555', 'N1|1_555', 'N1|2_555', 'C1|2_565',
             ]));
 
-            // Expected bonds:
+            // Expected materialised bonds only:
             // 1. C1 - N1|2_555 (symm '.') from network connection
             // 2. N1 - C1|2_565 (symm '.') from network connection
-            // 3. N1|2_555 - omitted C1|1_575 from translationLink
-            // 4. C1|2_565 - omitted N1|1_575 from translationLink
-            expect(grownStructure.bonds.length).toBe(4);
+            // Periodic continuations terminate at omitted images and therefore
+            // do not appear as dangling fragment bonds.
+            expect(grownStructure.bonds.length).toBe(2);
             expect(grownStructure.bonds).toEqual(expect.arrayContaining([
                 expect.objectContaining({
                     atom1Id: 'C1|1_555',
@@ -1582,21 +1641,12 @@ describe('Structure dependent methods', () => {
                     bondLength: 1.5,
                     bondLengthSU: 0.01,
                 }),
-                expect.objectContaining({
-                    atom1Id: 'N1|2_555',
-                    atom2Id: 'C1|1_575',
-                    atom2SiteSymmetry: '1_575',
-                    bondLength: 1.5,
-                    bondLengthSU: 0.01,
-                }),
-                expect.objectContaining({
-                    atom1Id: 'C1|2_565',
-                    atom2Id: 'N1|1_575',
-                    atom2SiteSymmetry: '1_575',
-                    bondLength: 1.5,
-                    bondLengthSU: 0.01,
-                }),
             ]));
+            const materialised = new Set(grownStructure.atoms.map(atom => atom.uniqueId));
+            grownStructure.bonds.forEach(bond => {
+                expect(materialised.has(bond.atom1Id)).toBe(true);
+                expect(materialised.has(bond.atom2Id)).toBe(true);
+            });
         });
 
         test('should handle special positions correctly', () => {

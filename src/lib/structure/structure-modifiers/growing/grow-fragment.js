@@ -34,7 +34,7 @@ import { positionsCoincide, wrappedCartesianCoordinates } from '../../position.j
  * @property {Array<ConnectingBondGroup>} translationLinks - Bond groups leading to translational duplicates
  * (potential infinite growth).
  * @property {Array<Array<ConnectedGroup>>} discoveredGroups - All unique group instances found, grouped by their
- * original asymmetric unit group index.
+ * quotient-connectivity component.
  */
 
 /**
@@ -346,12 +346,62 @@ export function getSeedConnections(structure, atomGroups, atomGroupMap) {
 }
 
 /**
+ * Groups asymmetric-unit covalent components into connected components of the
+ * symmetry-bond quotient graph. Every member of one quotient component is
+ * explored through one shared state table, rather than growing the same
+ * symmetry-assembled molecule separately from every ASU atom.
+ * @param {Array<Array<SeedConnection>>} seedConnectionsPerGroup - Directed symmetry connections by source group.
+ * @returns {{componentByGroup: number[], groupsByComponent: number[][]}} Component membership data.
+ */
+export function getConnectivityComponents(seedConnectionsPerGroup) {
+    const parents = seedConnectionsPerGroup.map((_, index) => index);
+    const find = index => {
+        let root = index;
+        while (parents[root] !== root) {
+            root = parents[root];
+        }
+        while (parents[index] !== index) {
+            const parent = parents[index];
+            parents[index] = root;
+            index = parent;
+        }
+        return root;
+    };
+    const join = (first, second) => {
+        const firstRoot = find(first);
+        const secondRoot = find(second);
+        if (firstRoot !== secondRoot) {
+            parents[secondRoot] = firstRoot;
+        }
+    };
+
+    seedConnectionsPerGroup.forEach((connections, groupIndex) => {
+        connections.forEach(connection => join(groupIndex, connection.targetIndex));
+    });
+
+    const componentForRoot = new Map();
+    const componentByGroup = parents.map((_, groupIndex) => {
+        const root = find(groupIndex);
+        if (!componentForRoot.has(root)) {
+            componentForRoot.set(root, componentForRoot.size);
+        }
+        return componentForRoot.get(root);
+    });
+    const groupsByComponent = Array.from({ length: componentForRoot.size }, () => []);
+    componentByGroup.forEach((componentIndex, groupIndex) => {
+        groupsByComponent[componentIndex].push(groupIndex);
+    });
+    return { componentByGroup, groupsByComponent };
+}
+
+/**
  * Initializes the queue of bond groups (connections) to process and the set of processed connections.
  * @param {Array<Array<object>>} seedConnectionsPerGroup - Connections extracted by getSeedConnections.
  * @param {AppliedSymmetry} identSymm - The identity symmetry operation object.
+ * @param {number[]} [componentByGroup] - Quotient-component index for each source group.
  * @returns {ExplorationState} An object containing the initial queue and the set of processed connection keys.
  */
-export function initializeExploration(seedConnectionsPerGroup, identSymm) {
+export function initializeExploration(seedConnectionsPerGroup, identSymm, componentByGroup = null) {
     const danglingConnections = [];
     const processedConnections = new Set();
 
@@ -364,7 +414,7 @@ export function initializeExploration(seedConnectionsPerGroup, identSymm) {
                 connection.targetIndex, // Target group index
                 connection.targetSymmetry, // Symmetry op to reach target from origin
                 connection.bonds,      // Specific atom bonds
-                groupIndex,            // The creation origin is the group itself initially
+                componentByGroup?.[groupIndex] ?? groupIndex, // Shared quotient-component exploration state
             );
 
             // Calculate the key based on the target symmetry
@@ -395,6 +445,8 @@ export function initializeExploration(seedConnectionsPerGroup, identSymm) {
  * @param {Array<Array<ConnectedGroup>>} [queuedGroups] - Group instances already accepted into the BFS queue but
  * not yet processed. Including these prevents two routes in the same breadth-first layer from scheduling separate
  * copies of the same periodic image.
+ * @param {Array<Map<string, ConnectedGroup>>} [stateByOperation] - Canonical state representative for each
+ * `groupIndex|operationId` in a quotient component. This makes ordinary and translational duplicate checks O(1).
  * @returns {ExplorationStepResult} Results of processing the step.
  */
 export function exploreConnection(
@@ -405,6 +457,7 @@ export function exploreConnection(
     processedConnections,
     atomGroups,
     queuedGroups = null,
+    stateByOperation = null,
 ) {
     const newDanglingConnections = [];
     const foundTranslations = [];
@@ -448,16 +501,19 @@ export function exploreConnection(
 
         // Check if this resulting group is a translational duplicate of an existing group
         // within the same creationOriginIndex set
-        const existingInstances = discoveredGroups[currentConnection.creationOriginIndex];
-        const pendingInstances = queuedGroups?.[currentConnection.creationOriginIndex] || [];
+        const componentIndex = currentConnection.creationOriginIndex;
+        const existingInstances = discoveredGroups[componentIndex];
+        const pendingInstances = queuedGroups?.[componentIndex] || [];
         // A group is considered discovered as soon as it is queued. Without this
         // second half of the guard, two different bonds in the same BFS layer can
         // each schedule a different lattice translation before either one reaches
         // the normal discoveredGroups check.
         const knownInstances = [...existingInstances, ...pendingInstances];
-        const translationPresent = knownInstances.some(existing => {
-            return resultingGroup.isTranslationalDuplicateOf(existing);
-        });
+        const operationKey = `${resultingGroup.groupIndex}|${resultingGroup.appliedSymmetry.id}`;
+        const canonicalState = stateByOperation?.[componentIndex]?.get(operationKey);
+        const translationPresent = canonicalState
+            ? resultingGroup.isTranslationalDuplicateOf(canonicalState)
+            : knownInstances.some(existing => resultingGroup.isTranslationalDuplicateOf(existing));
 
         // A different (non-translationally-related) operation can still place the group at
         // the exact same physical position when that operation belongs to the group's own
@@ -465,9 +521,11 @@ export function exploreConnection(
         // position. isTranslationalDuplicateOf only compares operation IDs, so it can't see
         // this; groupInstancesCoincide resolves real positions and catches it. Skipped when a
         // translational duplicate was already found - no need for the extra position check.
-        const positionDuplicate = !translationPresent && knownInstances.some(existing =>
-            groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
-        );
+        const positionDuplicate = !translationPresent && (canonicalState
+            ? sameGroupInstance(resultingGroup, canonicalState)
+            : knownInstances.some(existing =>
+                groupInstancesCoincide(structure, atomGroups, resultingGroup, existing),
+            ));
 
         // Add to the appropriate list based on translation/position checks. A position
         // duplicate reached via a redundant operation isn't a new node to explore and isn't a
@@ -477,7 +535,8 @@ export function exploreConnection(
             foundTranslations.push(prospectiveConnection);
         } else if (!positionDuplicate) {
             newDanglingConnections.push(prospectiveConnection);
-            queuedGroups?.[currentConnection.creationOriginIndex].push(resultingGroup);
+            queuedGroups?.[componentIndex].push(resultingGroup);
+            stateByOperation?.[componentIndex].set(operationKey, resultingGroup);
         }
     }
 
@@ -488,13 +547,11 @@ export function exploreConnection(
  * Analyzes the connectivity of a crystal structure including symmetry operations.
  * This function performs a breadth-first search starting from the asymmetric unit,
  * exploring connections across symmetry operations. It identifies unique symmetry-related
- * groups and flags connections that only involve translation (potential infinite growth).
+ * groups and flags connections that only involve translation (periodic continuations).
  * @param {CrystalStructure} structure - Crystal structure to analyze.
  * @param {Array<object>} atomGroups - Created distinct groups of interconnected atoms.
  * @returns {ConnectivityAnalysisResult} - Object containing the list of bond groups used to build the connected
  *  network, bond groups leading to translational duplicates, and the discovered group instances.
- * @throws {Error} If the symmetry orbit does not complete within the iteration limit, indicating an
- *  extended/periodic bonded network (e.g. zeolite, MOF, perovskite) rather than a finite molecule.
  */
 export function createConnectivity(structure, atomGroups) {
     const atomGroupMap = new Map();
@@ -507,54 +564,51 @@ export function createConnectivity(structure, atomGroups) {
 
     // Find all initial connections defined in the bond list
     const seedConnectionsPerGroup = getSeedConnections(structure, atomGroups, atomGroupMap);
+    const { componentByGroup, groupsByComponent } = getConnectivityComponents(seedConnectionsPerGroup);
 
     // Set up the initial processing queue and processed set
     const { danglingConnections, processedConnections } = initializeExploration(
         seedConnectionsPerGroup,
         identSymm,
+        componentByGroup,
     );
+    // Initial directed seed bonds describe the CIF's quotient graph and must be
+    // retained even when a seed itself already reaches a translated canonical
+    // state. They are not, however, a reason to expand that periodic image.
+    const initialConnectionCount = danglingConnections.length;
 
     const networkConnections = []; // Bonds successfully processed and added to the network
     const translationLinks = []; // Bonds leading to translational duplicates
 
-    // Tracks all symmetry instances found for each original group index
-    const discoveredGroups = atomGroups.map(() => []);
+    // All seeds belonging to the same quotient component share one state table.
+    // A molecule assembled entirely by symmetry bonds can therefore be reached from
+    // many asymmetric-unit atoms without re-growing the same finite orbit each time.
+    const discoveredGroups = groupsByComponent.map(() => []);
 
     // Tracks instances that have been accepted but are still waiting in the
     // queue. This closes the gap between discovering a candidate and processing
     // it, which was where diagonal and other multi-axis periodic walks could
     // repeatedly enqueue fresh translations.
-    const queuedGroups = atomGroups.map(() => []);
+    const queuedGroups = groupsByComponent.map(() => []);
 
-    // Add the initial identity group for each original group index
+    // One compact representative for every (ASU group, symmetry operation) in a
+    // component. A second integer translation of the same pair is a periodic
+    // continuation and is deliberately not enqueued.
+    const stateByOperation = groupsByComponent.map(() => new Map());
+
+    // Seed every member group's identity image. This is important even for a
+    // component whose bonds all cross symmetry: it makes the shared traversal
+    // represent the whole asymmetric-unit component from the outset.
     atomGroups.forEach((_, i) => {
-        discoveredGroups[i].push(new ConnectedGroup(i, identSymm));
+        const componentIndex = componentByGroup[i];
+        const identityGroup = new ConnectedGroup(i, identSymm);
+        discoveredGroups[componentIndex].push(identityGroup);
+        stateByOperation[componentIndex].set(`${i}|${identSymm.id}`, identityGroup);
     });
-
-    let safetyCounter = 0;
-    const MAXITER = 10000; // Safety limit
 
     // Process the queue iteratively using breadth-first search
     let connectionIndex = 0;
     while (connectionIndex < danglingConnections.length) {
-        if (safetyCounter++ > MAXITER) {
-            // A finite molecular fragment's symmetry orbit terminates once every
-            // reachable (group, operation) pair has been discovered and periodic
-            // duplicates are collapsed (see the translational-duplicate check
-            // above). Still growing after MAXITER steps means the bonded network
-            // is genuinely unbounded in 3D - e.g. a zeolite, MOF, or perovskite
-            // framework - not a moderately complex finite molecule. Fragment
-            // growth has no finite answer for such structures, so surface that
-            // instead of silently returning a truncated, visually broken result.
-            throw new Error(
-                'createConnectivity exceeded the iteration limit '
-                + `(${MAXITER}) without completing the symmetry orbit. This structure's `
-                + 'bonded network is likely an extended/periodic framework (e.g. zeolite, '
-                + 'MOF, perovskite) rather than a finite molecule, so fragment growth is not '
-                + 'well-defined for it.',
-            );
-        }
-
         // Advancing an index preserves FIFO order without shifting the remaining
         // queue on every iteration.
         const currentConnection = danglingConnections[connectionIndex++];
@@ -563,20 +617,29 @@ export function createConnectivity(structure, atomGroups) {
             currentConnection.targetIndex,
             currentConnection.targetSymmetry,
         );
-        const currentPending = queuedGroups[currentConnection.creationOriginIndex];
+        const componentIndex = currentConnection.creationOriginIndex;
+        const currentPending = queuedGroups[componentIndex];
         const pendingIndex = currentPending.findIndex(group => sameGroupInstance(group, currentGroup));
         if (pendingIndex !== -1) {
             currentPending.splice(pendingIndex, 1);
         }
 
-        const existingInstances = discoveredGroups[currentConnection.creationOriginIndex];
-        // Initial seed connections are deliberately materialised even when
-        // they lead to a translated image: their representative is needed by
-        // the later compact-image normalization. Queue admission below is the
-        // periodic guard; it prevents *new* duplicate walks while preserving
-        // the established boundary-bond semantics of initial connections.
-        if (!existingInstances.some(group => sameGroupInstance(group, currentGroup))) {
+        const existingInstances = discoveredGroups[componentIndex];
+        const operationKey = `${currentGroup.groupIndex}|${currentGroup.appliedSymmetry.id}`;
+        const canonicalState = stateByOperation[componentIndex].get(operationKey);
+        if (canonicalState && currentGroup.isTranslationalDuplicateOf(canonicalState)) {
+            // Periodicity is ordinary input, not an iteration failure. Retain the
+            // compact canonical image and record this edge for cell-mode callers;
+            // fragment growth later omits it because its other endpoint is absent.
+            translationLinks.push(currentConnection);
+            if (connectionIndex <= initialConnectionCount) {
+                networkConnections.push(currentConnection);
+            }
+            continue;
+        }
+        if (!canonicalState) {
             existingInstances.push(currentGroup);
+            stateByOperation[componentIndex].set(operationKey, currentGroup);
         }
 
         // Process this connection group to find the next connected group and any new bonds
@@ -588,6 +651,7 @@ export function createConnectivity(structure, atomGroups) {
             processedConnections, // Pass the set to be mutated
             atomGroups,
             queuedGroups,
+            stateByOperation,
         );
 
         // Add newly found dangling connections to the queue for further processing
@@ -1180,11 +1244,13 @@ export function growFragment(structure) {
     // directions. For a genuinely molecular fragment each (group, operation) already
     // occurs once, so nothing is dropped.
     const grownInstances = normalizeSymmetryInstances(requiredSymmetryInstances);
-    // Whether any periodic replica was actually collapsed. When true the fragment was
-    // extended; drop the now-orphaned periodic-image bonds so the result is bounded
-    // and self-consistent. When false the fragment is finite (or already a bounded
-    // repeat unit) and keeps its normal dangling-bond behaviour.
-    const collapsedPeriodicReplicas = grownInstances.size < requiredSymmetryInstances.size;
+    // A translation link is sufficient evidence of a periodic covalent
+    // continuation, even if its target happened not to enter
+    // requiredSymmetryInstances before the queue was stopped. In both cases a
+    // fragment is a compact representative: never retain a bond to an omitted
+    // periodic image.
+    const compactPeriodicFragment = translationLinks.length > 0
+        || grownInstances.size < requiredSymmetryInstances.size;
 
     // Step 3: Generate symmetry-related atoms and handle special positions
     const { specialPositionAtoms, newAtoms } = generateSymmetryAtoms(
@@ -1203,10 +1269,10 @@ export function growFragment(structure) {
         specialPositionAtoms, atomLabels, identSymmKey,
     );
 
-    // Step 6: Process translation links. When periodic replicas were collapsed the
-    // growth is intentionally clamped, so these periodic-direction connections are
-    // not materialised as dangling bonds; otherwise they behave as before.
-    const translationBonds = collapsedPeriodicReplicas ? [] : processTranslationLinks(
+    // Step 6: Fragment output contains only materialised atoms. Translation links
+    // terminate at deliberately omitted periodic images, so cell rendering may use
+    // them but fragment output must not turn them into dangling bonds.
+    const translationBonds = compactPeriodicFragment ? [] : processTranslationLinks(
         translationLinks, graphStructure, specialPositionAtoms,
         new Set(newBonds.map(b => createBondIdentifier(b.atom1Id, b.atom2Id))),
     );
@@ -1219,12 +1285,12 @@ export function growFragment(structure) {
 
     const allAtoms = [...graphStructure.atoms, ...newAtoms];
 
-    // Collapsing periodic replicas can orphan bonds/H-bonds that pointed at a dropped
-    // image. Drop those so the result is self-consistent (every bond references a
-    // materialised atom) rather than carrying dangling references.
+    // A compact periodic representative can orphan bonds/H-bonds that pointed at
+    // an omitted image. Drop those so every retained edge has two materialised
+    // endpoints.
     let finalBonds = newBonds;
     let finalHBonds = newHBonds;
-    if (collapsedPeriodicReplicas) {
+    if (compactPeriodicFragment) {
         const materialised = new Set(allAtoms.map(atom => atom.uniqueId));
         finalBonds = newBonds.filter(bond =>
             materialised.has(bond.atom1Id) && materialised.has(bond.atom2Id));
