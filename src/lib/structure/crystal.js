@@ -5,6 +5,7 @@ import { PositionFactory } from './position.js';
 import { BondsFactory, Bond, HBond } from './bonds.js';
 import { CifBlock } from '../read-cif/base.js';
 import { findNonIsometricOperations } from './symmetry-metric.js';
+import { AppliedSymmetry } from './applied-symmetry.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -134,10 +135,21 @@ export class CrystalStructure {
             );
         }
 
-        const atomLabels = new Set(atoms.map(atom => atom.label));
-        const bonds = BondsFactory.createBonds(cifBlock, atomLabels);
-        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);
+        // Built before the bonds: a CIF may list its symmetry operations in any order,
+        // so the identity is not necessarily operation 1, and an atom or bond that
+        // carries no symmetry has to name whichever operation the file calls the
+        // identity. Using a fixed `1_555` would silently mean "inversion" - or any other
+        // operation the file happens to list first - when resolved.
         const symmetry = CellSymmetry.fromCIF(cifBlock);
+        const identitySymOpId = symmetry.identitySymOpId ?? '1';
+
+        atoms.forEach(atom => {
+            atom.appliedSymmetry = new AppliedSymmetry(identitySymOpId, [0, 0, 0]);
+        });
+
+        const atomLabels = new Set(atoms.map(atom => atom.label));
+        const bonds = BondsFactory.createBonds(cifBlock, atomLabels, identitySymOpId);
+        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels, identitySymOpId);
 
         // A symmetry operation has to be an isometry of the cell it is declared with;
         // whether it is depends on the cell, so an operation and a cell can each be
@@ -189,7 +201,7 @@ export class CrystalStructure {
         // Fallback: try matching by label if no pipe is present (legacy support)
         if (!atomId.includes('|')) {
             for (const atom of this.atoms) {
-                if (atom.label === atomId && !atom.appliedSymmetry) {
+                if (atom.label === atomId && atom.isIdentityImage(this.symmetry?.identitySymOpId)) {
                     return atom;
                 }
             }
@@ -232,7 +244,8 @@ export class CrystalStructure {
             if (!atomsById.has(atomId)) {
                 atomsById.set(atomId, atom);
             }
-            if (!atom.appliedSymmetry && !identityAtomsByLabel.has(atom.label)) {
+            if (atom.isIdentityImage(this.symmetry?.identitySymOpId)
+                && !identityAtomsByLabel.has(atom.label)) {
                 identityAtomsByLabel.set(atom.label, atom);
             }
         }
@@ -564,7 +577,25 @@ export class Atom {
         if (this.appliedSymmetry) {
             return `${this.label}|${this.appliedSymmetry.key}`;
         }
+        // Only reached for atoms built without symmetry context (helpers, tests). Atoms
+        // parsed from a CIF are given the file's own identity operation explicitly,
+        // because a file is free to number its operations so that `1` is something other
+        // than x,y,z - see CrystalStructure.fromCIF.
         return `${this.label}|1_555`;
+    }
+
+    /**
+     * Whether this atom is the untransformed image, i.e. carries no symmetry operation
+     * or carries the identity of the structure it belongs to.
+     * @param {string} [identitySymOpId] - Operation ID naming the identity in this structure.
+     * @returns {boolean} True when the atom sits at its listed coordinates.
+     */
+    isIdentityImage(identitySymOpId) {
+        if (!this.appliedSymmetry) {
+            return true;
+        }
+        const identityKey = `${identitySymOpId ?? '1'}_555`;
+        return this.appliedSymmetry.key === identityKey;
     }
 
     /**

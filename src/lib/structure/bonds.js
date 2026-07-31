@@ -59,7 +59,7 @@ export class Bond {
      * @param {number} bondIndex - Index in _geom_bond loop
      * @returns {Bond} New bond instance
      */
-    static fromCIF(cifBlock, bondIndex) {
+    static fromCIF(cifBlock, bondIndex, identitySymOpId = '1') {
         const bondLoop = cifBlock.get('_geom_bond');
 
         let siteSymmetry2 = bondLoop.getIndex(
@@ -84,8 +84,11 @@ export class Bond {
             ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
             bondIndex,
         );
-        // Atom 1 is always in the asymmetric unit in standard CIF bond lists, so we use identity symmetry 1_555
-        const atom1Id = `${atom1Label}|1_555`;
+        // Atom 1 is always in the asymmetric unit in standard CIF bond lists, so it
+        // carries the identity operation. Which ID that is depends on the file: a CIF
+        // may list its operations in any order, so `1` is not necessarily x,y,z.
+        const identityCode = `${identitySymOpId}_555`;
+        const atom1Id = `${atom1Label}|${identityCode}`;
 
         const atom2Label = bondLoop.getIndex(
             ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
@@ -93,7 +96,7 @@ export class Bond {
         );
         const atom2Symmetry = siteSymmetry2 !== '?' ? siteSymmetry2 : '.';
         // If symmetry is identity ('.'), use 1_555, otherwise use the symmetry code
-        const atom2Id = `${atom2Label}|${atom2Symmetry === '.' ? '1_555' : atom2Symmetry}`;
+        const atom2Id = `${atom2Label}|${atom2Symmetry === '.' ? identityCode : atom2Symmetry}`;
 
         return new Bond(
             atom1Id,
@@ -174,7 +177,7 @@ export class HBond {
      * @param {number} hBondIndex - Index in _geom_hbond loop
      * @returns {HBond} New hydrogen bond instance
      */
-    static fromCIF(cifBlock, hBondIndex) {
+    static fromCIF(cifBlock, hBondIndex, identitySymOpId = '1') {
         const hBondLoop = cifBlock.get('_geom_hbond');
         const acceptorAtomSymmetry = hBondLoop.getIndex(
             ['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex,
@@ -185,20 +188,21 @@ export class HBond {
             ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
             hBondIndex,
         );
-        const donorId = `${donorLabel}|1_555`;
+        const identityCode = `${identitySymOpId}_555`;
+        const donorId = `${donorLabel}|${identityCode}`;
 
         const hydrogenLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'],
             hBondIndex,
         );
-        const hydrogenId = `${hydrogenLabel}|1_555`;
+        const hydrogenId = `${hydrogenLabel}|${identityCode}`;
 
         const acceptorLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
             hBondIndex,
         );
         const acceptorSymmetry = normalizeSiteSymmetry(acceptorAtomSymmetry);
-        const acceptorId = `${acceptorLabel}|${acceptorSymmetry === '.' ? '1_555' : acceptorSymmetry}`;
+        const acceptorId = `${acceptorLabel}|${acceptorSymmetry === '.' ? identityCode : acceptorSymmetry}`;
 
         return new HBond(
             donorId,
@@ -290,7 +294,7 @@ export class BondsFactory {
      * @param {Set<string>} atomLabels - Set of valid atom labels
      * @returns {Array<Bond>} Array of created bonds
      */
-    static createBonds(cifBlock, atomLabels) {
+    static createBonds(cifBlock, atomLabels, identitySymOpId = '1') {
         try {
             const bondLoop = cifBlock.get('_geom_bond');
             const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
@@ -307,7 +311,7 @@ export class BondsFactory {
                 );
 
                 if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
-                    bonds.push(Bond.fromCIF(cifBlock, i));
+                    bonds.push(Bond.fromCIF(cifBlock, i, identitySymOpId));
                 }
             }
             return bonds;
@@ -322,7 +326,7 @@ export class BondsFactory {
      * @param {Set<string>} atomLabels - Set of valid atom labels
      * @returns {HBond[]} Array of created hydrogen bonds
      */
-    static createHBonds(cifBlock, atomLabels) {
+    static createHBonds(cifBlock, atomLabels, identitySymOpId = '1') {
         const hbondLoop = cifBlock.get('_geom_hbond', false);
         if (!hbondLoop) {
             return [];
@@ -349,7 +353,7 @@ export class BondsFactory {
             );
 
             if (BondsFactory.isValidHBondTriplet(donorLabel, hydrogenLabel, acceptorLabel, atomLabels)) {
-                hBonds.push(HBond.fromCIF(cifBlock, i));
+                hBonds.push(HBond.fromCIF(cifBlock, i, identitySymOpId));
             }
         }
 

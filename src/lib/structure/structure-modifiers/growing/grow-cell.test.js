@@ -1249,6 +1249,44 @@ describe('Individual growing functions', () => {
     });
 });
 
+describe('duplicate collapsing in a large cell', () => {
+    test('two images of one atom 0.06 A apart are not merged in a 72 A cell', () => {
+        // Collapsing duplicates on fractional coordinates rounded to a fixed number of
+        // decimals makes the tolerance scale with the cell: three decimals is 0.07 A
+        // across a 72 A axis. C1 sits just off the mirror, so its image lands 0.0008
+        // fractional away - one rounded key, yet 0.058 A apart in space. Merging them
+        // redirects every bond naming one onto the other, which shows up as bond
+        // lengths wrong by roughly that distance.
+        const cell = new UnitCell(72.26, 72.26, 72.26, 90, 90, 90);
+        const symmetry = new CellSymmetry('P m', 6, [
+            new SymmetryOperation('x,y,z'),
+            new SymmetryOperation('1/2-x,y,z'),
+        ]);
+        const structure = new CrystalStructure(
+            cell,
+            [new Atom('C1', 'C', new FractPosition(0.2504, 0.3, 0.3))],
+            [],
+            [],
+            symmetry,
+        );
+
+        const grown = growCell(structure, true);
+        const images = grown.atoms.filter(atom => atom.label === 'C1');
+
+        expect(images.length).toBeGreaterThanOrEqual(2);
+        // Every retained pair must be a real distance apart, not a rounding artefact.
+        images.forEach((first, index) => {
+            images.slice(index + 1).forEach(second => {
+                const start = first.position.toCartesian(cell);
+                const end = second.position.toCartesian(cell);
+                expect(Math.hypot(
+                    start.x - end.x, start.y - end.y, start.z - end.z,
+                )).toBeGreaterThan(0.01);
+            });
+        });
+    });
+});
+
 describe('growCell integration tests', () => {
     describe('simple structures', () => {
         test('handles empty structure', () => {

@@ -100,6 +100,82 @@ describe('CrystalStructure', () => {
         expect(structure.hBonds).toEqual([]);
     });
 
+    describe('symmetry operations not listed with x,y,z first', () => {
+        // A CIF may list its symmetry operations in any order, so operation 1 is not
+        // necessarily the identity. COD 4302508 lists -x,-y,-z first. Everything that
+        // means "no symmetry applied" has to name the operation the file itself calls
+        // the identity; a hardcoded 1_555 silently means inversion in such a file, and
+        // every bond to an asymmetric-unit atom is then resolved to the wrong image.
+        const cifText = `
+data_test
+ _cell_length_a 10
+ _cell_length_b 10
+ _cell_length_c 10
+ _cell_angle_alpha 90
+ _cell_angle_beta 90
+ _cell_angle_gamma 90
+
+ loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+ 1 -x,-y,-z
+ 2 x,y,z
+
+ loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ C1 C 0.2 0.2 0.2
+ O1 O 0.35 0.2 0.2
+
+ loop_
+ _geom_bond_atom_site_label_1
+ _geom_bond_atom_site_label_2
+ _geom_bond_distance
+ _geom_bond_site_symmetry_2
+ C1 O1 1.5 .
+`;
+
+        test('the identity is found by what it does, not by being listed first', () => {
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(structure.symmetry.identitySymOpId).toBe('2');
+        });
+
+        test('atoms and bonds carrying no symmetry name the file own identity', () => {
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(structure.atoms.map(atom => atom.uniqueId)).toEqual(['C1|2_555', 'O1|2_555']);
+            expect(structure.bonds[0].atom1Id).toBe('C1|2_555');
+            expect(structure.bonds[0].atom2Id).toBe('O1|2_555');
+        });
+
+        test('every atom sits where resolving its own ID puts it', () => {
+            // The invariant the whole growth machinery rests on: an atom's ID is a
+            // recipe for its position, so applying it must reproduce the coordinates the
+            // atom already has. A sentinel that names the wrong operation breaks this
+            // silently - the atom keeps its listed coordinates while its ID says
+            // "inverted" - and every consumer that resolves the ID then disagrees about
+            // where the atom is.
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+            const listed = new Map(
+                CrystalStructure.fromCIF(new CIF(cifText).getBlock(0)).atoms
+                    .map(atom => [atom.label, atom]),
+            );
+
+            for (const atom of structure.atoms) {
+                const [label, code] = atom.uniqueId.split('|');
+                const resolved = structure.symmetry.applySymmetry(code, [listed.get(label)])[0];
+
+                expect(resolved.position.x).toBeCloseTo(atom.position.x, 6);
+                expect(resolved.position.y).toBeCloseTo(atom.position.y, 6);
+                expect(resolved.position.z).toBeCloseTo(atom.position.z, 6);
+            }
+        });
+    });
+
     test('an H-bond hydrogen already in a group merges the groups rather than joining both', () => {
         // H1 is covalently bonded to C1, and is also the hydrogen of an H-bond whose
         // donor O1 sits in a separate group. The D-H bond joins the two, so they must

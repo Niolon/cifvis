@@ -169,7 +169,14 @@ function isWithinUnitCell(atom, tolerance = 1e-6) {
  * @param {number} [precision] - Decimal places for rounding
  * @returns {string} Position key
  */
-function getAtomPositionKey(atom, precision = 3) {
+function getAtomPositionKey(atom, cell = null) {
+    // Rounding fractional coordinates to a fixed number of decimals makes the merge
+    // tolerance depend on the cell: three decimals is 0.007 A across a 7 A axis but
+    // 0.07 A across a 70 A one, so in a large cell atoms that are chemically distinct
+    // collapse into one and any bond to them is redirected onto the wrong partner.
+    // Derive the precision from the cell instead, so the granularity stays a fixed
+    // physical distance.
+    const precision = positionKeyPrecision(cell);
     // Use toFixed for consistent string representation to avoid floating-point precision issues
     // (e.g., 0.14485 and 0.14484999999999992 should produce the same key)
     const x = atom.position.x.toFixed(precision);
@@ -177,6 +184,21 @@ function getAtomPositionKey(atom, precision = 3) {
     const z = atom.position.z.toFixed(precision);
     // Use the base chemical label from the atom, which is now just 'label'
     return `${atom.label}_x${x}_y${y}_z${z}`;
+}
+
+/**
+ * Decimal places that make a fractional-coordinate key granular to roughly
+ * {@link SPECIAL_POSITION_TOLERANCE} in Ångström for a given cell.
+ * @param {object} [cell] - Unit cell, or null to keep the historical three decimals.
+ * @returns {number} Decimal places to round fractional coordinates to.
+ */
+function positionKeyPrecision(cell) {
+    if (!cell || ![cell.a, cell.b, cell.c].every(Number.isFinite)) {
+        return 3;
+    }
+    const longestAxis = Math.max(cell.a, cell.b, cell.c);
+    const decimals = Math.ceil(Math.log10(longestAxis / SPECIAL_POSITION_TOLERANCE));
+    return Math.min(Math.max(decimals, 3), 12);
 }
 
 /**
@@ -333,7 +355,7 @@ export function growAtomsinGroup(
                 objectTracker.periodicAtomMap.set(sourceKey, sameLabelAtoms);
             }
         } else {
-            const posKey = getAtomPositionKey(atom);
+            const posKey = getAtomPositionKey(atom, unitCell);
             existingAtomId = objectTracker.atomMap.get(posKey);
             if (!existingAtomId) {
                 objectTracker.atomMap.set(posKey, uniqueId);
@@ -1207,7 +1229,7 @@ export function growCell(
     const centredAtomIds = new Map();
     const duplicateAtomIds = new Map();
     for (const atom of finalAtoms) {
-        const positionKey = getAtomPositionKey(atom);
+        const positionKey = getAtomPositionKey(atom, structure.cell);
         const existingId = centredAtomIds.get(atom.uniqueId) || centredPositionMap.get(positionKey);
         if (existingId) {
             duplicateAtomIds.set(atom.uniqueId, existingId);

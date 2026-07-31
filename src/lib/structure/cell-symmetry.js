@@ -312,12 +312,18 @@ export class CellSymmetry {
             symmetryOperations.map((_, index) => [(index + 1).toString(), index]),
         );
         
+        // math.equal compares matrices elementwise and returns a matrix of booleans,
+        // which is always truthy - so testing it directly matched whichever operation
+        // came first, identity or not. Most CIFs list x,y,z first and the mistake stayed
+        // invisible; where a file lists another operation first, every `1_555` reference
+        // silently resolved to that operation instead.
+        const isIdentityOperation = symOp =>
+            symOp.rotMatrix.every((row, rowIndex) =>
+                row.every((value, columnIndex) => value === (rowIndex === columnIndex ? 1 : 0)))
+            && symOp.transVector.every(value => value === 0);
+
         this.identitySymOpId = Array.from(this.operationIds.entries())
-            .find(([_id, index]) => {
-                const symOp = this.symmetryOperations[index];
-                return math.equal(symOp.rotMatrix, math.identity(3)) && 
-                       math.equal(symOp.transVector, math.zeros(3));
-            })?.[0];
+            .find(([_id, index]) => isIdentityOperation(this.symmetryOperations[index]))?.[0];
         
         // Cache for combineSymmetryCodes results
         this._combineSymmetryCodesCache = new Map();
