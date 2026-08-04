@@ -39,6 +39,8 @@ export const descriptions = {
 
     // Interaction
     'interaction.rotationSpeed': 'Speed of rotation when dragging.',
+    'interaction.lockRotation': 'Disables mouse and one-finger rotation gestures. Explicit view changes still apply.',
+    'interaction.lockZoom': 'Disables mouse-wheel and pinch zoom gestures. Explicit view changes still apply.',
     'interaction.clickThreshold': 'Maximum time in milliseconds for an interaction to be considered a click.',
     'interaction.mouseRaycast.lineThreshold': 'Threshold for line selection with the mouse.',
     'interaction.mouseRaycast.pointsThreshold': 'Threshold for point selection with the mouse.',

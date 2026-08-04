@@ -3,9 +3,11 @@ import defaultSettings from '../../src/lib/ortep3d/structure-settings.js';
 import optionsData from '../../docs/.vitepress/data/options-data.json';
 import {
     STORAGE_KEY,
+    STARTING_VIEW_STORAGE_KEY,
     buildSettingsSchema,
     classifyChangedPaths,
     clearStoredOptions,
+    clearStartingView,
     deepEqual,
     deletePath,
     deserializePartial,
@@ -14,10 +16,12 @@ import {
     hasPath,
     humanizeLabel,
     loadStoredOptions,
+    loadStartingView,
     mergedValue,
     normalizePartial,
     plainDescription,
     saveStoredOptions,
+    saveStartingView,
     serializePartial,
     setPath,
     validateImportedOptions,
@@ -189,6 +193,28 @@ describe('storage', () => {
         clearStoredOptions();
         expect(localStorage.getItem(STORAGE_KEY)).toBe(null);
     });
+
+    test('saves a starting view separately from normal options', () => {
+        const view = {
+            rotation: { convention: 'external-xyz-cartesian', x: 10, y: -20, z: 30 },
+            camera: { type: 'orthographic', viewSize: 4 },
+        };
+        saveStartingView(view);
+        expect(loadStartingView()).toEqual(view);
+        expect(localStorage.getItem(STORAGE_KEY)).toBe(null);
+
+        clearStartingView();
+        expect(localStorage.getItem(STARTING_VIEW_STORAGE_KEY)).toBe(null);
+    });
+
+    test('drops an invalid saved starting view', () => {
+        localStorage.setItem(STARTING_VIEW_STORAGE_KEY, JSON.stringify({
+            version: 1,
+            view: { rotation: { x: 0, y: 0, z: 0 }, camera: { type: 'orthographic', viewSize: -1 } },
+        }));
+        expect(loadStartingView()).toBe(null);
+        expect(localStorage.getItem(STARTING_VIEW_STORAGE_KEY)).toBe(null);
+    });
 });
 
 describe('import validation', () => {
@@ -240,6 +266,9 @@ describe('apply classification', () => {
         });
         expect(classifyChangedPaths(['bondRadius', 'atomLabels.fontSize'])).toMatchObject({
             atomLabels: true, recreate: true,
+        });
+        expect(classifyChangedPaths(['interaction.lockRotation', 'interaction.lockZoom'])).toMatchObject({
+            interactionLocks: true, recreate: false,
         });
     });
 });

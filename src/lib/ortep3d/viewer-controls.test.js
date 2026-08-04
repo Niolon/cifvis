@@ -25,7 +25,10 @@ function createControls() {
     const controls = Object.create(ViewerControls.prototype);
     controls.viewer = viewer;
     controls.moleculeContainer = new THREE.Group();
-    controls.options = { interaction: { rotationSpeed: 5 } };
+    controls.options = {
+        interaction: { rotationSpeed: 5, lockRotation: false, lockZoom: false },
+        camera: { wheelZoomSpeed: 0.001 },
+    };
     controls.state = { isDragging: false, isPanning: false };
     controls.interactionCallbacks = new Set();
     controls.coupledInteractionStates = new Map();
@@ -97,5 +100,38 @@ describe('ViewerControls coupled interactions', () => {
         }, source);
         expect(controls.isInteracting()).toBe(false);
         expect(viewer.atomLabelManager.invalidateLayout).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('ViewerControls live-view helpers and gesture locks', () => {
+    test('maps external Cartesian XYZ angles to Rz * Ry * Rx', () => {
+        const { controls } = createControls();
+        controls.setExternalEulerRotation({ x: 0.3, y: -0.4, z: 0.5 });
+
+        const expected = new THREE.Matrix4()
+            .makeRotationZ(0.5)
+            .multiply(new THREE.Matrix4().makeRotationY(-0.4))
+            .multiply(new THREE.Matrix4().makeRotationX(0.3));
+        controls.moleculeContainer.matrix.elements.forEach((value, index) => {
+            expect(value).toBeCloseTo(expected.elements[index]);
+        });
+    });
+
+    test('blocks only pointer rotation and wheel zoom when locked', () => {
+        const { controls, viewer } = createControls();
+        controls.options.interaction.lockRotation = true;
+        controls.options.interaction.lockZoom = true;
+        controls.updateMouseCoordinates = vi.fn();
+        controls.handleZoom = vi.fn();
+
+        controls.handleMouseDown({ button: 0, clientX: 10, clientY: 20 });
+        controls.handleWheel({ preventDefault: vi.fn(), deltaY: 5 });
+
+        expect(controls.state.isDragging).toBe(false);
+        expect(controls.handleZoom).not.toHaveBeenCalled();
+
+        // The explicit control operation remains available to public callers.
+        controls.rotateStructure(new THREE.Vector2(0.1, 0));
+        expect(viewer.requestRender).toHaveBeenCalledTimes(1);
     });
 });

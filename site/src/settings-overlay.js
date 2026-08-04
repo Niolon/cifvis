@@ -11,15 +11,18 @@
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 import {
     buildSettingsSchema,
+    clearStartingView,
     classifyChangedPaths,
     clearStoredOptions,
     deletePath,
     filterSchema,
     getPath,
     loadStoredOptions,
+    loadStartingView,
     mergedValue,
     normalizePartial,
     saveStoredOptions,
+    saveStartingView,
     serializePartial,
     deserializePartial,
     setPath,
@@ -46,6 +49,7 @@ export function initializeSettingsOverlay(host) {
     let applyTimer = null;
     let applying = false;
     let applyQueued = false;
+    let liveViewRefreshFrame = null;
     const exportConfig = { scale: 2, longEdge: 2000, useLongEdge: false, background: 'transparent', labels: true };
 
     const button = document.getElementById('settings-button');
@@ -57,6 +61,7 @@ export function initializeSettingsOverlay(host) {
         }
         overlay.hidden = false;
         overlay.querySelector('.settings-search').focus();
+        startLiveViewRefresh();
     });
 
     // ---- change handling ---------------------------------------------------
@@ -76,6 +81,12 @@ export function initializeSettingsOverlay(host) {
         saveStoredOptions(partial);
         pendingPaths.add(path);
         refreshModifiedMarkers();
+        if (path === 'interaction.lockRotation' || path === 'interaction.lockZoom') {
+            const lock = path === 'interaction.lockRotation' ? 'rotation' : 'zoom';
+            host.getViewer().setInteractionLocks({ [lock]: Boolean(value) });
+            refreshLockControls();
+            refreshLiveViewFields();
+        }
         clearTimeout(applyTimer);
         applyTimer = setTimeout(applyPending, APPLY_DEBOUNCE_MS);
     }
@@ -94,6 +105,9 @@ export function initializeSettingsOverlay(host) {
             const viewer = host.getViewer();
             if (buckets.recreate) {
                 await host.recreateViewer(partial);
+                // Projection can change during recreation, so rebuild the live
+                // section to switch between View size and Distance.
+                rerenderControls();
             } else {
                 if (buckets.atomLabels) {
                     viewer.updateAtomLabelOptions(subOptions(paths, 'atomLabels.'));
@@ -103,6 +117,16 @@ export function initializeSettingsOverlay(host) {
                 }
                 if (buckets.contourLines) {
                     viewer.updateContourLineOptions(subOptions(paths, 'contourLines.'));
+                }
+                if (buckets.interactionLocks) {
+                    const locks = {};
+                    if (paths.includes('interaction.lockRotation')) {
+                        locks.rotation = mergedValue(partial, 'interaction.lockRotation');
+                    }
+                    if (paths.includes('interaction.lockZoom')) {
+                        locks.zoom = mergedValue(partial, 'interaction.lockZoom');
+                    }
+                    viewer.setInteractionLocks(locks);
                 }
                 if (buckets.modifierModes.length > 0) {
                     const modes = {};
@@ -263,7 +287,23 @@ export function initializeSettingsOverlay(host) {
 
     /** Copies the minimal non-default options JSON to the clipboard. */
     async function copyToClipboard() {
-        const text = serializePartial(partial);
+        await copyTextToClipboard(serializePartial(partial));
+        host.updateStatus('Options JSON copied to clipboard', 'success');
+    }
+
+    /** Copies the current non-persisted view as a setViewState-compatible fragment. */
+    async function copyViewToClipboard() {
+        const { rotation, camera } = host.getViewer().getViewState();
+        await copyTextToClipboard(JSON.stringify({ rotation, camera }, null, 2));
+        host.updateStatus('Live view JSON copied to clipboard', 'success');
+    }
+
+    /**
+     * Copies text using the Clipboard API with the playground's legacy fallback.
+     * @param {string} text - Clipboard text
+     * @returns {Promise<void>} Completion once the copy attempt finishes
+     */
+    async function copyTextToClipboard(text) {
         try {
             await navigator.clipboard.writeText(text);
         } catch {
@@ -274,7 +314,6 @@ export function initializeSettingsOverlay(host) {
             document.execCommand('copy');
             textarea.remove();
         }
-        host.updateStatus('Options JSON copied to clipboard', 'success');
     }
 
     /** Clears everything back to library defaults. */
@@ -301,13 +340,16 @@ export function initializeSettingsOverlay(host) {
         for (const group of groups) {
             const details = document.createElement('details');
             details.className = 'settings-group';
-            details.open = searching || group.id === 'style';
+            details.open = searching || group.id === 'current-view';
             const summary = document.createElement('summary');
             summary.textContent = group.title;
             details.appendChild(summary);
             if (group.special === 'elements') {
                 details.appendChild(buildElementSection(group));
             } else {
+                if (group.id === 'current-view') {
+                    details.appendChild(buildCurrentViewSection());
+                }
                 for (const row of group.rows) {
                     details.appendChild(row.divider ? buildDivider(row) : buildRow(row));
                 }
@@ -315,6 +357,214 @@ export function initializeSettingsOverlay(host) {
             body.appendChild(details);
         }
         refreshModifiedMarkers();
+    }
+
+    /** Refreshes live-view values while the settings panel is visible. */
+    function startLiveViewRefresh() {
+        if (liveViewRefreshFrame !== null) {
+            return;
+        }
+        const refresh = () => {
+            if (!overlay || overlay.hidden) {
+                liveViewRefreshFrame = null;
+                return;
+            }
+            refreshLiveViewFields();
+            liveViewRefreshFrame = requestAnimationFrame(refresh);
+        };
+        refresh();
+    }
+
+    /** Writes the viewer state into live fields unless the user is editing one. */
+    function refreshLiveViewFields() {
+        const viewer = host.getViewer();
+        if (!viewer?.getViewState || !overlay) {
+            return;
+        }
+        const state = viewer.getViewState();
+        for (const control of overlay.querySelectorAll('[data-live-view-field]')) {
+            if (document.activeElement === control) {
+                continue;
+            }
+            const path = control.dataset.liveViewField;
+            const value = path === 'rotation.x' ? state.rotation.x
+                : path === 'rotation.y' ? state.rotation.y
+                    : path === 'rotation.z' ? state.rotation.z
+                        : path === 'camera.viewSize' ? state.camera.viewSize
+                            : state.camera.distance;
+            if (Number.isFinite(value)) {
+                control.value = formatLiveNumber(value);
+            }
+        }
+        for (const button of overlay.querySelectorAll('[data-live-view-lock]')) {
+            const lock = button.dataset.liveViewLock;
+            const locked = state.locks[lock];
+            button.querySelector('.settings-view-lock-shackle').setAttribute(
+                'd',
+                locked ? 'M8 10V7a4 4 0 0 1 8 0v3' : 'M8 10V7a4 4 0 0 1 7.5-2',
+            );
+            button.setAttribute('aria-pressed', String(locked));
+            button.setAttribute('aria-label', `${locked ? 'Unlock' : 'Lock'} ${lock}`);
+            button.title = `${locked ? 'Unlock' : 'Lock'} ${lock}`;
+        }
+    }
+
+    /**
+     * Formats a live numeric value with stable readable precision.
+     * @param {number} value - Live numeric value
+     * @returns {string} Readable precision
+     */
+    function formatLiveNumber(value) {
+        return String(Number(value.toPrecision(8)));
+    }
+
+    /**
+     * Builds the non-persisted controls at the start of Current view.
+     * @returns {HTMLElement} Current-view controls
+     */
+    function buildCurrentViewSection() {
+        const container = document.createElement('div');
+        container.className = 'settings-live-view';
+        const note = document.createElement('div');
+        note.className = 'settings-hint';
+        note.textContent = 'Live view is not included in Copy JSON. It resets unless you choose ' +
+            'Set as starting view below; that starting view is stored only in this browser. ' +
+            'It restores rotation and relative framing after the structure is centred. ' +
+            'Locks are normal saved settings. Rotation uses external XYZ Cartesian axes.';
+        container.appendChild(note);
+
+        const rotationControl = buildLiveViewControl('Rotation (external XYZ, °)', 'rotation');
+        const rotationFields = document.createElement('div');
+        rotationFields.className = 'settings-live-rotation-fields';
+        for (const [axis, label] of [['x', 'X'], ['y', 'Y'], ['z', 'Z']]) {
+            const axisField = document.createElement('label');
+            axisField.className = 'settings-live-axis';
+            const axisLabel = document.createElement('span');
+            axisLabel.textContent = label;
+            axisField.append(axisLabel, createLiveNumberInput(`rotation.${axis}`, (value) => {
+                const rotation = host.getViewer().getViewState().rotation;
+                host.getViewer().setViewState({ rotation: { ...rotation, [axis]: value } });
+            }));
+            rotationFields.appendChild(axisField);
+        }
+        rotationControl.body.appendChild(rotationFields);
+        container.appendChild(rotationControl.element);
+
+        const viewer = host.getViewer();
+        const state = viewer.getViewState();
+        const framing = state.camera.type === 'orthographic'
+            ? { label: 'View size (Å)', field: 'camera.viewSize', key: 'viewSize' }
+            : { label: 'Distance (Å)', field: 'camera.distance', key: 'distance' };
+        const framingControl = buildLiveViewControl(framing.label, 'zoom');
+        framingControl.body.appendChild(createLiveNumberInput(framing.field, (value) => {
+            host.getViewer().setViewState({ camera: { [framing.key]: value } });
+        }));
+        container.appendChild(framingControl.element);
+
+        const actions = document.createElement('div');
+        actions.className = 'settings-live-actions';
+        const saveStartingButton = actionButton('Set as starting view', () => {
+            saveStartingView(host.getViewer().getViewState());
+            clearStartingButton.disabled = false;
+            host.updateStatus('Current view saved as the starting view', 'success');
+        });
+        const clearStartingButton = actionButton('Clear starting view', () => {
+            clearStartingView();
+            clearStartingButton.disabled = true;
+            host.updateStatus('Saved starting view cleared', 'success');
+        });
+        clearStartingButton.disabled = loadStartingView() === null;
+        actions.append(
+            actionButton('Copy View', copyViewToClipboard),
+            saveStartingButton,
+            clearStartingButton,
+        );
+        container.appendChild(actions);
+        return container;
+    }
+
+    /**
+     * Builds one custom live-view section with a label and minimal lock button.
+     * @param {string} labelText - Visible field label
+     * @param {'rotation'|'zoom'} lock - Interaction lock name
+     * @returns {{element: HTMLElement, body: HTMLElement}} Section and input container
+     */
+    function buildLiveViewControl(labelText, lock) {
+        const element = document.createElement('div');
+        element.className = 'settings-live-control';
+        const header = document.createElement('div');
+        header.className = 'settings-live-control-header';
+        const label = document.createElement('span');
+        label.textContent = labelText;
+        const body = document.createElement('div');
+        body.className = 'settings-live-control-body';
+        header.append(label, buildLockButton(lock));
+        element.append(header, body);
+        return { element, body };
+    }
+
+    /**
+     * Creates an immediately applied numeric live-view input.
+     * @param {string} field - State path used for refreshes
+     * @param {function(number): void} apply - Applies one finite input value
+     * @returns {HTMLInputElement} Number input
+     */
+    function createLiveNumberInput(field, apply) {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = 'any';
+        input.className = 'settings-row-control';
+        input.dataset.liveViewField = field;
+        input.addEventListener('change', () => {
+            const value = Number(input.value);
+            if (!Number.isFinite(value)) {
+                refreshLiveViewFields();
+                return;
+            }
+            apply(value);
+            refreshLiveViewFields();
+        });
+        return input;
+    }
+
+    /**
+     * Creates a persisted lock toggle for the adjacent live control.
+     * @param {'rotation'|'zoom'} lock - Interaction lock name
+     * @returns {HTMLButtonElement} Lock toggle
+     */
+    function buildLockButton(lock) {
+        const path = lock === 'rotation' ? 'interaction.lockRotation' : 'interaction.lockZoom';
+        const button = actionButton('', () => {
+            const next = !host.getViewer().getViewState().locks[lock];
+            commit(path, next);
+        });
+        button.classList.add('settings-view-lock');
+        button.dataset.liveViewLock = lock;
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path class="settings-view-lock-shackle" d="M8 10V7a4 4 0 0 1 7.5-2"></path>
+                <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+            </svg>
+        `;
+        return button;
+    }
+
+    /** Keeps the general interaction checkboxes aligned with quick lock buttons. */
+    function refreshLockControls() {
+        if (!overlay) {
+            return;
+        }
+        for (const [path, value] of [
+            ['interaction.lockRotation', mergedValue(partial, 'interaction.lockRotation')],
+            ['interaction.lockZoom', mergedValue(partial, 'interaction.lockZoom')],
+        ]) {
+            const control = overlay.querySelector(
+                `.settings-row[data-path="${path}"] .settings-row-control[type="checkbox"]`,
+            );
+            if (control) {
+                control.checked = Boolean(value);
+            }
+        }
     }
 
     /** Re-renders the body preserving the current search query. */

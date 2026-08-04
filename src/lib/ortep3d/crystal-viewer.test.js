@@ -119,6 +119,115 @@ describe('CrystalViewer rendering option validation', () => {
     });
 });
 
+/**
+ * @param {'orthographic'|'perspective'} type - Camera projection type
+ * @returns {object} Viewer harness with live-view dependencies
+ */
+function createLiveViewHarness(type = 'orthographic') {
+    const moleculeContainer = new THREE.Group();
+    const camera = type === 'orthographic'
+        ? new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 100)
+        : new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.set(0, 0, 10);
+    const viewer = Object.create(CrystalViewer.prototype);
+    Object.assign(viewer, {
+        moleculeContainer,
+        camera,
+        cameraController: {
+            options: type === 'orthographic'
+                ? { minSize: 2, maxSize: 8 }
+                : { minDistance: 3, maxDistance: 15 },
+            setOrthoSize: vi.fn((size) => {
+                camera.top = size;
+                camera.bottom = -size;
+            }),
+        },
+        options: { interaction: { lockRotation: false, lockZoom: false } },
+        requestRender: vi.fn(),
+    });
+    viewer.controls = {
+        setExternalEulerRotation: vi.fn((rotation) => {
+            moleculeContainer.quaternion.setFromEuler(new THREE.Euler(
+                rotation.x, rotation.y, rotation.z, 'ZYX',
+            ));
+            moleculeContainer.updateMatrix();
+        }),
+        notifyCameraChanged: vi.fn(),
+    };
+    if (type === 'orthographic') {
+        viewer.cameraController.baseSize = 4;
+    } else {
+        viewer.cameraController.basePosition = new THREE.Vector3(0, 0, 10);
+    }
+    return viewer;
+}
+
+describe('CrystalViewer live view API', () => {
+    test('round-trips external Cartesian XYZ rotation and clamps orthographic view size', () => {
+        const viewer = createLiveViewHarness();
+        viewer.setViewState({
+            rotation: { x: 20, y: -30, z: 40 },
+            camera: { viewSize: 20 },
+        });
+
+        const expected = new THREE.Matrix4()
+            .makeRotationZ(40 * THREE.MathUtils.DEG2RAD)
+            .multiply(new THREE.Matrix4().makeRotationY(-30 * THREE.MathUtils.DEG2RAD))
+            .multiply(new THREE.Matrix4().makeRotationX(20 * THREE.MathUtils.DEG2RAD));
+        viewer.moleculeContainer.matrix.elements.forEach((value, index) => {
+            expect(value).toBeCloseTo(expected.elements[index]);
+        });
+        const state = viewer.getViewState();
+        expect(state.rotation.convention).toBe('external-xyz-cartesian');
+        expect(state.rotation.x).toBeCloseTo(20);
+        expect(state.rotation.y).toBeCloseTo(-30);
+        expect(state.rotation.z).toBeCloseTo(40);
+        expect(state.camera).toMatchObject({ type: 'orthographic', viewSize: 8, zoomScale: 2 });
+        expect(viewer.controls.notifyCameraChanged).toHaveBeenCalledOnce();
+    });
+
+    test('clamps perspective distance while preserving the current camera direction', () => {
+        const viewer = createLiveViewHarness('perspective');
+        viewer.camera.position.set(3, 4, 0);
+        viewer.setViewState({ camera: { distance: 30 } });
+
+        expect(viewer.camera.position.length()).toBeCloseTo(15);
+        viewer.camera.position.normalize().toArray().forEach((value, index) => {
+            expect(value).toBeCloseTo([0.6, 0.8, 0][index]);
+        });
+    });
+
+    test('returns a stable canonical external-XYZ state at an Euler singularity', () => {
+        const viewer = createLiveViewHarness();
+        viewer.setViewState({ rotation: { x: 10, y: 90, z: -25 } });
+        const canonical = viewer.getViewState();
+        viewer.setViewState({ rotation: canonical.rotation });
+        const replayed = viewer.getViewState();
+
+        for (const axis of ['x', 'y', 'z']) {
+            expect(replayed.rotation[axis]).toBeCloseTo(canonical.rotation[axis]);
+        }
+    });
+
+    test('updates locks separately from live rotation and framing', () => {
+        const viewer = createLiveViewHarness();
+        viewer.setInteractionLocks({ rotation: true, zoom: true });
+
+        expect(viewer.getViewState().locks).toEqual({ rotation: true, zoom: true });
+        expect(() => viewer.setInteractionLocks({ rotation: 'yes' })).toThrow(
+            'Interaction lock rotation must be true or false',
+        );
+    });
+
+    test('restores relative framing from a fitted, centred starting view', () => {
+        const viewer = createLiveViewHarness();
+        viewer.setViewState({ camera: { zoomScale: 1.5 } });
+
+        expect(viewer.camera.top).toBeCloseTo(6);
+        expect(viewer.getViewState().camera.zoomScale).toBeCloseTo(1.5);
+    });
+});
+
 describe('CrystalViewer semantic modifier modes', () => {
     test('applies several modes with one camera-resetting rebuild and reports skipped modes', async () => {
         const hydrogen = {

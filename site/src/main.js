@@ -10,7 +10,7 @@ import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
 } from './playground-cif-routing.js';
-import { clearStoredOptions, loadStoredOptions } from './playground-settings.js';
+import { clearStoredOptions, loadStartingView, loadStoredOptions } from './playground-settings.js';
 import { initializeSettingsOverlay } from './settings-overlay.js';
 
 /**
@@ -45,6 +45,14 @@ function clearStatus() {
 
 let viewer = null;
 let scalarFieldDisplay = createScalarFieldDisplayState();
+
+/** Applies the optional browser-local starting view after the structure is fitted. */
+function applySavedStartingView() {
+    const startingView = loadStartingView();
+    if (startingView !== null) {
+        viewer.setViewState(startingView);
+    }
+}
 
 /**
  * Creates the playground viewer and wires its event handlers.
@@ -235,6 +243,7 @@ async function recreateViewer(optionsPartial) {
     if (Object.keys(modes).length > 0) {
         await viewer.setModifierModes(modes);
     }
+    applySavedStartingView();
     adaptButtons();
 }
 
@@ -292,6 +301,7 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
     }
 
     playgroundHasStructure = true;
+    applySavedStartingView();
     adaptButtons();
     if (!result.differenceDensityStarted) {
         updateStatus('Structure loaded successfully', 'success');
@@ -587,6 +597,7 @@ async function loadInitialStructure() {
             throw new Error(result.error);
         }
         playgroundHasStructure = true;
+        applySavedStartingView();
         adaptButtons();
         if (!result.differenceDensityStarted) {
             return;

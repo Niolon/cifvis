@@ -80,6 +80,16 @@
       "default": "5"
     },
     {
+      "path": "interaction.lockRotation",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "interaction.lockZoom",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "interaction.clickThreshold",
       "type": "Number",
       "default": "200"

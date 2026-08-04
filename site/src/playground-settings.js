@@ -30,6 +30,8 @@ import { descriptions } from '../../docs/.vitepress/data/option-descriptions.js'
 
 export const STORAGE_KEY = 'cifvis-playground-options';
 const STORAGE_VERSION = 1;
+export const STARTING_VIEW_STORAGE_KEY = 'cifvis-playground-starting-view';
+const STARTING_VIEW_STORAGE_VERSION = 1;
 
 // ---------------------------------------------------------------------------
 // Dotted-path helpers
@@ -341,6 +343,12 @@ const NULLABLE_TEXT_PATHS = new Set(['contourLines.lineColor']);
  * before the named path.
  */
 const CURATED_GROUPS = [
+    {
+        // Live, non-persisted controls are rendered by settings-overlay.js.
+        // Compact lock buttons are rendered beside the live values. The same
+        // persisted options remain available in general interaction settings.
+        id: 'current-view', title: 'Current view',
+    },
     {
         id: 'style', title: 'Style', source: ['rendering'],
         exclude: ['renderMode', 'fixCifErrors'],
@@ -688,6 +696,90 @@ export function clearStoredOptions() {
 }
 
 // ---------------------------------------------------------------------------
+// Explicit saved starting view (separate from normal options JSON)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates and copies the replayable part of a live view state.
+ * @param {unknown} value - Candidate state from CrystalViewer#getViewState
+ * @returns {object|null} Safe rotation/framing state, or null when invalid
+ */
+function normalizeStartingView(value) {
+    if (value === null || typeof value !== 'object' ||
+        value.rotation === null || typeof value.rotation !== 'object' ||
+        value.camera === null || typeof value.camera !== 'object') {
+        return null;
+    }
+    const { x, y, z } = value.rotation;
+    if (![x, y, z].every(Number.isFinite)) {
+        return null;
+    }
+    const rotation = { convention: 'external-xyz-cartesian', x, y, z };
+    if (value.camera.type === 'orthographic' &&
+        Number.isFinite(value.camera.zoomScale) && value.camera.zoomScale > 0) {
+        return { rotation, camera: { type: 'orthographic', zoomScale: value.camera.zoomScale } };
+    }
+    if (value.camera.type === 'perspective' &&
+        Number.isFinite(value.camera.zoomScale) && value.camera.zoomScale > 0) {
+        return { rotation, camera: { type: 'perspective', zoomScale: value.camera.zoomScale } };
+    }
+    // Retain existing saved starting views from before relative framing was added.
+    if (value.camera.type === 'orthographic' &&
+        Number.isFinite(value.camera.viewSize) && value.camera.viewSize > 0) {
+        return { rotation, camera: { type: 'orthographic', viewSize: value.camera.viewSize } };
+    }
+    if (value.camera.type === 'perspective' &&
+        Number.isFinite(value.camera.distance) && value.camera.distance > 0) {
+        return { rotation, camera: { type: 'perspective', distance: value.camera.distance } };
+    }
+    return null;
+}
+
+/** @returns {object|null} Explicitly saved starting view, if valid. */
+export function loadStartingView() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(STARTING_VIEW_STORAGE_KEY));
+        const view = stored?.version === STARTING_VIEW_STORAGE_VERSION
+            ? normalizeStartingView(stored.view)
+            : null;
+        if (view === null && stored !== null) {
+            localStorage.removeItem(STARTING_VIEW_STORAGE_KEY);
+        }
+        return view;
+    } catch {
+        try {
+            localStorage.removeItem(STARTING_VIEW_STORAGE_KEY);
+        } catch { /* storage unavailable */ }
+        return null;
+    }
+}
+
+/**
+ * Stores a live view as the playground's explicitly chosen starting view.
+ * @param {object} view - State returned by CrystalViewer#getViewState
+ * @throws {TypeError} If view is not a valid live view
+ */
+export function saveStartingView(view) {
+    const normalized = normalizeStartingView(view);
+    if (normalized === null) {
+        throw new TypeError('Starting view must contain finite external XYZ rotation and camera framing');
+    }
+    try {
+        localStorage.setItem(STARTING_VIEW_STORAGE_KEY, JSON.stringify({
+            version: STARTING_VIEW_STORAGE_VERSION,
+            view: normalized,
+        }));
+    } catch { /* storage unavailable (private mode) */ }
+}
+
+/** Removes the playground's explicitly saved starting view. */
+export function clearStartingView() {
+    try {
+        localStorage.removeItem(STARTING_VIEW_STORAGE_KEY);
+    } catch { /* storage unavailable */ }
+}
+
+// ---------------------------------------------------------------------------
 // Import validation
 // ---------------------------------------------------------------------------
 
@@ -811,6 +903,7 @@ export function classifyChangedPaths(paths) {
         atomLabels: false,
         isosurface: false,
         contourLines: false,
+        interactionLocks: false,
         modifierModes: [],
         recreate: false,
     };
@@ -824,6 +917,8 @@ export function classifyChangedPaths(paths) {
             result.contourLines = true;
         } else if (modeMap[path]) {
             result.modifierModes.push(modeMap[path]);
+        } else if (path === 'interaction.lockRotation' || path === 'interaction.lockZoom') {
+            result.interactionLocks = true;
         } else {
             result.recreate = true;
         }

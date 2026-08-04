@@ -208,6 +208,40 @@ export class ViewerControls {
     }
 
     /**
+     * Sets an external Cartesian XYZ orientation (Rz(z) * Ry(y) * Rx(x)).
+     * @param {{x:number, y:number, z:number}} rotation - Angles in radians
+     * @param {object} [behavior] - Broadcast and render controls
+     */
+    setExternalEulerRotation(rotation, behavior = {}) {
+        const { broadcast = true, render = true } = behavior;
+        this.moleculeContainer.quaternion.setFromEuler(new THREE.Euler(
+            rotation.x,
+            rotation.y,
+            rotation.z,
+            'ZYX',
+        ));
+        this.moleculeContainer.updateMatrix();
+        this.moleculeContainer.matrixWorldNeedsUpdate = true;
+        if (render) {
+            this.viewer.requestRender();
+        }
+        if (broadcast) {
+            this.notifyInteraction({
+                type: 'rotate',
+                matrix: this.moleculeContainer.matrix.toArray(),
+            });
+        }
+    }
+
+    /** Broadcasts the current camera state after a direct camera update. */
+    notifyCameraChanged() {
+        this.notifyInteraction({
+            type: 'camera',
+            state: this.viewer.cameraController.getCoupledViewState(),
+        });
+    }
+
+    /**
      * Resets camera to initial position and orientation.
      * @param {object} [behavior] - Broadcast and render controls for coupled replay
      * @private
@@ -350,7 +384,7 @@ export class ViewerControls {
         const touches = event.touches;
         
         if (touches.length === 1 && !this.state.isDragging) {
-            this.state.isDragging = true;
+            this.state.isDragging = !this.options.interaction.lockRotation;
             this.state.isPanning = false;
             this.state.clickStartTime = Date.now();
             this.updateMouseCoordinates(touches[0].clientX, touches[0].clientY);
@@ -411,8 +445,10 @@ export class ViewerControls {
                 return; // Skip this frame to avoid jumps
             }
             
-            // Handle pinch zoom
-            this.handleZoom((this.state.pinchStartDistance - distance) * this.options.camera.pinchZoomSpeed);
+            // Panning remains available while zoom is locked.
+            if (!this.options.interaction.lockZoom) {
+                this.handleZoom((this.state.pinchStartDistance - distance) * this.options.camera.pinchZoomSpeed);
+            }
             this.state.pinchStartDistance = distance;
             
             const currentCentroid = this.clientToMouseCoordinates(
@@ -487,7 +523,7 @@ export class ViewerControls {
     handleMouseDown(event) {
         if (event.button === 2) {
             this.state.isPanning = true;
-        } else {
+        } else if (!this.options.interaction.lockRotation) {
             this.state.isDragging = true;
         }
         this.notifyInteractionState();
@@ -566,6 +602,9 @@ export class ViewerControls {
      */
     handleWheel(event) {
         event.preventDefault();
+        if (this.options.interaction.lockZoom) {
+            return;
+        }
         this.handleZoom(event.deltaY * this.options.camera.wheelZoomSpeed);
     }
 
