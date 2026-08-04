@@ -117,6 +117,25 @@ describe('ViewerControls live-view helpers and gesture locks', () => {
         });
     });
 
+    test('recentres an offset molecule so saved and subsequent rotations pivot through it', () => {
+        const { controls, viewer } = createControls();
+        const structure = new THREE.Group();
+        const atom = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial());
+        atom.position.set(4, -2, 1);
+        structure.add(atom);
+        controls.moleculeContainer.add(structure);
+        viewer.state = { currentStructure: structure };
+
+        controls.setExternalEulerRotation({ x: 0.2, y: -0.3, z: 0.4 });
+        const savedViewCenter = new THREE.Box3().setFromObject(structure).getCenter(new THREE.Vector3());
+        expect(savedViewCenter.length()).toBeCloseTo(0);
+
+        controls.rotateStructure(new THREE.Vector2(0.15, -0.1));
+        controls.moleculeContainer.updateMatrixWorld(true);
+        const rotatedCenter = new THREE.Box3().setFromObject(structure).getCenter(new THREE.Vector3());
+        expect(rotatedCenter.length()).toBeCloseTo(0);
+    });
+
     test('blocks only pointer rotation and wheel zoom when locked', () => {
         const { controls, viewer } = createControls();
         controls.options.interaction.lockRotation = true;

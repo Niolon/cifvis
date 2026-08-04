@@ -220,8 +220,23 @@ export class ViewerControls {
             rotation.z,
             'ZYX',
         ));
+        // loadStructure() centres the molecule after choosing its automatic
+        // orientation. Replacing that orientation makes the old translation
+        // invalid, so recompute it from the molecule alone (excluding cell and
+        // density auxiliaries). Keeping the molecular centre at the origin also
+        // makes subsequent incremental rotations pivot through the molecule.
+        this.moleculeContainer.position.set(0, 0, 0);
         this.moleculeContainer.updateMatrix();
-        this.moleculeContainer.matrixWorldNeedsUpdate = true;
+        this.moleculeContainer.updateMatrixWorld(true);
+        const structure = this.viewer.state?.currentStructure;
+        if (structure) {
+            const center = new THREE.Box3().setFromObject(structure).getCenter(new THREE.Vector3());
+            if (Number.isFinite(center.x) && Number.isFinite(center.y) && Number.isFinite(center.z)) {
+                this.moleculeContainer.position.sub(center);
+            }
+        }
+        this.moleculeContainer.updateMatrix();
+        this.moleculeContainer.updateMatrixWorld(true);
         if (render) {
             this.viewer.requestRender();
         }
