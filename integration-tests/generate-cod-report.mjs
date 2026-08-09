@@ -390,7 +390,10 @@ function formatMarkdown(report, totalFilesProcessed, stats) {
         lines.push('| COD ID | Detail |');
         lines.push('|---|---|');
         for (const item of cifvisInternal.slice(0, EXAMPLES_PER_CATEGORY)) {
-            lines.push(`| ${item.codId} | ${cleanDetailForDisplay(item.detail).replace(/\|/g, '\\|')} |`);
+            const detail = cleanDetailForDisplay(item.detail)
+                .replace(/\\/g, '\\\\')
+                .replace(/\|/g, '\\|');
+            lines.push(`| ${item.codId} | ${detail} |`);
         }
         lines.push('');
     }
