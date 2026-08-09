@@ -343,7 +343,9 @@ function formatMarkdown(report, totalFilesProcessed, stats) {
                 continue;
             }
             seen.add(item.codId);
-            const detail = cleanDetailForDisplay(item.detail).replace(/\|/g, '\\|');
+            const detail = cleanDetailForDisplay(item.detail)
+                .replace(/\\/g, '\\\\')
+                .replace(/\|/g, '\\|');
             lines.push(`| ${item.codId} | ${detail} |`);
             shown++;
             if (shown >= EXAMPLES_PER_CATEGORY) {
