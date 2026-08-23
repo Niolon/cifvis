@@ -755,8 +755,24 @@ export class CrystalViewer {
         if (this.options.renderStyle === 'cutout-2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
+        // Take the render canvas out of the container's intrinsic sizing. It is
+        // given an explicit pixel width matching the container, so while it
+        // stays in flow it can widen its own parent -- and inside a CSS grid or
+        // flex track, whose items default to min-width:auto, that closes a
+        // feedback loop with the resize observer below: canvas widens track,
+        // track widens container, observer fires, canvas widens again.
+        // Absolute positioning makes the canvas a pure consumer of the
+        // container's size, which is what the atom-label overlay already does.
+        if (getComputedStyle(this.container).position === 'static') {
+            this.container.style.position = 'relative';
+        }
+        Object.assign(this.renderer.domElement.style, {
+            position: 'absolute',
+            inset: '0',
+        });
         this.resizeRendererToDisplaySize();
         this.container.appendChild(this.renderer.domElement);
+        this.observeContainerResize();
 
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
@@ -764,6 +780,38 @@ export class CrystalViewer {
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);
+    }
+
+    /**
+     * Keeps the renderer matched to the container as it changes size.
+     *
+     * Without this, the size read during construction is the only one the
+     * renderer ever sees. A viewer built inside a hidden container -- a
+     * reveal.js slide that is not current, an inactive tab, a collapsed
+     * accordion, a closed <details> -- gets a 0x0 canvas, and revealing the
+     * container afterwards does not recover it. The viewer stays blank with no
+     * error, which is a hard failure to diagnose from the outside.
+     *
+     * ResizeObserver fires once on observe(), so a viewer created at zero size
+     * corrects itself as soon as the container is laid out.
+     */
+    observeContainerResize() {
+        if (typeof ResizeObserver === 'undefined') {
+            return; // non-browser or very old environment; nothing to observe
+        }
+        this.containerResizeObserver = new ResizeObserver(() => {
+            // Ignore transient zero sizes (e.g. mid-transition); there is
+            // nothing to render into and the next callback will carry the
+            // real size.
+            if (!this.container.clientWidth || !this.container.clientHeight) {
+                return;
+            }
+            if (this.resizeRendererToDisplaySize()) {
+                this.cameraController?.handleResize?.();
+                this.requestRender();
+            }
+        });
+        this.containerResizeObserver.observe(this.container);
     }
 
     /**
@@ -2786,6 +2834,8 @@ export class CrystalViewer {
         if (this.animationFrameId !== undefined) {
             cancelAnimationFrame(this.animationFrameId);
         }
+        this.containerResizeObserver?.disconnect();
+        this.containerResizeObserver = null;
         this.cancelScalarFieldLoad('Viewer disposed');
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();

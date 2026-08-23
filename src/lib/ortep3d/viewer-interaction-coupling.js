@@ -47,8 +47,16 @@ const COUPLED_MODIFIER_NAMES = ['hydrogen', 'disorder', 'symmetry'];
 export class ViewerInteractionCoupling {
     /**
      * @param {object[]} [participants] - CrystalViewer and/or cifview-widget instances
+     * @param {object} [options] - Coupling options
+     * @param {boolean} [options.coupleModes] - Share hydrogen, disorder and
+     *   symmetry modes between viewers (default true). Set false to couple only
+     *   the camera and molecular transform, leaving each viewer to display what
+     *   it was configured to display -- the case when coupled structures
+     *   deliberately differ, such as an input model beside a refined one where
+     *   only the latter has anisotropic hydrogens.
      */
-    constructor(participants = []) {
+    constructor(participants = [], options = {}) {
+        this.coupleModes = options.coupleModes !== false;
         this.viewers = new Map();
         this.pendingInteractions = [];
         this.pendingFrame = null;
@@ -69,9 +77,11 @@ export class ViewerInteractionCoupling {
         const stopInteraction = viewer.controls.onInteraction(interaction => {
             this.enqueue(viewer, interaction);
         });
-        const stopMode = viewer.onModifierModeChange?.(change => {
-            this.enqueueModeChange(viewer, change);
-        }) ?? (() => {});
+        const stopMode = this.coupleModes
+            ? (viewer.onModifierModeChange?.(change => {
+                this.enqueueModeChange(viewer, change);
+            }) ?? (() => {}))
+            : (() => {});
         this.viewers.set(viewer, { stopInteraction, stopMode });
         return this;
     }
@@ -80,13 +90,28 @@ export class ViewerInteractionCoupling {
      * Aligns every peer to one viewer's current display modes, molecular
      * transform, pan, and absolute camera framing. Unsupported modes are
      * skipped per peer.
+     *
+     * Note that this copies DISPLAY MODES as well as the view: hydrogen,
+     * disorder and symmetry. Peers therefore lose whatever they were
+     * constructed with -- coupling a model that has anisotropic hydrogens to
+     * one that does not will drop the first back to spheres. Where only the
+     * camera and molecular transform should be shared, use
+     * {@link ViewerInteractionCoupling#synchronizeViewFrom} instead.
      * @param {object} participant - Source CrystalViewer or initialized widget
+     * @param {object} [options] - Synchronization options
+     * @param {boolean} [options.modes] - Copy display modes as well as the view
+     *   (default follows the coupling's coupleModes setting)
      * @returns {Promise<ViewerInteractionCoupling>} This coupling after peer rebuilds
      */
-    async synchronizeFrom(participant) {
+    async synchronizeFrom(participant, options = {}) {
         const source = resolveViewer(participant);
         if (!this.viewers.has(source)) {
             throw new Error('The synchronization source must belong to this coupling');
+        }
+        const withModes = options.modes ?? this.coupleModes;
+        if (!withModes) {
+            this.#applyViewFrom(source);
+            return this;
         }
         const modes = Object.fromEntries(
             COUPLED_MODIFIER_NAMES.map(name => [name, source.modifiers[name]?.mode])
@@ -95,16 +120,36 @@ export class ViewerInteractionCoupling {
         await Promise.all([...this.viewers.keys()]
             .filter(target => target !== source)
             .map(target => target.setModifierModes?.(modes, { broadcast: false })));
-        this.synchronizeViewFrom(source);
+        this.#applyViewFrom(source);
         return this;
     }
 
     /**
-     * Copies the current spatial view without changing structure modes.
-     * @param {object} source - Source viewer
+     * Copies the current spatial view -- molecular transform, pan and absolute
+     * camera framing -- while leaving every peer's display modes alone.
+     *
+     * Use this rather than {@link ViewerInteractionCoupling#synchronizeFrom}
+     * when the coupled viewers deliberately differ in what they show, for
+     * example an input model beside a refined one where only the latter has
+     * anisotropic hydrogens.
+     * @param {object} participant - Source CrystalViewer or initialized widget
+     * @returns {ViewerInteractionCoupling} This coupling
+     */
+    synchronizeViewFrom(participant) {
+        const source = resolveViewer(participant);
+        if (!this.viewers.has(source)) {
+            throw new Error('The synchronization source must belong to this coupling');
+        }
+        this.#applyViewFrom(source);
+        return this;
+    }
+
+    /**
+     * Applies one viewer's spatial view to its peers.
+     * @param {object} source - Source viewer, already resolved and validated
      * @private
      */
-    synchronizeViewFrom(source) {
+    #applyViewFrom(source) {
         source.moleculeContainer.updateMatrix();
         const structureMatrix = source.moleculeContainer.matrix.toArray();
         const cameraState = source.cameraController.getCoupledViewState();
@@ -187,7 +232,7 @@ export class ViewerInteractionCoupling {
                     { broadcast: false },
                 )));
             if (this.viewers.has(source)) {
-                this.synchronizeViewFrom(source);
+                this.#applyViewFrom(source);
             }
         }).catch(error => {
             console.error('Coupled modifier mode update failed:', error);
@@ -256,7 +301,17 @@ export class ViewerInteractionCoupling {
  * @returns {ViewerInteractionCoupling} Disposable coupling controller
  */
 export function coupleViewerInteractions(...participants) {
+    // A trailing plain object is treated as options, so the common
+    // coupleViewerInteractions(a, b) form is unchanged.
+    let options = {};
+    if (participants.length > 1) {
+        const last = participants[participants.length - 1];
+        if (last && typeof last === 'object' && !Array.isArray(last) &&
+            !last.viewer && !last.controls) {
+            options = participants.pop();
+        }
+    }
     const resolvedParticipants = participants.length === 1 && Array.isArray(participants[0])
         ? participants[0] : participants;
-    return new ViewerInteractionCoupling(resolvedParticipants);
+    return new ViewerInteractionCoupling(resolvedParticipants, options);
 }

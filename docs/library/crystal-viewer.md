@@ -80,6 +80,42 @@ viewer.modifiers.symmetry.mode = 'fragment';
 await viewer.loadStructure();   // requiresCameraUpdate === true for SymmetryGrower
 ```
 
+## Containers that start hidden
+
+A viewer measures its container to size the canvas. Tabs, accordions, modals,
+carousels and slide frameworks all create their panes hidden, so a viewer built
+into one starts at zero size.
+
+CifVis watches the container with a `ResizeObserver` and resizes itself once the
+container is laid out, so this works without special handling:
+
+```js
+// inside a tab that is not the active one
+const viewer = new CrystalViewer(hiddenContainer);
+await viewer.loadCIF(cifText);
+// ...the canvas picks up its real size when the tab is shown
+```
+
+Two things are still worth doing when panes appear and disappear:
+
+- **Give the container a size in CSS**, not just its content. A container whose
+  height comes only from the canvas has nothing to measure.
+- **Create viewers lazily** if there are many of them. Each holds a WebGL
+  context, and browsers cap how many can exist at once — roughly 8 to 16. A
+  deck or dashboard with a dozen structures should build each viewer when its
+  pane is first shown and `dispose()` those it no longer needs, rather than
+  constructing them all up front.
+
+```js
+// only once, when the pane is first revealed
+if (!viewer && pane.clientHeight) {
+    viewer = new CrystalViewer(pane);
+    await viewer.loadCIF(cifText);
+}
+```
+
+`dispose()` releases the WebGL context, the resize observer and every listener.
+
 ## Try it live
 
 A minimal custom GUI: plain buttons wired directly to `viewer.modifiers`, no widget

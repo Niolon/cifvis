@@ -21,6 +21,44 @@ coupling.delete(rightViewer);
 coupling.dispose();
 ```
 
+## Sharing the view without sharing the modes
+
+Coupling propagates display modes as well as the camera, both when you call
+`synchronizeFrom` and whenever a mode changes afterwards. That is usually what
+you want — but it means peers lose whatever they were constructed with.
+
+The case where it bites: two models that deliberately differ. Put a refined
+structure carrying anisotropic hydrogens next to the input model that has none,
+couple them, and the refined viewer is pulled back to `hydrogenMode: 'none'`
+because that is what its peer has. Nothing errors; the ellipsoids simply
+disappear, and whether they do can depend on which viewer finishes loading
+first.
+
+Pass `coupleModes: false` when the viewers are meant to show different things.
+The camera, molecular transform, pan and zoom stay linked; the modes do not.
+
+```js
+const coupling = coupleViewerInteractions(refinedViewer, inputViewer, {
+    coupleModes: false,
+});
+await coupling.synchronizeFrom(refinedViewer);
+```
+
+The same opt-out is available for a single call, and as an explicit method:
+
+```js
+// this synchronization only, whatever the coupling was constructed with
+await coupling.synchronizeFrom(refinedViewer, { modes: false });
+
+// equivalent, if the intent reads better as its own verb
+coupling.synchronizeViewFrom(refinedViewer);
+```
+
+With `coupleModes: false` the peers also stop propagating each other's mode
+changes, so toggling hydrogens in one viewer no longer toggles them in the
+other. Leave it at the default when the coupled structures are variants of the
+same model and should look alike.
+
 Selection stays independent because compared structures need not share atom
 identifiers. Rotation and camera framing are matched exactly, giving every viewer the
 same initial distance/orthographic size and subsequent zoom.

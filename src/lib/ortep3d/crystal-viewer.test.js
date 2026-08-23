@@ -956,3 +956,77 @@ describe('CrystalViewer progressive difference-density events', () => {
         );
     });
 });
+
+describe('CrystalViewer container resize observation', () => {
+    /**
+     * Builds a stand-in for a viewer plus a fake ResizeObserver, so the resize
+     * logic can be exercised without a WebGL context.
+     * @param {number} width - container clientWidth
+     * @param {number} height - container clientHeight
+     * @returns {object} the stub viewer, plus captured observer state
+     */
+    function makeStub(width, height) {
+        const observed = [];
+        let callback = null;
+        globalThis.ResizeObserver = class {
+            constructor(fn) {
+                callback = fn;
+            }
+            observe(target) {
+                observed.push(target);
+            }
+            disconnect() {
+                this.disconnected = true;
+            }
+        };
+        const viewer = {
+            container: { clientWidth: width, clientHeight: height },
+            resizeRendererToDisplaySize: vi.fn(() => true),
+            requestRender: vi.fn(),
+            cameraController: { handleResize: vi.fn() },
+            observeContainerResize: CrystalViewer.prototype.observeContainerResize,
+        };
+        viewer.observeContainerResize();
+        return { viewer, observed, fire: () => callback() };
+    }
+
+    test('observes the container so a viewer built at zero size can recover', () => {
+        const { viewer, observed } = makeStub(0, 0);
+        expect(observed).toEqual([viewer.container]);
+    });
+
+    test('resizes and re-renders once the container has a real size', () => {
+        const { viewer, fire } = makeStub(0, 0);
+
+        // still hidden: nothing to render into
+        fire();
+        expect(viewer.resizeRendererToDisplaySize).not.toHaveBeenCalled();
+
+        // revealed, e.g. its slide or tab became current
+        viewer.container.clientWidth = 640;
+        viewer.container.clientHeight = 420;
+        fire();
+        expect(viewer.resizeRendererToDisplaySize).toHaveBeenCalledTimes(1);
+        expect(viewer.cameraController.handleResize).toHaveBeenCalledTimes(1);
+        expect(viewer.requestRender).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not re-render when the size is unchanged', () => {
+        const { viewer, fire } = makeStub(640, 420);
+        viewer.resizeRendererToDisplaySize = vi.fn(() => false);
+        fire();
+        expect(viewer.requestRender).not.toHaveBeenCalled();
+    });
+
+    test('degrades quietly where ResizeObserver is unavailable', () => {
+        const saved = globalThis.ResizeObserver;
+        delete globalThis.ResizeObserver;
+        const viewer = {
+            container: { clientWidth: 640, clientHeight: 420 },
+            observeContainerResize: CrystalViewer.prototype.observeContainerResize,
+        };
+        expect(() => viewer.observeContainerResize()).not.toThrow();
+        expect(viewer.containerResizeObserver).toBeUndefined();
+        globalThis.ResizeObserver = saved;
+    });
+});
