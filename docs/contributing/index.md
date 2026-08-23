@@ -115,13 +115,11 @@ file listing one path per line (optionally `path<TAB>size`). It builds
 `dist/cifvis.alldeps.js` automatically if missing. Chrome's location is taken from
 `--chrome` or the `CHROME_PATH` environment variable if the system default isn't found.
 
-Density work has four focused benchmarks:
+Density work has three focused regression microbenchmarks:
 
 ```bash
 npm run bench:iam -- structure.cif 20
 npm run bench:density-symmetry -- structure.cif reflections.fcf 10
-npm run bench:density-cod -- /path/to/cod/cif --sample 5000 --out benchmark/density-pipeline-cod.csv
-npm run bench:density-fit
 npm run bench:contours -- structure.cif scalar-field.cube 7
 ```
 
@@ -132,24 +130,9 @@ wall-clock, polygonization, stitching, and Marching Cubes timings so ordering an
 warm-up do not favour one path consistently. The contour benchmark reports plane setup,
 linear or monotone-tricubic sampling, multi-level Marching Squares extraction,
 transferable packing, and main-thread thick-line geometry independently. This mirrors
-the production worker/rendering boundary without including worker startup.
-
-`bench:density-cod` calibrates the full synthetic Fo−Fc path on a deterministic COD
-sample. HKL generation and artificial noisy Fobs creation are deliberately untimed; IAM
-Fcalc, FFT density, and symmetry-aware Marching Cubes are timed separately. A processor
-exercise at the beginning and end normalizes drift. The analysis-ready CSV includes
-asymmetric-unit and expanded unit-cell atom counts, all cell parameters, file size and
-its empirical quantile, reflection/grid/mesh sizes, raw and normalized timings,
-predictions, and recommended bounded-preview fractions. Estimates below 300 ms remain
-one step. Longer calculations may receive up to five 100–200 ms preview redraws, while
-their combined extra work is capped at 750 ms and 50% of the final estimate.
-Progress-only signals cover longer gaps without triggering another calculation. Robust
-log-linear component models and held-out validation errors are written to a JSON sidecar
-for a later runtime estimator. `bench:density-fit` regenerates estimates, schedules, and
-the sidecar from an existing CSV. Directory inputs are stratified into
-equal-probability intervals of the complete CIF file-size distribution, with one
-deterministic random selection per interval and shuffled execution order. Partial CSV
-results are checkpointed every 25 structures.
+the production worker/rendering boundary without including worker startup. Population
+profilers, parameter sweeps, model fitting, and report generation are research-analysis
+tools and intentionally live outside the library's regression benchmark suite.
 
 ## Deployment
 

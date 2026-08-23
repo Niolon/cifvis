@@ -3,7 +3,7 @@ import { BaseFilter } from './base.js';
 import { UAnisoADP } from '../adp.js';
 
 import { growFragment } from './growing/grow-fragment.js';
-import { growCell, addPackingBorderAtoms } from './growing/grow-cell.js';
+import { growCell, addPackingBorderComponents } from './growing/grow-cell.js';
 import { chemicalBonds } from '../bond-classification.js';
 import {
     filterBondsByGeometry,
@@ -341,11 +341,11 @@ export class SymmetryGrower extends BaseFilter {
             specialPositionAtoms = growthResult.specialPositionAtoms;
         }
         if (this.mode === SymmetryGrower.MODES.CELL) {
-            workStructure = addPackingBorderAtoms(growCell(workStructure), this.packingCutoff);
+            workStructure = growCell(workStructure, true, null, this.packingCutoff);
         } else if (this.mode === SymmetryGrower.MODES.FRAGMENT_CELL) {
             const growthResult = growFragment(workStructure);
             specialPositionAtoms = growthResult.specialPositionAtoms;
-            workStructure = addPackingBorderAtoms(
+            workStructure = addPackingBorderComponents(
                 growCell(growthResult.grownStructure, false, specialPositionAtoms),
                 this.packingCutoff,
             );
@@ -386,10 +386,11 @@ export class SymmetryGrower extends BaseFilter {
      * @returns {Array<string>} Array of applicable mode names
      */
     getApplicableModes(structure) {
-        const modes = [SymmetryGrower.MODES.NONE, SymmetryGrower.MODES.CELL, SymmetryGrower.MODES.FRAGMENT_CELL];
+        const modes = [SymmetryGrower.MODES.NONE];
         const hasSymmetry = structure.symmetry && structure.symmetry.symmetryOperations.length > 0;
 
         if (!hasSymmetry) {
+            modes.push(SymmetryGrower.MODES.CELL);
             return modes;
         }
 
@@ -407,6 +408,12 @@ export class SymmetryGrower extends BaseFilter {
                 modes.push(SymmetryGrower.MODES.HBONDS);
             }
         }
+
+        modes.push(SymmetryGrower.MODES.CELL);
+        // Fragment-cell stays applicable even without a growable bond: it fills the
+        // cell by whole covalent components rather than atom by atom, so it differs
+        // from CELL for any structure with molecules crossing a cell face.
+        modes.push(SymmetryGrower.MODES.FRAGMENT_CELL);
 
         return modes;
     }

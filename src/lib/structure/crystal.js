@@ -4,6 +4,8 @@ import { ADPFactory } from './adp.js';
 import { PositionFactory } from './position.js';
 import { BondsFactory, Bond, HBond } from './bonds.js';
 import { CifBlock } from '../read-cif/base.js';
+import { findNonIsometricOperations } from './symmetry-metric.js';
+import { AppliedSymmetry } from './applied-symmetry.js';
 
 /**
  * Infers element symbol from an atom label using crystallographic naming conventions
@@ -108,10 +110,65 @@ export class CrystalStructure {
             throw new Error('The cif file contains no valid atoms.');
         }
 
-        const atomLabels = new Set(atoms.map(atom => atom.label));
-        const bonds = BondsFactory.createBonds(cifBlock, atomLabels);
-        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels);
+        // _atom_site_label has to identify a site uniquely: bonds, H-bonds, angles and
+        // the aniso loop all address atoms by label alone, with no other column able to
+        // break a tie. Resolving a repeated label to whichever row came first silently
+        // bonds the wrong pair of atoms, so refuse the file instead of rendering a model
+        // the data does not actually determine.
+        const duplicatedLabels = [];
+        const seenLabels = new Set();
+        for (const atom of atoms) {
+            if (seenLabels.has(atom.label)) {
+                if (!duplicatedLabels.includes(atom.label)) {
+                    duplicatedLabels.push(atom.label);
+                }
+            }
+            seenLabels.add(atom.label);
+        }
+        if (duplicatedLabels.length > 0) {
+            throw new Error(
+                'Duplicate atom site labels: '
+                + `${duplicatedLabels.slice(0, 10).join(', ')}`
+                + `${duplicatedLabels.length > 10 ? ', ...' : ''}. `
+                + 'Every _atom_site_label must name exactly one site, otherwise bonds and '
+                + 'H-bonds referring to it cannot be resolved.',
+            );
+        }
+
+        // Built before the bonds: a CIF may list its symmetry operations in any order,
+        // so the identity is not necessarily operation 1, and an atom or bond that
+        // carries no symmetry has to name whichever operation the file calls the
+        // identity. Using a fixed `1_555` would silently mean "inversion" - or any other
+        // operation the file happens to list first - when resolved.
         const symmetry = CellSymmetry.fromCIF(cifBlock);
+        const identitySymOpId = symmetry.identitySymOpId ?? '1';
+
+        atoms.forEach(atom => {
+            atom.appliedSymmetry = new AppliedSymmetry(identitySymOpId, [0, 0, 0]);
+        });
+
+        const atomLabels = new Set(atoms.map(atom => atom.label));
+        const bonds = BondsFactory.createBonds(cifBlock, atomLabels, identitySymOpId);
+        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels, identitySymOpId);
+
+        // A symmetry operation has to be an isometry of the cell it is declared with;
+        // whether it is depends on the cell, so an operation and a cell can each be
+        // plausible yet contradict one another. Growing such a structure distorts every
+        // symmetry image - bonded pairs come out at the wrong length - and the result
+        // looks like a modelling error rather than the metadata error it is.
+        const nonIsometric = findNonIsometricOperations(symmetry.symmetryOperations, cell);
+        if (nonIsometric.length > 0) {
+            const examples = nonIsometric
+                .slice(0, 5)
+                .map(index => symmetry.symmetryOperations[index].toSymmetryString())
+                .join(', ');
+            throw new Error(
+                `Symmetry operations incompatible with the unit cell: ${nonIsometric.length} of `
+                + `${symmetry.symmetryOperations.length} do not preserve distances in a cell with `
+                + `alpha=${cell.alpha}, beta=${cell.beta}, gamma=${cell.gamma} (${examples}). `
+                + 'The symmetry and the cell cannot both be right.',
+            );
+        }
 
         const bondValidationResult = BondsFactory.validateBonds(bonds, atoms, symmetry);
         const hBondValidationResult = BondsFactory.validateHBonds(hBonds, atoms, symmetry);
@@ -144,7 +201,7 @@ export class CrystalStructure {
         // Fallback: try matching by label if no pipe is present (legacy support)
         if (!atomId.includes('|')) {
             for (const atom of this.atoms) {
-                if (atom.label === atomId && !atom.appliedSymmetry) {
+                if (atom.label === atomId && atom.isIdentityImage(this.symmetry?.identitySymOpId)) {
                     return atom;
                 }
             }
@@ -187,7 +244,8 @@ export class CrystalStructure {
             if (!atomsById.has(atomId)) {
                 atomsById.set(atomId, atom);
             }
-            if (!atom.appliedSymmetry && !identityAtomsByLabel.has(atom.label)) {
+            if (atom.isIdentityImage(this.symmetry?.identitySymOpId)
+                && !identityAtomsByLabel.has(atom.label)) {
                 identityAtomsByLabel.set(atom.label, atom);
             }
         }
@@ -268,22 +326,61 @@ export class CrystalStructure {
         // Process hydrogen bonds
         for (const hbond of this.hBonds) {
             const donorId = hbond.donorAtomId || hbond.donorAtomLabel;
+            const hydrogenId = hbond.hydrogenAtomId;
             const acceptorId = hbond.acceptorAtomId || hbond.acceptorAtomLabel;
 
             const donorAtom = resolveAtom(donorId);
-            const acceptorAtom = resolveAtom(acceptorId);
-            if (!donorAtom || !acceptorAtom) {
+            if (!donorAtom) {
                 continue;
             }
-            // Skip hbonds to symmetry equivalent positions for initial grouping
+
+            // The D-H bond is covalent regardless of where the acceptor sits -
+            // even a symmetry-external H-bond (acceptor on another periodic
+            // image) has a normal donor-hydrogen bond within the asymmetric
+            // unit. Keep the hydrogen in the donor's group so symmetry growth
+            // carries it along, even when a CIF only lists it via _geom_hbond
+            // and not _geom_bond.
+            const donorGroup = getAtomGroup(donorAtom);
+            donorGroup.atoms.add(donorAtom);
+            atomGroupMap.set(donorAtom.uniqueId, donorGroup);
+
+            const hydrogenAtom = hydrogenId ? resolveAtom(hydrogenId) : undefined;
+            if (hydrogenAtom) {
+                // The hydrogen may already sit in a group through its covalent bond. The
+                // D-H bond then joins that group to the donor's, exactly as a covalent
+                // bond between them would: merge the two rather than listing the atom in
+                // both, which would otherwise generate it once per group during symmetry
+                // growth and leave two atoms sharing one ID at one position.
+                const hydrogenGroup = atomGroupMap.get(hydrogenAtom.uniqueId);
+                if (hydrogenGroup && hydrogenGroup !== donorGroup) {
+                    for (const atom of hydrogenGroup.atoms) {
+                        donorGroup.atoms.add(atom);
+                        atomGroupMap.set(atom.uniqueId, donorGroup);
+                    }
+                    for (const groupBond of hydrogenGroup.bonds) {
+                        donorGroup.bonds.add(groupBond);
+                    }
+                    for (const groupHBond of hydrogenGroup.hBonds) {
+                        donorGroup.hBonds.add(groupHBond);
+                    }
+                    groups.splice(groups.indexOf(hydrogenGroup), 1);
+                }
+                donorGroup.atoms.add(hydrogenAtom);
+                atomGroupMap.set(hydrogenAtom.uniqueId, donorGroup);
+            }
+
+            // Only an internal H-bond (acceptor in the same asymmetric unit)
+            // can link the acceptor into the same group for initial grouping;
+            // a symmetry-external acceptor is handled separately during growth.
             if (hbond.acceptorAtomSymmetry !== '.' && hbond.acceptorAtomSymmetry !== null) {
                 continue;
             }
+            const acceptorAtom = resolveAtom(acceptorId);
+            if (!acceptorAtom) {
+                continue;
+            }
 
-            // Get or create groups for involved atoms
-            const donorGroup = getAtomGroup(donorAtom);
             donorGroup.hBonds.add(hbond);
-
             if (atomGroupMap.has(acceptorAtom.uniqueId)) {
                 const acceptorGroup = getAtomGroup(acceptorAtom);
                 acceptorGroup.hBonds.add(hbond);
@@ -480,7 +577,25 @@ export class Atom {
         if (this.appliedSymmetry) {
             return `${this.label}|${this.appliedSymmetry.key}`;
         }
+        // Only reached for atoms built without symmetry context (helpers, tests). Atoms
+        // parsed from a CIF are given the file's own identity operation explicitly,
+        // because a file is free to number its operations so that `1` is something other
+        // than x,y,z - see CrystalStructure.fromCIF.
         return `${this.label}|1_555`;
+    }
+
+    /**
+     * Whether this atom is the untransformed image, i.e. carries no symmetry operation
+     * or carries the identity of the structure it belongs to.
+     * @param {string} [identitySymOpId] - Operation ID naming the identity in this structure.
+     * @returns {boolean} True when the atom sits at its listed coordinates.
+     */
+    isIdentityImage(identitySymOpId) {
+        if (!this.appliedSymmetry) {
+            return true;
+        }
+        const identityKey = `${identitySymOpId ?? '1'}_555`;
+        return this.appliedSymmetry.key === identityKey;
     }
 
     /**

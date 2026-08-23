@@ -141,6 +141,10 @@ export default {
     },
     'interaction': {
         'rotationSpeed': 5,
+        // Locks only suppress direct pointer gestures. Explicit view setters,
+        // camera reset, structure loading, and coupled viewers still apply.
+        'lockRotation': false,
+        'lockZoom': false,
         'clickThreshold': 200,
         'mouseRaycast': {
             'lineThreshold': 0.5,
@@ -296,6 +300,7 @@ export default {
     },
 
     // atom visualisation Settings
+    'ellipsoidProbability': 0.5,
     'atomDetail': 3,
     'atomCutawayHysteresis': 0.025,
     'atomCutawayStripeCount': 7,

@@ -110,6 +110,19 @@ function planeBasis(normal) {
     return { u, v: normalize(cross(normal, u), 'Contour plane basis') };
 }
 
+/** @returns {boolean} Whether a Cartesian point lies within radius of any atom. */
+function isNearAnyAtom(cartesian, atomCoordinates, radiusSquared) {
+    for (const atom of atomCoordinates) {
+        const dx = cartesian[0] - atom[0];
+        const dy = cartesian[1] - atom[1];
+        const dz = cartesian[2] - atom[2];
+        if (dx * dx + dy * dy + dz * dz <= radiusSquared) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** @returns {number[][]} Cartesian coordinates of displayed atoms. */
 function structureAtomCoordinates(structure) {
     const matrix = structure.cell.fractToCartMatrix.toArray();
@@ -378,6 +391,13 @@ export function calculatePlanarContours(field, structure, options = {}) {
     const sample = interpolation === 'tricubic' && typeof field.sampleCubic === 'function'
         ? (...fractional) => field.sampleCubic(...fractional)
         : (...fractional) => field.sample(...fractional);
+    const maxAtomDistance = usedOptions.maxAtomDistance;
+    const clipToAtoms = maxAtomDistance !== null && Number(maxAtomDistance) >= 0;
+    if (maxAtomDistance !== null && !Number.isFinite(Number(maxAtomDistance))) {
+        throw new Error('Contour line maxAtomDistance must be null or a finite number');
+    }
+    const atomCoordinates = clipToAtoms ? structureAtomCoordinates(structure) : null;
+    const radiusSquared = clipToAtoms ? Number(maxAtomDistance) ** 2 : 0;
     const samplingStarted = now();
     for (let row = 0; row < dimensions[1]; row++) {
         const coordinateV = plane.bounds.v[0] +
@@ -385,9 +405,15 @@ export function calculatePlanarContours(field, structure, options = {}) {
         for (let column = 0; column < dimensions[0]; column++) {
             const coordinateU = plane.bounds.u[0] +
                 column / (dimensions[0] - 1) * spanU;
+            const index = row * dimensions[0] + column;
+            if (clipToAtoms &&
+                !isNearAnyAtom(pointOnPlane(plane, coordinateU, coordinateV), atomCoordinates, radiusSquared)) {
+                values[index] = NaN;
+                continue;
+            }
             const fractional = fractionalOrigin.map((value, axis) =>
                 value + fractionalU[axis] * coordinateU + fractionalV[axis] * coordinateV);
-            values[row * dimensions[0] + column] = sample(...fractional);
+            values[index] = sample(...fractional);
         }
     }
     const contouringStarted = now();

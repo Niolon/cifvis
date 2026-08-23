@@ -1,11 +1,17 @@
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { Atom, CrystalStructure } from '../../crystal.js';
-import { FractPosition } from '../../position.js';
+import {
+    FractPosition,
+    positionsCoincide,
+    positionsCoincideInSameCell,
+    SPECIAL_POSITION_TOLERANCE,
+} from '../../position.js';
 import { Bond, HBond } from '../../bonds.js';
 import * as math from '../../../math-lite.js';
 import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
 import { combineAtomId } from './util.js';
 import { AppliedSymmetry } from './../../applied-symmetry.js';
+import { decodePositionCode, encodePositionCode } from '../../position-code.js';
 
 const MAX_DISPLAYED_BOND_LENGTH = 4;
 
@@ -163,7 +169,14 @@ function isWithinUnitCell(atom, tolerance = 1e-6) {
  * @param {number} [precision] - Decimal places for rounding
  * @returns {string} Position key
  */
-function getAtomPositionKey(atom, precision = 3) {
+function getAtomPositionKey(atom, cell = null) {
+    // Rounding fractional coordinates to a fixed number of decimals makes the merge
+    // tolerance depend on the cell: three decimals is 0.007 A across a 7 A axis but
+    // 0.07 A across a 70 A one, so in a large cell atoms that are chemically distinct
+    // collapse into one and any bond to them is redirected onto the wrong partner.
+    // Derive the precision from the cell instead, so the granularity stays a fixed
+    // physical distance.
+    const precision = positionKeyPrecision(cell);
     // Use toFixed for consistent string representation to avoid floating-point precision issues
     // (e.g., 0.14485 and 0.14484999999999992 should produce the same key)
     const x = atom.position.x.toFixed(precision);
@@ -171,6 +184,21 @@ function getAtomPositionKey(atom, precision = 3) {
     const z = atom.position.z.toFixed(precision);
     // Use the base chemical label from the atom, which is now just 'label'
     return `${atom.label}_x${x}_y${y}_z${z}`;
+}
+
+/**
+ * Decimal places that make a fractional-coordinate key granular to roughly
+ * {@link SPECIAL_POSITION_TOLERANCE} in Ångström for a given cell.
+ * @param {object} [cell] - Unit cell, or null to keep the historical three decimals.
+ * @returns {number} Decimal places to round fractional coordinates to.
+ */
+function positionKeyPrecision(cell) {
+    if (!cell || ![cell.a, cell.b, cell.c].every(Number.isFinite)) {
+        return 3;
+    }
+    const longestAxis = Math.max(cell.a, cell.b, cell.c);
+    const decimals = Math.ceil(Math.log10(longestAxis / SPECIAL_POSITION_TOLERANCE));
+    return Math.min(Math.max(decimals, 3), 12);
 }
 
 /**
@@ -194,26 +222,23 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
     const offsetY = Math.floor(transformedCentre.get([1]));
     const offsetZ = Math.floor(transformedCentre.get([2]));
 
-    const originalSymmetry = symmString.split('_')[0];
+    const { id: originalSymmetry, translation } = decodePositionCode(symmString);
 
-    const originalTranslationString = symmString.split('_')[1] || '555';
-    const translationParts = originalTranslationString.split('').map(part => {
-        return parseInt(part, 10); // Default to 5 if part is not a number
-    });
-
-    const newTranslationString = (
-        `${translationParts[0] - offsetX}`
-        + `${translationParts[1] - offsetY}`
-        + `${translationParts[2] - offsetZ}`
-    );
+    const newTranslation = [
+        translation[0] - offsetX,
+        translation[1] - offsetY,
+        translation[2] - offsetZ,
+    ];
 
     const offsetCentre = math.subtract(transformedCentre, math.matrix([offsetX, offsetY, offsetZ]));
-    return { newCentre: offsetCentre, newString: `${originalSymmetry}_${newTranslationString}` };
+    return { newCentre: offsetCentre, newString: encodePositionCode(originalSymmetry, newTranslation) };
 }
 
 /**
  * @typedef {object} CreatedObjectTracker
  * @property {Map<string, string>} atomMap - Maps atom position keys to atom labels
+ * @property {Map<string, Array<{atom: Atom, id: string}>>} periodicAtomMap - Canonical atoms by source label and
+ * disorder group.
  * @property {Set<string>} createdBonds - Set of created bond identifiers
  * @property {Set<string>} createdHBonds - Set of created hydrogen bond identifiers
  * @property {Map<string, string>} specialPositionMap - Maps original atom labels to kept atom labels for duplicates
@@ -243,9 +268,12 @@ export function centreSymmetryString(symmetry, symmString, symmCentre) {
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms. Used
  *  to avoid duplicates and track translations, as well as special positions.
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {object} [unitCell] - Unit cell for periodic special-position comparison.
  * @returns {GrownGroup} New group with grown atoms and updated symmetry string
  */
-export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growAtomsinGroup(
+    grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, unitCell = null,
+) {
     const newAtoms = [];
     const transformedAtoms = symmetry.applySymmetry(symmString, grownGroup.atoms);
 
@@ -292,16 +320,53 @@ export function growAtomsinGroup(grownGroup, symmetry, symmString, objectTracker
 
         const uniqueId = atom.uniqueId;
 
-        // Check for special positions (duplicates)
-        const posKey = getAtomPositionKey(atom);
-        const existingAtomId = objectTracker.atomMap.get(posKey);
+        // Check for special positions (duplicates). Full cell growth supplies a
+        // physical, minimum-image comparison; the legacy key path remains for
+        // direct helper callers that do not provide a unit cell.
+        let existingAtomId;
+        let periodicRepeat = false;
+        if (unitCell && objectTracker.periodicAtomMap) {
+            const sourceKey = `${atom.label}|${atom.disorderGroup}`;
+            const sameLabelAtoms = objectTracker.periodicAtomMap.get(sourceKey) || [];
+            const coincident = sameLabelAtoms.find(candidate => positionsCoincide(
+                atom.position,
+                candidate.atom.position,
+                unitCell,
+                SPECIAL_POSITION_TOLERANCE,
+            ));
+            if (coincident) {
+                // positionsCoincide answers "same point of the periodic crystal", so it
+                // also matches images a whole lattice translation apart. Those are
+                // equally redundant here and are not kept, but they are not the same
+                // atom: substituting their ID would move a bond endpoint that names
+                // them a full cell or more (see the same split in generateSymmetryAtoms).
+                if (positionsCoincideInSameCell(
+                    atom.position,
+                    coincident.atom.position,
+                    unitCell,
+                    SPECIAL_POSITION_TOLERANCE,
+                )) {
+                    existingAtomId = coincident.id;
+                } else {
+                    periodicRepeat = true;
+                }
+            } else {
+                sameLabelAtoms.push({ atom, id: uniqueId });
+                objectTracker.periodicAtomMap.set(sourceKey, sameLabelAtoms);
+            }
+        } else {
+            const posKey = getAtomPositionKey(atom, unitCell);
+            existingAtomId = objectTracker.atomMap.get(posKey);
+            if (!existingAtomId) {
+                objectTracker.atomMap.set(posKey, uniqueId);
+            }
+        }
 
         if (existingAtomId) {
             // This is a special position - map to existing atom ID
             objectTracker.specialPositionMap.set(uniqueId, existingAtomId);
-        } else {
+        } else if (!periodicRepeat) {
             // New unique position
-            objectTracker.atomMap.set(posKey, uniqueId);
             newAtoms.push(atom);
         }
     }
@@ -640,9 +705,10 @@ export function growExternalHBondsInGroup(grownGroup, symmetry, symmString, obje
  * @param {string} symmString - The symmetry string to use for the group
  * @param {CreatedObjectTracker} objectTracker - Object tracker to keep track of created atoms and bonds
  * @param {boolean} moveAtomsInsideCell - Whether to move atoms inside the unit cell
+ * @param {object} [unitCell] - Unit cell for periodic special-position comparison.
  * @returns {GrownGroup} New group with grown atoms, internal and external bonds, and symmetry string
  */
-export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell) {
+export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveAtomsInsideCell, unitCell = null) {
     const combinedSymmString = symmetry.combineSymmetryCodes(
         symmString,
         grownGroup.symmString,
@@ -660,6 +726,7 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
         centredSymmString,
         objectTracker,
         moveAtomsInsideCell,
+        unitCell,
     );
 
     const grownInternalBonds = growInternalBondsInGroup(
@@ -707,9 +774,12 @@ export function growGroup(grownGroup, symmetry, symmString, objectTracker, moveA
  * @param {CrystalStructure} structure - Input crystal structure
  * @param {boolean} [moveAtomsInsideCell] - Whether to exclude atoms outside unit cell
  * @param {Map<string,string>} [startingSpecialPositions] - Optional special positions map to start with.
+ * @param {number} [packingCutoff] - Optional upper bound for closed-cell border copies.
  * @returns {CrystalStructure} New structure filling the unit cell
  */
-export function growCell(structure, moveAtomsInsideCell = true, startingSpecialPositions = null) {
+export function growCell(
+    structure, moveAtomsInsideCell = true, startingSpecialPositions = null, packingCutoff = 1,
+) {
     let specialPositionMap;
     if (startingSpecialPositions !== null) {
         // If a starting special position is provided, initialize the map with it
@@ -765,6 +835,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
 
     const objectTracker = {
         atomMap,
+        periodicAtomMap: new Map(),
         createdBonds: new Set(), // createdBonds
         createdHBonds: new Set(), // createdHBonds
         specialPositionMap, // specialPositionMap
@@ -804,6 +875,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
                 nonTransSymmString,
                 objectTracker,
                 moveAtomsInsideCell,
+                structure.cell,
             );
             grownAtomsGroups.push(newGrownGroup);
         }
@@ -830,8 +902,8 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
             finalAtomsByUniqueId.set(atom.uniqueId, atom);
         }
     }
-    const finalAtoms = Array.from(finalAtomsByUniqueId.values());
-    const finalBonds = [
+    let finalAtoms = Array.from(finalAtomsByUniqueId.values());
+    let finalBonds = [
         ...(!moveAtomsInsideCell ? structure.bonds.map(bond => new Bond(
             bond.atom1Id,
             bond.atom2Id,
@@ -858,24 +930,50 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         )) : []),
         ...grownAtomsGroups.flatMap(group => group.internalHBonds),
     ];
-    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+    let finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+
+    /**
+     * Adds a lattice translation to an atom ID's position code.
+     * @param {string} atomId - ID of the form `label|code`.
+     * @param {number[]} shift - Integer lattice vector to add.
+     * @returns {string} The shifted ID.
+     */
+    const shiftAtomId = (atomId, shift) => {
+        if (shift[0] === 0 && shift[1] === 0 && shift[2] === 0) {
+            return atomId;
+        }
+        const [label, code] = atomId.split('|');
+        const { id, translation } = decodePositionCode(
+            code || `${structure.symmetry.identitySymOpId}_555`,
+        );
+        return `${label}|${encodePositionCode(id, [
+            translation[0] + shift[0], translation[1] + shift[1], translation[2] + shift[2],
+        ])}`;
+    };
 
     grownAtomsGroups.forEach(group => {
         // Add external bonds and H-bonds to the potential maps
         group.externalBonds.forEach(bond => {
             // Resolve atom1Id through translations and special positions
             let atom1Id = objectTracker.specialPositionMap.get(bond.atom1Id) || bond.atom1Id;
+            // Moving an atom into the cell moves one end of every bond it holds. A bond
+            // is a geometric relation, so the other end has to travel with it: shifting
+            // the two independently leaves the bond joining a pair that was never
+            // measured, at a distance that no longer matches its stated length. Whether
+            // the partner is still inside the cell afterwards is then decided below.
+            let cellShift = [0, 0, 0];
             if (objectTracker.atomTranslations.has(atom1Id)) {
-                [atom1Id] = objectTracker.atomTranslations.get(atom1Id);
+                const [shiftedId, translationCode] = objectTracker.atomTranslations.get(atom1Id);
+                atom1Id = shiftedId;
+                cellShift = decodePositionCode(translationCode).translation;
             }
 
             // growExternalBondsInGroup has already combined the group's symmetry with
             // atom2SiteSymmetry. Recombining here applies the operation twice and can
             // connect an atom to the wrong periodic image across the entire cell.
-            let atom2Id = objectTracker.specialPositionMap.get(bond.atom2Id) || bond.atom2Id;
-            if (objectTracker.atomTranslations.has(atom2Id)) {
-                [atom2Id] = objectTracker.atomTranslations.get(atom2Id);
-            }
+            const atom2Resolved = objectTracker.specialPositionMap.get(bond.atom2Id)
+                || bond.atom2Id;
+            const atom2Id = shiftAtomId(atom2Resolved, cellShift);
             // Do NOT normalize to _555 - atoms at different translations are different positions
 
             // For external bonds, only create if both atoms exist and are not at same position
@@ -994,6 +1092,23 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         });
     });
 
+    // In ordinary cell mode, add the optional closed-cell border copies before
+    // filtering bonds. At this point finalBonds still contains the chemically
+    // correct periodic links whose wrapped endpoints would otherwise be removed
+    // as long display bonds, so the helper can reconnect them to the new copies.
+    if (moveAtomsInsideCell && packingCutoff > 1) {
+        const packedStructure = addPackingBorderAtoms(new CrystalStructure(
+            structure.cell,
+            finalAtoms,
+            finalBonds,
+            finalHBonds,
+            structure.symmetry,
+        ), packingCutoff, structure.bonds);
+        finalAtoms = packedStructure.atoms;
+        finalBonds = packedStructure.bonds;
+        finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+    }
+
     const finalAtomsById = new Map(finalAtoms.map(atom => [atom.uniqueId, atom]));
     const cartesianPositions = new Map();
 
@@ -1068,24 +1183,43 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         structure.cell,
         finalAtoms,
         centringBonds,
-        filteredHBonds,
+        // H-bonds must not join otherwise disconnected components for centring
+        // purposes (see comment above), and calculateConnectedGroups() now
+        // folds a hydrogen atom into its donor's group for internal H-bonds -
+        // correct for real connectivity, but not what this centring-only pass
+        // wants. Omit H-bonds here so grouping reflects covalent bonds alone.
+        [],
         structure.symmetry,
     );
     const atomIdMap = new Map();
     for (const group of filteredStructure.calculateConnectedGroups()) {
         const centre = getFragmentCentre(group.atoms).toArray();
         const offset = centre.map(value => Math.floor(value));
+        const shifted = offset.some(value => value !== 0);
         for (const atom of group.atoms) {
             const oldId = atom.uniqueId;
-            atom.position.x -= offset[0];
-            atom.position.y -= offset[1];
-            atom.position.z -= offset[2];
-            if (atom.appliedSymmetry) {
-                atom.appliedSymmetry.translation[0] -= offset[0];
-                atom.appliedSymmetry.translation[1] -= offset[1];
-                atom.appliedSymmetry.translation[2] -= offset[2];
-                atom.appliedSymmetry._updateKey();
+            if (shifted) {
+                atom.position.x -= offset[0];
+                atom.position.y -= offset[1];
+                atom.position.z -= offset[2];
+                // An asymmetric-unit atom carries no AppliedSymmetry and reports the
+                // identity ID by default, so without one to adjust the shift would be
+                // invisible: the atom moves a whole cell while its ID still claims
+                // 1_555, and any bond naming it is then drawn across that gap.
+                // Symmetry-generated atoms of one instance share a single
+                // AppliedSymmetry object, so adjust a copy rather than the shared one.
+                const applied = atom.appliedSymmetry
+                    ? atom.appliedSymmetry.copy()
+                    : new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+                applied.translation[0] -= offset[0];
+                applied.translation[1] -= offset[1];
+                applied.translation[2] -= offset[2];
+                applied._updateKey();
+                atom.appliedSymmetry = applied;
             }
+            // Recorded even when nothing moved: the duplicate collapse below
+            // rewrites these entries onto the surviving atom, so an unshifted atom
+            // that turns out to be a duplicate still needs its bonds redirected.
             atomIdMap.set(oldId, atom.uniqueId);
         }
     }
@@ -1095,7 +1229,7 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
     const centredAtomIds = new Map();
     const duplicateAtomIds = new Map();
     for (const atom of finalAtoms) {
-        const positionKey = getAtomPositionKey(atom);
+        const positionKey = getAtomPositionKey(atom, structure.cell);
         const existingId = centredAtomIds.get(atom.uniqueId) || centredPositionMap.get(positionKey);
         if (existingId) {
             duplicateAtomIds.set(atom.uniqueId, existingId);
@@ -1143,10 +1277,38 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
         }
     }
 
+    // Border-copy bonds are selected before component centring. A later
+    // duplicate collapse can remap an endpoint onto a different periodic image,
+    // so validate those reconstructed cell-mode bonds once more against their
+    // final displayed coordinates. Leave the canonical cutoff path untouched.
+    const centredAtomsById = moveAtomsInsideCell && packingCutoff > 1
+        ? new Map(centredAtoms.map(atom => [atom.uniqueId, atom]))
+        : null;
+    const finalCentredBonds = moveAtomsInsideCell && packingCutoff > 1
+        ? centredBonds.filter(bond => {
+            if (!Number.isFinite(bond.bondLength) || bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
+                return false;
+            }
+            const atom1 = centredAtomsById.get(bond.atom1Id);
+            const atom2 = centredAtomsById.get(bond.atom2Id);
+            if (!atom1 || !atom2) {
+                return false;
+            }
+            const position1 = atom1.position.toCartesian(structure.cell);
+            const position2 = atom2.position.toCartesian(structure.cell);
+            const length = Math.hypot(
+                position1.x - position2.x,
+                position1.y - position2.y,
+                position1.z - position2.z,
+            );
+            return Math.abs(length - bond.bondLength) <= Math.max(0.15, bond.bondLength * 0.1);
+        })
+        : centredBonds;
+
     return new CrystalStructure(
         structure.cell,
         centredAtoms,
-        centredBonds,
+        finalCentredBonds,
         centredHBonds,
         structure.symmetry,
     );
@@ -1158,24 +1320,35 @@ export function growCell(structure, moveAtomsInsideCell = true, startingSpecialP
  * on every face, edge and corner of the box instead of only the canonical, Z-correct
  * [0,1) cell.
  *
- * This is deliberately atoms-only: the duplicates carry no bonds of their own (a
- * border copy of a bonded atom would otherwise need its whole coordination re-derived
- * across the boundary, which is out of scope here). Existing bonds are left exactly
- * as grown; only extra, unbonded atoms are appended.
+ * Bonds are reconstructed where a copied endpoint gives a geometry-compatible
+ * representation of a pending cell bond. This avoids drawing the long wrapped
+ * bond in the canonical cell while still closing molecules at the border.
  * @param {CrystalStructure} structure - A structure already grown to the canonical
  *  [0,1) unit cell (as returned by {@link growCell}).
  * @param {number} packingCutoff - Upper fractional bound for cell membership. Values
  *  <= 1 are a no-op (the canonical cell already is the result); e.g. 1.001 duplicates
  *  atoms within 0.001 of a low face onto the corresponding high face(s).
+ * @param {Bond[]} [sourceBonds] - Chemical bond records from before cell growth.
  * @returns {CrystalStructure} Structure with the border duplicates appended
  */
-export function addPackingBorderAtoms(structure, packingCutoff) {
+export function addPackingBorderAtoms(structure, packingCutoff, sourceBonds = []) {
     const margin = packingCutoff - 1;
     if (!(margin > 0)) {
         return structure;
     }
 
     const extraAtoms = [];
+    const atomCandidates = new Map();
+    const atomCandidatesByLabel = new Map();
+    const copiedAtomIds = new Set();
+    for (const atom of structure.atoms) {
+        const candidates = atomCandidates.get(atom.uniqueId) || [];
+        candidates.push(atom);
+        atomCandidates.set(atom.uniqueId, candidates);
+        const labelCandidates = atomCandidatesByLabel.get(atom.label) || [];
+        labelCandidates.push(atom);
+        atomCandidatesByLabel.set(atom.label, labelCandidates);
+    }
     for (const atom of structure.atoms) {
         const { x, y, z } = atom.position;
         // Axes where this atom is within margin of the low face; duplicating along
@@ -1211,16 +1384,185 @@ export function addPackingBorderAtoms(structure, packingCutoff) {
             appliedSymmetry.translation[2] += shift[2];
             appliedSymmetry._updateKey();
 
-            extraAtoms.push(new Atom(
+            const copiedAtom = new Atom(
                 atom.label, atom.atomType, position, atom.adp, atom.disorderGroup, appliedSymmetry,
-            ));
+            );
+            extraAtoms.push(copiedAtom);
+            atomCandidates.get(atom.uniqueId).push(copiedAtom);
+            atomCandidatesByLabel.get(atom.label).push(copiedAtom);
+            copiedAtomIds.add(copiedAtom.uniqueId);
+        }
+    }
+
+    const existingBondIds = new Set();
+    for (const bond of structure.bonds) {
+        existingBondIds.add(createBondIdentifier(bond.atom1Id, bond.atom2Id));
+    }
+    const extraBonds = [];
+    const isCompatiblePair = (atom1, atom2, bond) => {
+        if (!Number.isFinite(bond.bondLength) || bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
+            return false;
+        }
+        const position1 = atom1.position.toCartesian(structure.cell);
+        const position2 = atom2.position.toCartesian(structure.cell);
+        const length = Math.hypot(
+            position1.x - position2.x,
+            position1.y - position2.y,
+            position1.z - position2.z,
+        );
+        return Math.abs(length - bond.bondLength) <= Math.max(0.15, bond.bondLength * 0.1);
+    };
+    for (const bond of [...structure.bonds, ...sourceBonds]) {
+        const atom1Candidates = atomCandidates.get(bond.atom1Id) ||
+            atomCandidatesByLabel.get(bond.atom1Label);
+        const atom2Candidates = atomCandidates.get(bond.atom2Id) ||
+            atomCandidatesByLabel.get(bond.atom2Label);
+        if (!atom1Candidates || !atom2Candidates) {
+            continue;
+        }
+        for (const atom1 of atom1Candidates) {
+            for (const atom2 of atom2Candidates) {
+                if (atom1.uniqueId === atom2.uniqueId ||
+                    (!copiedAtomIds.has(atom1.uniqueId) && !copiedAtomIds.has(atom2.uniqueId)) ||
+                    !isCompatiblePair(atom1, atom2, bond)) {
+                    continue;
+                }
+                const bondId = createBondIdentifier(atom1.uniqueId, atom2.uniqueId);
+                if (existingBondIds.has(bondId)) {
+                    continue;
+                }
+                extraBonds.push(new Bond(
+                    atom1.uniqueId,
+                    atom2.uniqueId,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    '.',
+                ));
+                existingBondIds.add(bondId);
+            }
         }
     }
 
     return new CrystalStructure(
         structure.cell,
         [...structure.atoms, ...extraAtoms],
-        structure.bonds,
+        [...structure.bonds, ...extraBonds],
+        structure.hBonds,
+        structure.symmetry,
+    );
+}
+
+/**
+ * Adds complete translated covalent components whose centres enter the extended
+ * packing box. Fragment-cell uses this rather than atom-by-atom face duplication:
+ * a near-face atom must not pull in part of a molecule whose centre is outside the
+ * requested cutoff.
+ * @param {CrystalStructure} structure - Canonical fragment-cell structure.
+ * @param {number} packingCutoff - Upper fractional bound for component centres.
+ * @returns {CrystalStructure} Structure with complete centroid-qualified copies.
+ */
+export function addPackingBorderComponents(structure, packingCutoff) {
+    const margin = packingCutoff - 1;
+    if (!(margin > 0)) {
+        return structure;
+    }
+
+    // H-bond acceptors describe intermolecular contacts in this mode and must
+    // not merge otherwise separate molecules. A donor-hydrogen pair, however,
+    // is part of one molecular component even when a CIF records it only in the
+    // H-bond loop and not in _geom_bond.
+    const componentBonds = [
+        ...structure.bonds,
+        ...structure.hBonds.map(hbond => new Bond(
+            hbond.donorAtomId,
+            hbond.hydrogenAtomId,
+            null,
+            null,
+            '.',
+        )),
+    ];
+    const covalentStructure = new CrystalStructure(
+        structure.cell,
+        structure.atoms,
+        componentBonds,
+        [],
+        structure.symmetry,
+    );
+    const extraAtoms = [];
+    const extraBonds = [];
+    const existingBondIds = new Set(structure.bonds.map(bond =>
+        createBondIdentifier(bond.atom1Id, bond.atom2Id),
+    ));
+
+    for (const group of covalentStructure.calculateConnectedGroups()) {
+        const centre = getFragmentCentre(group.atoms).toArray();
+        const nearAxes = [];
+        for (let axis = 0; axis < 3; axis++) {
+            if (centre[axis] < margin) {
+                nearAxes.push(axis);
+            }
+        }
+        if (nearAxes.length === 0) {
+            continue;
+        }
+
+        for (let mask = 1; mask < (1 << nearAxes.length); mask++) {
+            const shift = [0, 0, 0];
+            for (let bit = 0; bit < nearAxes.length; bit++) {
+                if (mask & (1 << bit)) {
+                    shift[nearAxes[bit]] = 1;
+                }
+            }
+            const copiedIds = new Map();
+            for (const atom of group.atoms) {
+                const position = new FractPosition(
+                    atom.position.x + shift[0],
+                    atom.position.y + shift[1],
+                    atom.position.z + shift[2],
+                );
+                const appliedSymmetry = (atom.appliedSymmetry ? atom.appliedSymmetry.copy() : null) ||
+                    new AppliedSymmetry(structure.symmetry.identitySymOpId, [0, 0, 0]);
+                appliedSymmetry.translation[0] += shift[0];
+                appliedSymmetry.translation[1] += shift[1];
+                appliedSymmetry.translation[2] += shift[2];
+                appliedSymmetry._updateKey();
+                const copiedAtom = new Atom(
+                    atom.label,
+                    atom.atomType,
+                    position,
+                    atom.adp,
+                    atom.disorderGroup,
+                    appliedSymmetry,
+                );
+                copiedIds.set(atom.uniqueId, copiedAtom.uniqueId);
+                extraAtoms.push(copiedAtom);
+            }
+            for (const bond of structure.bonds) {
+                const atom1Id = copiedIds.get(bond.atom1Id);
+                const atom2Id = copiedIds.get(bond.atom2Id);
+                if (!atom1Id || !atom2Id || atom1Id === atom2Id) {
+                    continue;
+                }
+                const bondId = createBondIdentifier(atom1Id, atom2Id);
+                if (existingBondIds.has(bondId)) {
+                    continue;
+                }
+                extraBonds.push(new Bond(
+                    atom1Id,
+                    atom2Id,
+                    bond.bondLength,
+                    bond.bondLengthSU,
+                    '.',
+                ));
+                existingBondIds.add(bondId);
+            }
+        }
+    }
+
+    return new CrystalStructure(
+        structure.cell,
+        [...structure.atoms, ...extraAtoms],
+        [...structure.bonds, ...extraBonds],
         structure.hBonds,
         structure.symmetry,
     );

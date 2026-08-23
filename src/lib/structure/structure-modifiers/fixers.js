@@ -4,6 +4,7 @@ import { CrystalStructure, inferElementFromLabel, disorderGroupsCompatible } fro
 import { S_BLOCK_ELEMENTS } from '../covalent-radii.js';
 import { encodePositionCode } from '../position-code.js';
 import { BaseFilter } from './base.js';
+import { repairBondGeometry } from './bond-geometry.js';
 import * as math from '../../math-lite.js';
 
 /**
@@ -471,18 +472,54 @@ export class BondGenerator extends BaseFilter {
             }
         }
 
-        // Build a grid of symmetry-image sites, keeping only those in a relevant cell.
-        const grid = new Map();
-        for (let j = 0; j < atoms.length; j++) {
+        // Cache the complete, ordered operation result for exact source
+        // coordinates. Mixed-occupancy sites commonly list several atom labels at
+        // the same position, so they can safely share these transformations.
+        const imageCache = new Map();
+        const imagesByAtom = new Array(atoms.length);
+        const transformedImages = fract => {
+            const sourceKey = fract.join(',');
+            const cached = imageCache.get(sourceKey);
+            if (cached) {
+                return cached;
+            }
+            const images = new Array(operations.length);
             for (let opIndex = 0; opIndex < operations.length; opIndex++) {
-                const image = operations[opIndex].applyToPoint(fracts[j]);
+                const image = operations[opIndex].applyToPoint(fract);
                 const fx = Math.floor(image[0]);
                 const fy = Math.floor(image[1]);
                 const fz = Math.floor(image[2]);
                 const wx = image[0] - fx;
                 const wy = image[1] - fy;
                 const wz = image[2] - fz;
-                const wrappedCart = toCart([wx, wy, wz]);
+                images[opIndex] = {
+                    opIndex, image, fx, fy, fz, wx, wy, wz,
+                    wrappedCart: toCart([wx, wy, wz]),
+                };
+            }
+            imageCache.set(sourceKey, images);
+            return images;
+        };
+
+        // Build a grid of symmetry-image sites, keeping only those in a relevant
+        // cell. Special-position operations can place the same atom at the exact
+        // same site. Deduplicate those only after they reach the same bucket, in
+        // original operation order. This preserves the representative operation
+        // code selected by the historical late `seen` check, which is significant
+        // to downstream fragment growth.
+        const grid = new Map();
+        // CIF multiplicity is optional (and often unreliable in real files).
+        // A small asymmetric unit relative to its symmetry group is a strong
+        // indicator that special positions can make operation images redundant.
+        // The workload floor avoids Set bookkeeping for trivial structures where
+        // scanning the duplicate sites is cheaper than maintaining the index.
+        const deduplicateGridSites = atoms.length <= operations.length
+            && atoms.length * operations.length >= 1024;
+        const gridSiteKeys = deduplicateGridSites ? new Map() : null;
+        for (let j = 0; j < atoms.length; j++) {
+            const images = transformedImages(fracts[j]);
+            imagesByAtom[j] = images;
+            for (const { opIndex, fx, fy, fz, wx, wy, wz, wrappedCart } of images) {
                 for (const sx of axisShifts(wx, marginFrac[0])) {
                     for (const sy of axisShifts(wy, marginFrac[1])) {
                         for (const sz of axisShifts(wz, marginFrac[2])) {
@@ -509,6 +546,19 @@ export class BondGenerator extends BaseFilter {
                             if (!bucket) {
                                 bucket = [];
                                 grid.set(key, bucket);
+                                if (deduplicateGridSites) {
+                                    gridSiteKeys.set(key, new Set());
+                                }
+                            }
+                            if (deduplicateGridSites) {
+                                const siteKey = `${j}|${Math.round((wx + sx) * 1e10)},`
+                                    + `${Math.round((wy + sy) * 1e10)},`
+                                    + `${Math.round((wz + sz) * 1e10)}`;
+                                const bucketSiteKeys = gridSiteKeys.get(key);
+                                if (bucketSiteKeys.has(siteKey)) {
+                                    continue;
+                                }
+                                bucketSiteKeys.add(siteKey);
                             }
                             bucket.push({
                                 atomIndex: j,
@@ -630,9 +680,8 @@ export class BondGenerator extends BaseFilter {
                 const maxDistance = this.getMaxBondDistance(
                     el1, elementMap.get(atom2.atomType), elementProperties,
                 );
-                for (let opIndex = 0; opIndex < operations.length; opIndex++) {
+                for (const { opIndex, image } of imagesByAtom[j]) {
                     const opId = idByIndex[opIndex];
-                    const image = operations[opIndex].applyToPoint(fracts[j]);
                     const baseTx = Math.round(fracts[i][0] - image[0]);
                     const baseTy = Math.round(fracts[i][1] - image[1]);
                     const baseTz = Math.round(fracts[i][2] - image[2]);
@@ -971,5 +1020,94 @@ export class IsolatedHydrogenFixer extends BaseFilter {
         }
 
         return [IsolatedHydrogenFixer.MODES.OFF];
+    }
+}
+
+/**
+ * Structure modifier that reconciles bonds whose stated length contradicts the
+ * structure's own coordinates and site-symmetry codes.
+ *
+ * A `_geom_bond` entry carries the two atom labels, a site-symmetry code and a distance,
+ * and a file can state all three inconsistently. The distance is the one independently
+ * meaningful piece - it is what was measured - so the code is re-derived from it
+ * wherever some symmetry image reproduces it. Leaving such a bond alone draws it between
+ * the wrong pair of atoms, typically whole unit cells apart.
+ * @augments BaseFilter
+ */
+export class BondGeometryFixer extends BaseFilter {
+    static MODES = Object.freeze({
+        ON: 'on',
+        OFF: 'off',
+    });
+
+    static PREFERRED_FALLBACK_ORDER = [
+        BondGeometryFixer.MODES.ON,
+        BondGeometryFixer.MODES.OFF,
+    ];
+
+    /**
+     * Creates a new bond geometry fixer.
+     * @param {BondGeometryFixer.MODES} [mode] - Initial mode.
+     * @param {object} [options] - Overrides passed to the repair.
+     * @param {number} [options.tolerance] - Maximum accepted length deviation in Å.
+     * @param {number} [options.maxPlausibleBond] - Longest distance accepted from coordinates alone.
+     */
+    constructor(mode = BondGeometryFixer.MODES.OFF, options = {}) {
+        super(
+            BondGeometryFixer.MODES,
+            mode,
+            'BondGeometryFixer',
+            BondGeometryFixer.PREFERRED_FALLBACK_ORDER,
+        );
+        this.options = options;
+        // Populated on each apply/getApplicableModes so a caller can report what was
+        // changed without repeating the work.
+        this.lastRepairs = null;
+    }
+
+    /**
+     * Repairs contradictory bonds, if any.
+     * @param {CrystalStructure} structure - Structure to repair.
+     * @returns {CrystalStructure} Structure with reconciled bonds, or the input unchanged.
+     */
+    apply(structure) {
+        this.ensureValidMode(structure);
+
+        if (this.mode === BondGeometryFixer.MODES.OFF) {
+            this.lastRepairs = null;
+            return structure;
+        }
+
+        const { structure: repaired, repairs } = repairBondGeometry(structure, this.options);
+        this.lastRepairs = repairs;
+
+        // Nothing contradicted itself, so hand back the original rather than an
+        // equivalent copy - downstream caches key on structure identity.
+        if (repairs.recoded === 0 && repairs.lengthCorrected === 0 && repairs.dropped === 0) {
+            return structure;
+        }
+        return repaired;
+    }
+
+    /**
+     * Offers the repair only where the structure actually contradicts itself, so the
+     * mode does not appear for the great majority of files that have nothing to fix.
+     * @param {CrystalStructure} structure - Structure to analyze.
+     * @returns {Array<string>} Applicable mode names.
+     */
+    getApplicableModes(structure) {
+        if (!structure?.bonds?.length) {
+            return [BondGeometryFixer.MODES.OFF];
+        }
+
+        const { repairs } = repairBondGeometry(structure, this.options);
+        this.lastRepairs = repairs;
+        const needsRepair = repairs.recoded > 0
+            || repairs.lengthCorrected > 0
+            || repairs.dropped > 0;
+
+        return needsRepair
+            ? [BondGeometryFixer.MODES.ON, BondGeometryFixer.MODES.OFF]
+            : [BondGeometryFixer.MODES.OFF];
     }
 }

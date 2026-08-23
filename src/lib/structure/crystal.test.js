@@ -100,6 +100,139 @@ describe('CrystalStructure', () => {
         expect(structure.hBonds).toEqual([]);
     });
 
+    describe('symmetry operations not listed with x,y,z first', () => {
+        // A CIF may list its symmetry operations in any order, so operation 1 is not
+        // necessarily the identity. COD 4302508 lists -x,-y,-z first. Everything that
+        // means "no symmetry applied" has to name the operation the file itself calls
+        // the identity; a hardcoded 1_555 silently means inversion in such a file, and
+        // every bond to an asymmetric-unit atom is then resolved to the wrong image.
+        const cifText = `
+data_test
+ _cell_length_a 10
+ _cell_length_b 10
+ _cell_length_c 10
+ _cell_angle_alpha 90
+ _cell_angle_beta 90
+ _cell_angle_gamma 90
+
+ loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+ 1 -x,-y,-z
+ 2 x,y,z
+
+ loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ C1 C 0.2 0.2 0.2
+ O1 O 0.35 0.2 0.2
+
+ loop_
+ _geom_bond_atom_site_label_1
+ _geom_bond_atom_site_label_2
+ _geom_bond_distance
+ _geom_bond_site_symmetry_2
+ C1 O1 1.5 .
+`;
+
+        test('the identity is found by what it does, not by being listed first', () => {
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(structure.symmetry.identitySymOpId).toBe('2');
+        });
+
+        test('atoms and bonds carrying no symmetry name the file own identity', () => {
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(structure.atoms.map(atom => atom.uniqueId)).toEqual(['C1|2_555', 'O1|2_555']);
+            expect(structure.bonds[0].atom1Id).toBe('C1|2_555');
+            expect(structure.bonds[0].atom2Id).toBe('O1|2_555');
+        });
+
+        test('every atom sits where resolving its own ID puts it', () => {
+            // The invariant the whole growth machinery rests on: an atom's ID is a
+            // recipe for its position, so applying it must reproduce the coordinates the
+            // atom already has. A sentinel that names the wrong operation breaks this
+            // silently - the atom keeps its listed coordinates while its ID says
+            // "inverted" - and every consumer that resolves the ID then disagrees about
+            // where the atom is.
+            const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
+            const listed = new Map(
+                CrystalStructure.fromCIF(new CIF(cifText).getBlock(0)).atoms
+                    .map(atom => [atom.label, atom]),
+            );
+
+            for (const atom of structure.atoms) {
+                const [label, code] = atom.uniqueId.split('|');
+                const resolved = structure.symmetry.applySymmetry(code, [listed.get(label)])[0];
+
+                expect(resolved.position.x).toBeCloseTo(atom.position.x, 6);
+                expect(resolved.position.y).toBeCloseTo(atom.position.y, 6);
+                expect(resolved.position.z).toBeCloseTo(atom.position.z, 6);
+            }
+        });
+    });
+
+    test('an H-bond hydrogen already in a group merges the groups rather than joining both', () => {
+        // H1 is covalently bonded to C1, and is also the hydrogen of an H-bond whose
+        // donor O1 sits in a separate group. The D-H bond joins the two, so they must
+        // become one group: listing H1 in both makes symmetry growth generate it once
+        // per group, leaving two atoms sharing an ID at the same point.
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        const atoms = [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+            new Atom('H1', 'H', new FractPosition(0.1, 0, 0)),
+            new Atom('O1', 'O', new FractPosition(0.3, 0, 0)),
+            new Atom('N1', 'N', new FractPosition(0.5, 0, 0)),
+        ];
+        const structure = new CrystalStructure(
+            cell,
+            atoms,
+            [new Bond('C1', 'H1', 1.0, 0.01, '.'), new Bond('O1', 'N1', 1.4, 0.01, '.')],
+            [new HBond('O1', 'H1', 'N1', 1.0, 0.01, 2.0, 0.01, 2.9, 0.01, 170, 1, '.')],
+        );
+
+        const groups = structure.calculateConnectedGroups();
+        const membership = groups.filter(group =>
+            [...group.atoms].some(atom => atom.label === 'H1'));
+
+        expect(membership).toHaveLength(1);
+        const allGrouped = groups.flatMap(group => [...group.atoms].map(atom => atom.uniqueId));
+        expect(new Set(allGrouped).size).toBe(allGrouped.length);
+    });
+
+    test('fromCIF refuses a file that reuses an atom site label', () => {
+        // A manual "hydrogen on N10" label colliding with an automatically generated
+        // H10 + letter series, as seen in COD 1519817. Both _geom_bond entries below
+        // name H10N but mean different atoms, so neither can be resolved.
+        const cifText = `
+data_test
+ _cell_length_a 10
+ _cell_length_b 10
+ _cell_length_c 10
+ _cell_angle_alpha 90
+ _cell_angle_beta 90
+ _cell_angle_gamma 90
+
+ loop_
+ _atom_site_label
+ _atom_site_type_symbol
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ N10 N 0 0 0
+ H10N H 0.1 0 0
+ C107 C 0.5 0.5 0.5
+ H10N H 0.6 0.5 0.5
+`;
+        const block = new CIF(cifText).getBlock(0);
+
+        expect(() => CrystalStructure.fromCIF(block)).toThrow(/Duplicate atom site labels: H10N/);
+    });
+
     test('fromCIF creates complete structure', () => {
         const cifText = `
 data_test
@@ -207,8 +340,11 @@ C4 C 0 0 0 .`;
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
         const groups = structure.calculateConnectedGroups();
 
-        expect(groups).toHaveLength(2);
-        expect(groups[0].atoms).toHaveLength(3);
+        // The D-H bond is covalent even though it's only listed via the H-bond
+        // (H1 is not in `bonds`), so H1 joins O1's group instead of forming its
+        // own singleton.
+        expect(groups).toHaveLength(1);
+        expect(groups[0].atoms).toHaveLength(4);
     });
 
     test('findConnectedGroups handles complex connectivity correctly', () => {
@@ -238,23 +374,23 @@ C4 C 0 0 0 .`;
         const structure = new CrystalStructure(cell, atoms, bonds, hBonds);
         const groups = structure.calculateConnectedGroups();
 
-        // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds
+        // Group 1: C1-O1-N1-H1 connected by regular bonds and H-bonds (H1 joins
+        // via the covalent D-H bond implied by the internal H-bond)
         // Group 2: P1 alone (unconnected)
         // Group 3: F1 alone (only symmetry connections)
-        expect(groups).toHaveLength(4);
+        expect(groups).toHaveLength(3);
 
         // Find main connected group
         const mainGroup = groups.find(g => g.atoms.length > 1);
-        expect(mainGroup.atoms).toHaveLength(3);  // C1, O1, N1
-        expect(mainGroup.atoms.map(a => a.label).sort()).toEqual(['C1', 'N1', 'O1']);
+        expect(mainGroup.atoms).toHaveLength(4);  // C1, O1, N1, H1
+        expect(mainGroup.atoms.map(a => a.label).sort()).toEqual(['C1', 'H1', 'N1', 'O1']);
         expect(mainGroup.bonds).toHaveLength(2);  // C1-O1, O1-N1
         expect(mainGroup.hBonds).toHaveLength(1); // O1-H1-N1
 
         // Check isolated atoms are in their own groups
         const singleAtomGroups = groups.filter(g => g.atoms.length === 1);
-        expect(singleAtomGroups).toHaveLength(3);
-        //const test = singleAtomGroups.map(g => g.atoms[0].label).sort();
-        expect(singleAtomGroups.map(g => g.atoms[0].label).sort()).toEqual(['F1', 'H1', 'P1']);
+        expect(singleAtomGroups).toHaveLength(2);
+        expect(singleAtomGroups.map(g => g.atoms[0].label).sort()).toEqual(['F1', 'P1']);
         expect(singleAtomGroups.every(g => g.bonds.length === 0)).toBe(true);
         expect(singleAtomGroups.every(g => g.hBonds.length === 0)).toBe(true);
     });

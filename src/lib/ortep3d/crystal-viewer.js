@@ -602,6 +602,7 @@ export class CrystalViewer {
                     ...(atomLabelOptions.text || {}),
                 },
             },
+            ellipsoidProbability: options.ellipsoidProbability ?? defaultSettings.ellipsoidProbability,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
@@ -754,8 +755,24 @@ export class CrystalViewer {
         if (this.options.renderStyle === 'cutout-2d') {
             this.renderer.setClearColor(this.options.plot2DBackground, 1);
         }
+        // Take the render canvas out of the container's intrinsic sizing. It is
+        // given an explicit pixel width matching the container, so while it
+        // stays in flow it can widen its own parent -- and inside a CSS grid or
+        // flex track, whose items default to min-width:auto, that closes a
+        // feedback loop with the resize observer below: canvas widens track,
+        // track widens container, observer fires, canvas widens again.
+        // Absolute positioning makes the canvas a pure consumer of the
+        // container's size, which is what the atom-label overlay already does.
+        if (getComputedStyle(this.container).position === 'static') {
+            this.container.style.position = 'relative';
+        }
+        Object.assign(this.renderer.domElement.style, {
+            position: 'absolute',
+            inset: '0',
+        });
         this.resizeRendererToDisplaySize();
         this.container.appendChild(this.renderer.domElement);
+        this.observeContainerResize();
 
         this.moleculeContainer = new THREE.Group();
         this.scene.add(this.moleculeContainer);
@@ -763,6 +780,38 @@ export class CrystalViewer {
         this.camera.position.copy(this.options.camera.initialPosition);
         this.cameraTarget = new THREE.Vector3(0, 0, 0);
         this.camera.lookAt(this.cameraTarget);
+    }
+
+    /**
+     * Keeps the renderer matched to the container as it changes size.
+     *
+     * Without this, the size read during construction is the only one the
+     * renderer ever sees. A viewer built inside a hidden container -- a
+     * reveal.js slide that is not current, an inactive tab, a collapsed
+     * accordion, a closed <details> -- gets a 0x0 canvas, and revealing the
+     * container afterwards does not recover it. The viewer stays blank with no
+     * error, which is a hard failure to diagnose from the outside.
+     *
+     * ResizeObserver fires once on observe(), so a viewer created at zero size
+     * corrects itself as soon as the container is laid out.
+     */
+    observeContainerResize() {
+        if (typeof ResizeObserver === 'undefined') {
+            return; // non-browser or very old environment; nothing to observe
+        }
+        this.containerResizeObserver = new ResizeObserver(() => {
+            // Ignore transient zero sizes (e.g. mid-transition); there is
+            // nothing to render into and the next callback will carry the
+            // real size.
+            if (!this.container.clientWidth || !this.container.clientHeight) {
+                return;
+            }
+            if (this.resizeRendererToDisplaySize()) {
+                this.cameraController?.handleResize?.();
+                this.requestRender();
+            }
+        });
+        this.containerResizeObserver.observe(this.container);
     }
 
     /**
@@ -2185,6 +2234,158 @@ export class CrystalViewer {
     }
 
     /**
+     * Returns the current external-XYZ Cartesian view in degrees (Rz * Ry * Rx).
+     * @returns {{rotation: {convention:string, x:number, y:number, z:number},
+     *   camera: {type:string, viewSize?:number, distance?:number, zoomScale:number},
+     *   locks: {rotation:boolean, zoom:boolean}}} Serializable live view state
+     */
+    getViewState() {
+        const euler = new THREE.Euler().setFromQuaternion(this.moleculeContainer.quaternion, 'ZYX');
+        const rotation = {
+            convention: 'external-xyz-cartesian',
+            x: euler.x * THREE.MathUtils.RAD2DEG,
+            y: euler.y * THREE.MathUtils.RAD2DEG,
+            z: euler.z * THREE.MathUtils.RAD2DEG,
+        };
+        const camera = this.camera.isOrthographicCamera
+            ? {
+                type: 'orthographic',
+                viewSize: this.camera.top,
+                zoomScale: this.camera.top / (this.cameraController.baseSize || this.camera.top),
+            }
+            : {
+                type: 'perspective',
+                distance: this.camera.position.length(),
+                zoomScale: this.camera.position.length() /
+                    (this.cameraController.basePosition?.length() || this.camera.position.length()),
+            };
+        return {
+            rotation,
+            camera,
+            locks: {
+                rotation: Boolean(this.options.interaction.lockRotation),
+                zoom: Boolean(this.options.interaction.lockZoom),
+            },
+        };
+    }
+
+    /**
+     * Applies live view parts despite gesture locks and broadcasts each update.
+     * @param {{rotation?: {x?:number, y?:number, z?:number},
+     *   camera?: {viewSize?:number, distance?:number, zoomScale?:number}}} state - Partial live state
+     */
+    setViewState(state) {
+        if (state === null || typeof state !== 'object') {
+            throw new TypeError('View state must be an object');
+        }
+        if (state.rotation !== undefined) {
+            if (state.rotation === null || typeof state.rotation !== 'object') {
+                throw new TypeError('View rotation must be an object');
+            }
+            const current = this.getViewState().rotation;
+            const rotation = { x: current.x, y: current.y, z: current.z, ...state.rotation };
+            for (const axis of ['x', 'y', 'z']) {
+                if (!Number.isFinite(rotation[axis])) {
+                    throw new TypeError(`View rotation ${axis} must be a finite number`);
+                }
+            }
+            this.controls.setExternalEulerRotation({
+                x: rotation.x * THREE.MathUtils.DEG2RAD,
+                y: rotation.y * THREE.MathUtils.DEG2RAD,
+                z: rotation.z * THREE.MathUtils.DEG2RAD,
+            });
+        }
+        if (state.camera !== undefined) {
+            if (state.camera === null || typeof state.camera !== 'object') {
+                throw new TypeError('View camera must be an object');
+            }
+            const camera = state.camera;
+            let changed = false;
+            if (this.camera.isOrthographicCamera && camera.viewSize !== undefined) {
+                if (!Number.isFinite(camera.viewSize)) {
+                    throw new TypeError('Orthographic viewSize must be a finite number');
+                }
+                const size = THREE.MathUtils.clamp(
+                    camera.viewSize,
+                    this.cameraController.options.minSize ?? Number.EPSILON,
+                    this.cameraController.options.maxSize ?? Infinity,
+                );
+                this.cameraController.setOrthoSize(size);
+                this.camera.updateProjectionMatrix();
+                changed = true;
+            } else if (this.camera.isOrthographicCamera && camera.zoomScale !== undefined) {
+                if (!Number.isFinite(camera.zoomScale) || camera.zoomScale <= 0) {
+                    throw new TypeError('Orthographic zoomScale must be a positive finite number');
+                }
+                const baseSize = this.cameraController.baseSize || this.camera.top;
+                const size = THREE.MathUtils.clamp(
+                    baseSize * camera.zoomScale,
+                    this.cameraController.options.minSize ?? Number.EPSILON,
+                    this.cameraController.options.maxSize ?? Infinity,
+                );
+                this.cameraController.setOrthoSize(size);
+                this.camera.updateProjectionMatrix();
+                changed = true;
+            } else if (!this.camera.isOrthographicCamera && camera.distance !== undefined) {
+                if (!Number.isFinite(camera.distance)) {
+                    throw new TypeError('Perspective distance must be a finite number');
+                }
+                const distance = THREE.MathUtils.clamp(
+                    camera.distance,
+                    this.cameraController.options.minDistance,
+                    this.cameraController.options.maxDistance,
+                );
+                const direction = this.camera.position.clone().normalize();
+                this.camera.position.copy(direction.multiplyScalar(distance));
+                changed = true;
+            } else if (!this.camera.isOrthographicCamera && camera.zoomScale !== undefined) {
+                if (!Number.isFinite(camera.zoomScale) || camera.zoomScale <= 0) {
+                    throw new TypeError('Perspective zoomScale must be a positive finite number');
+                }
+                const baseDistance = this.cameraController.basePosition?.length() ||
+                    this.camera.position.length();
+                const distance = THREE.MathUtils.clamp(
+                    baseDistance * camera.zoomScale,
+                    this.cameraController.options.minDistance,
+                    this.cameraController.options.maxDistance,
+                );
+                const direction = this.camera.position.clone().normalize();
+                this.camera.position.copy(direction.multiplyScalar(distance));
+                changed = true;
+            }
+            if (changed) {
+                this.camera.updateMatrixWorld();
+                this.requestRender();
+                this.controls.notifyCameraChanged();
+            }
+        }
+    }
+
+    /**
+     * Updates the independent rotation/zoom gesture locks without rebuilding.
+     * @param {{rotation?:boolean, zoom?:boolean}} locks - Lock values to update
+     */
+    setInteractionLocks(locks) {
+        if (locks === null || typeof locks !== 'object') {
+            throw new TypeError('Interaction locks must be an object');
+        }
+        for (const [key, value] of Object.entries(locks)) {
+            if (!['rotation', 'zoom'].includes(key)) {
+                throw new TypeError(`Unknown interaction lock: ${key}`);
+            }
+            if (typeof value !== 'boolean') {
+                throw new TypeError(`Interaction lock ${key} must be true or false`);
+            }
+        }
+        if (locks.rotation !== undefined) {
+            this.options.interaction.lockRotation = locks.rotation;
+        }
+        if (locks.zoom !== undefined) {
+            this.options.interaction.lockZoom = locks.zoom;
+        }
+    }
+
+    /**
      * Removes the current structure and frees associated resources.
      * @private
      */
@@ -2633,6 +2834,8 @@ export class CrystalViewer {
         if (this.animationFrameId !== undefined) {
             cancelAnimationFrame(this.animationFrameId);
         }
+        this.containerResizeObserver?.disconnect();
+        this.containerResizeObserver = null;
         this.cancelScalarFieldLoad('Viewer disposed');
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();

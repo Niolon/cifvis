@@ -5,6 +5,7 @@ import {
     createIsosurfaces,
     DEFAULT_ISOSURFACE_OPTIONS,
     isosurfaceBounds,
+    wireframeFromSurface,
 } from './isosurface.js';
 
 const POSITION_TOLERANCE_ANGSTROM = 1e-4;
@@ -384,6 +385,41 @@ function classifyRegions(regions, field, cellMatrix) {
  * @param {object} [options] - Isosurface options.
  * @returns {THREE.Group} Symmetry-aware surface group.
  */
+/**
+ * Fraction of the direct pass's sampling volume the per-region passes may occupy before
+ * the symmetry route is abandoned.
+ *
+ * Set below one because the sampling is only part of what the symmetry route costs: every
+ * copy is transformed and cloned, and the patches are then welded together. Those scale
+ * with the copies and their boundary rather than with the sampled volume, so the sampling
+ * has to come in meaningfully cheaper for the route to be worth taking at all.
+ */
+const SYMMETRY_SAMPLE_COST_BUDGET = 0.7;
+
+/**
+ * Grid resolution used for one region's own marching-cubes pass.
+ *
+ * Shared by the cost estimate and the pass itself so the two cannot drift apart - an
+ * estimate computed from a different formula than the work it predicts is worse than no
+ * estimate.
+ * @param {object} structure - Displayed structure the region belongs to.
+ * @param {object} region - Region whose representative is being sized.
+ * @param {number} radius - Density clipping radius in Ångström.
+ * @param {number} globalResolution - Resolution the direct pass would use.
+ * @param {number} globalSpacing - Sample spacing of the direct pass.
+ * @returns {number} Resolution for this region.
+ */
+function regionResolutionFor(structure, region, radius, globalResolution, globalSpacing) {
+    const bounds = isosurfaceBounds(regionStructure(structure, region), radius);
+    return Math.max(
+        8,
+        Math.min(
+            globalResolution,
+            Math.ceil(longestBoundsEdge(structure.cell, bounds) / globalSpacing) + 1,
+        ),
+    );
+}
+
 export function createSymmetryAwareIsosurfaces(
     field,
     structure,
@@ -427,6 +463,31 @@ export function createSymmetryAwareIsosurfaces(
         return group;
     }
 
+    // Reuse existing is not the same as reuse paying. Each representative is marched in
+    // its own box, and those boxes overlap freely, so a structure whose density breaks
+    // into many separate clusters can sample far more volume in total than one pass over
+    // the whole cell would - and then still owes the transform and stitch for every
+    // copy. Both costs are known here, before any marching cubes runs, so compare them
+    // and take the cheaper route rather than assuming the reuse wins.
+    const regionSampleCost = plans.reduce((planSum, plan) => planSum + plan.classes.reduce(
+        (classSum, regionClass) => classSum + regionResolutionFor(
+            structure, regionClass.representative, usedOptions.radius,
+            globalResolution, globalSpacing,
+        ) ** 3,
+        0,
+    ), 0);
+    const directSampleCost = globalResolution ** 3;
+    if (regionSampleCost > directSampleCost * SYMMETRY_SAMPLE_COST_BUDGET) {
+        const group = createIsosurfaces(field, structure, usedOptions);
+        for (const plan of plans) {
+            group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
+        }
+        group.userData.symmetryDeclinedForCost = true;
+        group.userData.symmetryRegionSampleCost = regionSampleCost;
+        group.userData.symmetryDirectSampleCost = directSampleCost;
+        return group;
+    }
+
     const planningTimeMs = performance.now() - started;
     const group = new THREE.Group();
     group.name = 'Isosurface';
@@ -441,13 +502,9 @@ export function createSymmetryAwareIsosurfaces(
     plans.forEach(plan => {
         plan.classes.forEach(regionClass => {
             const representativeStructure = regionStructure(structure, regionClass.representative);
-            const regionBounds = isosurfaceBounds(representativeStructure, usedOptions.radius);
-            const regionResolution = Math.max(
-                8,
-                Math.min(
-                    globalResolution,
-                    Math.ceil(longestBoundsEdge(structure.cell, regionBounds) / globalSpacing) + 1,
-                ),
+            const regionResolution = regionResolutionFor(
+                structure, regionClass.representative, usedOptions.radius,
+                globalResolution, globalSpacing,
             );
             const regionMaxPolyCount = Math.max(
                 2000,
@@ -468,6 +525,9 @@ export function createSymmetryAwareIsosurfaces(
                     resolution: regionResolution,
                     maxPolyCount: regionMaxPolyCount,
                     sign: plan.sign,
+                    // Region patches must stay triangulated for stitching; the
+                    // final stitched mesh is converted to line edges below.
+                    keepTriangles: true,
                 },
             );
             marchingCubesTimeMs += performance.now() - regionStarted;
@@ -513,12 +573,18 @@ export function createSymmetryAwareIsosurfaces(
         removedDuplicateTriangleCount += stitched.removedTriangles;
         const material = surfaceMaterials[sign][0];
         surfaceMaterials[sign].slice(1).forEach(extraMaterial => extraMaterial.dispose());
+        const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
         const surface = new THREE.Mesh(stitched.geometry, material);
         surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}Isosurface`;
         surface.userData = { selectable: false, type: 'isosurface', sign };
-        surface.frustumCulled = false;
-        group.add(surface);
-        const polygons = (stitched.geometry.getIndex()?.count ?? 0) / 3;
+        if (usedOptions.wireframe) {
+            const lines = wireframeFromSurface(surface, material.color, usedOptions.opacity);
+            surface.geometry.dispose();
+            material.dispose();
+            group.add(lines);
+        } else {
+            group.add(surface);
+        }
         if (sign === 'positive') {
             positivePolygonCount = polygons;
         } else {

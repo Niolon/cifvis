@@ -1,4 +1,10 @@
-import { FractPosition, CartPosition, BasePosition, PositionFactory } from './position.js';
+import {
+    FractPosition,
+    CartPosition,
+    BasePosition,
+    PositionFactory,
+    positionsCoincide,
+} from './position.js';
 import { UnitCell } from './crystal.js';
 import { CIF } from '../read-cif/base.js';
 
@@ -53,6 +59,31 @@ describe('Position Classes', () => {
 
         const testPosition = new TestPosition(0.0, 0.0, 0.0);
         expect(() => testPosition.toCartesian()).toThrow('toCartesian must be implemented by subclass');
+    });
+});
+
+describe('periodic position coincidence', () => {
+    test('recognises near-equal images across an orthogonal cell face', () => {
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        expect(positionsCoincide(
+            new FractPosition(0.99998, 0.2, 0.3),
+            new FractPosition(0.00002, 0.2, 0.3),
+            cell,
+        )).toBe(true);
+    });
+
+    test('uses the minimum image in a skew cell and retains positions beyond tolerance', () => {
+        const cell = new UnitCell(10, 11, 12, 78, 83, 72);
+        expect(positionsCoincide(
+            new FractPosition(0.99999, 0.3, 0.4),
+            new FractPosition(0.00001, 0.3, 0.4),
+            cell,
+        )).toBe(true);
+        expect(positionsCoincide(
+            new FractPosition(0.9998, 0.3, 0.4),
+            new FractPosition(0.0002, 0.3, 0.4),
+            cell,
+        )).toBe(false);
     });
 });
 

@@ -6,18 +6,63 @@ import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/index.nobrowser.js';
+import { repairBondGeometry } from '../src/lib/structure/structure-modifiers/bond-geometry.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
+import {
+    checkCifBasis, checkGrownBonds, formatBondConsistencyReport,
+} from './lib/bond-consistency.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 const logsDir = join(scriptDir, 'logs');
+const chunkLogsDir = join(logsDir, 'modifiers-chunked');
 
-const config = {
-    logFile: join(logsDir, 'modifier-test-results.log'),
-    errorLogFile: join(logsDir, 'modifier-test-errors.log'),
-    modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
-    verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
-    summaryFile: join(logsDir, 'modifier-test-summary.log'),
+/**
+ * Generates the log filenames for a specific range of processed files. Used both for
+ * a full (unranged) run, writing directly to the top-level log files, and for a single
+ * chunk of a parallel run - see run-modifiers-tests-parallel.sh, which fans out several
+ * of these processes concurrently, each covering a disjoint file range, then merges
+ * their per-chunk outputs into the same top-level files aggregate-modifier-stats.mjs
+ * produces.
+ * @param {number} [startIndex] - The starting index of the file range (omit for a full run).
+ * @param {number} [endIndex] - The ending index of the file range (omit for a full run).
+ * @returns {object} Paths to the log, error, modifier, verbose, summary, and stats files.
+ */
+export function getLogFilenames(startIndex, endIndex) {
+    if (startIndex === undefined && endIndex === undefined) {
+        return {
+            logFile: join(logsDir, 'modifier-test-results.log'),
+            errorLogFile: join(logsDir, 'modifier-test-errors.log'),
+            modifierLogFile: join(logsDir, 'modifier-test-modifiers.log'),
+            verboseLogFile: join(logsDir, 'modifier-test-verbose.log'),
+            summaryFile: join(logsDir, 'modifier-test-summary.log'),
+            statsFile: join(logsDir, 'modifier-test-stats.json'),
+            bondConsistencyLogFile: join(logsDir, 'modifier-test-bond-consistency.log'),
+            slowFileLogFile: join(logsDir, 'modifier-test-slow-files.log'),
+        };
+    }
+    const rangeStr = `${startIndex}-${endIndex}`;
+    return {
+        logFile: join(chunkLogsDir, `modifier-test-results-${rangeStr}.log`),
+        errorLogFile: join(chunkLogsDir, `modifier-test-errors-${rangeStr}.log`),
+        modifierLogFile: join(chunkLogsDir, `modifier-test-modifiers-${rangeStr}.log`),
+        verboseLogFile: join(chunkLogsDir, `modifier-test-verbose-${rangeStr}.log`),
+        summaryFile: join(chunkLogsDir, `modifier-test-summary-${rangeStr}.log`),
+        statsFile: join(chunkLogsDir, `modifier-test-stats-${rangeStr}.json`),
+        bondConsistencyLogFile: join(
+            chunkLogsDir, `modifier-test-bond-consistency-${rangeStr}.log`,
+        ),
+        slowFileLogFile: join(chunkLogsDir, `modifier-test-slow-files-${rangeStr}.log`),
+    };
+}
+
+/** A file taking longer than this is worth naming individually in the log. */
+const SLOW_FILE_MS = 1000;
+/** A single modifier combination taking longer than this is reported with the file. */
+const SLOW_MODE_MS = 500;
+
+let config = {
+    ...getLogFilenames(),
     batchSize: 1000,
     interimReportFrequency: 5000, // Report every 1000 structures
 };
@@ -32,7 +77,8 @@ const stats = {
             total: 0,
             unitCellParameterMissing: 0,
             noValidAtoms: 0,
-            placeholderCoordinates: 0, 
+            duplicateAtomLabels: 0,
+            placeholderCoordinates: 0,
             uAniProblems: {
                 total: 0,
                 uAniTableMissing: 0,
@@ -50,6 +96,7 @@ const stats = {
         CrystalStructureFixed: {
             total: 0,
             unitCellParameterMissing: 0,
+            duplicateAtomLabels: 0,
             uAniProblems: {
                 total: 0,
                 uAniTableMissing: 0,
@@ -66,6 +113,50 @@ const stats = {
         },
         symmetry: 0,
         modifier: 0,
+        connectivity: 0,
+    },
+    // Processing cost per file. Only sums and counts live here: chunk stats are merged
+    // by adding matching numeric leaves, so a maximum or a top-N list would aggregate
+    // into nonsense. Buckets give the shape of the tail and survive the merge; the
+    // individual offenders go to the slow-file log.
+    timing: {
+        filesTimed: 0,
+        totalMs: 0,
+        slowFiles: 0,
+        filesOver5s: 0,
+        filesOver30s: 0,
+        slowMsTotal: 0,
+    },
+    // Geometric self-consistency of the bonds that growth produces. Split by whether
+    // the source CIF was already inconsistent, because the symmetry orbit of one wrong
+    // input bond is a whole set of wrong output bonds: without the split, a handful of
+    // bad depositions dominate the totals and hide real regressions.
+    bondConsistency: {
+        structuresChecked: 0,
+        structuresWithUnsoundBasis: 0,
+        unsoundBasisBonds: 0,
+        grownStructuresChecked: 0,
+        // Findings on structures whose own CIF verifies - these are ours.
+        soundBasis: {
+            runsWithInconsistentBonds: 0,
+            inconsistentBonds: 0,
+            danglingBonds: 0,
+            repeatedAtomIds: 0,
+        },
+        // Findings on structures that already disagree with themselves - expected.
+        unsoundBasis: {
+            runsWithInconsistentBonds: 0,
+            inconsistentBonds: 0,
+            danglingBonds: 0,
+            repeatedAtomIds: 0,
+        },
+        // Outcome of reconciling an unsound file before growing it.
+        repairs: {
+            recoded: 0,
+            lengthCorrected: 0,
+            dropped: 0,
+            structuresWithDroppedBonds: 0,
+        },
     },
 };
 
@@ -73,6 +164,12 @@ const originalWarn = console.warn;
 let suppressedWarnings = [];
 console.warn = (...args) => {
     suppressedWarnings.push(args.join(' '));
+};
+
+const originalError = console.error;
+let capturedErrors = [];
+console.error = (...args) => {
+    capturedErrors.push(args.join(' '));
 };
 
 /**
@@ -89,12 +186,42 @@ function writeSummaryToFile(summaryText, filePath) {
 }
 
 /**
- * Generates a summary of the testing process with statistics.
+ * Generates a summary of the testing process with statistics. Pure function of `stats`
+ * so aggregate-modifier-stats.mjs can reuse it to format a merged multi-chunk summary
+ * identically to a single-process run's.
+ * @param {typeof stats} statsToReport - The statistics object to format.
  * @param {boolean} [isInterim] - Whether this is an interim or final summary.
  * @returns {string} The formatted summary text with statistics.
  */
-function generateSummary(isInterim = false) {
+export function generateSummary(statsToReport, isInterim = false) {
+    const stats = statsToReport;
     const header = isInterim ? 'Interim CIF Testing Summary' : 'Final CIF Testing Summary';
+
+    // Tolerate stats files written before bond consistency was tracked, so an older
+    // chunk cannot break aggregation.
+    const bondConsistency = {
+        structuresChecked: 0,
+        structuresWithUnsoundBasis: 0,
+        unsoundBasisBonds: 0,
+        grownStructuresChecked: 0,
+        soundBasis: {},
+        unsoundBasis: {},
+        repairs: {},
+        ...(stats.bondConsistency ?? {}),
+    };
+    const timing = {
+        filesTimed: 0, totalMs: 0, slowFiles: 0, filesOver5s: 0, filesOver30s: 0, slowMsTotal: 0,
+        ...(stats.timing ?? {}),
+    };
+    const meanMs = timing.filesTimed === 0 ? 0 : timing.totalMs / timing.filesTimed;
+    const tailShare = timing.totalMs === 0
+        ? '0.0'
+        : ((timing.slowMsTotal / timing.totalMs) * 100).toFixed(1);
+
+    const unsoundBasisPercentage = bondConsistency.structuresChecked === 0
+        ? '0.0'
+        : ((bondConsistency.structuresWithUnsoundBasis / bondConsistency.structuresChecked)
+            * 100).toFixed(1);
     
     // Calculate percentage of unhandled structure errors
     const totalStructureErrors = stats.errors.CrystalStructure.total;
@@ -127,6 +254,7 @@ Error Breakdown:
 - Structure creation errors: ${stats.errors.CrystalStructure.total}
   • Missing unit cell parameters: ${stats.errors.CrystalStructure.unitCellParameterMissing}
   • No valid atoms: ${stats.errors.CrystalStructure.noValidAtoms}
+  • Duplicate atom site labels: ${stats.errors.CrystalStructure.duplicateAtomLabels ?? 0}
   • Placeholder coordinates only: ${stats.errors.CrystalStructure.placeholderCoordinates}
   • Anisotropic displacement problems: ${stats.errors.CrystalStructure.uAniProblems.total}
     - Missing Uani tables: ${stats.errors.CrystalStructure.uAniProblems.uAniTableMissing}
@@ -148,7 +276,48 @@ Error Breakdown:
     - Missing H-bond atoms: ${stats.errors.CrystalStructureFixed.bondProblems.missingHBondAtom}
     - Invalid H-bond symmetry: ${stats.errors.CrystalStructureFixed.bondProblems.invalidHBondSymmetry}
   • Other errors (logged): ${stats.errors.CrystalStructureFixed.otherAndLogged}
-- Symmetry errors: ${stats.errors.symmetry}`;
+- Symmetry errors: ${stats.errors.symmetry}
+- Connectivity errors (e.g. max iterations reached): ${stats.errors.connectivity}
+
+PROCESSING TIME
+---------------
+Individually slow files are named in modifier-test-slow-files.log, each with the
+modifier combinations that took the longest, so the tail can be profiled directly.
+
+- Files timed: ${timing.filesTimed}, total ${(timing.totalMs / 60000).toFixed(1)} min\
+ (mean ${meanMs.toFixed(0)} ms)
+- Files over 1 s: ${timing.slowFiles}, over 5 s: ${timing.filesOver5s},\
+ over 30 s: ${timing.filesOver30s}
+- Share of total time spent in files over 1 s: ${tailShare}%
+
+BOND CONSISTENCY
+----------------
+Every grown bond must span the distance it is labelled with, and name two atoms that
+were actually materialised. Results are split by whether the source CIF verifies
+against its own coordinates, since growth replicates an unsound input faithfully.
+
+- Structures checked: ${bondConsistency.structuresChecked}
+- Structures whose own CIF is inconsistent: ${bondConsistency.structuresWithUnsoundBasis}\
+ (${unsoundBasisPercentage}%), covering ${bondConsistency.unsoundBasisBonds} bonds
+- Grown structures checked: ${bondConsistency.grownStructuresChecked}
+
+• From sound CIFs - these indicate a defect in cifvis:
+  - Runs with findings: ${bondConsistency.soundBasis.runsWithInconsistentBonds}
+  - Bonds drawn at the wrong length: ${bondConsistency.soundBasis.inconsistentBonds}
+  - Bonds naming a missing atom: ${bondConsistency.soundBasis.danglingBonds}
+  - Repeated atom IDs: ${bondConsistency.soundBasis.repeatedAtomIds}
+• From already-inconsistent CIFs - expected, bad input reproduced:
+  - Runs with findings: ${bondConsistency.unsoundBasis.runsWithInconsistentBonds}
+  - Bonds drawn at the wrong length: ${bondConsistency.unsoundBasis.inconsistentBonds}
+  - Bonds naming a missing atom: ${bondConsistency.unsoundBasis.danglingBonds}
+  - Repeated atom IDs: ${bondConsistency.unsoundBasis.repeatedAtomIds}
+
+Unsound files are reconciled before growth, by re-deriving each contradictory bond's
+site-symmetry code from the distance the file publishes:
+  - Site-symmetry codes corrected: ${bondConsistency.repairs.recoded}
+  - Lengths corrected from coordinates (no image matched): ${bondConsistency.repairs.lengthCorrected}
+  - Bonds dropped as irreconcilable: ${bondConsistency.repairs.dropped}\
+ (in ${bondConsistency.repairs.structuresWithDroppedBonds} structures)`;
 
     return summaryText;
 }
@@ -192,6 +361,11 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
         crystalStructureErrors.noValidAtoms++;
         errorHandled = true;
     }
+    if (errorMessage.includes('Duplicate atom site labels')) {
+        crystalStructureErrors.total++;
+        crystalStructureErrors.duplicateAtomLabels++;
+        errorHandled = true;
+    }
     if (errorMessage.includes(', but no atom_site_aniso loop was found')) {
         crystalStructureErrors.total++;
         crystalStructureErrors.uAniProblems.total++;
@@ -231,14 +405,89 @@ function handleStructureError(errorMessage, fixed, verbose=false) {
 }
 
 /**
+ * Verifies that one grown structure is geometrically self-consistent and records the
+ * outcome against the already-established verdict on the source CIF.
+ *
+ * Findings are counted separately for sound and unsound input. Only the sound-basis
+ * counters indicate a defect in cifvis; the unsound-basis ones track how much bad
+ * input the corpus contains, which is otherwise indistinguishable in the totals.
+ * @param {object} grownStructure - Structure returned by the symmetry grower.
+ * @param {object} basisCheck - Result of checkCifBasis for the source CIF.
+ * @param {string} filePath - CIF being tested, for the log.
+ * @param {object} modes - Active `{hydrogenMode, disorderMode, symmetryMode}`.
+ */
+function checkBondConsistency(grownStructure, basisCheck, filePath, modes) {
+    const grown = checkGrownBonds(grownStructure);
+    stats.bondConsistency.grownStructuresChecked++;
+
+    const findings = grown.inconsistent.length + grown.dangling.length + grown.idCollisions;
+    if (findings === 0) {
+        return;
+    }
+
+    const basisIsUnsound = basisCheck.mismatched.length > 0;
+    const bucket = basisIsUnsound
+        ? stats.bondConsistency.unsoundBasis
+        : stats.bondConsistency.soundBasis;
+    bucket.runsWithInconsistentBonds++;
+    bucket.inconsistentBonds += grown.inconsistent.length;
+    bucket.danglingBonds += grown.dangling.length;
+    bucket.repeatedAtomIds += grown.idCollisions;
+
+    // Growth faithfully replicating an unsound CIF is already accounted for by the
+    // Structure Error raised for that file, and one bad input bond expands into its
+    // whole symmetry orbit - logging every one of those would bury the findings that
+    // are actually cifvis's fault. Only those get an entry here.
+    if (!basisIsUnsound) {
+        logMessage(
+            formatBondConsistencyReport({ filePath, modes, grown, basis: basisCheck }),
+            config.bondConsistencyLogFile,
+        );
+    }
+}
+
+/**
+ * Records how long one file took, and names it in the slow-file log when it stands out.
+ *
+ * A run's cost is dominated by a small tail of structures rather than by the bulk, so
+ * knowing which files those are - and which modifier combination inside them is the
+ * expensive one - is what makes the tail actionable rather than merely slow.
+ * @param {string} filePath - The CIF that was processed.
+ * @param {number} elapsedMs - Wall time spent on it.
+ * @param {string[]} slowModes - Descriptions of individually slow modifier combinations.
+ */
+function recordFileTiming(filePath, elapsedMs, slowModes) {
+    stats.timing.filesTimed++;
+    stats.timing.totalMs += Math.round(elapsedMs);
+    if (elapsedMs < SLOW_FILE_MS) {
+        return;
+    }
+    stats.timing.slowFiles++;
+    stats.timing.slowMsTotal += Math.round(elapsedMs);
+    if (elapsedMs >= 5000) {
+        stats.timing.filesOver5s++;
+    }
+    if (elapsedMs >= 30000) {
+        stats.timing.filesOver30s++;
+    }
+    const detail = slowModes.length > 0
+        ? '\n' + slowModes.map(entry => `    ${entry}`).join('\n')
+        : '';
+    logMessage(`${(elapsedMs / 1000).toFixed(1)}s ${filePath}${detail}`, config.slowFileLogFile);
+}
+
+/**
  * Tests a CIF file by parsing it and applying various structure modifiers.
  * @param {string} filePath - The path to the CIF file to test.
  * @returns {object} Results object containing success flags, error information, and modifier errors.
  */
 async function testCIFFile(filePath) {
     stats.totalFiles++;
+    const fileStartedAt = performance.now();
+    const slowModes = [];
     const fileContent = readFileSync(filePath, 'utf8');
     suppressedWarnings = [];
+    capturedErrors = [];
     
     const results = {
         path: filePath,
@@ -303,6 +552,49 @@ async function testCIFFile(filePath) {
                 symmetry: new SymmetryGrower(),
             };
 
+            // Established once per file, before any growth, so every mode combination
+            // below is judged against the same verdict on the input. Runs before the
+            // applicable modes are derived, since repairing the bonds can change which
+            // growth modes the structure supports.
+            const basisCheck = checkCifBasis(baseStructure);
+            stats.bondConsistency.structuresChecked++;
+            if (basisCheck.mismatched.length > 0) {
+                stats.bondConsistency.structuresWithUnsoundBasis++;
+                stats.bondConsistency.unsoundBasisBonds += basisCheck.mismatched.length;
+                // A depositor-side defect, not a cifvis one: report it as a Structure
+                // Error so generate-cod-report.mjs picks it up as a COD data-quality
+                // category. The maintainer log below stays reserved for findings cifvis
+                // itself introduced.
+                logMessage(
+                    `Structure Error in ${filePath}: Bond lengths inconsistent with the`
+                    + ` file's own coordinates: ${basisCheck.mismatched.length} of`
+                    + ` ${basisCheck.checked} bonds\n`
+                    + basisCheck.mismatched.slice(0, 5).map(entry => `    ${entry}`).join('\n'),
+                    config.errorLogFile,
+                );
+
+                // Warned about above; now reconcile so the rest of the run exercises
+                // growth on a coherent model instead of re-deriving the same fault in
+                // every mode combination.
+                const repair = repairBondGeometry(baseStructure);
+                baseStructure = repair.structure;
+                stats.bondConsistency.repairs.recoded += repair.repairs.recoded;
+                stats.bondConsistency.repairs.lengthCorrected += repair.repairs.lengthCorrected;
+                stats.bondConsistency.repairs.dropped += repair.repairs.dropped;
+                if (repair.repairs.dropped > 0) {
+                    stats.bondConsistency.repairs.structuresWithDroppedBonds++;
+                }
+                logMessage(
+                    `Bond geometry repaired in ${filePath}: ${repair.repairs.recoded} site-symmetry`
+                    + ` codes corrected, ${repair.repairs.lengthCorrected} lengths corrected,`
+                    + ` ${repair.repairs.dropped} dropped\n`
+                    + repair.repairs.details.slice(0, 3).map(entry => `    ${entry}`).join('\n'),
+                    config.bondConsistencyLogFile,
+                );
+            }
+
+            // Derived after any repair, since reconciling the bonds can change which
+            // growth modes the structure supports.
             const applicableModes = {
                 hydrogen: modifiers.hydrogen.getApplicableModes(baseStructure),
                 disorder: modifiers.disorder.getApplicableModes(baseStructure),
@@ -338,7 +630,20 @@ async function testCIFFile(filePath) {
                                 throw filterError;
                             }
                             modifiers.symmetry.mode = symmetryMode;
-                            modifiers.symmetry.apply(filteredStructure);
+                            const modeStartedAt = performance.now();
+                            const grownStructure = modifiers.symmetry.apply(filteredStructure);
+                            const modeMs = performance.now() - modeStartedAt;
+                            if (modeMs >= SLOW_MODE_MS) {
+                                slowModes.push(
+                                    `${modeMs.toFixed(0)}ms H=${hydrogenMode}, D=${disorderMode}, `
+                                    + `S=${symmetryMode} -> ${grownStructure.atoms.length} atoms, `
+                                    + `${grownStructure.bonds.length} bonds`,
+                                );
+                            }
+                            checkBondConsistency(
+                                grownStructure, basisCheck, filePath,
+                                { hydrogenMode, disorderMode, symmetryMode },
+                            );
                         } catch (error) {
                             logMessage(
                                 `Modifier Error in ${filePath}:`
@@ -377,17 +682,26 @@ async function testCIFFile(filePath) {
     }
 
     if (results.modifierErrors.length > 0) {
-        const errorLog = `${filePath} modifier errors:\n` + 
-            results.modifierErrors.map(err => 
+        const errorLog = `${filePath} modifier errors:\n` +
+            results.modifierErrors.map(err =>
                 `Modes: H=${err.modes.hydrogenMode}, D=${err.modes.disorderMode}, ` +
                 `S=${err.modes.symmetryMode}\nError: ${err.error}`,
             ).join('\n---\n');
         logMessage(errorLog, config.modifierLogFile);
     }
 
+    if (capturedErrors.length > 0) {
+        stats.errors.connectivity += capturedErrors.length;
+        capturedErrors.forEach(errMsg => {
+            logMessage(`Connectivity Error in ${filePath}: ${errMsg}`, config.errorLogFile);
+        });
+    }
+
+    recordFileTiming(filePath, performance.now() - fileStartedAt, slowModes);
+
     // Check if we should generate an interim report
     if (stats.totalFiles % config.interimReportFrequency === 0) {
-        const interimSummary = generateSummary(true);
+        const interimSummary = generateSummary(stats, true);
         console.log(interimSummary);
         ///writeSummaryToFile(interimSummary, config.logFile);
     }
@@ -435,16 +749,31 @@ async function findCIFFiles(dir) {
  * Main function that executes the testing process.
  * Finds all CIF files in the specified directory, processes them in batches,
  * and generates summary statistics.
+ *
+ * With only a target directory given, processes every file and writes the
+ * top-level logs. With a start/end index pair also given (used by
+ * run-modifiers-tests-parallel.sh to fan work out across several concurrent
+ * processes), processes only that slice of the file list and writes to
+ * per-chunk log files instead, including a JSON stats dump that
+ * aggregate-modifier-stats.mjs later merges back into the top-level logs.
  */
 async function main() {
+    const startIndex = process.argv[3] === undefined ? undefined : parseInt(process.argv[3]);
+    const endIndex = process.argv[4] === undefined ? undefined : parseInt(process.argv[4]);
+    const isChunk = startIndex !== undefined;
+    config = { ...config, ...getLogFilenames(startIndex, endIndex) };
+
     if (!existsSync(logsDir)) {
         mkdirSync(logsDir);
+    }
+    if (isChunk && !existsSync(chunkLogsDir)) {
+        mkdirSync(chunkLogsDir);
     }
 
     const startTime = Date.now();
     const targetDir = process.argv[2] || './cod';
     const resolvedPath = resolve(targetDir);
-    
+
     console.log(`Starting CIF testing in directory: ${resolvedPath}`);
     logMessage(`Starting CIF testing in directory: ${resolvedPath}`);
 
@@ -467,6 +796,12 @@ async function main() {
         console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
         logMessage(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
 
+        if (isChunk) {
+            files = files.slice(startIndex, endIndex);
+            console.log(`Processing ${files.length} files in requested range ${startIndex}-${endIndex}`);
+            logMessage(`Processing ${files.length} files in requested range ${startIndex}-${endIndex}`);
+        }
+
         let processedIndex = 0;
         while (processedIndex < files.length) {
             processedIndex = await processBatch(files, processedIndex);
@@ -478,14 +813,16 @@ async function main() {
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(1);
         logMessage(`Testing completed in ${duration} seconds`);
-        
+
         // Write final summary
-        const finalSummary = generateSummary(false);
+        const finalSummary = generateSummary(stats, false);
         console.log(finalSummary);
         writeSummaryToFile(finalSummary, config.summaryFile);
+        writeFileSync(config.statsFile, JSON.stringify(stats, null, 2));
 
     } finally {
         console.warn = originalWarn;
+        console.error = originalError;
     }
 }
 

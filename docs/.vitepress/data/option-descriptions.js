@@ -39,6 +39,8 @@ export const descriptions = {
 
     // Interaction
     'interaction.rotationSpeed': 'Speed of rotation when dragging.',
+    'interaction.lockRotation': 'Disables mouse and one-finger rotation gestures. Explicit view changes still apply.',
+    'interaction.lockZoom': 'Disables mouse-wheel and pinch zoom gestures. Explicit view changes still apply.',
     'interaction.clickThreshold': 'Maximum time in milliseconds for an interaction to be considered a click.',
     'interaction.mouseRaycast.lineThreshold': 'Threshold for line selection with the mouse.',
     'interaction.mouseRaycast.pointsThreshold': 'Threshold for point selection with the mouse.',
@@ -177,6 +179,9 @@ export const descriptions = {
     'atomLabels.maxVisible': 'Maximum labels attempted; excess labels are reported as hidden.',
 
     // Atom visualization
+    'ellipsoidProbability': 'Displayed probability for anisotropic displacement (ADP) ellipsoids, ' +
+        'in (0, 1). The RMS ellipsoid is scaled by the chi-squared(3) quantile at this probability; ' +
+        '0.5 gives the conventional 50% probability ellipsoid.',
     'atomDetail': 'Level of detail for atom geometry (1&ndash;5).',
     'atomCutawayHysteresis': 'Direction threshold that prevents cutaway octants flickering near an axis.',
     'atomCutawayStripeCount': 'Number of hatch repeats across each cutaway disc.',
@@ -258,6 +263,12 @@ export const descriptions = {
         'definition (see below). Explicit atom lists require three non-collinear atoms; best-fit ' +
         'mode uses a stable crystallographic fallback for one- or two-atom structures.',
     'contourLines.padding': 'Automatic in-plane padding around all displayed atoms, in &Aring;.',
+    'contourLines.maxAtomDistance': {
+        type: 'Number|null',
+        description: 'Discards samples farther than this distance from any displayed atom, in ' +
+            '&Aring;, keeping the drawn contours from spanning empty space. Null or a negative ' +
+            'value keeps the unclipped padded rectangle.',
+    },
     'contourLines.resolution': 'Minimum samples per in-plane axis.',
     'contourLines.gridSpacing': 'Target Cartesian sample spacing in &Aring;.',
     'contourLines.maxResolution': 'Per-axis sample cap.',
@@ -289,6 +300,10 @@ export const descriptions = {
             'positive and negative colours from <code>isosurface</code>.',
     },
     'contourLines.lineWidth': 'Screen-space line width in pixels.',
+    'contourLines.haloColor': 'Colour of the outline drawn behind each contour line for ' +
+        'legibility over the structure.',
+    'contourLines.haloWidth': 'Additional screen-space width in pixels on each side of a contour ' +
+        'line for its halo outline. Zero or a negative value disables the halo.',
     'contourLines.opacity': 'Contour line opacity.',
     'contourLines.depthOffset': 'Offset along the plane normal in &Aring; to reduce overlap artefacts.',
 

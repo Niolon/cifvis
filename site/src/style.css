@@ -327,6 +327,78 @@ html, body {
     font-size: 12px;
 }
 
+.settings-live-rotation-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.settings-live-control {
+    margin-top: 12px;
+}
+
+.settings-live-control-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.settings-live-control-header > span {
+    flex: 1;
+}
+
+.settings-live-control-body > .settings-row-control {
+    width: 100%;
+}
+
+.settings-live-axis {
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 3px;
+    font-size: 12px;
+}
+
+.settings-live-axis .settings-row-control {
+    min-width: 0;
+}
+
+.settings-view-lock {
+    width: 30px;
+    height: 28px;
+    padding: 0;
+    color: #555;
+}
+
+.settings-view-lock svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-view-lock[aria-pressed="true"] {
+    background: #4a4a4a;
+    border-color: #333;
+    color: #fff;
+}
+
+.settings-live-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.settings-live-actions .settings-action {
+    width: 100%;
+}
+
 .settings-input-invalid {
     border-color: #b00020 !important;
     background: #fff3f3;

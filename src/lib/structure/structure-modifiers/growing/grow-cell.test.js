@@ -13,9 +13,10 @@ import {
     growExternalBondsInGroup,
     growExternalHBondsInGroup,
     addPackingBorderAtoms,
+    addPackingBorderComponents,
 } from './grow-cell.js';
 
-import { createBondIdentifier, createHBondIdentifier } from './grow-fragment.js';
+import { createBondIdentifier, createHBondIdentifier, growFragment } from './grow-fragment.js';
 import { CellSymmetry, SymmetryOperation } from '../../cell-symmetry.js';
 import { UnitCell, CrystalStructure, Atom } from '../../crystal.js';
 import { FractPosition } from '../../position.js';
@@ -1248,6 +1249,44 @@ describe('Individual growing functions', () => {
     });
 });
 
+describe('duplicate collapsing in a large cell', () => {
+    test('two images of one atom 0.06 A apart are not merged in a 72 A cell', () => {
+        // Collapsing duplicates on fractional coordinates rounded to a fixed number of
+        // decimals makes the tolerance scale with the cell: three decimals is 0.07 A
+        // across a 72 A axis. C1 sits just off the mirror, so its image lands 0.0008
+        // fractional away - one rounded key, yet 0.058 A apart in space. Merging them
+        // redirects every bond naming one onto the other, which shows up as bond
+        // lengths wrong by roughly that distance.
+        const cell = new UnitCell(72.26, 72.26, 72.26, 90, 90, 90);
+        const symmetry = new CellSymmetry('P m', 6, [
+            new SymmetryOperation('x,y,z'),
+            new SymmetryOperation('1/2-x,y,z'),
+        ]);
+        const structure = new CrystalStructure(
+            cell,
+            [new Atom('C1', 'C', new FractPosition(0.2504, 0.3, 0.3))],
+            [],
+            [],
+            symmetry,
+        );
+
+        const grown = growCell(structure, true);
+        const images = grown.atoms.filter(atom => atom.label === 'C1');
+
+        expect(images.length).toBeGreaterThanOrEqual(2);
+        // Every retained pair must be a real distance apart, not a rounding artefact.
+        images.forEach((first, index) => {
+            images.slice(index + 1).forEach(second => {
+                const start = first.position.toCartesian(cell);
+                const end = second.position.toCartesian(cell);
+                expect(Math.hypot(
+                    start.x - end.x, start.y - end.y, start.z - end.z,
+                )).toBeGreaterThan(0.01);
+            });
+        });
+    });
+});
+
 describe('growCell integration tests', () => {
     describe('simple structures', () => {
         test('handles empty structure', () => {
@@ -1338,6 +1377,28 @@ describe('growCell integration tests', () => {
             expect(result.atoms[0].label).toBe('C1');
             expect(result.atoms[1].label).toBe('O1');
 
+        });
+
+        test('does not reintroduce a rounded special-position image in fragment-cell growth', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P-1', 2, [
+                new SymmetryOperation('x,y,z'),
+                new SymmetryOperation('-x,-y,-z'),
+            ], new Map([['1', 0], ['2', 1]]));
+            const structure = new CrystalStructure(
+                cell,
+                [new Atom('C1', 'C', new FractPosition(0.00004, 0, 0))],
+                [new Bond('C1|1_555', 'C1|2_555', 1.5, 0.01, '2_555')],
+                [],
+                symmetry,
+            );
+
+            const { grownStructure, specialPositionAtoms } = growFragment(structure);
+            const fragmentCell = growCell(grownStructure, false, specialPositionAtoms);
+
+            expect(grownStructure.atoms).toHaveLength(1);
+            expect(fragmentCell.atoms).toHaveLength(1);
+            expect(fragmentCell.bonds).toHaveLength(0);
         });
     });
 
@@ -1513,6 +1574,27 @@ describe('growCell integration tests', () => {
         }))).toEqual(originalAtoms);
         expect(structure.bonds.map(bond => [bond.atom1Id, bond.atom2Id])).toEqual(originalBonds);
     });
+
+    test('keeps a short bond through the explicit closed-cell border', () => {
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+        const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+        const atoms = [
+            new Atom('A1', 'C', new FractPosition(0.99, 0.5, 0.5)),
+            new Atom('A2', 'C', new FractPosition(0.01, 0.5, 0.5)),
+        ];
+        const bonds = [new Bond('A1', 'A2', 0.2, 0.01, '.')];
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+
+        expect(growCell(structure).bonds).toHaveLength(0);
+        const result = growCell(structure, true, null, 1.01);
+        expect(result.bonds).toHaveLength(1);
+
+        const atomsById = new Map(result.atoms.map(atom => [atom.uniqueId, atom]));
+        const [bond] = result.bonds;
+        const atom1 = atomsById.get(bond.atom1Id);
+        const atom2 = atomsById.get(bond.atom2Id);
+        expect(Math.abs(atom1.position.x - atom2.position.x)).toBeCloseTo(0.02);
+    });
 });
 
 describe('addPackingBorderAtoms', () => {
@@ -1583,6 +1665,26 @@ describe('addPackingBorderAtoms', () => {
         expect(result.bonds[0]).toBe(bonds[0]);
     });
 
+    test('reconnects a boundary bond through a compatible border copy', () => {
+        const atoms = [
+            new Atom('A1', 'C', new FractPosition(0.99, 0.5, 0.5)),
+            new Atom('A2', 'C', new FractPosition(0.01, 0.5, 0.5)),
+        ];
+        const bonds = [new Bond('A1', 'A2', 0.2, 0.01, '.')];
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+
+        const result = addPackingBorderAtoms(structure, 1.01);
+        const copiedBond = result.bonds.find(bond =>
+            bond.atom1Id.includes('_655') || bond.atom2Id.includes('_655'),
+        );
+
+        expect(copiedBond).toBeDefined();
+        const atomsById = new Map(result.atoms.map(atom => [atom.uniqueId, atom]));
+        const atom1 = atomsById.get(copiedBond.atom1Id);
+        const atom2 = atomsById.get(copiedBond.atom2Id);
+        expect(Math.abs(atom1.position.x - atom2.position.x)).toBeCloseTo(0.02);
+    });
+
     test('reproduces the full NaCl (Fm-3m) closed cell', () => {
         // The rock-salt asymmetric unit sits exactly on low faces (Na at the
         // origin, Cl at the face/edge centres), so a cutoff of 1.001 should
@@ -1603,5 +1705,47 @@ describe('addPackingBorderAtoms', () => {
         const result = addPackingBorderAtoms(structure, 1.001);
 
         expect(result.atoms).toHaveLength(27);
+    });
+});
+
+describe('addPackingBorderComponents', () => {
+    const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+    const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+
+    test('copies only complete components whose centroids enter the cutoff', () => {
+        const atoms = [
+            new Atom('C1', 'C', new FractPosition(0.001, 0.4, 0.4)),
+            new Atom('O1', 'O', new FractPosition(0.009, 0.4, 0.4)),
+            new Atom('N1', 'N', new FractPosition(0.4, 0.001, 0.4)),
+            new Atom('H1', 'H', new FractPosition(0.4, 0.009, 0.4)),
+            // H2 is near the face, but its bonded component has a centroid of
+            // 0.02 and must not be pulled in by atom-level border selection.
+            new Atom('C2', 'C', new FractPosition(0.001, 0.7, 0.7)),
+            new Atom('H2', 'H', new FractPosition(0.039, 0.7, 0.7)),
+        ];
+        const bonds = [
+            new Bond('C1', 'O1', 0.08, 0.01, '.'),
+            new Bond('N1', 'H1', 0.08, 0.01, '.'),
+            new Bond('C2', 'H2', 0.38, 0.01, '.'),
+        ];
+        const structure = new CrystalStructure(cell, atoms, bonds, [], symmetry);
+
+        expect(addPackingBorderComponents(structure, 1)).toBe(structure);
+
+        const result = addPackingBorderComponents(structure, 1.01);
+        expect(result.atoms).toHaveLength(10);
+        expect(result.bonds).toHaveLength(5);
+        expect(result.atoms.filter(atom => atom.label === 'C1')).toHaveLength(2);
+        expect(result.atoms.filter(atom => atom.label === 'O1')).toHaveLength(2);
+        expect(result.atoms.filter(atom => atom.label === 'N1')).toHaveLength(2);
+        expect(result.atoms.filter(atom => atom.label === 'H1')).toHaveLength(2);
+        expect(result.atoms.filter(atom => atom.label === 'H2')).toHaveLength(1);
+        expect(result.atoms.some(atom => atom.label === 'H2' && atom.position.x > 1)).toBe(false);
+
+        const copiedBondIds = result.bonds
+            .filter(bond => !bond.atom1Id.endsWith('_555') || !bond.atom2Id.endsWith('_555'))
+            .map(bond => [bond.atom1Id, bond.atom2Id].sort().join('|'));
+        expect(copiedBondIds).toHaveLength(2);
+        expect(new Set(copiedBondIds).size).toBe(copiedBondIds.length);
     });
 });

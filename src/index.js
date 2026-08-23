@@ -42,7 +42,7 @@ export {
     HydrogenFilter, DisorderFilter, SymmetryGrower, 
 } from './lib/structure/structure-modifiers/modes.js';
 export {
-    AtomLabelFilter, BondGenerator,
+    AtomLabelFilter, BondGenerator, BondGeometryFixer, IsolatedHydrogenFixer,
 } from './lib/structure/structure-modifiers/fixers.js';
 
 // Export DOM-dependent features

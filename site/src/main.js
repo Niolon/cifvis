@@ -10,7 +10,7 @@ import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
 } from './playground-cif-routing.js';
-import { clearStoredOptions, loadStoredOptions } from './playground-settings.js';
+import { clearStoredOptions, loadStartingView, loadStoredOptions } from './playground-settings.js';
 import { initializeSettingsOverlay } from './settings-overlay.js';
 
 /**
@@ -45,6 +45,14 @@ function clearStatus() {
 
 let viewer = null;
 let scalarFieldDisplay = createScalarFieldDisplayState();
+
+/** Applies the optional browser-local starting view after the structure is fitted. */
+function applySavedStartingView() {
+    const startingView = loadStartingView();
+    if (startingView !== null) {
+        viewer.setViewState(startingView);
+    }
+}
 
 /**
  * Creates the playground viewer and wires its event handlers.
@@ -235,6 +243,7 @@ async function recreateViewer(optionsPartial) {
     if (Object.keys(modes).length > 0) {
         await viewer.setModifierModes(modes);
     }
+    applySavedStartingView();
     adaptButtons();
 }
 
@@ -292,6 +301,7 @@ async function loadPlaygroundCif(cifText, cifBlock = 0) {
     }
 
     playgroundHasStructure = true;
+    applySavedStartingView();
     adaptButtons();
     if (!result.differenceDensityStarted) {
         updateStatus('Structure loaded successfully', 'success');
@@ -568,7 +578,7 @@ function adaptButtons() {
 
 initializeUI();
 
-/** Loads the playground's original disorder example without density work. */
+/** Loads the playground's original disorder example, including density work if supported. */
 async function loadInitialStructure() {
     try {
         const baseUrl = import.meta.env.BASE_URL;
@@ -579,12 +589,23 @@ async function loadInitialStructure() {
         const cifText = await response.text();
         // Cache the text so a settings-driven viewer recreation can restore it.
         currentPlaygroundCifText = cifText;
-        const result = await viewer.loadCIF(cifText);
+        const calculateDensity = hasSupportedReflectionData(cifText);
+        const result = await viewer.loadCIF(cifText, 0, {
+            differenceDensity: calculateDensity,
+        });
         if (!result.success) {
             throw new Error(result.error);
         }
         playgroundHasStructure = true;
+        applySavedStartingView();
         adaptButtons();
+        if (!result.differenceDensityStarted) {
+            return;
+        }
+        const density = await result.differenceDensity;
+        if (!density.success) {
+            updateStatus(`Structure loaded; difference density failed: ${density.error}`, 'error');
+        }
     } catch (error) {
         console.error('Error loading initial structure:', error);
         updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');

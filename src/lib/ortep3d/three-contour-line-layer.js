@@ -4,6 +4,17 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { calculatePlanarContours } from '../density/plane-contours.js';
 
+// Breaks literal depth ties between contour-line fragments and near-coplanar
+// atom geometry (e.g. cutout-style octant shells and their depth-only cap
+// meshes), so occlusion no longer flickers per atom based on each
+// ellipsoid's individual orientation. Kept to the minimal standard
+// tie-breaking value (no slope-dependent factor term, which can grow
+// unpredictably on near-edge-on line segments) so it only resolves true
+// coincident-depth ties and does not swamp genuine separation where the
+// plane actually sits in front of (not intersecting) an atom.
+const CONTOUR_POLYGON_OFFSET_FACTOR = 0;
+const CONTOUR_POLYGON_OFFSET_UNITS = 1;
+
 /** @returns {number} Monotonic high-resolution time where available. */
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -66,16 +77,57 @@ export class ThreeContourLineLayer {
         if (count === 0) {
             return;
         }
+        const positions = segmentPositions(segments);
+        if (this.options.haloWidth > 0) {
+            const haloGeometry = new LineSegmentsGeometry();
+            haloGeometry.setPositions(positions);
+            const haloMaterial = new LineMaterial({
+                color: this.options.haloColor,
+                linewidth: this.options.lineWidth + 2 * this.options.haloWidth,
+                opacity: this.options.opacity,
+                transparent: this.options.opacity < 1,
+                // Purely decorative underlay: the foreground pass (drawn right
+                // after, at the same position) owns depth writes for atom
+                // occlusion. Writing depth here too would race the foreground
+                // pass's own depth values, since the fat-line vertex shader
+                // expands the halo and foreground quads to different
+                // screen-space widths from the same input segments and does
+                // not guarantee identical per-pixel depth between the two.
+                depthWrite: false,
+                worldUnits: false,
+                // Sample-alpha-to-coverage dithers edge antialiasing at full
+                // opacity, but once opacity itself is <1 it dithers every
+                // fragment (screen-door transparency), producing a visible
+                // stipple. Defer to normal alpha blending instead.
+                alphaToCoverage: this.options.opacity >= 1,
+                polygonOffset: true,
+                polygonOffsetFactor: CONTOUR_POLYGON_OFFSET_FACTOR,
+                polygonOffsetUnits: CONTOUR_POLYGON_OFFSET_UNITS,
+            });
+            const halo = new LineSegments2(haloGeometry, haloMaterial);
+            halo.name = `${sign[0].toUpperCase()}${sign.slice(1)} contour halo`;
+            halo.renderOrder = -1;
+            group.add(halo);
+        }
         const geometry = new LineSegmentsGeometry();
-        geometry.setPositions(segmentPositions(segments));
+        geometry.setPositions(positions);
         const material = new LineMaterial({
             color,
             linewidth: this.options.lineWidth,
             opacity: this.options.opacity,
             transparent: this.options.opacity < 1,
-            depthWrite: false,
+            // Always write depth, regardless of opacity: unlike the
+            // isosurface's overlapping density blobs, distinct contour
+            // segments from a single plane essentially never self-overlap,
+            // so there is no self-blending artifact to trade away here. This
+            // line needs to reliably occlude behind atoms/bonds even when
+            // drawn with partial alpha.
+            depthWrite: true,
             worldUnits: false,
-            alphaToCoverage: true,
+            alphaToCoverage: this.options.opacity >= 1,
+            polygonOffset: true,
+            polygonOffsetFactor: CONTOUR_POLYGON_OFFSET_FACTOR,
+            polygonOffsetUnits: CONTOUR_POLYGON_OFFSET_UNITS,
         });
         const lines = new LineSegments2(geometry, material);
         lines.name = `${sign[0].toUpperCase()}${sign.slice(1)} contour lines`;

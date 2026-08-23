@@ -188,3 +188,69 @@ describe('ViewerInteractionCoupling', () => {
         );
     });
 });
+
+describe('mode coupling opt-out', () => {
+    test('synchronizeFrom copies display modes by default', async () => {
+        const source = createViewer();
+        const peer = createViewer();
+        source.modifiers.hydrogen.mode = 'anisotropic';
+
+        const coupling = coupleViewerInteractions(source, peer);
+        await coupling.synchronizeFrom(source);
+
+        expect(peer.modifiers.hydrogen.mode).toBe('anisotropic');
+    });
+
+    test('{ modes: false } leaves each viewer showing what it was given', async () => {
+        // The case this exists for: a refined model with anisotropic hydrogens
+        // beside an input model without them. Copying modes would silently drop
+        // the refined viewer back to spheres.
+        const refined = createViewer();
+        const input = createViewer();
+        refined.modifiers.hydrogen.mode = 'anisotropic';
+        input.modifiers.hydrogen.mode = 'none';
+
+        const coupling = coupleViewerInteractions(refined, input);
+        await coupling.synchronizeFrom(refined, { modes: false });
+
+        expect(refined.modifiers.hydrogen.mode).toBe('anisotropic');
+        expect(input.modifiers.hydrogen.mode).toBe('none');
+        // the view is still shared
+        expect(input.cameraController.applyCoupledViewState).toHaveBeenCalled();
+    });
+
+    test('coupleModes:false disables ongoing mode propagation too', async () => {
+        const source = createViewer();
+        const peer = createViewer();
+
+        const coupling = coupleViewerInteractions(source, peer, { coupleModes: false });
+        await coupling.synchronizeFrom(source);
+        peer.setModifierModes.mockClear();
+
+        // a mode change on one viewer must not reach the other
+        source.emitMode({ modifierName: 'hydrogen', mode: 'constant' });
+        await coupling.pendingModeUpdate;
+
+        expect(peer.setModifierModes).not.toHaveBeenCalled();
+        expect(coupling.coupleModes).toBe(false);
+    });
+
+    test('synchronizeViewFrom shares the view without touching modes', async () => {
+        const source = createViewer();
+        const peer = createViewer();
+        source.modifiers.hydrogen.mode = 'anisotropic';
+
+        const coupling = coupleViewerInteractions(source, peer);
+        coupling.synchronizeViewFrom(source);
+
+        expect(peer.modifiers.hydrogen.mode).toBe('none');
+        expect(peer.cameraController.applyCoupledViewState).toHaveBeenCalled();
+    });
+
+    test('synchronizeViewFrom rejects a source outside the coupling', () => {
+        const coupling = coupleViewerInteractions(createViewer(), createViewer());
+        expect(() => coupling.synchronizeViewFrom(createViewer())).toThrow(
+            /must belong to this coupling/,
+        );
+    });
+});
