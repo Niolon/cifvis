@@ -125,6 +125,8 @@ export default {
         'mode': 'multiple',
         'markerMult': 1.3,
         'bondMarkerMult': 1.7,
+        // Visible publication-mode selection halo beyond the atom outline, in CSS pixels.
+        'haloWidth': 4,
         'highlightEmissive': 0xaaaaaa,
         'markerColors': [
             0x1f77b4,
@@ -178,6 +180,7 @@ export default {
     'plot2DBackground': '#ffffff',
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
+    'plot2DHydrogenLineColor': '#808080',
     'plot2DBondColor': '#000000',
     'plot2DBondOutlineColor': '#ffffff',
     // Constant screen-space width (CSS pixels) of the depth-writing bond
@@ -304,6 +307,8 @@ export default {
     'peanutScale': 1.5381723183496745,
     'peanutMeridianCount': 10,
     'peanutLatitudeIntervals': 6,
+    // Grid convergence direction: fixed structure Y, or an atom-local principal axis.
+    'peanutGridPoleAxis': 'structure-y',
     // Structure-space PEANUT grid stroke width in Angstrom.
     'peanutGridLineWidth': 0.01,
     'atomDetail': 3,

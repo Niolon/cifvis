@@ -24,6 +24,7 @@
 //   --render-mode <m>  'onDemand' (default, matches the library default) or 'constant'
 //   --render-style <s> 'solid-3d', 'cutout-3d', or 'cutout-2d'
 //   --adp-representation <r> 'ellipsoid' (default) or 'rmsd-peanut'
+//   --peanut-grid-pole-axis <a> Structure Y or a principal-axis grid pole
 //   --chrome <path>    Chrome/Chromium executable (default: $CHROME_PATH or common install paths)
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync } from 'fs';
 import { join, resolve, extname } from 'path';
@@ -125,6 +126,7 @@ async function main() {
     const renderMode = options['render-mode'] || 'onDemand';
     const renderStyle = options['render-style'] || 'solid-3d';
     const adpRepresentation = options['adp-representation'] || 'ellipsoid';
+    const peanutGridPoleAxis = options['peanut-grid-pole-axis'] || 'structure-y';
     const chromePath = options.chrome || process.env.CHROME_PATH;
     const outPath = resolve(options.out || join(scriptDir, 'results.csv'));
 
@@ -136,7 +138,7 @@ async function main() {
         'filename', 'file_size_kb', 'success', 'error',
         'build_time_ms', 'render_time_ms', 'draw_calls', 'atom_count', 'bond_count',
         'render_style', 'adp_representation', 'geometry_count', 'texture_count',
-        'attribute_bytes', 'js_heap_bytes',
+        'attribute_bytes', 'js_heap_bytes', 'peanut_grid_pole_axis',
     ];
     const rows = [header.join(',')];
     const results = [];
@@ -145,7 +147,7 @@ async function main() {
         const file = files[i];
         const sizeKb = statSync(file).size / 1024;
         const metrics = await runOnPage(context, port, file, {
-            renderMode, renderStyle, adpRepresentation,
+            renderMode, renderStyle, adpRepresentation, peanutGridPoleAxis,
         });
 
         results.push({ file, sizeKb, ...metrics });
@@ -154,7 +156,7 @@ async function main() {
             metrics.buildTimeMs?.toFixed(2) ?? '', metrics.renderTimeMs?.toFixed(2) ?? '',
             metrics.drawCalls ?? '', metrics.atomCount ?? '', metrics.bondCount ?? '',
             renderStyle, adpRepresentation, metrics.geometryCount ?? '', metrics.textureCount ?? '',
-            metrics.attributeBytes ?? '', metrics.jsHeapBytes ?? '',
+            metrics.attributeBytes ?? '', metrics.jsHeapBytes ?? '', peanutGridPoleAxis,
         ].map(csvField).join(','));
 
         if ((i + 1) % 25 === 0 || i === files.length - 1) {

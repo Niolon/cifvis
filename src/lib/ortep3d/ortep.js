@@ -39,6 +39,7 @@ const PEANUT_VERTEX_DECLARATIONS = `
     attribute vec3 peanutShape;
     uniform vec3 peanutUniformShape;
     uniform mat3 peanutGridRotation;
+    uniform mat3 peanutGridBasis;
     uniform float uPeanutOutlinePx;
     uniform vec2 uPeanutOutlineViewport;
     varying vec3 vPeanutGridDirection;
@@ -130,6 +131,7 @@ const PEANUT_GRID_FRAGMENT = `
  * @param {THREE.ColorRepresentation} [config.gridColor] - Grid/line colour
  * @param {number[]} [config.uniformShape] - Standalone shape; omit for instancing
  * @param {number[][]} [config.gridRotation] - Principal-to-structure rotation
+ * @param {string} [config.gridPoleAxis] - Structure-fixed or principal grid pole
  * @param {number} [config.silhouetteWidth] - Publication silhouette width
  * @param {number} [config.gridLineWidth] - Grid stroke width in structure-space Angstrom
  * @param {number} [config.meridianCount] - Number of longitudinal grid intervals
@@ -149,11 +151,25 @@ export function decoratePeanutMaterial(material, config) {
             config.gridRotation[2][0], config.gridRotation[2][1], config.gridRotation[2][2],
         )
         : new THREE.Matrix3();
+    const gridPoleAxis = config.gridPoleAxis ?? 'structure-y';
+    const gridBasis = new THREE.Matrix3();
+    if (gridPoleAxis === 'principal-maximum') {
+        // Rotate local principal X onto grid Y.
+        gridBasis.set(0, -1, 0, 1, 0, 0, 0, 0, 1);
+    } else if (gridPoleAxis === 'principal-minimum') {
+        // Rotate local principal Z onto grid Y.
+        gridBasis.set(1, 0, 0, 0, 0, 1, 0, -1, 0);
+    }
     material.defines = { ...material.defines };
     if (uniformShape) {
         material.defines.PEANUT_UNIFORM_SHAPE = 1;
     } else {
         delete material.defines.PEANUT_UNIFORM_SHAPE;
+    }
+    if (gridPoleAxis !== 'structure-y') {
+        material.defines.PEANUT_PRINCIPAL_GRID = 1;
+    } else {
+        delete material.defines.PEANUT_PRINCIPAL_GRID;
     }
     material.userData.peanut = {
         presentation,
@@ -162,6 +178,7 @@ export function decoratePeanutMaterial(material, config) {
         gridLineWidth: config.gridLineWidth ?? 0.01,
         meridianCount: config.meridianCount ?? 10,
         latitudeIntervals: config.latitudeIntervals ?? 6,
+        gridPoleAxis,
         outlinePixelUniform: config.outlinePixelUniform,
         outlineViewport: config.outlineViewport,
     };
@@ -170,6 +187,7 @@ export function decoratePeanutMaterial(material, config) {
             value: new THREE.Vector3(...(uniformShape || [1, 1, 1])),
         };
         shader.uniforms.peanutGridRotation = { value: rotation };
+        shader.uniforms.peanutGridBasis = { value: gridBasis };
         shader.vertexShader = shader.vertexShader.replace(
             '#include <common>',
             `#include <common>\n${PEANUT_VERTEX_DECLARATIONS}`,
@@ -224,8 +242,20 @@ export function decoratePeanutMaterial(material, config) {
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <project_vertex>',
                 `#include <project_vertex>
+                #ifdef PEANUT_PRINCIPAL_GRID
+                    vPeanutGridDirection = normalize( peanutGridBasis * peanutDirection );
+                #else
+                    #ifdef USE_INSTANCING
+                        vPeanutGridDirection = normalize(
+                            mat3( instanceMatrix ) * peanutDirection
+                        );
+                    #else
+                        vPeanutGridDirection = normalize(
+                            peanutGridRotation * peanutDirection
+                        );
+                    #endif
+                #endif
                 #ifdef USE_INSTANCING
-                    vPeanutGridDirection = normalize( mat3( instanceMatrix ) * peanutDirection );
                     vPeanutWorldPosition = (
                         modelMatrix * instanceMatrix * vec4( transformed, 1.0 )
                     ).xyz;
@@ -233,7 +263,6 @@ export function decoratePeanutMaterial(material, config) {
                         normalize( 2.0 * peanutQ * peanutDirection -
                             activePeanutShape * peanutDirection );
                 #else
-                    vPeanutGridDirection = normalize( peanutGridRotation * peanutDirection );
                     vPeanutWorldPosition = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
                     vec3 peanutViewNormal = mat3( modelViewMatrix ) *
                         normalize( 2.0 * peanutQ * peanutDirection -
@@ -1020,7 +1049,7 @@ export class GeometryMaterialCache {
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
                 const rawElementLineColor = ['H', 'D'].includes(elementType) ?
-                    this.options.plot2DLineColor : elementProperty.atomColor;
+                    this.options.plot2DHydrogenLineColor : elementProperty.atomColor;
                 const elementLineColor = liftColorLuminance(
                     scaleColorLuminance(rawElementLineColor, this.plot2DElementColorScale),
                     this.plot2DElementColorLift,
@@ -1091,7 +1120,7 @@ export class GeometryMaterialCache {
         this.validateElementType(elementType);
         const elementProperty = this.options.elementProperties[elementType];
         const raw = ['H', 'D'].includes(elementType)
-            ? this.options.plot2DLineColor
+            ? this.options.plot2DHydrogenLineColor
             : elementProperty.atomColor;
         return liftColorLuminance(
             scaleColorLuminance(raw, this.plot2DElementColorScale),
@@ -1116,6 +1145,7 @@ export class GeometryMaterialCache {
         const key = `${elementType}_peanut_${presentation}_` +
             `${this.options.peanutMeridianCount}_` +
             `${this.options.peanutLatitudeIntervals}_` +
+            `${this.options.peanutGridPoleAxis}_` +
             `${this.options.peanutGridLineWidth}`;
         if (!this.elementMaterials[key]) {
             const elementProperty = this.options.elementProperties[elementType];
@@ -1135,6 +1165,7 @@ export class GeometryMaterialCache {
                     gridColor: lineColor,
                     meridianCount: this.options.peanutMeridianCount,
                     latitudeIntervals: this.options.peanutLatitudeIntervals,
+                    gridPoleAxis: this.options.peanutGridPoleAxis,
                     gridLineWidth: this.options.peanutGridLineWidth,
                 });
                 depth = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
@@ -1165,6 +1196,7 @@ export class GeometryMaterialCache {
                     gridColor: elementProperty.ringColor,
                     meridianCount: this.options.peanutMeridianCount,
                     latitudeIntervals: this.options.peanutLatitudeIntervals,
+                    gridPoleAxis: this.options.peanutGridPoleAxis,
                     gridLineWidth: this.options.peanutGridLineWidth,
                 });
             }
@@ -2765,6 +2797,7 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
             gridLineWidth: config.gridLineWidth,
             meridianCount: config.meridianCount,
             latitudeIntervals: config.latitudeIntervals,
+            gridPoleAxis: config.gridPoleAxis,
             uniformShape: this.surfaceDescriptor.normalizedShape,
             gridRotation: this.surfaceDescriptor.rotation,
         });
@@ -2796,6 +2829,7 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
         if (this.presentation === 'publication-2d') {
             const outlineConfig = segment.pool.outlineMesh.material.userData.peanut;
             const baseWidth = options.plot2DOutlineWidth ?? 1.2;
+            const haloWidth = options.selection.haloWidth ?? 4;
             material = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
                 color,
                 transparent: true,
@@ -2807,7 +2841,7 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
                 presentation: 'outline',
                 uniformShape: this.surfaceDescriptor.normalizedShape,
                 gridRotation: this.surfaceDescriptor.rotation,
-                outlinePixelUniform: { value: Math.max(3, baseWidth + 2) },
+                outlinePixelUniform: { value: baseWidth + haloWidth },
                 outlineViewport: outlineConfig.outlineViewport,
             });
         } else {

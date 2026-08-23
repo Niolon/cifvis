@@ -63,6 +63,11 @@
       "default": "1.7"
     },
     {
+      "path": "selection.haloWidth",
+      "type": "Number",
+      "default": "4"
+    },
+    {
       "path": "selection.highlightEmissive",
       "type": "Number",
       "default": "11184810"
@@ -160,6 +165,11 @@
       "path": "plot2DLineColor",
       "type": "Color",
       "default": "\"#000000\""
+    },
+    {
+      "path": "plot2DHydrogenLineColor",
+      "type": "Color",
+      "default": "\"#808080\""
     },
     {
       "path": "plot2DBondColor",
@@ -760,6 +770,11 @@
       "path": "peanutLatitudeIntervals",
       "type": "Number",
       "default": "6"
+    },
+    {
+      "path": "peanutGridPoleAxis",
+      "type": "String",
+      "default": "\"structure-y\""
     },
     {
       "path": "peanutGridLineWidth",

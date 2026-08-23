@@ -28,6 +28,8 @@ export const descriptions = {
     'selection.mode': 'Selection mode, either <code>single</code> or <code>multiple</code>.',
     'selection.markerMult': 'Size multiplier for atom selection markers.',
     'selection.bondMarkerMult': 'Size multiplier for bond selection markers.',
+    'selection.haloWidth': 'Visible width in CSS pixels of the 2D atom selection halo beyond ' +
+        'the normal publication outline.',
     'selection.highlightEmissive': {
         type: 'Number (hex)',
         description: 'Emissive color value for highlighted selections.',
@@ -63,6 +65,8 @@ export const descriptions = {
     'plot2DBackground': 'Canvas background colour for the 2D rendering style.',
     'plot2DAtomColor': 'Opaque atom and open-bond fill colour in the 2D rendering style.',
     'plot2DLineColor': 'Fallback line and hydrogen-bond colour in the 2D rendering style.',
+    'plot2DHydrogenLineColor': 'Hydrogen and deuterium atom, ADP grid, and silhouette line colour ' +
+        'in the 2D rendering style.',
     'plot2DBondColor': 'Solid bond and open-bond outline colour in the 2D rendering style.',
     'plot2DBondOutlineColor': 'Colour of the depth-writing silhouette around 2D bonds, used to ' +
         'separate crossing bonds and ADPs. It is inset at connected atoms to keep their ' +
@@ -190,6 +194,9 @@ export const descriptions = {
         'scale, not an enclosed probability.',
     'peanutMeridianCount': 'Number of equally spaced meridian intervals drawn on PEANUT grid surfaces.',
     'peanutLatitudeIntervals': 'Number of latitude intervals drawn from pole to pole on PEANUT grid surfaces.',
+    'peanutGridPoleAxis': 'Direction where PEANUT meridians converge. Use the structure Y axis ' +
+        'for a common structure-fixed grid, or align each atom independently with one of its ' +
+        'ordered principal displacement axes.',
     'peanutGridLineWidth': 'Physical PEANUT grid-line width in &Aring; for 3D cutout and 2D publication styles.',
     'atomDetail': 'Level of detail for atom geometry (1&ndash;5).',
     'atomCutawayHysteresis': 'Direction threshold that prevents cutaway octants flickering near an axis.',

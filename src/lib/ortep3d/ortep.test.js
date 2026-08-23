@@ -368,6 +368,30 @@ describe('GeometryMaterialCache', () => {
             plotCache.dispose();
         });
 
+        test('uses a configurable grey for hydrogen and deuterium 2D ADP lines', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [, hydrogenRing, , hydrogenOutline] = plotCache.getAtomMaterials('H');
+            const [, deuteriumRing] = plotCache.getAtomMaterials('D');
+            const peanut = plotCache.getPeanutMaterials('H');
+
+            expect(hydrogenRing.color.getHex()).not.toBe(0x000000);
+            expect(deuteriumRing.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(hydrogenOutline.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(peanut.body.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(peanut.outline.color.getHex()).toBe(hydrogenRing.color.getHex());
+
+            const customCache = new GeometryMaterialCache({
+                renderStyle: 'cutout-2d',
+                plot2DHydrogenLineColor: '#667788',
+            });
+            expect(customCache.getPlot2DElementLineColor('H').getHex()).toBe(
+                scaleColorLuminance('#667788', customCache.plot2DElementColorScale).getHex(),
+            );
+
+            customCache.dispose();
+            plotCache.dispose();
+        });
+
         test('caps bright element colors in the 2D plot while preserving their hue', () => {
             const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
             const [, sulfurRing, sulfurHatch] = plotCache.getAtomMaterials('S');
@@ -970,6 +994,7 @@ describe('RMSD PEANUT rendering', () => {
             renderStyle: 'cutout-2d',
             peanutMeridianCount: 12,
             peanutLatitudeIntervals: 8,
+            peanutGridPoleAxis: 'principal-minimum',
             peanutGridLineWidth: 0.02,
         });
         const { body, depth, outline } = cache.getPeanutMaterials('C');
@@ -997,6 +1022,10 @@ describe('RMSD PEANUT rendering', () => {
         expect(bodyShader.uniforms.peanutMeridianCount.value).toBe(12);
         expect(bodyShader.uniforms.peanutLatitudeIntervals.value).toBe(8);
         expect(bodyShader.uniforms.peanutGridLineWidth.value).toBe(0.02);
+        expect(body.defines.PEANUT_PRINCIPAL_GRID).toBe(1);
+        expect(new THREE.Vector3(0, 0, 1)
+            .applyMatrix3(bodyShader.uniforms.peanutGridBasis.value).toArray())
+            .toEqual([0, 1, 0]);
         expect(bodyShader.fragmentShader).toContain('discard');
         expect(depthShader.vertexShader).toContain('sqrt( max( peanutQ, 0.0 ) )');
         expect(depthShader.fragmentShader).not.toContain('peanutSurfaceGrid');
@@ -1057,6 +1086,7 @@ describe('RMSD PEANUT rendering', () => {
         const options = {
             selection: {
                 markerMult: 1.3,
+                haloWidth: 4,
                 highlightEmissive: 0xaaaaaa,
             },
         };
@@ -1080,6 +1110,8 @@ describe('RMSD PEANUT rendering', () => {
         expect(publicationAtom.marker.material.defines.PEANUT_UNIFORM_SHAPE).toBe(1);
         expect(publicationAtom.marker.geometry.isInstancedBufferGeometry).not.toBe(true);
         expect(publicationAtom.marker.material.userData.peanut.presentation).toBe('outline');
+        expect(publicationAtom.marker.material.userData.peanut.outlinePixelUniform.value)
+            .toBeCloseTo(5.2);
         expect(publicationAtom.marker.material.side).toBe(THREE.BackSide);
         expect(publicationAtom.marker.material.depthTest).toBe(true);
         expect(publicationAtom.marker.material.depthWrite).toBe(false);

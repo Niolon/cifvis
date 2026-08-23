@@ -48,6 +48,9 @@ describe('CrystalViewer rendering option validation', () => {
         expect(() => new CrystalViewer({}, { peanutLatitudeIntervals: 1 })).toThrow(
             'peanutLatitudeIntervals must be an integer greater than or equal to 2',
         );
+        expect(() => new CrystalViewer({}, { peanutGridPoleAxis: 'principal-tiny' })).toThrow(
+            'Invalid PEANUT grid pole axis: "principal-tiny"',
+        );
         expect(() => new CrystalViewer({}, { peanutGridLineWidth: 0 })).toThrow(
             'peanutGridLineWidth must be a finite number greater than 0',
         );
@@ -140,6 +143,37 @@ describe('CrystalViewer rendering option validation', () => {
         expect(() => new CrystalViewer({}, { plot2DOutlineWidth: -0.5 })).toThrow(
             'plot2DOutlineWidth must be a finite number greater than or equal to 0',
         );
+    });
+
+    test('rejects a negative 2D selection halo width', () => {
+        expect(() => new CrystalViewer({}, { selection: { haloWidth: -0.5 } })).toThrow(
+            'selection.haloWidth must be a finite number greater than or equal to 0',
+        );
+    });
+});
+
+describe('CrystalViewer live selection options', () => {
+    test('recreates active markers without clearing the selection', () => {
+        const selected = {
+            selectionColor: 0xff0000,
+            deselect: vi.fn(),
+            select: vi.fn(),
+        };
+        const viewer = Object.create(CrystalViewer.prototype);
+        viewer.options = { selection: { mode: 'multiple', haloWidth: 4 } };
+        viewer.selections = {
+            selectedObjects: new Set([selected]),
+            setMode: vi.fn(),
+        };
+        viewer.requestRender = vi.fn();
+
+        viewer.updateSelectionOptions({ haloWidth: 7 });
+
+        expect(viewer.options.selection.haloWidth).toBe(7);
+        expect(selected.deselect).toHaveBeenCalledOnce();
+        expect(selected.select).toHaveBeenCalledWith(0xff0000, viewer.options);
+        expect(viewer.selections.selectedObjects.has(selected)).toBe(true);
+        expect(viewer.requestRender).toHaveBeenCalledOnce();
     });
 });
 

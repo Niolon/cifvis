@@ -226,6 +226,7 @@ describe('import validation', () => {
             peanutScale: 1.75,
             peanutMeridianCount: 12,
             peanutLatitudeIntervals: 8,
+            peanutGridPoleAxis: 'principal-minimum',
             peanutGridLineWidth: 0.02,
             bondRadius: 0.08,
             elementProperties: { Fe: { atomColor: '#ff5733', radius: 1.4 } },
@@ -277,6 +278,9 @@ describe('apply classification', () => {
         });
         expect(classifyChangedPaths(['interaction.lockRotation', 'interaction.lockZoom'])).toMatchObject({
             interactionLocks: true, recreate: false,
+        });
+        expect(classifyChangedPaths(['selection.haloWidth'])).toMatchObject({
+            selection: true, recreate: false,
         });
     });
 });

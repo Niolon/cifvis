@@ -118,6 +118,9 @@ export function initializeSettingsOverlay(host) {
                 if (buckets.contourLines) {
                     viewer.updateContourLineOptions(subOptions(paths, 'contourLines.'));
                 }
+                if (buckets.selection) {
+                    viewer.updateSelectionOptions(subOptions(paths, 'selection.'));
+                }
                 if (buckets.interactionLocks) {
                     const locks = {};
                     if (paths.includes('interaction.lockRotation')) {

@@ -34,6 +34,8 @@ import {
     VALID_BOND_COLOR_MODES,
     VALID_RENDER_MODES,
     VALID_RENDER_STYLES,
+    VALID_PEANUT_GRID_POLE_AXES,
+    VALID_SELECTION_MODES,
 } from './option-enums.js';
 
 /**
@@ -331,7 +333,7 @@ export class SelectionManager {
      * @returns {number|null} The selection color or null if selection failed
      */
     handle(object) {
-        if (this.options.mode === 'single') {
+        if (this.options.selection.mode === 'single') {
             this.selectedObjects.forEach(selected => {
                 this.remove(selected);
             });
@@ -452,7 +454,7 @@ export class SelectionManager {
             throw new Error('Selection mode must be either "single" or "multiple"');
         }
 
-        this.options.mode = mode;
+        this.options.selection.mode = mode;
 
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
@@ -559,6 +561,13 @@ export class CrystalViewer {
                 `Must be one of: ${VALID_ADP_REPRESENTATIONS.join(', ')}`,
             );
         }
+        if (options.peanutGridPoleAxis !== undefined &&
+            !VALID_PEANUT_GRID_POLE_AXES.includes(options.peanutGridPoleAxis)) {
+            throw new Error(
+                `Invalid PEANUT grid pole axis: "${options.peanutGridPoleAxis}". ` +
+                `Must be one of: ${VALID_PEANUT_GRID_POLE_AXES.join(', ')}`,
+            );
+        }
         if (options.peanutScale !== undefined &&
             !(typeof options.peanutScale === 'number' && Number.isFinite(options.peanutScale) &&
                 options.peanutScale > 0)) {
@@ -603,6 +612,12 @@ export class CrystalViewer {
                 throw new Error(`${key} must be a finite number greater than or equal to 0`);
             }
         }
+        if (options.selection?.haloWidth !== undefined &&
+            !(typeof options.selection.haloWidth === 'number' &&
+                Number.isFinite(options.selection.haloWidth) &&
+                options.selection.haloWidth >= 0)) {
+            throw new Error('selection.haloWidth must be a finite number greater than or equal to 0');
+        }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
 
@@ -637,6 +652,7 @@ export class CrystalViewer {
                 defaultSettings.peanutMeridianCount,
             peanutLatitudeIntervals: options.peanutLatitudeIntervals ??
                 defaultSettings.peanutLatitudeIntervals,
+            peanutGridPoleAxis: options.peanutGridPoleAxis ?? defaultSettings.peanutGridPoleAxis,
             peanutGridLineWidth: options.peanutGridLineWidth ??
                 defaultSettings.peanutGridLineWidth,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
@@ -677,6 +693,8 @@ export class CrystalViewer {
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
+            plot2DHydrogenLineColor: options.plot2DHydrogenLineColor ||
+                defaultSettings.plot2DHydrogenLineColor,
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
             plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
                 defaultSettings.plot2DBondOutlineColor,
@@ -2790,6 +2808,36 @@ export class CrystalViewer {
                 quality,
             );
         });
+    }
+
+    /**
+     * Updates selection presentation without rebuilding the viewer or losing selections.
+     * Existing atom/bond markers are recreated immediately with the new settings.
+     * @param {object} options - Partial selection options
+     */
+    updateSelectionOptions(options = {}) {
+        if (options.mode !== undefined && !VALID_SELECTION_MODES.includes(options.mode)) {
+            throw new Error(
+                `Invalid selection mode: "${options.mode}". ` +
+                `Must be one of: ${VALID_SELECTION_MODES.join(', ')}`,
+            );
+        }
+        if (options.haloWidth !== undefined &&
+            !(typeof options.haloWidth === 'number' && Number.isFinite(options.haloWidth) &&
+                options.haloWidth >= 0)) {
+            throw new Error('selection.haloWidth must be a finite number greater than or equal to 0');
+        }
+
+        this.options.selection = { ...this.options.selection, ...options };
+        if (options.mode !== undefined) {
+            this.selections.setMode(options.mode);
+        }
+        for (const object of this.selections.selectedObjects) {
+            const color = object.selectionColor;
+            object.deselect();
+            object.select(color, this.options);
+        }
+        this.requestRender();
     }
 
     /**
