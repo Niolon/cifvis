@@ -4,17 +4,29 @@ These options control how the 3D structure is rendered.
 
 ## Render styles {#render-styles}
 
-`renderStyle` selects one of three ORTEP styles (live comparison in
+`adpRepresentation` selects the physical anisotropic-displacement surface:
+
+- **`ellipsoid`** (default) — the conventional equal-probability ellipsoid;
+- **`rmsd-peanut`** — a radial RMS displacement surface with
+  `r(n) = peanutScale × sqrt(nᵀUn)`. Its radius has units of length after scaling and
+  must not be interpreted as an enclosed probability.
+
+PEANUT grid density and physical stroke width can be adjusted independently with
+`peanutMeridianCount`, `peanutLatitudeIntervals`, and `peanutGridLineWidth`. The
+line width is measured in &Aring;, so its apparent screen width changes naturally with zoom.
+
+`renderStyle` independently selects how that surface is presented (live comparison in
 [Widget → Display options](../widget/display-options.md#ortep-render-modes)):
 
-- **`solid-3d`** — shared-geometry ellipsoids, the default and the only style eligible
-  for `InstancedMesh` batching.
-- **`cutout-3d`** — ellipsoids with a missing camera-facing octant, exposing hatched
-  interior cutaway planes.
-- **`cutout-2d`** — hatched, outlined publication-style renderer (element colours
-  retained); always cutaway like `cutout-3d`, but with hatch materials instead of solid
-  ones. The `plot2D*` options below tune this style; a worked example is in the
-  [Gallery](../gallery/publication-2d.md).
+- **`solid-3d`** — a smooth, lit solid surface.
+- **`cutout-3d`** — a missing-octant ellipsoid, or a solid PEANUT with an orderly
+  surface grid in the element's `ringColor`.
+- **`cutout-2d`** — a hatched ellipsoid cutout, or a PEANUT grid with hidden rear
+  lines removed and a separate expanded silhouette outline. PEANUT grid strokes have a
+  physical structure-space width, while the silhouette keeps a constant screen-space
+  width. Existing publication colour and bond rules apply.
+
+All PEANUT modes use shared sphere topology and instancing. There are no PEANUT cutouts.
 
 `renderMode: 'onDemand'` (the default) renders only when needed — call
 `viewer.requestRender()` after changing external state from your own code;

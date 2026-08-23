@@ -666,7 +666,7 @@ export function initializeSettingsOverlay(host) {
             for (const value of row.enumValues) {
                 const option = document.createElement('option');
                 option.value = value;
-                option.textContent = value;
+                option.textContent = row.enumLabels?.[value] || value;
                 control.appendChild(option);
             }
             control.addEventListener('change', () => {

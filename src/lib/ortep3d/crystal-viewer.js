@@ -27,6 +27,7 @@ import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
 
 import {
+    VALID_ADP_REPRESENTATIONS,
     VALID_ATOM_LABEL_CALLOUT_PLACEMENTS,
     VALID_ATOM_LABEL_COLOR_MODES,
     VALID_ATOM_LABEL_PLACEMENT_MODES,
@@ -530,6 +531,7 @@ export class CrystalViewer {
      * - selection: Selection behavior configuration
      * - interaction: User interaction parameters (rotation speed, click thresholds)
      * - atomDetail/atomColorRoughness/etc.: Appearance settings for atoms
+     * - adpRepresentation/peanutScale: ADP surface kind and RMSD PEANUT display scale
      * - bondRadius/bondColor/etc.: Appearance settings for bonds
      * - elementProperties: Per-element appearance settings (colors, radii)
      * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
@@ -549,6 +551,33 @@ export class CrystalViewer {
                 `Invalid render style: "${options.renderStyle}". ` +
                 `Must be one of: ${VALID_RENDER_STYLES.join(', ')}`,
             );
+        }
+        if (options.adpRepresentation &&
+            !VALID_ADP_REPRESENTATIONS.includes(options.adpRepresentation)) {
+            throw new Error(
+                `Invalid ADP representation: "${options.adpRepresentation}". ` +
+                `Must be one of: ${VALID_ADP_REPRESENTATIONS.join(', ')}`,
+            );
+        }
+        if (options.peanutScale !== undefined &&
+            !(typeof options.peanutScale === 'number' && Number.isFinite(options.peanutScale) &&
+                options.peanutScale > 0)) {
+            throw new Error('peanutScale must be a finite number greater than 0');
+        }
+        for (const [key, minimum] of [
+            ['peanutMeridianCount', 1],
+            ['peanutLatitudeIntervals', 2],
+        ]) {
+            if (options[key] !== undefined &&
+                !(Number.isInteger(options[key]) && options[key] >= minimum)) {
+                throw new Error(`${key} must be an integer greater than or equal to ${minimum}`);
+            }
+        }
+        if (options.peanutGridLineWidth !== undefined &&
+            !(typeof options.peanutGridLineWidth === 'number' &&
+                Number.isFinite(options.peanutGridLineWidth) &&
+                options.peanutGridLineWidth > 0)) {
+            throw new Error('peanutGridLineWidth must be a finite number greater than 0');
         }
         if (options.bondColorMode !== undefined && !VALID_BOND_COLOR_MODES.includes(options.bondColorMode)) {
             throw new Error(
@@ -603,6 +632,13 @@ export class CrystalViewer {
                 },
             },
             ellipsoidProbability: options.ellipsoidProbability ?? defaultSettings.ellipsoidProbability,
+            peanutScale: options.peanutScale ?? defaultSettings.peanutScale,
+            peanutMeridianCount: options.peanutMeridianCount ??
+                defaultSettings.peanutMeridianCount,
+            peanutLatitudeIntervals: options.peanutLatitudeIntervals ??
+                defaultSettings.peanutLatitudeIntervals,
+            peanutGridLineWidth: options.peanutGridLineWidth ??
+                defaultSettings.peanutGridLineWidth,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
@@ -637,6 +673,7 @@ export class CrystalViewer {
             packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
             renderMode: options.renderMode || defaultSettings.renderMode,
             renderStyle: options.renderStyle || defaultSettings.renderStyle,
+            adpRepresentation: options.adpRepresentation || defaultSettings.adpRepresentation,
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
@@ -647,6 +684,8 @@ export class CrystalViewer {
                 defaultSettings.plot2DBondOutlineWidth,
             plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
                 defaultSettings.plot2DColorLuminanceCeiling,
+            plot2DColorLuminanceFloor: options.plot2DColorLuminanceFloor ??
+                defaultSettings.plot2DColorLuminanceFloor,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
                 defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,

@@ -29,6 +29,30 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
+    test('rejects invalid ADP representation and PEANUT scale before WebGL initialization', () => {
+        expect(() => new CrystalViewer({}, { adpRepresentation: 'banana' })).toThrow(
+            'Invalid ADP representation: "banana". Must be one of: ellipsoid, rmsd-peanut',
+        );
+        expect(() => new CrystalViewer({}, { peanutScale: 0 })).toThrow(
+            'peanutScale must be a finite number greater than 0',
+        );
+        expect(() => new CrystalViewer({}, { peanutScale: Infinity })).toThrow(
+            'peanutScale must be a finite number greater than 0',
+        );
+        expect(() => new CrystalViewer({}, { peanutMeridianCount: 0 })).toThrow(
+            'peanutMeridianCount must be an integer greater than or equal to 1',
+        );
+        expect(() => new CrystalViewer({}, { peanutMeridianCount: 2.5 })).toThrow(
+            'peanutMeridianCount must be an integer greater than or equal to 1',
+        );
+        expect(() => new CrystalViewer({}, { peanutLatitudeIntervals: 1 })).toThrow(
+            'peanutLatitudeIntervals must be an integer greater than or equal to 2',
+        );
+        expect(() => new CrystalViewer({}, { peanutGridLineWidth: 0 })).toThrow(
+            'peanutGridLineWidth must be a finite number greater than 0',
+        );
+    });
+
     test('rejects an invalid bond color mode before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, { bondColorMode: 'gradient' })).toThrow(
             'Invalid bond color mode: "gradient". Must be one of: uniform, split',

@@ -3,7 +3,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import defaultSettings from './structure-settings.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { HBond, Bond } from '../structure/bonds.js';
-import { UAnisoADP, UIsoADP, ellipsoidProbabilityScale } from '../structure/adp.js';
+import {
+    UAnisoADP,
+    UIsoADP,
+    createRMSDPeanutSurface,
+    ellipsoidProbabilityScale,
+} from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
 import { liftColorLuminance, paletteLuminanceLift, paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
 
@@ -14,6 +19,263 @@ const OCTANT_SIGNS = [
 
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
 const BOND_GEOMETRY_HEIGHT = 0.98;
+
+/**
+ * Maps the legacy public render-style names to representation-independent intent.
+ * @param {string} renderStyle - Public render-style enum
+ * @returns {'clean-3d'|'explanatory-3d'|'publication-2d'} Presentation intent
+ */
+export function getPresentationIntent(renderStyle) {
+    if (renderStyle === 'cutout-3d') {
+        return 'explanatory-3d';
+    }
+    if (renderStyle === 'cutout-2d') {
+        return 'publication-2d';
+    }
+    return 'clean-3d';
+}
+
+const PEANUT_VERTEX_DECLARATIONS = `
+    attribute vec3 peanutShape;
+    uniform vec3 peanutUniformShape;
+    uniform mat3 peanutGridRotation;
+    uniform float uPeanutOutlinePx;
+    uniform vec2 uPeanutOutlineViewport;
+    varying vec3 vPeanutGridDirection;
+    varying vec3 vPeanutWorldPosition;
+    varying vec3 vPeanutViewNormal;
+    varying vec3 vPeanutViewDirection;
+`;
+
+const PEANUT_BEGIN_VERTEX = `
+    vec3 peanutDirection = normalize( position );
+    #ifdef PEANUT_UNIFORM_SHAPE
+        vec3 activePeanutShape = peanutUniformShape;
+    #else
+        vec3 activePeanutShape = peanutShape;
+    #endif
+    float peanutQ = dot( activePeanutShape, peanutDirection * peanutDirection );
+    vec3 transformed = position * sqrt( max( peanutQ, 0.0 ) );
+`;
+
+const PEANUT_BEGIN_NORMAL = `
+    vec3 peanutNormalDirection = normalize( position );
+    #ifdef PEANUT_UNIFORM_SHAPE
+        vec3 peanutNormalShape = peanutUniformShape;
+    #else
+        vec3 peanutNormalShape = peanutShape;
+    #endif
+    float peanutNormalQ = dot(
+        peanutNormalShape,
+        peanutNormalDirection * peanutNormalDirection
+    );
+    vec3 objectNormal = normalize(
+        2.0 * peanutNormalQ * peanutNormalDirection -
+        peanutNormalShape * peanutNormalDirection
+    );
+`;
+
+const PEANUT_GRID_FRAGMENT = `
+    varying vec3 vPeanutGridDirection;
+    varying vec3 vPeanutWorldPosition;
+    varying vec3 vPeanutViewNormal;
+    varying vec3 vPeanutViewDirection;
+    uniform vec3 peanutGridColor;
+    uniform float peanutGridLineWidth;
+    uniform float peanutMeridianCount;
+    uniform float peanutLatitudeIntervals;
+
+    float peanutPeriodicLine( float coordinate, vec3 surfacePosition ) {
+        float distanceToLine = abs( fract( coordinate + 0.5 ) - 0.5 );
+        vec2 coordinateGradient = vec2( dFdx( coordinate ), dFdy( coordinate ) );
+        float coordinatePerPixel = max( length( coordinateGradient ), 0.0001 );
+        vec2 screenNormal = coordinateGradient / coordinatePerPixel;
+        float worldPerPixel = max( length(
+            dFdx( surfacePosition ) * screenNormal.x +
+            dFdy( surfacePosition ) * screenNormal.y
+        ), 0.000001 );
+        float halfWidth = 0.5 * peanutGridLineWidth *
+            coordinatePerPixel / worldPerPixel;
+        float antialias = 0.5 * coordinatePerPixel;
+        return 1.0 - smoothstep(
+            max( halfWidth - antialias, 0.0 ),
+            halfWidth + antialias,
+            distanceToLine
+        );
+    }
+
+    float peanutSurfaceGrid( vec3 rawDirection, vec3 surfacePosition ) {
+        vec3 direction = normalize( rawDirection );
+        float longitude = atan( direction.z, direction.x ) / ( 2.0 * PI ) + 0.5;
+        float latitude = asin( clamp( direction.y, -1.0, 1.0 ) ) / PI + 0.5;
+        float meridians = peanutPeriodicLine(
+            longitude * peanutMeridianCount, surfacePosition
+        );
+        float latitudes = peanutPeriodicLine(
+            latitude * peanutLatitudeIntervals, surfacePosition
+        );
+        // Longitude is undefined exactly at a pole. Suppress only a very small
+        // cap there; a broader fade leaves an obvious hole when viewed down
+        // the grid axis.
+        float awayFromPoles = smoothstep( 0.001, 0.015, 1.0 - abs( direction.y ) );
+        return max( meridians * awayFromPoles, latitudes * awayFromPoles );
+    }
+`;
+
+/**
+ * Adds common PEANUT deformation and optional grid/line presentation to a material.
+ * @param {THREE.Material} material - Material to decorate
+ * @param {object} config - Shader configuration
+ * @param {'clean-3d'|'explanatory-3d'|'publication-2d'|'depth'|'outline'} config.presentation - Presentation mode
+ * @param {THREE.ColorRepresentation} [config.gridColor] - Grid/line colour
+ * @param {number[]} [config.uniformShape] - Standalone shape; omit for instancing
+ * @param {number[][]} [config.gridRotation] - Principal-to-structure rotation
+ * @param {number} [config.silhouetteWidth] - Publication silhouette width
+ * @param {number} [config.gridLineWidth] - Grid stroke width in structure-space Angstrom
+ * @param {number} [config.meridianCount] - Number of longitudinal grid intervals
+ * @param {number} [config.latitudeIntervals] - Number of latitudinal grid intervals
+ * @param {{value:number}} [config.outlinePixelUniform] - Outline width uniform
+ * @param {{value:THREE.Vector2}} [config.outlineViewport] - CSS viewport uniform
+ * @returns {THREE.Material} The decorated material
+ */
+export function decoratePeanutMaterial(material, config) {
+    const presentation = config.presentation;
+    const uniformShape = config.uniformShape || null;
+    const gridColor = new THREE.Color(config.gridColor ?? 0x000000);
+    const rotation = config.gridRotation
+        ? new THREE.Matrix3().set(
+            config.gridRotation[0][0], config.gridRotation[0][1], config.gridRotation[0][2],
+            config.gridRotation[1][0], config.gridRotation[1][1], config.gridRotation[1][2],
+            config.gridRotation[2][0], config.gridRotation[2][1], config.gridRotation[2][2],
+        )
+        : new THREE.Matrix3();
+    material.defines = { ...material.defines };
+    if (uniformShape) {
+        material.defines.PEANUT_UNIFORM_SHAPE = 1;
+    } else {
+        delete material.defines.PEANUT_UNIFORM_SHAPE;
+    }
+    material.userData.peanut = {
+        presentation,
+        gridColor: gridColor.clone(),
+        silhouetteWidth: config.silhouetteWidth ?? 1.2,
+        gridLineWidth: config.gridLineWidth ?? 0.01,
+        meridianCount: config.meridianCount ?? 10,
+        latitudeIntervals: config.latitudeIntervals ?? 6,
+        outlinePixelUniform: config.outlinePixelUniform,
+        outlineViewport: config.outlineViewport,
+    };
+    material.onBeforeCompile = shader => {
+        shader.uniforms.peanutUniformShape = {
+            value: new THREE.Vector3(...(uniformShape || [1, 1, 1])),
+        };
+        shader.uniforms.peanutGridRotation = { value: rotation };
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `#include <common>\n${PEANUT_VERTEX_DECLARATIONS}`,
+        ).replace('#include <begin_vertex>', PEANUT_BEGIN_VERTEX)
+            .replace('#include <beginnormal_vertex>', PEANUT_BEGIN_NORMAL);
+
+        if (presentation === 'outline') {
+            shader.uniforms.uPeanutOutlinePx = config.outlinePixelUniform;
+            shader.uniforms.uPeanutOutlineViewport = config.outlineViewport;
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `
+                vec3 peanutOutlineNormal = normalize(
+                    2.0 * peanutQ * peanutDirection -
+                    activePeanutShape * peanutDirection
+                );
+                vec4 mvPosition = vec4( transformed, 1.0 );
+                #ifdef USE_INSTANCING
+                    mvPosition = instanceMatrix * mvPosition;
+                    peanutOutlineNormal = mat3( instanceMatrix ) * peanutOutlineNormal;
+                #endif
+                mvPosition = modelViewMatrix * mvPosition;
+                peanutOutlineNormal = normalize(
+                    mat3( modelViewMatrix ) * peanutOutlineNormal
+                );
+                vec4 peanutClipPosition = projectionMatrix * mvPosition;
+                vec3 peanutClipNormal = (
+                    projectionMatrix * vec4( peanutOutlineNormal, 0.0 )
+                ).xyz;
+                vec2 peanutOutlineDirection = length( peanutClipNormal.xy ) > 1e-6
+                    ? normalize( peanutClipNormal.xy ) : vec2( 0.0 );
+                peanutClipPosition.xy += peanutOutlineDirection *
+                    uPeanutOutlinePx * 2.0 * peanutClipPosition.w /
+                    uPeanutOutlineViewport;
+                gl_Position = peanutClipPosition;
+                `,
+            );
+            return;
+        }
+
+        if (presentation !== 'clean-3d' && presentation !== 'depth') {
+            shader.uniforms.peanutGridColor = { value: gridColor };
+            shader.uniforms.peanutGridLineWidth = {
+                value: config.gridLineWidth ?? 0.01,
+            };
+            shader.uniforms.peanutMeridianCount = {
+                value: config.meridianCount ?? 10,
+            };
+            shader.uniforms.peanutLatitudeIntervals = {
+                value: config.latitudeIntervals ?? 6,
+            };
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `#include <project_vertex>
+                #ifdef USE_INSTANCING
+                    vPeanutGridDirection = normalize( mat3( instanceMatrix ) * peanutDirection );
+                    vPeanutWorldPosition = (
+                        modelMatrix * instanceMatrix * vec4( transformed, 1.0 )
+                    ).xyz;
+                    vec3 peanutViewNormal = mat3( modelViewMatrix ) * mat3( instanceMatrix ) *
+                        normalize( 2.0 * peanutQ * peanutDirection -
+                            activePeanutShape * peanutDirection );
+                #else
+                    vPeanutGridDirection = normalize( peanutGridRotation * peanutDirection );
+                    vPeanutWorldPosition = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+                    vec3 peanutViewNormal = mat3( modelViewMatrix ) *
+                        normalize( 2.0 * peanutQ * peanutDirection -
+                            activePeanutShape * peanutDirection );
+                #endif
+                vPeanutViewNormal = normalize( peanutViewNormal );
+                vPeanutViewDirection = normalize( -mvPosition.xyz );`,
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `#include <common>\n${PEANUT_GRID_FRAGMENT}`,
+            );
+            const presentationCode = presentation === 'publication-2d'
+                ? `
+                    float peanutGridMask = peanutSurfaceGrid(
+                        vPeanutGridDirection, vPeanutWorldPosition
+                    );
+                    if ( peanutGridMask < 0.01 ) discard;
+                    diffuseColor.rgb = peanutGridColor;
+                `
+                : `
+                    float peanutGridMask = peanutSurfaceGrid(
+                        vPeanutGridDirection, vPeanutWorldPosition
+                    );
+                    diffuseColor.rgb = mix(
+                        diffuseColor.rgb, peanutGridColor, peanutGridMask
+                    );
+                `;
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>\n${presentationCode}`,
+            );
+        }
+    };
+    material.customProgramCacheKey = () => [
+        'rmsd-peanut-v1',
+        presentation,
+        uniformShape ? 'uniform' : 'instanced',
+    ].join('-');
+    material.needsUpdate = true;
+    return material;
+}
 
 // Replacement for three's <project_vertex> that expands a silhouette outline
 // by a constant number of CSS pixels in screen space, independent of the
@@ -398,6 +660,86 @@ export class InstancedPool {
 }
 
 /**
+ * Instanced PEANUT pool with a per-instance normalized eigenvalue shape.
+ * The wrapper geometry references the shared sphere's vertex/index attributes;
+ * only the three-float instance attribute and instance matrices are pool-owned.
+ */
+export class PeanutInstancedPool extends InstancedPool {
+    /**
+     * @param {THREE.BufferGeometry} baseGeometry - Shared PEANUT sphere topology
+     * @param {THREE.Material} material - Visible body/line material
+     * @param {number} count - Instance count
+     * @param {THREE.Material|null} [depthMaterial] - Optional publication depth pass
+     * @param {THREE.Material|null} [outlineMaterial] - Optional expanded silhouette pass
+     */
+    constructor(baseGeometry, material, count, depthMaterial = null, outlineMaterial = null) {
+        if (!baseGeometry.boundingSphere) {
+            baseGeometry.computeBoundingSphere();
+        }
+        const geometry = new THREE.InstancedBufferGeometry();
+        geometry.setIndex(baseGeometry.index);
+        for (const [name, attribute] of Object.entries(baseGeometry.attributes)) {
+            geometry.setAttribute(name, attribute);
+        }
+        geometry.boundingSphere = baseGeometry.boundingSphere.clone();
+        geometry.boundingBox = baseGeometry.boundingBox?.clone() || null;
+        geometry.setAttribute(
+            'peanutShape',
+            new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3),
+        );
+        super(geometry, material, count);
+        this.baseGeometry = baseGeometry;
+        this.shapeAttribute = geometry.getAttribute('peanutShape');
+        this.meshes = [this.mesh];
+        if (depthMaterial) {
+            const depthMesh = new THREE.InstancedMesh(geometry, depthMaterial, count);
+            depthMesh.instanceMatrix = this.mesh.instanceMatrix;
+            depthMesh.userData = { selectable: false, type: 'peanut-depth-mask' };
+            depthMesh.renderOrder = 0;
+            this.mesh.renderOrder = 1;
+            this.depthMesh = depthMesh;
+            this.meshes.unshift(depthMesh);
+        }
+        if (outlineMaterial) {
+            const outlineMesh = new THREE.InstancedMesh(geometry, outlineMaterial, count);
+            outlineMesh.instanceMatrix = this.mesh.instanceMatrix;
+            outlineMesh.userData = { selectable: false, type: 'peanut-outline' };
+            outlineMesh.renderOrder = 2;
+            this.outlineMesh = outlineMesh;
+            this.meshes.push(outlineMesh);
+        }
+    }
+
+    /**
+     * @param {THREE.Matrix4} matrix - Principal-frame instance transform
+     * @param {number[]} normalizedShape - Three normalized eigenvalues
+     * @returns {number} Stable instance index
+     */
+    registerPeanut(matrix, normalizedShape) {
+        const index = super.register(matrix);
+        this.shapeAttribute.setXYZ(index, ...normalizedShape);
+        return index;
+    }
+
+    finalize() {
+        this.shapeAttribute.needsUpdate = true;
+        super.finalize();
+        if (this.depthMesh) {
+            this.depthMesh.boundingSphere = this.mesh.boundingSphere;
+        }
+        if (this.outlineMesh) {
+            this.outlineMesh.boundingSphere = this.mesh.boundingSphere;
+        }
+    }
+
+    dispose() {
+        // Only the wrapper and instance attribute are unique. Shared topology
+        // attributes remain cache-owned and are disposed with the base geometry.
+        this.mesh.geometry.dispose();
+    }
+}
+
+/**
  * Calculates the transformation matrix for ellipsoid visualization from anisotropic displacement parameters.
  * @param {UAnisoADP} uAnisoADPobj - Anisotropic displacement parameters object
  * @param {UnitCell} unitCell - Unit cell object containing crystallographic parameters
@@ -538,8 +880,15 @@ export class GeometryMaterialCache {
             this.scaling,
             this.options.atomDetail,
         );
+        if (this.options.adpRepresentation === 'rmsd-peanut') {
+            this.geometries.peanut = new THREE.IcosahedronGeometry(
+                this.options.peanutScale,
+                this.options.atomDetail,
+            );
+        }
 
-        if (this.options.renderStyle !== 'solid-3d') {
+        if (this.options.adpRepresentation === 'ellipsoid' &&
+            this.options.renderStyle !== 'solid-3d') {
             const octantSections = Math.max(3, 2 ** this.options.atomDetail + 2);
             this.geometries.atomOctant = new THREE.SphereGeometry(
                 this.scaling,
@@ -563,9 +912,11 @@ export class GeometryMaterialCache {
             });
         }
 
-        // ADP ring geometry
-        this.geometries.adpRing = this.createADPHalfTorus();
-        this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing);
+        // ADP rings are an ellipsoid presentation detail, never PEANUT geometry.
+        if (this.options.adpRepresentation === 'ellipsoid') {
+            this.geometries.adpRing = this.createADPHalfTorus();
+            this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing);
+        }
 
         // Bond geometry
         const bondGeometryHeight = this.options.renderStyle === 'cutout-2d' ?
@@ -725,6 +1076,102 @@ export class GeometryMaterialCache {
         }
 
         return this.elementMaterials[key];
+    }
+
+    /**
+     * Gets the publication line colour already used by ellipsoid drawings.
+     * @param {string} atomType - Chemical element symbol or atom label
+     * @returns {THREE.Color} Background-adjusted element line colour
+     */
+    getPlot2DElementLineColor(atomType) {
+        let elementType = atomType;
+        if (!this.options.elementProperties[elementType]) {
+            elementType = inferElementFromLabel(atomType);
+        }
+        this.validateElementType(elementType);
+        const elementProperty = this.options.elementProperties[elementType];
+        const raw = ['H', 'D'].includes(elementType)
+            ? this.options.plot2DLineColor
+            : elementProperty.atomColor;
+        return liftColorLuminance(
+            scaleColorLuminance(raw, this.plot2DElementColorScale),
+            this.plot2DElementColorLift,
+        );
+    }
+
+    /**
+     * Gets representation-specific anisotropic PEANUT materials.
+     * @param {string} atomType - Chemical element symbol or atom label
+     * @returns {{body:THREE.Material, depth:THREE.Material|null,
+     * outline:THREE.Material|null,
+     * presentation:string}} Material bundle
+     */
+    getPeanutMaterials(atomType) {
+        let elementType = atomType;
+        if (!this.options.elementProperties[elementType]) {
+            elementType = inferElementFromLabel(atomType);
+        }
+        this.validateElementType(elementType);
+        const presentation = getPresentationIntent(this.options.renderStyle);
+        const key = `${elementType}_peanut_${presentation}_` +
+            `${this.options.peanutMeridianCount}_` +
+            `${this.options.peanutLatitudeIntervals}_` +
+            `${this.options.peanutGridLineWidth}`;
+        if (!this.elementMaterials[key]) {
+            const elementProperty = this.options.elementProperties[elementType];
+            let body;
+            let depth = null;
+            let outline = null;
+            if (presentation === 'publication-2d') {
+                const lineColor = this.getPlot2DElementLineColor(elementType);
+                body = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
+                    color: lineColor,
+                    depthWrite: false,
+                    depthTest: true,
+                    depthFunc: THREE.LessEqualDepth,
+                    side: THREE.DoubleSide,
+                }), {
+                    presentation,
+                    gridColor: lineColor,
+                    meridianCount: this.options.peanutMeridianCount,
+                    latitudeIntervals: this.options.peanutLatitudeIntervals,
+                    gridLineWidth: this.options.peanutGridLineWidth,
+                });
+                depth = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
+                    colorWrite: false,
+                    depthWrite: true,
+                    depthTest: true,
+                    side: THREE.DoubleSide,
+                }), { presentation: 'depth' });
+                outline = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
+                    color: lineColor,
+                    side: THREE.BackSide,
+                    depthWrite: true,
+                    depthTest: true,
+                }), {
+                    presentation: 'outline',
+                    outlinePixelUniform: this.outlinePixels.atom,
+                    outlineViewport: this.outlineViewport,
+                });
+                body.userData.peanutDepthMaterial = depth;
+                body.userData.peanutOutlineMaterial = outline;
+            } else {
+                body = decoratePeanutMaterial(new THREE.MeshStandardMaterial({
+                    color: elementProperty.atomColor,
+                    roughness: this.options.atomColorRoughness,
+                    metalness: this.options.atomColorMetalness,
+                }), {
+                    presentation,
+                    gridColor: elementProperty.ringColor,
+                    meridianCount: this.options.peanutMeridianCount,
+                    latitudeIntervals: this.options.peanutLatitudeIntervals,
+                    gridLineWidth: this.options.peanutGridLineWidth,
+                });
+            }
+            this.elementMaterials[key] = [body, depth, outline].filter(Boolean);
+        }
+        const [body, depth = null, outline = null] = this.elementMaterials[key];
+        return { body, depth, outline, presentation };
     }
 
     /**
@@ -938,8 +1385,13 @@ export class ORTEP3JsStructure {
             return position;
         };
 
+        // Only ellipsoid cutouts need camera-dependent per-atom subgeometry.
+        const requiresCameraDependentSubgeometry =
+            this.options.adpRepresentation === 'ellipsoid' &&
+            this.options.renderStyle !== 'solid-3d';
+
         // Create atoms
-        if (this.options.renderStyle !== 'solid-3d') {
+        if (requiresCameraDependentSubgeometry) {
             // Cutout/2D styles toggle sub-geometry visibility per frame based
             // on camera direction, which isn't a good fit for instancing, so
             // they keep using one mesh per atom.
@@ -1000,14 +1452,48 @@ export class ORTEP3JsStructure {
                 this.cache.geometries.atom.computeBoundingSphere();
             }
             const atomSurfaceRadius = this.cache.geometries.atom.boundingSphere.radius;
+            if (this.cache.geometries.peanut && !this.cache.geometries.peanut.boundingSphere) {
+                this.cache.geometries.peanut.computeBoundingSphere();
+            }
 
             const atomCountByMaterial = new Map();
             const ringCountByMaterial = new Map();
+            const peanutPoolConfigByMaterial = new Map();
             const perAtomPlan = [];
 
             for (const atom of this.crystalStructure.atoms) {
-                const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
+                if (atom.adp instanceof UAnisoADP &&
+                    this.options.adpRepresentation === 'rmsd-peanut') {
+                    const peanut = computePeanutAtomTransform(
+                        atom,
+                        this.crystalStructure.cell,
+                        this.options.peanutScale,
+                    );
+                    if (peanut.valid) {
+                        const materials = this.cache.getPeanutMaterials(atom.atomType);
+                        atomCountByMaterial.set(
+                            materials.body,
+                            (atomCountByMaterial.get(materials.body) || 0) + 1,
+                        );
+                        peanutPoolConfigByMaterial.set(materials.body, materials);
+                        perAtomPlan.push({
+                            atom,
+                            kind: 'peanut',
+                            ...peanut,
+                            atomMaterial: materials.body,
+                            presentation: materials.presentation,
+                        });
+                    } else {
+                        const [atomMaterial, ringMaterial] =
+                            this.cache.getAtomMaterials(atom.atomType);
+                        perAtomPlan.push({
+                            atom, kind: 'ani-fallback', atomMaterial, ringMaterial,
+                        });
+                    }
+                    continue;
+                }
 
+                const [atomMaterial, ringMaterial] = this.cache.getAtomMaterials(atom.atomType);
                 if (atom.adp instanceof UAnisoADP) {
                     const { matrix, valid } = computeAniAtomTransform(atom, this.crystalStructure.cell);
                     if (valid) {
@@ -1018,6 +1504,10 @@ export class ORTEP3JsStructure {
                         perAtomPlan.push({ atom, kind: 'ani-fallback', atomMaterial, ringMaterial });
                     }
                 } else if (atom.adp instanceof UIsoADP) {
+                    if (this.options.renderStyle !== 'solid-3d') {
+                        perAtomPlan.push({ atom, kind: 'iso-individual', atomMaterial });
+                        continue;
+                    }
                     const { matrix, valid } = computeIsoAtomTransform(atom, this.crystalStructure.cell);
                     if (valid) {
                         atomCountByMaterial.set(atomMaterial, (atomCountByMaterial.get(atomMaterial) || 0) + 1);
@@ -1026,6 +1516,10 @@ export class ORTEP3JsStructure {
                         perAtomPlan.push({ atom, kind: 'iso-fallback', atomMaterial });
                     }
                 } else {
+                    if (this.options.renderStyle !== 'solid-3d') {
+                        perAtomPlan.push({ atom, kind: 'constant-individual', atomMaterial });
+                        continue;
+                    }
                     const matrix = computeConstantAtomTransform(atom, this.crystalStructure.cell, this.options);
                     atomCountByMaterial.set(atomMaterial, (atomCountByMaterial.get(atomMaterial) || 0) + 1);
                     perAtomPlan.push({ atom, kind: 'constant', matrix, atomMaterial });
@@ -1034,7 +1528,16 @@ export class ORTEP3JsStructure {
 
             const atomPools = new Map();
             for (const [material, count] of atomCountByMaterial) {
-                atomPools.set(material, new InstancedPool(this.cache.geometries.atom, material, count));
+                const peanutConfig = peanutPoolConfigByMaterial.get(material);
+                atomPools.set(material, peanutConfig
+                    ? new PeanutInstancedPool(
+                        this.cache.geometries.peanut,
+                        material,
+                        count,
+                        peanutConfig.depth,
+                        peanutConfig.outline,
+                    )
+                    : new InstancedPool(this.cache.geometries.atom, material, count));
             }
             const ringPools = new Map();
             for (const [material, count] of ringCountByMaterial) {
@@ -1051,6 +1554,14 @@ export class ORTEP3JsStructure {
                         atomSurfaceRadius,
                         ringPools.get(plan.ringMaterial),
                     );
+                } else if (plan.kind === 'peanut') {
+                    atom3D = new ORTEPPeanutAtomInstance(
+                        plan.atom,
+                        atomPools.get(plan.atomMaterial),
+                        plan.matrix,
+                        plan.surface,
+                        plan.presentation,
+                    );
                 } else if (plan.kind === 'iso' || plan.kind === 'constant') {
                     atom3D = new ORTEPAtomInstance(
                         plan.atom, atomPools.get(plan.atomMaterial), plan.matrix, atomSurfaceRadius,
@@ -1064,6 +1575,21 @@ export class ORTEP3JsStructure {
                         this.cache.geometries.adpRingSet,
                         plan.ringMaterial,
                         null,
+                    );
+                } else if (plan.kind === 'iso-individual') {
+                    atom3D = new ORTEPIsoAtom(
+                        plan.atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        plan.atomMaterial,
+                    );
+                } else if (plan.kind === 'constant-individual') {
+                    atom3D = new ORTEPConstantAtom(
+                        plan.atom,
+                        this.crystalStructure.cell,
+                        this.cache.geometries.atom,
+                        plan.atomMaterial,
+                        this.options,
                     );
                 } else {
                     atom3D = new ORTEPIsoAtom(
@@ -1082,7 +1608,8 @@ export class ORTEP3JsStructure {
             this.ringPools = ringPools;
         }
 
-        const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d';
+        const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d' ||
+            this.options.adpRepresentation === 'rmsd-peanut';
         const getRenderedAtom = trimBondsToSurfaces ?
             atomId => renderedAtomsById.get(atomId) : null;
 
@@ -1229,7 +1756,9 @@ export class ORTEP3JsStructure {
 
         if (this.atomPools) {
             for (const pool of this.atomPools.values()) {
-                group.add(pool.mesh);
+                for (const mesh of pool.meshes || [pool.mesh]) {
+                    group.add(mesh);
+                }
             }
         }
         if (this.ringPools) {
@@ -1284,7 +1813,8 @@ export class ORTEP3JsStructure {
             const position = new THREE.Vector3().setFromMatrixPosition(matrix);
             const scale = new THREE.Vector3();
             matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
-            const radius = (atom3D.surfaceRadius || 0.25) * Math.max(scale.x, scale.y, scale.z);
+            const radius = atom3D.surfaceDescriptor?.boundingRadius ||
+                (atom3D.surfaceRadius || 0.25) * Math.max(scale.x, scale.y, scale.z);
             return {
                 atom: atom3D.userData.atomData,
                 position,
@@ -1299,6 +1829,11 @@ export class ORTEP3JsStructure {
      * Cleans up all resources.
      */
     dispose() {
+        if (this.atomPools) {
+            for (const pool of this.atomPools.values()) {
+                pool.dispose?.();
+            }
+        }
         this.cache.dispose();
     }
 }
@@ -1824,6 +2359,31 @@ export class ORTEPConstantAtom extends ORTEPAtom {
 }
 
 /**
+ * Computes the uniform principal-frame transform and radial descriptor used
+ * by an instanced RMSD PEANUT atom.
+ * @param {Atom} atom - Atom with anisotropic displacement parameters
+ * @param {UnitCell} unitCell - Unit cell parameters
+ * @param {number} peanutScale - RMSD display multiplier
+ * @returns {{matrix:THREE.Matrix4|null, surface:object, valid:boolean}}
+ * PEANUT render plan
+ */
+function computePeanutAtomTransform(atom, unitCell, peanutScale) {
+    const surface = createRMSDPeanutSurface(atom.adp, unitCell, peanutScale);
+    if (!surface.valid) {
+        return { matrix: null, surface, valid: false };
+    }
+    const q = surface.rotation;
+    const matrix = new THREE.Matrix4().set(
+        q[0][0], q[0][1], q[0][2], 0,
+        q[1][0], q[1][1], q[1][2], 0,
+        q[2][0], q[2][1], q[2][2], 0,
+        0, 0, 0, 1,
+    ).scale(new THREE.Vector3(surface.maxScale, surface.maxScale, surface.maxScale));
+    matrix.setPosition(new THREE.Vector3(...atom.position.toCartesian(unitCell)));
+    return { matrix, surface, valid: true };
+}
+
+/**
  * Computes the instance transform for an anisotropic atom in the default
  * (non-cutout, non-2D) render style, without creating any rendering
  * resources. Mirrors the validity checks in the ORTEPAniAtom constructor:
@@ -2033,9 +2593,8 @@ export class PooledSelectableObject extends THREE.Object3D {
 }
 
 /**
- * Base class for atom visualisations in the default (non-cutout, non-2D)
- * render style. Registers into a shared per-element InstancedPool instead of
- * owning its own mesh.
+ * Base class for atom visualisations stored in a shared per-element
+ * InstancedPool instead of owning a mesh.
  * @augments PooledSelectableObject
  */
 export class ORTEPAtomInstance extends PooledSelectableObject {
@@ -2091,8 +2650,8 @@ export class ORTEPAtomInstance extends PooledSelectableObject {
 }
 
 /**
- * Class for anisotropic atoms in the default (non-cutout, non-2D) render
- * style. In addition to the pooled atom body, registers one instance into a
+ * Class for instanced ellipsoid atoms in the clean 3D render style. In
+ * addition to the pooled atom body, registers one instance into a
  * shared per-element ADP ring pool - using the exact same transform as the
  * body, since the three ring placements are already baked into the merged
  * ring geometry (see GeometryMaterialCache.createMergedADPRingSet). The ring
@@ -2116,6 +2675,159 @@ export class ORTEPAniAtomInstance extends ORTEPAtomInstance {
             this.ringPool = ringPool;
             this.ringIndex = ringPool.register(matrix);
         }
+    }
+}
+
+/**
+ * Instanced anisotropic RMSD PEANUT atom with analytic surface queries and
+ * CPU-deformed scratch geometry for accurate interaction.
+ * @augments ORTEPAtomInstance
+ */
+export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
+    /**
+     * @param {Atom} atom - Source anisotropic atom
+     * @param {PeanutInstancedPool} pool - Shared PEANUT pool
+     * @param {THREE.Matrix4} matrix - Principal rotation and uniform max scale
+     * @param {object} surface - RMSD surface descriptor
+     * @param {string} presentation - Normalized presentation intent
+     */
+    constructor(atom, pool, matrix, surface, presentation) {
+        super(atom, pool, matrix, pool.mesh.geometry.boundingSphere?.radius || 0);
+        const segment = this.segments[0];
+        pool.shapeAttribute.setXYZ(segment.index, ...surface.normalizedShape);
+        this.surfaceDescriptor = surface;
+        this.presentation = presentation;
+    }
+
+    getSurfaceDistanceAlong(direction) {
+        return this.surfaceDescriptor.surfaceDistanceAlong([
+            direction.x, direction.y, direction.z,
+        ]);
+    }
+
+    /**
+     * Performs a conservative sphere test followed by exact scratch-mesh intersection.
+     * @param {THREE.Raycaster} raycaster - Raycaster performing the hit test
+     * @param {object[]} intersects - Output intersections
+     */
+    raycast(raycaster, intersects) {
+        const conservativeHits = [];
+        super.raycast(raycaster, conservativeHits);
+        if (conservativeHits.length === 0) {
+            return;
+        }
+
+        const segment = this.segments[0];
+        const geometry = segment.pool.mesh.geometry.clone();
+        const positions = geometry.getAttribute('position');
+        const shape = this.surfaceDescriptor.normalizedShape;
+        for (let index = 0; index < positions.count; index++) {
+            const x = positions.getX(index);
+            const y = positions.getY(index);
+            const z = positions.getZ(index);
+            const inverseLength = 1 / Math.hypot(x, y, z);
+            const nx = x * inverseLength;
+            const ny = y * inverseLength;
+            const nz = z * inverseLength;
+            const radialScale = Math.sqrt(Math.max(
+                shape[0] * nx * nx + shape[1] * ny * ny + shape[2] * nz * nz,
+                0,
+            ));
+            positions.setXYZ(index, x * radialScale, y * radialScale, z * radialScale);
+        }
+        positions.needsUpdate = true;
+        geometry.computeBoundingSphere();
+
+        const scratchMesh = new THREE.Mesh(geometry, segment.pool.mesh.material);
+        scratchMesh.matrixAutoUpdate = false;
+        scratchMesh.matrixWorld.multiplyMatrices(this.matrixWorld, segment.matrix);
+        const exactHits = [];
+        THREE.Mesh.prototype.raycast.call(scratchMesh, raycaster, exactHits);
+        geometry.dispose();
+        if (exactHits.length > 0) {
+            exactHits.sort((a, b) => a.distance - b.distance);
+            intersects.push({ ...exactHits[0], object: this });
+        }
+    }
+
+    /**
+     * Creates a standalone material that reads this atom's shape from a uniform.
+     * @param {THREE.Material} source - Pooled source material
+     * @returns {THREE.Material} Standalone decorated clone
+     */
+    createStandalonePeanutMaterial(source) {
+        const material = source.clone();
+        const config = source.userData.peanut;
+        return decoratePeanutMaterial(material, {
+            presentation: config.presentation,
+            gridColor: config.gridColor,
+            silhouetteWidth: config.silhouetteWidth,
+            gridLineWidth: config.gridLineWidth,
+            meridianCount: config.meridianCount,
+            latitudeIntervals: config.latitudeIntervals,
+            uniformShape: this.surfaceDescriptor.normalizedShape,
+            gridRotation: this.surfaceDescriptor.rotation,
+        });
+    }
+
+    select(color, options) {
+        this._selectionColor = color;
+        if (this.presentation !== 'publication-2d') {
+            const segment = this.segments[0];
+            segment.pool.hideInstance(segment.index);
+            const highlightMaterial = this.createStandalonePeanutMaterial(
+                segment.pool.mesh.material,
+            );
+            highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
+            const mesh = new THREE.Mesh(segment.pool.baseGeometry, highlightMaterial);
+            mesh.applyMatrix4(segment.matrix);
+            mesh.userData = { ...this.userData, selectable: false };
+            this.add(mesh);
+            this.highlightMeshes = [mesh];
+        }
+        const marker = this.createSelectionMarker(color, options);
+        this.add(marker);
+        this.marker = marker;
+    }
+
+    createSelectionMarker(color, options) {
+        const segment = this.segments[0];
+        let material;
+        if (this.presentation === 'publication-2d') {
+            const outlineConfig = segment.pool.outlineMesh.material.userData.peanut;
+            const baseWidth = options.plot2DOutlineWidth ?? 1.2;
+            material = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.BackSide,
+                depthTest: true,
+                depthWrite: false,
+            }), {
+                presentation: 'outline',
+                uniformShape: this.surfaceDescriptor.normalizedShape,
+                gridRotation: this.surfaceDescriptor.rotation,
+                outlinePixelUniform: { value: Math.max(3, baseWidth + 2) },
+                outlineViewport: outlineConfig.outlineViewport,
+            });
+        } else {
+            material = decoratePeanutMaterial(this.createSelectionMaterial(color), {
+                presentation: 'clean-3d',
+                uniformShape: this.surfaceDescriptor.normalizedShape,
+                gridRotation: this.surfaceDescriptor.rotation,
+            });
+        }
+        const marker = new THREE.Mesh(segment.pool.baseGeometry, material);
+        marker.applyMatrix4(segment.matrix);
+        if (this.presentation === 'publication-2d') {
+            // The depth mask suppresses the BackSide material over the atom;
+            // only its screen-space expansion remains as a coloured halo.
+            marker.renderOrder = BOND_RENDER_ORDER + 1;
+        } else {
+            marker.scale.multiplyScalar(options.selection.markerMult);
+        }
+        marker.userData.selectable = false;
+        return marker;
     }
 }
 

@@ -85,6 +85,7 @@ describe('labels', () => {
 
     test('applies explicit overrides', () => {
         expect(humanizeLabel('renderStyle')).toBe('Render style');
+        expect(humanizeLabel('adpRepresentation')).toBe('ADP representation');
         expect(humanizeLabel('hydrogenMode')).toBe('Hydrogen display');
     });
 
@@ -221,6 +222,11 @@ describe('import validation', () => {
     test('accepts valid options including elements and plane descriptors', () => {
         const result = validateImportedOptions({
             renderStyle: 'cutout-2d',
+            adpRepresentation: 'rmsd-peanut',
+            peanutScale: 1.75,
+            peanutMeridianCount: 12,
+            peanutLatitudeIntervals: 8,
+            peanutGridLineWidth: 0.02,
             bondRadius: 0.08,
             elementProperties: { Fe: { atomColor: '#ff5733', radius: 1.4 } },
             contourLines: { enabled: true, plane: { atoms: ['C1', 'C2', 'O1'] } },
@@ -237,6 +243,7 @@ describe('import validation', () => {
             madeUpOption: 1,
             elementProperties: { Xx: { atomColor: '#fff' }, Fe: { glow: true } },
             renderStyle: 'flat',
+            adpRepresentation: 'banana',
         }, schema);
         expect(result.ok).toBe(false);
         expect(result.errors.join('\n')).toContain('bondRadius');
@@ -244,6 +251,7 @@ describe('import validation', () => {
         expect(result.errors.join('\n')).toContain('Xx');
         expect(result.errors.join('\n')).toContain('glow');
         expect(result.errors.join('\n')).toContain('renderStyle');
+        expect(result.errors.join('\n')).toContain('adpRepresentation');
         expect(result.sanitized).toEqual({});
     });
 

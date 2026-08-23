@@ -87,30 +87,155 @@ export class UAnisoADP {
      * @returns {math.Matrix} transformation matrix, is normalised to never invert coordinates
      */
     getEllipsoidMatrix(unitCell) {
-        const uijMatrix = adpToMatrix(this.getUCart(unitCell));
-        const { eigenvectors: eigenvectors_obj } = math.eigs(uijMatrix);
-        const eigenvectors = math.transpose(math.matrix(eigenvectors_obj.map(entry => entry.vector)));
+        const frame = getADPPrincipalFrame(this, unitCell);
+        if (!frame.valid) {
+            return math.matrix([
+                [NaN, NaN, NaN],
+                [NaN, NaN, NaN],
+                [NaN, NaN, NaN],
+            ]);
+        }
+        return math.matrix(math.multiply(
+            frame.rotation,
+            math.diag(frame.eigenvalues.map(Math.sqrt)),
+        ));
+    }
+}
 
-        const eigenvalues = math.matrix(eigenvectors_obj.map(entry => {
-            if (entry.value > 0) {
-                return entry.value;
-            }
-            return NaN;
-        }));
-        const det = math.det(eigenvectors);
-        const sqrtEigenvalues = math.diag(eigenvalues.map(Math.sqrt));
-
-        let transformationMatrix;
-        // make sure it is a rotation -> no vertice direction inverted
-        if (math.abs(det - 1) > 1e-10) {
-            const normalizedEigenvectors = math.multiply(eigenvectors, 1/det);
-            transformationMatrix = math.multiply(normalizedEigenvectors, sqrtEigenvalues);
-        } else {
-            transformationMatrix = math.multiply(eigenvectors, sqrtEigenvalues);
+/**
+ * Computes a deterministic, right-handed Cartesian principal frame for an
+ * anisotropic displacement tensor. Eigenvalues are ordered from largest to
+ * smallest and columns of `rotation` are the corresponding eigenvectors.
+ * @param {UAnisoADP} adp - Anisotropic displacement parameters
+ * @param {UnitCell} unitCell - Unit cell used to convert CIF Uij to Cartesian U
+ * @returns {{eigenvalues:number[], rotation:number[][], valid:boolean, tolerance:number}}
+ * Principal-frame description
+ */
+export function getADPPrincipalFrame(adp, unitCell) {
+    const invalid = {
+        eigenvalues: [NaN, NaN, NaN],
+        rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        valid: false,
+        tolerance: NaN,
+    };
+    try {
+        const uijMatrix = adpToMatrix(adp.getUCart(unitCell));
+        const { eigenvectors } = math.eigs(uijMatrix);
+        const entries = eigenvectors
+            .map(entry => ({
+                value: Number(entry.value),
+                vector: (entry.vector.toArray?.() || entry.vector).map(Number),
+            }))
+            .sort((a, b) => b.value - a.value);
+        if (entries.length !== 3 || entries.some(entry =>
+            !Number.isFinite(entry.value) || entry.vector.some(value => !Number.isFinite(value)))) {
+            return invalid;
         }
 
-        return math.matrix(transformationMatrix);
+        // Remove the otherwise arbitrary +/- sign of each eigenvector.
+        for (const entry of entries) {
+            let pivot = 0;
+            for (let i = 1; i < 3; i++) {
+                if (Math.abs(entry.vector[i]) > Math.abs(entry.vector[pivot])) {
+                    pivot = i;
+                }
+            }
+            if (entry.vector[pivot] < 0) {
+                entry.vector = entry.vector.map(value => -value);
+            }
+        }
+
+        const rotation = math.transpose(entries.map(entry => entry.vector));
+        if (math.det(rotation) < 0) {
+            // Flipping the final column preserves the two most significant
+            // deterministic axes while making the complete frame a rotation.
+            for (let row = 0; row < 3; row++) {
+                rotation[row][2] *= -1;
+            }
+        }
+        const eigenvalues = entries.map(entry => entry.value);
+        const lambdaMax = eigenvalues[0];
+        const tolerance = Math.max(1e-12, Math.abs(lambdaMax) * 1e-10);
+        const valid = Number.isFinite(lambdaMax) &&
+            eigenvalues.every(value => Number.isFinite(value) && value > tolerance);
+        return { eigenvalues, rotation, valid, tolerance };
+    } catch {
+        return invalid;
     }
+}
+
+/**
+ * Describes an RMSD PEANUT radial surface in structure-Cartesian coordinates.
+ * @param {UAnisoADP} adp - Anisotropic displacement parameters
+ * @param {UnitCell} unitCell - Unit cell used for Cartesian conversion
+ * @param {number} scale - Visual RMSD multiplier
+ * @returns {{kind:string, eigenvalues:number[], rotation:number[][], maxScale:number,
+ * normalizedShape:number[], boundingRadius:number, valid:boolean,
+ * localRadialScale:function(number[]):number, localNormal:function(number[]):number[],
+ * surfaceDistanceAlong:function(number[]):number}}
+ * Surface description
+ */
+export function createRMSDPeanutSurface(adp, unitCell, scale) {
+    const frame = getADPPrincipalFrame(adp, unitCell);
+    const validScale = Number.isFinite(scale) && scale > 0;
+    const lambdaMax = frame.eigenvalues[0];
+    const normalizedShape = frame.valid
+        ? frame.eigenvalues.map(value => value / lambdaMax)
+        : [NaN, NaN, NaN];
+    const maxScale = frame.valid && validScale ? Math.sqrt(lambdaMax) : NaN;
+    const rotationTranspose = math.transpose(frame.rotation);
+    const normalizedDirection = direction => {
+        if (!Array.isArray(direction) || direction.length !== 3) {
+            return null;
+        }
+        const length = Math.hypot(direction[0], direction[1], direction[2]);
+        return length > 0 ? direction.map(value => value / length) : null;
+    };
+    const localRadialScale = direction => {
+        const n = normalizedDirection(direction);
+        if (!frame.valid || !n) {
+            return 0;
+        }
+        return Math.sqrt(Math.max(normalizedShape.reduce(
+            (sum, value, index) => sum + value * n[index] * n[index],
+            0,
+        ), 0));
+    };
+    const localNormal = direction => {
+        const n = normalizedDirection(direction);
+        if (!frame.valid || !n) {
+            return [0, 0, 0];
+        }
+        const q = localRadialScale(n) ** 2;
+        const normal = n.map((value, index) =>
+            2 * q * value - normalizedShape[index] * value);
+        const length = Math.hypot(...normal);
+        return length > 0 ? normal.map(value => value / length) : [0, 0, 0];
+    };
+    const surfaceDistanceAlong = direction => {
+        const unit = normalizedDirection(direction);
+        if (!frame.valid || !validScale || !unit) {
+            return 0;
+        }
+        const local = math.multiply(rotationTranspose, unit);
+        const variance = frame.eigenvalues.reduce(
+            (sum, value, index) => sum + value * local[index] * local[index],
+            0,
+        );
+        return scale * Math.sqrt(Math.max(variance, 0));
+    };
+    return {
+        kind: 'rmsd-peanut',
+        eigenvalues: frame.eigenvalues,
+        rotation: frame.rotation,
+        maxScale,
+        normalizedShape,
+        boundingRadius: frame.valid && validScale ? scale * maxScale : 0,
+        valid: frame.valid && validScale,
+        localRadialScale,
+        localNormal,
+        surfaceDistanceAlong,
+    };
 }
 
 /**

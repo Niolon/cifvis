@@ -39,7 +39,11 @@ are explained in [General → The structure model](../general/structure-model.md
   </div>
 </div>
 
-## ORTEP render modes {#ortep-render-modes}
+## ADP representations and render modes {#ortep-render-modes}
+
+Choose `adpRepresentation: "ellipsoid"` for probability ellipsoids or
+`adpRepresentation: "rmsd-peanut"` for RMS displacement PEANUT surfaces. The separate
+`renderStyle` option selects a clean 3D, explanatory 3D, or publication presentation.
 
 <div class="cifvis-demo-grid">
   <div>
@@ -53,6 +57,23 @@ are explained in [General → The structure model](../general/structure-model.md
   <div>
     <span class="cifvis-example-label">2D</span>
     <CifDemo src="/cif/urea.cif" options='{"renderStyle":"cutout-2d"}' caption="Element-coloured publication style." />
+  </div>
+</div>
+
+The same presentation selector applies to RMS displacement PEANUT surfaces:
+
+<div class="cifvis-demo-grid">
+  <div>
+    <span class="cifvis-example-label">PEANUT solid</span>
+    <CifDemo src="/cif/urea.cif" options='{"adpRepresentation":"rmsd-peanut","renderStyle":"solid-3d"}' caption="Smooth RMS displacement surface." />
+  </div>
+  <div>
+    <span class="cifvis-example-label">PEANUT detail</span>
+    <CifDemo src="/cif/urea.cif" options='{"adpRepresentation":"rmsd-peanut","renderStyle":"cutout-3d"}' caption="Solid surface with a stable explanatory grid." />
+  </div>
+  <div>
+    <span class="cifvis-example-label">PEANUT publication</span>
+    <CifDemo src="/cif/urea.cif" options='{"adpRepresentation":"rmsd-peanut","renderStyle":"cutout-2d"}' caption="Hidden-line grid with physical-width strokes and an expanded outline." />
   </div>
 </div>
 
