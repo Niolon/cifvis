@@ -233,6 +233,13 @@ _note1 "text with # inside" # comment`);
             expect(block.get('_note1')).toBe('text with # inside');
         });
 
+        test('strips comments followed by long quote runs in linear time', () => {
+            const suffix = '"x'.repeat(50_000);
+            const block = new CifBlock(`data_test\n_note value # ${suffix}`);
+
+            expect(block.get('_note')).toBe('value');
+        });
+
         test('handles values on next line', () => {
             const block = new CifBlock(`data_test
 _diffrn_measurement_device   

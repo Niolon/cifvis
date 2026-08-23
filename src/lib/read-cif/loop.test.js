@@ -208,6 +208,14 @@ _some_note
             const loop = block.get('_some');
             expect(loop.get('_some_note')).toEqual(['', '', 'value']);
         });
+
+        test('tokenizes long embedded-quote values in linear time', () => {
+            const embeddedQuotePair = '\'b';
+            const quotedValue = `a${embeddedQuotePair.repeat(20_000)}`;
+            const block = new CifBlock(`test\nloop_\n_value\n'${quotedValue}'`);
+
+            expect(block.get('_value').get('_value')).toEqual([quotedValue]);
+        });
     });
 
     // Loop Name Resolution

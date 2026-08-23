@@ -70,6 +70,11 @@ describe('Parse Value Tests', () => {
         expect(parseValue('escaped\\;character')).toEqual({ value: 'escaped;character', su: NaN });
         expect(parseValue('"escaped\\;character"')).toEqual({ value: 'escaped;character', su: NaN });
     });
+
+    test('handles long non-numeric digit runs in linear time', () => {
+        const value = `${'0'.repeat(100_000)}!`;
+        expect(parseValue(value)).toEqual({ value, su: NaN });
+    });
 });
 describe('Parse MultiLine String Tests', () => {
     test('parses basic multiline string', () => {

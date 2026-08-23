@@ -5,6 +5,32 @@ import { tokenizeCif2 } from './tokenizer.js';
 import { parseCif2Value, skipCif2Value } from './cif2-values.js';
 
 /**
+ * Removes a CIF1 inline comment while respecting quoted values and embedded quotes.
+ * @param {string} line - One input line.
+ * @returns {string} Content before the first unquoted, whitespace-prefixed `#`.
+ */
+function stripInlineComment(line) {
+    let quote = null;
+    for (let index = 0; index < line.length; index++) {
+        const character = line[index];
+        if (quote !== null) {
+            if (character === quote && (index + 1 === line.length || /\s/u.test(line[index + 1]))) {
+                quote = null;
+            }
+            continue;
+        }
+        if ((character === '\'' || character === '"') && (index === 0 || /\s/u.test(line[index - 1]))) {
+            quote = character;
+            continue;
+        }
+        if (character === '#' && index > 0 && /\s/u.test(line[index - 1])) {
+            return line.slice(0, index - 1);
+        }
+    }
+    return line;
+}
+
+/**
  * Splits a CIF2 token stream into per-block token slices at each top-level
  * `data` token. Bracket depth is tracked so a `data`-looking token that only
  * occurs inside a list/table cannot start a new block; triple-quoted and
@@ -228,10 +254,7 @@ export class CifBlock {
         const lines = this.rawText
             .split('\n')
             .filter(line => !line.trim().startsWith('#'))
-            .map(line => {
-                const regex = / #(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^']*'[^']*')*[^']*$)/;
-                return line.split(regex)[0];
-            });
+            .map(stripInlineComment);
 
         this.dataBlockName = lines[0];
         let i = 1;
@@ -419,4 +442,3 @@ export class CifBlock {
         throw new Error(`None of the keys [${keyArray.join(', ')}] found in CIF block`);
     }
 }
-
