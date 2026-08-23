@@ -279,6 +279,14 @@ describe('GeometryMaterialCache', () => {
             expect(ringMaterial1.color).toBeDefined();
         });
 
+        test('uses unit-height regular bonds so trimmed endpoints meet atom surfaces', () => {
+            cache.geometries.bond.computeBoundingBox();
+            const height = cache.geometries.bond.boundingBox.max.y -
+                cache.geometries.bond.boundingBox.min.y;
+
+            expect(height).toBeCloseTo(1, 12);
+        });
+
         test('creates different materials for different elements', () => {
             const [cAtomMaterial] = cache.getAtomMaterials('C');
             const [oAtomMaterial] = cache.getAtomMaterials('O');

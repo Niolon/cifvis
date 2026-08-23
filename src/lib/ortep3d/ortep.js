@@ -18,7 +18,6 @@ const OCTANT_SIGNS = [
 ];
 
 const BASE_OCTANT_SIGNS = [-1, 1, 1];
-const BOND_GEOMETRY_HEIGHT = 0.98;
 
 /**
  * Maps the legacy public render-style names to representation-independent intent.
@@ -948,12 +947,10 @@ export class GeometryMaterialCache {
         }
 
         // Bond geometry
-        const bondGeometryHeight = this.options.renderStyle === 'cutout-2d' ?
-            1 : BOND_GEOMETRY_HEIGHT;
         this.geometries.bond = new THREE.CylinderGeometry(
             this.options.bondRadius,
             this.options.bondRadius,
-            bondGeometryHeight,
+            1,
             this.options.bondSections,
             1,
             true,
@@ -3138,8 +3135,7 @@ export class ORTEPBondInstance extends PooledSelectableObject {
      */
     static computeSplitMatrices(matrix) {
         const halfScale = new THREE.Matrix4().makeScale(1, 0.5, 1);
-        const centerOffset = BOND_GEOMETRY_HEIGHT / 4;
-        return [-centerOffset, centerOffset].map(offset => matrix.clone()
+        return [-0.25, 0.25].map(offset => matrix.clone()
             .multiply(new THREE.Matrix4().makeTranslation(0, offset, 0))
             .multiply(halfScale));
     }
