@@ -125,6 +125,8 @@ export default {
         'mode': 'multiple',
         'markerMult': 1.3,
         'bondMarkerMult': 1.7,
+        // Visible publication-mode selection halo beyond the atom outline, in CSS pixels.
+        'haloWidth': 4,
         'highlightEmissive': 0xaaaaaa,
         'markerColors': [
             0x1f77b4,
@@ -159,14 +161,12 @@ export default {
     },
 
     'renderMode': 'onDemand',
-    // 'solid-3d': shared-geometry ellipsoids, the default and only style
-    //   eligible for InstancedMesh batching.
-    // 'cutout-3d': ellipsoids with a missing camera-facing octant, exposing
-    //   the interior cutaway planes.
-    // 'cutout-2d': hatched, outlined publication-style renderer (element
-    //   colours retained); always cutaway, like 'cutout-3d', but with hatch
-    //   materials instead of solid ones.
+    // 'solid-3d': clean solid surface.
+    // 'cutout-3d': ellipsoid cutout, or solid PEANUT with a surface grid.
+    // 'cutout-2d': publication ellipsoid cutout, or hidden-line PEANUT grid.
     'renderStyle': 'solid-3d',
+    // The ADP surface is independent of its clean/detail/publication presentation.
+    'adpRepresentation': 'ellipsoid',
 
     // For the cutout render styles, fill the removed octant in the depth
     // buffer so neighbouring atoms or bonds inside the carved cavity are
@@ -301,6 +301,15 @@ export default {
 
     // atom visualisation Settings
     'ellipsoidProbability': 0.5,
+    // Independent visual multiplier for r(n) = peanutScale * sqrt(n^T U n).
+    // The default matches the precise 50% probability-ellipsoid scale.
+    'peanutScale': 1.5381723183496745,
+    'peanutMeridianCount': 10,
+    'peanutLatitudeIntervals': 6,
+    // Grid convergence direction: fixed structure Y, or an atom-local principal axis.
+    'peanutGridPoleAxis': 'structure-y',
+    // Structure-space PEANUT grid stroke width in Angstrom.
+    'peanutGridLineWidth': 0.01,
     'atomDetail': 3,
     'atomCutawayHysteresis': 0.025,
     'atomCutawayStripeCount': 7,

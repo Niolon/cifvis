@@ -12,6 +12,12 @@ regressions in the library:
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.
 
+`speed.mjs` accepts `--render-style`, `--adp-representation`, and
+`--peanut-grid-pole-axis`, allowing direct
+comparison of solid ellipsoids with clean, explanatory, and publication PEANUT modes.
+Its CSV includes draw calls, Three.js geometry/texture counts, unique GPU attribute
+bytes, and browser heap usage when Chrome exposes that metric.
+
 Population-scale profiling, factorial sweeps, heuristic fitting, and report generation
 are exploratory work rather than regression checks. Those scripts live in the workspace
 `analysis/` directory.

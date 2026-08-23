@@ -57,6 +57,23 @@ window.__runBenchmark = async (cifText, viewerOptions) => {
     const renderTimeMs = performance.now() - renderStart;
 
     const displayStructure = viewer.state.displayStructure ?? viewer.state.baseStructure;
+    const seenArrays = new Set();
+    let attributeBytes = 0;
+    viewer.state.currentStructure?.traverse?.(object => {
+        const attributes = [
+            ...Object.values(object.geometry?.attributes || {}),
+            object.geometry?.index,
+            object.instanceMatrix,
+            object.instanceColor,
+        ].filter(Boolean);
+        for (const attribute of attributes) {
+            const array = attribute.array;
+            if (array && !seenArrays.has(array)) {
+                seenArrays.add(array);
+                attributeBytes += array.byteLength;
+            }
+        }
+    });
     const metrics = {
         success: true,
         buildTimeMs,
@@ -66,6 +83,10 @@ window.__runBenchmark = async (cifText, viewerOptions) => {
         bondCount: viewer.state.baseStructure?.bonds?.length ?? null,
         displayAtomCount: displayStructure?.atoms?.length ?? null,
         displayBondCount: displayStructure?.bonds?.length ?? null,
+        geometryCount: viewer.renderer?.info?.memory?.geometries ?? null,
+        textureCount: viewer.renderer?.info?.memory?.textures ?? null,
+        attributeBytes,
+        jsHeapBytes: performance.memory?.usedJSHeapSize ?? null,
     };
     viewer.dispose?.();
     return metrics;

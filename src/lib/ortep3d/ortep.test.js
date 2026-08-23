@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import {
     ORTEP3JsStructure, GeometryMaterialCache, getThreeEllipsoidMatrix, calcBondTransform,
     ORTEPObject, ORTEPGroupObject, ORTEPHBond, ORTEPAtom, ORTEPAniAtom, ORTEPIsoAtom, ORTEPConstantAtom,
-    ORTEPAtomInstance, ORTEPAniAtomInstance,
+    ORTEPAtomInstance, ORTEPAniAtomInstance, ORTEPPeanutAtomInstance,
     ORTEPBond, ORTEPBondInstance, PooledSelectableObject, create2DPlotHatchMaterial, createCutawayPlaneMaterial,
-    trimBondToAtomSurfaces, InstancedPool,
+    trimBondToAtomSurfaces, InstancedPool, PeanutInstancedPool, decoratePeanutMaterial,
 } from './ortep.js';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { Bond, HBond } from '../structure/bonds.js';
@@ -279,6 +279,14 @@ describe('GeometryMaterialCache', () => {
             expect(ringMaterial1.color).toBeDefined();
         });
 
+        test('uses unit-height regular bonds so trimmed endpoints meet atom surfaces', () => {
+            cache.geometries.bond.computeBoundingBox();
+            const height = cache.geometries.bond.boundingBox.max.y -
+                cache.geometries.bond.boundingBox.min.y;
+
+            expect(height).toBeCloseTo(1, 12);
+        });
+
         test('creates different materials for different elements', () => {
             const [cAtomMaterial] = cache.getAtomMaterials('C');
             const [oAtomMaterial] = cache.getAtomMaterials('O');
@@ -365,6 +373,25 @@ describe('GeometryMaterialCache', () => {
                 plotCache.geometries.bond.boundingBox.min.y,
             ).toBeCloseTo(1);
 
+            plotCache.dispose();
+        });
+
+        test('uses normally rescaled white for hydrogen and deuterium 2D ADP lines', () => {
+            const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [, hydrogenRing, , hydrogenOutline] = plotCache.getAtomMaterials('H');
+            const [, deuteriumRing] = plotCache.getAtomMaterials('D');
+            const peanut = plotCache.getPeanutMaterials('H');
+            const expected = scaleColorLuminance(
+                defaultSettings.elementProperties.H.atomColor,
+                plotCache.plot2DElementColorScale,
+            ).getHex();
+
+            expect(hydrogenRing.color.getHex()).toBe(expected);
+            expect(hydrogenRing.color.getHexString()).toBe('898989');
+            expect(deuteriumRing.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(hydrogenOutline.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(peanut.body.color.getHex()).toBe(hydrogenRing.color.getHex());
+            expect(peanut.outline.color.getHex()).toBe(hydrogenRing.color.getHex());
             plotCache.dispose();
         });
 
@@ -929,6 +956,217 @@ describe('ORTEPObject is abstract', () => {
     });
 });
 
+describe('RMSD PEANUT rendering', () => {
+    const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+    const createPeanutStructure = (renderStyle = 'solid-3d') => new ORTEP3JsStructure(
+        new CrystalStructure(cell, [
+            new Atom(
+                'C1', 'C', new FractPosition(0.1, 0.1, 0.1),
+                new UAnisoADP(0.09, 0.04, 0.01, 0, 0, 0),
+            ),
+        ], [], []),
+        { adpRepresentation: 'rmsd-peanut', renderStyle },
+    );
+
+    test.each([
+        ['solid-3d', 'clean-3d', 1],
+        ['cutout-3d', 'explanatory-3d', 1],
+        ['cutout-2d', 'publication-2d', 3],
+    ])('keeps %s PEANUT atoms instanced as %s', (renderStyle, presentation, passCount) => {
+        const structure = createPeanutStructure(renderStyle);
+        const atom = structure.atoms3D[0];
+        const pool = atom.segments[0].pool;
+        const group = structure.getGroup();
+
+        expect(atom).toBeInstanceOf(ORTEPPeanutAtomInstance);
+        expect(atom.presentation).toBe(presentation);
+        expect(pool).toBeInstanceOf(PeanutInstancedPool);
+        expect(pool.meshes).toHaveLength(passCount);
+        expect(pool.shapeAttribute.getX(0)).toBeCloseTo(1);
+        expect(pool.shapeAttribute.getY(0)).toBeCloseTo(4 / 9);
+        expect(pool.shapeAttribute.getZ(0)).toBeCloseTo(1 / 9);
+        expect(group.cameraFacingAtoms).toEqual([]);
+        expect(group.children.filter(child => pool.meshes.includes(child))).toHaveLength(passCount);
+        expect(structure.ringPools.size).toBe(0);
+        structure.dispose();
+    });
+
+    test('injects deformation, exact normals, stable grid, and publication discard code', () => {
+        const cache = new GeometryMaterialCache({
+            adpRepresentation: 'rmsd-peanut',
+            renderStyle: 'cutout-2d',
+            peanutMeridianCount: 12,
+            peanutLatitudeIntervals: 8,
+            peanutGridPoleAxis: 'principal-minimum',
+            peanutGridLineWidth: 0.02,
+        });
+        const { body, depth, outline } = cache.getPeanutMaterials('C');
+        const baseShader = () => ({
+            uniforms: {},
+            vertexShader: '#include <common>\n#include <beginnormal_vertex>\n' +
+                '#include <begin_vertex>\n#include <project_vertex>',
+            fragmentShader: '#include <common>\n#include <color_fragment>',
+        });
+        const bodyShader = baseShader();
+        body.onBeforeCompile(bodyShader);
+        const depthShader = baseShader();
+        depth.onBeforeCompile(depthShader);
+        const outlineShader = baseShader();
+        outline.onBeforeCompile(outlineShader);
+
+        expect(bodyShader.vertexShader).toContain('2.0 * peanutNormalQ');
+        expect(bodyShader.vertexShader).toContain('mat3( instanceMatrix ) * peanutDirection');
+        expect(bodyShader.fragmentShader).toContain('peanutSurfaceGrid');
+        expect(bodyShader.fragmentShader).toContain('peanutGridLineWidth');
+        expect(bodyShader.fragmentShader).toContain('dFdx( surfacePosition )');
+        expect(bodyShader.vertexShader).toContain('vPeanutWorldPosition');
+        expect(bodyShader.fragmentShader).toContain('peanutMeridianCount');
+        expect(bodyShader.fragmentShader).toContain('peanutLatitudeIntervals');
+        expect(bodyShader.uniforms.peanutMeridianCount.value).toBe(12);
+        expect(bodyShader.uniforms.peanutLatitudeIntervals.value).toBe(8);
+        expect(bodyShader.uniforms.peanutGridLineWidth.value).toBe(0.02);
+        expect(body.defines.PEANUT_PRINCIPAL_GRID).toBe(1);
+        expect(new THREE.Vector3(0, 0, 1)
+            .applyMatrix3(bodyShader.uniforms.peanutGridBasis.value).toArray())
+            .toEqual([0, 1, 0]);
+        expect(bodyShader.fragmentShader).toContain('discard');
+        expect(depthShader.vertexShader).toContain('sqrt( max( peanutQ, 0.0 ) )');
+        expect(depthShader.fragmentShader).not.toContain('peanutSurfaceGrid');
+        expect(outlineShader.vertexShader).toContain('uPeanutOutlinePx');
+        expect(outlineShader.vertexShader).toContain('peanutClipPosition.xy +=');
+        expect(outlineShader.fragmentShader).not.toContain('peanutSurfaceGrid');
+        cache.dispose();
+    });
+
+    test.each(['solid-3d', 'cutout-3d', 'cutout-2d'])(
+        'uses analytic surface distance and exact deformed picking in %s',
+        (renderStyle) => {
+            const structure = createPeanutStructure(renderStyle);
+            const atom = structure.atoms3D[0];
+            const group = structure.getGroup();
+            const parent = new THREE.Group();
+            parent.rotation.set(0.1, -0.15, 0.05);
+            parent.add(group);
+            parent.updateMatrixWorld(true);
+
+            expect(atom.getSurfaceDistanceAlong(new THREE.Vector3(1, 0, 0)))
+                .toBeCloseTo(structure.options.peanutScale * 0.3, 6);
+            expect(atom.getSurfaceDistanceAlong(new THREE.Vector3(0, 0, 1)))
+                .toBeCloseTo(structure.options.peanutScale * 0.1, 6);
+
+            const atomCentre = new THREE.Vector3(1, 1, 1).applyMatrix4(parent.matrixWorld);
+            const rayDirection = new THREE.Vector3(0, 0, -1);
+            const intersects = [];
+            atom.raycast(new THREE.Raycaster(
+                atomCentre.clone().addScaledVector(rayDirection, -5),
+                rayDirection,
+            ), intersects);
+            expect(intersects).toHaveLength(1);
+            expect(intersects[0].object).toBe(atom);
+            structure.dispose();
+        },
+    );
+
+    test('shares the publication instance matrix across depth and line passes', () => {
+        const structure = createPeanutStructure('cutout-2d');
+        const atom = structure.atoms3D[0];
+        const pool = atom.segments[0].pool;
+        const original = atom.segments[0].matrix;
+
+        expect(pool.depthMesh.instanceMatrix).toBe(pool.mesh.instanceMatrix);
+        expect(pool.outlineMesh.instanceMatrix).toBe(pool.mesh.instanceMatrix);
+        pool.hideInstance(0);
+        const hidden = new THREE.Matrix4();
+        pool.depthMesh.getMatrixAt(0, hidden);
+        expect(hidden.elements[0]).toBe(0);
+        pool.restoreInstance(0, original);
+        pool.depthMesh.getMatrixAt(0, hidden);
+        expect(hidden.elements[0]).not.toBe(0);
+        structure.dispose();
+    });
+
+    test('uses uniform deformation for 3D selection and preserves the publication drawing', () => {
+        const options = {
+            selection: {
+                markerMult: 1.3,
+                haloWidth: 4,
+                highlightEmissive: 0xaaaaaa,
+            },
+        };
+        const detail = createPeanutStructure('cutout-3d');
+        const detailAtom = detail.atoms3D[0];
+        detailAtom.select(0xff0000, options);
+        expect(detailAtom.highlightMeshes).toHaveLength(1);
+        expect(detailAtom.highlightMeshes[0].geometry.isInstancedBufferGeometry).not.toBe(true);
+        expect(detailAtom.highlightMeshes[0].material.defines.PEANUT_UNIFORM_SHAPE).toBe(1);
+        expect(detailAtom.highlightMeshes[0].material.userData.peanut.presentation)
+            .toBe('explanatory-3d');
+        detailAtom.deselect();
+        detail.dispose();
+
+        const publication = createPeanutStructure('cutout-2d');
+        const publicationAtom = publication.atoms3D[0];
+        const before = new THREE.Matrix4();
+        publicationAtom.segments[0].pool.mesh.getMatrixAt(0, before);
+        publicationAtom.select(0xff0000, options);
+        expect(publicationAtom.highlightMeshes).toBeUndefined();
+        expect(publicationAtom.marker.material.defines.PEANUT_UNIFORM_SHAPE).toBe(1);
+        expect(publicationAtom.marker.geometry.isInstancedBufferGeometry).not.toBe(true);
+        expect(publicationAtom.marker.material.userData.peanut.presentation).toBe('outline');
+        expect(publicationAtom.marker.material.userData.peanut.outlinePixelUniform.value)
+            .toBeCloseTo(5.2);
+        expect(publicationAtom.marker.material.side).toBe(THREE.BackSide);
+        expect(publicationAtom.marker.material.depthTest).toBe(true);
+        expect(publicationAtom.marker.material.depthWrite).toBe(false);
+        const unselectedScale = new THREE.Vector3();
+        publicationAtom.segments[0].matrix.decompose(
+            new THREE.Vector3(), new THREE.Quaternion(), unselectedScale,
+        );
+        expect(publicationAtom.marker.scale.toArray()).toEqual(unselectedScale.toArray());
+        expect(publicationAtom.marker.renderOrder).toBeGreaterThan(1e6);
+        const after = new THREE.Matrix4();
+        publicationAtom.segments[0].pool.mesh.getMatrixAt(0, after);
+        expect(after.elements).toEqual(before.elements);
+        publicationAtom.deselect();
+        publication.dispose();
+    });
+
+    test('keeps isotropic atoms on the existing non-grid presentation path', () => {
+        const structure = new ORTEP3JsStructure(new CrystalStructure(cell, [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0), new UIsoADP(0.02)),
+        ], [], []), {
+            adpRepresentation: 'rmsd-peanut',
+            renderStyle: 'cutout-3d',
+        });
+        expect(structure.atoms3D[0]).toBeInstanceOf(ORTEPIsoAtom);
+        expect(structure.atoms3D[0].material.userData.peanut).toBeUndefined();
+        structure.dispose();
+    });
+
+    test('retains the malformed-ADP tetrahedron fallback', () => {
+        const structure = new ORTEP3JsStructure(new CrystalStructure(cell, [
+            new Atom(
+                'C1', 'C', new FractPosition(0, 0, 0),
+                new UAnisoADP(0.02, 0.01, -0.001, 0, 0, 0),
+            ),
+        ], [], []), { adpRepresentation: 'rmsd-peanut' });
+        expect(structure.atoms3D[0]).toBeInstanceOf(ORTEPAniAtom);
+        expect(structure.atoms3D[0].isSolidFallback).toBe(true);
+        expect(structure.atoms3D[0].geometry).toBeInstanceOf(THREE.TetrahedronGeometry);
+        structure.dispose();
+    });
+
+    test('can decorate standalone selection materials with a uniform shape', () => {
+        const material = decoratePeanutMaterial(new THREE.MeshBasicMaterial(), {
+            presentation: 'clean-3d',
+            uniformShape: [1, 0.5, 0.25],
+        });
+        expect(material.defines.PEANUT_UNIFORM_SHAPE).toBe(1);
+        expect(material.customProgramCacheKey()).toContain('uniform');
+        material.dispose();
+    });
+});
+
 describe('ORTEPAtom and subclasses', () => {
     let mockAtom;
     let mockUnitCell;
@@ -1228,6 +1466,63 @@ describe('ORTEPAtom and subclasses', () => {
             camera.updateMatrixWorld();
             ortepAtom.updateCutawayOctant(camera);
             expect(capScaleFor()).not.toEqual(firstScale);
+            cutawayCache.dispose();
+        });
+
+        test('adds an ellipsoid-only expanded stencil mask in publication mode', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C', true);
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: cutawayCache.materials.cutawayDepthCap,
+                    occlusionGeometry: cutawayCache.geometries.atom,
+                    occlusionMaterial: cutawayCache.materials.cutawayOcclusion,
+                    hysteresis: 0.025,
+                },
+            );
+
+            const mask = ortepAtom.cutawayOcclusionMask;
+            expect(mask).toBeInstanceOf(THREE.Mesh);
+            expect(mask.geometry).toBe(cutawayCache.geometries.atom);
+            expect(mask.material.name).toBe('cutaway-ellipsoid-occlusion-mask');
+            expect(mask.material.side).toBe(THREE.BackSide);
+            expect(mask.material.colorWrite).toBe(false);
+            expect(mask.material.depthWrite).toBe(false);
+            expect(mask.material.depthTest).toBe(false);
+            expect(mask.material.stencilWrite).toBe(true);
+            expect(mask.material.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(mask.material.stencilZPass).toBe(THREE.IncrementWrapStencilOp);
+            expect(atomMaterial.stencilWrite).toBe(true);
+            expect(atomMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(ringMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(planeMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(cutawayCache.materials.bond.stencilWrite).toBe(false);
+            expect(mask.renderOrder).toBeGreaterThan(ortepAtom.cutawayDepthCap.renderOrder);
+            cutawayCache.dispose();
+        });
+
+        test('uses the same unexpanded ellipsoid-only stencil in cutout 3D', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C', true);
+
+            expect(cutawayCache.materials.cutawayOcclusion).toBeDefined();
+            expect(cutawayCache.materials.cutawayOcclusion.uniforms.uOutlinePx.value).toBe(0);
+            expect(atomMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(ringMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(planeMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(cutawayCache.materials.bond.stencilWrite).toBe(false);
             cutawayCache.dispose();
         });
 

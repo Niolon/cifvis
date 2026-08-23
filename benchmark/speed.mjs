@@ -22,6 +22,9 @@
 //   --out <file>       Write per-structure results to this CSV (default: benchmark/results.csv)
 //   --limit <n>        Only benchmark the first n files
 //   --render-mode <m>  'onDemand' (default, matches the library default) or 'constant'
+//   --render-style <s> 'solid-3d', 'cutout-3d', or 'cutout-2d'
+//   --adp-representation <r> 'ellipsoid' (default) or 'rmsd-peanut'
+//   --peanut-grid-pole-axis <a> Structure Y or a principal-axis grid pole
 //   --chrome <path>    Chrome/Chromium executable (default: $CHROME_PATH or common install paths)
 import { existsSync, readFileSync, writeFileSync, statSync, readdirSync } from 'fs';
 import { join, resolve, extname } from 'path';
@@ -103,7 +106,8 @@ async function main() {
     const { target, options } = parseArgs(process.argv.slice(2));
     if (!target) {
         console.error('Usage: node benchmark/speed.mjs <cif-file|directory|file-list> [--out results.csv] ' +
-            '[--limit n] [--render-mode onDemand|constant] [--chrome /path/to/chrome]');
+            '[--limit n] [--render-mode onDemand|constant] [--render-style style] ' +
+            '[--adp-representation representation] [--chrome /path/to/chrome]');
         process.exit(1);
     }
 
@@ -120,6 +124,9 @@ async function main() {
     console.log(`Benchmarking ${files.length} file(s)...`);
 
     const renderMode = options['render-mode'] || 'onDemand';
+    const renderStyle = options['render-style'] || 'solid-3d';
+    const adpRepresentation = options['adp-representation'] || 'ellipsoid';
+    const peanutGridPoleAxis = options['peanut-grid-pole-axis'] || 'structure-y';
     const chromePath = options.chrome || process.env.CHROME_PATH;
     const outPath = resolve(options.out || join(scriptDir, 'results.csv'));
 
@@ -130,6 +137,8 @@ async function main() {
     const header = [
         'filename', 'file_size_kb', 'success', 'error',
         'build_time_ms', 'render_time_ms', 'draw_calls', 'atom_count', 'bond_count',
+        'render_style', 'adp_representation', 'geometry_count', 'texture_count',
+        'attribute_bytes', 'js_heap_bytes', 'peanut_grid_pole_axis',
     ];
     const rows = [header.join(',')];
     const results = [];
@@ -137,13 +146,17 @@ async function main() {
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const sizeKb = statSync(file).size / 1024;
-        const metrics = await runOnPage(context, port, file, { renderMode });
+        const metrics = await runOnPage(context, port, file, {
+            renderMode, renderStyle, adpRepresentation, peanutGridPoleAxis,
+        });
 
         results.push({ file, sizeKb, ...metrics });
         rows.push([
             file, sizeKb.toFixed(2), metrics.success, metrics.error || '',
             metrics.buildTimeMs?.toFixed(2) ?? '', metrics.renderTimeMs?.toFixed(2) ?? '',
             metrics.drawCalls ?? '', metrics.atomCount ?? '', metrics.bondCount ?? '',
+            renderStyle, adpRepresentation, metrics.geometryCount ?? '', metrics.textureCount ?? '',
+            metrics.attributeBytes ?? '', metrics.jsHeapBytes ?? '', peanutGridPoleAxis,
         ].map(csvField).join(','));
 
         if ((i + 1) % 25 === 0 || i === files.length - 1) {

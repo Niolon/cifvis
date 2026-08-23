@@ -1,5 +1,12 @@
 import { det } from '../math-lite.js';
-import { UIsoADP, UAnisoADP, ADPFactory, ellipsoidProbabilityScale } from './adp.js';
+import {
+    UIsoADP,
+    UAnisoADP,
+    ADPFactory,
+    createRMSDPeanutSurface,
+    ellipsoidProbabilityScale,
+    getADPPrincipalFrame,
+} from './adp.js';
 import { UnitCell } from './crystal.js';
 import { CIF } from '../read-cif/base.js';
 
@@ -117,6 +124,98 @@ describe('ADPs', () => {
             expectedValues.forEach(expected => {
                 expect(rowMagnitudes.filter(v => Math.abs(v - expected) < 1e-10)).toHaveLength(1);
             });
+        });
+    });
+
+    describe('RMSD PEANUT surface', () => {
+        const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+
+        test.each([
+            [[1, 1, 1], 'isotropic'],
+            [[4, 1, 1], 'prolate'],
+            [[16, 1, 1], 'strongly prolate'],
+            [[4, 4, 1], 'oblate'],
+            [[9, 4, 1], 'triaxial'],
+        ])('decomposes the %s synthetic tensor', ([u11, u22, u33]) => {
+            const adp = new UAnisoADP(u11, u22, u33, 0, 0, 0);
+            const frame = getADPPrincipalFrame(adp, cell);
+
+            expect(frame.valid).toBe(true);
+            expect(frame.eigenvalues).toEqual([...frame.eigenvalues].sort((a, b) => b - a));
+            expect(det(frame.rotation)).toBeCloseTo(1, 10);
+            frame.rotation.forEach(row => row.forEach(value => expect(Number.isFinite(value)).toBe(true)));
+        });
+
+        test('uses analytic directional RMSD radii and bounds every direction', () => {
+            const scale = ellipsoidProbabilityScale(0.5);
+            const surface = createRMSDPeanutSurface(
+                new UAnisoADP(0.09, 0.04, 0.01, 0, 0, 0),
+                cell,
+                scale,
+            );
+
+            expect(surface.valid).toBe(true);
+            expect(surface.surfaceDistanceAlong([1, 0, 0])).toBeCloseTo(scale * 0.3, 10);
+            expect(surface.surfaceDistanceAlong([0, 1, 0])).toBeCloseTo(scale * 0.2, 10);
+            expect(surface.surfaceDistanceAlong([0, 0, 1])).toBeCloseTo(scale * 0.1, 10);
+            expect(surface.surfaceDistanceAlong([1, 1, 1])).toBeLessThanOrEqual(
+                surface.boundingRadius,
+            );
+        });
+
+        test('matches ellipsoid principal extents at the default independent scale', () => {
+            const scale = ellipsoidProbabilityScale(0.5);
+            const adp = new UAnisoADP(0.09, 0.04, 0.01, 0, 0, 0);
+            const surface = createRMSDPeanutSurface(adp, cell, scale);
+            const ellipsoid = adp.getEllipsoidMatrix(cell).toArray();
+            const ellipsoidColumnLengths = [0, 1, 2].map(column => Math.hypot(
+                ellipsoid[0][column], ellipsoid[1][column], ellipsoid[2][column],
+            ) * scale);
+
+            expect(surface.eigenvalues.map(value => scale * Math.sqrt(value)))
+                .toEqual(ellipsoidColumnLengths);
+        });
+
+        test('matches the shader radial formula and exact normal against finite differences', () => {
+            const surface = createRMSDPeanutSurface(
+                new UAnisoADP(0.09, 0.04, 0.01, 0, 0, 0), cell, 1.5,
+            );
+            const direction = [0.6, 0.7, Math.sqrt(0.15)];
+            const shape = surface.normalizedShape;
+            const shaderQ = shape.reduce(
+                (sum, value, index) => sum + value * direction[index] ** 2,
+                0,
+            );
+            expect(surface.localRadialScale(direction)).toBeCloseTo(Math.sqrt(shaderQ), 12);
+
+            const point = candidate => {
+                const length = Math.hypot(...candidate);
+                const n = candidate.map(value => value / length);
+                const radial = surface.localRadialScale(n);
+                return n.map(value => value * radial);
+            };
+            const epsilon = 1e-6;
+            const before = point([direction[0] - epsilon, direction[1], direction[2]]);
+            const after = point([direction[0] + epsilon, direction[1], direction[2]]);
+            const tangent = after.map((value, index) => value - before[index]);
+            const normal = surface.localNormal(direction);
+            const normalDotTangent = normal.reduce(
+                (sum, value, index) => sum + value * tangent[index],
+                0,
+            );
+            expect(normalDotTangent).toBeCloseTo(0, 10);
+        });
+
+        test('rejects non-positive and effectively zero principal values', () => {
+            expect(createRMSDPeanutSurface(
+                new UAnisoADP(0.02, 0.01, -0.001, 0, 0, 0), cell, 1.5,
+            ).valid).toBe(false);
+            expect(createRMSDPeanutSurface(
+                new UAnisoADP(1, 0.5, 1e-13, 0, 0, 0), cell, 1.5,
+            ).valid).toBe(false);
+            expect(createRMSDPeanutSurface(
+                new UAnisoADP(1, 0.5, 0.25, 0, 0, 0), cell, 0,
+            ).valid).toBe(false);
         });
     });
 });

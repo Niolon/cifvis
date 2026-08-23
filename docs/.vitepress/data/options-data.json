@@ -63,6 +63,11 @@
       "default": "1.7"
     },
     {
+      "path": "selection.haloWidth",
+      "type": "Number",
+      "default": "4"
+    },
+    {
       "path": "selection.highlightEmissive",
       "type": "Number",
       "default": "11184810"
@@ -135,6 +140,11 @@
       "path": "renderStyle",
       "type": "String",
       "default": "\"solid-3d\""
+    },
+    {
+      "path": "adpRepresentation",
+      "type": "String",
+      "default": "\"ellipsoid\""
     },
     {
       "path": "sealCutoutCavity",
@@ -740,6 +750,31 @@
       "path": "ellipsoidProbability",
       "type": "Number",
       "default": "0.5"
+    },
+    {
+      "path": "peanutScale",
+      "type": "Number",
+      "default": "1.5381723183496745"
+    },
+    {
+      "path": "peanutMeridianCount",
+      "type": "Number",
+      "default": "10"
+    },
+    {
+      "path": "peanutLatitudeIntervals",
+      "type": "Number",
+      "default": "6"
+    },
+    {
+      "path": "peanutGridPoleAxis",
+      "type": "String",
+      "default": "\"structure-y\""
+    },
+    {
+      "path": "peanutGridLineWidth",
+      "type": "Number",
+      "default": "0.01"
     },
     {
       "path": "atomDetail",

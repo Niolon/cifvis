@@ -27,12 +27,15 @@ import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
 
 import {
+    VALID_ADP_REPRESENTATIONS,
     VALID_ATOM_LABEL_CALLOUT_PLACEMENTS,
     VALID_ATOM_LABEL_COLOR_MODES,
     VALID_ATOM_LABEL_PLACEMENT_MODES,
     VALID_BOND_COLOR_MODES,
     VALID_RENDER_MODES,
     VALID_RENDER_STYLES,
+    VALID_PEANUT_GRID_POLE_AXES,
+    VALID_SELECTION_MODES,
 } from './option-enums.js';
 
 /**
@@ -330,7 +333,7 @@ export class SelectionManager {
      * @returns {number|null} The selection color or null if selection failed
      */
     handle(object) {
-        if (this.options.mode === 'single') {
+        if (this.options.selection.mode === 'single') {
             this.selectedObjects.forEach(selected => {
                 this.remove(selected);
             });
@@ -451,7 +454,7 @@ export class SelectionManager {
             throw new Error('Selection mode must be either "single" or "multiple"');
         }
 
-        this.options.mode = mode;
+        this.options.selection.mode = mode;
 
         if (mode === 'single' && this.selectedObjects.size > 1) {
             const selectedObjects = Array.from(this.selectedObjects);
@@ -530,6 +533,7 @@ export class CrystalViewer {
      * - selection: Selection behavior configuration
      * - interaction: User interaction parameters (rotation speed, click thresholds)
      * - atomDetail/atomColorRoughness/etc.: Appearance settings for atoms
+     * - adpRepresentation/peanutScale: ADP surface kind and RMSD PEANUT display scale
      * - bondRadius/bondColor/etc.: Appearance settings for bonds
      * - elementProperties: Per-element appearance settings (colors, radii)
      * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
@@ -549,6 +553,40 @@ export class CrystalViewer {
                 `Invalid render style: "${options.renderStyle}". ` +
                 `Must be one of: ${VALID_RENDER_STYLES.join(', ')}`,
             );
+        }
+        if (options.adpRepresentation &&
+            !VALID_ADP_REPRESENTATIONS.includes(options.adpRepresentation)) {
+            throw new Error(
+                `Invalid ADP representation: "${options.adpRepresentation}". ` +
+                `Must be one of: ${VALID_ADP_REPRESENTATIONS.join(', ')}`,
+            );
+        }
+        if (options.peanutGridPoleAxis !== undefined &&
+            !VALID_PEANUT_GRID_POLE_AXES.includes(options.peanutGridPoleAxis)) {
+            throw new Error(
+                `Invalid PEANUT grid pole axis: "${options.peanutGridPoleAxis}". ` +
+                `Must be one of: ${VALID_PEANUT_GRID_POLE_AXES.join(', ')}`,
+            );
+        }
+        if (options.peanutScale !== undefined &&
+            !(typeof options.peanutScale === 'number' && Number.isFinite(options.peanutScale) &&
+                options.peanutScale > 0)) {
+            throw new Error('peanutScale must be a finite number greater than 0');
+        }
+        for (const [key, minimum] of [
+            ['peanutMeridianCount', 1],
+            ['peanutLatitudeIntervals', 2],
+        ]) {
+            if (options[key] !== undefined &&
+                !(Number.isInteger(options[key]) && options[key] >= minimum)) {
+                throw new Error(`${key} must be an integer greater than or equal to ${minimum}`);
+            }
+        }
+        if (options.peanutGridLineWidth !== undefined &&
+            !(typeof options.peanutGridLineWidth === 'number' &&
+                Number.isFinite(options.peanutGridLineWidth) &&
+                options.peanutGridLineWidth > 0)) {
+            throw new Error('peanutGridLineWidth must be a finite number greater than 0');
         }
         if (options.bondColorMode !== undefined && !VALID_BOND_COLOR_MODES.includes(options.bondColorMode)) {
             throw new Error(
@@ -573,6 +611,12 @@ export class CrystalViewer {
                 !(typeof options[key] === 'number' && Number.isFinite(options[key]) && options[key] >= 0)) {
                 throw new Error(`${key} must be a finite number greater than or equal to 0`);
             }
+        }
+        if (options.selection?.haloWidth !== undefined &&
+            !(typeof options.selection.haloWidth === 'number' &&
+                Number.isFinite(options.selection.haloWidth) &&
+                options.selection.haloWidth >= 0)) {
+            throw new Error('selection.haloWidth must be a finite number greater than or equal to 0');
         }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
@@ -603,6 +647,14 @@ export class CrystalViewer {
                 },
             },
             ellipsoidProbability: options.ellipsoidProbability ?? defaultSettings.ellipsoidProbability,
+            peanutScale: options.peanutScale ?? defaultSettings.peanutScale,
+            peanutMeridianCount: options.peanutMeridianCount ??
+                defaultSettings.peanutMeridianCount,
+            peanutLatitudeIntervals: options.peanutLatitudeIntervals ??
+                defaultSettings.peanutLatitudeIntervals,
+            peanutGridPoleAxis: options.peanutGridPoleAxis ?? defaultSettings.peanutGridPoleAxis,
+            peanutGridLineWidth: options.peanutGridLineWidth ??
+                defaultSettings.peanutGridLineWidth,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??
@@ -637,6 +689,7 @@ export class CrystalViewer {
             packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
             renderMode: options.renderMode || defaultSettings.renderMode,
             renderStyle: options.renderStyle || defaultSettings.renderStyle,
+            adpRepresentation: options.adpRepresentation || defaultSettings.adpRepresentation,
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
@@ -647,6 +700,8 @@ export class CrystalViewer {
                 defaultSettings.plot2DBondOutlineWidth,
             plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
                 defaultSettings.plot2DColorLuminanceCeiling,
+            plot2DColorLuminanceFloor: options.plot2DColorLuminanceFloor ??
+                defaultSettings.plot2DColorLuminanceFloor,
             plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
                 defaultSettings.plot2DOpenBondInnerScale,
             plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
@@ -750,6 +805,7 @@ export class CrystalViewer {
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
+            stencil: true,
             preserveDrawingBuffer: true,
         });
         if (this.options.renderStyle === 'cutout-2d') {
@@ -2589,16 +2645,17 @@ export class CrystalViewer {
      */
     updateCameraFacingOctants() {
         const cameraFacingAtoms = this.state.currentStructure?.cameraFacingAtoms;
-        if (!cameraFacingAtoms?.length) {
+        const orderableAtoms = this.state.currentStructure?.orderableAtoms;
+        if (!cameraFacingAtoms?.length && !orderableAtoms?.length) {
             return;
         }
 
         this.camera.updateMatrixWorld();
         this.moleculeContainer.updateMatrixWorld(true);
-        cameraFacingAtoms.forEach(atom => {
+        cameraFacingAtoms?.forEach(atom => {
             atom.updateCutawayOctant(this.camera);
         });
-        this.updateAtomDrawOrder(this.state.currentStructure.orderableAtoms);
+        this.updateAtomDrawOrder(orderableAtoms);
     }
 
     /**
@@ -2617,24 +2674,72 @@ export class CrystalViewer {
         }
         const viewMatrix = this.camera.matrixWorldInverse;
         const worldPosition = new THREE.Vector3();
+        const childWorldPosition = new THREE.Vector3();
+        const childWorldScale = new THREE.Vector3();
+        const childWorldQuaternion = new THREE.Quaternion();
+        const worldViewDirection = new THREE.Vector3();
+        const localViewDirection = new THREE.Vector3();
+        const parentInverse = new THREE.Matrix4();
+        this.camera.getWorldDirection(worldViewDirection).negate();
         const ranked = atoms
             .map(atom => {
                 atom.getWorldPosition(worldPosition);
                 // The camera looks down -z in view space, so a larger (less
-                // negative) z is nearer the camera.
-                return { atom, depth: worldPosition.applyMatrix4(viewMatrix).z };
+                // negative) z is nearer the camera. Rank by the front surface,
+                // not the centre: a large or elongated atom with a farther
+                // centre can still be the visually frontmost overlapping atom.
+                const centerDepth = worldPosition.applyMatrix4(viewMatrix).z;
+                localViewDirection.copy(worldViewDirection);
+                if (atom.parent) {
+                    parentInverse.copy(atom.parent.matrixWorld).invert();
+                    localViewDirection.transformDirection(parentInverse);
+                }
+                const surfaceDistance = atom.getSurfaceDistanceAlong?.(localViewDirection) || 0;
+                let frontDepth = centerDepth + surfaceDistance;
+                atom.traverse(child => {
+                    if (!child.visible || !child.geometry) {
+                        return;
+                    }
+                    if (!child.geometry.boundingSphere) {
+                        child.geometry.computeBoundingSphere();
+                    }
+                    const sphere = child.geometry.boundingSphere;
+                    if (!sphere) {
+                        return;
+                    }
+                    childWorldPosition.copy(sphere.center)
+                        .applyMatrix4(child.matrixWorld)
+                        .applyMatrix4(viewMatrix);
+                    child.matrixWorld.decompose(
+                        worldPosition,
+                        childWorldQuaternion,
+                        childWorldScale,
+                    );
+                    const radius = sphere.radius * Math.max(
+                        childWorldScale.x, childWorldScale.y, childWorldScale.z,
+                    );
+                    frontDepth = Math.max(frontDepth, childWorldPosition.z + radius);
+                });
+                return { atom, depth: frontDepth };
             })
             .sort((a, b) => b.depth - a.depth);
 
         ranked.forEach(({ atom }, index) => {
-            atom.renderOrder = index;
-            for (const child of atom.children) {
+            // Treat the atom as one render unit: shells, rings, outlines and
+            // cross-sections must not interleave with another atom's passes.
+            atom.traverse(child => {
                 child.renderOrder = index;
-            }
+            });
             // The depth cap draws last within the atom, after its own shells
             // and cross-section, but before any farther atom.
             if (atom.cutawayDepthCap) {
                 atom.cutawayDepthCap.renderOrder = index + 0.5;
+            }
+            // Cutaway modes finish each ellipsoid with a stencil silhouette
+            // mask. Only later ellipsoid materials test it; bonds, density and
+            // other scene objects retain ordinary physical depth behavior.
+            if (atom.cutawayOcclusionMask) {
+                atom.cutawayOcclusionMask.renderOrder = index + 0.75;
             }
         });
     }
@@ -2751,6 +2856,36 @@ export class CrystalViewer {
                 quality,
             );
         });
+    }
+
+    /**
+     * Updates selection presentation without rebuilding the viewer or losing selections.
+     * Existing atom/bond markers are recreated immediately with the new settings.
+     * @param {object} options - Partial selection options
+     */
+    updateSelectionOptions(options = {}) {
+        if (options.mode !== undefined && !VALID_SELECTION_MODES.includes(options.mode)) {
+            throw new Error(
+                `Invalid selection mode: "${options.mode}". ` +
+                `Must be one of: ${VALID_SELECTION_MODES.join(', ')}`,
+            );
+        }
+        if (options.haloWidth !== undefined &&
+            !(typeof options.haloWidth === 'number' && Number.isFinite(options.haloWidth) &&
+                options.haloWidth >= 0)) {
+            throw new Error('selection.haloWidth must be a finite number greater than or equal to 0');
+        }
+
+        this.options.selection = { ...this.options.selection, ...options };
+        if (options.mode !== undefined) {
+            this.selections.setMode(options.mode);
+        }
+        for (const object of this.selections.selectedObjects) {
+            const color = object.selectionColor;
+            object.deselect();
+            object.select(color, this.options);
+        }
+        this.requestRender();
     }
 
     /**

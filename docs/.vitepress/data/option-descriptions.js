@@ -28,6 +28,8 @@ export const descriptions = {
     'selection.mode': 'Selection mode, either <code>single</code> or <code>multiple</code>.',
     'selection.markerMult': 'Size multiplier for atom selection markers.',
     'selection.bondMarkerMult': 'Size multiplier for bond selection markers.',
+    'selection.haloWidth': 'Visible width in CSS pixels of the 2D atom selection halo beyond ' +
+        'the normal publication outline.',
     'selection.highlightEmissive': {
         type: 'Number (hex)',
         description: 'Emissive color value for highlighted selections.',
@@ -57,6 +59,9 @@ export const descriptions = {
         '<code>cutout-3d</code> (interactive, camera-facing cutaway octant), or ' +
         '<code>cutout-2d</code> (publication-style, always cutaway). See ' +
         '<a href="./rendering.html#render-styles">render styles</a>.',
+    'adpRepresentation': 'Anisotropic-displacement surface: <code>ellipsoid</code> for the ' +
+        'probability ellipsoid or <code>rmsd-peanut</code> for an RMS displacement PEANUT. ' +
+        'The selected <code>renderStyle</code> controls how that surface is presented.',
     'plot2DBackground': 'Canvas background colour for the 2D rendering style.',
     'plot2DAtomColor': 'Opaque atom and open-bond fill colour in the 2D rendering style.',
     'plot2DLineColor': 'Fallback line and hydrogen-bond colour in the 2D rendering style.',
@@ -182,6 +187,15 @@ export const descriptions = {
     'ellipsoidProbability': 'Displayed probability for anisotropic displacement (ADP) ellipsoids, ' +
         'in (0, 1). The RMS ellipsoid is scaled by the chi-squared(3) quantile at this probability; ' +
         '0.5 gives the conventional 50% probability ellipsoid.',
+    'peanutScale': 'Positive visual multiplier for RMS displacement PEANUT radii. The surface radius ' +
+        'is <code>peanutScale &times; sqrt(n<sup>T</sup>Un)</code> in &Aring;; this is a display ' +
+        'scale, not an enclosed probability.',
+    'peanutMeridianCount': 'Number of equally spaced meridian intervals drawn on PEANUT grid surfaces.',
+    'peanutLatitudeIntervals': 'Number of latitude intervals drawn from pole to pole on PEANUT grid surfaces.',
+    'peanutGridPoleAxis': 'Direction where PEANUT meridians converge. Use the structure Y axis ' +
+        'for a common structure-fixed grid, or align each atom independently with one of its ' +
+        'ordered principal displacement axes.',
+    'peanutGridLineWidth': 'Physical PEANUT grid-line width in &Aring; for 3D cutout and 2D publication styles.',
     'atomDetail': 'Level of detail for atom geometry (1&ndash;5).',
     'atomCutawayHysteresis': 'Direction threshold that prevents cutaway octants flickering near an axis.',
     'atomCutawayStripeCount': 'Number of hatch repeats across each cutaway disc.',

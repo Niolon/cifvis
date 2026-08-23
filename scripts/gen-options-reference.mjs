@@ -61,7 +61,8 @@ function groupFor(path) {
         return 'display-modes';
     }
     if (
-        ['renderMode', 'renderStyle', 'fixCifErrors', 'sealCutoutCavity'].includes(path) ||
+        ['renderMode', 'renderStyle', 'adpRepresentation', 'fixCifErrors',
+            'sealCutoutCavity'].includes(path) ||
         path.startsWith('plot2D')
     ) {
         return 'rendering';
@@ -72,7 +73,7 @@ function groupFor(path) {
     if (path.startsWith('bond')) {
         return 'bonds';
     }
-    if (path.startsWith('atom') || path === 'ellipsoidProbability') {
+    if (path.startsWith('atom') || path.startsWith('peanut') || path === 'ellipsoidProbability') {
         return 'atom-visualization';
     }
     throw new Error(`No reference group defined for option path: ${path}`);

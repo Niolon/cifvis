@@ -118,6 +118,9 @@ export function initializeSettingsOverlay(host) {
                 if (buckets.contourLines) {
                     viewer.updateContourLineOptions(subOptions(paths, 'contourLines.'));
                 }
+                if (buckets.selection) {
+                    viewer.updateSelectionOptions(subOptions(paths, 'selection.'));
+                }
                 if (buckets.interactionLocks) {
                     const locks = {};
                     if (paths.includes('interaction.lockRotation')) {
@@ -666,7 +669,7 @@ export function initializeSettingsOverlay(host) {
             for (const value of row.enumValues) {
                 const option = document.createElement('option');
                 option.value = value;
-                option.textContent = value;
+                option.textContent = row.enumLabels?.[value] || value;
                 control.appendChild(option);
             }
             control.addEventListener('change', () => {

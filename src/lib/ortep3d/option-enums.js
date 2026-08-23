@@ -9,6 +9,15 @@ export const VALID_RENDER_MODES = Object.freeze(['constant', 'onDemand']);
 
 export const VALID_RENDER_STYLES = Object.freeze(['solid-3d', 'cutout-3d', 'cutout-2d']);
 
+export const VALID_ADP_REPRESENTATIONS = Object.freeze(['ellipsoid', 'rmsd-peanut']);
+
+export const VALID_PEANUT_GRID_POLE_AXES = Object.freeze([
+    'structure-y',
+    'principal-maximum',
+    'principal-intermediate',
+    'principal-minimum',
+]);
+
 export const VALID_BOND_COLOR_MODES = Object.freeze(['uniform', 'split']);
 
 export const VALID_ATOM_LABEL_PLACEMENT_MODES = Object.freeze([

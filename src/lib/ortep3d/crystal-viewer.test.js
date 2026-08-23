@@ -29,6 +29,33 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
+    test('rejects invalid ADP representation and PEANUT scale before WebGL initialization', () => {
+        expect(() => new CrystalViewer({}, { adpRepresentation: 'banana' })).toThrow(
+            'Invalid ADP representation: "banana". Must be one of: ellipsoid, rmsd-peanut',
+        );
+        expect(() => new CrystalViewer({}, { peanutScale: 0 })).toThrow(
+            'peanutScale must be a finite number greater than 0',
+        );
+        expect(() => new CrystalViewer({}, { peanutScale: Infinity })).toThrow(
+            'peanutScale must be a finite number greater than 0',
+        );
+        expect(() => new CrystalViewer({}, { peanutMeridianCount: 0 })).toThrow(
+            'peanutMeridianCount must be an integer greater than or equal to 1',
+        );
+        expect(() => new CrystalViewer({}, { peanutMeridianCount: 2.5 })).toThrow(
+            'peanutMeridianCount must be an integer greater than or equal to 1',
+        );
+        expect(() => new CrystalViewer({}, { peanutLatitudeIntervals: 1 })).toThrow(
+            'peanutLatitudeIntervals must be an integer greater than or equal to 2',
+        );
+        expect(() => new CrystalViewer({}, { peanutGridPoleAxis: 'principal-tiny' })).toThrow(
+            'Invalid PEANUT grid pole axis: "principal-tiny"',
+        );
+        expect(() => new CrystalViewer({}, { peanutGridLineWidth: 0 })).toThrow(
+            'peanutGridLineWidth must be a finite number greater than 0',
+        );
+    });
+
     test('rejects an invalid bond color mode before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, { bondColorMode: 'gradient' })).toThrow(
             'Invalid bond color mode: "gradient". Must be one of: uniform, split',
@@ -116,6 +143,37 @@ describe('CrystalViewer rendering option validation', () => {
         expect(() => new CrystalViewer({}, { plot2DOutlineWidth: -0.5 })).toThrow(
             'plot2DOutlineWidth must be a finite number greater than or equal to 0',
         );
+    });
+
+    test('rejects a negative 2D selection halo width', () => {
+        expect(() => new CrystalViewer({}, { selection: { haloWidth: -0.5 } })).toThrow(
+            'selection.haloWidth must be a finite number greater than or equal to 0',
+        );
+    });
+});
+
+describe('CrystalViewer live selection options', () => {
+    test('recreates active markers without clearing the selection', () => {
+        const selected = {
+            selectionColor: 0xff0000,
+            deselect: vi.fn(),
+            select: vi.fn(),
+        };
+        const viewer = Object.create(CrystalViewer.prototype);
+        viewer.options = { selection: { mode: 'multiple', haloWidth: 4 } };
+        viewer.selections = {
+            selectedObjects: new Set([selected]),
+            setMode: vi.fn(),
+        };
+        viewer.requestRender = vi.fn();
+
+        viewer.updateSelectionOptions({ haloWidth: 7 });
+
+        expect(viewer.options.selection.haloWidth).toBe(7);
+        expect(selected.deselect).toHaveBeenCalledOnce();
+        expect(selected.select).toHaveBeenCalledWith(0xff0000, viewer.options);
+        expect(viewer.selections.selectedObjects.has(selected)).toBe(true);
+        expect(viewer.requestRender).toHaveBeenCalledOnce();
     });
 });
 
@@ -954,6 +1012,40 @@ describe('CrystalViewer progressive difference-density events', () => {
                 activate: true,
             }),
         );
+    });
+});
+
+describe('CrystalViewer publication atom ordering', () => {
+    test('prioritizes the complete ellipsoid group by its nearest child extent', () => {
+        const viewer = Object.create(CrystalViewer.prototype);
+        viewer.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        viewer.camera.position.set(0, 0, 10);
+        viewer.camera.lookAt(0, 0, 0);
+        viewer.camera.updateMatrixWorld(true);
+
+        const makeAtom = (z, radius) => {
+            const atom = new THREE.Group();
+            atom.position.z = z;
+            const shell = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            const outline = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            const nestedPass = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            outline.add(nestedPass);
+            atom.add(shell, outline);
+            atom.updateMatrixWorld(true);
+            return { atom, shell, outline, nestedPass };
+        };
+        // Its centre is farther away, but its large shell reaches closer to the camera.
+        const large = makeAtom(0, 4);
+        const small = makeAtom(2, 0.5);
+        large.atom.cutawayOcclusionMask = large.nestedPass;
+
+        viewer.updateAtomDrawOrder([small.atom, large.atom]);
+
+        expect(large.atom.renderOrder).toBe(0);
+        expect(large.shell.renderOrder).toBe(0);
+        expect(large.outline.renderOrder).toBe(0);
+        expect(large.nestedPass.renderOrder).toBe(0.75);
+        expect(small.atom.renderOrder).toBe(1);
     });
 });
 

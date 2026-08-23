@@ -14,12 +14,14 @@
  */
 import defaultSettings from '../../src/lib/ortep3d/structure-settings.js';
 import {
+    VALID_ADP_REPRESENTATIONS,
     VALID_ATOM_LABEL_CALLOUT_PLACEMENTS,
     VALID_ATOM_LABEL_COLOR_MODES,
     VALID_ATOM_LABEL_PLACEMENT_MODES,
     VALID_BOND_COLOR_MODES,
     VALID_CAMERA_TYPES,
     VALID_HYDROGEN_MODES,
+    VALID_PEANUT_GRID_POLE_AXES,
     VALID_RENDER_MODES,
     VALID_RENDER_STYLES,
     VALID_SELECTION_MODES,
@@ -169,6 +171,7 @@ const TOKEN_MAP = {
 };
 
 const LABEL_OVERRIDES = {
+    'adpRepresentation': 'ADP representation',
     'renderStyle': 'Render style',
     'renderMode': 'Render scheduling',
     'fixCifErrors': 'Fix common CIF errors',
@@ -188,6 +191,11 @@ const LABEL_OVERRIDES = {
     'atomLabels.maxConnectorLength': 'Longest allowed connector (px)',
     'atomLabels.maxVisible': 'Maximum visible labels',
     'ellipsoidProbability': 'ADP ellipsoid probability',
+    'peanutScale': 'PEANUT RMS displacement scale',
+    'peanutMeridianCount': 'PEANUT meridians',
+    'peanutLatitudeIntervals': 'PEANUT latitude intervals',
+    'peanutGridPoleAxis': 'PEANUT grid pole',
+    'peanutGridLineWidth': 'PEANUT grid line width (Å)',
     'atomDetail': 'Geometry detail (1-5)',
     'atomConstantRadiusMultiplier': 'Constant-radius sphere size',
     'atomCutawayHysteresis': 'Cutaway direction hysteresis',
@@ -196,6 +204,7 @@ const LABEL_OVERRIDES = {
     'selection.mode': 'Selection mode',
     'selection.markerMult': 'Atom marker size ×',
     'selection.bondMarkerMult': 'Bond marker size ×',
+    'selection.haloWidth': '2D selection halo width (px)',
     'selection.highlightEmissive': 'Highlight emissive colour (hex number)',
     'selection.markerColors': 'Marker colour cycle (JSON)',
     'camera.initialPosition': 'Initial position [x, y, z]',
@@ -281,6 +290,8 @@ export function plainDescription(entry) {
 // ---------------------------------------------------------------------------
 
 const ENUM_VALUES = {
+    'adpRepresentation': VALID_ADP_REPRESENTATIONS,
+    'peanutGridPoleAxis': VALID_PEANUT_GRID_POLE_AXES,
     'renderMode': VALID_RENDER_MODES,
     'renderStyle': VALID_RENDER_STYLES,
     'bondColorMode': VALID_BOND_COLOR_MODES,
@@ -298,9 +309,27 @@ const ENUM_VALUES = {
     'contourLines.sign': ['positive', 'negative', 'both'],
 };
 
+const ENUM_LABELS = {
+    'adpRepresentation': {
+        'ellipsoid': 'Probability ellipsoid',
+        'rmsd-peanut': 'RMS displacement (PEANUT)',
+    },
+    'peanutGridPoleAxis': {
+        'structure-y': 'Structure Y axis',
+        'principal-maximum': 'Longest principal axis',
+        'principal-intermediate': 'Intermediate principal axis',
+        'principal-minimum': 'Shortest principal axis',
+    },
+};
+
 /** Numeric input constraints: path → {min, max, step}. */
 const NUMBER_CONSTRAINTS = {
     'ellipsoidProbability': { min: 0.01, max: 0.99, step: 0.01 },
+    'peanutScale': { min: 0.01, max: 10, step: 0.01 },
+    'peanutMeridianCount': { min: 1, max: 32, step: 1 },
+    'peanutLatitudeIntervals': { min: 2, max: 32, step: 1 },
+    'peanutGridLineWidth': { min: 0.001, max: 0.2, step: 0.001 },
+    'selection.haloWidth': { min: 0, max: 20, step: 0.5 },
     'atomDetail': { min: 1, max: 5, step: 1 },
     'plot2DColorLuminanceCeiling': { min: 0, max: 1, step: 0.01 },
     'plot2DColorLuminanceFloor': { min: 0, max: 1, step: 0.01 },
@@ -352,7 +381,7 @@ const CURATED_GROUPS = [
     {
         id: 'style', title: 'Style', source: ['rendering'],
         exclude: ['renderMode', 'fixCifErrors'],
-        first: ['renderStyle'],
+        first: ['adpRepresentation', 'renderStyle'],
         stripPrefixes: ['plot2D'],
         dividers: { 'plot2DBackground': '2D publication style' },
     },
@@ -464,6 +493,9 @@ export function buildSettingsSchema() {
             default: clone(defaultValue),
             ...inferControl(path, defaultValue),
         };
+        if (ENUM_LABELS[path]) {
+            row.enumLabels = { ...ENUM_LABELS[path] };
+        }
         row.searchText = `${path} ${label} ${description}`.toLowerCase();
         return row;
     };
@@ -896,13 +928,14 @@ export function validateImportedOptions(imported, schema) {
  * viewer recreation.
  * @param {Iterable<string>} paths - Dotted paths that changed
  * @returns {{atomLabels: boolean, isosurface: boolean, contourLines: boolean,
- *  modifierModes: string[], recreate: boolean}} Buckets
+ *  selection: boolean, modifierModes: string[], recreate: boolean}} Buckets
  */
 export function classifyChangedPaths(paths) {
     const result = {
         atomLabels: false,
         isosurface: false,
         contourLines: false,
+        selection: false,
         interactionLocks: false,
         modifierModes: [],
         recreate: false,
@@ -915,6 +948,8 @@ export function classifyChangedPaths(paths) {
             result.isosurface = true;
         } else if (path.startsWith('contourLines.')) {
             result.contourLines = true;
+        } else if (path.startsWith('selection.')) {
+            result.selection = true;
         } else if (modeMap[path]) {
             result.modifierModes.push(modeMap[path]);
         } else if (path === 'interaction.lockRotation' || path === 'interaction.lockZoom') {
