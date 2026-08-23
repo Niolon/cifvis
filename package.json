@@ -54,6 +54,12 @@
   "dependencies": {
     "three": "^0.185.1"
   },
+  "overrides": {
+    "vitepress": {
+      "@vitejs/plugin-vue": "^6.0.8",
+      "vite": "^6.4.3"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@typescript-eslint/utils": "^8.64.0",
