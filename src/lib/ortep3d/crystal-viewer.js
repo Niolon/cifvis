@@ -693,8 +693,6 @@ export class CrystalViewer {
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
             plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
             plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
-            plot2DHydrogenLineColor: options.plot2DHydrogenLineColor ||
-                defaultSettings.plot2DHydrogenLineColor,
             plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
             plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
                 defaultSettings.plot2DBondOutlineColor,

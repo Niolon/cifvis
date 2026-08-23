@@ -65,8 +65,6 @@ export const descriptions = {
     'plot2DBackground': 'Canvas background colour for the 2D rendering style.',
     'plot2DAtomColor': 'Opaque atom and open-bond fill colour in the 2D rendering style.',
     'plot2DLineColor': 'Fallback line and hydrogen-bond colour in the 2D rendering style.',
-    'plot2DHydrogenLineColor': 'Hydrogen and deuterium atom, ADP grid, and silhouette line colour ' +
-        'in the 2D rendering style.',
     'plot2DBondColor': 'Solid bond and open-bond outline colour in the 2D rendering style.',
     'plot2DBondOutlineColor': 'Colour of the depth-writing silhouette around 2D bonds, used to ' +
         'separate crossing bonds and ADPs. It is inset at connected atoms to keep their ' +

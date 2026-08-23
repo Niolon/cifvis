@@ -178,7 +178,6 @@ const LABEL_OVERRIDES = {
     'plot2DColorLuminanceCeiling': 'Colour luminance ceiling',
     'plot2DColorLuminanceFloor': 'Colour luminance floor (dark backgrounds)',
     'plot2DOpenBondInnerScale': 'Open (PART 2) bond inner width',
-    'plot2DHydrogenLineColor': 'Hydrogen/deuterium line colour',
     'hydrogenMode': 'Hydrogen display',
     'disorderMode': 'Disorder display',
     'symmetryMode': 'Symmetry display',

@@ -180,7 +180,6 @@ export default {
     'plot2DBackground': '#ffffff',
     'plot2DAtomColor': '#ffffff',
     'plot2DLineColor': '#000000',
-    'plot2DHydrogenLineColor': '#808080',
     'plot2DBondColor': '#000000',
     'plot2DBondOutlineColor': '#ffffff',
     // Constant screen-space width (CSS pixels) of the depth-writing bond

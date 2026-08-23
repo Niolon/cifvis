@@ -1048,8 +1048,7 @@ export class GeometryMaterialCache {
             const plotKey = `${elementType}_2d_materials`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
-                const rawElementLineColor = ['H', 'D'].includes(elementType) ?
-                    this.options.plot2DHydrogenLineColor : elementProperty.atomColor;
+                const rawElementLineColor = elementProperty.atomColor;
                 const elementLineColor = liftColorLuminance(
                     scaleColorLuminance(rawElementLineColor, this.plot2DElementColorScale),
                     this.plot2DElementColorLift,
@@ -1119,9 +1118,7 @@ export class GeometryMaterialCache {
         }
         this.validateElementType(elementType);
         const elementProperty = this.options.elementProperties[elementType];
-        const raw = ['H', 'D'].includes(elementType)
-            ? this.options.plot2DHydrogenLineColor
-            : elementProperty.atomColor;
+        const raw = elementProperty.atomColor;
         return liftColorLuminance(
             scaleColorLuminance(raw, this.plot2DElementColorScale),
             this.plot2DElementColorLift,

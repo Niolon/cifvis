@@ -167,11 +167,6 @@
       "default": "\"#000000\""
     },
     {
-      "path": "plot2DHydrogenLineColor",
-      "type": "Color",
-      "default": "\"#808080\""
-    },
-    {
       "path": "plot2DBondColor",
       "type": "Color",
       "default": "\"#000000\""

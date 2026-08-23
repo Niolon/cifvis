@@ -368,27 +368,22 @@ describe('GeometryMaterialCache', () => {
             plotCache.dispose();
         });
 
-        test('uses a configurable grey for hydrogen and deuterium 2D ADP lines', () => {
+        test('uses normally rescaled white for hydrogen and deuterium 2D ADP lines', () => {
             const plotCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
             const [, hydrogenRing, , hydrogenOutline] = plotCache.getAtomMaterials('H');
             const [, deuteriumRing] = plotCache.getAtomMaterials('D');
             const peanut = plotCache.getPeanutMaterials('H');
+            const expected = scaleColorLuminance(
+                defaultSettings.elementProperties.H.atomColor,
+                plotCache.plot2DElementColorScale,
+            ).getHex();
 
-            expect(hydrogenRing.color.getHex()).not.toBe(0x000000);
+            expect(hydrogenRing.color.getHex()).toBe(expected);
+            expect(hydrogenRing.color.getHexString()).toBe('898989');
             expect(deuteriumRing.color.getHex()).toBe(hydrogenRing.color.getHex());
             expect(hydrogenOutline.color.getHex()).toBe(hydrogenRing.color.getHex());
             expect(peanut.body.color.getHex()).toBe(hydrogenRing.color.getHex());
             expect(peanut.outline.color.getHex()).toBe(hydrogenRing.color.getHex());
-
-            const customCache = new GeometryMaterialCache({
-                renderStyle: 'cutout-2d',
-                plot2DHydrogenLineColor: '#667788',
-            });
-            expect(customCache.getPlot2DElementLineColor('H').getHex()).toBe(
-                scaleColorLuminance('#667788', customCache.plot2DElementColorScale).getHex(),
-            );
-
-            customCache.dispose();
             plotCache.dispose();
         });
 
