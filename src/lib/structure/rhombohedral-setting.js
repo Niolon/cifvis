@@ -12,6 +12,8 @@
  * come out distorted and bonded pairs change length.
  */
 
+import { parseSymmetryComponent } from './symmetry-expression.js';
+
 /**
  * Basis change taking hexagonal fractional coordinates to rhombohedral ones, for the
  * obverse setting used by the International Tables.
@@ -187,30 +189,9 @@ function parseOperation(operation) {
     }
 
     for (const component of components) {
-        const row = [0, 0, 0];
-        let shift = 0;
-        const terms = component.replace(/\s+/g, '').match(/[+-]?[^+-]+/g) || [];
-        for (const term of terms) {
-            const axisMatch = term.match(/^([+-]?)(\d*)\/?(\d*)?\*?([xyz])$/);
-            if (axisMatch) {
-                const sign = axisMatch[1] === '-' ? -1 : 1;
-                const magnitude = axisMatch[2] === '' ? 1 : Number(axisMatch[2]);
-                row['xyz'.indexOf(axisMatch[4])] = sign * magnitude;
-                continue;
-            }
-            const fractionMatch = term.match(/^([+-]?)(\d+)\/(\d+)$/);
-            if (fractionMatch) {
-                const sign = fractionMatch[1] === '-' ? -1 : 1;
-                shift += sign * Number(fractionMatch[2]) / Number(fractionMatch[3]);
-                continue;
-            }
-            const numberMatch = term.match(/^([+-]?)(\d+(?:\.\d+)?)$/);
-            if (numberMatch) {
-                shift += (numberMatch[1] === '-' ? -1 : 1) * Number(numberMatch[2]);
-            }
-        }
-        rotation.push(row);
-        translation.push(shift);
+        const parsed = parseSymmetryComponent(component);
+        rotation.push(parsed.coefficients);
+        translation.push(parsed.translation);
     }
     return { rotation, translation };
 }

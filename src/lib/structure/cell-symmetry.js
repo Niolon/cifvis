@@ -7,6 +7,7 @@ import { decodePositionCode, encodePositionCode } from './position-code.js';
 import { isRhombohedralCell, toRhombohedralSetting } from './rhombohedral-setting.js';
 import { CifBlock } from '../read-cif/base.js';
 import { lookupSpaceGroup } from './space-group-lookup.js';
+import { parseSymmetryComponent } from './symmetry-expression.js';
 
 /**
  * Formats a decimal number as a fraction with specified allowed denominators
@@ -83,45 +84,9 @@ export class SymmetryOperation {
         }
         
         components.forEach((component, xyz) => {
-            // First find all variable terms
-            const variablePattern = /([+-]?\d*\.?\d*(?:\/\d+)?)\*?([XYZ])/g;
-            let match;
-            
-            while ((match = variablePattern.exec(component)) !== null) {
-                let coefficient = match[1];
-                const variable = match[2];
-                
-                // Handle coefficient parsing
-                if (!coefficient || coefficient === '+') {
-                    coefficient = '1'; 
-                } else if (coefficient === '-') {
-                    coefficient = '-1'; 
-                } else if (coefficient.includes('/')) {
-                    const [num, den] = coefficient.split('/');
-                    coefficient = parseFloat(num) / parseFloat(den);
-                }
-                
-                // Convert coefficient to number
-                coefficient = parseFloat(coefficient);
-                
-                // Map variable to matrix column
-                const col = variable === 'X' ? 0 : variable === 'Y' ? 1 : 2;
-                matrix[xyz][col] = coefficient;
-            }
-
-            // Remove all variable terms and their coefficients
-            const withoutVariables = component.replace(/[+-]?\d*\.?\d*(?:\/\d+)?\*?[XYZ]/g, '');
-            
-            // Now parse any remaining terms as translations
-            const translationTerms = withoutVariables.match(/[+-]?\d*\.?\d+(?:\/\d+)?/g) || [];
-            for (const term of translationTerms) {
-                if (term.includes('/')) {
-                    const [num, den] = term.split('/');
-                    vector[xyz] += parseFloat(num) / parseFloat(den);
-                } else {
-                    vector[xyz] += parseFloat(term);
-                }
-            }
+            const parsed = parseSymmetryComponent(component);
+            matrix[xyz] = parsed.coefficients;
+            vector[xyz] = parsed.translation;
         });
         
         return { matrix, vector };

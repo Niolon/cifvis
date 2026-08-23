@@ -104,6 +104,18 @@ describe('SymmetryOperation', () => {
             expect(op.transVector).toEqual([0, 0, 0.5]);
         });
 
+        test('parses long repeated numeric input in linear time', () => {
+            const repeatedZeros = '0'.repeat(100_000);
+            const op = new SymmetryOperation(`${repeatedZeros}!,${repeatedZeros}x,z`);
+
+            expect(op.rotMatrix).toEqual([
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 1],
+            ]);
+            expect(op.transVector).toEqual([0, 0, 0]);
+        });
+
         test('more entries than 3', () => {
             expect(
                 () => new SymmetryOperation('x,x,y,z'),
