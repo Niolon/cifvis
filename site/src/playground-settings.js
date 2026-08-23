@@ -207,6 +207,7 @@ const LABEL_OVERRIDES = {
     'selection.haloWidth': '2D selection halo width (px)',
     'selection.highlightEmissive': 'Highlight emissive colour (hex number)',
     'selection.markerColors': 'Marker colour cycle (JSON)',
+    'measurement.markerColors': 'Measurement colour cycle (JSON)',
     'camera.initialPosition': 'Initial position [x, y, z]',
     'camera.type': 'Projection',
     'differenceDensity.autoLoad': 'Auto-load density from CIF',
@@ -928,7 +929,7 @@ export function validateImportedOptions(imported, schema) {
  * viewer recreation.
  * @param {Iterable<string>} paths - Dotted paths that changed
  * @returns {{atomLabels: boolean, isosurface: boolean, contourLines: boolean,
- *  selection: boolean, modifierModes: string[], recreate: boolean}} Buckets
+ *  selection: boolean, measurement: boolean, modifierModes: string[], recreate: boolean}} Buckets
  */
 export function classifyChangedPaths(paths) {
     const result = {
@@ -936,6 +937,7 @@ export function classifyChangedPaths(paths) {
         isosurface: false,
         contourLines: false,
         selection: false,
+        measurement: false,
         interactionLocks: false,
         modifierModes: [],
         recreate: false,
@@ -950,6 +952,8 @@ export function classifyChangedPaths(paths) {
             result.contourLines = true;
         } else if (path.startsWith('selection.')) {
             result.selection = true;
+        } else if (path.startsWith('measurement.')) {
+            result.measurement = true;
         } else if (modeMap[path]) {
             result.modifierModes.push(modeMap[path]);
         } else if (path === 'interaction.lockRotation' || path === 'interaction.lockZoom') {

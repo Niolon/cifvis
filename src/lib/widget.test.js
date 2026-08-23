@@ -91,6 +91,14 @@ describe('CifViewWidget', () => {
             updateIsosurfaceOptions: vi.fn(),
             setIsosurfaceVisibility: vi.fn(),
             cycleScalarField: vi.fn(),
+            measureSelectedAtoms: vi.fn().mockReturnValue({
+                id: 'measurement-1', color: 0x00b7ff,
+                type: 'distance', value: 1.234, unit: 'Å', labels: ['C1', 'O1'],
+                atomIds: ['C1|1_555', 'O1|1_555'],
+            }),
+            clearMeasurement: vi.fn(),
+            setHoveredAtom: vi.fn(),
+            onMeasurementChange: vi.fn().mockReturnValue(vi.fn()),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -181,10 +189,11 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 10)); // Let promises resolve
 
         const buttons = widget.querySelectorAll('.control-button');
-        expect(buttons).toHaveLength(3); // One for each modifier type
+        expect(buttons).toHaveLength(4); // Three modifier buttons and measurement
         expect(buttons[0].className).toContain('hydrogen-button');
         expect(buttons[1].className).toContain('disorder-button');
         expect(buttons[2].className).toContain('symmetry-button');
+        expect(buttons[3].className).toContain('measurement-button');
     });
 
     test('cycles modifier modes on button click', async () => {
@@ -200,6 +209,35 @@ describe('CifViewWidget', () => {
         expect(mockCrystalViewer.cycleModifierMode).toHaveBeenCalledWith('hydrogen');
     });
 
+    test('adapts and runs the measurement button from atom selections', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const button = widget.querySelector('.measurement-button');
+        expect(button.disabled).toBe(true);
+        mockSelectionCallback([
+            { type: 'atom', data: { label: 'C1', atomType: 'C' }, color: 0xff0000 },
+            { type: 'atom', data: { label: 'O1', atomType: 'O' }, color: 0x00ff00 },
+        ]);
+        expect(button.disabled).toBe(false);
+        expect(button.title).toContain('Measure bond length (2 selected)');
+
+        button.click();
+        expect(mockCrystalViewer.measureSelectedAtoms).toHaveBeenCalledOnce();
+        expect(widget.querySelector('.crystal-caption').textContent).toContain('Bond length C1–O1: 1.234 Å');
+
+        mockSelectionCallback([]);
+        expect(widget.querySelector('.crystal-caption').textContent).toContain('Bond length C1–O1: 1.234 Å');
+        const measuredAtom = widget.querySelector('.measurement-caption .atom-name');
+        measuredAtom.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith('C1|1_555', 0x00b7ff);
+        widget.querySelector('.measurement-dismiss').click();
+        expect(mockCrystalViewer.clearMeasurement).toHaveBeenCalledWith('measurement-1');
+        expect(widget.querySelector('.crystal-caption').textContent).not.toContain('Bond length');
+    });
+
     test('updates caption with selections', async () => {
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('caption', 'Test Structure');
@@ -211,7 +249,7 @@ describe('CifViewWidget', () => {
         const mockSelections = [
             {
                 type: 'atom',
-                data: { label: 'C1', atomType: 'C' },
+                data: { label: 'C1', atomType: 'C', uniqueId: 'C1|1_555' },
                 color: 0xff0000,
             },
             {
@@ -229,10 +267,17 @@ describe('CifViewWidget', () => {
 
         const caption = widget.querySelector('.crystal-caption');
         expect(caption.innerHTML).toContain('Test Structure.');
-        expect(caption.innerHTML).toContain('C1 (C)');
+        expect(caption.innerHTML).toContain('>C1</span>');
+        expect(caption.innerHTML).not.toContain('(C)');
         expect(caption.innerHTML).toContain('C1-O1: 1.5 ± SU Å');
         expect(caption.innerHTML).toContain('color:#ff0000');
         expect(caption.innerHTML).toContain('color:#00ff00');
+
+        const atomName = caption.querySelector('.atom-name');
+        atomName.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith('C1|1_555');
+        atomName.dispatchEvent(new MouseEvent('mouseleave'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith(null);
     });
 
     test('shows the active density level next to the other controls', () => {

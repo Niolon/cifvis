@@ -26,7 +26,7 @@ option across all groups.
 | Page | Covers |
 |---|---|
 | [Camera](./camera.md) | Projection, zoom limits and speeds, initial position. |
-| [Selection](./selection.md) | Selection mode, marker sizes and colours. |
+| [Selection](./selection.md) | Selection mode, marker sizes, and selection/measurement colours. |
 | [Interaction](./interaction.md) | Rotation speed, click threshold, raycast thresholds. |
 | [Rendering](./rendering.md) | Render mode/style, the `plot2D*` publication options, CIF error fixing. |
 | [Display modes](./display-modes.md) | Initial hydrogen/disorder/symmetry modes. |

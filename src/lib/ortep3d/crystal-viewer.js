@@ -25,6 +25,7 @@ import { normalizeIsosurfaceSteps } from '../density/isosurface-progress.js';
 import { assertCellsMatch } from '../density/cell-matching.js';
 import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
+import { measureAtoms } from '../structure/measurements.js';
 
 import {
     VALID_ADP_REPRESENTATIONS,
@@ -37,6 +38,25 @@ import {
     VALID_PEANUT_GRID_POLE_AXES,
     VALID_SELECTION_MODES,
 } from './option-enums.js';
+
+const DEFAULT_HOVER_COLOR = 0xffffff;
+// ORTEP bonds and their selection markers render at 1e6/1e6+1. Measurements
+// are UI overlays and must render afterwards so a coincident bond cannot cover them.
+const MEASUREMENT_PLANE_RENDER_ORDER = 2e6;
+const MEASUREMENT_LINE_RENDER_ORDER = MEASUREMENT_PLANE_RENDER_ORDER + 1;
+const MEASUREMENT_MARKER_RENDER_ORDER = MEASUREMENT_PLANE_RENDER_ORDER + 2;
+
+/**
+ * Checks a user-configurable cycle of numeric RGB colours.
+ * @param {unknown} colors - Candidate palette.
+ * @param {string} optionName - Public option path for error messages.
+ */
+function validateColorPalette(colors, optionName) {
+    if (!Array.isArray(colors) || colors.length === 0 || colors.some(color =>
+        !Number.isInteger(color) || color < 0 || color > 0xffffff)) {
+        throw new Error(`${optionName} must be a non-empty array of numeric hex colours`);
+    }
+}
 
 /**
  * @typedef {object} AtomLabelPlacement
@@ -618,6 +638,9 @@ export class CrystalViewer {
                 options.selection.haloWidth >= 0)) {
             throw new Error('selection.haloWidth must be a finite number greater than or equal to 0');
         }
+        if (options.measurement?.markerColors !== undefined) {
+            validateColorPalette(options.measurement.markerColors, 'measurement.markerColors');
+        }
         validateAtomLabelOptions(options.atomLabels || {});
         const atomLabelOptions = definedOptions(options.atomLabels || {});
 
@@ -633,6 +656,10 @@ export class CrystalViewer {
             selection: {
                 ...defaultSettings.selection,
                 ...(options.selection || {}),
+            },
+            measurement: {
+                ...defaultSettings.measurement,
+                ...(options.measurement || {}),
             },
             interaction: {
                 ...defaultSettings.interaction,
@@ -750,6 +777,12 @@ export class CrystalViewer {
 
         this.scalarFieldUpdateCallbacks = new Set();
         this.modifierModeCallbacks = new Set();
+        this.measurementCallbacks = new Set();
+        this.measurementGroups = new Map();
+        this.measurements = new Map();
+        this.measurementSequence = 0;
+        this.currentMeasurement = null;
+        this.hoveredAtomObjects = new Map();
         this.scalarFieldLoadSequence = 0;
         this.scalarFieldWorker = null;
         this.scalarFieldPendingResolve = null;
@@ -2174,6 +2207,8 @@ export class CrystalViewer {
      */
     async loadStructure(structure = this.state.baseStructure) {
         this.state.baseStructure = structure;
+        this.clearMeasurement?.();
+        this.setHoveredAtom?.(null);
         this.selections.clear();
 
         // Complete reset of molecule container
@@ -2889,6 +2924,31 @@ export class CrystalViewer {
     }
 
     /**
+     * Updates measurement appearance and recolours all persistent overlays in place.
+     * @param {object} options - Partial measurement options.
+     */
+    updateMeasurementOptions(options = {}) {
+        if (options.markerColors !== undefined) {
+            validateColorPalette(options.markerColors, 'measurement.markerColors');
+        }
+        this.options.measurement = { ...this.options.measurement, ...options };
+        this.setHoveredAtom(null);
+        for (const [id, measurement] of this.measurements) {
+            const sequence = Number(id.slice('measurement-'.length)) - 1;
+            const color = this.options.measurement.markerColors[
+                sequence % this.options.measurement.markerColors.length
+            ];
+            measurement.color = color;
+            this.measurementGroups.get(id)?.traverse(object => {
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                materials.forEach(material => material?.color?.setHex(color));
+            });
+        }
+        this.notifyMeasurementCallbacks();
+        this.requestRender();
+    }
+
+    /**
      * Selects specific atoms by their labels.
      * Allows programmatic selection of atoms without user interaction.
      * @param {string[]} atomLabels - Array of atom labels to select
@@ -2901,6 +2961,202 @@ export class CrystalViewer {
      */
     selectAtoms(atomLabels) {
         this.selections.selectAtoms(atomLabels, this.moleculeContainer);
+    }
+
+    /**
+     * Measures the currently selected atoms in selection order.
+     * @returns {object} Context-sensitive distance, angle, torsion, or plane-distance result.
+     */
+    measureSelectedAtoms() {
+        const atoms = Array.from(this.selections.selectedObjects)
+            .filter(object => object.userData?.type === 'atom')
+            .map(object => object.userData.atomData);
+        const measurement = measureAtoms(atoms, this.state.baseStructure?.cell);
+        this.displayMeasurement(measurement);
+        return measurement;
+    }
+
+    /**
+     * @param {object} measurement - Measurement geometry and value to display.
+     * @returns {void}
+     */
+    displayMeasurement(measurement) {
+        const measurementId = `measurement-${++this.measurementSequence}`;
+        measurement.id = measurementId;
+        const group = new THREE.Group();
+        group.name = `measurement-overlay-${measurementId}`;
+        const colors = this.options?.measurement?.markerColors ?? defaultSettings.measurement.markerColors;
+        const color = colors[(this.measurementSequence - 1) % colors.length];
+        measurement.color = color;
+        const material = new THREE.MeshBasicMaterial({
+            color,
+            depthTest: false,
+            depthWrite: false,
+        });
+        const addSegment = (start, end, radius = 0.075) => {
+            const first = new THREE.Vector3(...start);
+            const second = new THREE.Vector3(...end);
+            const direction = second.clone().sub(first);
+            if (direction.lengthSq() < 1e-12) {
+                return;
+            }
+            const segment = new THREE.Mesh(
+                new THREE.CylinderGeometry(radius, radius, direction.length(), 12),
+                material.clone(),
+            );
+            segment.position.copy(first).add(second).multiplyScalar(0.5);
+            segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            segment.renderOrder = MEASUREMENT_LINE_RENDER_ORDER;
+            group.add(segment);
+        };
+        const linePoints = measurement.type === 'plane-distance'
+            ? [measurement.points.at(-1), measurement.plane.projection]
+            : measurement.points;
+        for (let index = 1; index < linePoints.length; index++) {
+            addSegment(linePoints[index - 1], linePoints[index]);
+        }
+        for (const point of linePoints) {
+            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), material.clone());
+            marker.position.set(...point);
+            marker.renderOrder = MEASUREMENT_MARKER_RENDER_ORDER;
+            group.add(marker);
+        }
+
+        if (measurement.type === 'plane-distance') {
+            const center = new THREE.Vector3(...measurement.plane.centroid);
+            const normal = new THREE.Vector3(...measurement.plane.normal);
+            const reference = Math.abs(normal.z) < 0.9
+                ? new THREE.Vector3(0, 0, 1)
+                : new THREE.Vector3(0, 1, 0);
+            const firstAxis = new THREE.Vector3().crossVectors(normal, reference).normalize();
+            const secondAxis = new THREE.Vector3().crossVectors(normal, firstAxis).normalize();
+            const projection = new THREE.Vector3(...measurement.plane.projection);
+            const planeDisplayPoints = [
+                ...measurement.points.slice(0, -1).map(point => new THREE.Vector3(...point)),
+                projection,
+            ];
+            const axisBounds = axis => {
+                const offsets = planeDisplayPoints.map(point => point.clone().sub(center).dot(axis));
+                return {
+                    min: Math.min(-0.5, ...offsets) - 0.35,
+                    max: Math.max(0.5, ...offsets) + 0.35,
+                };
+            };
+            const firstBounds = axisBounds(firstAxis);
+            const secondBounds = axisBounds(secondAxis);
+            const corners = [
+                center.clone().addScaledVector(firstAxis, firstBounds.max)
+                    .addScaledVector(secondAxis, secondBounds.max),
+                center.clone().addScaledVector(firstAxis, firstBounds.min)
+                    .addScaledVector(secondAxis, secondBounds.max),
+                center.clone().addScaledVector(firstAxis, firstBounds.min)
+                    .addScaledVector(secondAxis, secondBounds.min),
+                center.clone().addScaledVector(firstAxis, firstBounds.max)
+                    .addScaledVector(secondAxis, secondBounds.min),
+            ];
+            const planeGeometry = new THREE.BufferGeometry().setFromPoints(corners);
+            planeGeometry.setIndex([0, 1, 2, 0, 2, 3]);
+            planeGeometry.computeVertexNormals();
+            const plane = new THREE.Mesh(planeGeometry, new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.22,
+                depthTest: false,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+            }));
+            plane.renderOrder = MEASUREMENT_PLANE_RENDER_ORDER;
+            group.add(plane);
+            for (let index = 0; index < corners.length; index++) {
+                addSegment(corners[index].toArray(), corners[(index + 1) % corners.length].toArray(), 0.04);
+            }
+        }
+
+        material.dispose();
+        this.measurementGroups.set(measurementId, group);
+        this.measurements.set(measurementId, measurement);
+        this.currentMeasurement = measurement;
+        this.moleculeContainer.add(group);
+        this.notifyMeasurementCallbacks();
+        this.requestRender();
+    }
+
+    /**
+     * Removes the visible measurement.
+     * @param {string|null} [measurementId] - One measurement to remove, or null for all.
+     * @param {boolean} [notify] - Whether to notify UI subscribers.
+     */
+    clearMeasurement(measurementId = null, notify = true) {
+        const ids = measurementId === null ? Array.from(this.measurementGroups.keys()) : [measurementId];
+        for (const id of ids) {
+            const group = this.measurementGroups.get(id);
+            if (!group) {
+                continue;
+            }
+            group.removeFromParent();
+            group.traverse(object => {
+                object.geometry?.dispose();
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => material.dispose());
+                } else {
+                    object.material?.dispose();
+                }
+            });
+            this.measurementGroups.delete(id);
+            this.measurements.delete(id);
+        }
+        this.currentMeasurement = Array.from(this.measurements.values()).at(-1) ?? null;
+        if (notify) {
+            this.notifyMeasurementCallbacks();
+        }
+        this.requestRender();
+    }
+
+    /** @returns {object[]} All persistent measurements in creation order. */
+    getMeasurements() {
+        return Array.from(this.measurements.values());
+    }
+
+    /** Notifies measurement UI subscribers with the complete persistent collection. */
+    notifyMeasurementCallbacks() {
+        const measurements = this.getMeasurements();
+        this.measurementCallbacks.forEach(callback => callback(measurements));
+    }
+
+    /**
+     * @param {function(object[]): void} callback - Measurement collection listener.
+     * @returns {function(): void} Unsubscribe function.
+     */
+    onMeasurementChange(callback) {
+        this.measurementCallbacks.add(callback);
+        return () => this.measurementCallbacks.delete(callback);
+    }
+
+    /**
+     * Temporarily highlights one symmetry-resolved atom without changing selection state.
+     * @param {string|null} atomId - Atom unique ID, or null to clear hover.
+     * @param {number} [hoverColor] - Highlight colour, normally the owning measurement colour.
+     */
+    setHoveredAtom(atomId, hoverColor = DEFAULT_HOVER_COLOR) {
+        for (const [object, color] of this.hoveredAtomObjects) {
+            object.deselect();
+            if (color !== null) {
+                object.select(color, this.options);
+            }
+        }
+        this.hoveredAtomObjects.clear();
+        if (atomId !== null) {
+            this.moleculeContainer.traverse(object => {
+                if (object.userData?.type === 'atom' && object.userData.atomData.uniqueId === atomId &&
+                    typeof object.select === 'function' && typeof object.deselect === 'function') {
+                    const previousColor = object.selectionColor;
+                    object.deselect();
+                    object.select(hoverColor, this.options);
+                    this.hoveredAtomObjects.set(object, previousColor);
+                }
+            });
+        }
+        this.requestRender();
     }
 
     /**
@@ -2991,6 +3247,7 @@ export class CrystalViewer {
             }
         });
         this.selections.dispose();
+        this.measurementCallbacks.clear();
         this.renderer.dispose();
 
         if (this.renderer.domElement.parentNode) {

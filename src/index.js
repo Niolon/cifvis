@@ -3,6 +3,7 @@ export { CIF } from './lib/read-cif/base.js';
 export { CrystalStructure } from './lib/structure/crystal.js';
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { formatValueEsd } from './lib/formatting.js';
+export { measureAtoms, formatMeasurement, measurementAction } from './lib/structure/measurements.js';
 export {
     calculateDifferenceDensityMap,
     createCifDifferenceDensityDataset,

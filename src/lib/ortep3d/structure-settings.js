@@ -141,6 +141,16 @@ export default {
             0x17becf,
         ],
     },
+    'measurement': {
+        // High-chroma colours kept distinct from the muted selection palette.
+        'markerColors': [
+            0x00e5ff,
+            0xff2d95,
+            0xb6f000,
+            0xffd600,
+            0x7c4dff,
+        ],
+    },
     'interaction': {
         'rotationSpeed': 5,
         // Locks only suppress direct pointer gestures. Explicit view setters,

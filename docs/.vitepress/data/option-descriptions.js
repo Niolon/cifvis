@@ -38,6 +38,10 @@ export const descriptions = {
         description: 'Array of colors (hex values) used for selection markers; ' +
             'a cycle of 10 different colors by default.',
     },
+    'measurement.markerColors': {
+        description: 'Non-empty array of numeric hex colours cycled across persistent measurements. ' +
+            'Hovering a measured atom name uses its measurement colour.',
+    },
 
     // Interaction
     'interaction.rotationSpeed': 'Speed of rotation when dragging.',

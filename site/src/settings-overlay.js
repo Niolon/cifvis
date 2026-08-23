@@ -121,6 +121,9 @@ export function initializeSettingsOverlay(host) {
                 if (buckets.selection) {
                     viewer.updateSelectionOptions(subOptions(paths, 'selection.'));
                 }
+                if (buckets.measurement) {
+                    viewer.updateMeasurementOptions(subOptions(paths, 'measurement.'));
+                }
                 if (buckets.interactionLocks) {
                     const locks = {};
                     if (paths.includes('interaction.lockRotation')) {
