@@ -36,6 +36,11 @@ All PEANUT modes use shared sphere topology and instancing. There are no PEANUT 
 
 In the cutout styles, `sealCutoutCavity` (default on) fills the removed octant in the
 depth buffer so a neighbouring atom or bond that lies inside the carved-open cavity is
-occluded instead of showing through, while the exposed cross-section stays visible.
+occluded instead of showing through, while the exposed cross-section stays visible. In
+both cutout styles, complete ellipsoids are additionally ordered by their nearest
+camera-facing extent and committed to an ellipsoid-only stencil. The 2D mask includes the
+expanded outline; the 3D mask follows the exact surface silhouette. Overlapping ellipsoids
+therefore do not intersect one another, while bonds and isosurfaces continue to use normal
+physical depth testing.
 
 <OptionsTable group="rendering" />

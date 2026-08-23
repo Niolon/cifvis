@@ -1015,6 +1015,40 @@ describe('CrystalViewer progressive difference-density events', () => {
     });
 });
 
+describe('CrystalViewer publication atom ordering', () => {
+    test('prioritizes the complete ellipsoid group by its nearest child extent', () => {
+        const viewer = Object.create(CrystalViewer.prototype);
+        viewer.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        viewer.camera.position.set(0, 0, 10);
+        viewer.camera.lookAt(0, 0, 0);
+        viewer.camera.updateMatrixWorld(true);
+
+        const makeAtom = (z, radius) => {
+            const atom = new THREE.Group();
+            atom.position.z = z;
+            const shell = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            const outline = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            const nestedPass = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8));
+            outline.add(nestedPass);
+            atom.add(shell, outline);
+            atom.updateMatrixWorld(true);
+            return { atom, shell, outline, nestedPass };
+        };
+        // Its centre is farther away, but its large shell reaches closer to the camera.
+        const large = makeAtom(0, 4);
+        const small = makeAtom(2, 0.5);
+        large.atom.cutawayOcclusionMask = large.nestedPass;
+
+        viewer.updateAtomDrawOrder([small.atom, large.atom]);
+
+        expect(large.atom.renderOrder).toBe(0);
+        expect(large.shell.renderOrder).toBe(0);
+        expect(large.outline.renderOrder).toBe(0);
+        expect(large.nestedPass.renderOrder).toBe(0.75);
+        expect(small.atom.renderOrder).toBe(1);
+    });
+});
+
 describe('CrystalViewer container resize observation', () => {
     /**
      * Builds a stand-in for a viewer plus a fake ResizeObserver, so the resize

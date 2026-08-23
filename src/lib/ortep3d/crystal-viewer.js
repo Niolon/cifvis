@@ -805,6 +805,7 @@ export class CrystalViewer {
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
+            stencil: true,
             preserveDrawingBuffer: true,
         });
         if (this.options.renderStyle === 'cutout-2d') {
@@ -2644,16 +2645,17 @@ export class CrystalViewer {
      */
     updateCameraFacingOctants() {
         const cameraFacingAtoms = this.state.currentStructure?.cameraFacingAtoms;
-        if (!cameraFacingAtoms?.length) {
+        const orderableAtoms = this.state.currentStructure?.orderableAtoms;
+        if (!cameraFacingAtoms?.length && !orderableAtoms?.length) {
             return;
         }
 
         this.camera.updateMatrixWorld();
         this.moleculeContainer.updateMatrixWorld(true);
-        cameraFacingAtoms.forEach(atom => {
+        cameraFacingAtoms?.forEach(atom => {
             atom.updateCutawayOctant(this.camera);
         });
-        this.updateAtomDrawOrder(this.state.currentStructure.orderableAtoms);
+        this.updateAtomDrawOrder(orderableAtoms);
     }
 
     /**
@@ -2672,24 +2674,72 @@ export class CrystalViewer {
         }
         const viewMatrix = this.camera.matrixWorldInverse;
         const worldPosition = new THREE.Vector3();
+        const childWorldPosition = new THREE.Vector3();
+        const childWorldScale = new THREE.Vector3();
+        const childWorldQuaternion = new THREE.Quaternion();
+        const worldViewDirection = new THREE.Vector3();
+        const localViewDirection = new THREE.Vector3();
+        const parentInverse = new THREE.Matrix4();
+        this.camera.getWorldDirection(worldViewDirection).negate();
         const ranked = atoms
             .map(atom => {
                 atom.getWorldPosition(worldPosition);
                 // The camera looks down -z in view space, so a larger (less
-                // negative) z is nearer the camera.
-                return { atom, depth: worldPosition.applyMatrix4(viewMatrix).z };
+                // negative) z is nearer the camera. Rank by the front surface,
+                // not the centre: a large or elongated atom with a farther
+                // centre can still be the visually frontmost overlapping atom.
+                const centerDepth = worldPosition.applyMatrix4(viewMatrix).z;
+                localViewDirection.copy(worldViewDirection);
+                if (atom.parent) {
+                    parentInverse.copy(atom.parent.matrixWorld).invert();
+                    localViewDirection.transformDirection(parentInverse);
+                }
+                const surfaceDistance = atom.getSurfaceDistanceAlong?.(localViewDirection) || 0;
+                let frontDepth = centerDepth + surfaceDistance;
+                atom.traverse(child => {
+                    if (!child.visible || !child.geometry) {
+                        return;
+                    }
+                    if (!child.geometry.boundingSphere) {
+                        child.geometry.computeBoundingSphere();
+                    }
+                    const sphere = child.geometry.boundingSphere;
+                    if (!sphere) {
+                        return;
+                    }
+                    childWorldPosition.copy(sphere.center)
+                        .applyMatrix4(child.matrixWorld)
+                        .applyMatrix4(viewMatrix);
+                    child.matrixWorld.decompose(
+                        worldPosition,
+                        childWorldQuaternion,
+                        childWorldScale,
+                    );
+                    const radius = sphere.radius * Math.max(
+                        childWorldScale.x, childWorldScale.y, childWorldScale.z,
+                    );
+                    frontDepth = Math.max(frontDepth, childWorldPosition.z + radius);
+                });
+                return { atom, depth: frontDepth };
             })
             .sort((a, b) => b.depth - a.depth);
 
         ranked.forEach(({ atom }, index) => {
-            atom.renderOrder = index;
-            for (const child of atom.children) {
+            // Treat the atom as one render unit: shells, rings, outlines and
+            // cross-sections must not interleave with another atom's passes.
+            atom.traverse(child => {
                 child.renderOrder = index;
-            }
+            });
             // The depth cap draws last within the atom, after its own shells
             // and cross-section, but before any farther atom.
             if (atom.cutawayDepthCap) {
                 atom.cutawayDepthCap.renderOrder = index + 0.5;
+            }
+            // Cutaway modes finish each ellipsoid with a stencil silhouette
+            // mask. Only later ellipsoid materials test it; bonds, density and
+            // other scene objects retain ordinary physical depth behavior.
+            if (atom.cutawayOcclusionMask) {
+                atom.cutawayOcclusionMask.renderOrder = index + 0.75;
             }
         });
     }

@@ -1469,6 +1469,63 @@ describe('ORTEPAtom and subclasses', () => {
             cutawayCache.dispose();
         });
 
+        test('adds an ellipsoid-only expanded stencil mask in publication mode', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-2d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C', true);
+            const ortepAtom = new ORTEPAniAtom(
+                mockAtom,
+                mockUnitCell,
+                cutawayCache.geometries.atom,
+                atomMaterial,
+                cutawayCache.geometries.adpRingSet,
+                ringMaterial,
+                {
+                    octantGeometry: cutawayCache.geometries.atomOctant,
+                    emptyGeometry: cutawayCache.geometries.emptyAtom,
+                    planeGeometry: cutawayCache.geometries.cutawayPlanes,
+                    planeMaterial,
+                    depthCapMaterial: cutawayCache.materials.cutawayDepthCap,
+                    occlusionGeometry: cutawayCache.geometries.atom,
+                    occlusionMaterial: cutawayCache.materials.cutawayOcclusion,
+                    hysteresis: 0.025,
+                },
+            );
+
+            const mask = ortepAtom.cutawayOcclusionMask;
+            expect(mask).toBeInstanceOf(THREE.Mesh);
+            expect(mask.geometry).toBe(cutawayCache.geometries.atom);
+            expect(mask.material.name).toBe('cutaway-ellipsoid-occlusion-mask');
+            expect(mask.material.side).toBe(THREE.BackSide);
+            expect(mask.material.colorWrite).toBe(false);
+            expect(mask.material.depthWrite).toBe(false);
+            expect(mask.material.depthTest).toBe(false);
+            expect(mask.material.stencilWrite).toBe(true);
+            expect(mask.material.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(mask.material.stencilZPass).toBe(THREE.IncrementWrapStencilOp);
+            expect(atomMaterial.stencilWrite).toBe(true);
+            expect(atomMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(ringMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(planeMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(cutawayCache.materials.bond.stencilWrite).toBe(false);
+            expect(mask.renderOrder).toBeGreaterThan(ortepAtom.cutawayDepthCap.renderOrder);
+            cutawayCache.dispose();
+        });
+
+        test('uses the same unexpanded ellipsoid-only stencil in cutout 3D', () => {
+            const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
+            const [atomMaterial, ringMaterial, planeMaterial] =
+                cutawayCache.getAtomMaterials('C', true);
+
+            expect(cutawayCache.materials.cutawayOcclusion).toBeDefined();
+            expect(cutawayCache.materials.cutawayOcclusion.uniforms.uOutlinePx.value).toBe(0);
+            expect(atomMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(ringMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(planeMaterial.stencilFunc).toBe(THREE.EqualStencilFunc);
+            expect(cutawayCache.materials.bond.stencilWrite).toBe(false);
+            cutawayCache.dispose();
+        });
+
         test('omits the depth cap when no cap material is provided', () => {
             const cutawayCache = new GeometryMaterialCache({ renderStyle: 'cutout-3d' });
             const [atomMaterial, ringMaterial, planeMaterial] =

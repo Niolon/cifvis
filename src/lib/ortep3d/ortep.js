@@ -337,6 +337,67 @@ function applyScreenSpaceOutline(material, pixelUniform, viewportUniform) {
     material.customProgramCacheKey = () => 'screen-space-outline-v1';
 }
 
+/**
+ * Enables the cutaway ellipsoid stencil test on a visible-pass material.
+ * Only ellipsoid materials use this test; bonds and isosurfaces deliberately
+ * retain their ordinary depth behavior.
+ * @param {THREE.Material} material - Ellipsoid pass material
+ */
+function enableCutawayEllipsoidStencil(material) {
+    material.stencilWrite = true;
+    material.stencilRef = 0;
+    material.stencilFunc = THREE.EqualStencilFunc;
+    material.stencilFail = THREE.KeepStencilOp;
+    material.stencilZFail = THREE.KeepStencilOp;
+    material.stencilZPass = THREE.KeepStencilOp;
+}
+
+/**
+ * Creates a stencil-only ellipsoid silhouette for cutaway rendering.
+ * Each completed ellipsoid claims its pixels so later ellipsoids cannot intersect
+ * it, without changing the depth buffer used by bonds and isosurfaces.
+ * @param {{value: number}} pixelUniform - Outline half-width in CSS pixels
+ * @param {{value: THREE.Vector2}} viewportUniform - Shared CSS viewport size
+ * @returns {THREE.ShaderMaterial} Stencil-only cutaway occlusion material
+ */
+function createCutawayOcclusionMaterial(pixelUniform, viewportUniform) {
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            uOutlinePx: pixelUniform,
+            uOutlineViewport: viewportUniform,
+        },
+        vertexShader: `
+            uniform float uOutlinePx;
+            uniform vec2 uOutlineViewport;
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vec4 clipPosition = projectionMatrix * mvPosition;
+                vec3 clipNormal = (
+                    projectionMatrix * vec4(normalize(normalMatrix * normal), 0.0)
+                ).xyz;
+                vec2 outlineDir = length(clipNormal.xy) > 1e-6
+                    ? normalize(clipNormal.xy) : vec2(0.0);
+                clipPosition.xy += outlineDir * uOutlinePx * 2.0
+                    * clipPosition.w / uOutlineViewport;
+                gl_Position = clipPosition;
+            }
+        `,
+        fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }',
+        side: THREE.BackSide,
+        colorWrite: false,
+        depthWrite: false,
+        depthTest: false,
+        stencilWrite: true,
+        stencilRef: 0,
+        stencilFunc: THREE.EqualStencilFunc,
+        stencilFail: THREE.KeepStencilOp,
+        stencilZFail: THREE.KeepStencilOp,
+        stencilZPass: THREE.IncrementWrapStencilOp,
+    });
+    material.name = 'cutaway-ellipsoid-occlusion-mask';
+    return material;
+}
+
 // Draw order for cutaway atoms. So that a nearer atom occludes a farther
 // atom's carved-open interior (its cross-section and cavity), each atom's
 // planes and depth cap are re-ordered per frame by view depth
@@ -345,6 +406,7 @@ function applyScreenSpaceOutline(material, pixelUniform, viewportUniform) {
 // cavity in depth. These are only the pre-sort defaults.
 const CUTAWAY_PLANE_RENDER_ORDER = 1;
 const CUTAWAY_CAP_RENDER_ORDER = 2;
+const CUTAWAY_OCCLUSION_RENDER_ORDER = 3;
 const BOND_RENDER_ORDER = 1e6;
 
 /**
@@ -938,6 +1000,14 @@ export class GeometryMaterialCache {
                 depthWrite: true,
                 depthTest: true,
             });
+            if (this.options.sealCutoutCavity) {
+                enableCutawayEllipsoidStencil(this.materials.cutawayDepthCap);
+                this.materials.cutawayOcclusion = createCutawayOcclusionMaterial(
+                    this.options.renderStyle === 'cutout-2d'
+                        ? this.outlinePixels.atom : { value: 0 },
+                    this.outlineViewport,
+                );
+            }
         }
 
         // ADP rings are an ellipsoid presentation detail, never PEANUT geometry.
@@ -1032,9 +1102,11 @@ export class GeometryMaterialCache {
     /**
      * Gets or creates cached materials for given atom type.
      * @param {string} atomType - Chemical element symbol
+     * @param {boolean} [cutawayEllipsoid] - Restrict these passes to pixels
+     *   not already claimed by a nearer cutaway ellipsoid
      * @returns {THREE.Material[]} Array containing [atomMaterial, ringMaterial]
      */
-    getAtomMaterials(atomType) {
+    getAtomMaterials(atomType, cutawayEllipsoid = false) {
         let elementType = atomType;
         if (!this.options.elementProperties[elementType]) {
             elementType = inferElementFromLabel(atomType);
@@ -1042,7 +1114,9 @@ export class GeometryMaterialCache {
         this.validateElementType(elementType);
 
         if (this.options.renderStyle === 'cutout-2d') {
-            const plotKey = `${elementType}_2d_materials`;
+            const plotKey = `${elementType}_2d_materials${
+                cutawayEllipsoid ? '_ellipsoid' : ''
+            }`;
             if (!this.elementMaterials[plotKey]) {
                 const elementProperty = this.options.elementProperties[elementType];
                 const rawElementLineColor = elementProperty.atomColor;
@@ -1066,6 +1140,10 @@ export class GeometryMaterialCache {
                     this.options,
                     elementLineColor,
                 );
+                if (cutawayEllipsoid) {
+                    [atomMaterial, ringMaterial, hatchMaterial, outlineMaterial]
+                        .forEach(enableCutawayEllipsoidStencil);
+                }
                 this.elementMaterials[plotKey] = [
                     atomMaterial,
                     ringMaterial,
@@ -1076,7 +1154,7 @@ export class GeometryMaterialCache {
             return this.elementMaterials[plotKey];
         }
 
-        const key = `${elementType}_materials`;
+        const key = `${elementType}_materials${cutawayEllipsoid ? '_ellipsoid' : ''}`;
         if (!this.elementMaterials[key]) {
             const elementProperty = this.options.elementProperties[elementType];
 
@@ -1097,6 +1175,9 @@ export class GeometryMaterialCache {
                 this.elementMaterials[key].push(
                     createCutawayPlaneMaterial(elementProperty, this.options),
                 );
+            }
+            if (cutawayEllipsoid) {
+                this.elementMaterials[key].forEach(enableCutawayEllipsoidStencil);
             }
         }
 
@@ -1422,8 +1503,9 @@ export class ORTEP3JsStructure {
             // on camera direction, which isn't a good fit for instancing, so
             // they keep using one mesh per atom.
             for (const atom of this.crystalStructure.atoms) {
+                const isCutawayEllipsoid = atom.adp instanceof UAnisoADP;
                 const [atomMaterial, ringMaterial, cutawayMaterial] =
-                    this.cache.getAtomMaterials(atom.atomType);
+                    this.cache.getAtomMaterials(atom.atomType, isCutawayEllipsoid);
 
                 let atom3D;
                 if (atom.adp instanceof UAnisoADP) {
@@ -1441,6 +1523,8 @@ export class ORTEP3JsStructure {
                             planeMaterial: cutawayMaterial,
                             depthCapMaterial: this.options.sealCutoutCavity
                                 ? this.cache.materials.cutawayDepthCap : null,
+                            occlusionGeometry: this.cache.geometries.atom,
+                            occlusionMaterial: this.cache.materials.cutawayOcclusion ?? null,
                             hysteresis: this.options.atomCutawayHysteresis,
                         },
                     );
@@ -2182,6 +2266,20 @@ export class ORTEPAniAtom extends ORTEPAtom {
             depthCap.userData = { selectable: false, type: 'ellipsoid-cutaway-depth-cap' };
             this.add(depthCap);
             this.cutawayDepthCap = depthCap;
+        }
+
+        if (cutaway.occlusionMaterial) {
+            const occlusionMask = new THREE.Mesh(
+                cutaway.occlusionGeometry,
+                cutaway.occlusionMaterial,
+            );
+            occlusionMask.renderOrder = CUTAWAY_OCCLUSION_RENDER_ORDER;
+            occlusionMask.userData = {
+                selectable: false,
+                type: 'ellipsoid-publication-occlusion-mask',
+            };
+            this.add(occlusionMask);
+            this.cutawayOcclusionMask = occlusionMask;
         }
 
         this.setMissingOctant(7);
