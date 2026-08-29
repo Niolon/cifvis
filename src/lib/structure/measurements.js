@@ -1,4 +1,5 @@
 import * as math from '../math-lite.js';
+import { formatAtomLabel } from '../formatting.js';
 
 const DEGREES_PER_RADIAN = 180 / Math.PI;
 
@@ -123,18 +124,24 @@ export function measureAtoms(atoms, cell) {
 
 /**
  * @param {object} measurement - Measurement to format.
+ * @param {object} [options] - Display formatting options.
+ * @param {boolean} [options.subscriptNonElement] - Whether numeric non-element parts use subscripts.
  * @returns {string} Compact human-readable result.
  */
-export function formatMeasurement(measurement) {
+export function formatMeasurement(measurement, options = {}) {
     const value = measurement.value.toFixed(measurement.unit === '°' ? 2 : 3);
     if (measurement.type === 'plane-distance') {
-        return `${measurement.probeLabel} to mean plane ` +
-            `(${measurement.planeLabels.join(', ')}): ${value} ${measurement.unit}`;
+        const probeLabel = formatAtomLabel(measurement.probeLabel, options.subscriptNonElement);
+        const planeLabels = measurement.planeLabels.map(label =>
+            formatAtomLabel(label, options.subscriptNonElement));
+        return `${probeLabel} to mean plane ` +
+            `(${planeLabels.join(', ')}): ${value} ${measurement.unit}`;
     }
     const name = measurement.type === 'distance' ? 'Distance' :
         measurement.type === 'angle' ? 'Angle' : 'Torsion';
     const unitSeparator = measurement.unit === '°' ? '' : ' ';
-    return `${name} ${measurement.labels.join('–')}: ${value}${unitSeparator}${measurement.unit}`;
+    const labels = measurement.labels.map(label => formatAtomLabel(label, options.subscriptNonElement));
+    return `${name} ${labels.join('–')}: ${value}${unitSeparator}${measurement.unit}`;
 }
 
 /**

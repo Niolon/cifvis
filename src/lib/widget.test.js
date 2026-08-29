@@ -29,7 +29,7 @@ vi.mock('./ortep3d/structure-settings.js', () => ({
 }));
 
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
-import { formatValueEsd } from './formatting.js';
+import { atomLabelParts, formatValueEsd } from './formatting.js';
 import { CifViewWidget } from './widget.js';
 import { BondGenerator, AtomLabelFilter } from './structure/structure-modifiers/fixers.js';
 import { DisorderFilter, HydrogenFilter, SymmetryGrower } from './structure/structure-modifiers/modes.js';
@@ -91,6 +91,7 @@ describe('CifViewWidget', () => {
                 currentCifContent: 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0',
                 currentCifBlock: 0,
             },
+            options: { atomLabels: { subscriptNonElement: false } },
             selections: {
                 onChange: vi.fn(callback => {
                     selectionCallbacks.add(callback);
@@ -180,6 +181,11 @@ describe('CifViewWidget', () => {
 
         // Mock formatValueEsd
         formatValueEsd.mockImplementation((value) => `${value} ± SU`);
+        atomLabelParts.mockImplementation((label, subscriptNonElement = false) => {
+            const match = subscriptNonElement && String(label).match(/^([A-Z][a-z]?)(.*)$/);
+            return match ? { element: match[1], nonElement: match[2] } :
+                { element: String(label), nonElement: '' };
+        });
     });
 
     afterEach(() => {
@@ -328,6 +334,25 @@ describe('CifViewWidget', () => {
         widget.querySelector('.measurement-dismiss').click();
         expect(mockCrystalViewer.clearMeasurement).toHaveBeenCalledWith('measurement-1');
         expect(widget.querySelector('.crystal-caption').textContent).not.toContain('Distance C1–O1');
+    });
+
+    test('applies global atom-label subscripts to selections and measurements', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0');
+        await new Promise(resolve => setTimeout(resolve, 10));
+        mockCrystalViewer.options.atomLabels.subscriptNonElement = true;
+        mockSelectionCallback([
+            { type: 'atom', data: { label: 'C1', uniqueId: 'C1|1_555' }, color: 0xff0000 },
+            { type: 'atom', data: { label: 'O1', uniqueId: 'O1|1_555' }, color: 0x00ff00 },
+        ]);
+        expect(widget.querySelector('.crystal-caption').textContent).toContain('C1');
+        expect(widget.querySelector('.crystal-caption .atom-name sub').textContent).toBe('1');
+        widget.querySelector('.measurement-button').click();
+        expect(widget.querySelector('.crystal-caption').textContent)
+            .toContain('Distance C1–O1: 1.234 Å');
+        expect([...widget.querySelectorAll('.measurement-caption .atom-name sub')]
+            .map(element => element.textContent)).toEqual(['1', '1']);
     });
 
     test('updates caption with selections', async () => {

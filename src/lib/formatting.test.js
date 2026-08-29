@@ -1,4 +1,18 @@
-import { formatValueEsd, roundToDecimals } from './formatting.js';
+import { atomLabelParts, formatAtomLabel, formatValueEsd, roundToDecimals } from './formatting.js';
+
+describe('formatAtomLabel', () => {
+    test('optionally renders every label digit as a Unicode subscript', () => {
+        expect(formatAtomLabel('C1')).toBe('C1');
+        expect(formatAtomLabel('C12A', true)).toBe('C₁₂A');
+        expect(formatAtomLabel('Fe3_2', true)).toBe('Fe₃_₂');
+        expect(formatAtomLabel('batch 12', true)).toBe('batch 12');
+    });
+
+    test('separates the complete non-element identifier for rich typography', () => {
+        expect(atomLabelParts('Si1B', true)).toEqual({ element: 'Si', nonElement: '1B' });
+        expect(atomLabelParts('Si1B')).toEqual({ element: 'Si1B', nonElement: '' });
+    });
+});
 
 describe('roundToDecimals', () => {
     test('rounds to specified positive decimal places', () => {

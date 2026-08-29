@@ -105,6 +105,9 @@ function isValidAtomLabelSelection(show) {
  * @param {object} options - Partial atom-label options
  */
 function validateAtomLabelOptions(options) {
+    if (options.subscriptNonElement !== undefined && typeof options.subscriptNonElement !== 'boolean') {
+        throw new Error('atomLabels.subscriptNonElement must be a boolean');
+    }
     if (options.placementMode !== undefined &&
         !VALID_ATOM_LABEL_PLACEMENT_MODES.includes(options.placementMode)) {
         throw new Error(
@@ -3267,6 +3270,8 @@ export class CrystalViewer {
     updateAtomLabelOptions(options) {
         validateAtomLabelOptions(options);
         const nextOptions = definedOptions(options);
+        const subscriptFormattingChanged = nextOptions.subscriptNonElement !== undefined &&
+            nextOptions.subscriptNonElement !== this.options.atomLabels.subscriptNonElement;
         this.options.atomLabels = {
             ...this.options.atomLabels,
             ...nextOptions,
@@ -3276,6 +3281,10 @@ export class CrystalViewer {
             },
         };
         this.atomLabelManager.setOptions(this.options.atomLabels);
+        if (subscriptFormattingChanged) {
+            this.selections.notifyCallbacks();
+            this.notifyMeasurementCallbacks();
+        }
         this.requestRender();
     }
 

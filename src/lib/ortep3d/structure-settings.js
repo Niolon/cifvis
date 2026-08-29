@@ -264,6 +264,8 @@ export default {
     // retain their current appearance and rendering cost.
     'atomLabels': {
         'show': 'none',
+        // Display-only formatting; raw CIF labels and unique IDs remain unchanged.
+        'subscriptNonElement': false,
         'placementMode': 'auto-omit',
         'text': {},
         'fontSize': 14,

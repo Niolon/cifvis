@@ -116,6 +116,10 @@ export const descriptions = {
         description: '<code>none</code>, <code>all</code>, <code>non-hydrogen</code>, or an array ' +
             'of atom selectors/specifications.',
     },
+    'atomLabels.subscriptNonElement': 'Displays the complete non-element identifier of atom labels ' +
+        'as a subscript, for example the <code>1B</code> in <code>Si1B</code>. This is ' +
+        'presentation-only; raw CIF ' +
+        'labels, unique IDs, selectors, and measurement data are unchanged.',
     'atomLabels.placementMode': '<code>auto-omit</code> adaptively uses quality placement for ' +
         'ordinary visible workloads and performance placement for dense ones; ' +
         '<code>quality-omit</code> forces exact candidate evaluation with repair; ' +

@@ -1,7 +1,7 @@
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
 import { MeasurementControls } from './measurement-controls.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
-import { formatValueEsd } from './formatting.js';
+import { atomLabelParts, formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
 import { getDisorderIcon } from './disorder-icons.js';
 import {
@@ -930,6 +930,17 @@ export class CifViewWidget extends HTMLElement {
     }
 
     /**
+     * Formats an atom label as safe typographic HTML.
+     * @param {string} label - Raw atom label.
+     * @returns {string} Safe label HTML.
+     */
+    atomLabelHTML(label) {
+        const parts = atomLabelParts(label, this.viewer.options?.atomLabels?.subscriptNonElement);
+        return this.sanitizeHTML(parts.element) + (parts.nonElement ?
+            `<sub>${this.sanitizeHTML(parts.nonElement)}</sub>` : '');
+    }
+
+    /**
      * Formats one atom as a hover-linked caption span.
      * @param {string} label - Atom label.
      * @param {string} atomId - Symmetry-resolved atom ID.
@@ -937,9 +948,10 @@ export class CifViewWidget extends HTMLElement {
      * @returns {string} Safe HTML span.
      */
     measurementAtomHTML(label, atomId, color) {
+        const displayLabel = this.atomLabelHTML(label);
         return `<span class="atom-name" data-atom-id="${this.sanitizeHTML(atomId)}" ` +
             `data-cifvis-atom-id="${this.sanitizeHTML(atomId)}" ` +
-            `data-cifvis-hover-color="${color}">${this.sanitizeHTML(label)}</span>`;
+            `data-cifvis-hover-color="${color}">${displayLabel}</span>`;
     }
 
     /**
@@ -1003,13 +1015,21 @@ export class CifViewWidget extends HTMLElement {
                 let info = '';
                 if (selection.type === 'atom') {
                     const atomId = this.sanitizeHTML(selection.data.uniqueId);
-                    const label = this.sanitizeHTML(selection.data.label);
+                    const parts = atomLabelParts(
+                        selection.data.label, this.viewer.options?.atomLabels?.subscriptNonElement,
+                    );
+                    const label = this.sanitizeHTML(parts.element) + (parts.nonElement ?
+                        `<sub>${this.sanitizeHTML(parts.nonElement)}</sub>` : '');
                     info = `<span class="atom-name" data-atom-id="${atomId}">${label}</span>`;
                 } else if (selection.type === 'bond') {
                     const bondLengthString = formatValueEsd(selection.data.bondLength, selection.data.bondLengthSU);
-                    info = `${selection.data.atom1Label}-${selection.data.atom2Label}: ${bondLengthString} Å`;
+                    const atom1 = selection.data.atom1Label;
+                    const atom2 = selection.data.atom2Label;
+                    info = `${this.atomLabelHTML(atom1)}-${this.atomLabelHTML(atom2)}: ${bondLengthString} Å`;
                 } else if (selection.type === 'hbond') {
-                    info = `${selection.data.donorAtomLabel}→${selection.data.acceptorAtomLabel}`;
+                    const donor = selection.data.donorAtomLabel;
+                    const acceptor = selection.data.acceptorAtomLabel;
+                    info = `${this.atomLabelHTML(donor)}→${this.atomLabelHTML(acceptor)}`;
                 }
                 return `<span style="color:${color}">${info}</span>`;
             }).join(', ');

@@ -545,6 +545,11 @@
       "default": "\"none\""
     },
     {
+      "path": "atomLabels.subscriptNonElement",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "atomLabels.placementMode",
       "type": "String",
       "default": "\"auto-omit\""

@@ -12,6 +12,13 @@ describe('measureAtoms', () => {
         expect(formatMeasurement(result)).toBe('Distance A–B: 5.000 Å');
     });
 
+    test('optionally formats atom-label numbers as subscripts', () => {
+        const result = measureAtoms([atom('C1', 0, 0, 0), atom('O12', 3, 4, 0)], cell);
+        expect(formatMeasurement(result, { subscriptNonElement: true }))
+            .toBe('Distance C₁–O₁₂: 5.000 Å');
+        expect(result.labels).toEqual(['C1', 'O12']);
+    });
+
     test('measures a three-atom angle at the middle atom', () => {
         const result = measureAtoms([
             atom('A', 1, 0, 0), atom('B', 0, 0, 0), atom('C', 0, 1, 0),

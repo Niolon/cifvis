@@ -6,7 +6,7 @@ appearance and rendering cost, and placement is **collision-free**: text never o
 other text, atoms, or (by preference) bonds. If there is no acceptable spot, a label is
 omitted or given a callout rather than drawn confusingly.
 
-<CifDemo src="/cif/urea.cif" options='{"atomLabels":{"show":"non-hydrogen"}}' hydrogen-mode="constant" caption="Urea with non-hydrogen labels placed automatically." style="aspect-ratio: 16 / 9;" />
+<CifDemo src="/cif/sucrose.cif" options='{"atomLabels":{"show":"non-hydrogen","subscriptNonElement":true}}' hydrogen-mode="constant" caption="Sucrose with non-hydrogen labels and subscripted identifiers." style="aspect-ratio: 16 / 9;" />
 
 ## Activating labels
 
@@ -18,6 +18,7 @@ import { CrystalViewer } from 'cifvis';
 const viewer = new CrystalViewer(container, {
     atomLabels: {
         show: 'non-hydrogen',      // 'none' | 'all' | 'non-hydrogen' | selector array
+        subscriptNonElement: true, // C₁ instead of C1 in built-in label displays
         placementMode: 'auto-omit',
     },
 });
@@ -45,6 +46,14 @@ viewer.getAtomLabelLayout();                   // placed + omitted labels
 
 In the widget, the same is available declaratively through the `atom-labels` attribute
 and `options.atomLabels` — see [Labels in the widget](./widget.md).
+
+`subscriptNonElement` is a global presentation choice for atom labels. The complete label
+identifier after the element symbol is lowered, so both `1` and `B` are subscript in `Si1B`. It affects canvas
+labels, supplied measurement controls, widget captions, and playground selection cards,
+but does not change raw CIF labels, unique IDs, selectors, or returned measurement data.
+Custom measurement renderers receive raw labels. The exported
+`atomLabelParts(label, true)` helper returns `{ element: 'Si', nonElement: '1B' }`, so
+custom DOM renderers can put the complete `nonElement` value in a `<sub>` element.
 
 ## Choosing a placement mode
 

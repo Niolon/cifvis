@@ -61,8 +61,9 @@ controls.dispose();
 
 The default renderer creates compact, wrapping result chips. Style its stable
 `cifvis-measurement-*` classes or the `--cifvis-measurement-*` CSS custom properties to
-match the surrounding application. Disposing the controller never removes scientific
-measurement state from the viewer.
+match the surrounding application. It also follows
+`atomLabels.subscriptNonElement`, displaying `C₁` instead of `C1` when enabled. Disposing
+the controller never removes scientific measurement state from the viewer.
 
 ## Custom result markup
 
@@ -102,6 +103,8 @@ controls.bindResults(document.querySelector('#measurements'), {
 
 Use DOM construction or correctly escaped framework output for untrusted labels; the
 supplied renderer uses `textContent` and does not interpret atom labels as HTML.
+Custom renderers receive raw CIF labels; import `atomLabelParts` and place its
+`nonElement` result in a `<sub>` when they should follow the viewer's subscript convention.
 
 ## Headless framework integration
 
