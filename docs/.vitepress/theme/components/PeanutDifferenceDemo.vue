@@ -26,31 +26,29 @@ async function createViewer(style, viewState = null) {
 
     viewer?.dispose();
     viewer = null;
-    const nextViewer = new CrystalViewer(container.value, {
+    const newViewer = new CrystalViewer(container.value, {
         adpRepresentation: 'rmsd-peanut',
         renderStyle: style,
         peanutScale: 3,
         atomLabels: { show: 'all', colorMode: 'atom' },
     });
-    viewer = nextViewer;
+    // Assign before awaiting so onUnmounted can dispose an in-flight viewer.
+    viewer = newViewer;
     try {
-        await nextViewer.loadStructure(differenceStructure);
+        await newViewer.loadStructure(differenceStructure);
     } catch (error) {
-        if (viewer === nextViewer) {
+        if (viewer === newViewer) {
+            newViewer.dispose();
             viewer = null;
-            nextViewer.dispose();
         }
         throw error;
     }
-    if (unmounted || !container.value || viewer !== nextViewer) {
-        if (viewer === nextViewer) {
-            viewer = null;
-            nextViewer.dispose();
-        }
+    // If navigation happened during loading, onUnmounted already disposed it.
+    if (unmounted) {
         return false;
     }
     if (viewState) {
-        nextViewer.setViewState(viewState);
+        newViewer.setViewState(viewState);
     }
     return true;
 }
