@@ -255,6 +255,8 @@ function createMeasurementResult(measurement) {
         viewer.clearMeasurement(measurement.id);
     });
     result.append(text, close);
+    result.addEventListener('mouseenter', () => viewer.setHoveredMeasurement(measurement.id));
+    result.addEventListener('mouseleave', () => viewer.setHoveredMeasurement(null));
     return result;
 }
 
@@ -312,6 +314,7 @@ function appendMeasurementDescription(parent, measurement) {
  * @param {object[]} measurements - Current viewer measurements.
  */
 function renderMeasurementResults(measurements) {
+    viewer.setHoveredMeasurement(null);
     const container = document.getElementById('selection-container');
     for (const result of container.querySelectorAll('.measurement-result')) {
         result.remove();

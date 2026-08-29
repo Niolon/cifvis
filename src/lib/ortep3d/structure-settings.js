@@ -142,6 +142,9 @@ export default {
         ],
     },
     'measurement': {
+        // Physical radii in Å for the hovered measurement overlay.
+        'lineRadius': 0.075,
+        'markerRadius': 0.11,
         // High-chroma colours kept distinct from the muted selection palette.
         'markerColors': [
             0x00e5ff,

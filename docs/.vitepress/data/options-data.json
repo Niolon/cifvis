@@ -78,6 +78,16 @@
       "default": "[2062260, 16744206, 2924588, 14034728, 9725885, 9197131, 14907330, 8355711, 12369186, 1556175]"
     },
     {
+      "path": "measurement.lineRadius",
+      "type": "Number",
+      "default": "0.075"
+    },
+    {
+      "path": "measurement.markerRadius",
+      "type": "Number",
+      "default": "0.11"
+    },
+    {
       "path": "measurement.markerColors",
       "type": "Array",
       "default": "[58879, 16723349, 11988992, 16766464, 8146431]"

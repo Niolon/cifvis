@@ -42,6 +42,8 @@ export const descriptions = {
         description: 'Non-empty array of numeric hex colours cycled across persistent measurements. ' +
             'Hovering a measured atom name uses its measurement colour.',
     },
+    'measurement.lineRadius': 'Physical radius of hovered measurement connectors, in Å.',
+    'measurement.markerRadius': 'Physical radius of hovered measurement endpoint markers, in Å.',
 
     // Interaction
     'interaction.rotationSpeed': 'Speed of rotation when dragging.',

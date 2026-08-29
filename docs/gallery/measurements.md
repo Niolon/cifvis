@@ -7,6 +7,21 @@ angles; in **plane** mode the first three atoms define a plane and every further
 gets its signed distance to it. Typical applications: structure analysis front-ends,
 teaching molecular geometry, quick checks without leaving the browser.
 
+Persistent measurement geometry stays hidden until its result is hovered. Revealing only one
+measurement at a time keeps dense and disordered structures readable.
+
+The widget can create measurements immediately after loading through its JSON options:
+
+```html
+<cifview-widget
+  src="structure.cif"
+  measurements='[["C1","C2"],["C1","C2","C7"]]'
+  options='{"measurement":{"lineRadius":0.075,"markerRadius":0.11}}'>
+</cifview-widget>
+```
+
+Each inner array is ordered and may contain plain atom labels or symmetry-resolved unique IDs.
+
 <MeasureDemo />
 
 ## How it works

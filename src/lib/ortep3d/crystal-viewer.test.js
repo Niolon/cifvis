@@ -162,6 +162,15 @@ describe('CrystalViewer rendering option validation', () => {
             'measurement.markerColors must be a non-empty array of numeric hex colours',
         );
     });
+
+    test.each(['lineRadius', 'markerRadius'])(
+        'rejects an invalid measurement %s', option => {
+            expect(() => new CrystalViewer({}, {
+                measurement: { [option]: 0 },
+            })).toThrow(`measurement.${option} must be a finite number greater than 0`);
+        },
+    );
+
 });
 
 describe('CrystalViewer measurement overlays', () => {
@@ -186,9 +195,12 @@ describe('CrystalViewer measurement overlays', () => {
         viewer.displayMeasurement(measurement);
         expect(viewer.currentMeasurement).toBe(measurement);
         const group = viewer.measurementGroups.get(measurement.id);
+        expect(group.visible).toBe(false);
         expect(group.children[0]).toBeInstanceOf(THREE.Mesh);
         expect(group.children[0].material.color.getHex()).toBe(0x00e5ff);
         expect(group.children[0].geometry.parameters.radiusTop).toBeGreaterThan(0.05);
+        expect(group.children[0].userData.measurementLineRadius).toBe(0.075);
+        expect(group.children[1].userData.measurementMarkerRadius).toBe(0.11);
         expect(group.children[0].renderOrder).toBeGreaterThan(1e6 + 1);
         expect(group.children[0].material.depthTest).toBe(false);
         expect(group.children[0].material.depthWrite).toBe(false);
@@ -281,6 +293,57 @@ describe('CrystalViewer measurement overlays', () => {
         viewer.clearMeasurement();
     });
 
+    test('reveals only the hovered measurement and hides all overlays on mouse-out', () => {
+        const first = new THREE.Group();
+        const second = new THREE.Group();
+        first.visible = false;
+        second.visible = false;
+        const viewer = {
+            measurementGroups: new Map([
+                ['measurement-1', first],
+                ['measurement-2', second],
+            ]),
+            requestRender: vi.fn(),
+            setHoveredMeasurement: CrystalViewer.prototype.setHoveredMeasurement,
+        };
+
+        viewer.setHoveredMeasurement('measurement-1');
+        expect(first.visible).toBe(true);
+        expect(second.visible).toBe(false);
+
+        viewer.setHoveredMeasurement('measurement-2');
+        expect(first.visible).toBe(false);
+        expect(second.visible).toBe(true);
+
+        viewer.setHoveredMeasurement(null);
+        expect(first.visible).toBe(false);
+        expect(second.visible).toBe(false);
+        expect(viewer.requestRender).toHaveBeenCalledTimes(3);
+    });
+
+    test('creates a measurement from IDs without changing selection state', () => {
+        const atom = (label, uniqueId, x) => ({
+            label,
+            uniqueId,
+            position: { toCartesian: () => ({ x, y: 0, z: 0 }) },
+        });
+        const first = atom('C1', 'C1|1_555', 0);
+        const symmetryCopy = atom('C1', 'C1|2_555', 1);
+        const oxygen = atom('O1', 'O1|1_555', 2);
+        const viewer = {
+            state: { displayStructure: { atoms: [first, symmetryCopy, oxygen], cell: {} } },
+            displayMeasurement: vi.fn(),
+            measureAtomsById: CrystalViewer.prototype.measureAtomsById,
+        };
+
+        const measurement = viewer.measureAtomsById(['C1|2_555', 'O1']);
+
+        expect(measurement.atomIds).toEqual(['C1|2_555', 'O1|1_555']);
+        expect(viewer.displayMeasurement).toHaveBeenCalledWith(measurement);
+        expect(() => viewer.measureAtomsById(['missing', 'O1']))
+            .toThrow('Could not find displayed atom "missing"');
+    });
+
     test('uses a distinct palette from selection markers', () => {
         const viewer = {
             moleculeContainer: new THREE.Group(),
@@ -366,7 +429,13 @@ describe('CrystalViewer live measurement options', () => {
             new THREE.SphereGeometry(1),
             new THREE.MeshBasicMaterial({ color: 0x00e5ff }),
         );
-        group.add(overlay);
+        overlay.userData.measurementMarkerRadius = 0.11;
+        const line = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.075, 0.075, 1),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff }),
+        );
+        line.userData.measurementLineRadius = 0.075;
+        group.add(overlay, line);
         const measurement = { id: 'measurement-1', color: 0x00e5ff };
         const viewer = Object.create(CrystalViewer.prototype);
         viewer.options = { measurement: { markerColors: [...defaultSettings.measurement.markerColors] } };
@@ -376,16 +445,25 @@ describe('CrystalViewer live measurement options', () => {
         viewer.notifyMeasurementCallbacks = vi.fn();
         viewer.requestRender = vi.fn();
 
-        viewer.updateMeasurementOptions({ markerColors: [0x123456] });
+        viewer.updateMeasurementOptions({
+            markerColors: [0x123456], lineRadius: 0.15, markerRadius: 0.22,
+        });
 
         expect(measurement.color).toBe(0x123456);
         expect(overlay.material.color.getHex()).toBe(0x123456);
+        expect(line.material.color.getHex()).toBe(0x123456);
+        expect(line.scale.x).toBeCloseTo(2);
+        expect(line.scale.z).toBeCloseTo(2);
+        expect(overlay.scale.x).toBeCloseTo(2);
         expect(viewer.setHoveredAtom).toHaveBeenCalledWith(null);
         expect(viewer.notifyMeasurementCallbacks).toHaveBeenCalledOnce();
         expect(viewer.requestRender).toHaveBeenCalledOnce();
         overlay.geometry.dispose();
         overlay.material.dispose();
+        line.geometry.dispose();
+        line.material.dispose();
     });
+
 });
 
 /**

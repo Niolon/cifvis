@@ -27,6 +27,7 @@ the widget falls back to an applicable mode.
 | `symmetry-mode` | `none`, `hbonds`, `fragment`, `fragment-hbonds`, `cell`, `fragment-cell` | Controls symmetry-generated atoms and bonds. Fragment modes grow through bonds, H-bonds, or both; cell modes display the complete unit cell, optionally with connected fragments. |
 | `filtered-atoms` | comma-separated labels/ranges | Excludes atom labels. Inclusive ranges use `>`, for example `C1,C5>C12`. See [Filtered atoms](./filtered-atoms.md). |
 | `atom-labels` | `none`, `all`, `non-hydrogen`, or JSON array | Chooses labels dynamically; JSON entries may provide custom text and priority. See [Labels in the widget](../labels/widget.md). |
+| `measurements` | JSON array of atom-ID arrays | Prepopulates ordered distance, angle, torsion, or plane measurements after loading. Plain labels and symmetry-resolved unique IDs are accepted. Live-updatable. |
 | `icons` | JSON object | Overrides SVG markup for named modifier modes. |
 
 The mode attributes map to the camelCase options `hydrogenMode`, `disorderMode`, and
