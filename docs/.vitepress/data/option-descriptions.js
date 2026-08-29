@@ -279,7 +279,8 @@ export const descriptions = {
     'isosurface.useSymmetry': 'Reuses meshes for exactly symmetry-equivalent disconnected regions; ' +
         'intersecting masks remain one field to avoid seams.',
     'isosurface.progressiveSteps': 'Ordered surface-resolution fractions emitted after the map is ' +
-        'available; 1 is always included.',
+        'available; 1 is always included. The default renders the final surface directly; add ' +
+        'fractions such as 0.5 or 0.75 to opt into preview redraws for unusually slow workloads.',
     'isosurface.visible': 'Initial density-surface visibility. Changing only this option toggles ' +
         'the retained meshes without recalculation.',
     'isosurface.sigmaLevel': 'Positive and negative contour magnitude in map standard deviations.',

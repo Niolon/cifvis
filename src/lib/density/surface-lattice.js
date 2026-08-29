@@ -201,3 +201,71 @@ export function applyAtomNodeStencil(lattice, atoms, stencil) {
     }
     return { mask, candidateNodeCount, allowedNodeCount };
 }
+
+/**
+ * Applies the shared geometric atom stencil to cells and nodes in one pass.
+ * Cell and node lattices differ only at their positive boundary, so the hot
+ * atom/offset traversal is shared while each mask retains its own bounds check.
+ * @param {object} lattice - Planned surface lattice.
+ * @param {object[]} atoms - Displayed atoms without fractional wrapping.
+ * @param {object} stencil - Shared precomputed cell/node stencil.
+ * @returns {object} Cell and node masks with their candidate and unique counts.
+ */
+export function applyAtomSurfaceStencils(lattice, atoms, stencil) {
+    const [cellNx, cellNy, cellNz] = lattice.cellDimensions;
+    const [nodeNx, nodeNy, nodeNz] = lattice.dimensions;
+    const cellMask = new Uint8Array(lattice.cellCount);
+    const nodeMask = new Uint8Array(lattice.nodeCount);
+    let candidateCellCount = 0;
+    let candidateNodeCount = 0;
+    let activeCellCount = 0;
+    let allowedNodeCount = 0;
+    for (const atom of atoms) {
+        const position = atom.position;
+        const centreX = Math.floor(
+            (position.x - lattice.bounds.minimum[0]) / lattice.fractionalStep[0],
+        );
+        const centreY = Math.floor(
+            (position.y - lattice.bounds.minimum[1]) / lattice.fractionalStep[1],
+        );
+        const centreZ = Math.floor(
+            (position.z - lattice.bounds.minimum[2]) / lattice.fractionalStep[2],
+        );
+        for (let offset = 0; offset < stencil.count; offset++) {
+            const x = centreX + stencil.dx[offset];
+            const y = centreY + stencil.dy[offset];
+            const z = centreZ + stencil.dz[offset];
+            const insideCell = x >= 0 && x < cellNx &&
+                y >= 0 && y < cellNy && z >= 0 && z < cellNz;
+            if (insideCell) {
+                candidateCellCount++;
+                const cellIndex = (z * cellNy + y) * cellNx + x;
+                if (cellMask[cellIndex] === 0) {
+                    cellMask[cellIndex] = 1;
+                    activeCellCount++;
+                }
+                candidateNodeCount++;
+                const nodeIndex = (z * nodeNy + y) * nodeNx + x;
+                if (nodeMask[nodeIndex] === 0) {
+                    nodeMask[nodeIndex] = 1;
+                    allowedNodeCount++;
+                }
+            } else if (x >= 0 && x < nodeNx && y >= 0 && y < nodeNy && z >= 0 && z < nodeNz) {
+                candidateNodeCount++;
+                const nodeIndex = (z * nodeNy + y) * nodeNx + x;
+                if (nodeMask[nodeIndex] === 0) {
+                    nodeMask[nodeIndex] = 1;
+                    allowedNodeCount++;
+                }
+            }
+        }
+    }
+    return {
+        cellMask,
+        nodeMask,
+        candidateCellCount,
+        candidateNodeCount,
+        activeCellCount,
+        allowedNodeCount,
+    };
+}

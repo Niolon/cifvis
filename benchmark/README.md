@@ -28,3 +28,10 @@ bytes, and browser heap usage when Chrome exposes that metric.
 Population-scale profiling, factorial sweeps, heuristic fitting, and report generation
 are exploratory work rather than regression checks. Those scripts live in the workspace
 `analysis/` directory.
+
+`density-pipeline-heuristic.json` records the latest frozen 5,000-structure COD
+calibration. The 2026-08 campaign established the specialized CifVis Marching Cubes
+path as the production extractor and changed the default progressive schedule to a
+single final surface. A full Flying Edges implementation is intentionally closed for
+now: clipping plus prepared lattice interpolation captures the material benefit, while
+the remaining classification/interpolation work is too small to justify edge reuse.

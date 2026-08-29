@@ -6,9 +6,8 @@ import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 import { extractMarchingCubes } from './isosurface-extractor.js';
 import {
     applyAtomCellStencil,
-    applyAtomNodeStencil,
+    applyAtomSurfaceStencils,
     createAtomCellStencil,
-    createAtomNodeStencil,
     planSurfaceLattice,
 } from './surface-lattice.js';
 
@@ -254,13 +253,23 @@ function createCifvisIsosurfaces(
     const resolution = Math.max(8, Math.round(usedOptions.resolution));
     const lattice = planSurfaceLattice(structure.cell, bounds, resolution);
     const stencil = createAtomCellStencil(lattice, usedOptions.radius);
-    const applied = applyAtomCellStencil(lattice, structure.atoms ?? [], stencil);
     const useNodeStencil = usedOptions.surfaceNodeStencil !== false;
-    const nodeStencil = useNodeStencil
-        ? createAtomNodeStencil(lattice, usedOptions.radius)
+    const atomStencils = useNodeStencil
+        ? applyAtomSurfaceStencils(lattice, structure.atoms ?? [], stencil)
         : null;
-    const allowedNodes = nodeStencil
-        ? applyAtomNodeStencil(lattice, structure.atoms ?? [], nodeStencil)
+    const applied = atomStencils
+        ? {
+            mask: atomStencils.cellMask,
+            candidateCellCount: atomStencils.candidateCellCount,
+            activeCellCount: atomStencils.activeCellCount,
+        }
+        : applyAtomCellStencil(lattice, structure.atoms ?? [], stencil);
+    const allowedNodes = atomStencils
+        ? {
+            mask: atomStencils.nodeMask,
+            candidateNodeCount: atomStencils.candidateNodeCount,
+            allowedNodeCount: atomStencils.allowedNodeCount,
+        }
         : null;
     const surfaceMaskTimeMs = performance.now() - maskStarted;
     const extracted = extractMarchingCubes({
@@ -380,7 +389,7 @@ function createCifvisIsosurfaces(
         atomDistanceTestCount: 0,
         threeMarchingCubesTimeMs: 0,
         stencilOffsetCount: stencil.count,
-        nodeStencilOffsetCount: nodeStencil?.count ?? 0,
+        nodeStencilOffsetCount: useNodeStencil ? stencil.count : 0,
         stencilRadius: stencil.radius,
         clippingConservativeVoxelPadding: lattice.cellDiagonal,
     };

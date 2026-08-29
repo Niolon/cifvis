@@ -4,6 +4,7 @@ import { UnitCell } from '../structure/crystal.js';
 import {
     applyAtomCellStencil,
     applyAtomNodeStencil,
+    applyAtomSurfaceStencils,
     createAtomCellStencil,
     createAtomNodeStencil,
     planSurfaceLattice,
@@ -107,4 +108,30 @@ describe('surface lattice atom stencil', () => {
         }
         expect(missedExactNodes).toBe(0);
     });
+
+    test.each([
+        ['orthogonal', new UnitCell(10, 11, 12, 90, 90, 90)],
+        ['skewed triclinic', new UnitCell(8, 10, 13, 63, 74, 58)],
+    ])('fused application exactly matches separate cell and node masks for %s cells',
+        (_name, cell) => {
+            const bounds = { minimum: [-0.4, -0.3, -0.2], maximum: [1.4, 1.3, 1.2] };
+            const lattice = planSurfaceLattice(cell, bounds, [22, 19, 17]);
+            const atoms = [
+                { position: { x: -0.31, y: 0.03, z: 0.77 } },
+                { position: { x: 1.36, y: 1.21, z: -0.14 } },
+                { position: { x: 0.51, y: 0.49, z: 0.52 } },
+                { position: { x: 0.51, y: 0.49, z: 0.52 } },
+            ];
+            const stencil = createAtomCellStencil(lattice, 1.5);
+            const separateCells = applyAtomCellStencil(lattice, atoms, stencil);
+            const separateNodes = applyAtomNodeStencil(lattice, atoms, stencil);
+            const fused = applyAtomSurfaceStencils(lattice, atoms, stencil);
+
+            expect(fused.cellMask).toEqual(separateCells.mask);
+            expect(fused.nodeMask).toEqual(separateNodes.mask);
+            expect(fused.candidateCellCount).toBe(separateCells.candidateCellCount);
+            expect(fused.activeCellCount).toBe(separateCells.activeCellCount);
+            expect(fused.candidateNodeCount).toBe(separateNodes.candidateNodeCount);
+            expect(fused.allowedNodeCount).toBe(separateNodes.allowedNodeCount);
+        });
 });
