@@ -228,6 +228,7 @@ describe('import validation', () => {
             peanutLatitudeIntervals: 8,
             peanutGridPoleAxis: 'principal-minimum',
             peanutGridLineWidth: 0.02,
+            peanutDetail: 5,
             bondRadius: 0.08,
             elementProperties: { Fe: { atomColor: '#ff5733', radius: 1.4 } },
             contourLines: { enabled: true, plane: { atoms: ['C1', 'C2', 'O1'] } },

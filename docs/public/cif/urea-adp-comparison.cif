@@ -1,0 +1,45 @@
+data_urea_adp_comparison
+_chemical_name_common 'Urea ADP comparison model'
+_cell_length_a 5.578
+_cell_length_b 5.578
+_cell_length_c 4.686
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+_space_group_name_H-M_alt 'P 1'
+
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 x,y,z
+
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+_atom_site_adp_type
+O1 O 0.00000 0.50000 0.59634 0.0173 Uani
+N1 N 0.14485 0.64485 0.17845 0.0187 Uani
+C1 C 0.00000 0.50000 0.32821 0.0153 Uani
+
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+O1 0.030 0.012 0.010 0 0 0
+N1 0.018 0.030 0.008 0 0 0
+C1 0.022 0.010 0.014 0 0 0
+
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+O1 C1 1.2565
+N1 C1 1.3410

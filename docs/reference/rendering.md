@@ -19,6 +19,8 @@ PEANUT grid density and physical stroke width can be adjusted independently with
 line width is measured in &Aring;, so its apparent screen width changes naturally with zoom.
 `peanutGridPoleAxis` selects either a common structure Y pole or an atom-local maximum,
 intermediate, or minimum principal-displacement axis.
+`peanutDetail` controls the shared PEANUT sphere tessellation independently of
+`atomDetail`; its higher default keeps signed zero-crossing lobes smooth.
 
 `renderStyle` independently selects how that surface is presented (live comparison in
 [Widget → Display options](../widget/display-options.md#ortep-render-modes)):

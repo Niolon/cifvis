@@ -200,7 +200,7 @@ export const descriptions = {
         'in (0, 1). The RMS ellipsoid is scaled by the chi-squared(3) quantile at this probability; ' +
         '0.5 gives the conventional 50% probability ellipsoid.',
     'peanutScale': 'Positive visual multiplier for RMS displacement PEANUT radii. The surface radius ' +
-        'is <code>peanutScale &times; sqrt(n<sup>T</sup>Un)</code> in &Aring;; this is a display ' +
+        'is <code>peanutScale &times; sqrt(|n<sup>T</sup>Un|)</code> in &Aring;; this is a display ' +
         'scale, not an enclosed probability.',
     'peanutMeridianCount': 'Number of equally spaced meridian intervals drawn on PEANUT grid surfaces.',
     'peanutLatitudeIntervals': 'Number of latitude intervals drawn from pole to pole on PEANUT grid surfaces.',
@@ -208,6 +208,8 @@ export const descriptions = {
         'for a common structure-fixed grid, or align each atom independently with one of its ' +
         'ordered principal displacement axes.',
     'peanutGridLineWidth': 'Physical PEANUT grid-line width in &Aring; for 3D cutout and 2D publication styles.',
+    'peanutDetail': 'Level of detail for shared PEANUT geometry (1&ndash;5). Independent from ' +
+        '<code>atomDetail</code> so signed lobes can remain smooth without increasing ellipsoid cost.',
     'atomDetail': 'Level of detail for atom geometry (1&ndash;5).',
     'atomCutawayHysteresis': 'Direction threshold that prevents cutaway octants flickering near an axis.',
     'atomCutawayStripeCount': 'Number of hatch repeats across each cutaway disc.',

@@ -220,12 +220,14 @@ describe('GeometryMaterialCache', () => {
         test('initializes with custom options', () => {
             const customOptions = {
                 atomDetail: 4,
+                peanutDetail: 5,
                 bondRadius: 0.0001,
                 bondColor: '#ff0000',
             };
             const customCache = new GeometryMaterialCache(customOptions);
 
             expect(customCache.options.atomDetail).toBe(4);
+            expect(customCache.options.peanutDetail).toBe(5);
             expect(customCache.options.bondRadius).toBe(0.0001);
             expect(customCache.options.bondColor).toBe('#ff0000');
 
@@ -967,6 +969,16 @@ describe('RMSD PEANUT rendering', () => {
         ], [], []),
         { adpRepresentation: 'rmsd-peanut', renderStyle },
     );
+
+    test('uses a higher independent default tessellation than atom spheres', () => {
+        const cache = new GeometryMaterialCache({ adpRepresentation: 'rmsd-peanut' });
+
+        expect(cache.options.peanutDetail).toBe(5);
+        expect(cache.options.atomDetail).toBe(3);
+        expect(cache.geometries.peanut.getAttribute('position').count)
+            .toBeGreaterThan(cache.geometries.atom.getAttribute('position').count);
+        cache.dispose();
+    });
 
     test.each([
         ['solid-3d', 'clean-3d', 1],

@@ -973,7 +973,7 @@ export class GeometryMaterialCache {
         if (this.options.adpRepresentation === 'rmsd-peanut') {
             this.geometries.peanut = new THREE.IcosahedronGeometry(
                 this.options.peanutScale,
-                this.options.atomDetail,
+                this.options.peanutDetail,
             );
         }
 
