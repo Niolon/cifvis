@@ -156,6 +156,10 @@ export class MeasurementControls {
         this.disposed = false;
         this.selections = viewer.selections.getSelections?.() ?? [];
         this.measurements = viewer.getMeasurements?.() ?? [];
+        const initialMeasurements = options.measurements ?? [];
+        if (!Array.isArray(initialMeasurements)) {
+            throw new TypeError('measurements must be an array of atom-ID arrays');
+        }
         this.stopSelectionUpdates = viewer.selections.onChange(selections => {
             this.selections = selections;
             this.notify();
@@ -164,11 +168,6 @@ export class MeasurementControls {
             this.measurements = [...measurements];
             this.notify();
         }) ?? (() => {});
-
-        const initialMeasurements = options.measurements ?? [];
-        if (!Array.isArray(initialMeasurements)) {
-            throw new TypeError('measurements must be an array of atom-ID arrays');
-        }
         for (const atomIds of initialMeasurements) {
             if (!Array.isArray(atomIds)) {
                 this.reportError(new TypeError('Each measurements entry must be an array of atom IDs'), null);
