@@ -17,8 +17,9 @@ const continuationResolvers = new Map();
 const preparedReflectionSources = new Map();
 
 function prepareReflectionSource(message) {
-    const started = performance.now();
-    const startedEpochMs = performance.timeOrigin + started;
+    const debugTimings = message.debugTimings === true;
+    const started = debugTimings ? performance.now() : null;
+    const startedEpochMs = debugTimings ? performance.timeOrigin + started : null;
     preparedReflectionSources.clear();
     try {
         const iamOptions = { includeAnomalous: false, ...message.iam };
@@ -31,22 +32,24 @@ function prepareReflectionSource(message) {
             message.fcfBlock,
             reflectionOptions,
         );
-        const completed = performance.now();
-        const completedEpochMs = performance.timeOrigin + completed;
+        const completed = debugTimings ? performance.now() : null;
+        const completedEpochMs = debugTimings ? performance.timeOrigin + completed : null;
         preparedReflectionSources.set(message.preparationId, {
             observed,
-            preparationTimeMs: completed - started,
+            preparationTimeMs: debugTimings ? completed - started : null,
             started,
             startedEpochMs,
             completedEpochMs,
         });
-        globalThis.postMessage({
-            type: 'reflection-prepared',
-            preparationId: message.preparationId,
-            preparationTimeMs: completed - started,
-            startedEpochMs,
-            completedEpochMs,
-        });
+        if (debugTimings) {
+            globalThis.postMessage({
+                type: 'reflection-prepared',
+                preparationId: message.preparationId,
+                preparationTimeMs: completed - started,
+                startedEpochMs,
+                completedEpochMs,
+            });
+        }
     } catch {
         // Explicit FCF coefficient sources need no observed-intensity loop.
         // Their normal parser remains the fallback when the load message arrives.
@@ -70,24 +73,30 @@ function waitForContinuation(loadId, stepIndex) {
 }
 
 async function calculateDifferenceDensityProgressively(message) {
-    const calculationStartedEpochMs = performance.timeOrigin + performance.now();
+    const debugTimings = message.debugTimings === true;
+    const calculationStartedEpochMs = debugTimings
+        ? performance.timeOrigin + performance.now()
+        : null;
     const prepared = preparedReflectionSources.get(message.preparationId);
     preparedReflectionSources.delete(message.preparationId);
-    const started = prepared?.started ?? performance.now();
+    const started = debugTimings ? prepared?.started ?? performance.now() : null;
     const modelPostedEpochMs = message.modelPostedEpochMs;
-    const joinReadyEpochMs = prepared && Number.isFinite(modelPostedEpochMs)
+    const joinReadyEpochMs = debugTimings && prepared && Number.isFinite(modelPostedEpochMs)
         ? Math.max(prepared.completedEpochMs, modelPostedEpochMs)
         : prepared?.completedEpochMs ?? calculationStartedEpochMs;
-    const modelWaitForReflectionPreparationMs = prepared && Number.isFinite(modelPostedEpochMs)
+    const modelWaitForReflectionPreparationMs = debugTimings && prepared &&
+        Number.isFinite(modelPostedEpochMs)
         ? Math.max(0, prepared.completedEpochMs - modelPostedEpochMs)
         : 0;
-    const workerWaitForModelMs = prepared && Number.isFinite(modelPostedEpochMs)
+    const workerWaitForModelMs = debugTimings && prepared && Number.isFinite(modelPostedEpochMs)
         ? Math.max(0, modelPostedEpochMs - prepared.completedEpochMs)
         : 0;
     const workerIdleAfterReflectionPreparationMs = workerWaitForModelMs;
-    const workerJoinDelayMs = Math.max(0, calculationStartedEpochMs - joinReadyEpochMs);
+    const workerJoinDelayMs = debugTimings
+        ? Math.max(0, calculationStartedEpochMs - joinReadyEpochMs)
+        : 0;
     try {
-        const datasetStarted = performance.now();
+        const datasetStarted = debugTimings ? performance.now() : null;
         const dataset = parseDifferenceDensitySource(
             message.fcfText,
             message.fcfBlock,
@@ -96,8 +105,10 @@ async function calculateDifferenceDensityProgressively(message) {
                 preparedObservations: prepared?.observed,
             },
         );
-        const datasetPreparationTimeMs = performance.now() - datasetStarted;
-        const progressionStarted = performance.now();
+        const datasetPreparationTimeMs = debugTimings
+            ? performance.now() - datasetStarted
+            : null;
+        const progressionStarted = debugTimings ? performance.now() : null;
         const progression = createDifferenceDensityProgression(dataset, {
             steps: message.steps,
             reciprocalResolution: message.reciprocalResolution,
@@ -109,48 +120,59 @@ async function calculateDifferenceDensityProgressively(message) {
             realTransform: message.realTransform,
             symmetryReducedFft: message.symmetryReducedFft,
         });
-        const progressionSetupTimeMs = performance.now() - progressionStarted;
+        const progressionSetupTimeMs = debugTimings
+            ? performance.now() - progressionStarted
+            : null;
         const steps = progression.steps;
         for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
-            const mapStarted = performance.now();
+            const mapStarted = debugTimings ? performance.now() : null;
             const { map, changed } = progression.mapAt(stepIndex);
-            const mapTimeMs = changed ? performance.now() - mapStarted : 0;
-            const contourStarted = performance.now();
+            const mapTimeMs = debugTimings && changed ? performance.now() - mapStarted : 0;
+            const contourStarted = debugTimings ? performance.now() : null;
             const contours = calculateContourWorkerTask(
                 map,
                 message.contourRequest,
                 steps[stepIndex],
             );
-            const contourTimeMs = contours ? performance.now() - contourStarted : 0;
-            const payloadStarted = performance.now();
+            const contourTimeMs = debugTimings && contours
+                ? performance.now() - contourStarted
+                : 0;
+            const payloadStarted = debugTimings ? performance.now() : null;
             const payload = changed ? map.toPayload() : null;
-            const payloadPreparationTimeMs = performance.now() - payloadStarted;
+            const payloadPreparationTimeMs = debugTimings
+                ? performance.now() - payloadStarted
+                : null;
             const update = {
                 type: 'update',
                 loadId: message.loadId,
                 stepIndex,
                 totalSteps: steps.length,
                 final: stepIndex === steps.length - 1,
-                computeTimeMs: mapTimeMs,
-                datasetPreparationTimeMs,
-                reflectionPreparationTimeMs: prepared?.preparationTimeMs ?? 0,
-                workerIdleAfterReflectionPreparationMs,
-                modelWaitForReflectionPreparationMs,
-                workerWaitForModelMs,
-                workerJoinDelayMs,
-                modelPostedAfterReflectionStartMs: prepared && Number.isFinite(modelPostedEpochMs)
-                    ? modelPostedEpochMs - prepared.startedEpochMs
-                    : null,
-                calculationStartedEpochMs,
-                progressionSetupTimeMs,
-                payloadPreparationTimeMs,
-                contourTimeMs,
-                elapsedTimeMs: performance.now() - started,
+                ...(debugTimings ? {
+                    computeTimeMs: mapTimeMs,
+                    datasetPreparationTimeMs,
+                    reflectionPreparationTimeMs: prepared?.preparationTimeMs ?? 0,
+                    workerIdleAfterReflectionPreparationMs,
+                    modelWaitForReflectionPreparationMs,
+                    workerWaitForModelMs,
+                    workerJoinDelayMs,
+                    modelPostedAfterReflectionStartMs:
+                        prepared && Number.isFinite(modelPostedEpochMs)
+                            ? modelPostedEpochMs - prepared.startedEpochMs
+                            : null,
+                    calculationStartedEpochMs,
+                    progressionSetupTimeMs,
+                    payloadPreparationTimeMs,
+                    contourTimeMs,
+                    elapsedTimeMs: performance.now() - started,
+                } : {}),
                 surfaceResolutionFraction: steps[stepIndex],
                 map: payload,
                 contours,
             };
-            update.updatePostedEpochMs = performance.timeOrigin + performance.now();
+            if (debugTimings) {
+                update.updatePostedEpochMs = performance.timeOrigin + performance.now();
+            }
             globalThis.postMessage(update, [
                 ...(!message.contourRequest ? scalarFieldTransferables(payload) : []),
                 ...contourTransferables(contours),

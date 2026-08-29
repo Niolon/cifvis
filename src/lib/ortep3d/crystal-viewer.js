@@ -74,6 +74,36 @@ const SURFACE_EXTRACTION_STATISTICS = [
     'atomDistanceTestCount',
     'threeMarchingCubesTimeMs',
 ];
+const TIMING_DIAGNOSTIC_KEY = /(?:[Tt]imeMs|ElapsedMs|Timings|timings)$/;
+
+/**
+ * Removes performance-only fields without cloning large reflection/value arrays.
+ * @param {object} value - Event or result object.
+ * @returns {object} Object safe for the normal non-debug API.
+ */
+function withoutTimingDiagnostics(value) {
+    const result = Object.fromEntries(Object.entries(value).filter(([key]) =>
+        !TIMING_DIAGNOSTIC_KEY.test(key)));
+    for (const key of ['iam', 'map']) {
+        const nested = result[key];
+        if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+            result[key] = Object.fromEntries(Object.entries(nested).filter(([name]) =>
+                !TIMING_DIAGNOSTIC_KEY.test(name)));
+            if (key === 'iam' && result[key].calculation) {
+                result[key].calculation = Object.fromEntries(
+                    Object.entries(result[key].calculation).filter(([name]) =>
+                        !TIMING_DIAGNOSTIC_KEY.test(name)),
+                );
+            }
+        }
+    }
+    if (Array.isArray(result.fftAxisStatistics)) {
+        result.fftAxisStatistics = result.fftAxisStatistics.map(statistics =>
+            Object.fromEntries(Object.entries(statistics).filter(([name]) =>
+                !TIMING_DIAGNOSTIC_KEY.test(name))));
+    }
+    return result;
+}
 
 /**
  * @param {object} statistics - Surface-layer generation statistics.
@@ -617,11 +647,15 @@ export class CrystalViewer {
      * - elementProperties: Per-element appearance settings (colors, radii)
      * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
      * - renderMode: 'constant' for continuous updates or 'onDemand' for efficient rendering
+     * - debug: Expose detailed performance timings in density events/results
      * - fixCifErrors: Whether to attempt automatic fixes for common CIF format issues
      * see ./structure-settings.js for the default values
      * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
+        if (options.debug !== undefined && typeof options.debug !== 'boolean') {
+            throw new Error('debug must be a boolean');
+        }
         if (options.renderMode && !VALID_RENDER_MODES.includes(options.renderMode)) {
             throw new Error(
                 `Invalid render mode: "${options.renderMode}". Must be one of: ${VALID_RENDER_MODES.join(', ')}`,
@@ -787,6 +821,7 @@ export class CrystalViewer {
             symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
             packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
             renderMode: options.renderMode || defaultSettings.renderMode,
+            debug: options.debug ?? defaultSettings.debug,
             renderStyle: options.renderStyle || defaultSettings.renderStyle,
             adpRepresentation: options.adpRepresentation || defaultSettings.adpRepresentation,
             plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
@@ -1002,10 +1037,15 @@ export class CrystalViewer {
      * ```
      */
     async loadCIF(cifText, cifBlock = 0, options = {}) {
-        const loadStartedEpochMs = performance.timeOrigin + performance.now();
-        const loadTimings = { loadStartedEpochMs };
+        const debugTimings = this.options.debug === true;
+        const loadStartedEpochMs = debugTimings
+            ? performance.timeOrigin + performance.now()
+            : null;
+        const loadTimings = debugTimings ? { loadStartedEpochMs } : null;
         const markLoadTime = name => {
-            loadTimings[name] = performance.timeOrigin + performance.now() - loadStartedEpochMs;
+            if (loadTimings) {
+                loadTimings[name] = performance.timeOrigin + performance.now() - loadStartedEpochMs;
+            }
         };
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
@@ -1036,25 +1076,29 @@ export class CrystalViewer {
         if (preparationId !== null) {
             earlyWorker = new ScalarFieldWorker();
             markLoadTime('workerCreatedMs');
-            earlyWorker.addEventListener('message', event => {
-                const message = event.data;
-                if (message.type !== 'reflection-prepared' ||
-                    message.preparationId !== preparationId) {
-                    return;
-                }
-                loadTimings.reflectionPreparationStartedMs =
-                    message.startedEpochMs - loadStartedEpochMs;
-                loadTimings.reflectionsPreparedMs = message.completedEpochMs - loadStartedEpochMs;
-                loadTimings.reflectionPreparationTimeMs = message.preparationTimeMs;
-                this.notifyScalarFieldUpdate({
-                    type: 'reflection-prepared',
-                    preparationId,
-                    reflectionPreparationTimeMs: message.preparationTimeMs,
+            if (debugTimings) {
+                earlyWorker.addEventListener('message', event => {
+                    const message = event.data;
+                    if (message.type !== 'reflection-prepared' ||
+                        message.preparationId !== preparationId) {
+                        return;
+                    }
+                    loadTimings.reflectionPreparationStartedMs =
+                        message.startedEpochMs - loadStartedEpochMs;
+                    loadTimings.reflectionsPreparedMs =
+                        message.completedEpochMs - loadStartedEpochMs;
+                    loadTimings.reflectionPreparationTimeMs = message.preparationTimeMs;
+                    this.notifyScalarFieldUpdate({
+                        type: 'reflection-prepared',
+                        preparationId,
+                        reflectionPreparationTimeMs: message.preparationTimeMs,
+                    });
                 });
-            });
+            }
             earlyWorker.postMessage({
                 type: 'prepare-difference-density-reflections',
                 preparationId,
+                debugTimings,
                 fcfText: cifText,
                 fcfBlock: cifBlock,
                 reflections: requestedDifferenceOptions.reflections,
@@ -1149,7 +1193,7 @@ export class CrystalViewer {
                 success: true,
                 differenceDensityStarted: true,
                 differenceDensity,
-                browserTimings: loadTimings,
+                ...(loadTimings ? { browserTimings: loadTimings } : {}),
             };
         } catch (error) {
             if (earlyWorker) {
@@ -1326,9 +1370,12 @@ export class CrystalViewer {
      * @param {object} update - Scalar-field pipeline event.
      */
     notifyScalarFieldUpdate(update) {
+        const publicUpdate = this.options?.debug === false
+            ? withoutTimingDiagnostics(update)
+            : update;
         for (const callback of this.scalarFieldUpdateCallbacks) {
             try {
-                callback(update);
+                callback(publicUpdate);
             } catch (error) {
                 console.error('Scalar-field update callback failed:', error);
             }
@@ -1406,21 +1453,26 @@ export class CrystalViewer {
                     if (message.final) {
                         const result = {
                             ...this.scalarFieldResult(field),
-                            workerReflectionPreparationTimeMs:
-                                message.reflectionPreparationTimeMs,
-                            workerIdleAfterReflectionPreparationMs:
-                                message.workerIdleAfterReflectionPreparationMs,
-                            modelWaitForReflectionPreparationMs:
-                                message.modelWaitForReflectionPreparationMs,
-                            workerWaitForModelMs: message.workerWaitForModelMs,
-                            workerJoinDelayMs: message.workerJoinDelayMs,
-                            modelPostedAfterReflectionStartMs:
-                                message.modelPostedAfterReflectionStartMs,
-                            workerDatasetPreparationTimeMs: message.datasetPreparationTimeMs,
-                            workerProgressionSetupTimeMs: message.progressionSetupTimeMs,
-                            workerComputeTimeMs: message.computeTimeMs,
-                            workerPayloadPreparationTimeMs: message.payloadPreparationTimeMs,
-                            workerElapsedTimeMs: message.elapsedTimeMs,
+                            ...(this.options.debug ? {
+                                workerReflectionPreparationTimeMs:
+                                    message.reflectionPreparationTimeMs,
+                                workerIdleAfterReflectionPreparationMs:
+                                    message.workerIdleAfterReflectionPreparationMs,
+                                modelWaitForReflectionPreparationMs:
+                                    message.modelWaitForReflectionPreparationMs,
+                                workerWaitForModelMs: message.workerWaitForModelMs,
+                                workerJoinDelayMs: message.workerJoinDelayMs,
+                                modelPostedAfterReflectionStartMs:
+                                    message.modelPostedAfterReflectionStartMs,
+                                workerDatasetPreparationTimeMs:
+                                    message.datasetPreparationTimeMs,
+                                workerProgressionSetupTimeMs:
+                                    message.progressionSetupTimeMs,
+                                workerComputeTimeMs: message.computeTimeMs,
+                                workerPayloadPreparationTimeMs:
+                                    message.payloadPreparationTimeMs,
+                                workerElapsedTimeMs: message.elapsedTimeMs,
+                            } : {}),
                         };
                         this.notifyScalarFieldUpdate({
                             ...message,
@@ -1438,7 +1490,10 @@ export class CrystalViewer {
                 }
             });
 
-            const modelPostedEpochMs = performance.timeOrigin + performance.now();
+            const debugTimings = this.options.debug === true;
+            const modelPostedEpochMs = debugTimings
+                ? performance.timeOrigin + performance.now()
+                : null;
             if (this.scalarFieldLoadTimings) {
                 this.scalarFieldLoadTimings.modelPostedMs = modelPostedEpochMs -
                     this.scalarFieldLoadTimings.loadStartedEpochMs;
@@ -1447,6 +1502,7 @@ export class CrystalViewer {
                 type: 'load-difference-density',
                 loadId,
                 preparationId: this.scalarFieldPreparationId,
+                debugTimings,
                 modelPostedEpochMs,
                 fcfText,
                 fcfBlock,
@@ -1909,7 +1965,8 @@ export class CrystalViewer {
      * @param {object} message - Progressive step metadata.
      */
     applyProgressiveScalarField(field, message) {
-        const applyStarted = performance.now();
+        const debugTimings = this.options.debug === true;
+        const applyStarted = debugTimings ? performance.now() : null;
         this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
             field.sourceType === 'cube' ? 'Cube' : 'FCF');
         const resolutionFraction = message.surfaceResolutionFraction ?? 1;
@@ -1922,12 +1979,12 @@ export class CrystalViewer {
             contours,
         );
         const display = this.scalarFieldDisplayState();
-        const mainThreadApplyTimeMs = performance.now() - applyStarted;
+        const mainThreadApplyTimeMs = debugTimings ? performance.now() - applyStarted : null;
         this.requestRender();
         this.notifyScalarFieldUpdate({
             type: 'update',
             ...message,
-            mainThreadApplyTimeMs,
+            ...(debugTimings ? { mainThreadApplyTimeMs } : {}),
             progress: (message.stepIndex + 1) / message.totalSteps,
             resolutionFraction: field.resolutionFraction,
             gridOversampling: field.gridOversampling,
@@ -2056,7 +2113,7 @@ export class CrystalViewer {
      */
     scalarFieldResult(field) {
         const surfaceStatistics = this.scalarFieldDisplayLayer().statistics;
-        return {
+        const result = {
             success: true,
             reflectionCount: field.reflectionCount,
             coefficientCount: field.coefficientCount,
@@ -2147,6 +2204,7 @@ export class CrystalViewer {
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
             ...this.scalarFieldDisplayState(),
         };
+        return this.options?.debug === false ? withoutTimingDiagnostics(result) : result;
     }
 
     /** @returns {object} Renderer-independent density state exposed to UI listeners. */

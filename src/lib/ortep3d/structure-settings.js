@@ -174,6 +174,8 @@ export default {
     },
 
     'renderMode': 'onDemand',
+    // Expose fine-grained main-thread, worker, FFT, and surface timings.
+    'debug': false,
     // 'solid-3d': clean solid surface.
     // 'cutout-3d': ellipsoid cutout, or solid PEANUT with a surface grid.
     // 'cutout-2d': publication ellipsoid cutout, or hidden-line PEANUT grid.

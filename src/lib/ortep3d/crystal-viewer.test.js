@@ -1005,6 +1005,36 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(updates).toEqual([{ type: 'update', stepIndex: 0 }]);
     });
 
+    test('exposes performance timings only in debug mode', () => {
+        const updates = [];
+        const viewer = {
+            options: { debug: false },
+            scalarFieldUpdateCallbacks: new Set([update => updates.push(update)]),
+        };
+        const update = {
+            type: 'update',
+            progress: 1,
+            fftTotalTimeMs: 12,
+            workerElapsedTimeMs: 20,
+            iam: {
+                method: 'iam',
+                modelBuildTimeMs: 2,
+                calculation: { reflectionCount: 10, timeMs: 5 },
+            },
+        };
+
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, update);
+        expect(updates[0]).toEqual({
+            type: 'update',
+            progress: 1,
+            iam: { method: 'iam', calculation: { reflectionCount: 10 } },
+        });
+
+        viewer.options.debug = true;
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, update);
+        expect(updates[1]).toBe(update);
+    });
+
     test('normalizes progressive steps and always includes the final surface resolution', () => {
         const viewer = {
             options: { isosurface: { progressiveSteps: [1, 0.5, -1, 0.5, 2] } },

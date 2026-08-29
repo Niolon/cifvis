@@ -5,7 +5,9 @@ import { resolve } from 'node:path';
 
 const input = resolve(process.argv[2] ?? 'benchmark/browser-only-density-timeline.json');
 const output = resolve(process.argv[3] ?? 'benchmark/density-synchronization-staged.svg');
-const { results } = JSON.parse(readFileSync(input, 'utf8'));
+const dataOutput = resolve(process.argv[4] ?? 'benchmark/browser-density-timeline-data.json');
+const source = JSON.parse(readFileSync(input, 'utf8'));
+const { results } = source;
 const percentiles = ['p25', 'p50', 'p95', 'p99'];
 const colors = {
     background: '#f7f8fb', ink: '#172033', muted: '#5e687a', wait: '#edf0f5',
@@ -23,6 +25,20 @@ function rect(x, y, width, height, color, label, duration) {
 
 function segment(start, end, y, factor, color, label) {
     return rect(255 + start * factor, y, (end - start) * factor, 32, color, label, end - start);
+}
+
+function synchronizedWaits(timings) {
+    const modelPosted = timings.modelPostedMs;
+    const reflectionsPrepared = timings.reflectionsPreparedMs;
+    const calculationStarted = timings.workerCalculationStartedMs;
+    return {
+        workerIdleAfterReflectionPreparationMs:
+            Math.max(0, modelPosted - reflectionsPrepared),
+        modelWaitForReflectionPreparationMs:
+            Math.max(0, reflectionsPrepared - modelPosted),
+        workerJoinDelayMs:
+            Math.max(0, calculationStarted - Math.max(modelPosted, reflectionsPrepared)),
+    };
 }
 
 let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-label="Browser-only main-thread and density-worker timeline">
@@ -84,4 +100,19 @@ results.forEach((row, index) => {
 
 svg += '<text class="small" x="54" y="888">Worker idle is time after HKL preparation while waiting for the model. Model wait is the opposite: the model was posted first. Join is dispatch latency after both inputs were ready.</text></svg>';
 writeFileSync(output, svg);
+writeFileSync(dataOutput, `${JSON.stringify({
+    generatedAt: source.generatedAt,
+    results: results.map(row => ({
+        ...Object.fromEntries(Object.entries(row).filter(([name]) =>
+            name === 'codId' || name === 'reflectionCount' ||
+            (name.startsWith('browser') && name !== 'browserRuns'))),
+        ...Object.fromEntries(Object.entries(synchronizedWaits(row.browserTimings))
+            .map(([name, value]) => [`browser${name[0].toUpperCase()}${name.slice(1)}`, value])),
+        browserRuns: row.browserRuns.map(run => ({
+            ...run,
+            ...synchronizedWaits(run.browserTimings),
+        })),
+    })),
+}, null, 2)}\n`);
 console.log(`Wrote ${output}`);
+console.log(`Wrote ${dataOutput}`);

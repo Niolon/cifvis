@@ -15,6 +15,7 @@ import { CrystalViewer } from 'cifvis';
 
 const viewer = new CrystalViewer(container, {
     renderMode: 'onDemand',   // call viewer.requestRender() after external state changes
+    debug: false,             // set true to expose detailed density/worker timings
     atomLabels: {
         show: 'non-hydrogen',
         placementMode: 'auto-omit', // adaptive; quality, performance, and maximum coverage are available
@@ -26,6 +27,11 @@ if (!result.success) {
     console.error(result.error);
 }
 ```
+
+Performance timing diagnostics are disabled by default. Construct the viewer with
+`debug: true` when profiling; scalar-field update events and completed density results
+will then include the detailed main-thread, worker, FFT, and surface timing fields, and
+the early reflection pass emits a `reflection-prepared` event.
 
 The structure is painted before label layout begins. Collision placement uses a Web
 Worker when available, and stale label frames are cleared during rotation rather than
