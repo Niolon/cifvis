@@ -1187,16 +1187,17 @@ export class GeometryMaterialCache {
     /**
      * Gets the publication line colour already used by ellipsoid drawings.
      * @param {string} atomType - Chemical element symbol or atom label
+     * @param {'atomColor'|'ringColor'} colorProperty - Element colour to adjust
      * @returns {THREE.Color} Background-adjusted element line colour
      */
-    getPlot2DElementLineColor(atomType) {
+    getPlot2DElementLineColor(atomType, colorProperty = 'atomColor') {
         let elementType = atomType;
         if (!this.options.elementProperties[elementType]) {
             elementType = inferElementFromLabel(atomType);
         }
         this.validateElementType(elementType);
         const elementProperty = this.options.elementProperties[elementType];
-        const raw = elementProperty.atomColor;
+        const raw = elementProperty[colorProperty];
         return liftColorLuminance(
             scaleColorLuminance(raw, this.plot2DElementColorScale),
             this.plot2DElementColorLift,
@@ -1206,18 +1207,20 @@ export class GeometryMaterialCache {
     /**
      * Gets representation-specific anisotropic PEANUT materials.
      * @param {string} atomType - Chemical element symbol or atom label
+     * @param {boolean} [complementary] - Swap atom/ring colours for negative RMSD
      * @returns {{body:THREE.Material, depth:THREE.Material|null,
      * outline:THREE.Material|null,
      * presentation:string}} Material bundle
      */
-    getPeanutMaterials(atomType) {
+    getPeanutMaterials(atomType, complementary = false) {
         let elementType = atomType;
         if (!this.options.elementProperties[elementType]) {
             elementType = inferElementFromLabel(atomType);
         }
         this.validateElementType(elementType);
         const presentation = getPresentationIntent(this.options.renderStyle);
-        const key = `${elementType}_peanut_${presentation}_` +
+        const key = `${elementType}_peanut_${complementary ? 'negative' : 'positive'}_` +
+            `${presentation}_` +
             `${this.options.peanutMeridianCount}_` +
             `${this.options.peanutLatitudeIntervals}_` +
             `${this.options.peanutGridPoleAxis}_` +
@@ -1228,7 +1231,10 @@ export class GeometryMaterialCache {
             let depth = null;
             let outline = null;
             if (presentation === 'publication-2d') {
-                const lineColor = this.getPlot2DElementLineColor(elementType);
+                const lineColor = this.getPlot2DElementLineColor(
+                    elementType,
+                    complementary ? 'ringColor' : 'atomColor',
+                );
                 body = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
                     color: lineColor,
                     depthWrite: false,
@@ -1263,12 +1269,12 @@ export class GeometryMaterialCache {
                 body.userData.peanutOutlineMaterial = outline;
             } else {
                 body = decoratePeanutMaterial(new THREE.MeshStandardMaterial({
-                    color: elementProperty.atomColor,
+                    color: complementary ? elementProperty.ringColor : elementProperty.atomColor,
                     roughness: this.options.atomColorRoughness,
                     metalness: this.options.atomColorMetalness,
                 }), {
                     presentation,
-                    gridColor: elementProperty.ringColor,
+                    gridColor: complementary ? elementProperty.atomColor : elementProperty.ringColor,
                     meridianCount: this.options.peanutMeridianCount,
                     latitudeIntervals: this.options.peanutLatitudeIntervals,
                     gridPoleAxis: this.options.peanutGridPoleAxis,
@@ -1580,18 +1586,24 @@ export class ORTEP3JsStructure {
                         this.options.peanutScale,
                     );
                     if (peanut.valid) {
-                        const materials = this.cache.getPeanutMaterials(atom.atomType);
-                        atomCountByMaterial.set(
-                            materials.body,
-                            (atomCountByMaterial.get(materials.body) || 0) + 1,
-                        );
-                        peanutPoolConfigByMaterial.set(materials.body, materials);
+                        const components = peanut.surface.components.map(component => {
+                            const materials = this.cache.getPeanutMaterials(
+                                atom.atomType,
+                                component.sign === 'negative',
+                            );
+                            atomCountByMaterial.set(
+                                materials.body,
+                                (atomCountByMaterial.get(materials.body) || 0) + 1,
+                            );
+                            peanutPoolConfigByMaterial.set(materials.body, materials);
+                            return { ...component, materials };
+                        });
                         perAtomPlan.push({
                             atom,
                             kind: 'peanut',
                             ...peanut,
-                            atomMaterial: materials.body,
-                            presentation: materials.presentation,
+                            components,
+                            presentation: components[0].materials.presentation,
                         });
                     } else {
                         const [atomMaterial, ringMaterial] =
@@ -1667,7 +1679,10 @@ export class ORTEP3JsStructure {
                 } else if (plan.kind === 'peanut') {
                     atom3D = new ORTEPPeanutAtomInstance(
                         plan.atom,
-                        atomPools.get(plan.atomMaterial),
+                        plan.components.map(component => ({
+                            ...component,
+                            pool: atomPools.get(component.materials.body),
+                        })),
                         plan.matrix,
                         plan.surface,
                         plan.presentation,
@@ -2810,15 +2825,31 @@ export class ORTEPAniAtomInstance extends ORTEPAtomInstance {
 export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
     /**
      * @param {Atom} atom - Source anisotropic atom
-     * @param {PeanutInstancedPool} pool - Shared PEANUT pool
+     * @param {object[]} components - Signed PEANUT components and their pools
      * @param {THREE.Matrix4} matrix - Principal rotation and uniform max scale
      * @param {object} surface - RMSD surface descriptor
      * @param {string} presentation - Normalized presentation intent
      */
-    constructor(atom, pool, matrix, surface, presentation) {
-        super(atom, pool, matrix, pool.mesh.geometry.boundingSphere?.radius || 0);
-        const segment = this.segments[0];
-        pool.shapeAttribute.setXYZ(segment.index, ...surface.normalizedShape);
+    constructor(atom, components, matrix, surface, presentation) {
+        const first = components[0];
+        super(atom, first.pool, matrix, first.pool.mesh.geometry.boundingSphere?.radius || 0);
+        this.segments[0].sign = first.sign;
+        this.segments[0].normalizedShape = first.normalizedShape;
+        first.pool.shapeAttribute.setXYZ(
+            this.segments[0].index,
+            ...first.normalizedShape,
+        );
+        for (const component of components.slice(1)) {
+            const index = component.pool.register(matrix);
+            component.pool.shapeAttribute.setXYZ(index, ...component.normalizedShape);
+            this.segments.push({
+                pool: component.pool,
+                matrix,
+                index,
+                sign: component.sign,
+                normalizedShape: component.normalizedShape,
+            });
+        }
         this.surfaceDescriptor = surface;
         this.presentation = presentation;
     }
@@ -2841,33 +2872,34 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
             return;
         }
 
-        const segment = this.segments[0];
-        const geometry = segment.pool.mesh.geometry.clone();
-        const positions = geometry.getAttribute('position');
-        const shape = this.surfaceDescriptor.normalizedShape;
-        for (let index = 0; index < positions.count; index++) {
-            const x = positions.getX(index);
-            const y = positions.getY(index);
-            const z = positions.getZ(index);
-            const inverseLength = 1 / Math.hypot(x, y, z);
-            const nx = x * inverseLength;
-            const ny = y * inverseLength;
-            const nz = z * inverseLength;
-            const radialScale = Math.sqrt(Math.max(
-                shape[0] * nx * nx + shape[1] * ny * ny + shape[2] * nz * nz,
-                0,
-            ));
-            positions.setXYZ(index, x * radialScale, y * radialScale, z * radialScale);
-        }
-        positions.needsUpdate = true;
-        geometry.computeBoundingSphere();
-
-        const scratchMesh = new THREE.Mesh(geometry, segment.pool.mesh.material);
-        scratchMesh.matrixAutoUpdate = false;
-        scratchMesh.matrixWorld.multiplyMatrices(this.matrixWorld, segment.matrix);
         const exactHits = [];
-        THREE.Mesh.prototype.raycast.call(scratchMesh, raycaster, exactHits);
-        geometry.dispose();
+        for (const segment of this.segments) {
+            const geometry = segment.pool.mesh.geometry.clone();
+            const positions = geometry.getAttribute('position');
+            const shape = segment.normalizedShape;
+            for (let index = 0; index < positions.count; index++) {
+                const x = positions.getX(index);
+                const y = positions.getY(index);
+                const z = positions.getZ(index);
+                const inverseLength = 1 / Math.hypot(x, y, z);
+                const nx = x * inverseLength;
+                const ny = y * inverseLength;
+                const nz = z * inverseLength;
+                const radialScale = Math.sqrt(Math.max(
+                    shape[0] * nx * nx + shape[1] * ny * ny + shape[2] * nz * nz,
+                    0,
+                ));
+                positions.setXYZ(index, x * radialScale, y * radialScale, z * radialScale);
+            }
+            positions.needsUpdate = true;
+            geometry.computeBoundingSphere();
+
+            const scratchMesh = new THREE.Mesh(geometry, segment.pool.mesh.material);
+            scratchMesh.matrixAutoUpdate = false;
+            scratchMesh.matrixWorld.multiplyMatrices(this.matrixWorld, segment.matrix);
+            THREE.Mesh.prototype.raycast.call(scratchMesh, raycaster, exactHits);
+            geometry.dispose();
+        }
         if (exactHits.length > 0) {
             exactHits.sort((a, b) => a.distance - b.distance);
             intersects.push({ ...exactHits[0], object: this });
@@ -2877,9 +2909,10 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
     /**
      * Creates a standalone material that reads this atom's shape from a uniform.
      * @param {THREE.Material} source - Pooled source material
+     * @param {number[]} normalizedShape - Signed component shape
      * @returns {THREE.Material} Standalone decorated clone
      */
-    createStandalonePeanutMaterial(source) {
+    createStandalonePeanutMaterial(source, normalizedShape) {
         const material = source.clone();
         const config = source.userData.peanut;
         return decoratePeanutMaterial(material, {
@@ -2890,7 +2923,7 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
             meridianCount: config.meridianCount,
             latitudeIntervals: config.latitudeIntervals,
             gridPoleAxis: config.gridPoleAxis,
-            uniformShape: this.surfaceDescriptor.normalizedShape,
+            uniformShape: normalizedShape,
             gridRotation: this.surfaceDescriptor.rotation,
         });
     }
@@ -2898,17 +2931,19 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
     select(color, options) {
         this._selectionColor = color;
         if (this.presentation !== 'publication-2d') {
-            const segment = this.segments[0];
-            segment.pool.hideInstance(segment.index);
-            const highlightMaterial = this.createStandalonePeanutMaterial(
-                segment.pool.mesh.material,
-            );
-            highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
-            const mesh = new THREE.Mesh(segment.pool.baseGeometry, highlightMaterial);
-            mesh.applyMatrix4(segment.matrix);
-            mesh.userData = { ...this.userData, selectable: false };
-            this.add(mesh);
-            this.highlightMeshes = [mesh];
+            this.highlightMeshes = this.segments.map(segment => {
+                segment.pool.hideInstance(segment.index);
+                const highlightMaterial = this.createStandalonePeanutMaterial(
+                    segment.pool.mesh.material,
+                    segment.normalizedShape,
+                );
+                highlightMaterial.emissive?.setHex(options.selection.highlightEmissive);
+                const mesh = new THREE.Mesh(segment.pool.baseGeometry, highlightMaterial);
+                mesh.applyMatrix4(segment.matrix);
+                mesh.userData = { ...this.userData, selectable: false };
+                this.add(mesh);
+                return mesh;
+            });
         }
         const marker = this.createSelectionMarker(color, options);
         this.add(marker);
@@ -2916,44 +2951,52 @@ export class ORTEPPeanutAtomInstance extends ORTEPAtomInstance {
     }
 
     createSelectionMarker(color, options) {
-        const segment = this.segments[0];
-        let material;
-        if (this.presentation === 'publication-2d') {
-            const outlineConfig = segment.pool.outlineMesh.material.userData.peanut;
-            const baseWidth = options.plot2DOutlineWidth ?? 1.2;
-            const haloWidth = options.selection.haloWidth ?? 4;
-            material = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
-                color,
-                transparent: true,
-                opacity: 0.9,
-                side: THREE.BackSide,
-                depthTest: true,
-                depthWrite: false,
-            }), {
-                presentation: 'outline',
-                uniformShape: this.surfaceDescriptor.normalizedShape,
-                gridRotation: this.surfaceDescriptor.rotation,
-                outlinePixelUniform: { value: baseWidth + haloWidth },
-                outlineViewport: outlineConfig.outlineViewport,
-            });
-        } else {
-            material = decoratePeanutMaterial(this.createSelectionMaterial(color), {
-                presentation: 'clean-3d',
-                uniformShape: this.surfaceDescriptor.normalizedShape,
-                gridRotation: this.surfaceDescriptor.rotation,
-            });
+        const markers = this.segments.map(segment => {
+            let material;
+            if (this.presentation === 'publication-2d') {
+                const outlineConfig = segment.pool.outlineMesh.material.userData.peanut;
+                const baseWidth = options.plot2DOutlineWidth ?? 1.2;
+                const haloWidth = options.selection.haloWidth ?? 4;
+                material = decoratePeanutMaterial(new THREE.MeshBasicMaterial({
+                    color,
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.BackSide,
+                    depthTest: true,
+                    depthWrite: false,
+                }), {
+                    presentation: 'outline',
+                    uniformShape: segment.normalizedShape,
+                    gridRotation: this.surfaceDescriptor.rotation,
+                    outlinePixelUniform: { value: baseWidth + haloWidth },
+                    outlineViewport: outlineConfig.outlineViewport,
+                });
+            } else {
+                material = decoratePeanutMaterial(this.createSelectionMaterial(color), {
+                    presentation: 'clean-3d',
+                    uniformShape: segment.normalizedShape,
+                    gridRotation: this.surfaceDescriptor.rotation,
+                });
+            }
+            const marker = new THREE.Mesh(segment.pool.baseGeometry, material);
+            marker.applyMatrix4(segment.matrix);
+            if (this.presentation === 'publication-2d') {
+                // The depth mask suppresses the BackSide material over the atom;
+                // only its screen-space expansion remains as a coloured halo.
+                marker.renderOrder = BOND_RENDER_ORDER + 1;
+            } else {
+                marker.scale.multiplyScalar(options.selection.markerMult);
+            }
+            marker.userData.selectable = false;
+            return marker;
+        });
+        if (markers.length === 1) {
+            return markers[0];
         }
-        const marker = new THREE.Mesh(segment.pool.baseGeometry, material);
-        marker.applyMatrix4(segment.matrix);
-        if (this.presentation === 'publication-2d') {
-            // The depth mask suppresses the BackSide material over the atom;
-            // only its screen-space expansion remains as a coloured halo.
-            marker.renderOrder = BOND_RENDER_ORDER + 1;
-        } else {
-            marker.scale.multiplyScalar(options.selection.markerMult);
-        }
-        marker.userData.selectable = false;
-        return marker;
+        const group = new THREE.Group();
+        group.add(...markers);
+        group.userData.selectable = false;
+        return group;
     }
 }
 

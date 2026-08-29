@@ -8,8 +8,11 @@ These options control how the 3D structure is rendered.
 
 - **`ellipsoid`** (default) — the conventional equal-probability ellipsoid;
 - **`rmsd-peanut`** — a radial RMS displacement surface with
-  `r(n) = peanutScale × sqrt(nᵀUn)`. Its radius has units of length after scaling and
-  must not be interpreted as an enclosed probability.
+  `r(n) = peanutScale × sqrt(|nᵀUn|)`. Positive directions use the element's
+  `atomColor` for the body and `ringColor` for the grid. For difference tensors with
+  negative directions, a complementary surface is drawn with those colours switched.
+  Its radius has units of length after scaling and must not be interpreted as an
+  enclosed probability.
 
 PEANUT grid density and physical stroke width can be adjusted independently with
 `peanutMeridianCount`, `peanutLatitudeIntervals`, and `peanutGridLineWidth`. The

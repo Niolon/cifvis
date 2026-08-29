@@ -170,7 +170,8 @@ export function getADPPrincipalFrame(adp, unitCell) {
  * @param {UnitCell} unitCell - Unit cell used for Cartesian conversion
  * @param {number} scale - Visual RMSD multiplier
  * @returns {{kind:string, eigenvalues:number[], rotation:number[][], maxScale:number,
- * normalizedShape:number[], boundingRadius:number, valid:boolean,
+ * normalizedShape:number[], complementaryShape:number[], components:object[],
+ * boundingRadius:number, valid:boolean,
  * localRadialScale:function(number[]):number, localNormal:function(number[]):number[],
  * surfaceDistanceAlong:function(number[]):number}}
  * Surface description
@@ -178,11 +179,25 @@ export function getADPPrincipalFrame(adp, unitCell) {
 export function createRMSDPeanutSurface(adp, unitCell, scale) {
     const frame = getADPPrincipalFrame(adp, unitCell);
     const validScale = Number.isFinite(scale) && scale > 0;
-    const lambdaMax = frame.eigenvalues[0];
-    const normalizedShape = frame.valid
-        ? frame.eigenvalues.map(value => value / lambdaMax)
+    const maxAbsEigenvalue = Math.max(...frame.eigenvalues.map(Math.abs));
+    const tolerance = Math.max(1e-12, maxAbsEigenvalue * 1e-10);
+    const validTensor = frame.eigenvalues.every(Number.isFinite) &&
+        Number.isFinite(maxAbsEigenvalue) && maxAbsEigenvalue > tolerance;
+    const normalizedShape = validTensor
+        ? frame.eigenvalues.map(value => value / maxAbsEigenvalue)
         : [NaN, NaN, NaN];
-    const maxScale = frame.valid && validScale ? Math.sqrt(lambdaMax) : NaN;
+    const complementaryShape = normalizedShape.map(value => -value);
+    const maxScale = validTensor && validScale ? Math.sqrt(maxAbsEigenvalue) : NaN;
+    const components = validTensor ? [
+        frame.eigenvalues.some(value => value > tolerance) && {
+            sign: 'positive',
+            normalizedShape,
+        },
+        frame.eigenvalues.some(value => value < -tolerance) && {
+            sign: 'negative',
+            normalizedShape: complementaryShape,
+        },
+    ].filter(Boolean) : [];
     const rotationTranspose = math.transpose(frame.rotation);
     const normalizedDirection = direction => {
         if (!Array.isArray(direction) || direction.length !== 3) {
@@ -193,28 +208,33 @@ export function createRMSDPeanutSurface(adp, unitCell, scale) {
     };
     const localRadialScale = direction => {
         const n = normalizedDirection(direction);
-        if (!frame.valid || !n) {
+        if (!validTensor || !n) {
             return 0;
         }
-        return Math.sqrt(Math.max(normalizedShape.reduce(
+        return Math.sqrt(Math.abs(normalizedShape.reduce(
             (sum, value, index) => sum + value * n[index] * n[index],
             0,
-        ), 0));
+        )));
     };
     const localNormal = direction => {
         const n = normalizedDirection(direction);
-        if (!frame.valid || !n) {
+        if (!validTensor || !n) {
             return [0, 0, 0];
         }
-        const q = localRadialScale(n) ** 2;
+        const signedQ = normalizedShape.reduce(
+            (sum, value, index) => sum + value * n[index] * n[index],
+            0,
+        );
+        const q = Math.abs(signedQ);
+        const activeShape = signedQ >= 0 ? normalizedShape : complementaryShape;
         const normal = n.map((value, index) =>
-            2 * q * value - normalizedShape[index] * value);
+            2 * q * value - activeShape[index] * value);
         const length = Math.hypot(...normal);
         return length > 0 ? normal.map(value => value / length) : [0, 0, 0];
     };
     const surfaceDistanceAlong = direction => {
         const unit = normalizedDirection(direction);
-        if (!frame.valid || !validScale || !unit) {
+        if (!validTensor || !validScale || !unit) {
             return 0;
         }
         const local = math.multiply(rotationTranspose, unit);
@@ -222,7 +242,7 @@ export function createRMSDPeanutSurface(adp, unitCell, scale) {
             (sum, value, index) => sum + value * local[index] * local[index],
             0,
         );
-        return scale * Math.sqrt(Math.max(variance, 0));
+        return scale * Math.sqrt(Math.abs(variance));
     };
     return {
         kind: 'rmsd-peanut',
@@ -230,8 +250,10 @@ export function createRMSDPeanutSurface(adp, unitCell, scale) {
         rotation: frame.rotation,
         maxScale,
         normalizedShape,
-        boundingRadius: frame.valid && validScale ? scale * maxScale : 0,
-        valid: frame.valid && validScale,
+        complementaryShape,
+        components,
+        boundingRadius: validTensor && validScale ? scale * maxScale : 0,
+        valid: validTensor && validScale,
         localRadialScale,
         localNormal,
         surfaceDistanceAlong,

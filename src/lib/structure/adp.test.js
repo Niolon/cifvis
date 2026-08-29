@@ -206,12 +206,23 @@ describe('ADPs', () => {
             expect(normalDotTangent).toBeCloseTo(0, 10);
         });
 
-        test('rejects non-positive and effectively zero principal values', () => {
+        test('splits mixed-sign tensors into positive and complementary components', () => {
+            const surface = createRMSDPeanutSurface(
+                new UAnisoADP(0.09, 0.04, -0.01, 0, 0, 0), cell, 1.5,
+            );
+            expect(surface.valid).toBe(true);
+            expect(surface.components.map(component => component.sign))
+                .toEqual(['positive', 'negative']);
+            surface.components[0].normalizedShape.forEach((value, index) =>
+                expect(value).toBeCloseTo([1, 4 / 9, -1 / 9][index], 12));
+            surface.components[1].normalizedShape.forEach((value, index) =>
+                expect(value).toBeCloseTo([-1, -4 / 9, 1 / 9][index], 12));
+            expect(surface.surfaceDistanceAlong([0, 0, 1])).toBeCloseTo(0.15, 10);
+        });
+
+        test('rejects only effectively zero tensors and invalid scales', () => {
             expect(createRMSDPeanutSurface(
-                new UAnisoADP(0.02, 0.01, -0.001, 0, 0, 0), cell, 1.5,
-            ).valid).toBe(false);
-            expect(createRMSDPeanutSurface(
-                new UAnisoADP(1, 0.5, 1e-13, 0, 0, 0), cell, 1.5,
+                new UAnisoADP(1e-13, 0, 0, 0, 0, 0), cell, 1.5,
             ).valid).toBe(false);
             expect(createRMSDPeanutSurface(
                 new UAnisoADP(1, 0.5, 0.25, 0, 0, 0), cell, 0,

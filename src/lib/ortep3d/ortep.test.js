@@ -991,6 +991,43 @@ describe('RMSD PEANUT rendering', () => {
         structure.dispose();
     });
 
+    test.each(['solid-3d', 'cutout-3d', 'cutout-2d'])(
+        'renders the negative component with atom and ring colours switched in %s',
+        (renderStyle) => {
+            const structure = new ORTEP3JsStructure(new CrystalStructure(cell, [
+                new Atom(
+                    'C1', 'C', new FractPosition(0.1, 0.1, 0.1),
+                    new UAnisoADP(0.09, 0.04, -0.01, 0, 0, 0),
+                ),
+            ], [], []), { adpRepresentation: 'rmsd-peanut', renderStyle });
+            const atom = structure.atoms3D[0];
+            const [positive, negative] = atom.segments;
+
+            expect(atom).toBeInstanceOf(ORTEPPeanutAtomInstance);
+            expect(atom.segments.map(segment => segment.sign))
+                .toEqual(['positive', 'negative']);
+            expect(positive.pool.shapeAttribute.getZ(positive.index)).toBeCloseTo(-1 / 9);
+            expect(negative.pool.shapeAttribute.getZ(negative.index)).toBeCloseTo(1 / 9);
+
+            const positiveMaterial = positive.pool.mesh.material;
+            const negativeMaterial = negative.pool.mesh.material;
+            const publication = renderStyle === 'cutout-2d';
+            const positiveBody = publication
+                ? structure.cache.getPlot2DElementLineColor('C', 'atomColor').getHex()
+                : 0x000000;
+            const negativeBody = publication
+                ? structure.cache.getPlot2DElementLineColor('C', 'ringColor').getHex()
+                : 0xffffff;
+            expect(positiveMaterial.color.getHex()).toBe(positiveBody);
+            expect(positiveMaterial.userData.peanut.gridColor.getHex())
+                .toBe(publication ? positiveBody : 0xffffff);
+            expect(negativeMaterial.color.getHex()).toBe(negativeBody);
+            expect(negativeMaterial.userData.peanut.gridColor.getHex())
+                .toBe(publication ? negativeBody : 0x000000);
+            structure.dispose();
+        },
+    );
+
     test('injects deformation, exact normals, stable grid, and publication discard code', () => {
         const cache = new GeometryMaterialCache({
             adpRepresentation: 'rmsd-peanut',
@@ -1143,11 +1180,11 @@ describe('RMSD PEANUT rendering', () => {
         structure.dispose();
     });
 
-    test('retains the malformed-ADP tetrahedron fallback', () => {
+    test('retains the degenerate-ADP tetrahedron fallback', () => {
         const structure = new ORTEP3JsStructure(new CrystalStructure(cell, [
             new Atom(
                 'C1', 'C', new FractPosition(0, 0, 0),
-                new UAnisoADP(0.02, 0.01, -0.001, 0, 0, 0),
+                new UAnisoADP(0, 0, 0, 0, 0, 0),
             ),
         ], [], []), { adpRepresentation: 'rmsd-peanut' });
         expect(structure.atoms3D[0]).toBeInstanceOf(ORTEPAniAtom);
