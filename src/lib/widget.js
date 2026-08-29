@@ -1015,11 +1015,7 @@ export class CifViewWidget extends HTMLElement {
                 let info = '';
                 if (selection.type === 'atom') {
                     const atomId = this.sanitizeHTML(selection.data.uniqueId);
-                    const parts = atomLabelParts(
-                        selection.data.label, this.viewer.options?.atomLabels?.subscriptNonElement,
-                    );
-                    const label = this.sanitizeHTML(parts.element) + (parts.nonElement ?
-                        `<sub>${this.sanitizeHTML(parts.nonElement)}</sub>` : '');
+                    const label = this.atomLabelHTML(selection.data.label);
                     info = `<span class="atom-name" data-atom-id="${atomId}">${label}</span>`;
                 } else if (selection.type === 'bond') {
                     const bondLengthString = formatValueEsd(selection.data.bondLength, selection.data.bondLengthSU);

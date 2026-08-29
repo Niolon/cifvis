@@ -47,9 +47,10 @@ viewer.getAtomLabelLayout();                   // placed + omitted labels
 In the widget, the same is available declaratively through the `atom-labels` attribute
 and `options.atomLabels` — see [Labels in the widget](./widget.md).
 
-`subscriptNonElement` is a global presentation choice for atom labels. The complete label
-identifier after the element symbol is lowered, so both `1` and `B` are subscript in `Si1B`. It affects canvas
-labels, supplied measurement controls, widget captions, and playground selection cards,
+`subscriptNonElement` is a global presentation choice for atom labels. In rich renderers
+(canvas and DOM), the complete label identifier after the element symbol is lowered, so
+`Si1B` is shown as `Si` with `1B` subscripted. It affects canvas labels, supplied
+measurement controls, widget captions, and playground selection cards,
 but does not change raw CIF labels, unique IDs, selectors, or returned measurement data.
 When the complete identifier is enclosed in parentheses, the displayed subscript omits
 that one pair: `Si(1B)` is shown as `Si` with `1B` subscripted. Parentheses are retained
@@ -57,6 +58,8 @@ when the option is disabled.
 Custom measurement renderers receive raw labels. The exported
 `atomLabelParts(label, true)` helper returns `{ element: 'Si', nonElement: '1B' }`, so
 custom DOM renderers can put the complete `nonElement` value in a `<sub>` element.
+The plain-text `formatAtomLabel()` and `formatMeasurement()` helpers use Unicode
+subscripts where available; letters without a Unicode subscript remain on the baseline.
 
 ## Choosing a placement mode
 
