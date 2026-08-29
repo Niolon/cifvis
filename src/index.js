@@ -69,3 +69,4 @@ if (typeof window !== 'undefined' && window.customElements) {
 }
 
 export { CifViewWidget };
+export { MeasurementControls } from './lib/measurement-controls.js';

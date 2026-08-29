@@ -98,4 +98,6 @@ widget.addEventListener('cifvis-measurement', event => {
 ```
 
 For direct control over creation, hover previews, removal, and subscriptions, use the
-[JavaScript measurement API](../library/measurements.md).
+[JavaScript measurement API](../library/measurements.md). Its reusable
+`MeasurementControls` bindings provide the same button, result-hover, atom-hover, and
+dismissal behavior for custom interfaces without requiring the complete widget.

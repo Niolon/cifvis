@@ -161,6 +161,68 @@ try {
     assert.equal(widgetStats.buttonCount, 1);
     assert.deepEqual(widgetStats.groupVisibility, [false, true]);
     assert.equal(widgetStats.viewerReceivedWidgetMeasurements, false);
+
+    await page.goto(`http://127.0.0.1:${port}/`);
+    const controllerStats = await page.evaluate(async () => {
+        const { CrystalViewer, MeasurementControls } = await import('/cifvis.alldeps.js');
+        document.body.innerHTML = `
+            <div id="viewer" style="height:70vh"></div>
+            <button id="measure" type="button"></button>
+            <div id="default-results"></div>
+            <div id="custom-results"></div>`;
+        const viewer = new CrystalViewer(document.querySelector('#viewer'), {
+            renderMode: 'onDemand',
+        });
+        const loaded = await viewer.loadCIF(
+            await fetch('/urea.cif').then(response => response.text()),
+        );
+        if (!loaded.success) {
+            throw new Error(loaded.error);
+        }
+        const controls = new MeasurementControls(viewer, {
+            measurements: [['O', 'C']],
+        });
+        const button = document.querySelector('#measure');
+        const defaultResults = document.querySelector('#default-results');
+        const customResults = document.querySelector('#custom-results');
+        controls.bindAction(button);
+        controls.bindResults(defaultResults);
+        controls.bindResults(customResults, {
+            renderItem(measurement) {
+                const item = document.createElement('article');
+                const atom = document.createElement('button');
+                atom.dataset.cifvisAtomId = measurement.atomIds[0];
+                atom.textContent = measurement.labels[0];
+                const dismiss = document.createElement('button');
+                dismiss.dataset.cifvisDismiss = '';
+                dismiss.textContent = 'remove';
+                item.append(atom, dismiss);
+                return item;
+            },
+        });
+
+        const customItem = customResults.querySelector('article');
+        customItem.dispatchEvent(new MouseEvent('mouseenter'));
+        const visibleOnHover = [...viewer.measurementGroups.values()].map(group => group.visible);
+        customItem.querySelector('[data-cifvis-atom-id]').focus();
+        const defaultText = defaultResults.textContent;
+        customItem.querySelector('[data-cifvis-dismiss]').click();
+        const result = {
+            buttonTitle: button.title,
+            defaultText,
+            customItemCount: customResults.children.length,
+            measurementCount: viewer.getMeasurements().length,
+            visibleOnHover,
+        };
+        controls.dispose();
+        viewer.dispose();
+        return result;
+    });
+    assert.match(controllerStats.buttonTitle, /0 selected/);
+    assert.match(controllerStats.defaultText, /Distance O–C:/);
+    assert.equal(controllerStats.customItemCount, 0);
+    assert.equal(controllerStats.measurementCount, 0);
+    assert.deepEqual(controllerStats.visibleOnHover, [true]);
     assert.equal(browserErrors.length, 0, `Browser errors: ${browserErrors.join('\n')}`);
 } finally {
     await browser.close();

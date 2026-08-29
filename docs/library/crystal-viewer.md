@@ -6,6 +6,10 @@ can build your own directly against the same public surface. The relevant parts 
 viewer, bind selection, load), `attributeChangedCallback` (toggle filters), and
 `disconnectedCallback` (dispose).
 
+For measurement interfaces, prefer the reusable
+[`MeasurementControls`](./measurements.md) bindings over manually synchronizing
+selection counts, result lists, hover previews, and removal.
+
 ```js
 import { CrystalViewer } from 'cifvis';
 
@@ -36,7 +40,7 @@ atoms, bonds, elements), see the [Options Reference](../reference/index.md).
 | `viewer.cycleModifierMode(name)` | Advances a filter to its next applicable mode and re-renders correctly — the simplest way to wire a toggle button. |
 | `viewer.numberModifierModes(name)` | Number of applicable modes for the current structure; use it to decide whether to show a toggle at all. |
 | `viewer.updateStructure()` | Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's `.mode`. |
-| `viewer.selections.onChange(callback)` | Selection event hook. Callback receives `[{type: 'atom'\|'bond'\|'hbond', data, color}]`. |
+| `viewer.selections.onChange(callback)` | Selection event hook. Callback receives `[{type: 'atom'\|'bond'\|'hbond', data, color}]`; returns an unsubscribe function. |
 | `viewer.selectAtoms(labels)` | Programmatic selection by atom label. |
 | `viewer.measureSelectedAtoms()` | Creates a measurement from selected atoms in selection order. See [Measurements](./measurements.md). |
 | `viewer.measureAtomsById(ids)` | Creates a measurement from ordered displayed atom labels or unique IDs. |

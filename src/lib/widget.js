@@ -1,7 +1,7 @@
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
+import { MeasurementControls } from './measurement-controls.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
-import { measurementAction } from './structure/measurements.js';
 import defaultSettings from './ortep3d/structure-settings.js';
 import { getDisorderIcon } from './disorder-icons.js';
 import {
@@ -143,7 +143,17 @@ const defaultStyles = `
     display: inline-flex;
     align-items: baseline;
     gap: 4px;
+    margin-left: 4px;
+    border: 0;
     border-bottom: 3px solid var(--cifvis-measurement-color);
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  cifview-widget .widget-measurement-results {
+    display: inline;
   }
 
   cifview-widget .measurement-dismiss {
@@ -292,8 +302,14 @@ export class CifViewWidget extends HTMLElement {
 
     /** Connects caption updates to the current viewer instance. */
     connectViewerEvents() {
-        this.stopScalarFieldUpdates?.();
-        this.stopModifierModeUpdates?.();
+        this.disconnectViewerEvents();
+        this.measurementControls = new MeasurementControls(this.viewer, {
+            onError: error => console.warn('Could not measure selected atoms:', error),
+        });
+        this.stopMeasurementState = this.measurementControls.subscribe(state => {
+            this.measurements = state.measurements;
+            this.updateCaption();
+        });
         this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.(update => {
             this.scalarFieldDisplay = reduceScalarFieldDisplayState(
                 this.scalarFieldDisplay,
@@ -306,15 +322,28 @@ export class CifViewWidget extends HTMLElement {
             this.prepopulateMeasurements();
             this.setupButtons();
         }) ?? null;
-        this.stopMeasurementUpdates = this.viewer.onMeasurementChange?.(measurements => {
-            this.measurements = measurements;
+        this.stopSelectionUpdates = this.viewer.selections.onChange(selections => {
+            this.selections = selections;
             this.updateCaption();
         }) ?? null;
-        this.viewer.selections.onChange(selections => {
-            this.selections = selections;
-            this.updateMeasurementButton();
-            this.updateCaption();
-        });
+    }
+
+    /** Disconnects subscriptions and measurement DOM bindings from the current viewer. */
+    disconnectViewerEvents() {
+        this.stopScalarFieldUpdates?.();
+        this.stopModifierModeUpdates?.();
+        this.stopSelectionUpdates?.();
+        this.stopMeasurementState?.();
+        this.stopMeasurementResults?.();
+        this.stopMeasurementAction?.();
+        this.measurementControls?.dispose();
+        this.stopScalarFieldUpdates = null;
+        this.stopModifierModeUpdates = null;
+        this.stopSelectionUpdates = null;
+        this.stopMeasurementState = null;
+        this.stopMeasurementResults = null;
+        this.stopMeasurementAction = null;
+        this.measurementControls = null;
     }
 
     parseOptions() {
@@ -365,10 +394,7 @@ export class CifViewWidget extends HTMLElement {
                 continue;
             }
             try {
-                const measurement = this.viewer.measureAtomsById(atomIds);
-                if (!this.measurements.some(existing => existing.id === measurement.id)) {
-                    this.measurements = [...this.measurements, measurement];
-                }
+                this.viewer.measureAtomsById(atomIds);
             } catch (error) {
                 console.warn('Could not create prepopulated measurement:', error);
             }
@@ -449,6 +475,8 @@ export class CifViewWidget extends HTMLElement {
     }
 
     clearButtons() {
+        this.stopMeasurementAction?.();
+        this.stopMeasurementAction = null;
         if (this.buttonContainer) {
             while (this.buttonContainer.firstChild) {
                 this.buttonContainer.removeChild(this.buttonContainer.firstChild);
@@ -483,44 +511,8 @@ export class CifViewWidget extends HTMLElement {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'control-button measurement-button';
-        button.addEventListener('click', () => {
-            try {
-                const measurement = this.viewer.measureSelectedAtoms();
-                if (!this.measurements.some(existing => existing.id === measurement.id)) {
-                    this.measurements = [...this.measurements, measurement];
-                }
-                this.updateCaption();
-                this.dispatchEvent(new CustomEvent('cifvis-measurement', {
-                    detail: measurement,
-                    bubbles: true,
-                }));
-            } catch (error) {
-                console.warn('Could not measure selected atoms:', error);
-            }
-        });
         this.buttonContainer.appendChild(button);
-        this.updateMeasurementButton();
-    }
-
-    /** Refreshes measurement type, selection count, and accessibility text. */
-    updateMeasurementButton() {
-        const button = this.buttonContainer?.querySelector('.measurement-button');
-        if (!button) {
-            return;
-        }
-        const atomCount = this.selections.filter(selection => selection.type === 'atom').length;
-        const action = measurementAction(atomCount);
-        button.disabled = !action.enabled;
-        button.title = `${action.title} (${atomCount} selected)`;
-        button.setAttribute('aria-label', button.title);
-        button.replaceChildren();
-        const symbol = document.createElement('span');
-        symbol.className = 'measurement-symbol';
-        symbol.textContent = action.symbol;
-        const count = document.createElement('span');
-        count.className = 'measurement-count';
-        count.textContent = String(atomCount);
-        button.append(symbol, count);
+        this.stopMeasurementAction = this.measurementControls.bindAction(button);
     }
 
     /** Adds or updates the compact density-level visibility control. */
@@ -752,6 +744,7 @@ export class CifViewWidget extends HTMLElement {
                     const currentCifContent = this.viewer.state.currentCifContent;
                     const currentCifBlock = this.viewer.state.currentCifBlock;
 
+                    this.disconnectViewerEvents();
                     this.viewer.dispose();
                     this.measurements = [];
                     this.viewer = new CrystalViewer(container, this.userOptions);
@@ -945,7 +938,8 @@ export class CifViewWidget extends HTMLElement {
      */
     measurementAtomHTML(label, atomId, color) {
         return `<span class="atom-name" data-atom-id="${this.sanitizeHTML(atomId)}" ` +
-            `data-hover-color="${color}">${this.sanitizeHTML(label)}</span>`;
+            `data-cifvis-atom-id="${this.sanitizeHTML(atomId)}" ` +
+            `data-cifvis-hover-color="${color}">${this.sanitizeHTML(label)}</span>`;
     }
 
     /**
@@ -968,6 +962,29 @@ export class CifViewWidget extends HTMLElement {
         const atoms = measurement.labels.map((label, index) =>
             this.measurementAtomHTML(label, measurement.atomIds[index], measurement.color)).join('–');
         return `${title}${atoms}: ${value}${measurement.unit === '°' ? '' : ' '}${measurement.unit}`;
+    }
+
+    /**
+     * Renders the widget's existing inline measurement presentation for the shared controller.
+     * @param {object} measurement - Measurement to render.
+     * @returns {HTMLElement} Inline result element.
+     */
+    renderMeasurementCaption(measurement) {
+        const item = document.createElement('span');
+        item.className = 'measurement-caption';
+        const color = `#${measurement.color.toString(16).padStart(6, '0')}`;
+        item.style.setProperty('--cifvis-measurement-color', color);
+        const content = document.createElement('strong');
+        content.innerHTML = this.measurementCaptionHTML(measurement);
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'measurement-dismiss';
+        dismiss.dataset.cifvisDismiss = '';
+        dismiss.setAttribute('aria-label', 'Remove measurement');
+        dismiss.title = 'Remove measurement';
+        dismiss.textContent = '×';
+        item.append(content, dismiss);
+        return item;
     }
 
     updateCaption() {
@@ -1000,18 +1017,17 @@ export class CifViewWidget extends HTMLElement {
             caption += selectionInfo + '.';
         }
 
-        for (const measurement of this.measurements) {
-            const color = `#${measurement.color.toString(16).padStart(6, '0')}`;
-            caption += ' <span class="measurement-caption" ' +
-                `data-measurement-id="${measurement.id}" ` +
-                `style="--cifvis-measurement-color:${color}"><strong>` +
-                `${this.measurementCaptionHTML(measurement)}</strong>` +
-                `<button type="button" class="measurement-dismiss" data-measurement-id="${measurement.id}" ` +
-                'aria-label="Remove measurement" title="Remove measurement">×</button></span>';
-        }
-        
         this.captionElement.innerHTML = caption;
-        for (const name of this.captionElement.querySelectorAll('.atom-name[data-atom-id]')) {
+        const measurementResults = document.createElement('span');
+        measurementResults.className = 'widget-measurement-results';
+        this.captionElement.appendChild(measurementResults);
+        this.stopMeasurementResults?.();
+        this.stopMeasurementResults = this.measurementControls?.bindResults(measurementResults, {
+            renderItem: measurement => this.renderMeasurementCaption(measurement),
+        }) ?? null;
+        for (const name of this.captionElement.querySelectorAll(
+            '.atom-name[data-atom-id]:not([data-cifvis-atom-id])',
+        )) {
             name.addEventListener('mouseenter', () => {
                 if (name.dataset.hoverColor === undefined) {
                     this.viewer.setHoveredAtom(name.dataset.atomId);
@@ -1021,30 +1037,11 @@ export class CifViewWidget extends HTMLElement {
             });
             name.addEventListener('mouseleave', () => this.viewer.setHoveredAtom(null));
         }
-        for (const dismiss of this.captionElement.querySelectorAll('.measurement-dismiss')) {
-            dismiss.addEventListener('click', event => {
-                event.preventDefault();
-                event.stopPropagation();
-                const id = dismiss.dataset.measurementId;
-                this.viewer.clearMeasurement(id);
-                this.measurements = this.measurements.filter(measurement => measurement.id !== id);
-                this.updateCaption();
-            });
-        }
-        for (const caption of this.captionElement.querySelectorAll(
-            '.measurement-caption[data-measurement-id]',
-        )) {
-            caption.addEventListener('mouseenter', () =>
-                this.viewer.setHoveredMeasurement(caption.dataset.measurementId));
-            caption.addEventListener('mouseleave', () => this.viewer.setHoveredMeasurement(null));
-        }
         this.viewer.controls.handleResize();
     }
 
     disconnectedCallback() {
-        this.stopScalarFieldUpdates?.();
-        this.stopModifierModeUpdates?.();
-        this.stopMeasurementUpdates?.();
+        this.disconnectViewerEvents();
         if (this.viewer) {
             this.viewer.dispose();
         }

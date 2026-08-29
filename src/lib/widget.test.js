@@ -55,6 +55,9 @@ describe('CifViewWidget', () => {
     beforeEach(() => {
         // Reset mocks
         vi.clearAllMocks();
+        const selectionCallbacks = new Set();
+        const measurementCallbacks = new Set();
+        let storedMeasurements = [];
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
@@ -89,32 +92,55 @@ describe('CifViewWidget', () => {
                 currentCifBlock: 0,
             },
             selections: {
-                onChange: vi.fn(),
+                onChange: vi.fn(callback => {
+                    selectionCallbacks.add(callback);
+                    return () => selectionCallbacks.delete(callback);
+                }),
+                getSelections: vi.fn(() => []),
             },
             onScalarFieldUpdate: vi.fn(),
             onModifierModeChange: vi.fn(),
             updateIsosurfaceOptions: vi.fn(),
             setIsosurfaceVisibility: vi.fn(),
             cycleScalarField: vi.fn(),
-            measureSelectedAtoms: vi.fn().mockReturnValue({
-                id: 'measurement-1', color: 0x00b7ff,
-                type: 'distance', value: 1.234, unit: 'Å', labels: ['C1', 'O1'],
-                atomIds: ['C1|1_555', 'O1|1_555'],
+            measureSelectedAtoms: vi.fn(() => {
+                const measurement = {
+                    id: 'measurement-1', color: 0x00b7ff,
+                    type: 'distance', value: 1.234, unit: 'Å', labels: ['C1', 'O1'],
+                    atomIds: ['C1|1_555', 'O1|1_555'],
+                };
+                storedMeasurements.push(measurement);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+                return measurement;
             }),
-            measureAtomsById: vi.fn(atomIds => ({
-                id: `measurement-pre-${atomIds.join('-')}`,
-                color: atomIds.length === 2 ? 0x00b7ff : 0xff2d95,
-                type: atomIds.length === 2 ? 'distance' : 'angle',
-                value: atomIds.length === 2 ? 1.234 : 109.5,
-                unit: atomIds.length === 2 ? 'Å' : '°',
-                labels: [...atomIds],
-                atomIds: [...atomIds],
-            })),
-            clearMeasurement: vi.fn(),
+            measureAtomsById: vi.fn(atomIds => {
+                const measurement = {
+                    id: `measurement-pre-${atomIds.join('-')}`,
+                    color: atomIds.length === 2 ? 0x00b7ff : 0xff2d95,
+                    type: atomIds.length === 2 ? 'distance' : 'angle',
+                    value: atomIds.length === 2 ? 1.234 : 109.5,
+                    unit: atomIds.length === 2 ? 'Å' : '°',
+                    labels: [...atomIds],
+                    atomIds: [...atomIds],
+                };
+                storedMeasurements.push(measurement);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+                return measurement;
+            }),
+            clearMeasurement: vi.fn(id => {
+                storedMeasurements = id === null || id === undefined
+                    ? []
+                    : storedMeasurements.filter(measurement => measurement.id !== id);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+            }),
+            getMeasurements: vi.fn(() => [...storedMeasurements]),
             setHoveredAtom: vi.fn(),
             setHoveredMeasurement: vi.fn(),
             updateMeasurementOptions: vi.fn(),
-            onMeasurementChange: vi.fn().mockReturnValue(vi.fn()),
+            onMeasurementChange: vi.fn(callback => {
+                measurementCallbacks.add(callback);
+                return () => measurementCallbacks.delete(callback);
+            }),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -132,11 +158,10 @@ describe('CifViewWidget', () => {
         });
 
         // Mock selection callback storage
-        mockSelectionCallback = null;
+        mockSelectionCallback = selections => {
+            selectionCallbacks.forEach(callback => callback(selections));
+        };
         mockDensityCallback = null;
-        mockCrystalViewer.selections.onChange.mockImplementation(callback => {
-            mockSelectionCallback = callback;
-        });
         mockCrystalViewer.onScalarFieldUpdate.mockImplementation(callback => {
             mockDensityCallback = callback;
             return vi.fn();

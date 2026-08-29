@@ -444,9 +444,25 @@ export class SelectionManager {
      * Registers a callback to be notified when selection changes.
      * @param {function(Array<{type: string, data: object, color: ?number}>): void} callback - Called
      *  with the updated list of selections
+     * @returns {function(): void} Unsubscribe function.
      */
     onChange(callback) {
         this.selectionCallbacks.add(callback);
+        return () => this.selectionCallbacks.delete(callback);
+    }
+
+    /**
+     * Returns the current selections in their selection order.
+     * @returns {Array<{type: string, data: object, color: ?number}>} Current selection descriptors.
+     */
+    getSelections() {
+        return Array.from(this.selectedObjects).map(object => ({
+            type: object.userData.type,
+            data: object.userData.type === 'hbond' ? object.userData.hbondData :
+                object.userData.type === 'bond' ? object.userData.bondData :
+                    object.userData.atomData,
+            color: object.selectionColor,
+        }));
     }
 
     /**
@@ -454,13 +470,7 @@ export class SelectionManager {
      * See the class JSDoc documentation for more information.
      */
     notifyCallbacks() {
-        const selections = Array.from(this.selectedObjects).map(object => ({
-            type: object.userData.type,
-            data: object.userData.type === 'hbond' ? object.userData.hbondData :
-                object.userData.type === 'bond' ? object.userData.bondData :
-                    object.userData.atomData,
-            color: object.selectionColor,
-        }));
+        const selections = this.getSelections();
         this.selectionCallbacks.forEach(callback => callback(selections));
     }
 

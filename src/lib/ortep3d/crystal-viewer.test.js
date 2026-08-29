@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import * as THREE from 'three';
-import { CrystalViewer } from './crystal-viewer.js';
+import { CrystalViewer, SelectionManager } from './crystal-viewer.js';
 import defaultSettings from './structure-settings.js';
 
 const MINIMAL_CIF_WITH_STRUCTURE = `data_structure
@@ -22,6 +22,26 @@ loop_
  _atom_site_U_iso_or_equiv
  C1 C 0 0 0 0
 `;
+
+describe('SelectionManager subscriptions', () => {
+    test('returns current descriptors and supports unsubscription', () => {
+        const manager = new SelectionManager({ selection: { markerColors: [0xff0000] } });
+        const atomData = { label: 'C1' };
+        manager.selectedObjects.add({
+            userData: { type: 'atom', atomData },
+            selectionColor: 0xff0000,
+        });
+        expect(manager.getSelections()).toEqual([{
+            type: 'atom', data: atomData, color: 0xff0000,
+        }]);
+        const callback = vi.fn();
+        const unsubscribe = manager.onChange(callback);
+        manager.notifyCallbacks();
+        unsubscribe();
+        manager.notifyCallbacks();
+        expect(callback).toHaveBeenCalledOnce();
+    });
+});
 
 describe('CrystalViewer rendering option validation', () => {
     test('rejects an invalid render style before initializing WebGL', () => {
