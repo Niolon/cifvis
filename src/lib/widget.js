@@ -207,7 +207,7 @@ export class CifViewWidget extends HTMLElement {
         return [
             'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
             'symmetry-mode', 'block',
-            'atom-labels', 'measurements',
+            'atom-labels', 'measurements', 'measurement-button',
         ];
     }
 
@@ -472,7 +472,9 @@ export class CifViewWidget extends HTMLElement {
         if (this.viewer.numberModifierModes('symmetry') > 1) {
             this.addButton(this.buttonContainer, 'symmetry', 'Toggle Symmetry Display');
         }
-        this.addMeasurementButton();
+        if (this.getAttribute('measurement-button')?.toLowerCase() !== 'false') {
+            this.addMeasurementButton();
+        }
         this.updateScalarFieldButton();
     }
 
@@ -737,6 +739,9 @@ export class CifViewWidget extends HTMLElement {
                 this.measurements = [];
                 this.prepopulateMeasurements();
                 break;
+            case 'measurement-button':
+                this.setupButtons();
+                break;
             case 'options':
                 this.parseOptions();
                 this.parseInitialAtomLabels();
@@ -958,7 +963,7 @@ export class CifViewWidget extends HTMLElement {
                 this.measurementAtomHTML(label, measurement.atomIds[index], measurement.color)).join(', ');
             return `${probe} to mean plane (${plane}): ${value} Å`;
         }
-        const title = measurement.type === 'distance' ? 'Bond length ' :
+        const title = measurement.type === 'distance' ? 'Distance ' :
             measurement.type === 'angle' ? 'Angle ' : 'Torsion ';
         const atoms = measurement.labels.map((label, index) =>
             this.measurementAtomHTML(label, measurement.atomIds[index], measurement.color)).join('–');

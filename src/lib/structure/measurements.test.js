@@ -9,7 +9,7 @@ describe('measureAtoms', () => {
     test('measures a two-atom distance', () => {
         const result = measureAtoms([atom('A', 0, 0, 0), atom('B', 3, 4, 0)], cell);
         expect(result).toMatchObject({ type: 'distance', value: 5, unit: 'Å', labels: ['A', 'B'] });
-        expect(formatMeasurement(result)).toBe('Bond length A–B: 5.000 Å');
+        expect(formatMeasurement(result)).toBe('Distance A–B: 5.000 Å');
     });
 
     test('measures a three-atom angle at the middle atom', () => {
@@ -54,5 +54,9 @@ describe('measurementAction', () => {
         [4, true, '∡'], [5, true, '⏥'], [12, true, '⏥'],
     ])('maps %i selected atoms to its context action', (count, enabled, symbol) => {
         expect(measurementAction(count)).toMatchObject({ enabled, symbol });
+    });
+
+    test('describes the two-atom action as a distance', () => {
+        expect(measurementAction(2).title).toBe('Measure distance');
     });
 });

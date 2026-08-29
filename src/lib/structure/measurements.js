@@ -131,7 +131,7 @@ export function formatMeasurement(measurement) {
         return `${measurement.probeLabel} to mean plane ` +
             `(${measurement.planeLabels.join(', ')}): ${value} ${measurement.unit}`;
     }
-    const name = measurement.type === 'distance' ? 'Bond length' :
+    const name = measurement.type === 'distance' ? 'Distance' :
         measurement.type === 'angle' ? 'Angle' : 'Torsion';
     const unitSeparator = measurement.unit === '°' ? '' : ' ';
     return `${name} ${measurement.labels.join('–')}: ${value}${unitSeparator}${measurement.unit}`;
@@ -147,7 +147,7 @@ export function measurementAction(atomCount) {
         return { enabled: false, symbol: '↔', title: `Select ${remaining} more atom${remaining === 1 ? '' : 's'}` };
     }
     if (atomCount === 2) {
-        return { enabled: true, symbol: '↔', title: 'Measure bond length' };
+        return { enabled: true, symbol: '↔', title: 'Measure distance' };
     }
     if (atomCount === 3) {
         return { enabled: true, symbol: '∠', title: 'Measure angle' };

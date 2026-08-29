@@ -297,7 +297,7 @@ function appendMeasurementDescription(parent, measurement) {
         parent.append(`): ${value} Å`);
         return;
     }
-    const title = measurement.type === 'distance' ? 'Bond length ' :
+    const title = measurement.type === 'distance' ? 'Distance ' :
         measurement.type === 'angle' ? 'Angle ' : 'Torsion ';
     parent.append(title);
     measurement.labels.forEach((label, index) => {

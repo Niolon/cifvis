@@ -38,6 +38,11 @@ atoms, bonds, elements), see the [Options Reference](../reference/index.md).
 | `viewer.updateStructure()` | Re-runs the filter pipeline and re-renders, preserving the current rotation. Call after directly mutating a modifier's `.mode`. |
 | `viewer.selections.onChange(callback)` | Selection event hook. Callback receives `[{type: 'atom'\|'bond'\|'hbond', data, color}]`. |
 | `viewer.selectAtoms(labels)` | Programmatic selection by atom label. |
+| `viewer.measureSelectedAtoms()` | Creates a measurement from selected atoms in selection order. See [Measurements](./measurements.md). |
+| `viewer.measureAtomsById(ids)` | Creates a measurement from ordered displayed atom labels or unique IDs. |
+| `viewer.getMeasurements()` | Returns persistent measurement results in creation order. |
+| `viewer.setHoveredMeasurement(id)` | Reveals one measurement overlay, or hides all overlays when passed `null`. |
+| `viewer.clearMeasurement(id)` | Removes one measurement, or all measurements when called without an ID. |
 | `viewer.setAtomLabels(show)` | Shows all, non-hydrogen, or selected atom labels. Selection entries may override text and priority. |
 | `viewer.updateAtomLabelOptions(options)` | Updates label appearance/layout without rebuilding the structure. |
 | `viewer.clearAtomLabels()` | Hides atom labels. |

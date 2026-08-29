@@ -33,13 +33,22 @@ The CifVis widget provides several interactive features:
 - **Selection** — click on atoms or bonds to select and view details; double click on the background to deselect all selections
 - **Toggle display** — use buttons at the top right to toggle hydrogens, disorder, and symmetry
 - **Density maps** — when present, use the compact contour-level button to hide or restore the map
+- **Measurements** — select atoms in order, then use the context-sensitive measurement button
 - **Reset view** — double right-click to reset the camera position
 
-<CifDemo src="/cif/sucrose.cif" label="Interactive example (try selecting atoms and bonds):" caption="Try clicking on atoms and bonds to select them. The caption updates with selection information." style="aspect-ratio: 16 / 9;" />
+<CifDemo measurement-button src="/cif/sucrose.cif" label="Interactive example (try selecting atoms and bonds):" caption="Try clicking on atoms and bonds to select them. The caption updates with selection information." style="aspect-ratio: 16 / 9;" />
+
+The measurement button is disabled until at least two atoms are selected. It measures a
+distance for two atoms, an angle for three, a torsion for four, and the last atom's
+distance from the least-squares mean plane through the preceding atoms for five or more.
+Selection order is significant. Click the button to retain the result in the caption;
+hover that result to reveal its geometry, or use its × control to remove it. See
+[Measurements](./measurements.md) for prepopulating results and configuring the tool.
 
 ## Where to go next
 
 - [Loading data](./loading-data.md) — `src` vs `data`, picking a block
 - [Display options](./display-options.md) — modes, render styles, symmetry growing
+- [Measurements](./measurements.md) — interactive and prepopulated measurements
 - [Attributes reference](./attributes-reference.md) — every widget attribute
 - [Styling](./styling.md) — theming the widget with CSS custom properties
