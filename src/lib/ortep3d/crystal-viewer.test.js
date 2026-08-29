@@ -60,6 +60,12 @@ describe('CrystalViewer rendering option validation', () => {
         expect(() => new CrystalViewer({}, { peanutScale: Infinity })).toThrow(
             'peanutScale must be a finite number greater than 0',
         );
+        expect(() => new CrystalViewer({}, { peanutDetail: 0 })).toThrow(
+            'peanutDetail must be an integer from 1 to 5',
+        );
+        expect(() => new CrystalViewer({}, { peanutDetail: 3.5 })).toThrow(
+            'peanutDetail must be an integer from 1 to 5',
+        );
         expect(() => new CrystalViewer({}, { peanutMeridianCount: 0 })).toThrow(
             'peanutMeridianCount must be an integer greater than or equal to 1',
         );

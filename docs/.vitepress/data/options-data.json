@@ -797,6 +797,11 @@
       "default": "0.01"
     },
     {
+      "path": "peanutDetail",
+      "type": "Number",
+      "default": "5"
+    },
+    {
       "path": "atomDetail",
       "type": "Number",
       "default": "3"

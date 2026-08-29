@@ -57,6 +57,7 @@ export class Bond {
      * Creates a Bond from CIF data
      * @param {CifBlock} cifBlock - Parsed CIF data block
      * @param {number} bondIndex - Index in _geom_bond loop
+     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
      * @returns {Bond} New bond instance
      */
     static fromCIF(cifBlock, bondIndex, identitySymOpId = '1') {
@@ -175,6 +176,7 @@ export class HBond {
      * Creates a HBond from CIF data
      * @param {CifBlock} cifBlock - Parsed CIF data block
      * @param {number} hBondIndex - Index in _geom_hbond loop
+     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
      * @returns {HBond} New hydrogen bond instance
      */
     static fromCIF(cifBlock, hBondIndex, identitySymOpId = '1') {
@@ -292,6 +294,7 @@ export class BondsFactory {
      * Creates bonds from CIF data
      * @param {object} cifBlock - CIF data block to parse
      * @param {Set<string>} atomLabels - Set of valid atom labels
+     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
      * @returns {Array<Bond>} Array of created bonds
      */
     static createBonds(cifBlock, atomLabels, identitySymOpId = '1') {
@@ -324,6 +327,7 @@ export class BondsFactory {
      * Creates hydrogen bonds from CIF data
      * @param {CifBlock} cifBlock - CIF data block to parse
      * @param {Set<string>} atomLabels - Set of valid atom labels
+     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
      * @returns {HBond[]} Array of created hydrogen bonds
      */
     static createHBonds(cifBlock, atomLabels, identitySymOpId = '1') {

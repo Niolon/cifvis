@@ -51,6 +51,17 @@ cifview-widget {
     border-color: var(--vp-c-brand-1);
 }
 
+.cifvis-demo-controls button[aria-pressed="true"] {
+    border-color: var(--vp-c-brand-1);
+    background: var(--vp-c-brand-soft);
+    color: var(--vp-c-brand-1);
+}
+
+.cifvis-demo-controls button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
 .cifvis-demo-controls label {
     display: inline-flex;
     align-items: center;

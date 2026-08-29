@@ -566,7 +566,7 @@ export class CrystalViewer {
      * - selection: Selection behavior configuration
      * - interaction: User interaction parameters (rotation speed, click thresholds)
      * - atomDetail/atomColorRoughness/etc.: Appearance settings for atoms
-     * - adpRepresentation/peanutScale: ADP surface kind and RMSD PEANUT display scale
+     * - adpRepresentation/peanutScale/peanutDetail: ADP surface kind, scale, and fidelity
      * - bondRadius/bondColor/etc.: Appearance settings for bonds
      * - elementProperties: Per-element appearance settings (colors, radii)
      * - hydrogenMode/disorderMode/symmetryMode: Initial display modes
@@ -605,6 +605,11 @@ export class CrystalViewer {
             !(typeof options.peanutScale === 'number' && Number.isFinite(options.peanutScale) &&
                 options.peanutScale > 0)) {
             throw new Error('peanutScale must be a finite number greater than 0');
+        }
+        if (options.peanutDetail !== undefined &&
+            !(Number.isInteger(options.peanutDetail) &&
+                options.peanutDetail >= 1 && options.peanutDetail <= 5)) {
+            throw new Error('peanutDetail must be an integer from 1 to 5');
         }
         for (const [key, minimum] of [
             ['peanutMeridianCount', 1],
@@ -702,6 +707,7 @@ export class CrystalViewer {
             peanutGridPoleAxis: options.peanutGridPoleAxis ?? defaultSettings.peanutGridPoleAxis,
             peanutGridLineWidth: options.peanutGridLineWidth ??
                 defaultSettings.peanutGridLineWidth,
+            peanutDetail: options.peanutDetail ?? defaultSettings.peanutDetail,
             atomDetail: options.atomDetail || defaultSettings.atomDetail,
             atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
             atomCutawayStripeCount: options.atomCutawayStripeCount ??

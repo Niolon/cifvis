@@ -1,6 +1,7 @@
 // Export only non-DOM functionality
 export { CIF } from './lib/read-cif/base.js';
 export { CrystalStructure } from './lib/structure/crystal.js';
+export { UAnisoADP } from './lib/structure/adp.js';
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export { atomLabelParts, formatAtomLabel, formatValueEsd } from './lib/formatting.js';
 export { measureAtoms, formatMeasurement, measurementAction } from './lib/structure/measurements.js';

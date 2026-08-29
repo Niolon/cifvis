@@ -326,6 +326,9 @@ export default {
     'peanutGridPoleAxis': 'structure-y',
     // Structure-space PEANUT grid stroke width in Angstrom.
     'peanutGridLineWidth': 0.01,
+    // PEANUT lobes reveal tessellation near signed zero crossings, so use a
+    // denser shared sphere than conventional ellipsoids by default.
+    'peanutDetail': 5,
     'atomDetail': 3,
     'atomCutawayHysteresis': 0.025,
     'atomCutawayStripeCount': 7,

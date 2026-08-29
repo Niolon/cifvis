@@ -9,6 +9,7 @@ as widget markup and as library JavaScript.
 | Entry | Shows |
 |---|---|
 | [Comparison views](./comparison-views.md) | Two synchronized viewers for comparing refinements or render styles. |
+| [PEANUT difference](./peanut-difference.md) | Signed ADP tensor differences calculated from two matched CIF models. |
 | [Difference density](./difference-density.md) | A progressive Fo−Fc map calculated in the browser from embedded reflection data. |
 | [Publication-style 2D](./publication-2d.md) | A print-ready ORTEP-style figure with the `cutout-2d` renderer. |
 | [Contour section](./contour-section.md) | Line-only density contours in a molecular plane. |

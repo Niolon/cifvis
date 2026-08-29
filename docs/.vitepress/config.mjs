@@ -114,6 +114,7 @@ export default defineConfig({
                 items: [
                     { text: 'Overview', link: '/gallery/' },
                     { text: 'Comparison views', link: '/gallery/comparison-views' },
+                    { text: 'PEANUT difference', link: '/gallery/peanut-difference' },
                     { text: 'Difference density', link: '/gallery/difference-density' },
                     { text: 'Publication-style 2D', link: '/gallery/publication-2d' },
                     { text: 'Contour section', link: '/gallery/contour-section' },
