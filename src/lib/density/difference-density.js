@@ -21,6 +21,7 @@ import {
 } from './fft.js';
 
 const TWO_PI = 2 * Math.PI;
+const now = () => globalThis.performance?.now?.() ?? Date.now();
 
 /** Signals that a CIF block does not advertise explicit Fourier coefficients. */
 class UnsupportedCoefficientSourceError extends Error {
@@ -534,15 +535,23 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     if (reflectionOptions.mergeFriedel === undefined) {
         reflectionOptions.mergeFriedel = iamOptions.includeAnomalous === false;
     }
-    const observed = readReflectionIntensities(cifText, cifBlock, reflectionOptions);
+    // A worker may parse and symmetry-merge the reflection loop before the
+    // coordinate model is available. Keep that prepared value internal to the
+    // worker pipeline; ordinary callers retain the single-stage API.
+    const observed = options.preparedObservations ??
+        readReflectionIntensities(cifText, cifBlock, reflectionOptions);
     const coordinateCifText = options.coordinateCifText ?? cifText;
     const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
+    const iamModelStarted = now();
     const calculator = createIAMStructureFactorCalculator(
         coordinateCifText,
         coordinateCifBlock,
         { ...iamOptions, expectedCell: cell, structureModel: options.structureModel },
     );
+    const iamModelBuildTimeMs = now() - iamModelStarted;
+    const iamCalculationStarted = now();
     const calculated = calculator.calculatePrepared(observed.reflections);
+    const iamCalculationTimeMs = now() - iamCalculationStarted;
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
     const coordinateBlock = typeof coordinateCifBlock === 'number'
         ? coordinateCif.getBlock(coordinateCifBlock)
@@ -677,7 +686,11 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         observations: observed.metadata,
         iam: {
             ...calculator.metadata,
-            calculation: calculated.diagnostics,
+            modelBuildTimeMs: iamModelBuildTimeMs,
+            calculation: {
+                ...calculated.diagnostics,
+                timeMs: iamCalculationTimeMs,
+            },
         },
         solventMaskCorrection,
         reflectionPolicy: {
@@ -765,43 +778,43 @@ function calculateCellVolume(cell) {
 function gridStatistics(realValues, volume, maxImaginary = 0) {
     const values = new Float32Array(realValues.length);
     let sum = 0;
+    let sumSquared = 0;
     let minimum = Infinity;
     let maximum = -Infinity;
     for (let index = 0; index < realValues.length; index++) {
         const value = realValues[index] / volume;
         values[index] = value;
         sum += value;
+        sumSquared += value * value;
         minimum = Math.min(minimum, value);
         maximum = Math.max(maximum, value);
     }
     const mean = sum / values.length;
-    let variance = 0;
-    for (const value of values) {
-        variance += (value - mean) ** 2;
-    }
+    const variance = Math.max(0, sumSquared / values.length - mean * mean);
     return {
-        values, mean, sigma: Math.sqrt(variance / values.length),
+        values, mean, sigma: Math.sqrt(variance),
         minimum, maximum, maxImaginary,
     };
 }
 
 /** @returns {object} Statistics for values already stored as Float32 density. */
-function storedGridStatistics(values, maxImaginary = 0) {
-    let sum = 0;
-    let minimum = Infinity;
-    let maximum = -Infinity;
-    for (const value of values) {
-        sum += value;
-        minimum = Math.min(minimum, value);
-        maximum = Math.max(maximum, value);
+function storedGridStatistics(values, maxImaginary = 0, prepared = null) {
+    let sum = prepared?.sum ?? 0;
+    let sumSquared = prepared?.sumSquared ?? 0;
+    let minimum = prepared?.minimum ?? Infinity;
+    let maximum = prepared?.maximum ?? -Infinity;
+    if (!prepared) {
+        for (const value of values) {
+            sum += value;
+            sumSquared += value * value;
+            minimum = Math.min(minimum, value);
+            maximum = Math.max(maximum, value);
+        }
     }
     const mean = sum / values.length;
-    let variance = 0;
-    for (const value of values) {
-        variance += (value - mean) ** 2;
-    }
+    const variance = Math.max(0, sumSquared / values.length - mean * mean);
     return {
-        values, mean, sigma: Math.sqrt(variance / values.length),
+        values, mean, sigma: Math.sqrt(variance),
         minimum, maximum, maxImaginary,
     };
 }
@@ -827,11 +840,14 @@ function hermitianResidual(coefficients, friedelImplicit = false) {
 
 /** @returns {object} Full complex-to-complex production or legacy Fourier transform. */
 function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMetadata) {
+    const allocationStarted = now();
     const [nx, ny] = dimensions;
     const size = dimensions[0] * dimensions[1] * dimensions[2];
     const realGrid = new Float64Array(size);
     const imaginaryGrid = new Float64Array(size);
+    const allocationTimeMs = now() - allocationStarted;
 
+    const placementStarted = now();
     for (const { h, k, l, real, imaginary } of coefficients.values()) {
         const index = (wrapIndex(l, dimensions[2]) * ny + wrapIndex(k, ny)) * nx + wrapIndex(h, nx);
         realGrid[index] = real;
@@ -843,13 +859,17 @@ function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMeta
             imaginaryGrid[mate] = -imaginary;
         }
     }
+    const coefficientPlacementTimeMs = now() - placementStarted;
 
     // The crystallographic inverse transform uses exp(-2*pi*i*h.x), which is
     // the forward FFT sign convention. It is normalized only by cell volume.
+    const transformStarted = now();
     const axisStatistics = [0, 1, 2].map(axis => transformComplexAxis(
         realGrid, imaginaryGrid, dimensions, axis, axisKernel,
     ));
+    const transformTimeMs = now() - transformStarted;
 
+    const statisticsStarted = now();
     const volume = calculateCellVolume(cell);
     let maxImaginary = 0;
     for (const value of imaginaryGrid) {
@@ -861,9 +881,11 @@ function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMeta
         statistics.factorization = factorization235(statistics.length);
     });
     const kernels = [...new Set(axisStatistics.map(statistics => statistics.kernel))];
+    const statistics = gridStatistics(realGrid, volume, maxImaginary);
+    const statisticsTimeMs = now() - statisticsStarted;
     return {
         dimensions,
-        ...gridStatistics(realGrid, volume, maxImaginary),
+        ...statistics,
         volume,
         fftBackend: kernels.length === 1 ? kernels[0] : 'hybrid',
         fftAxisKernel: axisKernel,
@@ -876,6 +898,10 @@ function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMeta
         workBufferBytes,
         allocatedBytes: realGrid.byteLength + imaginaryGrid.byteLength + size * 4 +
             workBufferBytes,
+        fftAllocationTimeMs: allocationTimeMs,
+        fftCoefficientPlacementTimeMs: coefficientPlacementTimeMs,
+        fftTransformTimeMs: transformTimeMs,
+        fftStatisticsTimeMs: statisticsTimeMs,
         symmetryCompatibleGrid: planMetadata.symmetryCompatible,
         fftGridPlanner: planMetadata.gridPlanner,
         gridFallbackReason: planMetadata.fallbackReason,
@@ -888,9 +914,13 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
     const halfX = Math.floor(nx / 2) + 1;
     const halfDimensions = [halfX, ny, nz];
     const halfSize = halfX * ny * nz;
+    const allocationStarted = now();
     const realGrid = new Float64Array(halfSize);
     const imaginaryGrid = new Float64Array(halfSize);
+    const values = new Float32Array(nx * ny * nz);
+    const allocationTimeMs = now() - allocationStarted;
     let storedCoefficientCount = 0;
+    const placementStarted = now();
     for (const { h, k, l, real, imaginary } of coefficients.values()) {
         if (h < 0) {
             continue;
@@ -905,18 +935,24 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
             imaginaryGrid[mate] = -imaginary;
         }
     }
+    const coefficientPlacementTimeMs = now() - placementStarted;
+    const transformStarted = now();
     const axisStatistics = [1, 2].map(axis => transformComplexAxis(
         realGrid, imaginaryGrid, halfDimensions, axis, axisKernel,
     ));
 
     const lineReal = new Float64Array(nx);
     const lineImaginary = new Float64Array(nx);
-    const xStarted = globalThis.performance?.now?.() ?? Date.now();
+    const xStarted = now();
     const xPlan = getFftPlan(nx, axisKernel);
-    const xKernelStarted = globalThis.performance?.now?.() ?? Date.now();
+    const xKernelStarted = now();
     const volume = calculateCellVolume(cell);
-    const values = new Float32Array(nx * ny * nz);
+    const inverseVolume = 1 / volume;
     let maxImaginary = 0;
+    let sum = 0;
+    let sumSquared = 0;
+    let minimum = Infinity;
+    let maximum = -Infinity;
     for (let z = 0; z < nz; z++) {
         for (let y = 0; y < ny; y++) {
             const halfOffset = (z * ny + y) * halfX;
@@ -935,12 +971,18 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
             }
             const outputOffset = (z * ny + y) * nx;
             for (let x = 0; x < nx; x++) {
-                values[outputOffset + x] = lineReal[x] / volume;
+                const value = Math.fround(lineReal[x] * inverseVolume);
+                values[outputOffset + x] = value;
+                sum += value;
+                sumSquared += value * value;
+                minimum = Math.min(minimum, value);
+                maximum = Math.max(maximum, value);
                 maxImaginary = Math.max(maxImaginary, Math.abs(lineImaginary[x]));
             }
         }
     }
-    const xFinished = globalThis.performance?.now?.() ?? Date.now();
+    const xFinished = now();
+    const transformTimeMs = xFinished - transformStarted;
     axisStatistics.unshift({
         axis: 0,
         length: nx,
@@ -957,9 +999,17 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
     const workBufferBytes = Math.max(...dimensions.map(length =>
         fftLineWorkBytes(length, axisKernel)));
     const kernels = [...new Set(axisStatistics.map(statistics => statistics.kernel))];
+    const statisticsStarted = now();
+    const statistics = storedGridStatistics(values, maxImaginary * inverseVolume, {
+        sum,
+        sumSquared,
+        minimum,
+        maximum,
+    });
+    const statisticsTimeMs = now() - statisticsStarted;
     return {
         dimensions,
-        ...storedGridStatistics(values, maxImaginary / volume),
+        ...statistics,
         volume,
         fftBackend: kernels.length === 1 ? kernels[0] : 'hybrid',
         fftAxisKernel: axisKernel,
@@ -973,6 +1023,10 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
         workBufferBytes,
         allocatedBytes: realGrid.byteLength + imaginaryGrid.byteLength + values.byteLength +
             workBufferBytes,
+        fftAllocationTimeMs: allocationTimeMs,
+        fftCoefficientPlacementTimeMs: coefficientPlacementTimeMs,
+        fftTransformTimeMs: transformTimeMs,
+        fftStatisticsTimeMs: statisticsTimeMs,
         symmetryCompatibleGrid: planMetadata.symmetryCompatible,
         fftGridPlanner: planMetadata.gridPlanner,
         gridFallbackReason: planMetadata.fallbackReason,
@@ -981,6 +1035,7 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
 
 /** @returns {object} Difference density and statistics on a periodic FFT grid. */
 function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
+    const totalStarted = now();
     const requestedBackend = options.fftBackend ?? 'auto';
     if (!['auto', 'mixed-radix', 'radix-2'].includes(requestedBackend)) {
         throw new Error('Difference-density fftBackend must be "auto", "mixed-radix", or "radix-2"');
@@ -998,24 +1053,33 @@ function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
         throw new Error('Difference-density fftAxisKernel must be "auto", "mixed-radix", or "radix-2"');
     }
     const gridPlanner = requestedPlanner === 'auto' ? 'smooth' : requestedPlanner;
+    const planningStarted = now();
     const plan = planFourierDimensions(coefficients, gridOversampling, {
         backend: gridPlanner === 'radix-2' ? 'radix-2' : 'mixed-radix',
         symmetryOperations: options.symmetryOperations,
     });
+    const gridPlanningTimeMs = now() - planningStarted;
     plan.gridPlanner = gridPlanner;
     const useReal = options.realTransform !== false;
     plan.friedelImplicit = options.friedelImplicit === true;
+    const hermitianStarted = now();
     const residual = useReal ? hermitianResidual(coefficients, plan.friedelImplicit) : null;
+    const hermitianValidationTimeMs = now() - hermitianStarted;
+    let result;
     if (useReal && residual.relative <= 1e-10) {
-        return hermitianFourierGrid(
+        result = hermitianFourierGrid(
             coefficients, cell, plan.dimensions, axisKernel, plan, residual,
         );
+    } else {
+        result = complexFourierGrid(coefficients, cell, plan.dimensions, axisKernel, plan);
+        if (useReal) {
+            result.fftFallbackReason = 'non-hermitian-coefficients';
+            result.hermitianResidual = residual.relative;
+        }
     }
-    const result = complexFourierGrid(coefficients, cell, plan.dimensions, axisKernel, plan);
-    if (useReal) {
-        result.fftFallbackReason = 'non-hermitian-coefficients';
-        result.hermitianResidual = residual.relative;
-    }
+    result.fftGridPlanningTimeMs = gridPlanningTimeMs;
+    result.fftHermitianValidationTimeMs = hermitianValidationTimeMs;
+    result.fftTotalTimeMs = now() - totalStarted;
     return result;
 }
 
@@ -1257,9 +1321,11 @@ export function calculateDifferenceDensityMap(
     gridOversampling = 1,
     options = {},
 ) {
+    const mapStarted = now();
     if (!(Number.isFinite(resolutionFraction) && resolutionFraction > 0 && resolutionFraction <= 1)) {
         throw new Error('Difference-density resolution fraction must be in the interval (0, 1]');
     }
+    const coefficientSelectionStarted = now();
     const cutoff = dataset.maximumReciprocalLength * resolutionFraction;
     let coefficients = resolutionFraction === 1
         ? dataset.coefficients
@@ -1267,13 +1333,18 @@ export function calculateDifferenceDensityMap(
             coefficient.reciprocalLength <= cutoff + 1e-12,
         ));
     if (coefficients.size === 0) {
-        const minimumLength = Math.min(...Array.from(dataset.coefficients.values()).map(
-            coefficient => coefficient.reciprocalLength,
-        ));
-        coefficients = new Map(Array.from(dataset.coefficients.entries()).filter(([, coefficient]) =>
-            coefficient.reciprocalLength <= minimumLength + 1e-12,
-        ));
+        let minimumLength = Infinity;
+        for (const coefficient of dataset.coefficients.values()) {
+            minimumLength = Math.min(minimumLength, coefficient.reciprocalLength);
+        }
+        coefficients = new Map();
+        for (const [key, coefficient] of dataset.coefficients) {
+            if (coefficient.reciprocalLength <= minimumLength + 1e-12) {
+                coefficients.set(key, coefficient);
+            }
+        }
     }
+    const coefficientSelectionTimeMs = now() - coefficientSelectionStarted;
     if (!(Number.isFinite(gridOversampling) && gridOversampling >= 1)) {
         throw new Error('Difference-density grid oversampling must be at least 1');
     }
@@ -1288,9 +1359,14 @@ export function calculateDifferenceDensityMap(
         symmetryOperations: dataset.symmetryOperations,
         friedelImplicit: dataset.friedelImplicit,
     });
-    const logicalCoefficientCount = coefficients.size + [...coefficients.values()].filter(
-        coefficient => coefficient.h !== 0 || coefficient.k !== 0 || coefficient.l !== 0,
-    ).length;
+    const mapAssemblyStarted = now();
+    let nonOriginCoefficientCount = 0;
+    for (const coefficient of coefficients.values()) {
+        if (coefficient.h !== 0 || coefficient.k !== 0 || coefficient.l !== 0) {
+            nonOriginCoefficientCount++;
+        }
+    }
+    const logicalCoefficientCount = coefficients.size + nonOriginCoefficientCount;
     const symmetryReductionRequested = options.symmetryReducedFft === true ||
         options.symmetryReducedFft === 'auto';
     const map = new ScalarFieldGrid(dataset.cell, grid.dimensions, grid.values, {
@@ -1336,6 +1412,14 @@ export function calculateDifferenceDensityMap(
         fftAxisKernel: grid.fftAxisKernel,
         fftAxisStatistics: grid.fftAxisStatistics,
         fftPlanSetupTimeMs: grid.fftPlanSetupTimeMs,
+        fftGridPlanningTimeMs: grid.fftGridPlanningTimeMs,
+        fftHermitianValidationTimeMs: grid.fftHermitianValidationTimeMs,
+        fftAllocationTimeMs: grid.fftAllocationTimeMs,
+        fftCoefficientPlacementTimeMs: grid.fftCoefficientPlacementTimeMs,
+        fftTransformTimeMs: grid.fftTransformTimeMs,
+        fftStatisticsTimeMs: grid.fftStatisticsTimeMs,
+        fftTotalTimeMs: grid.fftTotalTimeMs,
+        densityCoefficientSelectionTimeMs: coefficientSelectionTimeMs,
         realTransform: grid.realTransform,
         storedCoefficientCount: grid.storedCoefficientCount,
         hermitianResidual: grid.hermitianResidual ?? null,
@@ -1346,6 +1430,8 @@ export function calculateDifferenceDensityMap(
             (symmetryReductionRequested ? 'symmetry-reduced-fft-not-supported' : null),
         symmetryReducedFft: false,
     });
+    map.densityMapAssemblyTimeMs = now() - mapAssemblyStarted;
+    map.densityMapTotalTimeMs = now() - mapStarted;
     if (options.symmetryReducedFft !== true) {
         return map;
     }

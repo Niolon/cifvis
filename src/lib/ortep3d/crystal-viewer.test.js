@@ -929,6 +929,67 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(order).toEqual(['structure', 'density']);
     });
 
+    test('prepares reflections before parsing finishes and starts density before scene construction', async () => {
+        const order = [];
+        class FakeWorker {
+            constructor() {
+                order.push('worker-created');
+            }
+
+            postMessage(message) {
+                order.push(message.type);
+            }
+
+            addEventListener() {}
+
+            terminate() {}
+        }
+        vi.stubGlobal('Worker', FakeWorker);
+        try {
+            const viewer = {
+                state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
+                options: {
+                    fixCifErrors: false,
+                    differenceDensity: { autoLoad: true },
+                    contourLines: { enabled: false },
+                },
+                defaultDifferenceDensityOptions: { reflections: {}, iam: {} },
+                defaultScalarFieldOptions: { useWorker: true },
+                scalarFieldPreparationSequence: 0,
+                scalarFieldPreparationId: null,
+                scalarFieldWorker: null,
+                cancelScalarFieldLoad: vi.fn(),
+                isosurfaceLayer: { clear: vi.fn() },
+                contourLineLayer: { clear: vi.fn() },
+                notifyScalarFieldUpdate: vi.fn(),
+                loadStructure: vi.fn(async structure => {
+                    order.push('structure');
+                    viewer.state.baseStructure = structure;
+                }),
+                loadDifferenceDensity: vi.fn(() => {
+                    order.push('density-start');
+                    return Promise.resolve({ success: true });
+                }),
+            };
+
+            const result = await CrystalViewer.prototype.loadCIF.call(
+                viewer,
+                MINIMAL_CIF_WITH_STRUCTURE,
+            );
+
+            expect(result).toMatchObject({ success: true, differenceDensityStarted: true });
+            expect(order).toEqual([
+                'worker-created',
+                'prepare-difference-density-reflections',
+                'density-start',
+                'structure',
+            ]);
+            expect(await result.differenceDensity).toEqual({ success: true });
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     test('subscribes and unsubscribes update listeners', () => {
         const viewer = { scalarFieldUpdateCallbacks: new Set() };
         const updates = [];

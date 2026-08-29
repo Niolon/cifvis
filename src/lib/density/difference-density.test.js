@@ -5,6 +5,7 @@ import {
     parseDifferenceDensityDataset,
     parseDifferenceDensitySource,
 } from './difference-density.js';
+import { readReflectionIntensities } from './reflection-intensities.js';
 
 const P1_FCF = `data_test
 loop_
@@ -206,6 +207,20 @@ describe('difference-density scalar fields', () => {
         expect(map.sigma).toBeCloseTo(Math.sqrt(2), 6);
         expect(map.mean).toBeCloseTo(0, 12);
         expect(map.maxImaginary).toBeCloseTo(0, 12);
+        for (const key of [
+            'fftGridPlanningTimeMs',
+            'fftHermitianValidationTimeMs',
+            'fftAllocationTimeMs',
+            'fftCoefficientPlacementTimeMs',
+            'fftTransformTimeMs',
+            'fftStatisticsTimeMs',
+            'fftTotalTimeMs',
+            'densityCoefficientSelectionTimeMs',
+            'densityMapAssemblyTimeMs',
+            'densityMapTotalTimeMs',
+        ]) {
+            expect(map[key]).toBeGreaterThanOrEqual(0);
+        }
         expect(map.symmetryOperations).toEqual([{
             rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
             translation: [0, 0, 0],
@@ -314,6 +329,24 @@ describe('difference-density scalar fields', () => {
             0,
             { inputMode: 'fcf' },
         )).toThrow(/phase_calc/);
+    });
+
+    test('reuses observations parsed and symmetry-merged before IAM preparation', () => {
+        const preparedObservations = readReflectionIntensities(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { mergeFriedel: true },
+        );
+        const staged = createCifDifferenceDensityDataset(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { preparedObservations },
+        );
+        const direct = createCifDifferenceDensityDataset(CIF_WITH_OBSERVED_INTENSITIES);
+
+        expect(staged.observations).toEqual(direct.observations);
+        expect(staged.intensityScale).toBeCloseTo(direct.intensityScale, 12);
+        expect([...staged.coefficients]).toEqual([...direct.coefficients]);
     });
 
     test('does not hide malformed advertised FCF coefficients behind IAM fallback', () => {

@@ -7,12 +7,51 @@ import {
 } from './difference-density-progress.js';
 import { normalizeIsosurfaceSteps } from './isosurface-progress.js';
 import { parseCube } from './cube.js';
+import { readReflectionIntensities } from './reflection-intensities.js';
 import {
     calculateContourWorkerTask,
     contourTransferables,
 } from './contour-worker-task.js';
 
 const continuationResolvers = new Map();
+const preparedReflectionSources = new Map();
+
+function prepareReflectionSource(message) {
+    const started = performance.now();
+    const startedEpochMs = performance.timeOrigin + started;
+    preparedReflectionSources.clear();
+    try {
+        const iamOptions = { includeAnomalous: false, ...message.iam };
+        const reflectionOptions = { ...message.reflections };
+        if (reflectionOptions.mergeFriedel === undefined) {
+            reflectionOptions.mergeFriedel = iamOptions.includeAnomalous === false;
+        }
+        const observed = readReflectionIntensities(
+            message.fcfText,
+            message.fcfBlock,
+            reflectionOptions,
+        );
+        const completed = performance.now();
+        const completedEpochMs = performance.timeOrigin + completed;
+        preparedReflectionSources.set(message.preparationId, {
+            observed,
+            preparationTimeMs: completed - started,
+            started,
+            startedEpochMs,
+            completedEpochMs,
+        });
+        globalThis.postMessage({
+            type: 'reflection-prepared',
+            preparationId: message.preparationId,
+            preparationTimeMs: completed - started,
+            startedEpochMs,
+            completedEpochMs,
+        });
+    } catch {
+        // Explicit FCF coefficient sources need no observed-intensity loop.
+        // Their normal parser remains the fallback when the load message arrives.
+    }
+}
 
 function scalarFieldTransferables(payload) {
     if (!payload) {
@@ -31,13 +70,34 @@ function waitForContinuation(loadId, stepIndex) {
 }
 
 async function calculateDifferenceDensityProgressively(message) {
-    const started = performance.now();
+    const calculationStartedEpochMs = performance.timeOrigin + performance.now();
+    const prepared = preparedReflectionSources.get(message.preparationId);
+    preparedReflectionSources.delete(message.preparationId);
+    const started = prepared?.started ?? performance.now();
+    const modelPostedEpochMs = message.modelPostedEpochMs;
+    const joinReadyEpochMs = prepared && Number.isFinite(modelPostedEpochMs)
+        ? Math.max(prepared.completedEpochMs, modelPostedEpochMs)
+        : prepared?.completedEpochMs ?? calculationStartedEpochMs;
+    const modelWaitForReflectionPreparationMs = prepared && Number.isFinite(modelPostedEpochMs)
+        ? Math.max(0, prepared.completedEpochMs - modelPostedEpochMs)
+        : 0;
+    const workerWaitForModelMs = prepared && Number.isFinite(modelPostedEpochMs)
+        ? Math.max(0, modelPostedEpochMs - prepared.completedEpochMs)
+        : 0;
+    const workerIdleAfterReflectionPreparationMs = workerWaitForModelMs;
+    const workerJoinDelayMs = Math.max(0, calculationStartedEpochMs - joinReadyEpochMs);
     try {
+        const datasetStarted = performance.now();
         const dataset = parseDifferenceDensitySource(
             message.fcfText,
             message.fcfBlock,
-            message.datasetOptions,
+            {
+                ...message.datasetOptions,
+                preparedObservations: prepared?.observed,
+            },
         );
+        const datasetPreparationTimeMs = performance.now() - datasetStarted;
+        const progressionStarted = performance.now();
         const progression = createDifferenceDensityProgression(dataset, {
             steps: message.steps,
             reciprocalResolution: message.reciprocalResolution,
@@ -49,6 +109,7 @@ async function calculateDifferenceDensityProgressively(message) {
             realTransform: message.realTransform,
             symmetryReducedFft: message.symmetryReducedFft,
         });
+        const progressionSetupTimeMs = performance.now() - progressionStarted;
         const steps = progression.steps;
         for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
             const mapStarted = performance.now();
@@ -61,7 +122,9 @@ async function calculateDifferenceDensityProgressively(message) {
                 steps[stepIndex],
             );
             const contourTimeMs = contours ? performance.now() - contourStarted : 0;
+            const payloadStarted = performance.now();
             const payload = changed ? map.toPayload() : null;
+            const payloadPreparationTimeMs = performance.now() - payloadStarted;
             const update = {
                 type: 'update',
                 loadId: message.loadId,
@@ -69,12 +132,25 @@ async function calculateDifferenceDensityProgressively(message) {
                 totalSteps: steps.length,
                 final: stepIndex === steps.length - 1,
                 computeTimeMs: mapTimeMs,
+                datasetPreparationTimeMs,
+                reflectionPreparationTimeMs: prepared?.preparationTimeMs ?? 0,
+                workerIdleAfterReflectionPreparationMs,
+                modelWaitForReflectionPreparationMs,
+                workerWaitForModelMs,
+                workerJoinDelayMs,
+                modelPostedAfterReflectionStartMs: prepared && Number.isFinite(modelPostedEpochMs)
+                    ? modelPostedEpochMs - prepared.startedEpochMs
+                    : null,
+                calculationStartedEpochMs,
+                progressionSetupTimeMs,
+                payloadPreparationTimeMs,
                 contourTimeMs,
                 elapsedTimeMs: performance.now() - started,
                 surfaceResolutionFraction: steps[stepIndex],
                 map: payload,
                 contours,
             };
+            update.updatePostedEpochMs = performance.timeOrigin + performance.now();
             globalThis.postMessage(update, [
                 ...(!message.contourRequest ? scalarFieldTransferables(payload) : []),
                 ...contourTransferables(contours),
@@ -146,7 +222,9 @@ globalThis.addEventListener('message', (event) => {
         continuationResolvers.delete(key);
         return;
     }
-    if (message.type === 'load-difference-density') {
+    if (message.type === 'prepare-difference-density-reflections') {
+        prepareReflectionSource(message);
+    } else if (message.type === 'load-difference-density') {
         calculateDifferenceDensityProgressively(message);
     } else if (message.type === 'load-cube') {
         loadCubeProgressively(message);

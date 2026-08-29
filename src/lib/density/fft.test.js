@@ -56,6 +56,27 @@ describe('mixed-radix FFT and grid planning', () => {
             expect(value).toBeCloseTo(legacyImaginary[index], 10));
     });
 
+    test.each([3, 5, 15, 30])('round-trips forward and inverse length %i', length => {
+        const sourceReal = Float64Array.from(
+            { length },
+            (_, index) => Math.sin(index * 0.31) + index * 0.02,
+        );
+        const sourceImaginary = Float64Array.from(
+            { length },
+            (_, index) => Math.cos(index * 0.17) - index * 0.01,
+        );
+        const real = sourceReal.slice();
+        const imaginary = sourceImaginary.slice();
+        const plan = createMixedRadixPlan(length);
+
+        mixedRadixFftLine(real, imaginary, plan);
+        mixedRadixFftLine(real, imaginary, plan, true);
+
+        real.forEach((value, index) => expect(value).toBeCloseTo(sourceReal[index], 10));
+        imaginary.forEach((value, index) =>
+            expect(value).toBeCloseTo(sourceImaginary[index], 10));
+    });
+
     test('selects and caches specialized plans independently for each axis length', () => {
         clearFftPlanCache();
         expect(resolveAxisKernel(64, 'auto')).toBe('radix-2');

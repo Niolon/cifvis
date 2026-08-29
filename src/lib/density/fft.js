@@ -2,6 +2,11 @@
 
 const mixedPlanCache = new Map();
 const radix2PlanCache = new Map();
+const SQRT_THREE_OVER_TWO = Math.sqrt(3) / 2;
+const COSINE_72 = (Math.sqrt(5) - 1) / 4;
+const COSINE_144 = -(Math.sqrt(5) + 1) / 4;
+const SINE_72 = Math.sin(2 * Math.PI / 5);
+const SINE_144 = Math.sin(Math.PI / 5);
 
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -57,23 +62,90 @@ function mixedRadixRecursive(
     }
     const twiddles = twiddleTables.get(length);
     for (let low = 0; low < remainder; low++) {
-        for (let high = 0; high < radix; high++) {
-            let real = 0;
-            let imaginary = 0;
-            const outputIndex = low + remainder * high;
-            for (let q = 0; q < radix; q++) {
-                const inputIndex = outputOffset + q * remainder + low;
-                const twiddleIndex = q * length + outputIndex;
-                const cosine = twiddles.real[twiddleIndex];
-                const sine = sign < 0
-                    ? twiddles.imaginary[twiddleIndex]
-                    : -twiddles.imaginary[twiddleIndex];
-                real += outputReal[inputIndex] * cosine - outputImaginary[inputIndex] * sine;
-                imaginary += outputReal[inputIndex] * sine + outputImaginary[inputIndex] * cosine;
-            }
-            scratchReal[scratchOffset + outputIndex] = real;
-            scratchImaginary[scratchOffset + outputIndex] = imaginary;
+        const input0 = outputOffset + low;
+        const r0 = outputReal[input0];
+        const i0 = outputImaginary[input0];
+        const input1 = outputOffset + remainder + low;
+        const sine1 = sign < 0
+            ? twiddles.imaginary[remainder + low]
+            : -twiddles.imaginary[remainder + low];
+        const r1 = outputReal[input1] * twiddles.real[remainder + low] -
+            outputImaginary[input1] * sine1;
+        const i1 = outputReal[input1] * sine1 +
+            outputImaginary[input1] * twiddles.real[remainder + low];
+        if (radix === 2) {
+            scratchReal[scratchOffset + low] = r0 + r1;
+            scratchImaginary[scratchOffset + low] = i0 + i1;
+            scratchReal[scratchOffset + remainder + low] = r0 - r1;
+            scratchImaginary[scratchOffset + remainder + low] = i0 - i1;
+            continue;
         }
+        const input2 = outputOffset + 2 * remainder + low;
+        const sine2 = sign < 0
+            ? twiddles.imaginary[2 * remainder + low]
+            : -twiddles.imaginary[2 * remainder + low];
+        const r2 = outputReal[input2] * twiddles.real[2 * remainder + low] -
+            outputImaginary[input2] * sine2;
+        const i2 = outputReal[input2] * sine2 +
+            outputImaginary[input2] * twiddles.real[2 * remainder + low];
+        if (radix === 3) {
+            const sine = sign < 0 ? SQRT_THREE_OVER_TWO : -SQRT_THREE_OVER_TWO;
+            const sharedReal = r0 - 0.5 * (r1 + r2);
+            const sharedImaginary = i0 - 0.5 * (i1 + i2);
+            const deltaReal = sine * (i1 - i2);
+            const deltaImaginary = sine * (r2 - r1);
+            scratchReal[scratchOffset + low] = r0 + r1 + r2;
+            scratchImaginary[scratchOffset + low] = i0 + i1 + i2;
+            scratchReal[scratchOffset + remainder + low] = sharedReal + deltaReal;
+            scratchImaginary[scratchOffset + remainder + low] = sharedImaginary + deltaImaginary;
+            scratchReal[scratchOffset + 2 * remainder + low] = sharedReal - deltaReal;
+            scratchImaginary[scratchOffset + 2 * remainder + low] = sharedImaginary - deltaImaginary;
+            continue;
+        }
+        const input3 = outputOffset + 3 * remainder + low;
+        const sine3 = sign < 0
+            ? twiddles.imaginary[3 * remainder + low]
+            : -twiddles.imaginary[3 * remainder + low];
+        const r3 = outputReal[input3] * twiddles.real[3 * remainder + low] -
+            outputImaginary[input3] * sine3;
+        const i3 = outputReal[input3] * sine3 +
+            outputImaginary[input3] * twiddles.real[3 * remainder + low];
+        const input4 = outputOffset + 4 * remainder + low;
+        const sine4 = sign < 0
+            ? twiddles.imaginary[4 * remainder + low]
+            : -twiddles.imaginary[4 * remainder + low];
+        const r4 = outputReal[input4] * twiddles.real[4 * remainder + low] -
+            outputImaginary[input4] * sine4;
+        const i4 = outputReal[input4] * sine4 +
+            outputImaginary[input4] * twiddles.real[4 * remainder + low];
+        const sum14Real = r1 + r4;
+        const sum14Imaginary = i1 + i4;
+        const sum23Real = r2 + r3;
+        const sum23Imaginary = i2 + i3;
+        const difference14Real = r1 - r4;
+        const difference14Imaginary = i1 - i4;
+        const difference23Real = r2 - r3;
+        const difference23Imaginary = i2 - i3;
+        const sine72 = sign < 0 ? SINE_72 : -SINE_72;
+        const sine144 = sign < 0 ? SINE_144 : -SINE_144;
+        const shared1Real = r0 + COSINE_72 * sum14Real + COSINE_144 * sum23Real;
+        const shared1Imaginary = i0 + COSINE_72 * sum14Imaginary + COSINE_144 * sum23Imaginary;
+        const delta1Real = sine72 * difference14Imaginary + sine144 * difference23Imaginary;
+        const delta1Imaginary = -sine72 * difference14Real - sine144 * difference23Real;
+        const shared2Real = r0 + COSINE_144 * sum14Real + COSINE_72 * sum23Real;
+        const shared2Imaginary = i0 + COSINE_144 * sum14Imaginary + COSINE_72 * sum23Imaginary;
+        const delta2Real = sine144 * difference14Imaginary - sine72 * difference23Imaginary;
+        const delta2Imaginary = -sine144 * difference14Real + sine72 * difference23Real;
+        scratchReal[scratchOffset + low] = r0 + sum14Real + sum23Real;
+        scratchImaginary[scratchOffset + low] = i0 + sum14Imaginary + sum23Imaginary;
+        scratchReal[scratchOffset + remainder + low] = shared1Real + delta1Real;
+        scratchImaginary[scratchOffset + remainder + low] = shared1Imaginary + delta1Imaginary;
+        scratchReal[scratchOffset + 2 * remainder + low] = shared2Real + delta2Real;
+        scratchImaginary[scratchOffset + 2 * remainder + low] = shared2Imaginary + delta2Imaginary;
+        scratchReal[scratchOffset + 3 * remainder + low] = shared2Real - delta2Real;
+        scratchImaginary[scratchOffset + 3 * remainder + low] = shared2Imaginary - delta2Imaginary;
+        scratchReal[scratchOffset + 4 * remainder + low] = shared1Real - delta1Real;
+        scratchImaginary[scratchOffset + 4 * remainder + low] = shared1Imaginary - delta1Imaginary;
     }
     for (let index = 0; index < length; index++) {
         outputReal[outputOffset + index] = scratchReal[scratchOffset + index];
@@ -94,13 +166,14 @@ export function createMixedRadixPlan(length) {
     const twiddleTables = new Map();
     for (let usedLength = length; usedLength > 1;) {
         const radix = smallestFactor235(usedLength);
-        const real = new Float64Array(radix * usedLength);
-        const imaginary = new Float64Array(radix * usedLength);
+        const remainder = usedLength / radix;
+        const real = new Float64Array(radix * remainder);
+        const imaginary = new Float64Array(radix * remainder);
         for (let q = 0; q < radix; q++) {
-            for (let output = 0; output < usedLength; output++) {
-                const angle = -2 * Math.PI * q * output / usedLength;
-                real[q * usedLength + output] = Math.cos(angle);
-                imaginary[q * usedLength + output] = Math.sin(angle);
+            for (let low = 0; low < remainder; low++) {
+                const angle = -2 * Math.PI * q * low / usedLength;
+                real[q * remainder + low] = Math.cos(angle);
+                imaginary[q * remainder + low] = Math.sin(angle);
             }
         }
         twiddleTables.set(usedLength, { real, imaginary });
@@ -190,7 +263,7 @@ export function fftLineWorkBytes(length, backend = 'mixed-radix') {
     let twiddleElements = 0;
     for (let usedLength = length; usedLength > 1;) {
         const radix = smallestFactor235(usedLength);
-        twiddleElements += 2 * radix * usedLength;
+        twiddleElements += 2 * usedLength;
         usedLength /= radix;
     }
     const planElements = 4 * length + twiddleElements;
@@ -272,9 +345,9 @@ export function transformComplexAxis(realGrid, imaginaryGrid, dimensions, axis, 
     const lineImaginary = new Float64Array(length);
     const planned = getFftPlan(length, backend);
     const kernelStarted = now();
-    const transformLine = indexAt => {
+    const transformLine = (offset, stride) => {
         for (let index = 0; index < length; index++) {
-            const source = indexAt(index);
+            const source = offset + index * stride;
             lineReal[index] = realGrid[source];
             lineImaginary[index] = imaginaryGrid[source];
         }
@@ -284,7 +357,7 @@ export function transformComplexAxis(realGrid, imaginaryGrid, dimensions, axis, 
             radix2FftLine(lineReal, lineImaginary, false, planned.plan);
         }
         for (let index = 0; index < length; index++) {
-            const target = indexAt(index);
+            const target = offset + index * stride;
             realGrid[target] = lineReal[index];
             imaginaryGrid[target] = lineImaginary[index];
         }
@@ -293,19 +366,19 @@ export function transformComplexAxis(realGrid, imaginaryGrid, dimensions, axis, 
         for (let z = 0; z < nz; z++) {
             for (let y = 0; y < ny; y++) {
                 const offset = (z * ny + y) * nx;
-                transformLine(x => offset + x);
+                transformLine(offset, 1);
             }
         }
     } else if (axis === 1) {
         for (let z = 0; z < nz; z++) {
             for (let x = 0; x < nx; x++) {
-                transformLine(y => (z * ny + y) * nx + x);
+                transformLine(z * ny * nx + x, nx);
             }
         }
     } else {
         for (let y = 0; y < ny; y++) {
             for (let x = 0; x < nx; x++) {
-                transformLine(z => (z * ny + y) * nx + x);
+                transformLine(y * nx + x, nx * ny);
             }
         }
     }

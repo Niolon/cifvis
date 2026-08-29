@@ -856,6 +856,9 @@ export class CrystalViewer {
         this.currentMeasurement = null;
         this.hoveredAtomObjects = new Map();
         this.scalarFieldLoadSequence = 0;
+        this.scalarFieldPreparationSequence = 0;
+        this.scalarFieldPreparationId = null;
+        this.scalarFieldLoadTimings = null;
         this.scalarFieldWorker = null;
         this.scalarFieldPendingResolve = null;
         this.scalarFieldMainThreadLoadId = null;
@@ -999,16 +1002,74 @@ export class CrystalViewer {
      * ```
      */
     async loadCIF(cifText, cifBlock = 0, options = {}) {
+        const loadStartedEpochMs = performance.timeOrigin + performance.now();
+        const loadTimings = { loadStartedEpochMs };
+        const markLoadTime = name => {
+            loadTimings[name] = performance.timeOrigin + performance.now() - loadStartedEpochMs;
+        };
         if (cifText === undefined) {
             console.error('Cannot load an empty text as CIF');
             return { success: false, error: 'Cannot load an empty text as CIF' };
+        }
+        const densityRequest = options.differenceDensity ??
+            this.options.differenceDensity.autoLoad;
+        const densityOptions = densityRequest === true ? {} : densityRequest;
+        if (densityRequest && (typeof densityOptions !== 'object' || Array.isArray(densityOptions))) {
+            return {
+                success: false,
+                error: 'loadCIF differenceDensity must be true, false, or an options object',
+            };
+        }
+        const requestedDifferenceOptions = densityRequest ? {
+            ...this.defaultDifferenceDensityOptions,
+            ...optionSubset(densityOptions, defaultSettings.differenceDensity),
+        } : null;
+        const requestedScalarFieldOptions = densityRequest ? {
+            ...this.defaultScalarFieldOptions,
+            ...optionSubset(densityOptions, defaultSettings.scalarField),
+        } : null;
+        let earlyWorker = null;
+        const preparationId = densityRequest && requestedScalarFieldOptions.useWorker &&
+            typeof Worker !== 'undefined'
+            ? ++this.scalarFieldPreparationSequence
+            : null;
+        if (preparationId !== null) {
+            earlyWorker = new ScalarFieldWorker();
+            markLoadTime('workerCreatedMs');
+            earlyWorker.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type !== 'reflection-prepared' ||
+                    message.preparationId !== preparationId) {
+                    return;
+                }
+                loadTimings.reflectionPreparationStartedMs =
+                    message.startedEpochMs - loadStartedEpochMs;
+                loadTimings.reflectionsPreparedMs = message.completedEpochMs - loadStartedEpochMs;
+                loadTimings.reflectionPreparationTimeMs = message.preparationTimeMs;
+                this.notifyScalarFieldUpdate({
+                    type: 'reflection-prepared',
+                    preparationId,
+                    reflectionPreparationTimeMs: message.preparationTimeMs,
+                });
+            });
+            earlyWorker.postMessage({
+                type: 'prepare-difference-density-reflections',
+                preparationId,
+                fcfText: cifText,
+                fcfBlock: cifBlock,
+                reflections: requestedDifferenceOptions.reflections,
+                iam: requestedDifferenceOptions.iam,
+            });
+            markLoadTime('rawCifPostedMs');
         }
         try {
             const cif = new CIF(cifText);
             let block;
             try {
                 block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
+                markLoadTime('cifParsedMs');
             } catch (e) {
+                earlyWorker?.terminate();
                 return { success: false, error: e.message };
             }
             let structure;
@@ -1027,6 +1088,7 @@ export class CrystalViewer {
                     throw e;
                 }
             }
+            markLoadTime('structureReadyMs');
             // Density data belongs to a specific coordinate model/cell. A new
             // coordinate CIF must never inherit the previous FCF implicitly.
             const hadScalarField = this.state.scalarFields.length > 0;
@@ -1040,39 +1102,64 @@ export class CrystalViewer {
             if (hadScalarField) {
                 this.notifyScalarFieldUpdate({ type: 'cleared' });
             }
-            await this.loadStructure(structure);
-
+            if (earlyWorker) {
+                if (this.scalarFieldWorker && this.scalarFieldWorker !== earlyWorker) {
+                    this.scalarFieldWorker.terminate();
+                }
+                this.scalarFieldWorker = earlyWorker;
+                this.scalarFieldPreparationId = preparationId;
+            }
             this.state.currentCifContent = cifText;
             this.state.currentCifBlock = cifBlock;
             this.state.currentStructureFactorModel = createStructureFactorModelInput(
                 structure,
                 block,
             );
+            markLoadTime('structureModelReadyMs');
+            this.scalarFieldLoadTimings = loadTimings;
 
-            const densityRequest = options.differenceDensity ??
-                this.options.differenceDensity.autoLoad;
+            // Once the crystallographic model exists, IAM/Fcalc and the FFT can
+            // run in parallel with construction of the Three.js molecular scene.
+            // Planar contours still wait because their plane depends on that scene.
+            let differenceDensity = null;
+            if (densityRequest && earlyWorker && !this.options.contourLines.enabled) {
+                this.state.baseStructure = structure;
+                differenceDensity = this.loadDifferenceDensity(cifText, cifBlock, densityOptions);
+                markLoadTime('densityLoadStartedMs');
+            }
+            await this.loadStructure(structure);
+            markLoadTime('structureSceneReadyMs');
+
             if (!densityRequest) {
                 return { success: true };
             }
-            const densityOptions = densityRequest === true ? {} : densityRequest;
-            if (typeof densityOptions !== 'object' || Array.isArray(densityOptions)) {
-                return {
-                    success: false,
-                    error: 'loadCIF differenceDensity must be true, false, or an options object',
-                };
-            }
-            // Structure installation and its initial render are complete before
-            // density work is even scheduled. In browsers, all reflection/IAM/
-            // FFT work then stays inside the dedicated density worker.
-            const differenceDensity = new Promise(resolve => setTimeout(() => {
-                if (this.state.currentCifContent !== cifText || this.state.currentCifBlock !== cifBlock) {
-                    resolve({ success: false, cancelled: true, error: 'Coordinate structure changed' });
+            differenceDensity ??= new Promise(resolve => setTimeout(() => {
+                if (this.state.currentCifContent !== cifText ||
+                    this.state.currentCifBlock !== cifBlock) {
+                    resolve({
+                        success: false,
+                        cancelled: true,
+                        error: 'Coordinate structure changed',
+                    });
                     return;
                 }
                 this.loadDifferenceDensity(cifText, cifBlock, densityOptions).then(resolve);
             }, 0));
-            return { success: true, differenceDensityStarted: true, differenceDensity };
+            return {
+                success: true,
+                differenceDensityStarted: true,
+                differenceDensity,
+                browserTimings: loadTimings,
+            };
         } catch (error) {
+            if (earlyWorker) {
+                this.cancelScalarFieldLoad('Structure loading failed');
+                earlyWorker.terminate();
+                if (this.scalarFieldWorker === earlyWorker) {
+                    this.scalarFieldWorker = null;
+                }
+                this.scalarFieldPreparationId = null;
+            }
             console.error('Error loading structure:', error);
             return { success: false, error: error.message };
         }
@@ -1258,7 +1345,7 @@ export class CrystalViewer {
      */
     loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId) {
         return new Promise(resolve => {
-            const worker = new ScalarFieldWorker();
+            const worker = this.scalarFieldWorker ?? new ScalarFieldWorker();
             this.scalarFieldWorker = worker;
             this.scalarFieldPendingResolve = resolve;
 
@@ -1293,6 +1380,17 @@ export class CrystalViewer {
                 }
 
                 try {
+                    const updateReceivedEpochMs = performance.timeOrigin + performance.now();
+                    if (this.scalarFieldLoadTimings) {
+                        this.scalarFieldLoadTimings.workerCalculationStartedMs =
+                            message.calculationStartedEpochMs -
+                            this.scalarFieldLoadTimings.loadStartedEpochMs;
+                        this.scalarFieldLoadTimings.workerMapPostedMs =
+                            message.updatePostedEpochMs -
+                            this.scalarFieldLoadTimings.loadStartedEpochMs;
+                        this.scalarFieldLoadTimings.mapReceivedMs = updateReceivedEpochMs -
+                            this.scalarFieldLoadTimings.loadStartedEpochMs;
+                    }
                     const field = message.map
                         ? this.scalarFieldFromPayload(message.map)
                         : this.state.scalarField;
@@ -1300,8 +1398,30 @@ export class CrystalViewer {
                         throw new Error('Density worker requested surface refinement before providing a grid');
                     }
                     this.applyProgressiveScalarField(field, message);
+                    if (this.scalarFieldLoadTimings) {
+                        this.scalarFieldLoadTimings.densityAppliedMs =
+                            performance.timeOrigin + performance.now() -
+                            this.scalarFieldLoadTimings.loadStartedEpochMs;
+                    }
                     if (message.final) {
-                        const result = this.scalarFieldResult(field);
+                        const result = {
+                            ...this.scalarFieldResult(field),
+                            workerReflectionPreparationTimeMs:
+                                message.reflectionPreparationTimeMs,
+                            workerIdleAfterReflectionPreparationMs:
+                                message.workerIdleAfterReflectionPreparationMs,
+                            modelWaitForReflectionPreparationMs:
+                                message.modelWaitForReflectionPreparationMs,
+                            workerWaitForModelMs: message.workerWaitForModelMs,
+                            workerJoinDelayMs: message.workerJoinDelayMs,
+                            modelPostedAfterReflectionStartMs:
+                                message.modelPostedAfterReflectionStartMs,
+                            workerDatasetPreparationTimeMs: message.datasetPreparationTimeMs,
+                            workerProgressionSetupTimeMs: message.progressionSetupTimeMs,
+                            workerComputeTimeMs: message.computeTimeMs,
+                            workerPayloadPreparationTimeMs: message.payloadPreparationTimeMs,
+                            workerElapsedTimeMs: message.elapsedTimeMs,
+                        };
                         this.notifyScalarFieldUpdate({
                             ...message,
                             ...result,
@@ -1318,9 +1438,16 @@ export class CrystalViewer {
                 }
             });
 
+            const modelPostedEpochMs = performance.timeOrigin + performance.now();
+            if (this.scalarFieldLoadTimings) {
+                this.scalarFieldLoadTimings.modelPostedMs = modelPostedEpochMs -
+                    this.scalarFieldLoadTimings.loadStartedEpochMs;
+            }
             worker.postMessage({
                 type: 'load-difference-density',
                 loadId,
+                preparationId: this.scalarFieldPreparationId,
+                modelPostedEpochMs,
                 fcfText,
                 fcfBlock,
                 datasetOptions: this.differenceDensityDatasetOptions(),
@@ -1335,6 +1462,7 @@ export class CrystalViewer {
                 symmetryReducedFft: this.options.differenceDensity.symmetryReducedFft,
                 contourRequest: this.contourWorkerRequest(),
             });
+            this.scalarFieldPreparationId = null;
         });
     }
 
@@ -1781,6 +1909,7 @@ export class CrystalViewer {
      * @param {object} message - Progressive step metadata.
      */
     applyProgressiveScalarField(field, message) {
+        const applyStarted = performance.now();
         this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
             field.sourceType === 'cube' ? 'Cube' : 'FCF');
         const resolutionFraction = message.surfaceResolutionFraction ?? 1;
@@ -1793,10 +1922,12 @@ export class CrystalViewer {
             contours,
         );
         const display = this.scalarFieldDisplayState();
+        const mainThreadApplyTimeMs = performance.now() - applyStarted;
         this.requestRender();
         this.notifyScalarFieldUpdate({
             type: 'update',
             ...message,
+            mainThreadApplyTimeMs,
             progress: (message.stepIndex + 1) / message.totalSteps,
             resolutionFraction: field.resolutionFraction,
             gridOversampling: field.gridOversampling,
@@ -1805,6 +1936,16 @@ export class CrystalViewer {
             fftAxisKernel: field.fftAxisKernel,
             fftAxisStatistics: field.fftAxisStatistics,
             fftPlanSetupTimeMs: field.fftPlanSetupTimeMs,
+            fftGridPlanningTimeMs: field.fftGridPlanningTimeMs,
+            fftHermitianValidationTimeMs: field.fftHermitianValidationTimeMs,
+            fftAllocationTimeMs: field.fftAllocationTimeMs,
+            fftCoefficientPlacementTimeMs: field.fftCoefficientPlacementTimeMs,
+            fftTransformTimeMs: field.fftTransformTimeMs,
+            fftStatisticsTimeMs: field.fftStatisticsTimeMs,
+            fftTotalTimeMs: field.fftTotalTimeMs,
+            densityCoefficientSelectionTimeMs: field.densityCoefficientSelectionTimeMs,
+            densityMapAssemblyTimeMs: field.densityMapAssemblyTimeMs,
+            densityMapTotalTimeMs: field.densityMapTotalTimeMs,
             realTransform: field.realTransform,
             storedCoefficientCount: field.storedCoefficientCount,
             hermitianResidual: field.hermitianResidual,
@@ -1942,6 +2083,16 @@ export class CrystalViewer {
             fftAxisKernel: field.fftAxisKernel,
             fftAxisStatistics: field.fftAxisStatistics,
             fftPlanSetupTimeMs: field.fftPlanSetupTimeMs,
+            fftGridPlanningTimeMs: field.fftGridPlanningTimeMs,
+            fftHermitianValidationTimeMs: field.fftHermitianValidationTimeMs,
+            fftAllocationTimeMs: field.fftAllocationTimeMs,
+            fftCoefficientPlacementTimeMs: field.fftCoefficientPlacementTimeMs,
+            fftTransformTimeMs: field.fftTransformTimeMs,
+            fftStatisticsTimeMs: field.fftStatisticsTimeMs,
+            fftTotalTimeMs: field.fftTotalTimeMs,
+            densityCoefficientSelectionTimeMs: field.densityCoefficientSelectionTimeMs,
+            densityMapAssemblyTimeMs: field.densityMapAssemblyTimeMs,
+            densityMapTotalTimeMs: field.densityMapTotalTimeMs,
             realTransform: field.realTransform,
             storedCoefficientCount: field.storedCoefficientCount,
             hermitianResidual: field.hermitianResidual,
@@ -2010,6 +2161,7 @@ export class CrystalViewer {
     finishScalarFieldWorker() {
         this.scalarFieldWorker?.terminate();
         this.scalarFieldWorker = null;
+        this.scalarFieldPreparationId = null;
         this.scalarFieldPendingResolve = null;
     }
 
@@ -2019,7 +2171,7 @@ export class CrystalViewer {
      */
     cancelScalarFieldLoad(reason = 'Scalar-field load cancelled') {
         const mainThreadActive = this.scalarFieldMainThreadLoadId !== null;
-        if (!this.scalarFieldWorker && !this.scalarFieldPendingResolve && !mainThreadActive) {
+        if (!this.scalarFieldPendingResolve && !mainThreadActive) {
             return;
         }
         const loadId = this.scalarFieldMainThreadLoadId ?? this.scalarFieldLoadSequence;
@@ -2029,6 +2181,7 @@ export class CrystalViewer {
         }
         this.scalarFieldWorker?.terminate();
         this.scalarFieldWorker = null;
+        this.scalarFieldPreparationId = null;
         const resolve = this.scalarFieldPendingResolve;
         this.scalarFieldPendingResolve = null;
         resolve?.({ success: false, cancelled: true, error: reason });
@@ -3441,6 +3594,8 @@ export class CrystalViewer {
         this.containerResizeObserver?.disconnect();
         this.containerResizeObserver = null;
         this.cancelScalarFieldLoad('Viewer disposed');
+        this.scalarFieldWorker?.terminate();
+        this.scalarFieldWorker = null;
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();
         this.controls.dispose();
