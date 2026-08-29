@@ -54,29 +54,47 @@ if (loop) {
 // Warm the JIT independently without warming the measured calculator itself.
 const warmupCalculator = createIAMStructureFactorCalculator(cifText);
 warmupCalculator.calculate(reflections);
+warmupCalculator.calculatePrepared(reflections, { phaseMode: 'direct' });
+warmupCalculator.calculatePrepared(reflections, { phaseMode: 'tables' });
 
 const buildStart = performance.now();
 const calculator = createIAMStructureFactorCalculator(cifText);
 const buildMilliseconds = performance.now() - buildStart;
-const firstStart = performance.now();
-let result = calculator.calculate(reflections);
-const firstCalculationMilliseconds = performance.now() - firstStart;
-const samples = [];
-for (let iteration = 0; iteration < iterations; iteration++) {
-    const start = performance.now();
-    result = calculator.calculate(reflections);
-    samples.push(performance.now() - start);
+/**
+ * @param {function(): unknown} calculation - Calculation to time.
+ * @returns {object} Warmed first/repeated timing and final value.
+ */
+function measure(calculation) {
+    const firstStart = performance.now();
+    let value = calculation();
+    const firstMilliseconds = performance.now() - firstStart;
+    const samples = [];
+    for (let iteration = 0; iteration < iterations; iteration++) {
+        const start = performance.now();
+        value = calculation();
+        samples.push(performance.now() - start);
+    }
+    return {
+        value,
+        firstMilliseconds,
+        averageMilliseconds: samples.reduce((sum, sample) => sum + sample, 0) / samples.length,
+    };
 }
+const scalar = measure(() => calculator.calculate(reflections));
+const preparedDirect = measure(() =>
+    calculator.calculatePrepared(reflections, { phaseMode: 'direct' }));
+const preparedTables = measure(() =>
+    calculator.calculatePrepared(reflections, { phaseMode: 'tables' }));
 
 let comparison = {};
 if (cifFSquared) {
-    const predicted = result.map(value => value.amplitude ** 2);
+    const predicted = [...preparedTables.value.fSquared];
     const observed = cifFSquared.map(Number);
     const scale = predicted.reduce((sum, value, index) => sum + value * observed[index], 0) /
         predicted.reduce((sum, value) => sum + value ** 2, 0);
     const amplitudeScale = Math.sqrt(scale);
-    const r1 = result.reduce((sum, value, index) =>
-        sum + Math.abs(amplitudeScale * value.amplitude - Math.sqrt(Math.max(0, observed[index]))), 0,
+    const r1 = predicted.reduce((sum, value, index) =>
+        sum + Math.abs(amplitudeScale * Math.sqrt(value) - Math.sqrt(Math.max(0, observed[index]))), 0,
     ) / observed.reduce((sum, value) => sum + Math.sqrt(Math.max(0, value)), 0);
     comparison = { cifFSquaredScale: scale, cifFSquaredR1: r1 };
 }
@@ -85,8 +103,23 @@ console.log(JSON.stringify({
     path,
     reflections: reflections.length,
     buildMilliseconds,
-    firstCalculationMilliseconds,
-    averageCalculationMilliseconds: samples.reduce((sum, value) => sum + value, 0) / samples.length,
+    scalar: {
+        firstMilliseconds: scalar.firstMilliseconds,
+        averageMilliseconds: scalar.averageMilliseconds,
+    },
+    preparedDirect: {
+        firstMilliseconds: preparedDirect.firstMilliseconds,
+        averageMilliseconds: preparedDirect.averageMilliseconds,
+        diagnostics: preparedDirect.value.diagnostics,
+    },
+    preparedTables: {
+        firstMilliseconds: preparedTables.firstMilliseconds,
+        averageMilliseconds: preparedTables.averageMilliseconds,
+        speedupOverScalar: scalar.averageMilliseconds / preparedTables.averageMilliseconds,
+        speedupOverPreparedDirect:
+            preparedDirect.averageMilliseconds / preparedTables.averageMilliseconds,
+        diagnostics: preparedTables.value.diagnostics,
+    },
     ...calculator.metadata,
     ...comparison,
 }, null, 2));

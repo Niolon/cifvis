@@ -119,7 +119,7 @@ function mergeDispersion(primary, secondary) {
  * @param {string} cifText - Coordinate CIF contents.
  * @param {number|string} cifBlock - CIF block index or name.
  * @param {object} options - Calculation options.
- * @returns {object} Calculator with coefficientAt() and calculate().
+ * @returns {object} Calculator with scalar and prepared batch calculation methods.
  */
 export function createIAMStructureFactorCalculator(cifText, cifBlock = 0, options = {}) {
     let cromerMannValues;
@@ -172,6 +172,7 @@ export function createIAMStructureFactorCalculator(cifText, cifBlock = 0, option
             const coefficientSource = cifCoefficients ? 'cif' : configured ? 'configured' : 'internal';
             return {
                 source: `${coefficientSource}/${dispersionSource}`,
+                exponentialCount: 4,
                 scatteringKey: JSON.stringify([
                     ...coefficients,
                     dispersion.real,

@@ -497,7 +497,7 @@ function fitObservedIntensityScale(
     let fittedReflectionCount = 0;
     for (let index = 0; index < observations.length; index++) {
         const observation = observations[index];
-        const calculatedSquared = calculated[index].amplitude ** 2 * extinctionFactors[index] ** 2;
+        const calculatedSquared = calculated.fSquared[index] * extinctionFactors[index] ** 2;
         if (!(observation.intensity > 0 && calculatedSquared > 0)) {
             continue;
         }
@@ -542,7 +542,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         coordinateCifBlock,
         { ...iamOptions, expectedCell: cell, structureModel: options.structureModel },
     );
-    const calculated = calculator.calculate(observed.reflections);
+    const calculated = calculator.calculatePrepared(observed.reflections);
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
     const coordinateBlock = typeof coordinateCifBlock === 'number'
         ? coordinateCif.getBlock(coordinateCifBlock)
@@ -563,25 +563,27 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             symmetry,
             false,
         );
-        maskCorrectedCalculated = calculated.map((entry, index) => {
+        maskCorrectedCalculated = {
+            ...calculated,
+            real: calculated.real.slice(),
+            imaginary: calculated.imaginary.slice(),
+            fSquared: calculated.fSquared.slice(),
+        };
+        for (let index = 0; index < observed.reflections.length; index++) {
             const observation = observed.reflections[index];
             const correction = maskCoefficients.get(
                 `${observation.h},${observation.k},${observation.l}`,
             );
             if (!correction) {
-                return entry;
+                continue;
             }
             solventMaskAppliedCount++;
-            const real = entry.real + correction.real;
-            const imaginary = entry.imaginary + correction.imaginary;
-            return {
-                ...entry,
-                real,
-                imaginary,
-                amplitude: Math.hypot(real, imaginary),
-                phase: Math.atan2(imaginary, real) * 180 / Math.PI,
-            };
-        });
+            const real = calculated.real[index] + correction.real;
+            const imaginary = calculated.imaginary[index] + correction.imaginary;
+            maskCorrectedCalculated.real[index] = real;
+            maskCorrectedCalculated.imaginary[index] = imaginary;
+            maskCorrectedCalculated.fSquared[index] = real ** 2 + imaginary ** 2;
+        }
     } else if (requestedSolventMask === true) {
         throw new Error('solventMaskCorrection was requested but no _shelx_fab_file was found');
     }
@@ -627,20 +629,25 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     let scaleResidualDenominator = 0;
     const coefficientAt = index => {
         const observation = observed.reflections[index];
-        const fCalculated = maskCorrectedCalculated[index];
+        const calculatedReal = maskCorrectedCalculated.real[index];
+        const calculatedImaginary = maskCorrectedCalculated.imaginary[index];
+        const calculatedSquared = maskCorrectedCalculated.fSquared[index];
+        const calculatedAmplitude = Math.sqrt(calculatedSquared);
         const scaledIntensity = fitted.scale * observation.intensity /
             extinction.factors[index] ** 2;
         if (scaledIntensity < 0) {
             negativeIntensityCount++;
         }
         const observedAmplitude = Math.sqrt(Math.max(0, scaledIntensity));
-        const differenceAmplitude = observedAmplitude - fCalculated.amplitude;
-        const phase = Math.atan2(fCalculated.imaginary, fCalculated.real);
-        scaleResidualNumerator += Math.abs(scaledIntensity - fCalculated.amplitude ** 2);
-        scaleResidualDenominator += fCalculated.amplitude ** 2;
+        const differenceAmplitude = observedAmplitude - calculatedAmplitude;
+        scaleResidualNumerator += Math.abs(scaledIntensity - calculatedSquared);
+        scaleResidualDenominator += calculatedSquared;
+        if (calculatedAmplitude === 0) {
+            return { real: differenceAmplitude, imaginary: 0 };
+        }
         return {
-            real: differenceAmplitude * Math.cos(phase),
-            imaginary: differenceAmplitude * Math.sin(phase),
+            real: differenceAmplitude * calculatedReal / calculatedAmplitude,
+            imaginary: differenceAmplitude * calculatedImaginary / calculatedAmplitude,
         };
     };
     const h = observed.reflections.map(reflection => reflection.h);
@@ -668,7 +675,10 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             : null,
         negativeIntensityCount,
         observations: observed.metadata,
-        iam: calculator.metadata,
+        iam: {
+            ...calculator.metadata,
+            calculation: calculated.diagnostics,
+        },
         solventMaskCorrection,
         reflectionPolicy: {
             mergeFriedel: observed.metadata.mergeFriedel,

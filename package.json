@@ -48,6 +48,7 @@
     "bench:density-symmetry": "node benchmark/difference-density-symmetry.mjs",
     "bench:contours": "node benchmark/contour-lines.mjs",
     "bench:iam": "node benchmark/iam.mjs",
+    "bench:iam-cod": "node benchmark/iam-cod.mjs",
     "bench:density-optimization": "node benchmark/density-optimization-cod.mjs",
     "bench:surface-extractor": "node benchmark/surface-extractor.mjs",
     "bench:surface-sampler": "node benchmark/surface-sampler.mjs",

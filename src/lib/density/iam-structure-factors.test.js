@@ -178,6 +178,52 @@ describe('IAM structure factors', () => {
         expect(result[1].phase).toBeCloseTo(90, 12);
     });
 
+    test('prepared direct and separable-phase kernels reproduce scalar coefficients', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif({
+            position: '0.125 0.25 0.375',
+            uiso: 0.04,
+            inversion: true,
+            typeRows: CIF_TYPE_FACTORS,
+        }));
+        const reflections = [
+            [0, 0, 0],
+            { h: 1, k: -2, l: 3 },
+            [-4, 2, 1],
+            [2, 1, -3],
+            ...[-1, 0, 1].flatMap(h =>
+                [-1, 0, 1].flatMap(k => [-1, 0, 1].map(l => [h, k, l]))),
+        ];
+        const scalar = calculator.calculate(reflections);
+        const direct = calculator.calculatePrepared(reflections, { phaseMode: 'direct' });
+        const tables = calculator.calculatePrepared(reflections, { phaseMode: 'tables' });
+
+        for (let index = 0; index < reflections.length; index++) {
+            expect(direct.real[index]).toBeCloseTo(scalar[index].real, 11);
+            expect(direct.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
+            expect(tables.real[index]).toBeCloseTo(scalar[index].real, 11);
+            expect(tables.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
+            expect(tables.fSquared[index]).toBeCloseTo(scalar[index].amplitude ** 2, 10);
+        }
+        expect([...tables.h.slice(0, 4)]).toEqual([0, 1, -4, 2]);
+        expect(tables.diagnostics).toMatchObject({
+            backend: 'prepared-soa',
+            phaseMode: 'tables',
+            reflectionCount: 31,
+            expandedAtomCount: 2,
+            scatteringModelCount: 1,
+            displacementModelCount: 1,
+            dwfExpEvaluationCount: 62,
+            cromerMannExpEvaluationCount: 124,
+        });
+        expect(tables.diagnostics.phaseTrigEvaluationCount)
+            .toBeLessThan(direct.diagnostics.phaseTrigEvaluationCount);
+    });
+
+    test('prepared calculation rejects non-integral reflection indices', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif());
+        expect(() => calculator.calculatePrepared([[0.5, 0, 0]])).toThrow(/32-bit integers/);
+    });
+
     test('uses the same atom sum as the anomalous-only correction', () => {
         const cif = modelCif({ position: '0.125 0.25 0', typeRows: CIF_TYPE_FACTORS, inversion: true });
         const full = createIAMStructureFactorCalculator(cif);

@@ -5,7 +5,8 @@ regressions in the library:
 
 - `speed.mjs`: end-to-end browser loading and rendering;
 - `labels.mjs`: atom-label layout and draw-call behaviour;
-- `iam.mjs`: IAM structure-factor construction and calculation;
+- `iam.mjs`: scalar, prepared-direct, and separable-phase IAM structure-factor calculation;
+- `iam-cod.mjs`: the same three IAM kernels over a stratified real-reflection COD sample;
 - `contour-lines.mjs`: contour sampling and extraction;
 - `difference-density-symmetry.mjs`: direct versus symmetry-aware density surfaces;
 - `surface-extractor.mjs`: Three.js versus CifVis typed-array polygonization across
@@ -35,3 +36,8 @@ path as the production extractor and changed the default progressive schedule to
 single final surface. A full Flying Edges implementation is intentionally closed for
 now: clipping plus prepared lattice interpolation captures the material benefit, while
 the remaining classification/interpolation work is too small to justify edge reuse.
+
+`iam-cod-summary.json` records the frozen 1,000-structure real-reflection IAM kernel
+campaign. Its separable phase-table kernel won across atom, reflection, and symmetry
+buckets; a rotated-order recheck of every substantial apparent loss found no stable
+crossover, so the production difference-density path uses that kernel unconditionally.

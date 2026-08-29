@@ -9,11 +9,12 @@ import { cellsMatch as cellMatches } from './cell-matching.js';
 import { finiteNumber, numericScalar } from './cif-values.js';
 
 const TWO_PI = 2 * Math.PI;
+const DEBYE_WALLER_SCALE = -2 * Math.PI ** 2;
 
 export { finiteNumber } from './cif-values.js';
 export { cellMatches };
 
-function displacementParameters(atom, cell, cartesianRotation) {
+function displacementParameters(atom, cell, cartesianRotation, reciprocalTransform) {
     if (atom.adp instanceof UIsoADP) {
         return { isotropic: atom.adp.uiso };
     }
@@ -28,12 +29,48 @@ function displacementParameters(atom, cell, cartesianRotation) {
             math.multiply(cartesianRotation, uCartesian),
             math.transpose(cartesianRotation),
         );
-        return { anisotropic: [
+        const anisotropic = [
             transformed[0][0], transformed[1][1], transformed[2][2],
             transformed[0][1], transformed[0][2], transformed[1][2],
-        ] };
+        ];
+        const reciprocalQuadratic = math.multiply(
+            math.transpose(reciprocalTransform),
+            math.multiply(transformed, reciprocalTransform),
+        );
+        return {
+            anisotropic,
+            reciprocalQuadratic: [
+                reciprocalQuadratic[0][0],
+                reciprocalQuadratic[1][1],
+                reciprocalQuadratic[2][2],
+                reciprocalQuadratic[0][1],
+                reciprocalQuadratic[0][2],
+                reciprocalQuadratic[1][2],
+            ],
+        };
     }
     return null;
+}
+
+function preparedDisplacementFactor(parameters, prepared, reflectionIndex) {
+    if (!parameters) {
+        return 1;
+    }
+    if (parameters.isotropic !== undefined) {
+        return Math.exp(
+            DEBYE_WALLER_SCALE * parameters.isotropic *
+            prepared.reciprocalLengthSquared[reflectionIndex],
+        );
+    }
+    const [c11, c22, c33, c12, c13, c23] = parameters.reciprocalQuadratic;
+    return Math.exp(DEBYE_WALLER_SCALE * (
+        c11 * prepared.hSquared[reflectionIndex] +
+        c22 * prepared.kSquared[reflectionIndex] +
+        c33 * prepared.lSquared[reflectionIndex] +
+        2 * c12 * prepared.hk[reflectionIndex] +
+        2 * c13 * prepared.hl[reflectionIndex] +
+        2 * c23 * prepared.kl[reflectionIndex]
+    ));
 }
 
 function displacementFactor(parameters, reciprocal, reciprocalLengthSquared) {
@@ -63,6 +100,79 @@ function reflectionIndices(reflection) {
         return reflection;
     }
     return [reflection.h, reflection.k, reflection.l];
+}
+
+function prepareReflectionArrays(reflections, reciprocalTransform) {
+    const count = reflections.length;
+    const h = new Int32Array(count);
+    const k = new Int32Array(count);
+    const l = new Int32Array(count);
+    const hSquared = new Float64Array(count);
+    const kSquared = new Float64Array(count);
+    const lSquared = new Float64Array(count);
+    const hk = new Float64Array(count);
+    const hl = new Float64Array(count);
+    const kl = new Float64Array(count);
+    const reciprocalLengthSquared = new Float64Array(count);
+    const sSquared = new Float64Array(count);
+    const uniqueH = new Map();
+    const uniqueK = new Map();
+    const uniqueL = new Map();
+    const hTableIndex = new Int32Array(count);
+    const kTableIndex = new Int32Array(count);
+    const lTableIndex = new Int32Array(count);
+    for (let index = 0; index < count; index++) {
+        const indices = reflectionIndices(reflections[index]);
+        if (indices.length < 3 || indices.some(value =>
+            !Number.isInteger(value) || value < -2147483648 || value > 2147483647)) {
+            throw new Error('Structure-factor reflection indices must be 32-bit integers');
+        }
+        [h[index], k[index], l[index]] = indices;
+        hSquared[index] = h[index] ** 2;
+        kSquared[index] = k[index] ** 2;
+        lSquared[index] = l[index] ** 2;
+        hk[index] = h[index] * k[index];
+        hl[index] = h[index] * l[index];
+        kl[index] = k[index] * l[index];
+        const reciprocalX = reciprocalTransform[0][0] * h[index] +
+            reciprocalTransform[0][1] * k[index] + reciprocalTransform[0][2] * l[index];
+        const reciprocalY = reciprocalTransform[1][0] * h[index] +
+            reciprocalTransform[1][1] * k[index] + reciprocalTransform[1][2] * l[index];
+        const reciprocalZ = reciprocalTransform[2][0] * h[index] +
+            reciprocalTransform[2][1] * k[index] + reciprocalTransform[2][2] * l[index];
+        reciprocalLengthSquared[index] = reciprocalX ** 2 + reciprocalY ** 2 + reciprocalZ ** 2;
+        sSquared[index] = reciprocalLengthSquared[index] / 4;
+        hTableIndex[index] = addUniqueValue(uniqueH, h[index]);
+        kTableIndex[index] = addUniqueValue(uniqueK, k[index]);
+        lTableIndex[index] = addUniqueValue(uniqueL, l[index]);
+    }
+    return {
+        h, k, l, hSquared, kSquared, lSquared, hk, hl, kl,
+        reciprocalLengthSquared, sSquared,
+        uniqueH: [...uniqueH.keys()],
+        uniqueK: [...uniqueK.keys()],
+        uniqueL: [...uniqueL.keys()],
+        hTableIndex, kTableIndex, lTableIndex,
+    };
+}
+
+function addUniqueValue(values, value) {
+    let index = values.get(value);
+    if (index === undefined) {
+        index = values.size;
+        values.set(value, index);
+    }
+    return index;
+}
+
+function phaseAxisTable(position, indices) {
+    const table = new Float64Array(2 * indices.length);
+    for (let index = 0; index < indices.length; index++) {
+        const phase = TWO_PI * indices[index] * position;
+        table[2 * index] = Math.cos(phase);
+        table[2 * index + 1] = Math.sin(phase);
+    }
+    return table;
 }
 
 /** @returns {object|null} Plain displacement data safe for structured cloning. */
@@ -245,6 +355,7 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             scatteringModelIndices.set(scatteringKey, scatteringModelIndex);
             scatteringModels.push({
                 scatteringAt: resolved.scatteringAt,
+                exponentialCount: resolved.exponentialCount ?? 0,
                 atoms: [],
             });
         }
@@ -306,6 +417,7 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                     modelAtom.atom,
                     cell,
                     transform.cartesianRotation,
+                    reciprocalTransform,
                 ),
             };
             expandedAtomCount++;
@@ -315,6 +427,12 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
     const npdAdpLabels = atoms
         .filter(modelAtom => isNpdAdp(modelAtom.atom.adp, cell))
         .map(modelAtom => modelAtom.atom.label);
+    const displacementModels = new Set();
+    for (const scatteringModel of scatteringModels) {
+        for (const atom of scatteringModel.atoms) {
+            displacementModels.add(JSON.stringify(atom.displacement));
+        }
+    }
 
     function coefficientAt(h, k, l) {
         const reciprocal = reciprocalTransform.map(row => row[0] * h + row[1] * k + row[2] * l);
@@ -343,8 +461,162 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         return { real, imaginary };
     }
 
+    function calculatePrepared(reflections, options = {}) {
+        const phaseMode = options.phaseMode ?? 'tables';
+        if (!['direct', 'tables'].includes(phaseMode)) {
+            throw new Error('Prepared structure-factor phaseMode must be "direct" or "tables"');
+        }
+        const reflectionPreparationStart = performance.now();
+        const prepared = prepareReflectionArrays(reflections, reciprocalTransform);
+        const reflectionPreparationMs = performance.now() - reflectionPreparationStart;
+        const reflectionCount = reflections.length;
+        const scatteringPreparationStart = performance.now();
+        const scattering = scatteringModels.map(model => {
+            const real = new Float64Array(reflectionCount);
+            const imaginary = new Float64Array(reflectionCount);
+            let realOnly = true;
+            for (let reflectionIndex = 0; reflectionIndex < reflectionCount; reflectionIndex++) {
+                const value = model.scatteringAt(prepared.sSquared[reflectionIndex]);
+                real[reflectionIndex] = value.real;
+                imaginary[reflectionIndex] = value.imaginary;
+                realOnly &&= value.imaginary === 0;
+            }
+            return { real, imaginary, realOnly };
+        });
+        const scatteringPreparationMs = performance.now() - scatteringPreparationStart;
+        const real = new Float64Array(reflectionCount);
+        const imaginary = new Float64Array(reflectionCount);
+        let phaseTablePreparationMs = 0;
+        let accumulationMs = 0;
+        let phaseTrigEvaluationCount = 0;
+        let dwfExpEvaluationCount = 0;
+
+        for (let modelIndex = 0; modelIndex < scatteringModels.length; modelIndex++) {
+            const model = scatteringModels[modelIndex];
+            const modelScattering = scattering[modelIndex];
+            for (const atom of model.atoms) {
+                let tables = null;
+                if (phaseMode === 'tables') {
+                    const phasePreparationStart = performance.now();
+                    tables = {
+                        x: phaseAxisTable(atom.position[0], prepared.uniqueH),
+                        y: phaseAxisTable(atom.position[1], prepared.uniqueK),
+                        z: phaseAxisTable(atom.position[2], prepared.uniqueL),
+                    };
+                    phaseTablePreparationMs += performance.now() - phasePreparationStart;
+                    phaseTrigEvaluationCount += 2 * (
+                        prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
+                    );
+                } else {
+                    phaseTrigEvaluationCount += 2 * reflectionCount;
+                }
+                if (atom.displacement) {
+                    dwfExpEvaluationCount += reflectionCount;
+                }
+                const accumulationStart = performance.now();
+                for (let reflectionIndex = 0; reflectionIndex < reflectionCount; reflectionIndex++) {
+                    let phaseReal;
+                    let phaseImaginary;
+                    if (tables) {
+                        const hOffset = 2 * prepared.hTableIndex[reflectionIndex];
+                        const kOffset = 2 * prepared.kTableIndex[reflectionIndex];
+                        const lOffset = 2 * prepared.lTableIndex[reflectionIndex];
+                        const xyReal = tables.x[hOffset] * tables.y[kOffset] -
+                            tables.x[hOffset + 1] * tables.y[kOffset + 1];
+                        const xyImaginary = tables.x[hOffset] * tables.y[kOffset + 1] +
+                            tables.x[hOffset + 1] * tables.y[kOffset];
+                        phaseReal = xyReal * tables.z[lOffset] -
+                            xyImaginary * tables.z[lOffset + 1];
+                        phaseImaginary = xyReal * tables.z[lOffset + 1] +
+                            xyImaginary * tables.z[lOffset];
+                    } else {
+                        const phase = TWO_PI * (
+                            prepared.h[reflectionIndex] * atom.position[0] +
+                            prepared.k[reflectionIndex] * atom.position[1] +
+                            prepared.l[reflectionIndex] * atom.position[2]
+                        );
+                        phaseReal = Math.cos(phase);
+                        phaseImaginary = Math.sin(phase);
+                    }
+                    const scale = atom.occupancy * preparedDisplacementFactor(
+                        atom.displacement,
+                        prepared,
+                        reflectionIndex,
+                    );
+                    if (modelScattering.realOnly) {
+                        const amplitude = scale * modelScattering.real[reflectionIndex];
+                        real[reflectionIndex] += amplitude * phaseReal;
+                        imaginary[reflectionIndex] += amplitude * phaseImaginary;
+                    } else {
+                        const scatteringReal = modelScattering.real[reflectionIndex];
+                        const scatteringImaginary = modelScattering.imaginary[reflectionIndex];
+                        real[reflectionIndex] += scale * (
+                            scatteringReal * phaseReal - scatteringImaginary * phaseImaginary
+                        );
+                        imaginary[reflectionIndex] += scale * (
+                            scatteringReal * phaseImaginary + scatteringImaginary * phaseReal
+                        );
+                    }
+                }
+                accumulationMs += performance.now() - accumulationStart;
+            }
+        }
+        const fSquared = new Float64Array(reflectionCount);
+        for (let index = 0; index < reflectionCount; index++) {
+            fSquared[index] = real[index] ** 2 + imaginary[index] ** 2;
+        }
+        const cromerMannExpEvaluationCount = scatteringModels.reduce(
+            (sum, model) => sum + model.exponentialCount * reflectionCount,
+            0,
+        );
+        const outputBytes = prepared.h.byteLength + prepared.k.byteLength + prepared.l.byteLength +
+            real.byteLength + imaginary.byteLength + fSquared.byteLength;
+        const reflectionWorkspaceBytes = [
+            prepared.hSquared, prepared.kSquared, prepared.lSquared,
+            prepared.hk, prepared.hl, prepared.kl,
+            prepared.reciprocalLengthSquared, prepared.sSquared,
+            prepared.hTableIndex, prepared.kTableIndex, prepared.lTableIndex,
+        ].reduce((sum, array) => sum + array.byteLength, 0);
+        const scatteringWorkspaceBytes = scattering.reduce(
+            (sum, model) => sum + model.real.byteLength + model.imaginary.byteLength,
+            0,
+        );
+        const phaseTableWorkBytes = phaseMode === 'tables'
+            ? 2 * Float64Array.BYTES_PER_ELEMENT * (
+                prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
+            )
+            : 0;
+        return {
+            h: prepared.h,
+            k: prepared.k,
+            l: prepared.l,
+            real,
+            imaginary,
+            fSquared,
+            diagnostics: {
+                backend: 'prepared-soa',
+                phaseMode,
+                reflectionPreparationMs,
+                scatteringPreparationMs,
+                phaseTablePreparationMs,
+                accumulationMs,
+                reflectionCount,
+                expandedAtomCount,
+                scatteringModelCount: scatteringModels.length,
+                displacementModelCount: displacementModels.size,
+                phaseTrigEvaluationCount,
+                dwfExpEvaluationCount,
+                cromerMannExpEvaluationCount,
+                outputBytes,
+                workBufferBytes: reflectionWorkspaceBytes +
+                    scatteringWorkspaceBytes + phaseTableWorkBytes,
+            },
+        };
+    }
+
     return {
         coefficientAt,
+        calculatePrepared,
         calculate(reflections) {
             return reflections.map(reflection => {
                 const [h, k, l] = reflectionIndices(reflection);
@@ -361,7 +633,9 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             wavelength,
             atomCount: atoms.length,
             expandedAtomCount,
+            symmetryOperationCount: transforms.length,
             scatteringModelCount: scatteringModels.length,
+            displacementModelCount: displacementModels.size,
             sourceCounts,
             npdAdpCount: npdAdpLabels.length,
             npdAdpLabels,
