@@ -25,6 +25,8 @@ export function createDifferenceDensityProgression(dataset, options = {}) {
             if (oversampling !== null) {
                 map = calculateDifferenceDensityMap(dataset, reciprocalResolution, oversampling, {
                     fftBackend: options.fftBackend,
+                    fftGridPlanner: options.fftGridPlanner,
+                    fftAxisKernel: options.fftAxisKernel,
                     realTransform: options.realTransform,
                     symmetryReducedFft: options.symmetryReducedFft,
                 });

@@ -254,9 +254,16 @@ export const descriptions = {
     'differenceDensity.initialGridOversampling': 'FFT-grid oversampling used for the first ' +
         'progressive display.',
     'differenceDensity.gridOversampling': 'Final real-space FFT-grid oversampling factor.',
-    'differenceDensity.fftBackend': '<code>auto</code> or <code>mixed-radix</code> uses the ' +
-        '2/3/5 mixed-radix transform and smooth symmetry-compatible dimensions; ' +
-        '<code>radix-2</code> retains the legacy power-of-two validation path.',
+    'differenceDensity.fftBackend': 'Compatibility shorthand: <code>mixed-radix</code> forces ' +
+        'smooth dimensions and mixed kernels, while <code>radix-2</code> forces both legacy ' +
+        'power-of-two dimensions and kernels. <code>auto</code> delegates to the independent ' +
+        'grid-planner and axis-kernel options.',
+    'differenceDensity.fftGridPlanner': 'Selects <code>smooth</code> 2/3/5 dimensions or ' +
+        '<code>radix-2</code> power-of-two dimensions independently from the per-axis kernel. ' +
+        '<code>auto</code> currently selects the memory-efficient smooth grid.',
+    'differenceDensity.fftAxisKernel': 'Selects the one-dimensional kernel independently per ' +
+        'axis. <code>auto</code> uses the specialized radix-2 kernel for power-of-two lengths ' +
+        'and the mixed-radix kernel otherwise.',
     'differenceDensity.realTransform': 'Uses Hermitian half-spectrum storage and a ' +
         'complex-to-real transform. Invalid conjugacy falls back safely to a full complex map.',
     'differenceDensity.symmetryReducedFft': 'Experimental crystallographic FFT-ASU selector. ' +

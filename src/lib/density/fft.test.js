@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { createMixedRadixPlan, mixedRadixFftLine, radix2FftLine } from './fft.js';
+import {
+    clearFftPlanCache,
+    createMixedRadixPlan,
+    getFftPlan,
+    mixedRadixFftLine,
+    radix2FftLine,
+    resolveAxisKernel,
+} from './fft.js';
 import {
     fractionalDenominator,
     nextSmooth235,
@@ -47,6 +54,25 @@ describe('mixed-radix FFT and grid planning', () => {
         ));
         mixedImaginary.forEach((value, index) =>
             expect(value).toBeCloseTo(legacyImaginary[index], 10));
+    });
+
+    test('selects and caches specialized plans independently for each axis length', () => {
+        clearFftPlanCache();
+        expect(resolveAxisKernel(64, 'auto')).toBe('radix-2');
+        expect(resolveAxisKernel(72, 'auto')).toBe('mixed-radix');
+        expect(getFftPlan(64, 'auto')).toMatchObject({
+            kernel: 'radix-2',
+            cacheHit: false,
+        });
+        expect(getFftPlan(64, 'auto')).toMatchObject({
+            kernel: 'radix-2',
+            cacheHit: true,
+            setupTimeMs: 0,
+        });
+        expect(getFftPlan(72, 'auto')).toMatchObject({
+            kernel: 'mixed-radix',
+            cacheHit: false,
+        });
     });
 
     test('chooses smooth dimensions commensurate with screw translations', () => {

@@ -130,6 +130,13 @@ for (let index = 0; index < sample.files.length; index++) {
             { key: 'radixReal', fftBackend: 'radix-2', realTransform: true },
             { key: 'mixedComplex', fftBackend: 'mixed-radix', realTransform: false },
             { key: 'mixedReal', fftBackend: 'mixed-radix', realTransform: true },
+            {
+                key: 'smoothHybrid',
+                fftBackend: 'auto',
+                fftGridPlanner: 'smooth',
+                fftAxisKernel: 'auto',
+                realTransform: true,
+            },
         ];
         const transforms = {};
         for (let offset = 0; offset < fftModes.length; offset++) {
@@ -137,8 +144,8 @@ for (let index = 0; index < sample.files.length; index++) {
             transforms[mode.key] = timed(() => calculateDifferenceDensityMap(dataset, 1, 1, mode));
         }
         const legacy = transforms.radixComplex;
-        const optimized = transforms.mixedReal;
-        const difference = mapDifference(transforms.mixedComplex.value, optimized.value);
+        const optimized = transforms.smoothHybrid;
+        const difference = mapDifference(transforms.mixedReal.value, optimized.value);
         const bestFftMode = fftModes.reduce((best, mode) =>
             transforms[mode.key].milliseconds < transforms[best.key].milliseconds ? mode : best,
         ).key;
@@ -168,10 +175,16 @@ for (let index = 0; index < sample.files.length; index++) {
             radixRealMs: transforms.radixReal.milliseconds,
             mixedComplexMs: transforms.mixedComplex.milliseconds,
             mixedRealMs: transforms.mixedReal.milliseconds,
+            smoothHybridMs: transforms.smoothHybrid.milliseconds,
             radixComplexBytes: transforms.radixComplex.value.fftAllocatedBytes,
             radixRealBytes: transforms.radixReal.value.fftAllocatedBytes,
             mixedComplexBytes: transforms.mixedComplex.value.fftAllocatedBytes,
             mixedRealBytes: transforms.mixedReal.value.fftAllocatedBytes,
+            smoothHybridBytes: transforms.smoothHybrid.value.fftAllocatedBytes,
+            smoothHybridPlanSetupMs: transforms.smoothHybrid.value.fftPlanSetupTimeMs,
+            smoothHybridAxisStatistics: JSON.stringify(
+                transforms.smoothHybrid.value.fftAxisStatistics,
+            ),
             bestFftMode,
             mapMaximumDifference: difference.maximum,
             mapRmsDifference: difference.rms,
@@ -179,6 +192,18 @@ for (let index = 0; index < sample.files.length; index++) {
             success: true,
             error: '',
         };
+        for (const mode of fftModes) {
+            for (const axis of transforms[mode.key].value.fftAxisStatistics) {
+                const prefix = `${mode.key}Axis${axis.axis}`;
+                record[`${prefix}Length`] = axis.length;
+                record[`${prefix}Factorization`] = JSON.stringify(axis.factorization);
+                record[`${prefix}Kernel`] = axis.kernel;
+                record[`${prefix}LineCount`] = axis.lineCount;
+                record[`${prefix}KernelMs`] = axis.kernelTimeMs;
+                record[`${prefix}PlanSetupMs`] = axis.planSetupTimeMs;
+                record[`${prefix}PlanCacheHit`] = axis.planCacheHit;
+            }
+        }
         if (includeSurfaces) {
             structure.cell = optimized.value.cell;
             const filtered = new HydrogenFilter(HydrogenFilter.MODES.NONE).apply(structure);

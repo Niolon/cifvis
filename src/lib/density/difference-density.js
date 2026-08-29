@@ -12,8 +12,9 @@ import { quotientScalarFieldBySymmetry, ScalarFieldGrid } from './scalar-field.j
 import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 import { planFourierDimensions } from './fft-grid.js';
 import {
-    createMixedRadixPlan,
+    factorization235,
     fftLineWorkBytes,
+    getFftPlan,
     mixedRadixFftLine,
     radix2FftLine,
     transformComplexAxis,
@@ -815,7 +816,7 @@ function hermitianResidual(coefficients, friedelImplicit = false) {
 }
 
 /** @returns {object} Full complex-to-complex production or legacy Fourier transform. */
-function complexFourierGrid(coefficients, cell, dimensions, backend, planMetadata) {
+function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMetadata) {
     const [nx, ny] = dimensions;
     const size = dimensions[0] * dimensions[1] * dimensions[2];
     const realGrid = new Float64Array(size);
@@ -835,9 +836,9 @@ function complexFourierGrid(coefficients, cell, dimensions, backend, planMetadat
 
     // The crystallographic inverse transform uses exp(-2*pi*i*h.x), which is
     // the forward FFT sign convention. It is normalized only by cell volume.
-    transformComplexAxis(realGrid, imaginaryGrid, dimensions, 0, backend);
-    transformComplexAxis(realGrid, imaginaryGrid, dimensions, 1, backend);
-    transformComplexAxis(realGrid, imaginaryGrid, dimensions, 2, backend);
+    const axisStatistics = [0, 1, 2].map(axis => transformComplexAxis(
+        realGrid, imaginaryGrid, dimensions, axis, axisKernel,
+    ));
 
     const volume = calculateCellVolume(cell);
     let maxImaginary = 0;
@@ -845,24 +846,34 @@ function complexFourierGrid(coefficients, cell, dimensions, backend, planMetadat
         maxImaginary = Math.max(maxImaginary, Math.abs(value / volume));
     }
     const workBufferBytes = Math.max(...dimensions.map(length =>
-        fftLineWorkBytes(length, backend)));
+        fftLineWorkBytes(length, axisKernel)));
+    axisStatistics.forEach(statistics => {
+        statistics.factorization = factorization235(statistics.length);
+    });
+    const kernels = [...new Set(axisStatistics.map(statistics => statistics.kernel))];
     return {
         dimensions,
         ...gridStatistics(realGrid, volume, maxImaginary),
         volume,
-        fftBackend: backend,
+        fftBackend: kernels.length === 1 ? kernels[0] : 'hybrid',
+        fftAxisKernel: axisKernel,
+        fftAxisStatistics: axisStatistics,
+        fftPlanSetupTimeMs: axisStatistics.reduce(
+            (sum, statistics) => sum + statistics.planSetupTimeMs, 0,
+        ),
         realTransform: false,
         storedCoefficientCount: coefficients.size,
         workBufferBytes,
         allocatedBytes: realGrid.byteLength + imaginaryGrid.byteLength + size * 4 +
             workBufferBytes,
         symmetryCompatibleGrid: planMetadata.symmetryCompatible,
+        fftGridPlanner: planMetadata.gridPlanner,
         gridFallbackReason: planMetadata.fallbackReason,
     };
 }
 
 /** @returns {object} Half-spectrum complex-to-real transform for Hermitian coefficients. */
-function hermitianFourierGrid(coefficients, cell, dimensions, backend, planMetadata, residual) {
+function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMetadata, residual) {
     const [nx, ny, nz] = dimensions;
     const halfX = Math.floor(nx / 2) + 1;
     const halfDimensions = [halfX, ny, nz];
@@ -884,12 +895,15 @@ function hermitianFourierGrid(coefficients, cell, dimensions, backend, planMetad
             imaginaryGrid[mate] = -imaginary;
         }
     }
-    transformComplexAxis(realGrid, imaginaryGrid, halfDimensions, 1, backend);
-    transformComplexAxis(realGrid, imaginaryGrid, halfDimensions, 2, backend);
+    const axisStatistics = [1, 2].map(axis => transformComplexAxis(
+        realGrid, imaginaryGrid, halfDimensions, axis, axisKernel,
+    ));
 
     const lineReal = new Float64Array(nx);
     const lineImaginary = new Float64Array(nx);
-    const mixedPlan = backend === 'mixed-radix' ? createMixedRadixPlan(nx) : null;
+    const xStarted = globalThis.performance?.now?.() ?? Date.now();
+    const xPlan = getFftPlan(nx, axisKernel);
+    const xKernelStarted = globalThis.performance?.now?.() ?? Date.now();
     const volume = calculateCellVolume(cell);
     const values = new Float32Array(nx * ny * nz);
     let maxImaginary = 0;
@@ -904,10 +918,10 @@ function hermitianFourierGrid(coefficients, cell, dimensions, backend, planMetad
                 lineReal[h] = lineReal[nx - h];
                 lineImaginary[h] = -lineImaginary[nx - h];
             }
-            if (mixedPlan) {
-                mixedRadixFftLine(lineReal, lineImaginary, mixedPlan);
+            if (xPlan.kernel === 'mixed-radix') {
+                mixedRadixFftLine(lineReal, lineImaginary, xPlan.plan);
             } else {
-                radix2FftLine(lineReal, lineImaginary);
+                radix2FftLine(lineReal, lineImaginary, false, xPlan.plan);
             }
             const outputOffset = (z * ny + y) * nx;
             for (let x = 0; x < nx; x++) {
@@ -916,13 +930,33 @@ function hermitianFourierGrid(coefficients, cell, dimensions, backend, planMetad
             }
         }
     }
+    const xFinished = globalThis.performance?.now?.() ?? Date.now();
+    axisStatistics.unshift({
+        axis: 0,
+        length: nx,
+        lineCount: ny * nz,
+        kernel: xPlan.kernel,
+        planCacheHit: xPlan.cacheHit,
+        planSetupTimeMs: xPlan.setupTimeMs,
+        kernelTimeMs: xFinished - xKernelStarted,
+        totalTimeMs: xFinished - xStarted,
+    });
+    axisStatistics.forEach(statistics => {
+        statistics.factorization = factorization235(statistics.length);
+    });
     const workBufferBytes = Math.max(...dimensions.map(length =>
-        fftLineWorkBytes(length, backend)));
+        fftLineWorkBytes(length, axisKernel)));
+    const kernels = [...new Set(axisStatistics.map(statistics => statistics.kernel))];
     return {
         dimensions,
         ...storedGridStatistics(values, maxImaginary / volume),
         volume,
-        fftBackend: backend,
+        fftBackend: kernels.length === 1 ? kernels[0] : 'hybrid',
+        fftAxisKernel: axisKernel,
+        fftAxisStatistics: axisStatistics,
+        fftPlanSetupTimeMs: axisStatistics.reduce(
+            (sum, statistics) => sum + statistics.planSetupTimeMs, 0,
+        ),
         realTransform: true,
         storedCoefficientCount,
         hermitianResidual: residual.relative,
@@ -930,6 +964,7 @@ function hermitianFourierGrid(coefficients, cell, dimensions, backend, planMetad
         allocatedBytes: realGrid.byteLength + imaginaryGrid.byteLength + values.byteLength +
             workBufferBytes,
         symmetryCompatibleGrid: planMetadata.symmetryCompatible,
+        fftGridPlanner: planMetadata.gridPlanner,
         gridFallbackReason: planMetadata.fallbackReason,
     };
 }
@@ -940,20 +975,33 @@ function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
     if (!['auto', 'mixed-radix', 'radix-2'].includes(requestedBackend)) {
         throw new Error('Difference-density fftBackend must be "auto", "mixed-radix", or "radix-2"');
     }
-    const backend = requestedBackend === 'radix-2' ? 'radix-2' : 'mixed-radix';
+    const requestedPlanner = requestedBackend === 'auto'
+        ? options.fftGridPlanner ?? 'auto'
+        : requestedBackend === 'radix-2' ? 'radix-2' : 'smooth';
+    const axisKernel = requestedBackend === 'auto'
+        ? options.fftAxisKernel ?? 'auto'
+        : requestedBackend;
+    if (!['auto', 'smooth', 'radix-2'].includes(requestedPlanner)) {
+        throw new Error('Difference-density fftGridPlanner must be "auto", "smooth", or "radix-2"');
+    }
+    if (!['auto', 'mixed-radix', 'radix-2'].includes(axisKernel)) {
+        throw new Error('Difference-density fftAxisKernel must be "auto", "mixed-radix", or "radix-2"');
+    }
+    const gridPlanner = requestedPlanner === 'auto' ? 'smooth' : requestedPlanner;
     const plan = planFourierDimensions(coefficients, gridOversampling, {
-        backend,
+        backend: gridPlanner === 'radix-2' ? 'radix-2' : 'mixed-radix',
         symmetryOperations: options.symmetryOperations,
     });
+    plan.gridPlanner = gridPlanner;
     const useReal = options.realTransform !== false;
     plan.friedelImplicit = options.friedelImplicit === true;
     const residual = useReal ? hermitianResidual(coefficients, plan.friedelImplicit) : null;
     if (useReal && residual.relative <= 1e-10) {
         return hermitianFourierGrid(
-            coefficients, cell, plan.dimensions, backend, plan, residual,
+            coefficients, cell, plan.dimensions, axisKernel, plan, residual,
         );
     }
-    const result = complexFourierGrid(coefficients, cell, plan.dimensions, backend, plan);
+    const result = complexFourierGrid(coefficients, cell, plan.dimensions, axisKernel, plan);
     if (useReal) {
         result.fftFallbackReason = 'non-hermitian-coefficients';
         result.hermitianResidual = residual.relative;
@@ -1274,6 +1322,10 @@ export function calculateDifferenceDensityMap(
         maxImaginary: grid.maxImaginary,
         volume: grid.volume,
         fftBackend: grid.fftBackend,
+        fftGridPlanner: grid.fftGridPlanner,
+        fftAxisKernel: grid.fftAxisKernel,
+        fftAxisStatistics: grid.fftAxisStatistics,
+        fftPlanSetupTimeMs: grid.fftPlanSetupTimeMs,
         realTransform: grid.realTransform,
         storedCoefficientCount: grid.storedCoefficientCount,
         hermitianResidual: grid.hermitianResidual ?? null,

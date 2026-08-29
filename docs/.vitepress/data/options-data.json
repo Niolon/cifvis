@@ -316,6 +316,16 @@
       "default": "\"auto\""
     },
     {
+      "path": "differenceDensity.fftGridPlanner",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
+      "path": "differenceDensity.fftAxisKernel",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
       "path": "differenceDensity.realTransform",
       "type": "Boolean",
       "default": "true"

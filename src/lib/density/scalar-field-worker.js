@@ -44,6 +44,8 @@ async function calculateDifferenceDensityProgressively(message) {
             initialGridOversampling: message.initialGridOversampling,
             gridOversampling: message.gridOversampling,
             fftBackend: message.fftBackend,
+            fftGridPlanner: message.fftGridPlanner,
+            fftAxisKernel: message.fftAxisKernel,
             realTransform: message.realTransform,
             symmetryReducedFft: message.symmetryReducedFft,
         });

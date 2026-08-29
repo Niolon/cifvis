@@ -11,6 +11,8 @@ export const DEFAULT_DIFFERENCE_DENSITY_OPTIONS = Object.freeze({
     initialGridOversampling: 1,
     gridOversampling: 2,
     fftBackend: 'auto',
+    fftGridPlanner: 'auto',
+    fftAxisKernel: 'auto',
     realTransform: true,
     symmetryReducedFft: false,
 });

@@ -63,6 +63,11 @@ function quantile(values, fraction) {
     return sorted[Math.min(sorted.length - 1, Math.floor(fraction * sorted.length))];
 }
 
+function maximum(values) {
+    const finite = values.filter(Number.isFinite);
+    return finite.length === 0 ? null : Math.max(...finite);
+}
+
 function correlation(rows, first, second) {
     const pairs = rows.map(row => [first(row), second(row)]).filter(pair =>
         pair.every(Number.isFinite));
@@ -109,14 +114,21 @@ function realTransformCost(usedDimensions, factorCost) {
 }
 
 function fftCostRatio(row) {
-    return realTransformCost(dimensions(row, 'optimizedDimensions'), mixedRadixSum) /
+    const hybridCost = length => Number.isInteger(Math.log2(length))
+        ? radixSum(length)
+        : mixedRadixSum(length);
+    return realTransformCost(dimensions(row, 'optimizedDimensions'), hybridCost) /
         realTransformCost(dimensions(row, 'legacyDimensions'), radixSum);
 }
 
+function smoothHybridTime(row) {
+    return number(row, 'smoothHybridMs') ?? number(row, 'mixedRealMs');
+}
+
 function evaluateFftSelector(rows, threshold) {
-    const selected = rows.map(row => fftCostRatio(row) <= threshold ? 'mixedReal' : 'radixReal');
-    const actual = rows.map(row => number(row, 'mixedRealMs') <= number(row, 'radixRealMs')
-        ? 'mixedReal'
+    const selected = rows.map(row => fftCostRatio(row) <= threshold ? 'smoothHybrid' : 'radixReal');
+    const actual = rows.map(row => smoothHybridTime(row) <= number(row, 'radixRealMs')
+        ? 'smoothHybrid'
         : 'radixReal');
     const confusion = {};
     selected.forEach((selection, index) => {
@@ -124,18 +136,18 @@ function evaluateFftSelector(rows, threshold) {
         confusion[key] = (confusion[key] ?? 0) + 1;
     });
     const regrets = rows.map((row, index) => {
-        const mixed = number(row, 'mixedRealMs');
+        const mixed = smoothHybridTime(row);
         const radix = number(row, 'radixRealMs');
-        return (selected[index] === 'mixedReal' ? mixed : radix) / Math.min(mixed, radix);
+        return (selected[index] === 'smoothHybrid' ? mixed : radix) / Math.min(mixed, radix);
     });
     return {
-        predictor: 'mixed-real-cost / radix-real-cost',
+        predictor: 'smooth-hybrid-cost / radix-real-cost',
         threshold,
         correct: selected.filter((selection, index) => selection === actual[index]).length,
         accuracy: selected.filter((selection, index) => selection === actual[index]).length /
             rows.length,
         confusion,
-        selectedModes: Object.fromEntries(['mixedReal', 'radixReal'].map(mode => [
+        selectedModes: Object.fromEntries(['smoothHybrid', 'radixReal'].map(mode => [
             mode,
             selected.filter(value => value === mode).length,
         ])),
@@ -155,6 +167,31 @@ function fitFftSelector(rows) {
     );
 }
 
+function crossValidateFftSelector(rows, foldCount = 5) {
+    const folds = [];
+    for (let fold = 0; fold < foldCount; fold++) {
+        const training = rows.filter((_, index) => index % foldCount !== fold);
+        const testing = rows.filter((_, index) => index % foldCount === fold);
+        const fitted = fitFftSelector(training);
+        const evaluated = evaluateFftSelector(testing, fitted.threshold);
+        folds.push({
+            fold,
+            trainingCount: training.length,
+            testingCount: testing.length,
+            threshold: fitted.threshold,
+            accuracy: evaluated.accuracy,
+            correct: evaluated.correct,
+            p90SelectedRegret: evaluated.p90SelectedRegret,
+        });
+    }
+    return {
+        folds,
+        medianThreshold: median(folds.map(fold => fold.threshold)),
+        accuracy: folds.reduce((sum, fold) => sum + fold.correct, 0) / rows.length,
+        medianFoldP90Regret: median(folds.map(fold => fold.p90SelectedRegret)),
+    };
+}
+
 function summarize(rows) {
     const ratios = (numerator, denominator) => rows.map(row =>
         number(row, numerator) / number(row, denominator));
@@ -169,7 +206,12 @@ function summarize(rows) {
         medianMixedGridSpeedupVsRadixReal: median(ratios('radixRealMs', 'mixedRealMs')),
         medianHermitianSpeedupMixedGrid: median(ratios('mixedComplexMs', 'mixedRealMs')),
         medianHermitianSpeedupRadixGrid: median(ratios('radixComplexMs', 'radixRealMs')),
+        medianHybridSpeedupVsAllMixed: median(ratios('mixedRealMs', 'smoothHybridMs')),
+        medianHybridSpeedupVsRadixReal: median(ratios('radixRealMs', 'smoothHybridMs')),
         medianMemoryReduction: median(ratios('radixComplexBytes', 'mixedRealBytes')),
+        medianHybridMemoryReductionVsRadixReal: median(
+            ratios('radixRealBytes', 'smoothHybridBytes'),
+        ),
     };
 }
 
@@ -214,10 +256,10 @@ const groupBy = classifier => Object.fromEntries([...successful.reduce((groups, 
     return groups;
 }, new Map())].map(([key, rows]) => [key, summarize(rows)]));
 const surfaceRows = successful.filter(row => row.bestSurfaceMode);
-const realWinner = row => number(row, 'mixedRealMs') <= number(row, 'radixRealMs')
-    ? 'mixedReal'
+const realWinner = row => smoothHybridTime(row) <= number(row, 'radixRealMs')
+    ? 'smoothHybrid'
     : 'radixReal';
-const fftRealByWinner = Object.fromEntries(['mixedReal', 'radixReal'].map(mode => {
+const fftRealByWinner = Object.fromEntries(['smoothHybrid', 'radixReal'].map(mode => {
     const rows = successful.filter(row => realWinner(row) === mode);
     return [mode, {
         count: rows.length,
@@ -229,7 +271,7 @@ const fftRealByWinner = Object.fromEntries(['mixedReal', 'radixReal'].map(mode =
             number(row, 'legacyGridPoints') / number(row, 'optimizedGridPoints'))),
         medianPredictedCostRatio: median(rows.map(fftCostRatio)),
         medianWinnerAdvantage: median(rows.map(row => {
-            const mixed = number(row, 'mixedRealMs');
+            const mixed = smoothHybridTime(row);
             const radix = number(row, 'radixRealMs');
             return Math.max(mixed, radix) / Math.min(mixed, radix);
         })),
@@ -269,6 +311,52 @@ const surfaceSummary = surfaceRows.length === 0 ? null : {
         }];
     })),
 };
+const hybridAxisDiagnostics = {
+    kernelPatterns: counts(successful.map(row => ({
+        pattern: [0, 1, 2].map(axis => row[`smoothHybridAxis${axis}Kernel`]).join('/'),
+    })), 'pattern'),
+    byAxis: Object.fromEntries([0, 1, 2].map(axis => [axis, {
+        kernels: counts(successful.map(row => ({
+            kernel: row[`smoothHybridAxis${axis}Kernel`],
+        })), 'kernel'),
+        medianLength: median(successful.map(row => number(row, `smoothHybridAxis${axis}Length`))),
+        medianLineCount: median(successful.map(row =>
+            number(row, `smoothHybridAxis${axis}LineCount`))),
+        medianKernelMs: median(successful.map(row =>
+            number(row, `smoothHybridAxis${axis}KernelMs`))),
+    }])),
+    planCacheMisses: successful.reduce((sum, row) => sum + [0, 1, 2].filter(axis =>
+        row[`smoothHybridAxis${axis}PlanCacheHit`] === 'false').length, 0),
+    medianPlanSetupMs: median(successful.map(row => number(row, 'smoothHybridPlanSetupMs'))),
+    hybridVsAllMixed: {
+        hybridWins: successful.filter(row =>
+            smoothHybridTime(row) < number(row, 'mixedRealMs')).length,
+        allMixedWins: successful.filter(row =>
+            smoothHybridTime(row) >= number(row, 'mixedRealMs')).length,
+        medianSpeedupAllCases: median(successful.map(row =>
+            number(row, 'mixedRealMs') / smoothHybridTime(row))),
+        casesWithRadix2Axis: successful.filter(row => [0, 1, 2].some(axis =>
+            row[`smoothHybridAxis${axis}Kernel`] === 'radix-2')).length,
+        medianSpeedupWithRadix2Axis: median(successful.filter(row => [0, 1, 2].some(axis =>
+            row[`smoothHybridAxis${axis}Kernel`] === 'radix-2')).map(row =>
+            number(row, 'mixedRealMs') / smoothHybridTime(row))),
+    },
+};
+const complexWinners = successful.map(row => {
+    const complex = Math.min(number(row, 'radixComplexMs'), number(row, 'mixedComplexMs'));
+    const real = Math.min(
+        number(row, 'radixRealMs'),
+        number(row, 'mixedRealMs'),
+        smoothHybridTime(row),
+    );
+    return {
+        codId: row.codId,
+        dimensions: row.optimizedDimensions,
+        complexMs: complex,
+        realMs: real,
+        advantageMs: real - complex,
+    };
+}).filter(result => result.advantageMs > 0);
 
 console.log(JSON.stringify({
     input: path,
@@ -281,8 +369,22 @@ console.log(JSON.stringify({
     bySymmetryOperations: groupBy(symmetryGroup),
     fftRealByWinner,
     fftAutoSelector: fitFftSelector(successful),
+    fftAutoSelectorCrossValidation: crossValidateFftSelector(successful),
     fftCandidateSelectors: [0.25, 0.27, 0.3].map(threshold =>
         evaluateFftSelector(successful, threshold)),
+    hybridAxisDiagnostics,
+    validation: {
+        maximumHybridVsAllMixedDifference: maximum(successful.map(row =>
+            number(row, 'mapMaximumDifference'))),
+        maximumDifferenceVsDirectSummation: maximum(successful.map(row =>
+            number(row, 'mapMaximumDirectDifference'))),
+        maximumRmsDifference: maximum(successful.map(row => number(row, 'mapRmsDifference'))),
+        complexWinnerCount: complexWinners.length,
+        complexWinnerMedianAdvantageMs: median(complexWinners.map(result => result.advantageMs)),
+        complexWinnerMaximumAdvantageMs: maximum(complexWinners.map(result => result.advantageMs)),
+        complexWinnersWithinTwoMs: complexWinners.filter(result => result.advantageMs <= 2).length,
+        complexWinners,
+    },
     correlations: {
         logGridPointsVsMixedRealSpeedup: correlation(
             successful,
@@ -304,15 +406,15 @@ console.log(JSON.stringify({
             row => number(row, 'symmetryOperationCount'),
             row => number(row, 'radixComplexMs') / number(row, 'mixedRealMs'),
         ),
-        gridVolumeRatioVsMixedGridSpeedup: correlation(
+        gridVolumeRatioVsHybridGridSpeedup: correlation(
             successful,
             row => number(row, 'legacyGridPoints') / number(row, 'optimizedGridPoints'),
-            row => number(row, 'radixRealMs') / number(row, 'mixedRealMs'),
+            row => number(row, 'radixRealMs') / smoothHybridTime(row),
         ),
         predictedCostRatioVsMeasuredCostRatio: correlation(
             successful,
             row => fftCostRatio(row),
-            row => number(row, 'mixedRealMs') / number(row, 'radixRealMs'),
+            row => smoothHybridTime(row) / number(row, 'radixRealMs'),
         ),
     },
     surface: surfaceSummary,
