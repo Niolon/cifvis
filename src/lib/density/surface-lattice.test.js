@@ -3,7 +3,9 @@ import { describe, expect, test } from 'vitest';
 import { UnitCell } from '../structure/crystal.js';
 import {
     applyAtomCellStencil,
+    applyAtomNodeStencil,
     createAtomCellStencil,
+    createAtomNodeStencil,
     planSurfaceLattice,
 } from './surface-lattice.js';
 
@@ -72,5 +74,37 @@ describe('surface lattice atom stencil', () => {
         expect(result.mask[(z * ny + y) * nx + left]).toBe(1);
         expect(result.mask[(z * ny + y) * nx + right]).toBe(1);
         expect(result.candidateCellCount).toBeGreaterThan(result.activeCellCount);
+    });
+
+    test('node stencil includes every node accepted by the exact legacy radius', () => {
+        const cell = new UnitCell(8, 10, 13, 63, 74, 58);
+        const bounds = { minimum: [-0.4, -0.3, -0.2], maximum: [1.4, 1.3, 1.2] };
+        const lattice = planSurfaceLattice(cell, bounds, [22, 19, 17]);
+        const radius = 1.5;
+        const atomPosition = [1.12, 0.03, 0.77];
+        const atom = {
+            position: { x: atomPosition[0], y: atomPosition[1], z: atomPosition[2] },
+        };
+        const stencil = createAtomNodeStencil(lattice, radius);
+        const { mask } = applyAtomNodeStencil(lattice, [atom], stencil);
+        const matrix = cell.fractToCartMatrix.toArray();
+        const atomCartesian = cartesian(matrix, atomPosition);
+        const [nx, ny, nz] = lattice.dimensions;
+        let missedExactNodes = 0;
+        for (let z = 0; z < nz; z++) {
+            for (let y = 0; y < ny; y++) {
+                for (let x = 0; x < nx; x++) {
+                    const fractional = [x, y, z].map((value, axis) =>
+                        bounds.minimum[axis] + value * lattice.fractionalStep[axis]);
+                    const point = cartesian(matrix, fractional);
+                    const exact = Math.hypot(...point.map((value, axis) =>
+                        value - atomCartesian[axis])) <= radius;
+                    if (exact && !mask[(z * ny + y) * nx + x]) {
+                        missedExactNodes++;
+                    }
+                }
+            }
+        }
+        expect(missedExactNodes).toBe(0);
     });
 });

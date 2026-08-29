@@ -614,6 +614,9 @@ export function createSymmetryAwareIsosurfaces(
         'activeCellCount',
         'activeRowCount',
         'fieldSampleCount',
+        'activeNodeCount',
+        'allowedNodeCount',
+        'candidateNodeCount',
         'generatedVertexCount',
         'generatedLineSegmentCount',
         'allocatedGeometryBytes',
@@ -621,6 +624,7 @@ export function createSymmetryAwareIsosurfaces(
         'threeMarchingCubesTimeMs',
     ].map(key => [key, 0]));
     let numericalExtractionTimeMs = 0;
+    let surfaceSamplingBackend = null;
     const initialCacheEvictions = regionCache?.evictions ?? 0;
     const surfacePatches = { positive: [], negative: [] };
     const surfaceMaterials = { positive: [], negative: [] };
@@ -673,6 +677,7 @@ export function createSymmetryAwareIsosurfaces(
                 marchingCubesTimeMs += performance.now() - regionStarted;
                 polygonizationTimeMs += canonicalGroup.userData.polygonizationTimeMs;
                 numericalExtractionTimeMs += canonicalGroup.userData.surfaceTotalTimeMs ?? 0;
+                surfaceSamplingBackend ??= canonicalGroup.userData.surfaceSamplingBackend ?? null;
                 for (const key of Object.keys(surfaceStageStatistics)) {
                     surfaceStageStatistics[key] += canonicalGroup.userData[key] ?? 0;
                 }
@@ -782,6 +787,10 @@ export function createSymmetryAwareIsosurfaces(
         regionCacheEvictionCount: (regionCache?.evictions ?? 0) - initialCacheEvictions,
         ...surfaceStageStatistics,
         surfaceExtractor: usedOptions.surfaceExtractor,
+        surfaceSamplingBackend,
+        surfaceNodeTraversal: usedOptions.surfaceNodeTraversal ?? null,
+        surfaceNodeStencil: usedOptions.surfaceExtractor === 'cifvis' &&
+            usedOptions.surfaceNodeStencil !== false,
         surfaceWireframeTimeMs,
         surfaceSymmetryAssemblyTimeMs: Math.max(
             0, surfaceTotalTimeMs - numericalExtractionTimeMs,

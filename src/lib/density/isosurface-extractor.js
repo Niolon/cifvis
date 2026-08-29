@@ -42,19 +42,123 @@ function nodeIndex(x, y, z, dimensions) {
     return (z * dimensions[1] + y) * dimensions[0] + x;
 }
 
+function prepareAxisMapping(field, lattice, axis) {
+    const surfaceLength = lattice.dimensions[axis];
+    const fieldLength = field.dimensions[axis];
+    const origin = field.originFractional?.[axis] ?? 0;
+    const periodic = field.boundaryMode !== 'zero';
+    const lower = new Int32Array(surfaceLength);
+    const upper = new Int32Array(surfaceLength);
+    const fraction = new Float64Array(surfaceLength);
+    const valid = new Uint8Array(surfaceLength);
+    for (let index = 0; index < surfaceLength; index++) {
+        const coordinate = lattice.bounds.minimum[axis] +
+            index * lattice.fractionalStep[axis];
+        const scaled = (coordinate - origin) * fieldLength;
+        if (!periodic && (scaled < 0 || scaled > fieldLength - 1)) {
+            continue;
+        }
+        let first = Math.floor(scaled);
+        let amount = scaled - first;
+        if (!periodic && first >= fieldLength - 1) {
+            first = fieldLength - 1;
+            amount = 0;
+        }
+        lower[index] = periodic
+            ? ((first % fieldLength) + fieldLength) % fieldLength
+            : first;
+        upper[index] = periodic ? (lower[index] + 1) % fieldLength :
+            Math.min(fieldLength - 1, first + 1);
+        fraction[index] = amount;
+        valid[index] = 1;
+    }
+    return { lower, upper, fraction, valid };
+}
+
+/**
+ * Prepares direct typed-array interpolation only for ordinary regular grids.
+ * An own data property is required so symmetry-orbit getters are never touched.
+ */
+export function prepareRegularSurfaceSampler(field, lattice) {
+    const valuesProperty = Object.getOwnPropertyDescriptor(field, 'values');
+    const values = valuesProperty?.value;
+    if (!ArrayBuffer.isView(values) || values instanceof DataView ||
+        !Array.isArray(field.dimensions) || field.dimensions.length !== 3 ||
+        values.length !== field.dimensions[0] * field.dimensions[1] * field.dimensions[2]) {
+        return null;
+    }
+    return {
+        values,
+        dimensions: [...field.dimensions],
+        axes: [0, 1, 2].map(axis => prepareAxisMapping(field, lattice, axis)),
+    };
+}
+
+export function samplePreparedSurfaceNodes(prepared, lattice, activeNodeIndices, count, output) {
+    const [surfaceNx, surfaceNy] = lattice.dimensions;
+    const surfacePlane = surfaceNx * surfaceNy;
+    const [fieldNx, fieldNy] = prepared.dimensions;
+    const fieldPlane = fieldNx * fieldNy;
+    const [xAxis, yAxis, zAxis] = prepared.axes;
+    const values = prepared.values;
+    for (let active = 0; active < count; active++) {
+        const flattened = activeNodeIndices[active];
+        const z = Math.floor(flattened / surfacePlane);
+        const remainder = flattened - z * surfacePlane;
+        const y = Math.floor(remainder / surfaceNx);
+        const x = remainder - y * surfaceNx;
+        if (!xAxis.valid[x] || !yAxis.valid[y] || !zAxis.valid[z]) {
+            output[flattened] = 0;
+            continue;
+        }
+        const x0 = xAxis.lower[x];
+        const x1 = xAxis.upper[x];
+        const y0 = yAxis.lower[y] * fieldNx;
+        const y1 = yAxis.upper[y] * fieldNx;
+        const z0 = zAxis.lower[z] * fieldPlane;
+        const z1 = zAxis.upper[z] * fieldPlane;
+        const tx = xAxis.fraction[x];
+        const ty = yAxis.fraction[y];
+        const tz = zAxis.fraction[z];
+        const v000 = values[z0 + y0 + x0];
+        const v100 = values[z0 + y0 + x1];
+        const v010 = values[z0 + y1 + x0];
+        const v110 = values[z0 + y1 + x1];
+        const v001 = values[z1 + y0 + x0];
+        const v101 = values[z1 + y0 + x1];
+        const v011 = values[z1 + y1 + x0];
+        const v111 = values[z1 + y1 + x1];
+        const x00 = v000 + tx * (v100 - v000);
+        const x10 = v010 + tx * (v110 - v010);
+        const x01 = v001 + tx * (v101 - v001);
+        const x11 = v011 + tx * (v111 - v011);
+        const y0Value = x00 + ty * (x10 - x00);
+        const y1Value = x01 + ty * (x11 - x01);
+        output[flattened] = y0Value + tz * (y1Value - y0Value);
+    }
+}
+
 /** Samples only nodes adjacent to active cells, sharing every node evaluation. */
-export function sampleActiveCellNodes(lattice, activeCellMask, field, activeCount = null) {
+export function sampleActiveCellNodes(
+    lattice,
+    activeCellMask,
+    field,
+    activeCount = null,
+    options = {},
+) {
     const started = now();
     const count = activeCount ?? activeCellMask.reduce((sum, value) => sum + value, 0);
     const activeCellIndices = new Uint32Array(count);
     const nodeKnown = new Uint8Array(lattice.nodeCount);
     const nodeValues = new Float32Array(lattice.nodeCount);
+    const activeNodeIndices = new Uint32Array(lattice.nodeCount);
     let activeOffset = 0;
-    let fieldSampleCount = 0;
+    let activeNodeCount = 0;
     const [cx, cy] = lattice.cellDimensions;
-    const [nx, ny, nz] = lattice.dimensions;
+    const [nx, ny] = lattice.dimensions;
     const nodePlane = nx * ny;
     const coordinates = new Int32Array(3);
+    const corners = new Int32Array(8);
     for (let flattened = 0; flattened < activeCellMask.length; flattened++) {
         if (!activeCellMask[flattened]) {
             continue;
@@ -62,39 +166,68 @@ export function sampleActiveCellNodes(lattice, activeCellMask, field, activeCoun
         activeCellIndices[activeOffset++] = flattened;
         cellCoordinates(flattened, cx, cy, coordinates);
         const node = (coordinates[2] * ny + coordinates[1]) * nx + coordinates[0];
-        nodeKnown[node] = 1;
-        nodeKnown[node + 1] = 1;
-        nodeKnown[node + nx] = 1;
-        nodeKnown[node + nx + 1] = 1;
-        nodeKnown[node + nodePlane] = 1;
-        nodeKnown[node + nodePlane + 1] = 1;
-        nodeKnown[node + nodePlane + nx] = 1;
-        nodeKnown[node + nodePlane + nx + 1] = 1;
-    }
-    for (let z = 0; z < nz; z++) {
-        const fractionalZ = lattice.bounds.minimum[2] + z * lattice.fractionalStep[2];
-        for (let y = 0; y < ny; y++) {
-            const fractionalY = lattice.bounds.minimum[1] + y * lattice.fractionalStep[1];
-            const row = (z * ny + y) * nx;
-            for (let x = 0; x < nx; x++) {
-                const index = row + x;
-                if (!nodeKnown[index]) {
-                    continue;
-                }
-                nodeValues[index] = field.sample(
-                    lattice.bounds.minimum[0] + x * lattice.fractionalStep[0],
-                    fractionalY,
-                    fractionalZ,
-                );
-                fieldSampleCount++;
+        corners[0] = node;
+        corners[1] = node + 1;
+        corners[2] = node + nx;
+        corners[3] = node + nx + 1;
+        corners[4] = node + nodePlane;
+        corners[5] = node + nodePlane + 1;
+        corners[6] = node + nodePlane + nx;
+        corners[7] = node + nodePlane + nx + 1;
+        for (let corner = 0; corner < 8; corner++) {
+            const index = corners[corner];
+            if (!nodeKnown[index] && (!options.allowedNodeMask || options.allowedNodeMask[index])) {
+                nodeKnown[index] = 1;
+                activeNodeIndices[activeNodeCount++] = index;
             }
+        }
+    }
+    const requestedTraversal = options.nodeTraversal ?? 'active-list';
+    const requestedSampling = options.samplingMode ?? 'auto';
+    const prepared = requestedSampling === 'generic'
+        ? null
+        : prepareRegularSurfaceSampler(field, lattice);
+    if (requestedSampling === 'prepared' && !prepared) {
+        throw new Error('Prepared surface sampling requires an ordinary regular scalar grid');
+    }
+    const indices = requestedTraversal === 'full-scan'
+        ? new Uint32Array(lattice.nodeCount)
+        : activeNodeIndices;
+    let sampleCount = activeNodeCount;
+    if (requestedTraversal === 'full-scan') {
+        sampleCount = 0;
+        for (let index = 0; index < nodeKnown.length; index++) {
+            if (nodeKnown[index]) {
+                indices[sampleCount++] = index;
+            }
+        }
+    }
+    if (prepared) {
+        samplePreparedSurfaceNodes(prepared, lattice, indices, sampleCount, nodeValues);
+    } else {
+        const surfacePlane = nx * ny;
+        for (let active = 0; active < sampleCount; active++) {
+            const flattened = indices[active];
+            const z = Math.floor(flattened / surfacePlane);
+            const remainder = flattened - z * surfacePlane;
+            const y = Math.floor(remainder / nx);
+            const x = remainder - y * nx;
+            nodeValues[flattened] = field.sample(
+                lattice.bounds.minimum[0] + x * lattice.fractionalStep[0],
+                lattice.bounds.minimum[1] + y * lattice.fractionalStep[1],
+                lattice.bounds.minimum[2] + z * lattice.fractionalStep[2],
+            );
         }
     }
     return {
         activeCellIndices,
+        activeNodeIndices: indices.subarray(0, sampleCount),
         nodeKnown,
         nodeValues,
-        fieldSampleCount,
+        activeNodeCount: sampleCount,
+        fieldSampleCount: sampleCount,
+        samplingBackend: prepared ? 'prepared-trilinear' : 'generic-sample',
+        nodeTraversal: requestedTraversal,
         samplingTimeMs: now() - started,
     };
 }
@@ -231,9 +364,18 @@ export function extractMarchingCubes({
     field,
     level,
     signs = 'both',
+    samplingMode = 'auto',
+    nodeTraversal = 'active-list',
+    allowedNodeMask = null,
 }) {
     const started = now();
-    const samples = sampleActiveCellNodes(lattice, activeCellMask, field, activeCellCount);
+    const samples = sampleActiveCellNodes(
+        lattice,
+        activeCellMask,
+        field,
+        activeCellCount,
+        { samplingMode, nodeTraversal, allowedNodeMask },
+    );
     const classified = classifyCells(lattice, samples, level, signs);
     const allocationStarted = now();
     const positivePositions = new Float32Array(classified.positiveTriangleCount * 9);
@@ -278,6 +420,9 @@ export function extractMarchingCubes({
             activeSurfaceCellCount: classified.activeSurfaceCellCount,
             activeRowCount,
             fieldSampleCount: samples.fieldSampleCount,
+            activeNodeCount: samples.activeNodeCount,
+            samplingBackend: samples.samplingBackend,
+            nodeTraversal: samples.nodeTraversal,
             positiveSurfaceCellCount: classified.positiveSurfaceCellCount,
             negativeSurfaceCellCount: classified.negativeSurfaceCellCount,
             positiveTriangleCount: classified.positiveTriangleCount,

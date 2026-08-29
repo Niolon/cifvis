@@ -50,6 +50,7 @@
     "bench:iam": "node benchmark/iam.mjs",
     "bench:density-optimization": "node benchmark/density-optimization-cod.mjs",
     "bench:surface-extractor": "node benchmark/surface-extractor.mjs",
+    "bench:surface-sampler": "node benchmark/surface-sampler.mjs",
     "bench:density-analyze": "node benchmark/analyze-density-optimization.mjs"
   },
   "keywords": [],

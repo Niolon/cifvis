@@ -3,7 +3,12 @@ import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
 import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 import { UnitCell } from '../structure/crystal.js';
-import { extractMarchingCubes } from './isosurface-extractor.js';
+import { ScalarFieldGrid } from './scalar-field.js';
+import {
+    extractMarchingCubes,
+    prepareRegularSurfaceSampler,
+    sampleActiveCellNodes,
+} from './isosurface-extractor.js';
 import { planSurfaceLattice } from './surface-lattice.js';
 
 function fullMask(lattice) {
@@ -183,6 +188,110 @@ describe('typed-array isosurface extractor', () => {
         expect(samples).toBe(8);
         expect(result.statistics.fieldSampleCount).toBe(8);
         expect(samples).toBeLessThan(lattice.nodeCount);
+    });
+
+    test.each(['periodic', 'zero'])('prepared %s sampling matches generic field.sample()', mode => {
+        const cell = new UnitCell(1, 1, 1, 90, 90, 90);
+        const dimensions = [8, 10, 12];
+        const values = new Float32Array(dimensions[0] * dimensions[1] * dimensions[2]);
+        for (let index = 0; index < values.length; index++) {
+            values[index] = Math.sin(index * 0.137) + Math.cos(index * 0.031);
+        }
+        const field = new ScalarFieldGrid(cell, dimensions, values, mode === 'zero' ? {
+            boundaryMode: 'zero',
+            originFractional: [0.1, -0.05, 0.2],
+        } : {});
+        const lattice = planSurfaceLattice(
+            cell,
+            { minimum: [-0.2, -0.1, 0.05], maximum: [1.2, 1.1, 1.3] },
+            [19, 17, 15],
+        );
+        const mask = fullMask(lattice);
+        const generic = sampleActiveCellNodes(
+            lattice, mask, field, lattice.cellCount,
+            { samplingMode: 'generic', nodeTraversal: 'full-scan' },
+        );
+        const prepared = sampleActiveCellNodes(
+            lattice, mask, field, lattice.cellCount,
+            { samplingMode: 'prepared', nodeTraversal: 'active-list' },
+        );
+
+        expect(prepared.samplingBackend).toBe('prepared-trilinear');
+        expect(prepared.activeNodeCount).toBe(generic.activeNodeCount);
+        for (const index of prepared.activeNodeIndices) {
+            expect(prepared.nodeValues[index]).toBeCloseTo(generic.nodeValues[index], 6);
+        }
+    });
+
+    test('prepared-sampler eligibility does not touch a values getter', () => {
+        let getterCalls = 0;
+        const field = { dimensions: [4, 4, 4], sample: () => 1 };
+        Object.defineProperty(field, 'values', {
+            get() {
+                getterCalls++;
+                throw new Error('must not materialize');
+            },
+        });
+        const lattice = planSurfaceLattice(
+            new UnitCell(1, 1, 1, 90, 90, 90),
+            { minimum: [0, 0, 0], maximum: [1, 1, 1] },
+            8,
+        );
+
+        expect(prepareRegularSurfaceSampler(field, lattice)).toBeNull();
+        expect(getterCalls).toBe(0);
+    });
+
+    test('active-list and prepared sampling preserve extracted geometry', () => {
+        const cell = new UnitCell(1, 1, 1, 90, 90, 90);
+        const dimensions = [16, 18, 20];
+        const values = new Float32Array(dimensions[0] * dimensions[1] * dimensions[2]);
+        for (let z = 0; z < dimensions[2]; z++) {
+            for (let y = 0; y < dimensions[1]; y++) {
+                for (let x = 0; x < dimensions[0]; x++) {
+                    values[(z * dimensions[1] + y) * dimensions[0] + x] =
+                        Math.sin(2 * Math.PI * x / dimensions[0]) +
+                        0.4 * Math.cos(2 * Math.PI * y / dimensions[1]) -
+                        0.2 * Math.sin(2 * Math.PI * z / dimensions[2]);
+                }
+            }
+        }
+        const field = new ScalarFieldGrid(cell, dimensions, values);
+        const lattice = planSurfaceLattice(
+            cell,
+            { minimum: [-0.1, -0.15, -0.2], maximum: [1.1, 1.15, 1.2] },
+            [23, 21, 19],
+        );
+        const mask = fullMask(lattice);
+        const common = {
+            lattice,
+            activeCellMask: mask,
+            activeCellCount: lattice.cellCount,
+            field,
+            level: 0.15,
+        };
+        const current = extractMarchingCubes({
+            ...common, samplingMode: 'generic', nodeTraversal: 'full-scan',
+        });
+        const activeList = extractMarchingCubes({
+            ...common, samplingMode: 'generic', nodeTraversal: 'active-list',
+        });
+        const prepared = extractMarchingCubes({
+            ...common, samplingMode: 'prepared', nodeTraversal: 'active-list',
+        });
+
+        for (const sign of ['positive', 'negative']) {
+            expect(activeList[sign].positions).toEqual(current[sign].positions);
+            expect(prepared[sign].positions.length).toBe(current[sign].positions.length);
+            let maximumDifference = 0;
+            for (let index = 0; index < prepared[sign].positions.length; index++) {
+                maximumDifference = Math.max(
+                    maximumDifference,
+                    Math.abs(prepared[sign].positions[index] - current[sign].positions[index]),
+                );
+            }
+            expect(maximumDifference).toBeLessThan(1e-6);
+        }
     });
 
     test('produces a closed connected sphere', () => {

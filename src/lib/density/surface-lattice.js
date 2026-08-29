@@ -68,7 +68,7 @@ export function planSurfaceLattice(cell, bounds, resolution) {
  * @param {number} radius - Nominal Cartesian atom cutoff in Angstrom.
  * @returns {object} Parallel typed arrays of integer cell offsets.
  */
-export function createAtomCellStencil(lattice, radius) {
+function createAtomStencil(lattice, radius) {
     const vectors = lattice.cartesianStepVectors;
     const determinant = dot(vectors[0], cross(vectors[1], vectors[2]));
     if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-15) {
@@ -105,6 +105,19 @@ export function createAtomCellStencil(lattice, radius) {
         dz[index] = offsets[3 * index + 2];
     }
     return { dx, dy, dz, count, radius: stencilRadius };
+}
+
+export function createAtomCellStencil(lattice, radius) {
+    return createAtomStencil(lattice, radius);
+}
+
+/**
+ * @param {object} lattice - Planned surface lattice.
+ * @param {number} radius - Nominal Cartesian atom cutoff in Angstrom.
+ * @returns {object} Conservative integer stencil for allowed scalar nodes.
+ */
+export function createAtomNodeStencil(lattice, radius) {
+    return createAtomStencil(lattice, radius);
 }
 
 /**
@@ -146,4 +159,45 @@ export function applyAtomCellStencil(lattice, atoms, stencil) {
         activeCellCount += value;
     }
     return { mask, candidateCellCount, activeCellCount };
+}
+
+/**
+ * Applies the independent node stencil. Nodes outside this mask deliberately
+ * retain zero, approximating the legacy visual clipping without atom searches.
+ * @param {object} lattice - Planned surface lattice.
+ * @param {object[]} atoms - Displayed atoms without fractional wrapping.
+ * @param {object} stencil - Precomputed node stencil.
+ * @returns {object} Allowed-node mask and work counts.
+ */
+export function applyAtomNodeStencil(lattice, atoms, stencil) {
+    const [nx, ny, nz] = lattice.dimensions;
+    const mask = new Uint8Array(lattice.nodeCount);
+    let candidateNodeCount = 0;
+    for (const atom of atoms) {
+        const position = atom.position;
+        const centreX = Math.floor(
+            (position.x - lattice.bounds.minimum[0]) / lattice.fractionalStep[0],
+        );
+        const centreY = Math.floor(
+            (position.y - lattice.bounds.minimum[1]) / lattice.fractionalStep[1],
+        );
+        const centreZ = Math.floor(
+            (position.z - lattice.bounds.minimum[2]) / lattice.fractionalStep[2],
+        );
+        for (let offset = 0; offset < stencil.count; offset++) {
+            const x = centreX + stencil.dx[offset];
+            const y = centreY + stencil.dy[offset];
+            const z = centreZ + stencil.dz[offset];
+            if (x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) {
+                continue;
+            }
+            candidateNodeCount++;
+            mask[(z * ny + y) * nx + x] = 1;
+        }
+    }
+    let allowedNodeCount = 0;
+    for (const value of mask) {
+        allowedNodeCount += value;
+    }
+    return { mask, candidateNodeCount, allowedNodeCount };
 }

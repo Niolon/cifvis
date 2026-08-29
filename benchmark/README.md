@@ -10,6 +10,8 @@ regressions in the library:
 - `difference-density-symmetry.mjs`: direct versus symmetry-aware density surfaces;
 - `surface-extractor.mjs`: Three.js versus CifVis typed-array polygonization across
   lattice sizes and active-cell fractions;
+- `surface-sampler.mjs`: generic `ScalarFieldGrid.sample()` versus prepared batch
+  trilinear interpolation across density-grid and coordinate counts;
 - `density-optimization-cod.mjs`: deterministic COD comparison of FFT modes, cold
   surface extractors, and warm expansion caches. Use `analyze-density-optimization.mjs`
   to summarize its CSV output by size, symmetry and active-cell occupancy.

@@ -50,6 +50,9 @@ const surfaceCountKeys = [
     'activeRowCount',
     'activeSurfaceCellCount',
     'fieldSampleCount',
+    'activeNodeCount',
+    'allowedNodeCount',
+    'candidateNodeCount',
     'positiveTriangleCount',
     'negativeTriangleCount',
     'generatedVertexCount',
@@ -237,15 +240,47 @@ for (let index = 0; index < sample.files.length; index++) {
             const fragment = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT).apply(filtered);
             const cell = new SymmetryGrower(SymmetryGrower.MODES.CELL).apply(filtered);
             const surfaceOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, visible: true };
-            const coldExtractors = index % 2 === 0
-                ? ['three-marching-cubes', 'cifvis']
-                : ['cifvis', 'three-marching-cubes'];
+            const coldModes = [
+                {
+                    key: 'threeSurface',
+                    surfaceExtractor: 'three-marching-cubes',
+                },
+                {
+                    key: 'cifvisCurrent',
+                    surfaceExtractor: 'cifvis',
+                    surfaceNodeTraversal: 'full-scan',
+                    surfaceSamplingMode: 'generic',
+                    surfaceNodeStencil: false,
+                },
+                {
+                    key: 'cifvisActiveList',
+                    surfaceExtractor: 'cifvis',
+                    surfaceNodeTraversal: 'active-list',
+                    surfaceSamplingMode: 'generic',
+                    surfaceNodeStencil: false,
+                },
+                {
+                    key: 'cifvisBatch',
+                    surfaceExtractor: 'cifvis',
+                    surfaceNodeTraversal: 'active-list',
+                    surfaceSamplingMode: 'auto',
+                    surfaceNodeStencil: false,
+                },
+                {
+                    key: 'cifvisNodeStencil',
+                    surfaceExtractor: 'cifvis',
+                    surfaceNodeTraversal: 'active-list',
+                    surfaceSamplingMode: 'auto',
+                    surfaceNodeStencil: true,
+                },
+            ];
             const coldSurfaces = {};
-            for (const surfaceExtractor of coldExtractors) {
-                coldSurfaces[surfaceExtractor] = timed(() => createSymmetryAwareIsosurfaces(
+            for (let offset = 0; offset < coldModes.length; offset++) {
+                const mode = coldModes[(index + offset) % coldModes.length];
+                coldSurfaces[mode.key] = timed(() => createSymmetryAwareIsosurfaces(
                     optimized.value,
                     cell,
-                    { ...surfaceOptions, surfaceExtractor },
+                    { ...surfaceOptions, ...mode },
                 ));
             }
             const legacySurface = timed(() => createSymmetryAwareIsosurfaces(
@@ -262,8 +297,12 @@ for (let index = 0; index < sample.files.length; index++) {
                 optimized.value, fragment, surfaceOptions, regionCache,
             ));
             Object.assign(record, {
-                threeSurfaceWallMs: coldSurfaces['three-marching-cubes'].milliseconds,
-                cifvisSurfaceWallMs: coldSurfaces.cifvis.milliseconds,
+                threeSurfaceWallMs: coldSurfaces.threeSurface.milliseconds,
+                cifvisCurrentWallMs: coldSurfaces.cifvisCurrent.milliseconds,
+                cifvisActiveListWallMs: coldSurfaces.cifvisActiveList.milliseconds,
+                cifvisBatchWallMs: coldSurfaces.cifvisBatch.milliseconds,
+                cifvisNodeStencilWallMs: coldSurfaces.cifvisNodeStencil.milliseconds,
+                cifvisSurfaceWallMs: coldSurfaces.cifvisNodeStencil.milliseconds,
                 legacyCellSurfaceMs: legacySurface.milliseconds,
                 regionFragmentColdMs: regionFragment.milliseconds,
                 regionExpandCellMs: regionExpanded.milliseconds,
@@ -275,19 +314,25 @@ for (let index = 0; index < sample.files.length; index++) {
                     ? 'region-cache'
                     : 'direct-legacy',
             });
-            for (const [extractor, prefix] of [
-                ['three-marching-cubes', 'threeSurface'],
-                ['cifvis', 'cifvisSurface'],
-            ]) {
-                const statistics = coldSurfaces[extractor].value.userData;
+            for (const mode of coldModes) {
+                const statistics = coldSurfaces[mode.key].value.userData;
                 for (const key of [...surfaceTimingKeys, ...surfaceCountKeys]) {
-                    record[`${prefix}${key[0].toUpperCase()}${key.slice(1)}`] = statistics[key] ?? 0;
+                    record[`${mode.key}${key[0].toUpperCase()}${key.slice(1)}`] =
+                        statistics[key] ?? 0;
                 }
-                record[`${prefix}TotalTimeMs`] = statistics.surfaceTotalTimeMs ?? 0;
-                record[`${prefix}AttributionFraction`] = surfaceTimingKeys.reduce(
+                record[`${mode.key}TotalTimeMs`] = statistics.surfaceTotalTimeMs ?? 0;
+                record[`${mode.key}SamplingBackend`] = statistics.surfaceSamplingBackend ?? '';
+                record[`${mode.key}AttributionFraction`] = surfaceTimingKeys.reduce(
                     (sum, key) => sum + (statistics[key] ?? 0), 0,
-                ) / coldSurfaces[extractor].milliseconds;
+                ) / coldSurfaces[mode.key].milliseconds;
             }
+            for (const key of [...surfaceTimingKeys, ...surfaceCountKeys]) {
+                record[`cifvisSurface${key[0].toUpperCase()}${key.slice(1)}`] =
+                    record[`cifvisNodeStencil${key[0].toUpperCase()}${key.slice(1)}`];
+            }
+            record.cifvisSurfaceTotalTimeMs = record.cifvisNodeStencilTotalTimeMs;
+            record.cifvisSurfaceAttributionFraction =
+                record.cifvisNodeStencilAttributionFraction;
             [
                 legacySurface,
                 regionFragment,

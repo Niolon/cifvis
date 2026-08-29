@@ -428,7 +428,7 @@
     {
       "path": "isosurface.surfaceExtractor",
       "type": "String",
-      "default": "\"three-marching-cubes\""
+      "default": "\"cifvis\""
     },
     {
       "path": "isosurface.patchCacheMaxBytes",

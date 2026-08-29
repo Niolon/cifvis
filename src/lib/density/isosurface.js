@@ -6,7 +6,9 @@ import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 import { extractMarchingCubes } from './isosurface-extractor.js';
 import {
     applyAtomCellStencil,
+    applyAtomNodeStencil,
     createAtomCellStencil,
+    createAtomNodeStencil,
     planSurfaceLattice,
 } from './surface-lattice.js';
 
@@ -253,6 +255,13 @@ function createCifvisIsosurfaces(
     const lattice = planSurfaceLattice(structure.cell, bounds, resolution);
     const stencil = createAtomCellStencil(lattice, usedOptions.radius);
     const applied = applyAtomCellStencil(lattice, structure.atoms ?? [], stencil);
+    const useNodeStencil = usedOptions.surfaceNodeStencil !== false;
+    const nodeStencil = useNodeStencil
+        ? createAtomNodeStencil(lattice, usedOptions.radius)
+        : null;
+    const allowedNodes = nodeStencil
+        ? applyAtomNodeStencil(lattice, structure.atoms ?? [], nodeStencil)
+        : null;
     const surfaceMaskTimeMs = performance.now() - maskStarted;
     const extracted = extractMarchingCubes({
         lattice,
@@ -261,6 +270,9 @@ function createCifvisIsosurfaces(
         field,
         level,
         signs: sign,
+        samplingMode: usedOptions.surfaceSamplingMode ?? 'auto',
+        nodeTraversal: usedOptions.surfaceNodeTraversal ?? 'active-list',
+        allowedNodeMask: allowedNodes?.mask ?? null,
     });
 
     const geometryStarted = performance.now();
@@ -354,6 +366,12 @@ function createCifvisIsosurfaces(
         activeRowCount: statistics.activeRowCount,
         activeSurfaceCellCount: statistics.activeSurfaceCellCount,
         fieldSampleCount: statistics.fieldSampleCount,
+        activeNodeCount: statistics.activeNodeCount,
+        allowedNodeCount: allowedNodes?.allowedNodeCount ?? lattice.nodeCount,
+        candidateNodeCount: allowedNodes?.candidateNodeCount ?? lattice.nodeCount,
+        surfaceSamplingBackend: statistics.samplingBackend,
+        surfaceNodeTraversal: statistics.nodeTraversal,
+        surfaceNodeStencil: useNodeStencil,
         positiveTriangleCount: statistics.positiveTriangleCount,
         negativeTriangleCount: statistics.negativeTriangleCount,
         generatedVertexCount: statistics.generatedVertexCount,
@@ -362,6 +380,7 @@ function createCifvisIsosurfaces(
         atomDistanceTestCount: 0,
         threeMarchingCubesTimeMs: 0,
         stencilOffsetCount: stencil.count,
+        nodeStencilOffsetCount: nodeStencil?.count ?? 0,
         stencilRadius: stencil.radius,
         clippingConservativeVoxelPadding: lattice.cellDiagonal,
     };

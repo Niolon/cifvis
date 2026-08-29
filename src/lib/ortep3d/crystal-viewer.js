@@ -63,6 +63,9 @@ const SURFACE_EXTRACTION_STATISTICS = [
     'activeRowCount',
     'activeSurfaceCellCount',
     'fieldSampleCount',
+    'activeNodeCount',
+    'allowedNodeCount',
+    'candidateNodeCount',
     'positiveTriangleCount',
     'negativeTriangleCount',
     'generatedVertexCount',
@@ -79,6 +82,9 @@ const SURFACE_EXTRACTION_STATISTICS = [
 function surfaceExtractionStatistics(statistics) {
     return {
         surfaceExtractor: statistics.surfaceExtractor ?? null,
+        surfaceSamplingBackend: statistics.surfaceSamplingBackend ?? null,
+        surfaceNodeTraversal: statistics.surfaceNodeTraversal ?? null,
+        surfaceNodeStencil: statistics.surfaceNodeStencil ?? false,
         ...Object.fromEntries(SURFACE_EXTRACTION_STATISTICS.map(key => [
             key,
             statistics[key] ?? 0,

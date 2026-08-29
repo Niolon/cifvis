@@ -453,6 +453,52 @@ const coldExtractorSummary = extractorRows.length === 0 ? null : {
         ),
     },
 };
+const samplingRows = successful.filter(row => number(row, 'cifvisCurrentWallMs') !== null);
+const samplingModes = [
+    ['current', 'cifvisCurrent'],
+    ['activeList', 'cifvisActiveList'],
+    ['batchSampler', 'cifvisBatch'],
+    ['nodeStencil', 'cifvisNodeStencil'],
+];
+const samplingCheckpoint = samplingRows.length === 0 ? null : {
+    count: samplingRows.length,
+    modes: Object.fromEntries(samplingModes.map(([label, prefix]) => [label, {
+        medianFieldSamples: median(samplingRows.map(row =>
+            number(row, `${prefix}FieldSampleCount`))),
+        medianActiveNodes: median(samplingRows.map(row =>
+            number(row, `${prefix}ActiveNodeCount`))),
+        medianSamplingMs: median(samplingRows.map(row =>
+            number(row, `${prefix}SurfaceSamplingTimeMs`))),
+        medianSurfaceMs: median(samplingRows.map(row => number(row, `${prefix}WallMs`))),
+        medianSpeedupVsThree: median(samplingRows.map(row =>
+            number(row, 'threeSurfaceWallMs') / number(row, `${prefix}WallMs`))),
+        aggregateSpeedupVsThree: samplingRows.reduce(
+            (sum, row) => sum + number(row, 'threeSurfaceWallMs'), 0,
+        ) / samplingRows.reduce((sum, row) => sum + number(row, `${prefix}WallMs`), 0),
+        p95SurfaceMs: quantile(samplingRows.map(row => number(row, `${prefix}WallMs`)), 0.95),
+        p99SurfaceMs: quantile(samplingRows.map(row => number(row, `${prefix}WallMs`)), 0.99),
+    }])),
+    incrementalMedianSpeedup: {
+        activeListVsCurrent: median(samplingRows.map(row =>
+            number(row, 'cifvisCurrentWallMs') / number(row, 'cifvisActiveListWallMs'))),
+        batchVsActiveList: median(samplingRows.map(row =>
+            number(row, 'cifvisActiveListWallMs') / number(row, 'cifvisBatchWallMs'))),
+        nodeStencilVsBatch: median(samplingRows.map(row =>
+            number(row, 'cifvisBatchWallMs') / number(row, 'cifvisNodeStencilWallMs'))),
+    },
+    unchangedTriangleCounts: {
+        activeList: samplingRows.filter(row =>
+            number(row, 'cifvisActiveListPositiveTriangleCount') ===
+                number(row, 'cifvisCurrentPositiveTriangleCount') &&
+            number(row, 'cifvisActiveListNegativeTriangleCount') ===
+                number(row, 'cifvisCurrentNegativeTriangleCount')).length,
+        batchSampler: samplingRows.filter(row =>
+            number(row, 'cifvisBatchPositiveTriangleCount') ===
+                number(row, 'cifvisCurrentPositiveTriangleCount') &&
+            number(row, 'cifvisBatchNegativeTriangleCount') ===
+                number(row, 'cifvisCurrentNegativeTriangleCount')).length,
+    },
+};
 const hybridAxisDiagnostics = {
     kernelPatterns: counts(successful.map(row => ({
         pattern: [0, 1, 2].map(axis => row[`smoothHybridAxis${axis}Kernel`]).join('/'),
@@ -561,4 +607,5 @@ console.log(JSON.stringify({
     },
     surface: surfaceSummary,
     coldSurfaceExtractor: coldExtractorSummary,
+    samplingCheckpoint,
 }, null, 2));
