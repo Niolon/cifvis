@@ -420,6 +420,14 @@ function regionResolutionFor(structure, region, radius, globalResolution, global
     );
 }
 
+/**
+ * Creates positive and negative isosurfaces while reusing symmetry-equivalent regions.
+ * Falls back to the direct isosurface path when symmetry reuse is disabled or unavailable.
+ * @param {ScalarFieldGrid} field - Periodic scalar field to contour.
+ * @param {CrystalStructure} structure - Structure defining atoms, cell, and symmetry.
+ * @param {object} [options] - Isosurface display and symmetry-generation options.
+ * @returns {THREE.Group} Renderable isosurface group with generation statistics.
+ */
 export function createSymmetryAwareIsosurfaces(
     field,
     structure,
