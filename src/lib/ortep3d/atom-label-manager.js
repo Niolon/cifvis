@@ -974,7 +974,9 @@ export class AtomLabelManager {
         const subscriptFont = `${this.options.fontWeight} ${this.options.fontSize * 0.7}px ${this.options.fontFamily}`;
         for (const label of this.layout.placed) {
             if (label.leaderLine && this.options.leaderLines !== 'none') {
-                context.strokeStyle = this.options.leaderColor;
+                context.strokeStyle = this.options.leaderColor === 'label'
+                    ? label.color || this.options.color
+                    : this.options.leaderColor;
                 context.lineWidth = this.options.leaderWidth;
                 context.beginPath();
                 context.moveTo(label.leaderSegment.x1, label.leaderSegment.y1);

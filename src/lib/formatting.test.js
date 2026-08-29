@@ -12,6 +12,14 @@ describe('formatAtomLabel', () => {
         expect(atomLabelParts('Si1B', true)).toEqual({ element: 'Si', nonElement: '1B' });
         expect(atomLabelParts('Si1B')).toEqual({ element: 'Si1B', nonElement: '' });
     });
+
+    test('removes one enclosing parenthesis pair only while subscripting', () => {
+        expect(atomLabelParts('Si(1B)', true)).toEqual({ element: 'Si', nonElement: '1B' });
+        expect(atomLabelParts('Si(1B)')).toEqual({ element: 'Si(1B)', nonElement: '' });
+        expect(atomLabelParts('Si(1)B', true)).toEqual({ element: 'Si', nonElement: '(1)B' });
+        expect(formatAtomLabel('C(12)', true)).toBe('C₁₂');
+        expect(formatAtomLabel('C(12)')).toBe('C(12)');
+    });
 });
 
 describe('roundToDecimals', () => {

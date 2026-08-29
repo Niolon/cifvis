@@ -53,7 +53,10 @@ export function atomLabelParts(label, subscriptNonElement = false) {
     if (!parts) {
         return { element: text, nonElement: '' };
     }
-    return { element: parts[1], nonElement: parts[2] };
+    const nonElement = parts[2].startsWith('(') && parts[2].endsWith(')')
+        ? parts[2].slice(1, -1)
+        : parts[2];
+    return { element: parts[1], nonElement };
 }
 
 /**

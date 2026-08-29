@@ -281,7 +281,8 @@ export default {
         'haloColor': '#ffffff',
         'haloWidth': 2,
         'leaderLines': 'auto',
-        'leaderColor': 'rgba(17, 17, 17, 0.55)',
+        // "label" follows each resolved label colour; any CSS colour remains an override.
+        'leaderColor': 'label',
         'leaderWidth': 1,
         'atomPadding': 3,
         'bondPadding': 2,
