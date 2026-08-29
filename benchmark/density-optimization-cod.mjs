@@ -125,26 +125,54 @@ for (let index = 0; index < sample.files.length; index++) {
         const dataset = createCifDifferenceDensityDataset(hklText, 0, {
             coordinateCifText: cifText,
         });
-        const legacy = timed(() => calculateDifferenceDensityMap(dataset, 1, 1, {
-            fftBackend: 'radix-2', realTransform: false,
-        }));
-        const optimized = timed(() => calculateDifferenceDensityMap(dataset, 1, 1, {
-            fftBackend: 'mixed-radix', realTransform: true,
-        }));
-        const mixedComplex = calculateDifferenceDensityMap(dataset, 1, 1, {
-            fftBackend: 'mixed-radix', realTransform: false,
-        });
-        const difference = mapDifference(mixedComplex, optimized.value);
+        const fftModes = [
+            { key: 'radixComplex', fftBackend: 'radix-2', realTransform: false },
+            { key: 'radixReal', fftBackend: 'radix-2', realTransform: true },
+            { key: 'mixedComplex', fftBackend: 'mixed-radix', realTransform: false },
+            { key: 'mixedReal', fftBackend: 'mixed-radix', realTransform: true },
+        ];
+        const transforms = {};
+        for (let offset = 0; offset < fftModes.length; offset++) {
+            const mode = fftModes[(index + offset) % fftModes.length];
+            transforms[mode.key] = timed(() => calculateDifferenceDensityMap(dataset, 1, 1, mode));
+        }
+        const legacy = transforms.radixComplex;
+        const optimized = transforms.mixedReal;
+        const difference = mapDifference(transforms.mixedComplex.value, optimized.value);
+        const bestFftMode = fftModes.reduce((best, mode) =>
+            transforms[mode.key].milliseconds < transforms[best.key].milliseconds ? mode : best,
+        ).key;
+        const cellVolume = Math.abs(determinant(structure.cell.fractToCartMatrix.toArray()));
+        const symmetryOperationCount = structure.symmetry?.symmetryOperations?.length ??
+            dataset.symmetryOperations?.length ?? 1;
         const record = {
             codId,
+            cifBytes: cifText.length,
+            hklBytes: hklText.length,
             asymmetricUnitAtoms: structure.atoms.length,
+            symmetryOperationCount,
+            cellA: structure.cell.a,
+            cellB: structure.cell.b,
+            cellC: structure.cell.c,
+            cellVolume,
             reflectionCount: dataset.reflectionCount,
             legacyGridPoints: legacy.value.values.length,
             optimizedGridPoints: optimized.value.values.length,
+            legacyDimensions: legacy.value.dimensions.join('x'),
+            optimizedDimensions: optimized.value.dimensions.join('x'),
             legacyFftBytes: legacy.value.fftAllocatedBytes,
             optimizedFftBytes: optimized.value.fftAllocatedBytes,
             legacyFftMs: legacy.milliseconds,
             optimizedFftMs: optimized.milliseconds,
+            radixComplexMs: transforms.radixComplex.milliseconds,
+            radixRealMs: transforms.radixReal.milliseconds,
+            mixedComplexMs: transforms.mixedComplex.milliseconds,
+            mixedRealMs: transforms.mixedReal.milliseconds,
+            radixComplexBytes: transforms.radixComplex.value.fftAllocatedBytes,
+            radixRealBytes: transforms.radixReal.value.fftAllocatedBytes,
+            mixedComplexBytes: transforms.mixedComplex.value.fftAllocatedBytes,
+            mixedRealBytes: transforms.mixedReal.value.fftAllocatedBytes,
+            bestFftMode,
             mapMaximumDifference: difference.maximum,
             mapRmsDifference: difference.rms,
             mapMaximumDirectDifference: directDifference(optimized.value, dataset),
@@ -178,6 +206,9 @@ for (let index = 0; index < sample.files.length; index++) {
                 regionExpandCacheHits: regionExpanded.value.userData.regionCacheHitCount,
                 regionReturnCacheHits: regionReturn.value.userData.regionCacheHitCount,
                 regionCacheBytes: regionCache.bytes,
+                bestSurfaceMode: regionExpanded.milliseconds < legacySurface.milliseconds
+                    ? 'region-cache'
+                    : 'direct-legacy',
             });
             [legacySurface, regionFragment, regionExpanded, regionReturn].forEach(result =>
                 dispose(result.value));
@@ -201,6 +232,10 @@ for (let index = 0; index < sample.files.length; index++) {
                     expandedCacheMissCells: expandedSurface.value.userData.cacheMissCellCount,
                     returnCacheHitCells: returnSurface.value.userData.cacheHitCellCount,
                     patchCacheBytes: cache.bytes,
+                    bestSurfaceMode: expandedSurface.milliseconds < Math.min(
+                        legacySurface.milliseconds,
+                        regionExpanded.milliseconds,
+                    ) ? 'patch-cache' : record.bestSurfaceMode,
                 });
                 [fragmentSurface, expandedSurface, returnSurface].forEach(result =>
                     dispose(result.value));
