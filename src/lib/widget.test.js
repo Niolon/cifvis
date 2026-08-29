@@ -15,6 +15,11 @@ vi.mock('./ortep3d/structure-settings.js', () => ({
             highlightEmissive: 0xaaaaaa,
             markerColors: [0xff0000, 0x00ff00],
         },
+        measurement: {
+            lineRadius: 0.075,
+            markerRadius: 0.11,
+            markerColors: [0x00e5ff, 0xff2d95],
+        },
         elementProperties: {
             'C': { radius: 0.76, atomColor: '#000000' },
             'O': { radius: 0.66, atomColor: '#ff0000' },
@@ -50,6 +55,9 @@ describe('CifViewWidget', () => {
     beforeEach(() => {
         // Reset mocks
         vi.clearAllMocks();
+        const selectionCallbacks = new Set();
+        const measurementCallbacks = new Set();
+        let storedMeasurements = [];
 
         // Mock CrystalViewer instance
         mockCrystalViewer = {
@@ -84,13 +92,55 @@ describe('CifViewWidget', () => {
                 currentCifBlock: 0,
             },
             selections: {
-                onChange: vi.fn(),
+                onChange: vi.fn(callback => {
+                    selectionCallbacks.add(callback);
+                    return () => selectionCallbacks.delete(callback);
+                }),
+                getSelections: vi.fn(() => []),
             },
             onScalarFieldUpdate: vi.fn(),
             onModifierModeChange: vi.fn(),
             updateIsosurfaceOptions: vi.fn(),
             setIsosurfaceVisibility: vi.fn(),
             cycleScalarField: vi.fn(),
+            measureSelectedAtoms: vi.fn(() => {
+                const measurement = {
+                    id: 'measurement-1', color: 0x00b7ff,
+                    type: 'distance', value: 1.234, unit: 'Å', labels: ['C1', 'O1'],
+                    atomIds: ['C1|1_555', 'O1|1_555'],
+                };
+                storedMeasurements.push(measurement);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+                return measurement;
+            }),
+            measureAtomsById: vi.fn(atomIds => {
+                const measurement = {
+                    id: `measurement-pre-${atomIds.join('-')}`,
+                    color: atomIds.length === 2 ? 0x00b7ff : 0xff2d95,
+                    type: atomIds.length === 2 ? 'distance' : 'angle',
+                    value: atomIds.length === 2 ? 1.234 : 109.5,
+                    unit: atomIds.length === 2 ? 'Å' : '°',
+                    labels: [...atomIds],
+                    atomIds: [...atomIds],
+                };
+                storedMeasurements.push(measurement);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+                return measurement;
+            }),
+            clearMeasurement: vi.fn(id => {
+                storedMeasurements = id === null || id === undefined
+                    ? []
+                    : storedMeasurements.filter(measurement => measurement.id !== id);
+                measurementCallbacks.forEach(callback => callback([...storedMeasurements]));
+            }),
+            getMeasurements: vi.fn(() => [...storedMeasurements]),
+            setHoveredAtom: vi.fn(),
+            setHoveredMeasurement: vi.fn(),
+            updateMeasurementOptions: vi.fn(),
+            onMeasurementChange: vi.fn(callback => {
+                measurementCallbacks.add(callback);
+                return () => measurementCallbacks.delete(callback);
+            }),
             controls: {
                 handleResize: vi.fn(),
             },
@@ -108,11 +158,10 @@ describe('CifViewWidget', () => {
         });
 
         // Mock selection callback storage
-        mockSelectionCallback = null;
+        mockSelectionCallback = selections => {
+            selectionCallbacks.forEach(callback => callback(selections));
+        };
         mockDensityCallback = null;
-        mockCrystalViewer.selections.onChange.mockImplementation(callback => {
-            mockSelectionCallback = callback;
-        });
         mockCrystalViewer.onScalarFieldUpdate.mockImplementation(callback => {
             mockDensityCallback = callback;
             return vi.fn();
@@ -173,6 +222,37 @@ describe('CifViewWidget', () => {
         );
     });
 
+    test('prepopulates and replaces measurement captions from the measurements attribute', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('options', JSON.stringify({
+            measurement: { lineRadius: 0.09, markerRadius: 0.14 },
+        }));
+        widget.setAttribute('measurements', JSON.stringify([
+            ['C1', 'O1'], ['H1', 'C1', 'O1'],
+        ]));
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        document.body.appendChild(widget);
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(CrystalViewer.mock.calls.at(-1)[1]).toMatchObject({
+            measurement: { lineRadius: 0.09, markerRadius: 0.14 },
+        });
+        expect(CrystalViewer.mock.calls.at(-1)[1]).not.toHaveProperty('measurements');
+        expect(mockCrystalViewer.measureAtomsById).toHaveBeenNthCalledWith(1, ['C1', 'O1']);
+        expect(mockCrystalViewer.measureAtomsById).toHaveBeenNthCalledWith(
+            2, ['H1', 'C1', 'O1'],
+        );
+        expect(widget.querySelectorAll('.measurement-caption')).toHaveLength(2);
+
+        widget.setAttribute('measurements', '[["N1","C1"]]');
+        expect(mockCrystalViewer.clearMeasurement).toHaveBeenCalled();
+        expect(mockCrystalViewer.measureAtomsById).toHaveBeenLastCalledWith(['N1', 'C1']);
+        expect(widget.querySelectorAll('.measurement-caption')).toHaveLength(1);
+
+        widget.removeAttribute('measurements');
+        expect(widget.querySelectorAll('.measurement-caption')).toHaveLength(0);
+    });
+
     test('sets up buttons based on available modes', async () => {
         const widget = document.createElement('cifview-widget');
         document.body.appendChild(widget);
@@ -181,10 +261,23 @@ describe('CifViewWidget', () => {
         await new Promise(resolve => setTimeout(resolve, 10)); // Let promises resolve
 
         const buttons = widget.querySelectorAll('.control-button');
-        expect(buttons).toHaveLength(3); // One for each modifier type
+        expect(buttons).toHaveLength(4); // Three modifier buttons and measurement
         expect(buttons[0].className).toContain('hydrogen-button');
         expect(buttons[1].className).toContain('disorder-button');
         expect(buttons[2].className).toContain('symmetry-button');
+        expect(buttons[3].className).toContain('measurement-button');
+    });
+
+    test('can hide and restore the measurement button through its attribute', async () => {
+        const widget = document.createElement('cifview-widget');
+        widget.setAttribute('measurement-button', 'false');
+        document.body.appendChild(widget);
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(widget.querySelector('.measurement-button')).toBeNull();
+        widget.setAttribute('measurement-button', 'true');
+        expect(widget.querySelector('.measurement-button')).not.toBeNull();
     });
 
     test('cycles modifier modes on button click', async () => {
@@ -200,6 +293,43 @@ describe('CifViewWidget', () => {
         expect(mockCrystalViewer.cycleModifierMode).toHaveBeenCalledWith('hydrogen');
     });
 
+    test('adapts and runs the measurement button from atom selections', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        widget.setAttribute('data', 'data_test_crystal\n_cell_length_a 10.0\n_cell_length_b 10.0\n_cell_length_c 10.0');
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const button = widget.querySelector('.measurement-button');
+        expect(button.disabled).toBe(true);
+        mockSelectionCallback([
+            { type: 'atom', data: { label: 'C1', atomType: 'C' }, color: 0xff0000 },
+            { type: 'atom', data: { label: 'O1', atomType: 'O' }, color: 0x00ff00 },
+        ]);
+        expect(button.disabled).toBe(false);
+        expect(button.title).toContain('Measure distance (2 selected)');
+
+        const measurementEvents = [];
+        widget.addEventListener('cifvis-measurement', event => measurementEvents.push(event.detail));
+        button.click();
+        expect(mockCrystalViewer.measureSelectedAtoms).toHaveBeenCalledOnce();
+        expect(measurementEvents).toEqual([mockCrystalViewer.measureSelectedAtoms.mock.results[0].value]);
+        expect(widget.querySelector('.crystal-caption').textContent).toContain('Distance C1–O1: 1.234 Å');
+        const measurementCaption = widget.querySelector('.measurement-caption');
+        measurementCaption.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(mockCrystalViewer.setHoveredMeasurement).toHaveBeenCalledWith('measurement-1');
+        measurementCaption.dispatchEvent(new MouseEvent('mouseleave'));
+        expect(mockCrystalViewer.setHoveredMeasurement).toHaveBeenCalledWith(null);
+
+        mockSelectionCallback([]);
+        expect(widget.querySelector('.crystal-caption').textContent).toContain('Distance C1–O1: 1.234 Å');
+        const measuredAtom = widget.querySelector('.measurement-caption .atom-name');
+        measuredAtom.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith('C1|1_555', 0x00b7ff);
+        widget.querySelector('.measurement-dismiss').click();
+        expect(mockCrystalViewer.clearMeasurement).toHaveBeenCalledWith('measurement-1');
+        expect(widget.querySelector('.crystal-caption').textContent).not.toContain('Distance C1–O1');
+    });
+
     test('updates caption with selections', async () => {
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('caption', 'Test Structure');
@@ -211,7 +341,7 @@ describe('CifViewWidget', () => {
         const mockSelections = [
             {
                 type: 'atom',
-                data: { label: 'C1', atomType: 'C' },
+                data: { label: 'C1', atomType: 'C', uniqueId: 'C1|1_555' },
                 color: 0xff0000,
             },
             {
@@ -229,10 +359,17 @@ describe('CifViewWidget', () => {
 
         const caption = widget.querySelector('.crystal-caption');
         expect(caption.innerHTML).toContain('Test Structure.');
-        expect(caption.innerHTML).toContain('C1 (C)');
+        expect(caption.innerHTML).toContain('>C1</span>');
+        expect(caption.innerHTML).not.toContain('(C)');
         expect(caption.innerHTML).toContain('C1-O1: 1.5 ± SU Å');
         expect(caption.innerHTML).toContain('color:#ff0000');
         expect(caption.innerHTML).toContain('color:#00ff00');
+
+        const atomName = caption.querySelector('.atom-name');
+        atomName.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith('C1|1_555');
+        atomName.dispatchEvent(new MouseEvent('mouseleave'));
+        expect(mockCrystalViewer.setHoveredAtom).toHaveBeenCalledWith(null);
     });
 
     test('shows the active density level next to the other controls', () => {

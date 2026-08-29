@@ -39,7 +39,7 @@ function groupFor(path) {
     if (inside('camera')) {
         return 'camera';
     }
-    if (inside('selection')) {
+    if (inside('selection') || inside('measurement')) {
         return 'selection';
     }
     if (inside('interaction')) {

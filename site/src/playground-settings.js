@@ -207,6 +207,9 @@ const LABEL_OVERRIDES = {
     'selection.haloWidth': '2D selection halo width (px)',
     'selection.highlightEmissive': 'Highlight emissive colour (hex number)',
     'selection.markerColors': 'Marker colour cycle (JSON)',
+    'measurement.markerColors': 'Measurement colour cycle (JSON)',
+    'measurement.lineRadius': 'Measurement line radius (Å)',
+    'measurement.markerRadius': 'Measurement endpoint radius (Å)',
     'camera.initialPosition': 'Initial position [x, y, z]',
     'camera.type': 'Projection',
     'differenceDensity.autoLoad': 'Auto-load density from CIF',
@@ -330,6 +333,8 @@ const NUMBER_CONSTRAINTS = {
     'peanutLatitudeIntervals': { min: 2, max: 32, step: 1 },
     'peanutGridLineWidth': { min: 0.001, max: 0.2, step: 0.001 },
     'selection.haloWidth': { min: 0, max: 20, step: 0.5 },
+    'measurement.lineRadius': { min: 0.005, max: 0.5, step: 0.005 },
+    'measurement.markerRadius': { min: 0.005, max: 0.5, step: 0.005 },
     'atomDetail': { min: 1, max: 5, step: 1 },
     'plot2DColorLuminanceCeiling': { min: 0, max: 1, step: 0.01 },
     'plot2DColorLuminanceFloor': { min: 0, max: 1, step: 0.01 },
@@ -928,7 +933,7 @@ export function validateImportedOptions(imported, schema) {
  * viewer recreation.
  * @param {Iterable<string>} paths - Dotted paths that changed
  * @returns {{atomLabels: boolean, isosurface: boolean, contourLines: boolean,
- *  selection: boolean, modifierModes: string[], recreate: boolean}} Buckets
+ *  selection: boolean, measurement: boolean, modifierModes: string[], recreate: boolean}} Buckets
  */
 export function classifyChangedPaths(paths) {
     const result = {
@@ -936,6 +941,7 @@ export function classifyChangedPaths(paths) {
         isosurface: false,
         contourLines: false,
         selection: false,
+        measurement: false,
         interactionLocks: false,
         modifierModes: [],
         recreate: false,
@@ -950,6 +956,8 @@ export function classifyChangedPaths(paths) {
             result.contourLines = true;
         } else if (path.startsWith('selection.')) {
             result.selection = true;
+        } else if (path.startsWith('measurement.')) {
+            result.measurement = true;
         } else if (modeMap[path]) {
             result.modifierModes.push(modeMap[path]);
         } else if (path === 'interaction.lockRotation' || path === 'interaction.lockZoom') {

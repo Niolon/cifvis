@@ -32,6 +32,54 @@ const STANDART_LOOP_NAMES = [
 ];
 
 /**
+ * Tokenizes one CIF1 loop-data line without backtracking regular expressions.
+ * A quote closes only at whitespace or end of line, allowing apostrophes in
+ * values such as `'a dog's life'` as required by the existing CIF1 behaviour.
+ * @param {string} line - Trimmed loop-data line.
+ * @returns {string[]} Unquoted token values.
+ */
+function tokenizeLoopLine(line) {
+    const tokens = [];
+    let index = 0;
+
+    while (index < line.length) {
+        while (index < line.length && /\s/u.test(line[index])) {
+            index++;
+        }
+        if (index === line.length) {
+            break;
+        }
+
+        const tokenStart = index;
+        const quote = line[index] === '\'' || line[index] === '"' ? line[index] : null;
+        if (quote !== null) {
+            index++;
+            while (index < line.length) {
+                if (line[index] === quote && (index + 1 === line.length || /\s/u.test(line[index + 1]))) {
+                    tokens.push(line.slice(tokenStart, index + 1));
+                    index++;
+                    break;
+                }
+                index++;
+            }
+            if (index >= line.length && line[index - 1] !== quote) {
+                index = tokenStart;
+            } else {
+                continue;
+            }
+        }
+
+        const valueStart = index;
+        while (index < line.length && !/\s/u.test(line[index])) {
+            index++;
+        }
+        tokens.push(line.slice(valueStart, index));
+    }
+
+    return tokens;
+}
+
+/**
  * Represents a loop construct within a CIF block, handling structured tabular data.
  * @class
  * @property {Array<string>} headerLines - Column header lines defining the data structure
@@ -162,9 +210,7 @@ export class CifLoop {
                     return acc;
                 }
 
-                const matches = Array.from(line.matchAll(/'([^']*(?:'\S[^']*)*)'|"([^"]*(?:"\S[^"]*)*)"|\S+/g));
-                return acc.concat(matches.map(match => parseValue(match[1] || match[2] || match[0], this.splitSU),
-                ));
+                return acc.concat(tokenizeLoopLine(line).map(value => parseValue(value, this.splitSU)));
             }, []);
 
         const nEntries = this.headers.length;

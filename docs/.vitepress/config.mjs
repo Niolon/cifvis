@@ -59,6 +59,7 @@ export default defineConfig({
                     { text: 'Getting started', link: '/widget/getting-started' },
                     { text: 'Loading data', link: '/widget/loading-data' },
                     { text: 'Display options', link: '/widget/display-options' },
+                    { text: 'Measurements', link: '/widget/measurements' },
                     { text: 'Density maps', link: '/widget/density' },
                     { text: 'Filtered atoms', link: '/widget/filtered-atoms' },
                     { text: 'Comparison views', link: '/widget/comparison-views' },
@@ -72,6 +73,7 @@ export default defineConfig({
                 items: [
                     { text: 'Getting started', link: '/library/getting-started' },
                     { text: 'CrystalViewer', link: '/library/crystal-viewer' },
+                    { text: 'Measurements', link: '/library/measurements' },
                     { text: 'Density maps', link: '/library/density' },
                     { text: 'Filters', link: '/library/filters' },
                     { text: 'Coupled viewers', link: '/library/coupling' },
@@ -119,7 +121,6 @@ export default defineConfig({
                     { text: 'Disorder handling', link: '/gallery/disorder' },
                     { text: 'Labeled figures', link: '/gallery/atom-labels-figure' },
                     { text: 'Embedding with other JS', link: '/gallery/embedding' },
-                    { text: 'Geometry measurements', link: '/gallery/measurements' },
                     { text: 'Extended solids', link: '/gallery/extended-solid' },
                 ],
             },

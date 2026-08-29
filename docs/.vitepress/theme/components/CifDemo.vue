@@ -7,6 +7,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps({
     src: { type: String, required: true },
     label: { type: String, default: '' },
+    measurementButton: { type: Boolean, default: false },
 });
 
 loadCifvis();
@@ -17,6 +18,10 @@ const resolvedSrc = withBase(props.src);
 <template>
     <div class="cif-demo">
         <span v-if="label" class="cifvis-example-label">{{ label }}</span>
-        <cifview-widget :src="resolvedSrc" v-bind="$attrs"></cifview-widget>
+        <cifview-widget
+            :src="resolvedSrc"
+            :measurement-button="measurementButton ? 'true' : 'false'"
+            v-bind="$attrs">
+        </cifview-widget>
     </div>
 </template>

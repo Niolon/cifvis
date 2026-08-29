@@ -30,6 +30,7 @@
     "test:database-modifiers": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs",
     "test:database-ortep": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs",
     "test:database-ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh",
+    "test:browser-measurement-hover": "node integration-tests/measurement-hover-playwright.mjs",
     "test:database-collect-problem-cifs": "bash ./integration-tests/collect-problem-structures.sh",
     "build:deployment": "node scripts/deploy.mjs --prepare-only",
     "clean:deployment": "node scripts/deploy.mjs --clean",

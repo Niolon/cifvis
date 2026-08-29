@@ -1,5 +1,6 @@
 import { CIF, CrystalViewer } from '../../src';
 import { formatValueEsd } from '../../src';
+import { measurementAction } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 import {
@@ -72,6 +73,7 @@ function createViewer(optionsPartial) {
     }
     created.animate();
     created.onScalarFieldUpdate(handleScalarFieldUpdate);
+    created.onMeasurementChange(handleMeasurementChange);
     created.selections.onChange(handleSelectionsChange);
     return created;
 }
@@ -152,6 +154,8 @@ function handleScalarFieldUpdate(update) {
  */
 function handleSelectionsChange(selections) {
     const container = document.getElementById('selection-container');
+    viewer.setHoveredAtom(null);
+    updateMeasurementButton(selections);
     // Remove all existing selections
     while (container.firstChild) {
         container.firstChild.remove();
@@ -163,15 +167,15 @@ function handleSelectionsChange(selections) {
         box.style.border = `3px solid #${item.color.toString(16)}`;
 
         if (item.type === 'atom') {
-            box.innerHTML = `
-                <div class="selection-title">Atom: ${item.data.label}</div>
-                <div class="selection-info">
-                    <span>Type:</span><span>${item.data.atomType}</span>
-                    <span>X:</span><span>${item.data.position.x.toFixed(4)}</span>
-                    <span>Y:</span><span>${item.data.position.y.toFixed(4)}</span>
-                    <span>Z:</span><span>${item.data.position.z.toFixed(4)}</span>
-                </div>
-            `;
+            const title = document.createElement('div');
+            title.className = 'selection-title';
+            title.append('Atom: ');
+            const name = document.createElement('span');
+            name.className = 'atom-name';
+            name.dataset.atomId = item.data.uniqueId;
+            name.textContent = item.data.label;
+            title.appendChild(name);
+            box.appendChild(title);
         } else if (item.type === 'bond') {
             const lengthString = formatValueEsd(item.data.bondLength, item.data.bondLengthSU);
             box.innerHTML = `
@@ -203,6 +207,144 @@ function handleSelectionsChange(selections) {
 
         container.appendChild(box);
     });
+    renderMeasurementResults(viewer.getMeasurements());
+}
+
+/**
+ * Updates the context-sensitive measurement action for the atom selection count.
+ * @param {Array<object>} selections - Current viewer selections.
+ */
+function updateMeasurementButton(selections) {
+    const button = document.getElementById('measurement-button');
+    const atomCount = selections.filter(selection => selection.type === 'atom').length;
+    const action = measurementAction(atomCount);
+    button.disabled = !action.enabled;
+    button.title = `${action.title} (${atomCount} selected)`;
+    button.setAttribute('aria-label', button.title);
+    button.replaceChildren();
+    const symbol = document.createElement('span');
+    symbol.className = 'measurement-symbol';
+    symbol.textContent = action.symbol;
+    const count = document.createElement('span');
+    count.className = 'measurement-count';
+    count.textContent = String(atomCount);
+    button.append(symbol, count);
+}
+
+/**
+ * Displays a persistent measurement alongside the selection details.
+ * @param {object} measurement - Measurement returned by the viewer.
+ * @returns {HTMLElement} Measurement result card.
+ */
+function createMeasurementResult(measurement) {
+    const result = document.createElement('div');
+    result.className = 'selection-box measurement-result';
+    result.dataset.measurementId = measurement.id;
+    result.style.borderLeftColor = `#${measurement.color.toString(16).padStart(6, '0')}`;
+    const text = document.createElement('span');
+    appendMeasurementDescription(text, measurement);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'measurement-dismiss';
+    close.setAttribute('aria-label', 'Remove measurement');
+    close.title = 'Remove measurement';
+    close.textContent = '×';
+    close.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        viewer.clearMeasurement(measurement.id);
+    });
+    result.append(text, close);
+    result.addEventListener('mouseenter', () => viewer.setHoveredMeasurement(measurement.id));
+    result.addEventListener('mouseleave', () => viewer.setHoveredMeasurement(null));
+    return result;
+}
+
+/**
+ * Adds one hover-linked atom name to a measurement description.
+ * @param {HTMLElement} parent - Destination element.
+ * @param {string} label - Displayed atom label.
+ * @param {string} atomId - Symmetry-resolved atom ID.
+ * @param {number} color - Owning measurement colour.
+ */
+function appendMeasurementAtomName(parent, label, atomId, color) {
+    const name = document.createElement('span');
+    name.className = 'atom-name';
+    name.dataset.atomId = atomId;
+    name.dataset.hoverColor = String(color);
+    name.textContent = label;
+    parent.appendChild(name);
+}
+
+/**
+ * Builds a measurement description with individually hoverable atom names.
+ * @param {HTMLElement} parent - Destination element.
+ * @param {object} measurement - Measurement to describe.
+ */
+function appendMeasurementDescription(parent, measurement) {
+    const value = measurement.value.toFixed(measurement.unit === '°' ? 2 : 3);
+    if (measurement.type === 'plane-distance') {
+        appendMeasurementAtomName(
+            parent, measurement.probeLabel, measurement.atomIds.at(-1), measurement.color,
+        );
+        parent.append(' to mean plane (');
+        measurement.planeLabels.forEach((label, index) => {
+            if (index > 0) {
+                parent.append(', ');
+            }
+            appendMeasurementAtomName(parent, label, measurement.atomIds[index], measurement.color);
+        });
+        parent.append(`): ${value} Å`);
+        return;
+    }
+    const title = measurement.type === 'distance' ? 'Distance ' :
+        measurement.type === 'angle' ? 'Angle ' : 'Torsion ';
+    parent.append(title);
+    measurement.labels.forEach((label, index) => {
+        if (index > 0) {
+            parent.append('–');
+        }
+        appendMeasurementAtomName(parent, label, measurement.atomIds[index], measurement.color);
+    });
+    parent.append(`: ${value}${measurement.unit === '°' ? '' : ' '}${measurement.unit}`);
+}
+
+/**
+ * Renders every persistent measurement alongside selection details.
+ * @param {object[]} measurements - Current viewer measurements.
+ */
+function renderMeasurementResults(measurements) {
+    viewer.setHoveredMeasurement(null);
+    const container = document.getElementById('selection-container');
+    for (const result of container.querySelectorAll('.measurement-result')) {
+        result.remove();
+    }
+    for (const measurement of measurements) {
+        container.appendChild(createMeasurementResult(measurement));
+    }
+    bindAtomNameHover(container);
+}
+
+/** @param {object[]} measurements - Current viewer measurements. */
+function handleMeasurementChange(measurements) {
+    renderMeasurementResults(measurements);
+}
+
+/**
+ * Binds atom-name hover elements to their exact displayed atom instances.
+ * @param {HTMLElement} root - Selection UI containing atom names.
+ */
+function bindAtomNameHover(root) {
+    for (const name of root.querySelectorAll('.atom-name[data-atom-id]')) {
+        name.addEventListener('mouseenter', () => {
+            if (name.dataset.hoverColor === undefined) {
+                viewer.setHoveredAtom(name.dataset.atomId);
+            } else {
+                viewer.setHoveredAtom(name.dataset.atomId, Number(name.dataset.hoverColor));
+            }
+        });
+        name.addEventListener('mouseleave', () => viewer.setHoveredAtom(null));
+    }
 }
 
 viewer = createViewer(loadStoredOptions());
@@ -486,6 +628,20 @@ function initializeDensityLevelButton() {
     });
 }
 
+/** Measures the selected atoms using the action implied by their selection count. */
+function initializeMeasurementButton() {
+    const button = document.getElementById('measurement-button');
+    updateMeasurementButton([]);
+    button.addEventListener('click', () => {
+        try {
+            viewer.measureSelectedAtoms();
+            updateStatus('Measurement added', 'success');
+        } catch (error) {
+            updateStatus(error.message, 'error');
+        }
+    });
+}
+
 /**
  * Initializes the hydrogen display toggle button
  * Sets up event listeners to cycle through different hydrogen display modes
@@ -537,6 +693,7 @@ function initializeUI() {
     initializeFileUpload();
     initializeBlockSelector();
     initializeDensityLevelButton();
+    initializeMeasurementButton();
     initializeHydrogenButton();
     initializeDisorderButton();
     initializeSymmetryButton();

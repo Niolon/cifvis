@@ -1,4 +1,5 @@
 import { CrystalViewer } from './ortep3d/crystal-viewer.js';
+import { MeasurementControls } from './measurement-controls.js';
 import { SVG_ICONS } from './generated/svg-icons.js';
 import { formatValueEsd } from './formatting.js';
 import defaultSettings from './ortep3d/structure-settings.js';
@@ -108,6 +109,63 @@ const defaultStyles = `
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
   }
 
+  cifview-widget .control-button.measurement-button {
+    position: relative;
+    flex-direction: column;
+    gap: 0;
+    color: var(--cifvis-caption-color, #333);
+    font-family: system-ui, sans-serif;
+  }
+
+  cifview-widget .measurement-button:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  cifview-widget .measurement-symbol {
+    font-size: 19px;
+    line-height: 17px;
+  }
+
+  cifview-widget .measurement-count {
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 10px;
+  }
+
+  cifview-widget .atom-name {
+    cursor: default;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+  }
+
+  cifview-widget .measurement-caption {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-left: 4px;
+    border: 0;
+    border-bottom: 3px solid var(--cifvis-measurement-color);
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  cifview-widget .widget-measurement-results {
+    display: inline;
+  }
+
+  cifview-widget .measurement-dismiss {
+    border: 0;
+    padding: 0 2px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 17px;
+    line-height: 1;
+  }
+
   cifview-widget .control-button svg {
     width: 24px;
     height: 24px;
@@ -159,7 +217,7 @@ export class CifViewWidget extends HTMLElement {
         return [
             'caption', 'src', 'data', 'icons', 'filtered-atoms', 'options', 'hydrogen-mode', 'disorder-mode',
             'symmetry-mode', 'block',
-            'atom-labels',
+            'atom-labels', 'measurements', 'measurement-button',
         ];
     }
 
@@ -175,6 +233,8 @@ export class CifViewWidget extends HTMLElement {
         this.viewer = null;
         this.baseCaption = '';
         this.selections = [];
+        this.measurements = [];
+        this.prepopulatedMeasurements = [];
         this.customIcons = null;
         this.userOptions = {};
         this.scalarFieldDisplay = createScalarFieldDisplayState();
@@ -192,6 +252,7 @@ export class CifViewWidget extends HTMLElement {
         this.parseOptions();
         this.parseInitialModes();
         this.parseInitialAtomLabels();
+        this.parseMeasurementsAttribute();
         
         const container = document.createElement('div');
         container.className = 'crystal-container';
@@ -241,8 +302,14 @@ export class CifViewWidget extends HTMLElement {
 
     /** Connects caption updates to the current viewer instance. */
     connectViewerEvents() {
-        this.stopScalarFieldUpdates?.();
-        this.stopModifierModeUpdates?.();
+        this.disconnectViewerEvents();
+        this.measurementControls = new MeasurementControls(this.viewer, {
+            onError: error => console.warn('Could not measure selected atoms:', error),
+        });
+        this.stopMeasurementState = this.measurementControls.subscribe(state => {
+            this.measurements = state.measurements;
+            this.updateCaption();
+        });
         this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.(update => {
             this.scalarFieldDisplay = reduceScalarFieldDisplayState(
                 this.scalarFieldDisplay,
@@ -252,12 +319,31 @@ export class CifViewWidget extends HTMLElement {
             this.updateCaption();
         }) ?? null;
         this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
+            this.prepopulateMeasurements();
             this.setupButtons();
         }) ?? null;
-        this.viewer.selections.onChange(selections => {
+        this.stopSelectionUpdates = this.viewer.selections.onChange(selections => {
             this.selections = selections;
             this.updateCaption();
-        });
+        }) ?? null;
+    }
+
+    /** Disconnects subscriptions and measurement DOM bindings from the current viewer. */
+    disconnectViewerEvents() {
+        this.stopScalarFieldUpdates?.();
+        this.stopModifierModeUpdates?.();
+        this.stopSelectionUpdates?.();
+        this.stopMeasurementState?.();
+        this.stopMeasurementResults?.();
+        this.stopMeasurementAction?.();
+        this.measurementControls?.dispose();
+        this.stopScalarFieldUpdates = null;
+        this.stopModifierModeUpdates = null;
+        this.stopSelectionUpdates = null;
+        this.stopMeasurementState = null;
+        this.stopMeasurementResults = null;
+        this.stopMeasurementAction = null;
+        this.measurementControls = null;
     }
 
     parseOptions() {
@@ -272,6 +358,48 @@ export class CifViewWidget extends HTMLElement {
         } catch (e) {
             console.warn('Failed to parse options:', e);
         }
+    }
+
+    /** Parses the widget-only JSON measurement prepopulation attribute. */
+    parseMeasurementsAttribute() {
+        const rawValue = this.getAttribute('measurements');
+        if (!rawValue) {
+            this.prepopulatedMeasurements = [];
+            return;
+        }
+        try {
+            const measurements = JSON.parse(rawValue);
+            if (!Array.isArray(measurements)) {
+                throw new TypeError('measurements must contain a JSON array');
+            }
+            this.prepopulatedMeasurements = measurements;
+        } catch (error) {
+            this.prepopulatedMeasurements = [];
+            console.warn('Failed to parse measurements:', error);
+        }
+    }
+
+    /** Creates option-defined measurements after the requested structure block is loaded. */
+    prepopulateMeasurements() {
+        if (!Array.isArray(this.prepopulatedMeasurements)) {
+            console.warn('measurements must be an array of atom-ID arrays');
+            return;
+        }
+        if (this.measurements.length > 0) {
+            return;
+        }
+        for (const atomIds of this.prepopulatedMeasurements) {
+            if (!Array.isArray(atomIds)) {
+                console.warn('Each measurements entry must be an array of atom IDs');
+                continue;
+            }
+            try {
+                this.viewer.measureAtomsById(atomIds);
+            } catch (error) {
+                console.warn('Could not create prepopulated measurement:', error);
+            }
+        }
+        this.updateCaption();
     }
 
     mergeOptions(userOptions) {
@@ -347,6 +475,8 @@ export class CifViewWidget extends HTMLElement {
     }
 
     clearButtons() {
+        this.stopMeasurementAction?.();
+        this.stopMeasurementAction = null;
         if (this.buttonContainer) {
             while (this.buttonContainer.firstChild) {
                 this.buttonContainer.removeChild(this.buttonContainer.firstChild);
@@ -370,7 +500,19 @@ export class CifViewWidget extends HTMLElement {
         if (this.viewer.numberModifierModes('symmetry') > 1) {
             this.addButton(this.buttonContainer, 'symmetry', 'Toggle Symmetry Display');
         }
+        if (this.getAttribute('measurement-button')?.toLowerCase() !== 'false') {
+            this.addMeasurementButton();
+        }
         this.updateScalarFieldButton();
+    }
+
+    /** Adds the shared selection-count-sensitive measurement action. */
+    addMeasurementButton() {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'control-button measurement-button';
+        this.buttonContainer.appendChild(button);
+        this.stopMeasurementAction = this.measurementControls.bindAction(button);
     }
 
     /** Adds or updates the compact density-level visibility control. */
@@ -568,6 +710,7 @@ export class CifViewWidget extends HTMLElement {
                 // change the structure's extent, so reset the camera/orientation like
                 // cycleModifierMode does, instead of updateStructure()'s preserve-rotation path.
                 await this.viewer.loadStructure();
+                this.prepopulateMeasurements();
                 break;
             case 'atom-labels':
                 if (newValue === null || newValue === '') {
@@ -582,22 +725,35 @@ export class CifViewWidget extends HTMLElement {
                     }
                 }
                 break;
+            case 'measurements':
+                this.parseMeasurementsAttribute();
+                this.viewer.clearMeasurement();
+                this.measurements = [];
+                this.prepopulateMeasurements();
+                break;
+            case 'measurement-button':
+                this.setupButtons();
+                break;
             case 'options':
                 this.parseOptions();
                 this.parseInitialAtomLabels();
+                this.parseMeasurementsAttribute();
                 // Recreate viewer with new options
                 if (this.viewer) {
                     const container = this.querySelector('.crystal-container');
                     const currentCifContent = this.viewer.state.currentCifContent;
                     const currentCifBlock = this.viewer.state.currentCifBlock;
 
+                    this.disconnectViewerEvents();
                     this.viewer.dispose();
+                    this.measurements = [];
                     this.viewer = new CrystalViewer(container, this.userOptions);
                     this.connectViewerEvents();
 
                     // Reload structure if we already had one
                     if (currentCifContent) {
                         await this.viewer.loadCIF(currentCifContent, currentCifBlock ?? 0);
+                        this.prepopulateMeasurements();
                         this.setupButtons();
                         this.updateCaption();
                     }
@@ -609,6 +765,7 @@ export class CifViewWidget extends HTMLElement {
                     this.resetLoadState();
                     const result = await this.viewer.loadCIF(cifText, this.resolveBlockSelector(newValue));
                     if (result.success) {
+                        this.prepopulateMeasurements();
                         this.setupButtons();
                     } else {
                         this.createErrorDiv(new Error(result.error));
@@ -667,6 +824,7 @@ export class CifViewWidget extends HTMLElement {
             const result = await this.viewer.loadCIF(text, blockSelector);
 
             if (result.success) {
+                this.prepopulateMeasurements();
                 this.setupButtons();  // Setup buttons after loading
                 this.updateCaption();
             } else {
@@ -683,6 +841,7 @@ export class CifViewWidget extends HTMLElement {
             const result = await this.viewer.loadCIF(data, blockSelector);
 
             if (result.success) {
+                this.prepopulateMeasurements();
                 this.setupButtons();  // Setup buttons after loading
                 this.updateCaption();
             } else {
@@ -770,7 +929,67 @@ export class CifViewWidget extends HTMLElement {
             .replace(/'/g, '&#039;');
     }
 
+    /**
+     * Formats one atom as a hover-linked caption span.
+     * @param {string} label - Atom label.
+     * @param {string} atomId - Symmetry-resolved atom ID.
+     * @param {number} color - Owning measurement colour.
+     * @returns {string} Safe HTML span.
+     */
+    measurementAtomHTML(label, atomId, color) {
+        return `<span class="atom-name" data-atom-id="${this.sanitizeHTML(atomId)}" ` +
+            `data-cifvis-atom-id="${this.sanitizeHTML(atomId)}" ` +
+            `data-cifvis-hover-color="${color}">${this.sanitizeHTML(label)}</span>`;
+    }
+
+    /**
+     * Formats a measurement with individually hoverable atom names.
+     * @param {object} measurement - Measurement to format.
+     * @returns {string} Safe caption HTML.
+     */
+    measurementCaptionHTML(measurement) {
+        const value = measurement.value.toFixed(measurement.unit === '°' ? 2 : 3);
+        if (measurement.type === 'plane-distance') {
+            const probe = this.measurementAtomHTML(
+                measurement.probeLabel, measurement.atomIds.at(-1), measurement.color,
+            );
+            const plane = measurement.planeLabels.map((label, index) =>
+                this.measurementAtomHTML(label, measurement.atomIds[index], measurement.color)).join(', ');
+            return `${probe} to mean plane (${plane}): ${value} Å`;
+        }
+        const title = measurement.type === 'distance' ? 'Distance ' :
+            measurement.type === 'angle' ? 'Angle ' : 'Torsion ';
+        const atoms = measurement.labels.map((label, index) =>
+            this.measurementAtomHTML(label, measurement.atomIds[index], measurement.color)).join('–');
+        return `${title}${atoms}: ${value}${measurement.unit === '°' ? '' : ' '}${measurement.unit}`;
+    }
+
+    /**
+     * Renders the widget's existing inline measurement presentation for the shared controller.
+     * @param {object} measurement - Measurement to render.
+     * @returns {HTMLElement} Inline result element.
+     */
+    renderMeasurementCaption(measurement) {
+        const item = document.createElement('span');
+        item.className = 'measurement-caption';
+        const color = `#${measurement.color.toString(16).padStart(6, '0')}`;
+        item.style.setProperty('--cifvis-measurement-color', color);
+        const content = document.createElement('strong');
+        content.innerHTML = this.measurementCaptionHTML(measurement);
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'measurement-dismiss';
+        dismiss.dataset.cifvisDismiss = '';
+        dismiss.setAttribute('aria-label', 'Remove measurement');
+        dismiss.title = 'Remove measurement';
+        dismiss.textContent = '×';
+        item.append(content, dismiss);
+        return item;
+    }
+
     updateCaption() {
+        this.viewer.setHoveredAtom?.(null);
+        this.viewer.setHoveredMeasurement?.(null);
         let caption = this.baseCaption;
         
         if (this.selections.length > 0) {
@@ -783,7 +1002,9 @@ export class CifViewWidget extends HTMLElement {
                 const color = '#' + selection.color.toString(16).padStart(6, '0');
                 let info = '';
                 if (selection.type === 'atom') {
-                    info = `${selection.data.label} (${selection.data.atomType})`;
+                    const atomId = this.sanitizeHTML(selection.data.uniqueId);
+                    const label = this.sanitizeHTML(selection.data.label);
+                    info = `<span class="atom-name" data-atom-id="${atomId}">${label}</span>`;
                 } else if (selection.type === 'bond') {
                     const bondLengthString = formatValueEsd(selection.data.bondLength, selection.data.bondLengthSU);
                     info = `${selection.data.atom1Label}-${selection.data.atom2Label}: ${bondLengthString} Å`;
@@ -795,14 +1016,32 @@ export class CifViewWidget extends HTMLElement {
             
             caption += selectionInfo + '.';
         }
-        
+
         this.captionElement.innerHTML = caption;
+        const measurementResults = document.createElement('span');
+        measurementResults.className = 'widget-measurement-results';
+        this.captionElement.appendChild(measurementResults);
+        this.stopMeasurementResults?.();
+        this.stopMeasurementResults = this.measurementControls?.bindResults(measurementResults, {
+            renderItem: measurement => this.renderMeasurementCaption(measurement),
+        }) ?? null;
+        for (const name of this.captionElement.querySelectorAll(
+            '.atom-name[data-atom-id]:not([data-cifvis-atom-id])',
+        )) {
+            name.addEventListener('mouseenter', () => {
+                if (name.dataset.hoverColor === undefined) {
+                    this.viewer.setHoveredAtom(name.dataset.atomId);
+                } else {
+                    this.viewer.setHoveredAtom(name.dataset.atomId, Number(name.dataset.hoverColor));
+                }
+            });
+            name.addEventListener('mouseleave', () => this.viewer.setHoveredAtom(null));
+        }
         this.viewer.controls.handleResize();
     }
 
     disconnectedCallback() {
-        this.stopScalarFieldUpdates?.();
-        this.stopModifierModeUpdates?.();
+        this.disconnectViewerEvents();
         if (this.viewer) {
             this.viewer.dispose();
         }

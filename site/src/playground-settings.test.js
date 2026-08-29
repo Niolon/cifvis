@@ -282,6 +282,9 @@ describe('apply classification', () => {
         expect(classifyChangedPaths(['selection.haloWidth'])).toMatchObject({
             selection: true, recreate: false,
         });
+        expect(classifyChangedPaths(['measurement.markerColors'])).toMatchObject({
+            measurement: true, recreate: false,
+        });
     });
 });
 

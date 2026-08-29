@@ -36,6 +36,25 @@ function createControls() {
 }
 
 describe('ViewerControls coupled interactions', () => {
+    test('clears selections but preserves measurements on an empty-space double click', () => {
+        const { controls, viewer } = createControls();
+        viewer.selections = { clear: vi.fn() };
+        viewer.clearMeasurement = vi.fn();
+        controls.camera = new THREE.PerspectiveCamera();
+        controls.state.mouse = new THREE.Vector2();
+        controls.doubleClickDelay = 300;
+        controls.updateMouseCoordinates = vi.fn();
+        controls.raycaster = {
+            setFromCamera: vi.fn(),
+            intersectObjects: vi.fn(() => []),
+        };
+
+        controls.handleSelection({ clientX: 0, clientY: 0 }, 100);
+
+        expect(viewer.selections.clear).toHaveBeenCalledOnce();
+        expect(viewer.clearMeasurement).not.toHaveBeenCalled();
+    });
+
     test('broadcasts local rotation, pan, zoom, and reset operations', () => {
         const { controls, viewer } = createControls();
         const interactions = [];

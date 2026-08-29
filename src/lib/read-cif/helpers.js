@@ -1,5 +1,70 @@
 
 /**
+ * Scans a CIF numeric token, including optional exponent and standard uncertainty.
+ * @param {string} text - Complete token text.
+ * @returns {{signString: string, numString: string, expString: string|null, suString: string|null}|null}
+ * Parsed parts, or null when the complete token does not match CIF numeric syntax.
+ */
+function scanNumericToken(text) {
+    let index = 0;
+    let signString = '';
+    if (text[index] === '+' || text[index] === '-') {
+        signString = text[index++];
+    }
+
+    const mantissaStart = index;
+    let digitCount = 0;
+    while (text[index] >= '0' && text[index] <= '9') {
+        index++;
+        digitCount++;
+    }
+    if (text[index] === '.') {
+        index++;
+        while (text[index] >= '0' && text[index] <= '9') {
+            index++;
+            digitCount++;
+        }
+    }
+    if (digitCount === 0) {
+        return null;
+    }
+    const numString = text.slice(mantissaStart, index);
+
+    let expString = null;
+    if (text[index] === 'e' || text[index] === 'E') {
+        index++;
+        const exponentStart = index;
+        if (text[index] === '+' || text[index] === '-') {
+            index++;
+        }
+        const exponentDigitsStart = index;
+        while (text[index] >= '0' && text[index] <= '9') {
+            index++;
+        }
+        if (index === exponentDigitsStart) {
+            return null;
+        }
+        expString = text.slice(exponentStart, index);
+    }
+
+    let suString = null;
+    if (text[index] === '(') {
+        index++;
+        const uncertaintyStart = index;
+        while (text[index] >= '0' && text[index] <= '9') {
+            index++;
+        }
+        if (index === uncertaintyStart || text[index] !== ')') {
+            return null;
+        }
+        suString = text.slice(uncertaintyStart, index);
+        index++;
+    }
+
+    return index === text.length ? { signString, numString, expString, suString } : null;
+}
+
+/**
  * Parses a CIF value string into its numeric value and standard uncertainty (SU).
  * @param {string} entryString - The CIF value string to parse.
  * @param {boolean} splitSU - Whether to split standard uncertainty values into value and SU.
@@ -16,12 +81,10 @@
  * parseValue("1.23e-4(2)", true)     // Returns {value: 0.000123, su: 0.0000002}
  */
 export function parseValue(entryString, splitSU = true, cifVersion = 1) {
-    // First try to match scientific notation with uncertainty
-    const sciPattern = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)\((\d+)\)$/;
-    const sciMatch = entryString.match(sciPattern);
+    const numericToken = scanNumericToken(entryString);
     
-    if (splitSU && sciMatch) {
-        const [, signString, numString, expString, suString] = sciMatch;
+    if (splitSU && numericToken && numericToken.expString !== null && numericToken.suString !== null) {
+        const { signString, numString, expString, suString } = numericToken;
         const signMult = signString === '-' ? -1 : 1;
         const base = parseFloat(numString);
         const exp = parseInt(expString);
@@ -44,12 +107,8 @@ export function parseValue(entryString, splitSU = true, cifVersion = 1) {
         return { value, su };
     }
 
-    // Try regular scientific notation without uncertainty
-    const plainSciPattern = /^([+-]?)(\d+\.?\d*|\.\d+)[eE]([+-]?\d+)$/;
-    const plainSciMatch = entryString.match(plainSciPattern);
-    
-    if (plainSciMatch) {
-        const [, signString, numString, expString] = plainSciMatch;
+    if (numericToken && numericToken.expString !== null && numericToken.suString === null) {
+        const { signString, numString, expString } = numericToken;
         const signMult = signString === '-' ? -1 : 1;
         const mantissaDecimals = numString.includes('.') ? numString.split('.')[1].length : 0;
         const exp = parseInt(expString);
@@ -63,12 +122,8 @@ export function parseValue(entryString, splitSU = true, cifVersion = 1) {
         return { value, su: NaN };
     }
 
-    // Try regular uncertainty notation
-    const suPattern = /^([+-]?)(\d+\.?\d*|\.\d+)\((\d+)\)$/;
-    const match = entryString.match(suPattern);
-
-    if (splitSU && match) {
-        const [, signString, numberString, suString] = match;
+    if (splitSU && numericToken && numericToken.expString === null && numericToken.suString !== null) {
+        const { signString, numString: numberString, suString } = numericToken;
         const signMult = signString === '-' ? -1 : 1;
         if (numberString.includes('.')) {
             const decimals = numberString.split('.')[1].length;
@@ -88,7 +143,8 @@ export function parseValue(entryString, splitSU = true, cifVersion = 1) {
             // CIF2 tokens arrive already unquoted; CIF2 has no backslash escaping.
             return { value: entryString, su: NaN };
         }
-        if (/^".*"$/.test(entryString) || /^'.*'$/.test(entryString)) {
+        const quote = entryString[0];
+        if ((quote === '"' || quote === '\'') && entryString.at(-1) === quote) {
             return { value: entryString.slice(1, -1).replace(/\\([^\\])/g, '$1'), su: NaN };
         } else {
             return { value: entryString.replace(/\\([^\\])/g, '$1'), su: NaN };

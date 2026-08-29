@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import * as THREE from 'three';
-import { CrystalViewer } from './crystal-viewer.js';
+import { CrystalViewer, SelectionManager } from './crystal-viewer.js';
+import defaultSettings from './structure-settings.js';
 
 const MINIMAL_CIF_WITH_STRUCTURE = `data_structure
 loop_
@@ -21,6 +22,26 @@ loop_
  _atom_site_U_iso_or_equiv
  C1 C 0 0 0 0
 `;
+
+describe('SelectionManager subscriptions', () => {
+    test('returns current descriptors and supports unsubscription', () => {
+        const manager = new SelectionManager({ selection: { markerColors: [0xff0000] } });
+        const atomData = { label: 'C1' };
+        manager.selectedObjects.add({
+            userData: { type: 'atom', atomData },
+            selectionColor: 0xff0000,
+        });
+        expect(manager.getSelections()).toEqual([{
+            type: 'atom', data: atomData, color: 0xff0000,
+        }]);
+        const callback = vi.fn();
+        const unsubscribe = manager.onChange(callback);
+        manager.notifyCallbacks();
+        unsubscribe();
+        manager.notifyCallbacks();
+        expect(callback).toHaveBeenCalledOnce();
+    });
+});
 
 describe('CrystalViewer rendering option validation', () => {
     test('rejects an invalid render style before initializing WebGL', () => {
@@ -150,6 +171,250 @@ describe('CrystalViewer rendering option validation', () => {
             'selection.haloWidth must be a finite number greater than or equal to 0',
         );
     });
+
+    test.each([
+        { markerColors: [] },
+        { markerColors: [0x123456, -1] },
+        { markerColors: [0x123456, 0x1000000] },
+        { markerColors: ['#123456'] },
+    ])('rejects an invalid measurement palette: $markerColors', ({ markerColors }) => {
+        expect(() => new CrystalViewer({}, { measurement: { markerColors } })).toThrow(
+            'measurement.markerColors must be a non-empty array of numeric hex colours',
+        );
+    });
+
+    test.each(['lineRadius', 'markerRadius'])(
+        'rejects an invalid measurement %s', option => {
+            expect(() => new CrystalViewer({}, {
+                measurement: { [option]: 0 },
+            })).toThrow(`measurement.${option} must be a finite number greater than 0`);
+        },
+    );
+
+});
+
+describe('CrystalViewer measurement overlays', () => {
+    test('renders and clears a colored distance line', () => {
+        const viewer = {
+            moleculeContainer: new THREE.Group(),
+            measurementGroups: new Map(),
+            measurements: new Map(),
+            measurementSequence: 0,
+            currentMeasurement: null,
+            measurementCallbacks: new Set(),
+            requestRender: vi.fn(),
+            clearMeasurement: CrystalViewer.prototype.clearMeasurement,
+            displayMeasurement: CrystalViewer.prototype.displayMeasurement,
+            getMeasurements: CrystalViewer.prototype.getMeasurements,
+            notifyMeasurementCallbacks: CrystalViewer.prototype.notifyMeasurementCallbacks,
+        };
+        const measurement = {
+            type: 'distance', points: [[0, 0, 0], [1, 0, 0]],
+        };
+
+        viewer.displayMeasurement(measurement);
+        expect(viewer.currentMeasurement).toBe(measurement);
+        const group = viewer.measurementGroups.get(measurement.id);
+        expect(group.visible).toBe(false);
+        expect(group.children[0]).toBeInstanceOf(THREE.Mesh);
+        expect(group.children[0].material.color.getHex()).toBe(0x00e5ff);
+        expect(group.children[0].geometry.parameters.radiusTop).toBeGreaterThan(0.05);
+        expect(group.children[0].userData.measurementLineRadius).toBe(0.075);
+        expect(group.children[1].userData.measurementMarkerRadius).toBe(0.11);
+        expect(group.children[0].renderOrder).toBeGreaterThan(1e6 + 1);
+        expect(group.children[0].material.depthTest).toBe(false);
+        expect(group.children[0].material.depthWrite).toBe(false);
+
+        viewer.clearMeasurement();
+        expect(viewer.currentMeasurement).toBeNull();
+        expect(viewer.measurementGroups.size).toBe(0);
+    });
+
+    test('renders a translucent plane and probe-distance line', () => {
+        const viewer = {
+            moleculeContainer: new THREE.Group(),
+            measurementGroups: new Map(),
+            measurements: new Map(),
+            measurementSequence: 0,
+            currentMeasurement: null,
+            measurementCallbacks: new Set(),
+            requestRender: vi.fn(),
+            clearMeasurement: CrystalViewer.prototype.clearMeasurement,
+            displayMeasurement: CrystalViewer.prototype.displayMeasurement,
+            getMeasurements: CrystalViewer.prototype.getMeasurements,
+            notifyMeasurementCallbacks: CrystalViewer.prototype.notifyMeasurementCallbacks,
+        };
+        const measurement = {
+            type: 'plane-distance',
+            points: [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0], [0, 0, 2]],
+            plane: { centroid: [0, 0, 0], normal: [0, 0, 1], projection: [0, 0, 0] },
+        };
+        viewer.displayMeasurement(measurement);
+
+        expect(viewer.measurementGroups.get(measurement.id).children
+            .some(child => child instanceof THREE.Mesh)).toBe(true);
+        viewer.clearMeasurement();
+    });
+
+    test('extends the plane patch to meet a laterally distant probe projection', () => {
+        const viewer = {
+            moleculeContainer: new THREE.Group(),
+            measurementGroups: new Map(),
+            measurements: new Map(),
+            measurementSequence: 0,
+            currentMeasurement: null,
+            measurementCallbacks: new Set(),
+            requestRender: vi.fn(),
+            clearMeasurement: CrystalViewer.prototype.clearMeasurement,
+            displayMeasurement: CrystalViewer.prototype.displayMeasurement,
+            getMeasurements: CrystalViewer.prototype.getMeasurements,
+            notifyMeasurementCallbacks: CrystalViewer.prototype.notifyMeasurementCallbacks,
+        };
+        const measurement = {
+            type: 'plane-distance',
+            points: [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0], [10, 0, 2]],
+            plane: { centroid: [0, 0, 0], normal: [0, 0, 1], projection: [10, 0, 0] },
+        };
+
+        viewer.displayMeasurement(measurement);
+        const plane = viewer.measurementGroups.get(measurement.id).children.find(child =>
+            child.material?.transparent && child.material.opacity === 0.22);
+        plane.geometry.computeBoundingBox();
+
+        expect(plane.geometry.boundingBox.max.x).toBeGreaterThan(10);
+        expect(plane.geometry.boundingBox.max.y).toBeLessThan(2);
+        viewer.clearMeasurement();
+    });
+
+    test('keeps multiple measurements and removes them independently', () => {
+        const viewer = {
+            moleculeContainer: new THREE.Group(),
+            measurementGroups: new Map(),
+            measurements: new Map(),
+            measurementSequence: 0,
+            currentMeasurement: null,
+            measurementCallbacks: new Set(),
+            requestRender: vi.fn(),
+            clearMeasurement: CrystalViewer.prototype.clearMeasurement,
+            displayMeasurement: CrystalViewer.prototype.displayMeasurement,
+            getMeasurements: CrystalViewer.prototype.getMeasurements,
+            notifyMeasurementCallbacks: CrystalViewer.prototype.notifyMeasurementCallbacks,
+        };
+        const first = { type: 'distance', points: [[0, 0, 0], [1, 0, 0]] };
+        const second = { type: 'distance', points: [[0, 0, 0], [0, 1, 0]] };
+
+        viewer.displayMeasurement(first);
+        viewer.displayMeasurement(second);
+        expect(viewer.getMeasurements()).toEqual([first, second]);
+
+        viewer.clearMeasurement(first.id);
+        expect(viewer.getMeasurements()).toEqual([second]);
+        expect(viewer.measurementGroups.has(second.id)).toBe(true);
+        viewer.clearMeasurement();
+    });
+
+    test('reveals only the hovered measurement and hides all overlays on mouse-out', () => {
+        const first = new THREE.Group();
+        const second = new THREE.Group();
+        first.visible = false;
+        second.visible = false;
+        const viewer = {
+            measurementGroups: new Map([
+                ['measurement-1', first],
+                ['measurement-2', second],
+            ]),
+            requestRender: vi.fn(),
+            setHoveredMeasurement: CrystalViewer.prototype.setHoveredMeasurement,
+        };
+
+        viewer.setHoveredMeasurement('measurement-1');
+        expect(first.visible).toBe(true);
+        expect(second.visible).toBe(false);
+
+        viewer.setHoveredMeasurement('measurement-2');
+        expect(first.visible).toBe(false);
+        expect(second.visible).toBe(true);
+
+        viewer.setHoveredMeasurement(null);
+        expect(first.visible).toBe(false);
+        expect(second.visible).toBe(false);
+        expect(viewer.requestRender).toHaveBeenCalledTimes(3);
+    });
+
+    test('creates a measurement from IDs without changing selection state', () => {
+        const atom = (label, uniqueId, x) => ({
+            label,
+            uniqueId,
+            position: { toCartesian: () => ({ x, y: 0, z: 0 }) },
+        });
+        const first = atom('C1', 'C1|1_555', 0);
+        const symmetryCopy = atom('C1', 'C1|2_555', 1);
+        const oxygen = atom('O1', 'O1|1_555', 2);
+        const viewer = {
+            state: { displayStructure: { atoms: [first, symmetryCopy, oxygen], cell: {} } },
+            displayMeasurement: vi.fn(),
+            measureAtomsById: CrystalViewer.prototype.measureAtomsById,
+        };
+
+        const measurement = viewer.measureAtomsById(['C1|2_555', 'O1']);
+
+        expect(measurement.atomIds).toEqual(['C1|2_555', 'O1|1_555']);
+        expect(viewer.displayMeasurement).toHaveBeenCalledWith(measurement);
+        expect(() => viewer.measureAtomsById(['missing', 'O1']))
+            .toThrow('Could not find displayed atom "missing"');
+    });
+
+    test('uses a distinct palette from selection markers', () => {
+        const viewer = {
+            moleculeContainer: new THREE.Group(),
+            measurementGroups: new Map(),
+            measurements: new Map(),
+            measurementSequence: 0,
+            currentMeasurement: null,
+            measurementCallbacks: new Set(),
+            requestRender: vi.fn(),
+            clearMeasurement: CrystalViewer.prototype.clearMeasurement,
+            displayMeasurement: CrystalViewer.prototype.displayMeasurement,
+            getMeasurements: CrystalViewer.prototype.getMeasurements,
+            notifyMeasurementCallbacks: CrystalViewer.prototype.notifyMeasurementCallbacks,
+        };
+        const measurements = Array.from({ length: 5 }, () => ({
+            type: 'distance', points: [[0, 0, 0], [1, 0, 0]],
+        }));
+
+        measurements.forEach(measurement => viewer.displayMeasurement(measurement));
+        const colors = measurements.map(measurement => measurement.color);
+
+        expect(new Set(colors).size).toBe(colors.length);
+        expect(colors.every(color => !defaultSettings.selection.markerColors.includes(color))).toBe(true);
+        viewer.clearMeasurement();
+    });
+
+    test('temporarily highlights an atom and restores its selection color', () => {
+        const atom = new THREE.Object3D();
+        atom.userData = { type: 'atom', atomData: { uniqueId: 'C1|1_555' } };
+        atom.selectionColor = 0xff0000;
+        atom.select = vi.fn(color => {
+            atom.selectionColor = color;
+        });
+        atom.deselect = vi.fn(() => {
+            atom.selectionColor = null;
+        });
+        const moleculeContainer = new THREE.Group();
+        moleculeContainer.add(atom);
+        const viewer = {
+            moleculeContainer,
+            hoveredAtomObjects: new Map(),
+            options: {},
+            requestRender: vi.fn(),
+            setHoveredAtom: CrystalViewer.prototype.setHoveredAtom,
+        };
+
+        viewer.setHoveredAtom('C1|1_555', 0x00e5ff);
+        expect(atom.select).toHaveBeenLastCalledWith(0x00e5ff, viewer.options);
+        viewer.setHoveredAtom(null);
+        expect(atom.select).toHaveBeenLastCalledWith(0xff0000, viewer.options);
+    });
 });
 
 describe('CrystalViewer live selection options', () => {
@@ -175,6 +440,50 @@ describe('CrystalViewer live selection options', () => {
         expect(viewer.selections.selectedObjects.has(selected)).toBe(true);
         expect(viewer.requestRender).toHaveBeenCalledOnce();
     });
+});
+
+describe('CrystalViewer live measurement options', () => {
+    test('recolours persistent overlays and publishes their updated colours', () => {
+        const group = new THREE.Group();
+        const overlay = new THREE.Mesh(
+            new THREE.SphereGeometry(1),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff }),
+        );
+        overlay.userData.measurementMarkerRadius = 0.11;
+        const line = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.075, 0.075, 1),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff }),
+        );
+        line.userData.measurementLineRadius = 0.075;
+        group.add(overlay, line);
+        const measurement = { id: 'measurement-1', color: 0x00e5ff };
+        const viewer = Object.create(CrystalViewer.prototype);
+        viewer.options = { measurement: { markerColors: [...defaultSettings.measurement.markerColors] } };
+        viewer.measurements = new Map([[measurement.id, measurement]]);
+        viewer.measurementGroups = new Map([[measurement.id, group]]);
+        viewer.setHoveredAtom = vi.fn();
+        viewer.notifyMeasurementCallbacks = vi.fn();
+        viewer.requestRender = vi.fn();
+
+        viewer.updateMeasurementOptions({
+            markerColors: [0x123456], lineRadius: 0.15, markerRadius: 0.22,
+        });
+
+        expect(measurement.color).toBe(0x123456);
+        expect(overlay.material.color.getHex()).toBe(0x123456);
+        expect(line.material.color.getHex()).toBe(0x123456);
+        expect(line.scale.x).toBeCloseTo(2);
+        expect(line.scale.z).toBeCloseTo(2);
+        expect(overlay.scale.x).toBeCloseTo(2);
+        expect(viewer.setHoveredAtom).toHaveBeenCalledWith(null);
+        expect(viewer.notifyMeasurementCallbacks).toHaveBeenCalledOnce();
+        expect(viewer.requestRender).toHaveBeenCalledOnce();
+        overlay.geometry.dispose();
+        overlay.material.dispose();
+        line.geometry.dispose();
+        line.material.dispose();
+    });
+
 });
 
 /**

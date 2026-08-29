@@ -8,7 +8,6 @@ import ThreeJsDemo from './components/ThreeJsDemo.vue';
 import ThemingDemo from './components/ThemingDemo.vue';
 import ComparisonDemo from './components/ComparisonDemo.vue';
 import EmbeddingDemo from './components/EmbeddingDemo.vue';
-import MeasureDemo from './components/MeasureDemo.vue';
 import './custom.css';
 
 if (!import.meta.env.SSR) {
@@ -27,6 +26,5 @@ export default {
         app.component('ThemingDemo', ThemingDemo);
         app.component('ComparisonDemo', ComparisonDemo);
         app.component('EmbeddingDemo', EmbeddingDemo);
-        app.component('MeasureDemo', MeasureDemo);
     },
 };
