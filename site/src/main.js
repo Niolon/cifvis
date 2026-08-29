@@ -1,5 +1,5 @@
 import { CIF, CrystalViewer } from '../../src';
-import { formatValueEsd } from '../../src';
+import { atomLabelParts, formatValueEsd } from '../../src';
 import { measurementAction } from '../../src';
 import { getDisorderIcon } from '../../src';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
@@ -46,6 +46,33 @@ function clearStatus() {
 
 let viewer = null;
 let scalarFieldDisplay = createScalarFieldDisplayState();
+
+/**
+ * @param {string} label - Raw CIF atom label.
+ * @returns {string} Display-formatted label.
+ */
+function displayAtomLabel(label) {
+    const escape = value => String(value).replace(
+        /[&<>"']/g, character => `&#${character.charCodeAt(0)};`,
+    );
+    const parts = atomLabelParts(label, viewer?.options?.atomLabels?.subscriptNonElement);
+    return escape(parts.element) + (parts.nonElement ? `<sub>${escape(parts.nonElement)}</sub>` : '');
+}
+
+/**
+ * Appends a typographically formatted atom label to an element.
+ * @param {HTMLElement} parent - Destination element.
+ * @param {string} label - Raw atom label.
+ */
+function appendAtomLabel(parent, label) {
+    const parts = atomLabelParts(label, viewer?.options?.atomLabels?.subscriptNonElement);
+    parent.append(parts.element);
+    if (parts.nonElement) {
+        const identifier = document.createElement('sub');
+        identifier.textContent = parts.nonElement;
+        parent.append(identifier);
+    }
+}
 
 /** Applies the optional browser-local starting view after the structure is fitted. */
 function applySavedStartingView() {
@@ -173,22 +200,24 @@ function handleSelectionsChange(selections) {
             const name = document.createElement('span');
             name.className = 'atom-name';
             name.dataset.atomId = item.data.uniqueId;
-            name.textContent = item.data.label;
+            appendAtomLabel(name, item.data.label);
             title.appendChild(name);
             box.appendChild(title);
         } else if (item.type === 'bond') {
             const lengthString = formatValueEsd(item.data.bondLength, item.data.bondLengthSU);
+            const atom1Label = displayAtomLabel(item.data.atom1Label);
+            const atom2Label = displayAtomLabel(item.data.atom2Label);
             box.innerHTML = `
-                <div class="selection-title">Bond: ${item.data.atom1Label} - ${item.data.atom2Label}</div>
+                <div class="selection-title">Bond: ${atom1Label} - ${atom2Label}</div>
                 <div class="selection-info">
                     <span>Length:</span><span>${lengthString} Å</span>
                 </div>
             `;
         } else if (item.type === 'hbond') {
             // Format values with their standard uncertainties
-            const dLabel = item.data.hydrogenAtomLabel;
-            const hLabel = item.data.hydrogenAtomLabel;
-            const aLabel = item.data.acceptorAtomLabel;
+            const dLabel = displayAtomLabel(item.data.hydrogenAtomLabel);
+            const hLabel = displayAtomLabel(item.data.hydrogenAtomLabel);
+            const aLabel = displayAtomLabel(item.data.acceptorAtomLabel);
             const dhLength = formatValueEsd(item.data.donorHydrogenDistance, item.data.donorHydrogenDistanceSU);
             const haLength = formatValueEsd(item.data.acceptorHydrogenDistance, item.data.acceptorHydrogenDistanceSU);
             const daLength = formatValueEsd(item.data.donorAcceptorDistance, item.data.donorAcceptorDistanceSU);
@@ -272,7 +301,7 @@ function appendMeasurementAtomName(parent, label, atomId, color) {
     name.className = 'atom-name';
     name.dataset.atomId = atomId;
     name.dataset.hoverColor = String(color);
-    name.textContent = label;
+    appendAtomLabel(name, label);
     parent.appendChild(name);
 }
 

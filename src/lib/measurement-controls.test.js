@@ -21,6 +21,7 @@ function createViewer() {
     let measurements = [];
     let sequence = 0;
     const viewer = {
+        options: { atomLabels: { subscriptNonElement: false } },
         selections: {
             getSelections: vi.fn(() => [...selections]),
             onChange: vi.fn(callback => {
@@ -239,5 +240,21 @@ describe('MeasurementControls DOM bindings', () => {
         const item = renderMeasurementResult(distance());
         expect(item.textContent).toContain('Distance C1–O1: 1.234 Å');
         expect(item.querySelectorAll('[data-cifvis-atom-id]')).toHaveLength(2);
+    });
+
+    test('follows the viewer-wide atom-label subscript option', () => {
+        const viewer = createViewer();
+        viewer.options.atomLabels.subscriptNonElement = true;
+        const controls = new MeasurementControls(viewer);
+        const container = document.createElement('div');
+        controls.bindResults(container);
+        viewer.emitMeasurements([distance('measurement-1', {
+            labels: ['Si1B', 'O1'], atomIds: ['Si1B|1_555', 'O1|1_555'],
+        })]);
+        expect(container.textContent).toContain('Distance Si1B–O1: 1.234 Å');
+        expect([...container.querySelectorAll('.cifvis-measurement-atom sub')]
+            .map(element => element.textContent)).toEqual(['1B', '1']);
+        expect(controls.getState().measurements[0].labels).toEqual(['Si1B', 'O1']);
+        controls.dispose();
     });
 });

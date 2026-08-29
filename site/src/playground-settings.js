@@ -183,6 +183,7 @@ const LABEL_OVERRIDES = {
     'symmetryMode': 'Symmetry display',
     'packingCutoff': 'Cell packing cutoff',
     'atomLabels.show': 'Show labels for',
+    'atomLabels.subscriptNonElement': 'Subscript non-element label parts',
     'atomLabels.placementMode': 'Placement strategy',
     'atomLabels.text': 'Text overrides (JSON)',
     'atomLabels.colorMode': 'Label colour source',
@@ -396,7 +397,8 @@ const CURATED_GROUPS = [
     {
         id: 'atom-labels', title: 'Atom labels', source: ['atom-labels'],
         first: [
-            'atomLabels.show', 'atomLabels.placementMode', 'atomLabels.fontSize',
+            'atomLabels.show', 'atomLabels.subscriptNonElement', 'atomLabels.placementMode',
+            'atomLabels.fontSize',
             'atomLabels.fontWeight', 'atomLabels.fontFamily', 'atomLabels.colorMode',
             'atomLabels.color', 'atomLabels.atomColorLuminanceCeiling',
             'atomLabels.atomColorLuminanceFloor', 'atomLabels.haloColor', 'atomLabels.haloWidth',

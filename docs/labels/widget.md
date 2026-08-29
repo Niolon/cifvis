@@ -28,7 +28,7 @@ Placement mode and appearance use the same camelCase paths as the library:
 <cifview-widget
     src="structure.cif"
     atom-labels="non-hydrogen"
-    options='{"atomLabels":{"placementMode":"maximum-coverage","calloutPlacement":"viewport"}}'>
+    options='{"atomLabels":{"subscriptNonElement":true,"placementMode":"maximum-coverage","calloutPlacement":"viewport"}}'>
 </cifview-widget>
 ```
 

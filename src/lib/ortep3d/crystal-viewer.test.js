@@ -659,6 +659,24 @@ describe('CrystalViewer atom-label runtime option validation', () => {
         );
     });
 
+    test('validates and live-notifies global label subscript formatting', () => {
+        expect(() => CrystalViewer.prototype.updateAtomLabelOptions.call({}, {
+            subscriptNonElement: 'yes',
+        })).toThrow('atomLabels.subscriptNonElement must be a boolean');
+
+        const viewer = {
+            options: { atomLabels: { subscriptNonElement: false, text: {} } },
+            atomLabelManager: { setOptions: vi.fn() },
+            selections: { notifyCallbacks: vi.fn() },
+            notifyMeasurementCallbacks: vi.fn(),
+            requestRender: vi.fn(),
+        };
+        CrystalViewer.prototype.updateAtomLabelOptions.call(viewer, { subscriptNonElement: true });
+        expect(viewer.options.atomLabels.subscriptNonElement).toBe(true);
+        expect(viewer.selections.notifyCallbacks).toHaveBeenCalledOnce();
+        expect(viewer.notifyMeasurementCallbacks).toHaveBeenCalledOnce();
+    });
+
     test('rejects malformed entries in a label request array', () => {
         expect(() => CrystalViewer.prototype.setAtomLabels.call({}, ['C1', { text: 'oxygen' }]))
             .toThrow(

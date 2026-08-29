@@ -6,7 +6,7 @@ appearance and rendering cost, and placement is **collision-free**: text never o
 other text, atoms, or (by preference) bonds. If there is no acceptable spot, a label is
 omitted or given a callout rather than drawn confusingly.
 
-<CifDemo src="/cif/urea.cif" options='{"atomLabels":{"show":"non-hydrogen"}}' hydrogen-mode="constant" caption="Urea with non-hydrogen labels placed automatically." style="aspect-ratio: 16 / 9;" />
+<CifDemo src="/cif/sucrose.cif" options='{"atomLabels":{"show":"non-hydrogen","subscriptNonElement":true}}' hydrogen-mode="constant" caption="Sucrose with non-hydrogen labels and subscripted identifiers." style="aspect-ratio: 16 / 9;" />
 
 ## Activating labels
 
@@ -18,6 +18,7 @@ import { CrystalViewer } from 'cifvis';
 const viewer = new CrystalViewer(container, {
     atomLabels: {
         show: 'non-hydrogen',      // 'none' | 'all' | 'non-hydrogen' | selector array
+        subscriptNonElement: true, // C₁ instead of C1 in built-in label displays
         placementMode: 'auto-omit',
     },
 });
@@ -46,6 +47,20 @@ viewer.getAtomLabelLayout();                   // placed + omitted labels
 In the widget, the same is available declaratively through the `atom-labels` attribute
 and `options.atomLabels` — see [Labels in the widget](./widget.md).
 
+`subscriptNonElement` is a global presentation choice for atom labels. In rich renderers
+(canvas and DOM), the complete label identifier after the element symbol is lowered, so
+`Si1B` is shown as `Si` with `1B` subscripted. It affects canvas labels, supplied
+measurement controls, widget captions, and playground selection cards,
+but does not change raw CIF labels, unique IDs, selectors, or returned measurement data.
+When the complete identifier is enclosed in parentheses, the displayed subscript omits
+that one pair: `Si(1B)` is shown as `Si` with `1B` subscripted. Parentheses are retained
+when the option is disabled.
+Custom measurement renderers receive raw labels. The exported
+`atomLabelParts(label, true)` helper returns `{ element: 'Si', nonElement: '1B' }`, so
+custom DOM renderers can put the complete `nonElement` value in a `<sub>` element.
+The plain-text `formatAtomLabel()` and `formatMeasurement()` helpers use Unicode
+subscripts where available; letters without a Unicode subscript remain on the baseline.
+
 ## Choosing a placement mode
 
 The default `auto-omit` placement prefers exact quality placement for ordinary views and
@@ -64,7 +79,7 @@ lanes — is explained in [How placement works](./how-it-works.md).
 
 ## Appearance
 
-Font, colour, halo, and leader-line appearance are all options in the same group:
+Font, colour, halo, and leader-line appearance are all options in the same group. Choose a
 uniform text colour or per-element colour (`colorMode: 'atom'`, with a luminance ceiling
 so bright element colours stay readable on light backgrounds), a contrast halo, and
 configurable leader lines. On dark backgrounds, set `atomColorLuminanceFloor` instead —
@@ -72,6 +87,9 @@ it replaces the ceiling and mixes the palette towards white so even black carbon
 stay legible (see the
 [default dark theme](../widget/styling.md#default-dark-theme)). The exhaustive option
 table is in [Options Reference → Atom labels](../reference/atom-labels.md).
+
+Leader lines use the resolved label colour by default, including per-atom label colours.
+Set `leaderColor` to any CSS colour only when a uniform override is wanted.
 
 ## Performance behaviour
 

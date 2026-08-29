@@ -545,6 +545,11 @@
       "default": "\"none\""
     },
     {
+      "path": "atomLabels.subscriptNonElement",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "atomLabels.placementMode",
       "type": "String",
       "default": "\"auto-omit\""
@@ -606,8 +611,8 @@
     },
     {
       "path": "atomLabels.leaderColor",
-      "type": "Color",
-      "default": "\"rgba(17, 17, 17, 0.55)\""
+      "type": "String",
+      "default": "\"label\""
     },
     {
       "path": "atomLabels.leaderWidth",

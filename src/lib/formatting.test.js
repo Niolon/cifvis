@@ -1,4 +1,26 @@
-import { formatValueEsd, roundToDecimals } from './formatting.js';
+import { atomLabelParts, formatAtomLabel, formatValueEsd, roundToDecimals } from './formatting.js';
+
+describe('formatAtomLabel', () => {
+    test('optionally renders every label digit as a Unicode subscript', () => {
+        expect(formatAtomLabel('C1')).toBe('C1');
+        expect(formatAtomLabel('C12A', true)).toBe('C₁₂A');
+        expect(formatAtomLabel('Fe3_2', true)).toBe('Fe₃_₂');
+        expect(formatAtomLabel('batch 12', true)).toBe('batch 12');
+    });
+
+    test('separates the complete non-element identifier for rich typography', () => {
+        expect(atomLabelParts('Si1B', true)).toEqual({ element: 'Si', nonElement: '1B' });
+        expect(atomLabelParts('Si1B')).toEqual({ element: 'Si1B', nonElement: '' });
+    });
+
+    test('removes one enclosing parenthesis pair only while subscripting', () => {
+        expect(atomLabelParts('Si(1B)', true)).toEqual({ element: 'Si', nonElement: '1B' });
+        expect(atomLabelParts('Si(1B)')).toEqual({ element: 'Si(1B)', nonElement: '' });
+        expect(atomLabelParts('Si(1)B', true)).toEqual({ element: 'Si', nonElement: '(1)B' });
+        expect(formatAtomLabel('C(12)', true)).toBe('C₁₂');
+        expect(formatAtomLabel('C(12)')).toBe('C(12)');
+    });
+});
 
 describe('roundToDecimals', () => {
     test('rounds to specified positive decimal places', () => {

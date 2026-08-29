@@ -1,4 +1,5 @@
 import { measurementAction } from './structure/measurements.js';
+import { atomLabelParts, formatAtomLabel } from './formatting.js';
 
 const STYLE_ID = 'cifvis-measurement-controls-styles';
 const DEFAULT_STYLES = `
@@ -74,15 +75,23 @@ function cssColor(color) {
  * Creates one accessible atom control for the default result renderer.
  * @param {string} label - Displayed atom label.
  * @param {string} atomId - Symmetry-resolved atom ID.
+ * @param {boolean} subscriptNonElement - Whether numeric non-element parts use subscripts.
  * @returns {HTMLButtonElement} Atom preview control.
  */
-function createAtomButton(label, atomId) {
+function createAtomButton(label, atomId, subscriptNonElement) {
     const atom = document.createElement('button');
     atom.type = 'button';
     atom.className = 'cifvis-measurement-atom';
     atom.dataset.cifvisAtomId = atomId ?? '';
-    atom.textContent = label;
-    atom.title = `Highlight ${label}`;
+    const displayLabel = formatAtomLabel(label, subscriptNonElement);
+    const parts = atomLabelParts(label, subscriptNonElement);
+    atom.append(parts.element);
+    if (parts.nonElement) {
+        const identifier = document.createElement('sub');
+        identifier.textContent = parts.nonElement;
+        atom.append(identifier);
+    }
+    atom.title = `Highlight ${displayLabel}`;
     return atom;
 }
 
@@ -92,35 +101,42 @@ function createAtomButton(label, atomId) {
  * @param {string[]} labels - Atom labels.
  * @param {string[]} atomIds - Atom unique IDs.
  * @param {string} separator - Separator text.
+ * @param {boolean} subscriptNonElement - Whether numeric non-element parts use subscripts.
  */
-function appendAtoms(parent, labels, atomIds, separator) {
+function appendAtoms(parent, labels, atomIds, separator, subscriptNonElement) {
     labels.forEach((label, index) => {
         if (index > 0) {
             parent.append(separator);
         }
-        parent.append(createAtomButton(label, atomIds[index]));
+        parent.append(createAtomButton(label, atomIds[index], subscriptNonElement));
     });
 }
 
 /**
  * Default safe DOM renderer for a persistent measurement.
  * @param {object} measurement - Measurement result.
+ * @param {object} [options] - Display options.
+ * @param {boolean} [options.subscriptNonElement] - Whether numeric non-element parts use subscripts.
  * @returns {HTMLElement} Result chip.
  */
-export function renderMeasurementResult(measurement) {
+export function renderMeasurementResult(measurement, options = {}) {
     const item = document.createElement('span');
     const content = document.createElement('strong');
     const value = measurement.value.toFixed(measurement.unit === '°' ? 2 : 3);
     if (measurement.type === 'plane-distance') {
-        content.append(createAtomButton(measurement.probeLabel, measurement.atomIds.at(-1)));
+        content.append(createAtomButton(
+            measurement.probeLabel, measurement.atomIds.at(-1), options.subscriptNonElement,
+        ));
         content.append(' to mean plane (');
-        appendAtoms(content, measurement.planeLabels, measurement.atomIds, ', ');
+        appendAtoms(
+            content, measurement.planeLabels, measurement.atomIds, ', ', options.subscriptNonElement,
+        );
         content.append(`): ${value} Å`);
     } else {
         const title = measurement.type === 'distance' ? 'Distance ' :
             measurement.type === 'angle' ? 'Angle ' : 'Torsion ';
         content.append(title);
-        appendAtoms(content, measurement.labels, measurement.atomIds, '–');
+        appendAtoms(content, measurement.labels, measurement.atomIds, '–', options.subscriptNonElement);
         content.append(`: ${value}${measurement.unit === '°' ? '' : ' '}${measurement.unit}`);
     }
     const dismiss = document.createElement('button');
@@ -300,7 +316,9 @@ export class MeasurementControls {
             throw new TypeError('bindResults requires an HTMLElement');
         }
         container.classList.add('cifvis-measurement-results');
-        const renderItem = options.renderItem ?? renderMeasurementResult;
+        const renderItem = options.renderItem ?? (measurement => renderMeasurementResult(measurement, {
+            subscriptNonElement: this.viewer.options?.atomLabels?.subscriptNonElement,
+        }));
         let stopItemInteractions = [];
         const stopState = this.subscribe(({ measurements }) => {
             stopItemInteractions.forEach(stop => stop());

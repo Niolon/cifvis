@@ -116,6 +116,11 @@ export const descriptions = {
         description: '<code>none</code>, <code>all</code>, <code>non-hydrogen</code>, or an array ' +
             'of atom selectors/specifications.',
     },
+    'atomLabels.subscriptNonElement': 'Displays the complete non-element identifier of atom labels ' +
+        'as a subscript, for example the <code>1B</code> in <code>Si1B</code>. ' +
+        'It also removes one enclosing pair of parentheses from that identifier, so ' +
+        '<code>Si(1B)</code> is displayed like <code>Si1B</code>. This is presentation-only; raw CIF ' +
+        'labels, unique IDs, selectors, and measurement data are unchanged.',
     'atomLabels.placementMode': '<code>auto-omit</code> adaptively uses quality placement for ' +
         'ordinary visible workloads and performance placement for dense ones; ' +
         '<code>quality-omit</code> forces exact candidate evaluation with repair; ' +
@@ -142,7 +147,8 @@ export const descriptions = {
     'atomLabels.haloColor': 'Contrast halo colour behind label text.',
     'atomLabels.haloWidth': 'Contrast halo width in CSS pixels.',
     'atomLabels.leaderLines': 'Controls when leader lines from a label to its atom are drawn.',
-    'atomLabels.leaderColor': 'Leader-line colour.',
+    'atomLabels.leaderColor': '<code>label</code> makes each leader line follow its resolved ' +
+        'label colour (the default); a CSS colour overrides all leader lines.',
     'atomLabels.leaderWidth': 'Leader-line width in CSS pixels.',
     'atomLabels.atomPadding': 'Collision clearance around atoms in CSS pixels.',
     'atomLabels.bondPadding': 'Collision clearance around bonds in CSS pixels.',

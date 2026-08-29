@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { atomLabelParts } from '../formatting.js';
 import { chemicalBonds } from '../structure/bond-classification.js';
 import { inferElementFromLabel } from '../structure/crystal.js';
 import { layoutAtomLabels } from './atom-label-layout.js';
@@ -554,7 +555,10 @@ export class AtomLabelManager {
                 .map(atom => ({ atom, text: this.options.text?.[atom.uniqueId] ??
                     this.options.text?.[atom.label] ?? atom.label, priority: 0 }))
                 .filter(request => request.text !== null && String(request.text).length > 0)
-                .map(request => ({ ...request, text: String(request.text).slice(0, 200) }));
+                .map(request => ({
+                    ...request,
+                    text: String(request.text).slice(0, 200),
+                }));
         }
 
         const requests = normalizeRequestedLabels(show);
@@ -567,7 +571,11 @@ export class AtomLabelManager {
             const text = request.text ?? this.options.text?.[atom.uniqueId] ??
                 this.options.text?.[atom.label] ?? atom.label;
             if (text !== null && String(text).length > 0) {
-                resolved.push({ atom, text: String(text).slice(0, 200), priority: request.priority || 0 });
+                resolved.push({
+                    atom,
+                    text: String(text).slice(0, 200),
+                    priority: request.priority || 0,
+                });
             }
         }
         return resolved;
@@ -776,15 +784,26 @@ export class AtomLabelManager {
 
         const labels = visibleRequests.map(request => {
             const anchor = projectedAnchors.get(request.atom.uniqueId);
-            const measurementKey = `${font}\u0000${request.text}`;
+            const parts = atomLabelParts(request.text, this.options.subscriptNonElement);
+            const subscriptFontSize = this.options.fontSize * 0.7;
+            const subscriptFont = `${this.options.fontWeight} ${subscriptFontSize}px ${this.options.fontFamily}`;
+            const measurementKey = `${font}\u0000${subscriptFont}\u0000${parts.element}\u0000${parts.nonElement}`;
             let measuredWidth = this.measurementCache.get(measurementKey);
             if (measuredWidth === undefined) {
-                measuredWidth = this.context.measureText(request.text).width;
+                this.context.font = font;
+                measuredWidth = this.context.measureText(parts.element).width;
+                if (parts.nonElement) {
+                    this.context.font = subscriptFont;
+                    measuredWidth += this.context.measureText(parts.nonElement).width;
+                    this.context.font = font;
+                }
                 this.measurementCache.set(measurementKey, measuredWidth);
             }
             return {
                 id: request.atom.uniqueId,
                 text: request.text,
+                elementText: parts.element,
+                nonElementText: parts.nonElement,
                 color: this.getAtomLabelColor(request.atom),
                 x: anchor.x,
                 y: anchor.y,
@@ -951,22 +970,43 @@ export class AtomLabelManager {
         }
         context.lineJoin = 'round';
         context.lineCap = 'round';
+        const mainFont = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`;
+        const subscriptFont = `${this.options.fontWeight} ${this.options.fontSize * 0.7}px ${this.options.fontFamily}`;
         for (const label of this.layout.placed) {
             if (label.leaderLine && this.options.leaderLines !== 'none') {
-                context.strokeStyle = this.options.leaderColor;
+                context.strokeStyle = this.options.leaderColor === 'label'
+                    ? label.color || this.options.color
+                    : this.options.leaderColor;
                 context.lineWidth = this.options.leaderWidth;
                 context.beginPath();
                 context.moveTo(label.leaderSegment.x1, label.leaderSegment.y1);
                 context.lineTo(label.leaderSegment.x2, label.leaderSegment.y2);
                 context.stroke();
             }
-            if (this.options.haloWidth > 0) {
-                context.strokeStyle = this.options.haloColor;
-                context.lineWidth = this.options.haloWidth * 2;
-                context.strokeText(label.text, label.x, label.y);
+            const elementText = label.elementText ?? label.text;
+            const nonElementText = label.nonElementText ?? '';
+            context.font = mainFont;
+            const elementWidth = context.measureText(elementText).width;
+            context.font = nonElementText ? subscriptFont : mainFont;
+            const nonElementWidth = nonElementText ? context.measureText(nonElementText).width : 0;
+            const startX = label.x - (elementWidth + nonElementWidth) / 2;
+            const drawPart = (text, x, y) => {
+                if (this.options.haloWidth > 0) {
+                    context.strokeStyle = this.options.haloColor;
+                    context.lineWidth = this.options.haloWidth * 2;
+                    context.strokeText(text, x, y);
+                }
+                context.fillStyle = label.color || this.options.color;
+                context.fillText(text, x, y);
+            };
+            context.textAlign = 'left';
+            context.font = mainFont;
+            drawPart(elementText, startX, label.y);
+            if (nonElementText) {
+                context.font = subscriptFont;
+                drawPart(nonElementText, startX + elementWidth, label.y + this.options.fontSize * 0.2);
             }
-            context.fillStyle = label.color || this.options.color;
-            context.fillText(label.text, label.x, label.y);
+            context.textAlign = 'center';
         }
     }
 
