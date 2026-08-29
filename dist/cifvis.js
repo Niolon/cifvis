@@ -1089,46 +1089,54 @@ function ot(e, t) {
 	}
 }
 function st(e, t, n) {
-	let r = ot(e, t), i = Number.isFinite(n) && n > 0, a = r.eigenvalues[0], o = r.valid ? r.eigenvalues.map((e) => e / a) : [
+	let r = ot(e, t), i = Number.isFinite(n) && n > 0, a = Math.max(...r.eigenvalues.map(Math.abs)), o = Math.max(1e-12, a * 1e-10), s = r.eigenvalues.every(Number.isFinite) && Number.isFinite(a) && a > o, c = s ? r.eigenvalues.map((e) => e / a) : [
 		NaN,
 		NaN,
 		NaN
-	], s = r.valid && i ? Math.sqrt(a) : NaN, c = L(r.rotation), l = (e) => {
+	], l = c.map((e) => -e), u = s && i ? Math.sqrt(a) : NaN, d = s ? [r.eigenvalues.some((e) => e > o) && {
+		sign: "positive",
+		normalizedShape: c
+	}, r.eigenvalues.some((e) => e < -o) && {
+		sign: "negative",
+		normalizedShape: l
+	}].filter(Boolean) : [], f = L(r.rotation), p = (e) => {
 		if (!Array.isArray(e) || e.length !== 3) return null;
 		let t = Math.hypot(e[0], e[1], e[2]);
 		return t > 0 ? e.map((e) => e / t) : null;
-	}, u = (e) => {
-		let t = l(e);
-		return !r.valid || !t ? 0 : Math.sqrt(Math.max(o.reduce((e, n, r) => e + n * t[r] * t[r], 0), 0));
 	};
 	return {
 		kind: "rmsd-peanut",
 		eigenvalues: r.eigenvalues,
 		rotation: r.rotation,
-		maxScale: s,
-		normalizedShape: o,
-		boundingRadius: r.valid && i ? n * s : 0,
-		valid: r.valid && i,
-		localRadialScale: u,
+		maxScale: u,
+		normalizedShape: c,
+		complementaryShape: l,
+		components: d,
+		boundingRadius: s && i ? n * u : 0,
+		valid: s && i,
+		localRadialScale: (e) => {
+			let t = p(e);
+			return !s || !t ? 0 : Math.sqrt(Math.abs(c.reduce((e, n, r) => e + n * t[r] * t[r], 0)));
+		},
 		localNormal: (e) => {
-			let t = l(e);
-			if (!r.valid || !t) return [
+			let t = p(e);
+			if (!s || !t) return [
 				0,
 				0,
 				0
 			];
-			let n = u(t) ** 2, i = t.map((e, t) => 2 * n * e - o[t] * e), a = Math.hypot(...i);
-			return a > 0 ? i.map((e) => e / a) : [
+			let n = c.reduce((e, n, r) => e + n * t[r] * t[r], 0), r = Math.abs(n), i = n >= 0 ? c : l, a = t.map((e, t) => 2 * r * e - i[t] * e), o = Math.hypot(...a);
+			return o > 0 ? a.map((e) => e / o) : [
 				0,
 				0,
 				0
 			];
 		},
 		surfaceDistanceAlong: (e) => {
-			let t = l(e);
-			if (!r.valid || !i || !t) return 0;
-			let a = I(c, t), o = r.eigenvalues.reduce((e, t, n) => e + t * a[n] * a[n], 0);
-			return n * Math.sqrt(Math.max(o, 0));
+			let t = p(e);
+			if (!s || !i || !t) return 0;
+			let a = I(f, t), o = r.eigenvalues.reduce((e, t, n) => e + t * a[n] * a[n], 0);
+			return n * Math.sqrt(Math.abs(o));
 		}
 	};
 }
@@ -6884,6 +6892,7 @@ var Zt = Object.freeze({
 	peanutLatitudeIntervals: 6,
 	peanutGridPoleAxis: "structure-y",
 	peanutGridLineWidth: .01,
+	peanutDetail: 5,
 	atomDetail: 3,
 	atomCutawayHysteresis: .025,
 	atomCutawayStripeCount: 7,
@@ -7217,7 +7226,7 @@ var Rn = class {
 		this.plot2DElementColorScale = i == null ? sn(r, this.options.plot2DColorLuminanceCeiling) : 1, this.plot2DElementColorLift = i == null ? 0 : ln(r, i), this.initializeGeometries(), this.initializeMaterials();
 	}
 	initializeGeometries() {
-		if (this.geometries.atom = new e.IcosahedronGeometry(this.scaling, this.options.atomDetail), this.options.adpRepresentation === "rmsd-peanut" && (this.geometries.peanut = new e.IcosahedronGeometry(this.options.peanutScale, this.options.atomDetail)), this.options.adpRepresentation === "ellipsoid" && this.options.renderStyle !== "solid-3d") {
+		if (this.geometries.atom = new e.IcosahedronGeometry(this.scaling, this.options.atomDetail), this.options.adpRepresentation === "rmsd-peanut" && (this.geometries.peanut = new e.IcosahedronGeometry(this.options.peanutScale, this.options.peanutDetail)), this.options.adpRepresentation === "ellipsoid" && this.options.renderStyle !== "solid-3d") {
 			let t = Math.max(3, 2 ** this.options.atomDetail + 2);
 			this.geometries.atomOctant = new e.SphereGeometry(this.scaling, t, t, 0, Math.PI / 2, 0, Math.PI / 2), this.geometries.emptyAtom = new e.BufferGeometry(), this.geometries.cutawayPlanes = this.createCutawayPlanes(t * 4), this.materials.cutawayDepthCap = new e.MeshBasicMaterial({
 				colorWrite: !1,
@@ -7295,39 +7304,39 @@ var Rn = class {
 		}
 		return this.elementMaterials[i];
 	}
-	getPlot2DElementLineColor(e) {
-		let t = e;
-		this.options.elementProperties[t] || (t = Wt(e)), this.validateElementType(t);
-		let n = this.options.elementProperties[t].atomColor;
-		return un(cn(n, this.plot2DElementColorScale), this.plot2DElementColorLift);
+	getPlot2DElementLineColor(e, t = "atomColor") {
+		let n = e;
+		this.options.elementProperties[n] || (n = Wt(e)), this.validateElementType(n);
+		let r = this.options.elementProperties[n][t];
+		return un(cn(r, this.plot2DElementColorScale), this.plot2DElementColorLift);
 	}
-	getPeanutMaterials(t) {
-		let n = t;
-		this.options.elementProperties[n] || (n = Wt(t)), this.validateElementType(n);
-		let r = pn(this.options.renderStyle), i = `${n}_peanut_${r}_${this.options.peanutMeridianCount}_${this.options.peanutLatitudeIntervals}_${this.options.peanutGridPoleAxis}_${this.options.peanutGridLineWidth}`;
-		if (!this.elementMaterials[i]) {
-			let t = this.options.elementProperties[n], a, o = null, s = null;
-			if (r === "publication-2d") {
-				let t = this.getPlot2DElementLineColor(n);
-				a = vn(new e.MeshBasicMaterial({
+	getPeanutMaterials(t, n = !1) {
+		let r = t;
+		this.options.elementProperties[r] || (r = Wt(t)), this.validateElementType(r);
+		let i = pn(this.options.renderStyle), a = `${r}_peanut_${n ? "negative" : "positive"}_${i}_${this.options.peanutMeridianCount}_${this.options.peanutLatitudeIntervals}_${this.options.peanutGridPoleAxis}_${this.options.peanutGridLineWidth}`;
+		if (!this.elementMaterials[a]) {
+			let t = this.options.elementProperties[r], o, s = null, c = null;
+			if (i === "publication-2d") {
+				let t = this.getPlot2DElementLineColor(r, n ? "ringColor" : "atomColor");
+				o = vn(new e.MeshBasicMaterial({
 					color: t,
 					depthWrite: !1,
 					depthTest: !0,
 					depthFunc: e.LessEqualDepth,
 					side: e.DoubleSide
 				}), {
-					presentation: r,
+					presentation: i,
 					gridColor: t,
 					meridianCount: this.options.peanutMeridianCount,
 					latitudeIntervals: this.options.peanutLatitudeIntervals,
 					gridPoleAxis: this.options.peanutGridPoleAxis,
 					gridLineWidth: this.options.peanutGridLineWidth
-				}), o = vn(new e.MeshBasicMaterial({
+				}), s = vn(new e.MeshBasicMaterial({
 					colorWrite: !1,
 					depthWrite: !0,
 					depthTest: !0,
 					side: e.DoubleSide
-				}), { presentation: "depth" }), s = vn(new e.MeshBasicMaterial({
+				}), { presentation: "depth" }), c = vn(new e.MeshBasicMaterial({
 					color: t,
 					side: e.BackSide,
 					depthWrite: !0,
@@ -7336,31 +7345,31 @@ var Rn = class {
 					presentation: "outline",
 					outlinePixelUniform: this.outlinePixels.atom,
 					outlineViewport: this.outlineViewport
-				}), a.userData.peanutDepthMaterial = o, a.userData.peanutOutlineMaterial = s;
-			} else a = vn(new e.MeshStandardMaterial({
-				color: t.atomColor,
+				}), o.userData.peanutDepthMaterial = s, o.userData.peanutOutlineMaterial = c;
+			} else o = vn(new e.MeshStandardMaterial({
+				color: n ? t.ringColor : t.atomColor,
 				roughness: this.options.atomColorRoughness,
 				metalness: this.options.atomColorMetalness
 			}), {
-				presentation: r,
-				gridColor: t.ringColor,
+				presentation: i,
+				gridColor: n ? t.atomColor : t.ringColor,
 				meridianCount: this.options.peanutMeridianCount,
 				latitudeIntervals: this.options.peanutLatitudeIntervals,
 				gridPoleAxis: this.options.peanutGridPoleAxis,
 				gridLineWidth: this.options.peanutGridLineWidth
 			});
-			this.elementMaterials[i] = [
-				a,
+			this.elementMaterials[a] = [
 				o,
-				s
+				s,
+				c
 			].filter(Boolean);
 		}
-		let [a, o = null, s = null] = this.elementMaterials[i];
+		let [o, s = null, c = null] = this.elementMaterials[a];
 		return {
-			body: a,
-			depth: o,
-			outline: s,
-			presentation: r
+			body: o,
+			depth: s,
+			outline: c,
+			presentation: i
 		};
 	}
 	createADPHalfTorus() {
@@ -7461,13 +7470,19 @@ var Rn = class {
 				if (e.adp instanceof z && this.options.adpRepresentation === "rmsd-peanut") {
 					let n = Gn(e, this.crystalStructure.cell, this.options.peanutScale);
 					if (n.valid) {
-						let i = this.cache.getPeanutMaterials(e.atomType);
-						t.set(i.body, (t.get(i.body) || 0) + 1), r.set(i.body, i), a.push({
+						let i = n.surface.components.map((n) => {
+							let i = this.cache.getPeanutMaterials(e.atomType, n.sign === "negative");
+							return t.set(i.body, (t.get(i.body) || 0) + 1), r.set(i.body, i), {
+								...n,
+								materials: i
+							};
+						});
+						a.push({
 							atom: e,
 							kind: "peanut",
 							...n,
-							atomMaterial: i.body,
-							presentation: i.presentation
+							components: i,
+							presentation: i[0].materials.presentation
 						});
 					} else {
 						let [t, n] = this.cache.getAtomMaterials(e.atomType);
@@ -7542,7 +7557,10 @@ var Rn = class {
 			for (let [e, t] of n) s.set(e, new Nn(this.cache.geometries.adpRingSet, e, t));
 			for (let t of a) {
 				let n;
-				n = t.kind === "ani" ? new Zn(t.atom, o.get(t.atomMaterial), t.matrix, e, s.get(t.ringMaterial)) : t.kind === "peanut" ? new Qn(t.atom, o.get(t.atomMaterial), t.matrix, t.surface, t.presentation) : t.kind === "iso" || t.kind === "constant" ? new Xn(t.atom, o.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new Hn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : t.kind === "iso-individual" ? new Un(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial) : t.kind === "constant-individual" ? new Wn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.options) : new Un(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), i.has(t.atom.uniqueId) || i.set(t.atom.uniqueId, n);
+				n = t.kind === "ani" ? new Zn(t.atom, o.get(t.atomMaterial), t.matrix, e, s.get(t.ringMaterial)) : t.kind === "peanut" ? new Qn(t.atom, t.components.map((e) => ({
+					...e,
+					pool: o.get(e.materials.body)
+				})), t.matrix, t.surface, t.presentation) : t.kind === "iso" || t.kind === "constant" ? new Xn(t.atom, o.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new Hn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : t.kind === "iso-individual" ? new Un(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial) : t.kind === "constant-individual" ? new Wn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.options) : new Un(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), i.has(t.atom.uniqueId) || i.set(t.atom.uniqueId, n);
 			}
 			o.forEach((e) => e.finalize()), s.forEach((e) => e.finalize()), this.atomPools = o, this.ringPools = s;
 		}
@@ -7958,9 +7976,19 @@ var Yn = class t extends e.Object3D {
 	}
 }, Qn = class extends Xn {
 	constructor(e, t, n, r, i) {
-		super(e, t, n, t.mesh.geometry.boundingSphere?.radius || 0);
-		let a = this.segments[0];
-		t.shapeAttribute.setXYZ(a.index, ...r.normalizedShape), this.surfaceDescriptor = r, this.presentation = i;
+		let a = t[0];
+		super(e, a.pool, n, a.pool.mesh.geometry.boundingSphere?.radius || 0), this.segments[0].sign = a.sign, this.segments[0].normalizedShape = a.normalizedShape, a.pool.shapeAttribute.setXYZ(this.segments[0].index, ...a.normalizedShape);
+		for (let e of t.slice(1)) {
+			let t = e.pool.register(n);
+			e.pool.shapeAttribute.setXYZ(t, ...e.normalizedShape), this.segments.push({
+				pool: e.pool,
+				matrix: n,
+				index: t,
+				sign: e.sign,
+				normalizedShape: e.normalizedShape
+			});
+		}
+		this.surfaceDescriptor = r, this.presentation = i;
 	}
 	getSurfaceDistanceAlong(e) {
 		return this.surfaceDescriptor.surfaceDistanceAlong([
@@ -7972,74 +8000,80 @@ var Yn = class t extends e.Object3D {
 	raycast(t, n) {
 		let r = [];
 		if (super.raycast(t, r), r.length === 0) return;
-		let i = this.segments[0], a = i.pool.mesh.geometry.clone(), o = a.getAttribute("position"), s = this.surfaceDescriptor.normalizedShape;
-		for (let e = 0; e < o.count; e++) {
-			let t = o.getX(e), n = o.getY(e), r = o.getZ(e), i = 1 / Math.hypot(t, n, r), a = t * i, c = n * i, l = r * i, u = Math.sqrt(Math.max(s[0] * a * a + s[1] * c * c + s[2] * l * l, 0));
-			o.setXYZ(e, t * u, n * u, r * u);
+		let i = [];
+		for (let n of this.segments) {
+			let r = n.pool.mesh.geometry.clone(), a = r.getAttribute("position"), o = n.normalizedShape;
+			for (let e = 0; e < a.count; e++) {
+				let t = a.getX(e), n = a.getY(e), r = a.getZ(e), i = 1 / Math.hypot(t, n, r), s = t * i, c = n * i, l = r * i, u = Math.sqrt(Math.max(o[0] * s * s + o[1] * c * c + o[2] * l * l, 0));
+				a.setXYZ(e, t * u, n * u, r * u);
+			}
+			a.needsUpdate = !0, r.computeBoundingSphere();
+			let s = new e.Mesh(r, n.pool.mesh.material);
+			s.matrixAutoUpdate = !1, s.matrixWorld.multiplyMatrices(this.matrixWorld, n.matrix), e.Mesh.prototype.raycast.call(s, t, i), r.dispose();
 		}
-		o.needsUpdate = !0, a.computeBoundingSphere();
-		let c = new e.Mesh(a, i.pool.mesh.material);
-		c.matrixAutoUpdate = !1, c.matrixWorld.multiplyMatrices(this.matrixWorld, i.matrix);
-		let l = [];
-		e.Mesh.prototype.raycast.call(c, t, l), a.dispose(), l.length > 0 && (l.sort((e, t) => e.distance - t.distance), n.push({
-			...l[0],
+		i.length > 0 && (i.sort((e, t) => e.distance - t.distance), n.push({
+			...i[0],
 			object: this
 		}));
 	}
-	createStandalonePeanutMaterial(e) {
-		let t = e.clone(), n = e.userData.peanut;
-		return vn(t, {
-			presentation: n.presentation,
-			gridColor: n.gridColor,
-			silhouetteWidth: n.silhouetteWidth,
-			gridLineWidth: n.gridLineWidth,
-			meridianCount: n.meridianCount,
-			latitudeIntervals: n.latitudeIntervals,
-			gridPoleAxis: n.gridPoleAxis,
-			uniformShape: this.surfaceDescriptor.normalizedShape,
+	createStandalonePeanutMaterial(e, t) {
+		let n = e.clone(), r = e.userData.peanut;
+		return vn(n, {
+			presentation: r.presentation,
+			gridColor: r.gridColor,
+			silhouetteWidth: r.silhouetteWidth,
+			gridLineWidth: r.gridLineWidth,
+			meridianCount: r.meridianCount,
+			latitudeIntervals: r.latitudeIntervals,
+			gridPoleAxis: r.gridPoleAxis,
+			uniformShape: t,
 			gridRotation: this.surfaceDescriptor.rotation
 		});
 	}
 	select(t, n) {
-		if (this._selectionColor = t, this.presentation !== "publication-2d") {
-			let t = this.segments[0];
+		this._selectionColor = t, this.presentation !== "publication-2d" && (this.highlightMeshes = this.segments.map((t) => {
 			t.pool.hideInstance(t.index);
-			let r = this.createStandalonePeanutMaterial(t.pool.mesh.material);
+			let r = this.createStandalonePeanutMaterial(t.pool.mesh.material, t.normalizedShape);
 			r.emissive?.setHex(n.selection.highlightEmissive);
 			let i = new e.Mesh(t.pool.baseGeometry, r);
-			i.applyMatrix4(t.matrix), i.userData = {
+			return i.applyMatrix4(t.matrix), i.userData = {
 				...this.userData,
 				selectable: !1
-			}, this.add(i), this.highlightMeshes = [i];
-		}
+			}, this.add(i), i;
+		}));
 		let r = this.createSelectionMarker(t, n);
 		this.add(r), this.marker = r;
 	}
 	createSelectionMarker(t, n) {
-		let r = this.segments[0], i;
-		if (this.presentation === "publication-2d") {
-			let a = r.pool.outlineMesh.material.userData.peanut, o = n.plot2DOutlineWidth ?? 1.2, s = n.selection.haloWidth ?? 4;
-			i = vn(new e.MeshBasicMaterial({
-				color: t,
-				transparent: !0,
-				opacity: .9,
-				side: e.BackSide,
-				depthTest: !0,
-				depthWrite: !1
-			}), {
-				presentation: "outline",
-				uniformShape: this.surfaceDescriptor.normalizedShape,
-				gridRotation: this.surfaceDescriptor.rotation,
-				outlinePixelUniform: { value: o + s },
-				outlineViewport: a.outlineViewport
+		let r = this.segments.map((r) => {
+			let i;
+			if (this.presentation === "publication-2d") {
+				let a = r.pool.outlineMesh.material.userData.peanut, o = n.plot2DOutlineWidth ?? 1.2, s = n.selection.haloWidth ?? 4;
+				i = vn(new e.MeshBasicMaterial({
+					color: t,
+					transparent: !0,
+					opacity: .9,
+					side: e.BackSide,
+					depthTest: !0,
+					depthWrite: !1
+				}), {
+					presentation: "outline",
+					uniformShape: r.normalizedShape,
+					gridRotation: this.surfaceDescriptor.rotation,
+					outlinePixelUniform: { value: o + s },
+					outlineViewport: a.outlineViewport
+				});
+			} else i = vn(this.createSelectionMaterial(t), {
+				presentation: "clean-3d",
+				uniformShape: r.normalizedShape,
+				gridRotation: this.surfaceDescriptor.rotation
 			});
-		} else i = vn(this.createSelectionMaterial(t), {
-			presentation: "clean-3d",
-			uniformShape: this.surfaceDescriptor.normalizedShape,
-			gridRotation: this.surfaceDescriptor.rotation
+			let a = new e.Mesh(r.pool.baseGeometry, i);
+			return a.applyMatrix4(r.matrix), this.presentation === "publication-2d" ? a.renderOrder = 1000001 : a.scale.multiplyScalar(n.selection.markerMult), a.userData.selectable = !1, a;
 		});
-		let a = new e.Mesh(r.pool.baseGeometry, i);
-		return a.applyMatrix4(r.matrix), this.presentation === "publication-2d" ? a.renderOrder = 1000001 : a.scale.multiplyScalar(n.selection.markerMult), a.userData.selectable = !1, a;
+		if (r.length === 1) return r[0];
+		let i = new e.Group();
+		return i.add(...r), i.userData.selectable = !1, i;
 	}
 }, $n = class extends Bn {
 	constructor(t, n, r, i, a = null, o = null, s = null, c = null) {
@@ -52154,6 +52188,7 @@ var jl = class {
 		if (n.adpRepresentation && !hl.includes(n.adpRepresentation)) throw Error(`Invalid ADP representation: "${n.adpRepresentation}". Must be one of: ${hl.join(", ")}`);
 		if (n.peanutGridPoleAxis !== void 0 && !gl.includes(n.peanutGridPoleAxis)) throw Error(`Invalid PEANUT grid pole axis: "${n.peanutGridPoleAxis}". Must be one of: ${gl.join(", ")}`);
 		if (n.peanutScale !== void 0 && !(typeof n.peanutScale == "number" && Number.isFinite(n.peanutScale) && n.peanutScale > 0)) throw Error("peanutScale must be a finite number greater than 0");
+		if (n.peanutDetail !== void 0 && !(Number.isInteger(n.peanutDetail) && n.peanutDetail >= 1 && n.peanutDetail <= 5)) throw Error("peanutDetail must be an integer from 1 to 5");
 		for (let [e, t] of [["peanutMeridianCount", 1], ["peanutLatitudeIntervals", 2]]) if (n[e] !== void 0 && !(Number.isInteger(n[e]) && n[e] >= t)) throw Error(`${e} must be an integer greater than or equal to ${t}`);
 		if (n.peanutGridLineWidth !== void 0 && !(typeof n.peanutGridLineWidth == "number" && Number.isFinite(n.peanutGridLineWidth) && n.peanutGridLineWidth > 0)) throw Error("peanutGridLineWidth must be a finite number greater than 0");
 		if (n.bondColorMode !== void 0 && !_l.includes(n.bondColorMode)) throw Error(`Invalid bond color mode: "${n.bondColorMode}". Must be one of: ${_l.join(", ")}`);
@@ -52202,6 +52237,7 @@ var jl = class {
 			peanutLatitudeIntervals: n.peanutLatitudeIntervals ?? W.peanutLatitudeIntervals,
 			peanutGridPoleAxis: n.peanutGridPoleAxis ?? W.peanutGridPoleAxis,
 			peanutGridLineWidth: n.peanutGridLineWidth ?? W.peanutGridLineWidth,
+			peanutDetail: n.peanutDetail ?? W.peanutDetail,
 			atomDetail: n.atomDetail || W.atomDetail,
 			atomCutawayHysteresis: n.atomCutawayHysteresis ?? W.atomCutawayHysteresis,
 			atomCutawayStripeCount: n.atomCutawayStripeCount ?? W.atomCutawayStripeCount,
@@ -54344,4 +54380,4 @@ if (typeof window < "u" && window.customElements) try {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { Ms as AtomLabelFilter, ta as BOHR_TO_ANGSTROM, Ns as BondGenerator, Fs as BondGeometryFixer, Te as CIF, Zl as CifViewWidget, U as CrystalStructure, Ml as CrystalViewer, rn as DEFAULT_CONTOUR_LINE_OPTIONS, en as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, nn as DEFAULT_ISOSURFACE_OPTIONS, tn as DEFAULT_SCALAR_FIELD_OPTIONS, Os as DisorderFilter, Ds as HydrogenFilter, Ps as IsolatedHydrogenFixer, Kl as MeasurementControls, zn as ORTEP3JsStructure, Ti as ScalarFieldGrid, ks as SymmetryGrower, fl as ThreeContourLineLayer, Bc as ThreeIsosurfaceLayer, Ll as ViewerInteractionCoupling, ar as atomLabelParts, ea as calculateDifferenceDensityMap, ti as calculateIAMStructureFactors, ja as calculatePlanarContours, Za as connectedIsosurfaceRegions, Rl as coupleViewerInteractions, Ki as createCifDifferenceDensityDataset, ei as createIAMStructureFactorCalculator, Ua as createIsosurfaces, fo as createSymmetryAwareIsosurfaces, Wr as evaluateCromerMann, or as formatAtomLabel, mr as formatMeasurement, nr as formatValueEsd, xo as generateDisorderGroupIcon, bo as getDisorderIcon, vi as isSystematicAbsence, Ia as isosurfaceBounds, La as isosurfaceResolution, Ir as lookupAnomalousDispersion, Ur as lookupCromerMann, pr as measureAtoms, hr as measurementAction, yi as mergeReflectionIntensities, ua as parseCube, Ji as parseDifferenceDensitySource, bi as readReflectionIntensities, Ea as resolveContourPlane, yo as tryToFixCifBlock };
+export { Ms as AtomLabelFilter, ta as BOHR_TO_ANGSTROM, Ns as BondGenerator, Fs as BondGeometryFixer, Te as CIF, Zl as CifViewWidget, U as CrystalStructure, Ml as CrystalViewer, rn as DEFAULT_CONTOUR_LINE_OPTIONS, en as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, nn as DEFAULT_ISOSURFACE_OPTIONS, tn as DEFAULT_SCALAR_FIELD_OPTIONS, Os as DisorderFilter, Ds as HydrogenFilter, Ps as IsolatedHydrogenFixer, Kl as MeasurementControls, zn as ORTEP3JsStructure, Ti as ScalarFieldGrid, ks as SymmetryGrower, fl as ThreeContourLineLayer, Bc as ThreeIsosurfaceLayer, z as UAnisoADP, Ll as ViewerInteractionCoupling, ar as atomLabelParts, ea as calculateDifferenceDensityMap, ti as calculateIAMStructureFactors, ja as calculatePlanarContours, Za as connectedIsosurfaceRegions, Rl as coupleViewerInteractions, Ki as createCifDifferenceDensityDataset, ei as createIAMStructureFactorCalculator, Ua as createIsosurfaces, fo as createSymmetryAwareIsosurfaces, Wr as evaluateCromerMann, or as formatAtomLabel, mr as formatMeasurement, nr as formatValueEsd, xo as generateDisorderGroupIcon, bo as getDisorderIcon, vi as isSystematicAbsence, Ia as isosurfaceBounds, La as isosurfaceResolution, Ir as lookupAnomalousDispersion, Ur as lookupCromerMann, pr as measureAtoms, hr as measurementAction, yi as mergeReflectionIntensities, ua as parseCube, Ji as parseDifferenceDensitySource, bi as readReflectionIntensities, Ea as resolveContourPlane, yo as tryToFixCifBlock };
