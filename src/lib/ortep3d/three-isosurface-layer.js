@@ -1,5 +1,12 @@
 import { isosurfaceResolution } from '../density/isosurface.js';
-import { createSymmetryAwareIsosurfaces } from '../density/symmetry-isosurface.js';
+import {
+    createSymmetryAwareIsosurfaces,
+    SymmetryRegionSurfaceCache,
+} from '../density/symmetry-isosurface.js';
+import {
+    createPatchCachedIsosurfaces,
+    SurfacePatchCache,
+} from '../density/surface-patches.js';
 
 /**
  * Three.js adapter for displaying a generic scalar field. It owns the generated
@@ -14,9 +21,15 @@ export class ThreeIsosurfaceLayer {
         this.structure = null;
         this.group = null;
         this.resolutionFraction = 1;
+        this.patchCache = new SurfacePatchCache(options.patchCacheMaxBytes);
+        this.regionCache = new SymmetryRegionSurfaceCache(options.patchCacheMaxBytes);
     }
 
     setField(field, resolutionFraction = 1) {
+        if (field !== this.field) {
+            this.patchCache.clear();
+            this.regionCache.clear();
+        }
         this.field = field;
         this.resolutionFraction = resolutionFraction;
     }
@@ -27,6 +40,10 @@ export class ThreeIsosurfaceLayer {
 
     setOptions(options = {}) {
         this.options = { ...this.options, ...options };
+        if (options.patchCacheMaxBytes !== undefined) {
+            this.patchCache.maxBytes = Math.max(0, Number(options.patchCacheMaxBytes) || 0);
+            this.regionCache.maxBytes = this.patchCache.maxBytes;
+        }
     }
 
     /**
@@ -38,6 +55,9 @@ export class ThreeIsosurfaceLayer {
         if (!this.field || !this.structure) {
             return null;
         }
+        if (!['legacy', 'patch-cache'].includes(this.options.generationMode)) {
+            throw new Error('Isosurface generationMode must be "patch-cache" or "legacy"');
+        }
         const finalResolution = isosurfaceResolution(this.structure, this.options);
         const fieldColors = this.field.fieldKind === 'deformation-density'
             ? {
@@ -45,18 +65,28 @@ export class ThreeIsosurfaceLayer {
                 negativeColor: this.options.deformationNegativeColor,
             }
             : {};
-        this.group = createSymmetryAwareIsosurfaces(
-            this.field,
-            this.structure,
-            {
-                ...this.options,
-                ...fieldColors,
-                resolution: Math.max(
-                    8,
-                    Math.round(finalResolution * this.resolutionFraction),
-                ),
-            },
-        );
+        const generationOptions = {
+            ...this.options,
+            ...fieldColors,
+            gridSpacing: this.options.gridSpacing / this.resolutionFraction,
+            resolution: Math.max(
+                8,
+                Math.round(finalResolution * this.resolutionFraction),
+            ),
+        };
+        this.group = this.options.generationMode === 'legacy'
+            ? createSymmetryAwareIsosurfaces(
+                this.field,
+                this.structure,
+                generationOptions,
+                this.regionCache,
+            )
+            : createPatchCachedIsosurfaces(
+                this.field,
+                this.structure,
+                generationOptions,
+                this.patchCache,
+            );
         this.group.visible = this.options.visible !== false;
         this.parent.add(this.group);
         return this.group.userData;
@@ -77,6 +107,8 @@ export class ThreeIsosurfaceLayer {
 
     clear() {
         this.clearMesh();
+        this.patchCache.clear();
+        this.regionCache.clear();
         this.field = null;
         this.resolutionFraction = 1;
     }

@@ -47,7 +47,8 @@
     "bench:labels": "node benchmark/labels.mjs",
     "bench:density-symmetry": "node benchmark/difference-density-symmetry.mjs",
     "bench:contours": "node benchmark/contour-lines.mjs",
-    "bench:iam": "node benchmark/iam.mjs"
+    "bench:iam": "node benchmark/iam.mjs",
+    "bench:density-optimization": "node benchmark/density-optimization-cod.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

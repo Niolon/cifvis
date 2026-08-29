@@ -31,6 +31,21 @@ const MULTI_RESOLUTION_FCF = P1_FCF.replace(
     ' 1 0 0 4 1 0\n 4 0 0 9 1 0\n',
 );
 
+const P_MINUS_ONE_FCF = P1_FCF.replace(
+    ' \'x,y,z\'\n',
+    ' \'x,y,z\'\n \'-x,-y,-z\'\n',
+);
+
+const THREE_DIMENSIONAL_FCF = P1_FCF.replace(
+    ' 1 0 0 4 1 0\n',
+    ` 1 0 0 4 1 17
+ 0 1 0 9 1 43
+ 0 0 2 16 2 81
+ 1 1 1 25 2 129
+ 2 -1 1 36 3 211
+`,
+);
+
 const CUSTOM_COEFFICIENT_FCF = `data_custom
 loop_
  _space_group_symop_operation_xyz
@@ -184,10 +199,10 @@ describe('difference-density scalar fields', () => {
         expect(map.reflectionCount).toBe(1);
         expect(map.fieldKind).toBe('difference-density');
         expect(map.coefficientCount).toBe(2);
-        expect(map.dimensions).toEqual([4, 2, 2]);
+        expect(map.dimensions).toEqual([3, 2, 2]);
         expect(map.sample(0, 0, 0)).toBeCloseTo(2, 6);
-        expect(map.sample(0.25, 0, 0)).toBeCloseTo(0, 6);
-        expect(map.sample(0.5, 0, 0)).toBeCloseTo(-2, 6);
+        expect(map.sample(1 / 3, 0, 0)).toBeCloseTo(-1, 6);
+        expect(map.sample(2 / 3, 0, 0)).toBeCloseTo(-1, 6);
         expect(map.sigma).toBeCloseTo(Math.sqrt(2), 6);
         expect(map.mean).toBeCloseTo(0, 12);
         expect(map.maxImaginary).toBeCloseTo(0, 12);
@@ -210,8 +225,8 @@ describe('difference-density scalar fields', () => {
         const refined = calculateDifferenceDensityMap(dataset, 1);
         const direct = mapFromFcf(MULTI_RESOLUTION_FCF);
 
-        expect(rough.dimensions).toEqual([4, 2, 2]);
-        expect(refined.dimensions).toEqual([16, 2, 2]);
+        expect(rough.dimensions).toEqual([3, 2, 2]);
+        expect(refined.dimensions).toEqual([9, 2, 2]);
         expect(rough.coefficientCount).toBe(2);
         expect(refined.coefficientCount).toBe(4);
         expect(refined.values).toEqual(direct.values);
@@ -223,12 +238,46 @@ describe('difference-density scalar fields', () => {
         const regular = calculateDifferenceDensityMap(dataset, 1, 1);
         const oversampled = calculateDifferenceDensityMap(dataset, 1, 2);
 
-        expect(oversampled.dimensions).toEqual(regular.dimensions.map(size => size * 2));
+        expect(oversampled.dimensions).toEqual([6, 2, 2]);
         expect(oversampled.coefficientCount).toBe(regular.coefficientCount);
-        for (const fractionalX of [0, 0.25, 0.5, 0.75]) {
+        for (const fractionalX of [0, 1 / 3, 2 / 3]) {
             expect(oversampled.sample(fractionalX, 0, 0))
                 .toBeCloseTo(regular.sample(fractionalX, 0, 0), 6);
         }
+    });
+
+    test('matches the full complex transform on an odd mixed-radix 3-D grid', () => {
+        const dataset = parseDifferenceDensityDataset(THREE_DIMENSIONAL_FCF);
+        const real = calculateDifferenceDensityMap(dataset, 1, 1, {
+            fftBackend: 'mixed-radix',
+            realTransform: true,
+        });
+        const complex = calculateDifferenceDensityMap(dataset, 1, 1, {
+            fftBackend: 'mixed-radix',
+            realTransform: false,
+        });
+
+        expect(real.dimensions).toEqual([5, 3, 5]);
+        expect(real.values).toEqual(complex.values);
+        expect(real.realTransform).toBe(true);
+        expect(real.hermitianResidual).toBe(0);
+        expect(real.storedCoefficientCount).toBeLessThan(real.coefficientCount);
+        expect(real.fftAllocatedBytes).toBeLessThan(complex.fftAllocatedBytes);
+    });
+
+    test('gates symmetry-quotiented storage behind the explicit experimental option', () => {
+        const dataset = parseDifferenceDensityDataset(P_MINUS_ONE_FCF);
+        const ordinary = calculateDifferenceDensityMap(dataset, 1, 1);
+        const reduced = calculateDifferenceDensityMap(dataset, 1, 1, {
+            symmetryReducedFft: true,
+        });
+
+        expect(ordinary.storageMode).toBeUndefined();
+        expect(reduced.storageMode).toBe('symmetry-orbits');
+        expect(reduced.symmetryReducedStorage).toBe(true);
+        expect(reduced.symmetryReducedFft).toBe(false);
+        expect(reduced.fftFallbackReason).toBe('symmetry-reduced-fft-kernel-not-implemented');
+        expect(reduced.values).toEqual(ordinary.values);
     });
 
     test('constructs a scaled IAM-phased Fo-Fc map from a reflection CIF', () => {

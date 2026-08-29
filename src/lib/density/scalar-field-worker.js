@@ -14,6 +14,16 @@ import {
 
 const continuationResolvers = new Map();
 
+function scalarFieldTransferables(payload) {
+    if (!payload) {
+        return [];
+    }
+    if (payload.storageMode === 'symmetry-orbits') {
+        return [payload.representativeIndices.buffer, payload.representativeValues.buffer];
+    }
+    return [payload.values.buffer];
+}
+
 function waitForContinuation(loadId, stepIndex) {
     return new Promise(resolve => {
         continuationResolvers.set(`${loadId}:${stepIndex}`, resolve);
@@ -33,6 +43,9 @@ async function calculateDifferenceDensityProgressively(message) {
             reciprocalResolution: message.reciprocalResolution,
             initialGridOversampling: message.initialGridOversampling,
             gridOversampling: message.gridOversampling,
+            fftBackend: message.fftBackend,
+            realTransform: message.realTransform,
+            symmetryReducedFft: message.symmetryReducedFft,
         });
         const steps = progression.steps;
         for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
@@ -61,7 +74,7 @@ async function calculateDifferenceDensityProgressively(message) {
                 contours,
             };
             globalThis.postMessage(update, [
-                ...(payload && !message.contourRequest ? [payload.values.buffer] : []),
+                ...(!message.contourRequest ? scalarFieldTransferables(payload) : []),
                 ...contourTransferables(contours),
             ]);
 
@@ -106,7 +119,7 @@ async function loadCubeProgressively(message) {
                 map: payload,
                 contours,
             }, [
-                ...(payload && !message.contourRequest ? [payload.values.buffer] : []),
+                ...(!message.contourRequest ? scalarFieldTransferables(payload) : []),
                 ...contourTransferables(contours),
             ]);
 

@@ -311,6 +311,21 @@
       "default": "2"
     },
     {
+      "path": "differenceDensity.fftBackend",
+      "type": "String",
+      "default": "\"auto\""
+    },
+    {
+      "path": "differenceDensity.realTransform",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "differenceDensity.symmetryReducedFft",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "scalarField.useWorker",
       "type": "Boolean",
       "default": "true"
@@ -394,6 +409,16 @@
       "path": "isosurface.maxPolyCount",
       "type": "Number",
       "default": "100000"
+    },
+    {
+      "path": "isosurface.generationMode",
+      "type": "String",
+      "default": "\"legacy\""
+    },
+    {
+      "path": "isosurface.patchCacheMaxBytes",
+      "type": "Number",
+      "default": "67108864"
     },
     {
       "path": "contourLines.enabled",

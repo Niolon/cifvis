@@ -254,6 +254,14 @@ export const descriptions = {
     'differenceDensity.initialGridOversampling': 'FFT-grid oversampling used for the first ' +
         'progressive display.',
     'differenceDensity.gridOversampling': 'Final real-space FFT-grid oversampling factor.',
+    'differenceDensity.fftBackend': '<code>auto</code> or <code>mixed-radix</code> uses the ' +
+        '2/3/5 mixed-radix transform and smooth symmetry-compatible dimensions; ' +
+        '<code>radix-2</code> retains the legacy power-of-two validation path.',
+    'differenceDensity.realTransform': 'Uses Hermitian half-spectrum storage and a ' +
+        'complex-to-real transform. Invalid conjugacy falls back safely to a full complex map.',
+    'differenceDensity.symmetryReducedFft': 'Experimental crystallographic FFT-ASU selector. ' +
+        'Explicit use validates and retains a symmetry-orbit-quotiented scalar grid where possible; ' +
+        'the transform kernel currently falls back to the Hermitian full-cell path and reports why.',
 
     // Density: scalarField
     'scalarField.useWorker': 'Parse and calculate scalar fields in a Web Worker when available. ' +
@@ -281,6 +289,11 @@ export const descriptions = {
     'isosurface.opacity': 'Surface opacity.',
     'isosurface.wireframe': 'Draws density surfaces as wireframes.',
     'isosurface.maxPolyCount': 'Maximum marching-cubes polygon allocation per generated field.',
+    'isosurface.generationMode': '<code>legacy</code> uses persistent symmetry-region reuse. ' +
+        '<code>patch-cache</code> enables the experimental fixed-spacing, open-clipped cell cache ' +
+        'for repeated expansion switching.',
+    'isosurface.patchCacheMaxBytes': 'Maximum CPU memory retained for the active field&#39;s ' +
+        'symmetry-region or grid-cell surface cache.',
 
     // Density: contourLines
     'contourLines.enabled': 'Replaces the 3D isosurface with line-only contours on a plane. It ' +

@@ -23,7 +23,11 @@ export function createDifferenceDensityProgression(dataset, options = {}) {
                     ? finalOversampling
                     : null;
             if (oversampling !== null) {
-                map = calculateDifferenceDensityMap(dataset, reciprocalResolution, oversampling);
+                map = calculateDifferenceDensityMap(dataset, reciprocalResolution, oversampling, {
+                    fftBackend: options.fftBackend,
+                    realTransform: options.realTransform,
+                    symmetryReducedFft: options.symmetryReducedFft,
+                });
             }
             return { map, changed: oversampling !== null };
         },

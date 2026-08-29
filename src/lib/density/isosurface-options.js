@@ -15,4 +15,9 @@ export const DEFAULT_ISOSURFACE_OPTIONS = Object.freeze({
     opacity: 0.55,
     wireframe: true,
     maxPolyCount: 100000,
+    // The sparse patch path is available for benchmarked opt-in use. Keep the
+    // established symmetry-aware path as the default until the COD performance
+    // gate demonstrates that patch enumeration is a consistent win.
+    generationMode: 'legacy',
+    patchCacheMaxBytes: 64 * 1024 * 1024,
 });

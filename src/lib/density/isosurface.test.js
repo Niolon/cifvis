@@ -154,4 +154,54 @@ describe('isosurfaces', () => {
         expect(colors.positive).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.positiveColor);
         expect(colors.negative).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.negativeColor);
     });
+
+    test('reuses fixed-lattice patches across displayed expansion changes', () => {
+        const parent = new THREE.Group();
+        const layer = new ThreeIsosurfaceLayer(parent, {
+            ...DEFAULT_ISOSURFACE_OPTIONS,
+            generationMode: 'patch-cache',
+            gridSpacing: 1,
+            radius: 2,
+            sigmaLevel: 1,
+        });
+        layer.setField(densityMap);
+        layer.setStructure(structureAt(0.2));
+        const first = layer.rebuild();
+        layer.setStructure(new CrystalStructure(
+            structureAt(0.2).cell,
+            [
+                ...structureAt(0.2).atoms,
+                new Atom('C2', 'C', new FractPosition(1.2, 0.5, 0.5)),
+            ],
+            [],
+            [],
+            null,
+        ));
+        const expanded = layer.rebuild();
+
+        expect(first.cacheMissCellCount).toBeGreaterThan(0);
+        expect(expanded.cacheHitCellCount).toBeGreaterThan(0);
+        expect(expanded.patchCacheBytes).toBeGreaterThan(0);
+    });
+
+    test('retains cached CPU geometry across appearance-only changes', () => {
+        const layer = new ThreeIsosurfaceLayer(new THREE.Group(), {
+            ...DEFAULT_ISOSURFACE_OPTIONS,
+            resolution: 8,
+            radius: 1.5,
+            sigmaLevel: 1,
+            maxPolyCount: 2000,
+        });
+        layer.setField(densityMap);
+        layer.setStructure(structureAt(0.5));
+        const cold = layer.rebuild();
+        layer.setOptions({ positiveColor: '#123456', opacity: 0.8 });
+        const recolored = layer.rebuild();
+
+        expect(cold.regionCacheMissCount).toBeGreaterThan(0);
+        expect(recolored.regionCacheHitCount).toBeGreaterThan(0);
+        const positive = layer.group.children.find(child => child.userData.sign === 'positive');
+        expect(`#${positive.material.color.getHexString()}`).toBe('#123456');
+        expect(positive.material.opacity).toBe(0.8);
+    });
 });

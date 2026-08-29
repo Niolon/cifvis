@@ -89,6 +89,7 @@ export default [
             'dist/*', 'node_modules/*', 'cod/*', 'coverage/*',
             'src/lib/generated/*', 'out', 'jsdoc-out/*',
             '**/.vitepress/cache/**/*', '**/.vitepress/dist/**/*',
+            '**/.vitepress/.temp/**/*',
         ],
     },
 ];
