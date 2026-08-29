@@ -6,7 +6,7 @@ import { loadCifvis } from '../cifvis-loader.js';
 const container = ref(null);
 const status = ref('Loading both CIF models…');
 const renderStyle = ref('cutout-3d');
-const switching = ref(false);
+const switching = ref(true);
 
 const ADP_FIELDS = ['u11', 'u22', 'u33', 'u12', 'u13', 'u23'];
 const RENDER_STYLES = [
@@ -20,21 +20,43 @@ let differenceStructure = null;
 
 async function createViewer(style, viewState = null) {
     const { CrystalViewer } = await loadCifvis();
+    if (unmounted || !container.value || !differenceStructure) {
+        return false;
+    }
+
     viewer?.dispose();
-    viewer = new CrystalViewer(container.value, {
+    viewer = null;
+    const nextViewer = new CrystalViewer(container.value, {
         adpRepresentation: 'rmsd-peanut',
         renderStyle: style,
         peanutScale: 3,
         atomLabels: { show: 'all', colorMode: 'atom' },
     });
-    await viewer.loadStructure(differenceStructure);
-    if (viewState) {
-        viewer.setViewState(viewState);
+    viewer = nextViewer;
+    try {
+        await nextViewer.loadStructure(differenceStructure);
+    } catch (error) {
+        if (viewer === nextViewer) {
+            viewer = null;
+            nextViewer.dispose();
+        }
+        throw error;
     }
+    if (unmounted || !container.value || viewer !== nextViewer) {
+        if (viewer === nextViewer) {
+            viewer = null;
+            nextViewer.dispose();
+        }
+        return false;
+    }
+    if (viewState) {
+        nextViewer.setViewState(viewState);
+    }
+    return true;
 }
 
 async function selectRenderStyle(style) {
-    if (switching.value || style === renderStyle.value || !differenceStructure) {
+    if (switching.value || style === renderStyle.value || !differenceStructure || !viewer) {
         return;
     }
     switching.value = true;
@@ -42,12 +64,18 @@ async function selectRenderStyle(style) {
     renderStyle.value = style;
     status.value = `Switching to ${RENDER_STYLES.find(mode => mode.value === style).label}…`;
     try {
-        await createViewer(style, viewState);
-        status.value = 'Comparison − reference ADP tensors';
+        const created = await createViewer(style, viewState);
+        if (!unmounted && created) {
+            status.value = 'Comparison − reference ADP tensors';
+        }
     } catch (error) {
-        status.value = `Could not change display mode: ${error.message}`;
+        if (!unmounted) {
+            status.value = `Could not change display mode: ${error.message}`;
+        }
     } finally {
-        switching.value = false;
+        if (!unmounted) {
+            switching.value = false;
+        }
     }
 }
 
@@ -76,10 +104,18 @@ onMounted(async () => {
         }
 
         differenceStructure = difference;
-        await createViewer(renderStyle.value);
-        status.value = 'Comparison − reference ADP tensors';
+        const created = await createViewer(renderStyle.value);
+        if (!unmounted && created) {
+            status.value = 'Comparison − reference ADP tensors';
+        }
     } catch (error) {
-        status.value = `Could not load the PEANUT difference: ${error.message}`;
+        if (!unmounted) {
+            status.value = `Could not load the PEANUT difference: ${error.message}`;
+        }
+    } finally {
+        if (!unmounted) {
+            switching.value = false;
+        }
     }
 });
 
@@ -87,6 +123,7 @@ onUnmounted(() => {
     unmounted = true;
     viewer?.dispose();
     viewer = null;
+    differenceStructure = null;
 });
 </script>
 
