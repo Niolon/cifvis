@@ -18671,6 +18671,7 @@ var ef = Object.freeze({
 	fixCifErrors: !1,
 	atomLabels: {
 		show: "none",
+		subscriptNonElement: !1,
 		placementMode: "auto-omit",
 		text: {},
 		fontSize: 14,
@@ -18683,7 +18684,7 @@ var ef = Object.freeze({
 		haloColor: "#ffffff",
 		haloWidth: 2,
 		leaderLines: "auto",
-		leaderColor: "rgba(17, 17, 17, 0.55)",
+		leaderColor: "label",
 		leaderWidth: 1,
 		atomPadding: 3,
 		bondPadding: 2,
@@ -20006,23 +20007,47 @@ function op(e, t) {
 	let n = 10 ** t;
 	return Math.round(e * n) / n;
 }
+var sp = "₀₁₂₃₄₅₆₇₈₉";
+function cp(e, t = !1) {
+	let n = String(e ?? "");
+	if (!t) return {
+		element: n,
+		nonElement: ""
+	};
+	let r = n.match(/^([A-Z][a-z]?)(.*)$/);
+	if (!r) return {
+		element: n,
+		nonElement: ""
+	};
+	let i = r[2].startsWith("(") && r[2].endsWith(")") ? r[2].slice(1, -1) : r[2];
+	return {
+		element: r[1],
+		nonElement: i
+	};
+}
+function lp(e, t = !1) {
+	let n = String(e ?? "");
+	if (!t) return n;
+	let r = cp(n, !0);
+	return r.element + r.nonElement.replace(/\d/g, (e) => sp[Number(e)]);
+}
 //#endregion
 //#region src/lib/structure/measurements.js
-var sp = 180 / Math.PI, cp = (e, t) => [
+var up = 180 / Math.PI, dp = (e, t) => [
 	e.x - t.x,
 	e.y - t.y,
 	e.z - t.z
-], lp = (e, t) => e[0] * t[0] + e[1] * t[1] + e[2] * t[2], up = (e, t) => [
+], fp = (e, t) => e[0] * t[0] + e[1] * t[1] + e[2] * t[2], pp = (e, t) => [
 	e[1] * t[2] - e[2] * t[1],
 	e[2] * t[0] - e[0] * t[2],
 	e[0] * t[1] - e[1] * t[0]
-], dp = (e) => Math.hypot(...e);
-function fp(e) {
-	let t = dp(e);
+], mp = (e) => Math.hypot(...e);
+function hp(e) {
+	let t = mp(e);
 	if (t === 0) throw Error("Cannot measure coincident atoms");
 	return e.map((e) => e / t);
 }
-function pp(e, t) {
+function gp(e, t) {
 	if (e.length < 2) throw Error("Select at least two atoms to measure");
 	let n = e.map((e) => e.position.toCartesian(t)), r = n.map((e) => [
 		e.x,
@@ -20031,17 +20056,17 @@ function pp(e, t) {
 	]), i = e.map((e) => e.label), a = e.map((e) => e.uniqueId);
 	if (n.length === 2) return {
 		type: "distance",
-		value: dp(cp(n[1], n[0])),
+		value: mp(dp(n[1], n[0])),
 		unit: "Å",
 		labels: i,
 		points: r,
 		atomIds: a
 	};
 	if (n.length === 3) {
-		let e = fp(cp(n[0], n[1])), t = fp(cp(n[2], n[1])), o = Math.max(-1, Math.min(1, lp(e, t)));
+		let e = hp(dp(n[0], n[1])), t = hp(dp(n[2], n[1])), o = Math.max(-1, Math.min(1, fp(e, t)));
 		return {
 			type: "angle",
-			value: Math.acos(o) * sp,
+			value: Math.acos(o) * up,
 			unit: "°",
 			labels: i,
 			points: r,
@@ -20049,10 +20074,10 @@ function pp(e, t) {
 		};
 	}
 	if (n.length === 4) {
-		let e = fp(cp(n[2], n[1])), t = cp(n[0], n[1]), o = cp(n[3], n[2]), s = fp(t.map((n, r) => n - lp(t, e) * e[r])), c = fp(o.map((t, n) => t - lp(o, e) * e[n]));
+		let e = hp(dp(n[2], n[1])), t = dp(n[0], n[1]), o = dp(n[3], n[2]), s = hp(t.map((n, r) => n - fp(t, e) * e[r])), c = hp(o.map((t, n) => t - fp(o, e) * e[n]));
 		return {
 			type: "torsion",
-			value: Math.atan2(lp(up(e, s), c), lp(s, c)) * sp,
+			value: Math.atan2(fp(pp(e, s), c), fp(s, c)) * up,
 			unit: "°",
 			labels: i,
 			points: r,
@@ -20087,19 +20112,19 @@ function pp(e, t) {
 		]
 	];
 	for (let e of o) {
-		let t = cp(e, c);
+		let t = dp(e, c);
 		for (let e = 0; e < 3; e++) for (let n = 0; n < 3; n++) l[e][n] += t[e] * t[n];
 	}
 	let u = he(l), d = Math.max(1, Math.abs(u.values.at(-1)));
 	if (Math.abs(u.values[1]) <= d * 1e-12) throw Error("Cannot define a mean plane from collinear atoms");
-	let f = fp(u.eigenvectors[0].vector.toArray()), p = lp(cp(s, c), f), m = [
+	let f = hp(u.eigenvectors[0].vector.toArray()), p = fp(dp(s, c), f), m = [
 		s.x - p * f[0],
 		s.y - p * f[1],
 		s.z - p * f[2]
 	];
 	return {
 		type: "plane-distance",
-		value: Math.abs(lp(cp(s, c), f)),
+		value: Math.abs(fp(dp(s, c), f)),
 		unit: "Å",
 		labels: i,
 		planeLabels: i.slice(0, -1),
@@ -20117,13 +20142,13 @@ function pp(e, t) {
 		}
 	};
 }
-function mp(e) {
-	let t = e.value.toFixed(e.unit === "°" ? 2 : 3);
-	if (e.type === "plane-distance") return `${e.probeLabel} to mean plane (${e.planeLabels.join(", ")}): ${t} ${e.unit}`;
-	let n = e.type === "distance" ? "Distance" : e.type === "angle" ? "Angle" : "Torsion", r = e.unit === "°" ? "" : " ";
-	return `${n} ${e.labels.join("–")}: ${t}${r}${e.unit}`;
+function _p(e, t = {}) {
+	let n = e.value.toFixed(e.unit === "°" ? 2 : 3);
+	if (e.type === "plane-distance") return `${lp(e.probeLabel, t.subscriptNonElement)} to mean plane (${e.planeLabels.map((e) => lp(e, t.subscriptNonElement)).join(", ")}): ${n} ${e.unit}`;
+	let r = e.type === "distance" ? "Distance" : e.type === "angle" ? "Angle" : "Torsion", i = e.unit === "°" ? "" : " ";
+	return `${r} ${e.labels.map((e) => lp(e, t.subscriptNonElement)).join("–")}: ${n}${i}${e.unit}`;
 }
-function hp(e) {
+function vp(e) {
 	if (e < 2) {
 		let t = 2 - e;
 		return {
@@ -20152,11 +20177,11 @@ function hp(e) {
 }
 //#endregion
 //#region src/lib/density/cell-matching.js
-var gp = Object.freeze({
+var yp = Object.freeze({
 	relativeLength: .001,
 	angleDegrees: .05
 });
-function _p(e, t, n = gp) {
+function bp(e, t, n = yp) {
 	for (let r of [
 		"a",
 		"b",
@@ -20172,20 +20197,20 @@ function _p(e, t, n = gp) {
 	]) if (Math.abs(e[r] - t[r]) > n.angleDegrees) return !1;
 	return !0;
 }
-function vp(e, t, n = "Reflection") {
+function xp(e, t, n = "Reflection") {
 	for (let r of [
 		"a",
 		"b",
 		"c"
 	]) {
 		let i = Math.max(Math.abs(t[r]), 1);
-		if (Math.abs(e[r] - t[r]) / i > gp.relativeLength) throw Error(`${n} unit cell does not match the structure (${r})`);
+		if (Math.abs(e[r] - t[r]) / i > yp.relativeLength) throw Error(`${n} unit cell does not match the structure (${r})`);
 	}
 	for (let r of [
 		"alpha",
 		"beta",
 		"gamma"
-	]) if (Math.abs(e[r] - t[r]) > gp.angleDegrees) throw Error(`${n} unit cell does not match the structure (${r})`);
+	]) if (Math.abs(e[r] - t[r]) > yp.angleDegrees) throw Error(`${n} unit cell does not match the structure (${r})`);
 }
 //#endregion
 //#region src/lib/density/cif-values.js
@@ -20194,14 +20219,14 @@ function $(e) {
 	let t = Number(e);
 	return Number.isFinite(t) ? t : null;
 }
-function yp(e, t) {
+function Sp(e, t) {
 	for (let n of typeof t == "string" ? [t] : t) try {
 		let t = e.get(n, !1);
 		if (t && typeof t.get == "function") return t;
 	} catch {}
 	return null;
 }
-function bp(e, t, n = null) {
+function Cp(e, t, n = null) {
 	if (!e) return n;
 	try {
 		return e.get(t, n !== null && n) || n;
@@ -20209,14 +20234,14 @@ function bp(e, t, n = null) {
 		return n;
 	}
 }
-function xp(e, t) {
+function wp(e, t) {
 	for (let n of t) try {
 		let t = $(e.get(n));
 		if (t !== null) return t;
 	} catch {}
 	return null;
 }
-function Sp(e, t) {
+function Tp(e, t) {
 	for (let n of t) try {
 		let t = e.get(n);
 		if (typeof t == "string" && t.trim()) return t;
@@ -20225,8 +20250,8 @@ function Sp(e, t) {
 }
 //#endregion
 //#region src/lib/density/structure-factor-model.js
-var Cp = 2 * Math.PI;
-function wp(e, t, n) {
+var Ep = 2 * Math.PI;
+function Dp(e, t, n) {
 	if (e.adp instanceof De) return { isotropic: e.adp.uiso };
 	if (e.adp instanceof Oe) {
 		let [r, i, a, o, s, c] = e.adp.getUCart(t), l = P(P(n, [
@@ -20257,26 +20282,26 @@ function wp(e, t, n) {
 	}
 	return null;
 }
-function Tp(e, t, n) {
+function Op(e, t, n) {
 	if (!e) return 1;
 	if (e.isotropic !== void 0) return Math.exp(-2 * Math.PI ** 2 * e.isotropic * n);
 	let [r, i, a, o, s, c] = e.anisotropic, [l, u, d] = t, f = r * l * l + i * u * u + a * d * d + 2 * o * l * u + 2 * s * l * d + 2 * c * u * d;
 	return Math.exp(-2 * Math.PI ** 2 * f);
 }
-function Ep(e) {
+function kp(e) {
 	return e.map((e) => {
 		let t = (e % 1 + 1) % 1, n = Math.abs(t - 1) < 1e-8 ? 0 : t;
 		return Math.round(n * 1e8);
 	}).join(",");
 }
-function Dp(e) {
+function Ap(e) {
 	return Array.isArray(e) ? e : [
 		e.h,
 		e.k,
 		e.l
 	];
 }
-function Op(e) {
+function jp(e) {
 	return e instanceof De ? {
 		type: "Uiso",
 		values: [e.uiso]
@@ -20292,10 +20317,10 @@ function Op(e) {
 		]
 	} : null;
 }
-function kp(e) {
+function Mp(e) {
 	return e?.type === "Uiso" ? new De(e.values[0]) : e?.type === "Uani" ? new Oe(...e.values) : null;
 }
-function Ap(e, t) {
+function Np(e, t) {
 	if (e instanceof De) return e.uiso < -1e-10;
 	if (!(e instanceof Oe)) return !1;
 	let n = e.getUCart(t);
@@ -20317,7 +20342,7 @@ function Ap(e, t) {
 		]
 	]).eigenvectors.some((e) => e.value < -1e-10);
 }
-function jp(e, t) {
+function Pp(e, t) {
 	let n = t.get("_atom_site"), r = n.get(["_atom_site.label", "_atom_site_label"]), i = n.get(["_atom_site.occupancy", "_atom_site_occupancy"], Array(r.length).fill(1)), a = new Map(r.map((e, t) => [String(e), $(i[t]) ?? 1])), o = se(e.cell.fractToCartMatrix), s = e.atoms.map((e) => {
 		let t = e.position instanceof xe ? [
 			e.position.x,
@@ -20332,7 +20357,7 @@ function jp(e, t) {
 			label: e.label,
 			atomType: e.atomType,
 			position: Array.isArray(t) ? t : t.toArray(),
-			adp: Op(e.adp),
+			adp: jp(e.adp),
 			occupancy: a.get(String(e.label)) ?? 1
 		};
 	});
@@ -20350,19 +20375,19 @@ function jp(e, t) {
 			rotation: e.rotMatrix.map((e) => [...e]),
 			translation: [...e.transVector]
 		})),
-		wavelength: xp(t, [
+		wavelength: wp(t, [
 			"_diffrn_radiation_wavelength.wavelength",
 			"_diffrn_radiation.wavelength",
 			"_diffrn_radiation_wavelength"
 		])
 	};
 }
-function Mp(e, t = 0, n = {}) {
+function Fp(e, t = 0, n = {}) {
 	if (typeof e != "string" || e.length === 0) throw Error("Structure-factor calculation requires the coordinate CIF text");
 	if (typeof n.resolveAtom != "function") throw Error("Structure-factor calculation requires an atom factor resolver");
 	let r = new D(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = n.structureModel ?? null, o = a ? new yt(a.cell.a, a.cell.b, a.cell.c, a.cell.alpha, a.cell.beta, a.cell.gamma) : yt.fromCIF(i);
-	if (n.expectedCell && !_p(o, n.expectedCell)) throw Error("Structure-factor coordinate CIF cell does not match the reflection cell");
-	let s = a?.wavelength ?? xp(i, [
+	if (n.expectedCell && !bp(o, n.expectedCell)) throw Error("Structure-factor coordinate CIF cell does not match the reflection cell");
+	let s = a?.wavelength ?? wp(i, [
 		"_diffrn_radiation_wavelength.wavelength",
 		"_diffrn_radiation.wavelength",
 		"_diffrn_radiation_wavelength"
@@ -20376,7 +20401,7 @@ function Mp(e, t = 0, n = {}) {
 	})(), l = [], u = {}, d = [], f = /* @__PURE__ */ new Map();
 	for (let e = 0; e < c.length; e++) {
 		let t = c[e], r, o = t.index ?? e;
-		if (a) r = new bt(t.label, t.atomType, new xe(...t.position), kp(t.adp));
+		if (a) r = new bt(t.label, t.atomType, new xe(...t.position), Mp(t.adp));
 		else try {
 			r = bt.fromCIF(i, o);
 		} catch (e) {
@@ -20423,24 +20448,24 @@ function Mp(e, t = 0, n = {}) {
 			e.atom.position.z
 		]);
 		for (let r of _) {
-			let i = re(P(r.operation.rotation, n), r.operation.translation), a = Array.isArray(i) ? i : i.toArray(), s = Ep(a);
+			let i = re(P(r.operation.rotation, n), r.operation.translation), a = Array.isArray(i) ? i : i.toArray(), s = kp(a);
 			if (t.has(s)) continue;
 			t.add(s);
 			let c = {
 				position: a,
 				occupancy: e.occupancy,
-				displacement: wp(e.atom, o, r.cartesianRotation)
+				displacement: Dp(e.atom, o, r.cartesianRotation)
 			};
 			v++, d[e.scatteringModelIndex].atoms.push(c);
 		}
 	}
-	let y = l.filter((e) => Ap(e.atom.adp, o)).map((e) => e.atom.label);
+	let y = l.filter((e) => Np(e.atom.adp, o)).map((e) => e.atom.label);
 	function b(e, t, n) {
 		let r = g.map((r) => r[0] * e + r[1] * t + r[2] * n), i = r.reduce((e, t) => e + t ** 2, 0), a = i / 4, o = 0, s = 0;
 		for (let c = 0; c < d.length; c++) {
 			let l = d[c], u = l.scatteringAt(a);
 			for (let a of l.atoms) {
-				let c = Cp * (e * a.position[0] + t * a.position[1] + n * a.position[2]), l = a.occupancy * Tp(a.displacement, r, i), d = Math.cos(c), f = Math.sin(c);
+				let c = Ep * (e * a.position[0] + t * a.position[1] + n * a.position[2]), l = a.occupancy * Op(a.displacement, r, i), d = Math.cos(c), f = Math.sin(c);
 				o += l * (u.real * d - u.imaginary * f), s += l * (u.real * f + u.imaginary * d);
 			}
 		}
@@ -20453,7 +20478,7 @@ function Mp(e, t = 0, n = {}) {
 		coefficientAt: b,
 		calculate(e) {
 			return e.map((e) => {
-				let [t, n, r] = Dp(e), i = b(t, n, r);
+				let [t, n, r] = Ap(e), i = b(t, n, r);
 				return {
 					h: t,
 					k: n,
@@ -20477,7 +20502,7 @@ function Mp(e, t = 0, n = {}) {
 }
 //#endregion
 //#region src/lib/density/anomalous-dispersion.js
-var Np = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Pp = Object.fromEntries(Object.entries({
+var Ip = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Lp = Object.fromEntries(Object.entries({
 	mo: {
 		wavelength: .71073,
 		real: "0 0 0 0 0 .002 .004 .008 .014 .021 .03 .042 .056 .072 .09 .11 .132 .155 .179 .203 .226 .248 .267 .284 .295 .301 .299 .285 .263 .222 .163 .081 -.03 -.178 -.374 -.652 -1.044 -1.657 -2.951 -2.965 -2.197 -1.825 -1.59 -1.42 -1.287 -1.177 -1.085 -1.005 -.936 -.873 -.816 -.772 -.726 -.684 -.644 -.613 -.588 -.564 -.53 -.535 -.53 -.533 -.542 -.564 -.591 -.619 -.666 -.723 -.795 -.884 -.988 -1.118 -1.258 -1.421 -1.598 -1.816 -2.066 -2.352 -2.688 -3.084 -3.556 -4.133 -4.861 -5.924 -7.444 -8.862 -7.912 -7.62 -7.725 -8.127 -8.96 -10.673 -11.158 -9.725 -8.926 -8.416 -7.99 -7.683",
@@ -20490,25 +20515,25 @@ var Np = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co
 	}
 }).map(([e, t]) => {
 	let n = t.real.trim().split(/\s+/).map(Number), r = t.imaginary.trim().split(/\s+/).map(Number);
-	if (n.length !== Np.length || r.length !== Np.length) throw Error(`Invalid internal anomalous-dispersion table: ${e}`);
+	if (n.length !== Ip.length || r.length !== Ip.length) throw Error(`Invalid internal anomalous-dispersion table: ${e}`);
 	return [e, {
 		wavelength: t.wavelength,
-		values: new Map(Np.map((e, t) => [e, {
+		values: new Map(Ip.map((e, t) => [e, {
 			real: n[t],
 			imaginary: r[t]
 		}]))
 	}];
 }));
-function Fp(e) {
+function Rp(e) {
 	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
 	if (!t) return null;
 	if (t[1].toUpperCase() === "D") return "H";
 	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
-	return Np.includes(n) ? n : null;
+	return Ip.includes(n) ? n : null;
 }
-function Ip(e, t) {
+function zp(e, t) {
 	if (e.table !== void 0) {
-		let t = String(e.table).toLowerCase().replace(/[^a-z]/g, "").slice(0, 2), n = Pp[t];
+		let t = String(e.table).toLowerCase().replace(/[^a-z]/g, "").slice(0, 2), n = Lp[t];
 		if (!n) throw Error("Anomalous-dispersion table must be \"Cu\" or \"Mo\"");
 		return {
 			key: t,
@@ -20516,27 +20541,27 @@ function Ip(e, t) {
 		};
 	}
 	if (!Number.isFinite(t)) return null;
-	let n = $(e.wavelengthTolerance) ?? .005, r = Object.entries(Pp).find(([, e]) => Math.abs(e.wavelength - t) <= n);
+	let n = $(e.wavelengthTolerance) ?? .005, r = Object.entries(Lp).find(([, e]) => Math.abs(e.wavelength - t) <= n);
 	return r ? {
 		key: r[0],
 		...r[1]
 	} : null;
 }
-function Lp(e, t, n = {}) {
-	let r = Fp(e), i = Ip(n, $(t)), a = r && i?.values.get(r);
+function Bp(e, t, n = {}) {
+	let r = Rp(e), i = zp(n, $(t)), a = r && i?.values.get(r);
 	return a ? {
 		...a,
 		table: i.key,
 		wavelength: i.wavelength
 	} : null;
 }
-function Rp(e, t, n) {
-	let r = yp(e, t), i = bp(r, n), a = bp(r, [
+function Vp(e, t, n) {
+	let r = Sp(e, t), i = Cp(r, n), a = Cp(r, [
 		"_atom_site_dispersion.real",
 		"_atom_site_dispersion_real",
 		"_atom_type_scat.dispersion_real",
 		"_atom_type_scat_dispersion_real"
-	]), o = bp(r, [
+	]), o = Cp(r, [
 		"_atom_site_dispersion.imag",
 		"_atom_site_dispersion_imag",
 		"_atom_type_scat.dispersion_imag",
@@ -20549,7 +20574,7 @@ function Rp(e, t, n) {
 	});
 	return s;
 }
-function zp(e, t, n) {
+function Hp(e, t, n) {
 	let r = e.values ?? e.fallbackValues;
 	if (!r) return null;
 	let i = r[t] ?? r[n];
@@ -20561,14 +20586,14 @@ function zp(e, t, n) {
 		imaginary: $(i.imaginary ?? i.fDoublePrime)
 	} : null;
 }
-function Bp(e, t) {
+function Up(e, t) {
 	return !e && !t ? null : {
 		real: e?.real ?? t?.real ?? null,
 		imaginary: e?.imaginary ?? t?.imaginary ?? null
 	};
 }
-function Vp(e, t, n, r, i, a) {
-	let o = Fp(e), s = zp(a, e, o), c = Bp(s, o ? i?.values.get(o) : null), l = r.get(String(e)) ?? r.get(o), u = Bp(n.get(String(t)), Bp(l, c));
+function Wp(e, t, n, r, i, a) {
+	let o = Rp(e), s = Hp(a, e, o), c = Up(s, o ? i?.values.get(o) : null), l = r.get(String(e)) ?? r.get(o), u = Up(n.get(String(t)), Up(l, c));
 	if (!u || u.real === null || u.imaginary === null) throw Error(`No complete anomalous-dispersion factors for atom ${t} (${e}); provide them in the CIF or select a supported internal table`);
 	let d = n.has(String(t)) ? "site-cif" : l ? "type-cif" : s ? "configured" : "internal";
 	return {
@@ -20577,14 +20602,14 @@ function Vp(e, t, n, r, i, a) {
 		source: d
 	};
 }
-function Hp(e, t = 0, n = {}, r = null) {
-	let i, a, o, s = Mp(e, t, {
+function Gp(e, t = 0, n = {}, r = null) {
+	let i, a, o, s = Fp(e, t, {
 		expectedCell: r,
 		wavelength: n.wavelength,
 		structureModel: n.structureModel,
 		resolveAtom({ atom: e, block: t, wavelength: r }) {
-			i ??= Ip(n, r), a ??= Rp(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]), o ??= Rp(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]);
-			let s = Vp(e.atomType, e.label, a, o, i, n);
+			i ??= zp(n, r), a ??= Vp(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]), o ??= Vp(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]);
+			let s = Wp(e.atomType, e.label, a, o, i, n);
 			return {
 				source: s.source,
 				scatteringKey: `${s.real},${s.imaginary}`,
@@ -20608,23 +20633,23 @@ function Hp(e, t = 0, n = {}, r = null) {
 }
 //#endregion
 //#region src/lib/density/cromer-mann.js
-var Up = new Map("H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674".split("\n").map((e) => {
+var Kp = new Map("H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674".split("\n").map((e) => {
 	let [t, ...n] = e.trim().split(/\s+/);
 	if (n.length !== 9 || n.some((e) => !Number.isFinite(Number(e)))) throw Error(`Invalid internal Cromer-Mann coefficients for ${t}`);
 	return [t, n.map(Number)];
 }));
-function Wp(e) {
-	let t = Up.get(e === "D" ? "H" : e);
+function qp(e) {
+	let t = Kp.get(e === "D" ? "H" : e);
 	return t ? [...t] : null;
 }
-function Gp(e, t) {
+function Jp(e, t) {
 	let n = e[8];
 	for (let r = 0; r < 4; r++) n += e[r] * Math.exp(-e[r + 4] * t);
 	return n;
 }
 //#endregion
 //#region src/lib/density/iam-structure-factors.js
-var Kp = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), qp = [
+var Yp = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Xp = [
 	"a1",
 	"a2",
 	"a3",
@@ -20635,15 +20660,15 @@ var Kp = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co
 	"b4",
 	"c"
 ];
-function Jp(e) {
+function Zp(e) {
 	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
 	if (!t) return null;
 	if (t[1].toUpperCase() === "D") return "H";
 	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
-	return Kp.includes(n) ? n : null;
+	return Yp.includes(n) ? n : null;
 }
-function Yp(e) {
-	let t = yp(e, ["_atom_type", "_atom_type_scat"]), n = bp(t, ["_atom_type.symbol", "_atom_type_symbol"]), r = qp.map((e) => bp(t, [
+function Qp(e) {
+	let t = Sp(e, ["_atom_type", "_atom_type_scat"]), n = Cp(t, ["_atom_type.symbol", "_atom_type_symbol"]), r = Xp.map((e) => Cp(t, [
 		`_atom_type_scat.Cromer_Mann_${e}`,
 		`_atom_type_scat_Cromer_Mann_${e}`,
 		`_atom_type.scat_Cromer_Mann_${e}`
@@ -20654,19 +20679,19 @@ function Yp(e) {
 		if (t.every((e) => e !== null)) {
 			let r = String(n[e]);
 			i.set(r, t);
-			let a = Jp(r);
+			let a = Zp(r);
 			a && !i.has(a) && i.set(a, t);
 		}
 	}
 	return i;
 }
-function Xp(e, t, n) {
-	let r = yp(e, t), i = bp(r, n), a = bp(r, [
+function $p(e, t, n) {
+	let r = Sp(e, t), i = Cp(r, n), a = Cp(r, [
 		"_atom_site_dispersion.real",
 		"_atom_site_dispersion_real",
 		"_atom_type_scat.dispersion_real",
 		"_atom_type_scat_dispersion_real"
-	]), o = bp(r, [
+	]), o = Cp(r, [
 		"_atom_site_dispersion.imag",
 		"_atom_site_dispersion_imag",
 		"_atom_type_scat.dispersion_imag",
@@ -20679,13 +20704,13 @@ function Xp(e, t, n) {
 	});
 	return s;
 }
-function Zp(e, t, n) {
+function em(e, t, n) {
 	let r = e.cromerMann?.[t] ?? e.cromerMann?.[n];
 	if (!Array.isArray(r) || r.length !== 9) return null;
 	let i = r.map($);
 	return i.every((e) => e !== null) ? i : null;
 }
-function Qp(e, t, n) {
+function tm(e, t, n) {
 	let r = e.dispersionValues?.[t] ?? e.dispersionValues?.[n];
 	return Array.isArray(r) ? {
 		real: $(r[0]),
@@ -20695,31 +20720,31 @@ function Qp(e, t, n) {
 		imaginary: $(r.imaginary ?? r.fDoublePrime)
 	} : null;
 }
-function $p(e) {
+function nm(e) {
 	return e?.real !== null && e?.real !== void 0 && e?.imaginary !== null && e?.imaginary !== void 0;
 }
-function em(e, t) {
+function rm(e, t) {
 	return {
 		real: e?.real ?? t?.real ?? null,
 		imaginary: e?.imaginary ?? t?.imaginary ?? null
 	};
 }
-function tm(e, t = 0, n = {}) {
-	let r, i, a, o = n.includeAnomalous !== !1, s = Mp(e, t, {
+function im(e, t = 0, n = {}) {
+	let r, i, a, o = n.includeAnomalous !== !1, s = Fp(e, t, {
 		expectedCell: n.expectedCell,
 		wavelength: n.wavelength,
 		structureModel: n.structureModel,
 		resolveAtom({ atom: e, block: t, wavelength: s }) {
-			r ??= Yp(t), i ??= Xp(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]), a ??= Xp(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]);
-			let c = Jp(e.atomType), l = r.get(e.atomType) ?? r.get(c), u = Zp(n, e.atomType, c), d = l ?? u ?? Wp(c);
+			r ??= Qp(t), i ??= $p(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]), a ??= $p(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]);
+			let c = Zp(e.atomType), l = r.get(e.atomType) ?? r.get(c), u = em(n, e.atomType, c), d = l ?? u ?? qp(c);
 			if (!d) throw Error(`No Cromer-Mann coefficients for atom ${e.label} (${e.atomType})`);
 			let f = {
 				real: 0,
 				imaginary: 0
 			}, p = "disabled";
 			if (o) {
-				let t = a.get(e.label), r = i.get(e.atomType) ?? i.get(c), o = Qp(n, e.atomType, c), l = em(t, em(r, em(o, Lp(c, s, n.anomalous ?? {}))));
-				$p(l) ? (f = l, p = t ? "site-cif" : r ? "type-cif" : o ? "configured" : "internal") : p = "zero";
+				let t = a.get(e.label), r = i.get(e.atomType) ?? i.get(c), o = tm(n, e.atomType, c), l = rm(t, rm(r, rm(o, Bp(c, s, n.anomalous ?? {}))));
+				nm(l) ? (f = l, p = t ? "site-cif" : r ? "type-cif" : o ? "configured" : "internal") : p = "zero";
 			}
 			return {
 				source: `${l ? "cif" : u ? "configured" : "internal"}/${p}`,
@@ -20730,7 +20755,7 @@ function tm(e, t = 0, n = {}) {
 				]),
 				scatteringAt(e) {
 					return {
-						real: Gp(d, e) + f.real,
+						real: Jp(d, e) + f.real,
 						imaginary: f.imaginary
 					};
 				}
@@ -20746,49 +20771,49 @@ function tm(e, t = 0, n = {}) {
 		}
 	};
 }
-function nm(e, t, n = {}) {
-	return tm(e, n.cifBlock ?? 0, n).calculate(t);
+function am(e, t, n = {}) {
+	return im(e, n.cifBlock ?? 0, n).calculate(t);
 }
 //#endregion
 //#region src/lib/density/reciprocal-symmetry.js
-var rm = 2 * Math.PI, im = /* @__PURE__ */ new WeakMap();
-function am(e, t, n = 1e-6) {
+var om = 2 * Math.PI, sm = /* @__PURE__ */ new WeakMap();
+function cm(e, t, n = 1e-6) {
 	return e.map((e) => {
 		let r = e[0] * t[0] + e[1] * t[1] + e[2] * t[2], i = Math.round(r);
 		if (Math.abs(r - i) > n) throw Error(`Symmetry operation produced a non-integral reflection index: ${r}`);
 		return Object.is(i, -0) ? 0 : i;
 	});
 }
-function om(e) {
-	let t = im.get(e);
+function lm(e) {
+	let t = sm.get(e);
 	return t || (t = e.symmetryOperations.map((e) => ({
 		operation: e,
 		reciprocalRotation: ae(se(e.rotMatrix)),
 		positionReciprocalRotation: ae(e.rotMatrix),
 		translation: e.transVector
-	})), im.set(e, t)), t;
+	})), sm.set(e, t)), t;
 }
-function sm(e, t) {
+function um(e, t) {
 	for (let n = 0; n < 3; n++) if (e[n] !== t[n]) return e[n] - t[n];
 	return 0;
 }
-function cm(e, t, n, r, i = !0) {
-	let a = om(r).map((r) => am(r.reciprocalRotation, [
+function dm(e, t, n, r, i = !0) {
+	let a = lm(r).map((r) => cm(r.reciprocalRotation, [
 		e,
 		t,
 		n
 	]));
-	return i && a.push(...a.map((e) => e.map((e) => e === 0 ? 0 : -e))), a.sort(sm), a[0];
+	return i && a.push(...a.map((e) => e.map((e) => e === 0 ? 0 : -e))), a.sort(um), a[0];
 }
-function lm(e, t, n, r, i = 1e-8) {
+function fm(e, t, n, r, i = 1e-8) {
 	if (e === 0 && t === 0 && n === 0) return !1;
 	let a = /* @__PURE__ */ new Map();
-	for (let i of om(r)) {
-		let r = am(i.positionReciprocalRotation, [
+	for (let i of lm(r)) {
+		let r = cm(i.positionReciprocalRotation, [
 			e,
 			t,
 			n
-		]).join(","), o = rm * (e * i.translation[0] + t * i.translation[1] + n * i.translation[2]), s = a.get(r) ?? {
+		]).join(","), o = om * (e * i.translation[0] + t * i.translation[1] + n * i.translation[2]), s = a.get(r) ?? {
 			real: 0,
 			imaginary: 0
 		};
@@ -20798,17 +20823,17 @@ function lm(e, t, n, r, i = 1e-8) {
 }
 //#endregion
 //#region src/lib/density/reflection-intensities.js
-function um(e, t) {
+function pm(e, t) {
 	return [t, ...e.getAllBlocks().filter((e) => e !== t)];
 }
-function dm(e, t, n) {
+function mm(e, t, n) {
 	return [
 		e,
 		t,
 		n
 	].every((e) => Number.isInteger(e));
 }
-function fm(e, t, n, r, i = null) {
+function hm(e, t, n, r, i = null) {
 	let a = [
 		e,
 		t,
@@ -20820,7 +20845,7 @@ function fm(e, t, n, r, i = null) {
 	let o = [], s = 0;
 	for (let c = 0; c < a[0]; c++) {
 		let a = $(e[c]), l = $(t[c]), u = $(n[c]), d = $(r[c]), f = i ? $(i[c]) : null;
-		if (!dm(a, l, u) || d === null || i && f === null) {
+		if (!mm(a, l, u) || d === null || i && f === null) {
 			s++;
 			continue;
 		}
@@ -20838,10 +20863,10 @@ function fm(e, t, n, r, i = null) {
 		invalidCount: s
 	};
 }
-function pm(e) {
-	let t = bp(e, ["_refln.index_h", "_refln_index_h"]), n = bp(e, ["_refln.index_k", "_refln_index_k"]), r = bp(e, ["_refln.index_l", "_refln_index_l"]), i = bp(e, ["_refln.intensity_meas", "_refln_intensity_meas"]);
+function gm(e) {
+	let t = Cp(e, ["_refln.index_h", "_refln_index_h"]), n = Cp(e, ["_refln.index_k", "_refln_index_k"]), r = Cp(e, ["_refln.index_l", "_refln_index_l"]), i = Cp(e, ["_refln.intensity_meas", "_refln_intensity_meas"]);
 	if (i) return {
-		...fm(t, n, r, i, bp(e, [
+		...hm(t, n, r, i, Cp(e, [
 			"_refln.intensity_sigma",
 			"_refln_intensity_sigma",
 			"_refln.intensity_meas_su",
@@ -20849,9 +20874,9 @@ function pm(e) {
 		])),
 		valueKind: "intensity"
 	};
-	let a = bp(e, ["_refln.F_squared_meas", "_refln_F_squared_meas"]);
+	let a = Cp(e, ["_refln.F_squared_meas", "_refln_F_squared_meas"]);
 	if (a) return {
-		...fm(t, n, r, a, bp(e, [
+		...hm(t, n, r, a, Cp(e, [
 			"_refln.F_squared_sigma",
 			"_refln_F_squared_sigma",
 			"_refln.F_squared_meas_su",
@@ -20859,11 +20884,11 @@ function pm(e) {
 		])),
 		valueKind: "F-squared"
 	};
-	let o = bp(e, ["_refln.F_meas", "_refln_F_meas"]);
+	let o = Cp(e, ["_refln.F_meas", "_refln_F_meas"]);
 	if (o) {
-		let i = bp(e, ["_refln.F_sigma", "_refln_F_sigma"]);
+		let i = Cp(e, ["_refln.F_sigma", "_refln_F_sigma"]);
 		return {
-			...fm(t, n, r, o.map((e) => {
+			...hm(t, n, r, o.map((e) => {
 				let t = $(e);
 				return t === null ? null : t ** 2;
 			}), i?.map((e, t) => {
@@ -20875,13 +20900,13 @@ function pm(e) {
 	}
 	throw Error("The _refln loop contains no measured intensity, F-squared, or F columns");
 }
-function mm(e) {
-	let t = bp(e, ["_diffrn_refln.index_h", "_diffrn_refln_index_h"]), n = bp(e, ["_diffrn_refln.index_k", "_diffrn_refln_index_k"]), r = bp(e, ["_diffrn_refln.index_l", "_diffrn_refln_index_l"]), i = bp(e, [
+function _m(e) {
+	let t = Cp(e, ["_diffrn_refln.index_h", "_diffrn_refln_index_h"]), n = Cp(e, ["_diffrn_refln.index_k", "_diffrn_refln_index_k"]), r = Cp(e, ["_diffrn_refln.index_l", "_diffrn_refln_index_l"]), i = Cp(e, [
 		"_diffrn_refln.intensity_net",
 		"_diffrn_refln_intensity_net",
 		"_diffrn_refln.intensity_meas",
 		"_diffrn_refln_intensity_meas"
-	]), a = bp(e, [
+	]), a = Cp(e, [
 		"_diffrn_refln.intensity_u",
 		"_diffrn_refln_intensity_u",
 		"_diffrn_refln.intensity_sigma",
@@ -20890,9 +20915,9 @@ function mm(e) {
 		"_diffrn_refln_intensity_net_su"
 	]);
 	if (!i) throw Error("The _diffrn_refln loop contains no net measured intensity column");
-	return fm(t, n, r, i, a);
+	return hm(t, n, r, i, a);
 }
-function hm(e) {
+function vm(e) {
 	let t = [
 		e.slice(0, 4),
 		e.slice(4, 8),
@@ -20903,22 +20928,22 @@ function hm(e) {
 	].map((e) => e.trim());
 	return t.slice(0, 5).some((e) => e.length === 0) ? null : t;
 }
-function gm(e) {
+function ym(e) {
 	let t = [], n = 0;
 	for (let [r, i] of String(e).split(/\r?\n/).entries()) {
 		if (i.trim().length === 0) continue;
-		let e = hm(i), [a, o, s, c, l] = e ? e.slice(0, 5).map($) : [
+		let e = vm(i), [a, o, s, c, l] = e ? e.slice(0, 5).map($) : [
 			null,
 			null,
 			null,
 			null,
 			null
 		];
-		if (!dm(a, o, s) || c === null || l === null) {
+		if (!mm(a, o, s) || c === null || l === null) {
 			let e = i.trim().split(/\s+/);
 			[a, o, s, c, l] = e.slice(0, 5).map($);
 		}
-		if (!dm(a, o, s) || c === null || l === null) {
+		if (!mm(a, o, s) || c === null || l === null) {
 			n++;
 			continue;
 		}
@@ -20937,12 +20962,12 @@ function gm(e) {
 		invalidCount: n
 	};
 }
-function _m(e) {
+function bm(e) {
 	e.parse();
 	let t = Object.keys(e.data).find((e) => /shelx.*hkl_file/i.test(e));
 	return t ? e.data[t] : null;
 }
-function vm(e) {
+function xm(e) {
 	let t = [];
 	for (let n of ["_iucr_refine_fcf_details"]) {
 		let r;
@@ -20953,26 +20978,26 @@ function vm(e) {
 		}
 		if (!(typeof r != "string" || !r.includes("data_"))) try {
 			for (let e of new D(r).getAllBlocks()) {
-				let n = yp(e, "_refln");
+				let n = Sp(e, "_refln");
 				n && t.push(n);
 			}
 		} catch {}
 	}
 	return t;
 }
-function ym(e, t, n, r, i = 1e-8) {
-	return lm(e, t, n, r, i);
+function Sm(e, t, n, r, i = 1e-8) {
+	return fm(e, t, n, r, i);
 }
-function bm(e, t, n = {}) {
+function Cm(e, t, n = {}) {
 	let r = n.mergeFriedel !== !1, i = n.removeSystematicAbsences !== !1, a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map(), c = 0;
 	for (let l of e) {
 		let e = `${l.h},${l.k},${l.l}`, u = o.get(e);
-		if (u === void 0 && (u = i && ym(l.h, l.k, l.l, t, n.absenceTolerance), o.set(e, u)), u) {
+		if (u === void 0 && (u = i && Sm(l.h, l.k, l.l, t, n.absenceTolerance), o.set(e, u)), u) {
 			c++;
 			continue;
 		}
 		let d = s.get(e);
-		d || (d = cm(l.h, l.k, l.l, t, r), s.set(e, d));
+		d || (d = dm(l.h, l.k, l.l, t, r), s.set(e, d));
 		let [f, p, m] = d, h = `${f},${p},${m}`;
 		a.has(h) || a.set(h, {
 			h: f,
@@ -20996,7 +21021,7 @@ function bm(e, t, n = {}) {
 			multiplicity: e.observations.length
 		};
 	});
-	return l.sort((e, t) => sm([
+	return l.sort((e, t) => um([
 		e.h,
 		e.k,
 		e.l
@@ -21009,18 +21034,18 @@ function bm(e, t, n = {}) {
 		systematicAbsenceCount: c
 	};
 }
-function xm(e, t = 0, n = {}) {
-	let r = new D(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = um(r, i), o = n.source ?? "auto", s = (e) => o === "auto" || o === e;
+function wm(e, t = 0, n = {}) {
+	let r = new D(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = pm(r, i), o = n.source ?? "auto", s = (e) => o === "auto" || o === e;
 	if (s("refln")) {
-		let e = [...a.map((e) => yp(e, "_refln")).filter(Boolean).map((e) => ({
+		let e = [...a.map((e) => Sp(e, "_refln")).filter(Boolean).map((e) => ({
 			loop: e,
 			source: "refln"
-		})), ...a.flatMap(vm).map((e) => ({
+		})), ...a.flatMap(xm).map((e) => ({
 			loop: e,
 			source: "embedded-refln"
 		}))], t = null;
 		for (let n of e) try {
-			let e = pm(n.loop);
+			let e = gm(n.loop);
 			return {
 				reflections: e.rows.map((e) => ({
 					...e,
@@ -21045,15 +21070,15 @@ function xm(e, t = 0, n = {}) {
 	}
 	let c, l;
 	if (s("diffrn_refln")) {
-		let e = a.map((e) => yp(e, "_diffrn_refln")).find(Boolean);
-		e && (c = mm(e), l = "diffrn_refln");
+		let e = a.map((e) => Sp(e, "_diffrn_refln")).find(Boolean);
+		e && (c = _m(e), l = "diffrn_refln");
 	}
 	if (!c && s("shelx_hkl_file")) {
-		let e = a.map(_m).find((e) => typeof e == "string");
-		e && (c = gm(e), l = "shelx_hkl_file");
+		let e = a.map(bm).find((e) => typeof e == "string");
+		e && (c = ym(e), l = "shelx_hkl_file");
 	}
 	if (!c) throw Error(`No usable reflection intensities found for source "${o}"`);
-	let u = it.fromCIF(i), d = bm(c.rows, u, n);
+	let u = it.fromCIF(i), d = Cm(c.rows, u, n);
 	return {
 		reflections: d.reflections,
 		metadata: {
@@ -21070,14 +21095,14 @@ function xm(e, t = 0, n = {}) {
 }
 //#endregion
 //#region src/lib/density/extinction-correction.js
-function Sm(e, t, n, r) {
+function Tm(e, t, n, r) {
 	if (!(e > 0) || !(t > 0) || n === 0) return 1;
 	let i = r * t / 2;
 	if (!(i > 0 && i < 1)) throw Error(`Cannot apply SHELXL extinction at sin(theta)=${i}; check the radiation wavelength and reflection indices`);
 	let a = 2 * i * Math.sqrt(1 - i ** 2);
 	return (1 + .001 * n * e * r ** 3 / a) ** -.25;
 }
-function Cm(e, t, n, r, i, a = !0) {
+function Em(e, t, n, r, i, a = !0) {
 	let o = (e, t = {}) => ({
 		factors: Array(r.length).fill(1),
 		metadata: {
@@ -21089,14 +21114,14 @@ function Cm(e, t, n, r, i, a = !0) {
 	});
 	if (a === !1) return o("disabled");
 	if (a !== !0 && typeof a != "number" && (typeof a != "object" || !a || Array.isArray(a))) throw Error("extinctionCorrection must be true, false, a coefficient, or an object");
-	let s = $(typeof a == "number" ? a : a?.coefficient), c = xp(e, ["_refine_ls.extinction_coef", "_refine_ls_extinction_coef"]), l = s ?? c, u = s === null ? "cif" : "configured";
+	let s = $(typeof a == "number" ? a : a?.coefficient), c = wp(e, ["_refine_ls.extinction_coef", "_refine_ls_extinction_coef"]), l = s ?? c, u = s === null ? "cif" : "configured";
 	if (l === null) return o("not-reported");
 	if (l < 0) throw Error("SHELXL extinction coefficient must not be negative");
 	if (l === 0) return o("zero-coefficient", {
 		coefficient: l,
 		source: u
 	});
-	let d = Sp(e, ["_refine_ls.extinction_method", "_refine_ls_extinction_method"]), f = Sp(e, ["_refine_ls.extinction_expression", "_refine_ls_extinction_expression"]);
+	let d = Tp(e, ["_refine_ls.extinction_method", "_refine_ls_extinction_method"]), f = Tp(e, ["_refine_ls.extinction_expression", "_refine_ls_extinction_expression"]);
 	if (!(/shelxl/i.test(d ?? "") || /0\.001/i.test(f ?? "") && /sin\s*\(?\s*2/i.test(f ?? "")) && s === null) return o("unsupported-model", {
 		coefficient: l,
 		source: u,
@@ -21112,7 +21137,7 @@ function Cm(e, t, n, r, i, a = !0) {
 			e.k,
 			e.l
 		]));
-		return Sm(i[t].amplitude ** 2, n, l, p);
+		return Tm(i[t].amplitude ** 2, n, l, p);
 	}), g = h.reduce((e, t) => Math.min(e, t), 1);
 	return {
 		factors: h,
@@ -21132,16 +21157,16 @@ function Cm(e, t, n, r, i, a = !0) {
 }
 //#endregion
 //#region src/lib/density/scalar-field.js
-function wm(e, t) {
+function Dm(e, t) {
 	return (e % t + t) % t;
 }
-function Tm(e, t, n, r, i) {
+function Om(e, t, n, r, i) {
 	let a = t - e, o = n - t, s = r - n;
 	if (o === 0) return t;
 	let c = a * o <= 0 ? 0 : 2 * a * o / (a + o), l = o * s <= 0 ? 0 : 2 * o * s / (o + s), u = i * i, d = u * i;
 	return (2 * d - 3 * u + 1) * t + (d - 2 * u + i) * c + (-2 * d + 3 * u) * n + (d - u) * l;
 }
-var Em = class e {
+var km = class e {
 	constructor(e, t, n, r = {}) {
 		this.cell = e, this.dimensions = t, this.values = n, Object.assign(this, r);
 	}
@@ -21177,7 +21202,7 @@ var Em = class e {
 		], c = this.boundaryMode !== "zero";
 		if (!c && s.some((e, t) => e < 0 || e > this.dimensions[t] - 1)) return 0;
 		let l = s.map(Math.floor), u = s.map((e, t) => !c && l[t] >= this.dimensions[t] - 1 ? (l[t] = this.dimensions[t] - 1, 0) : e - l[t]), d = (e, t, n) => {
-			let o = c ? wm(e, r) : Math.min(r - 1, e), s = c ? wm(t, i) : Math.min(i - 1, t), l = c ? wm(n, a) : Math.min(a - 1, n);
+			let o = c ? Dm(e, r) : Math.min(r - 1, e), s = c ? Dm(t, i) : Math.min(i - 1, t), l = c ? Dm(n, a) : Math.min(a - 1, n);
 			return this.values[(l * i + s) * r + o];
 		}, f = (e, t, n) => e + (t - e) * n, p = f(d(l[0], l[1], l[2]), d(l[0] + 1, l[1], l[2]), u[0]), m = f(d(l[0], l[1] + 1, l[2]), d(l[0] + 1, l[1] + 1, l[2]), u[0]), h = f(d(l[0], l[1], l[2] + 1), d(l[0] + 1, l[1], l[2] + 1), u[0]), g = f(d(l[0], l[1] + 1, l[2] + 1), d(l[0] + 1, l[1] + 1, l[2] + 1), u[0]);
 		return f(f(p, m, u[1]), f(h, g, u[1]), u[2]);
@@ -21189,27 +21214,27 @@ var Em = class e {
 			0
 		], s = (e - o[0]) * r, c = (t - o[1]) * i, l = (n - o[2]) * a, u = this.boundaryMode !== "zero";
 		if (!u && (s < 0 || s > r - 1 || c < 0 || c > i - 1 || l < 0 || l > a - 1)) return 0;
-		let d = u ? Math.floor(s) : Math.min(Math.floor(s), r - 1), f = u ? Math.floor(c) : Math.min(Math.floor(c), i - 1), p = u ? Math.floor(l) : Math.min(Math.floor(l), a - 1), m = d === r - 1 && !u ? 0 : s - d, h = f === i - 1 && !u ? 0 : c - f, g = p === a - 1 && !u ? 0 : l - p, _ = (e, t) => u ? wm(e, t) : e < 0 || e >= t ? -1 : e, v = _(d - 1, r), y = _(d, r), b = _(d + 1, r), x = _(d + 2, r), S = _(f - 1, i), C = _(f, i), w = _(f + 1, i), T = _(f + 2, i), E = _(p - 1, a), D = _(p, a), O = _(p + 1, a), k = _(p + 2, a), A = (e, t) => {
+		let d = u ? Math.floor(s) : Math.min(Math.floor(s), r - 1), f = u ? Math.floor(c) : Math.min(Math.floor(c), i - 1), p = u ? Math.floor(l) : Math.min(Math.floor(l), a - 1), m = d === r - 1 && !u ? 0 : s - d, h = f === i - 1 && !u ? 0 : c - f, g = p === a - 1 && !u ? 0 : l - p, _ = (e, t) => u ? Dm(e, t) : e < 0 || e >= t ? -1 : e, v = _(d - 1, r), y = _(d, r), b = _(d + 1, r), x = _(d + 2, r), S = _(f - 1, i), C = _(f, i), w = _(f + 1, i), T = _(f + 2, i), E = _(p - 1, a), D = _(p, a), O = _(p + 1, a), k = _(p + 2, a), A = (e, t) => {
 			if (e < 0 || t < 0) return 0;
 			let n = (t * i + e) * r;
-			return Tm(v < 0 ? 0 : this.values[n + v], y < 0 ? 0 : this.values[n + y], b < 0 ? 0 : this.values[n + b], x < 0 ? 0 : this.values[n + x], m);
-		}, j = (e) => Tm(A(S, e), A(C, e), A(w, e), A(T, e), h);
-		return Tm(j(E), j(D), j(O), j(k), g);
+			return Om(v < 0 ? 0 : this.values[n + v], y < 0 ? 0 : this.values[n + y], b < 0 ? 0 : this.values[n + b], x < 0 ? 0 : this.values[n + x], m);
+		}, j = (e) => Om(A(S, e), A(C, e), A(w, e), A(T, e), h);
+		return Om(j(E), j(D), j(O), j(k), g);
 	}
-}, Dm = 2 * Math.PI, Om = class extends Error {
+}, Am = 2 * Math.PI, jm = class extends Error {
 	constructor(e) {
 		super(e), this.name = "UnsupportedCoefficientSourceError";
 	}
 };
-function km(e) {
+function Mm(e) {
 	let t = 1;
 	for (; t < e;) t *= 2;
 	return Math.max(2, t);
 }
-function Am(e, t) {
+function Nm(e, t) {
 	return (e % t + t) % t;
 }
-function jm(e, t, ...n) {
+function Pm(e, t, ...n) {
 	try {
 		return e.get(t);
 	} catch (e) {
@@ -21217,17 +21242,17 @@ function jm(e, t, ...n) {
 		throw e;
 	}
 }
-function Mm(e) {
+function Fm(e) {
 	let t = e.map((e) => e.length);
 	if (t.some((e) => e !== t[0])) throw Error(`Reflection columns have inconsistent lengths: ${t.join(", ")}`);
 }
-function Nm(e, t) {
+function Im(e, t) {
 	let n = typeof e == "string" ? [e] : e;
 	if (!Array.isArray(n) || n.length < 1 || n.length > 2 || n.some((e) => typeof e != "string" || e.length === 0)) throw Error(`${t} must name one or two CIF columns`);
 	return n;
 }
-function Pm(e, t, n) {
-	return Nm(t, n).map((t) => {
+function Lm(e, t, n) {
+	return Im(t, n).map((t) => {
 		try {
 			return e.get(t);
 		} catch {
@@ -21235,14 +21260,14 @@ function Pm(e, t, n) {
 		}
 	});
 }
-function Fm(e, t) {
+function Rm(e, t) {
 	let n = t.amplitudes ?? t.amplitudeColumns ?? t.amplitude, r = t.phases ?? t.phaseColumns ?? t.phase, i = t.aValues ?? t.a ?? t.A, a = t.bValues ?? t.b ?? t.B, o = n !== void 0 || r !== void 0, s = i !== void 0 || a !== void 0;
 	if (o === s) throw Error("Custom density columns must specify either amplitudes/phases or A/B values");
 	if (s) {
 		if (i === void 0 || a === void 0) throw Error("Custom density A and B columns must both be specified");
-		let t = Pm(e, i, "a"), n = Pm(e, a, "b");
+		let t = Lm(e, i, "a"), n = Lm(e, a, "b");
 		if (t.length !== n.length) throw Error("Custom density A and B column counts must match");
-		return Mm([...t, ...n]), {
+		return Fm([...t, ...n]), {
 			mode: t.length === 1 ? "a-b" : "a-b-difference",
 			componentCount: t.length,
 			valueColumns: [...t, ...n],
@@ -21255,9 +21280,9 @@ function Fm(e, t) {
 		};
 	}
 	if (n === void 0 || r === void 0) throw Error("Custom density amplitude and phase columns must both be specified");
-	let c = Pm(e, n, "amplitudes"), l = Pm(e, r, "phases");
+	let c = Lm(e, n, "amplitudes"), l = Lm(e, r, "phases");
 	if (l.length !== 1 && l.length !== c.length) throw Error("Use one common phase column or one phase column per amplitude");
-	Mm([...c, ...l]);
+	Fm([...c, ...l]);
 	let u = t.phaseUnit === "radians" ? 1 : Math.PI / 180;
 	if (t.phaseUnit !== void 0 && !["degrees", "radians"].includes(t.phaseUnit)) throw Error("Custom density phaseUnit must be \"degrees\" or \"radians\"");
 	let d = l.length === c.length && l.length === 2;
@@ -21281,13 +21306,13 @@ function Fm(e, t) {
 		}
 	};
 }
-function Im(e) {
+function zm(e) {
 	e.parse();
 	let t = Object.keys(e.data).find((e) => /shelx.*fab_file/i.test(e));
 	return t ? e.data[t] : null;
 }
-function Lm(e) {
-	let t = Im(e);
+function Bm(e) {
+	let t = zm(e);
 	if (typeof t != "string") return null;
 	let n = [], r = [], i = [], a = [], o = [];
 	for (let e of t.split("\n")) {
@@ -21304,8 +21329,8 @@ function Lm(e) {
 		imaginary: o
 	} : null;
 }
-function Rm(e) {
-	let t = bp(yp(e, "_smtbx_masks_void"), ["_smtbx_masks_void.count_electrons", "_smtbx_masks_void_count_electrons"]);
+function Vm(e) {
+	let t = Cp(Sp(e, "_smtbx_masks_void"), ["_smtbx_masks_void.count_electrons", "_smtbx_masks_void_count_electrons"]);
 	if (!t) return null;
 	let n = t.reduce((e, t) => e + ($(t) ?? 0), 0);
 	return {
@@ -21313,7 +21338,7 @@ function Rm(e) {
 		totalElectrons: n
 	};
 }
-function zm(e, t) {
+function Hm(e, t) {
 	let n = e ?? "first";
 	if (![
 		"first",
@@ -21327,7 +21352,7 @@ function zm(e, t) {
 	}
 	return n === "both" && t > 1 ? 0 : -1;
 }
-function Bm(e, t) {
+function Um(e, t) {
 	if (t.generator !== void 0 && t.generator !== "auto") {
 		let e = String(t.generator).toLowerCase();
 		if (!["olex", "shelxl"].includes(e)) throw Error("Anomalous-dispersion generator must be \"auto\", \"olex\", or \"shelxl\"");
@@ -21345,7 +21370,7 @@ function Bm(e, t) {
 	let i = n("_audit_creation_method");
 	return i.includes("olex2.refine") || i.includes("olex2_refine") ? "olex" : i.includes("shelxl") ? "shelxl" : "unknown";
 }
-function Vm(e, t, n, r, i, a = .05) {
+function Wm(e, t, n, r, i, a = .05) {
 	let o = e.symmetryOperations.find((e) => e.rotMatrix.every((e, t) => e.every((e, n) => Math.abs(e - (t === n ? -1 : 0)) < 1e-8)));
 	if (!o) return {
 		centrosymmetric: !1,
@@ -21377,7 +21402,7 @@ function Vm(e, t, n, r, i, a = .05) {
 		needsCorrection: s > 0 && c > a
 	};
 }
-function Hm(e, t, n, r, i, a = .05, o = 1e-4) {
+function Gm(e, t, n, r, i, a = .05, o = 1e-4) {
 	if (!r) return {
 		centrosymmetric: !1,
 		method: "friedel-pair-phases",
@@ -21418,7 +21443,7 @@ function Hm(e, t, n, r, i, a = .05, o = 1e-4) {
 		needsCorrection: u > 0 && !m
 	};
 }
-function Um(e, t, n, r, i, a) {
+function Km(e, t, n, r, i, a) {
 	let o = `${t},${n},${r}`, s = e.get(o);
 	s ? (s.real += i, s.imaginary += a, s.count++) : e.set(o, {
 		h: t,
@@ -21429,7 +21454,7 @@ function Um(e, t, n, r, i, a) {
 		count: 1
 	});
 }
-function Wm(e, t, n, r, i, a) {
+function qm(e, t, n, r, i, a) {
 	let o = /* @__PURE__ */ new Map();
 	for (let a = 0; a < e.length; a++) {
 		let s = Number(e[a]), c = Number(t[a]), l = Number(n[a]), { real: u, imaginary: d } = r(a);
@@ -21439,20 +21464,20 @@ function Wm(e, t, n, r, i, a) {
 			l,
 			u,
 			d
-		].every(Number.isFinite)) for (let e of om(i)) {
-			let t = e.operation, [n, r, i] = am(e.reciprocalRotation, [
+		].every(Number.isFinite)) for (let e of lm(i)) {
+			let t = e.operation, [n, r, i] = cm(e.reciprocalRotation, [
 				s,
 				c,
 				l
-			]), a = Dm * (n * t.transVector[0] + r * t.transVector[1] + i * t.transVector[2]), f = Math.cos(a), p = Math.sin(a), m = u * f - d * p, h = u * p + d * f;
-			Um(o, n, r, i, m, h), (n !== 0 || r !== 0 || i !== 0) && Um(o, -n, -r, -i, m, -h);
+			]), a = Am * (n * t.transVector[0] + r * t.transVector[1] + i * t.transVector[2]), f = Math.cos(a), p = Math.sin(a), m = u * f - d * p, h = u * p + d * f;
+			Km(o, n, r, i, m, h), (n !== 0 || r !== 0 || i !== 0) && Km(o, -n, -r, -i, m, -h);
 		}
 	}
 	a && o.delete("0,0,0");
 	for (let e of o.values()) e.real /= e.count, e.imaginary /= e.count;
 	return o;
 }
-function Gm(e, t) {
+function Jm(e, t) {
 	if (e.coefficients.size === 0) throw Error("Reflection source contains no usable difference-map coefficients");
 	let n = ae(se(e.cell.fractToCartMatrix)), r = 0;
 	for (let t of e.coefficients.values()) t.reciprocalLength = le(P(n, [
@@ -21469,7 +21494,7 @@ function Gm(e, t) {
 		}))
 	};
 }
-function Km(e, t, n, r) {
+function Ym(e, t, n, r) {
 	let i = Number(n);
 	if (Number.isFinite(i) && i > 0) return {
 		scale: i,
@@ -21491,13 +21516,13 @@ function Km(e, t, n, r) {
 		explicit: !1
 	};
 }
-function qm(e, t = 0, n = {}) {
+function Xm(e, t = 0, n = {}) {
 	let r = new D(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = yt.fromCIF(i), o = it.fromCIF(i), s = {
 		includeAnomalous: !1,
 		...n.iam
 	}, c = { ...n.reflections };
 	c.mergeFriedel === void 0 && (c.mergeFriedel = s.includeAnomalous === !1);
-	let l = xm(e, t, c), u = n.coordinateCifText ?? e, d = n.coordinateCifBlock ?? t, f = tm(u, d, {
+	let l = wm(e, t, c), u = n.coordinateCifText ?? e, d = n.coordinateCifBlock ?? t, f = im(u, d, {
 		...s,
 		expectedCell: a,
 		structureModel: n.structureModel
@@ -21507,9 +21532,9 @@ function qm(e, t = 0, n = {}) {
 		!1,
 		"auto"
 	].includes(g)) throw Error("solventMaskCorrection must be \"auto\", true, or false");
-	let _ = g === !1 ? null : Lm(h), v = p, y = 0;
+	let _ = g === !1 ? null : Bm(h), v = p, y = 0;
 	if (_) {
-		let e = Wm(_.h, _.k, _.l, (e) => ({
+		let e = qm(_.h, _.k, _.l, (e) => ({
 			real: _.real[e],
 			imaginary: _.imaginary[e]
 		}), o, !1);
@@ -21533,19 +21558,19 @@ function qm(e, t = 0, n = {}) {
 		source: "shelx-fab-file",
 		fabReflectionCount: _?.h.length ?? 0,
 		appliedReflectionCount: y,
-		...Rm(h)
+		...Vm(h)
 	}, x = n.extinctionCorrection ?? "auto";
 	if (![
 		"auto",
 		!0,
 		!1
 	].includes(x) && typeof x != "number" && (typeof x != "object" || !x || Array.isArray(x))) throw Error("extinctionCorrection must be \"auto\", true, false, a coefficient, or an object");
-	let S = x === "auto" && l.metadata.source === "embedded-refln", C = Cm(h, a, f.metadata.wavelength, l.reflections, v, S ? !1 : x === "auto" || x);
+	let S = x === "auto" && l.metadata.source === "embedded-refln", C = Em(h, a, f.metadata.wavelength, l.reflections, v, S ? !1 : x === "auto" || x);
 	S && (C.metadata.reason = "embedded-fcf-already-corrected");
-	let w = Km(l.reflections, v, n.intensityScale, C.factors), T = 0, E = 0, O = 0;
-	return Gm({
+	let w = Ym(l.reflections, v, n.intensityScale, C.factors), T = 0, E = 0, O = 0;
+	return Jm({
 		cell: a,
-		coefficients: Wm(l.reflections.map((e) => e.h), l.reflections.map((e) => e.k), l.reflections.map((e) => e.l), (e) => {
+		coefficients: qm(l.reflections.map((e) => e.h), l.reflections.map((e) => e.k), l.reflections.map((e) => e.l), (e) => {
 			let t = l.reflections[e], n = v[e], r = w.scale * t.intensity / C.factors[e] ** 2;
 			r < 0 && T++;
 			let i = Math.sqrt(Math.max(0, r)) - n.amplitude, a = Math.atan2(n.imaginary, n.real);
@@ -21579,7 +21604,7 @@ function qm(e, t = 0, n = {}) {
 		extinctionCorrection: C.metadata
 	}, o);
 }
-function Jm(e, t) {
+function Zm(e, t) {
 	try {
 		let n = new D(e), r = typeof t == "number" ? n.getBlock(t) : n.getBlockByName(t), i = (e) => r.get(e, null), a = i("_cifvis_difference_density_loop"), o = i("_cifvis_difference_density_h"), s = i("_cifvis_difference_density_k"), c = i("_cifvis_difference_density_l"), l = i("_cifvis_difference_density_a"), u = i("_cifvis_difference_density_b");
 		if ([
@@ -21602,22 +21627,22 @@ function Jm(e, t) {
 	} catch {}
 	return null;
 }
-function Ym(e, t = 0, n = {}) {
+function Qm(e, t = 0, n = {}) {
 	let r = n.inputMode ?? "auto";
 	if (![
 		"auto",
 		"fcf",
 		"cif-iam"
 	].includes(r)) throw Error("Difference-density inputMode must be \"auto\", \"fcf\", or \"cif-iam\"");
-	let i = n.coefficientColumns ?? Jm(e, t);
+	let i = n.coefficientColumns ?? Zm(e, t);
 	if (r !== "cif-iam") try {
-		return eh(e, t, i, n.anomalousDispersion ?? null);
+		return rh(e, t, i, n.anomalousDispersion ?? null);
 	} catch (e) {
-		if (r === "fcf" || i || !(e instanceof Om)) throw e;
+		if (r === "fcf" || i || !(e instanceof jm)) throw e;
 	}
-	return qm(e, t, n);
+	return Xm(e, t, n);
 }
-function Xm(e, t, n = !1) {
+function $m(e, t, n = !1) {
 	let r = e.length;
 	for (let n = 1, i = 0; n < r; n++) {
 		let a = r >> 1;
@@ -21626,7 +21651,7 @@ function Xm(e, t, n = !1) {
 	}
 	let i = n ? 1 : -1;
 	for (let n = 2; n <= r; n *= 2) {
-		let a = i * Dm / n, o = Math.cos(a), s = Math.sin(a);
+		let a = i * Am / n, o = Math.cos(a), s = Math.sin(a);
 		for (let i = 0; i < r; i += n) {
 			let r = 1, a = 0, c = n / 2;
 			for (let n = 0; n < c; n++) {
@@ -21639,13 +21664,13 @@ function Xm(e, t, n = !1) {
 	}
 	if (n) for (let n = 0; n < r; n++) e[n] /= r, t[n] /= r;
 }
-function Zm(e, t, n, r) {
+function eh(e, t, n, r) {
 	let [i, a, o] = n, s = n[r], c = new Float64Array(s), l = new Float64Array(s), u = (n) => {
 		for (let r = 0; r < s; r++) {
 			let i = n(r);
 			c[r] = e[i], l[r] = t[i];
 		}
-		Xm(c, l);
+		$m(c, l);
 		for (let r = 0; r < s; r++) {
 			let i = n(r);
 			e[i] = c[r], t[i] = l[r];
@@ -21658,23 +21683,23 @@ function Zm(e, t, n, r) {
 	else if (r === 1) for (let e = 0; e < o; e++) for (let t = 0; t < i; t++) u((n) => (e * a + n) * i + t);
 	else for (let e = 0; e < a; e++) for (let t = 0; t < i; t++) u((n) => (n * a + e) * i + t);
 }
-function Qm(e) {
+function th(e) {
 	return Math.abs(oe(e.fractToCartMatrix));
 }
-function $m(e, t, n = 1) {
+function nh(e, t, n = 1) {
 	let r = 0, i = 0, a = 0;
 	for (let { h: t, k: n, l: o } of e.values()) r = Math.max(r, Math.abs(t)), i = Math.max(i, Math.abs(n)), a = Math.max(a, Math.abs(o));
 	let o = [
-		km(2 * r + 1),
-		km(2 * i + 1),
-		km(2 * a + 1)
-	].map((e) => km(e * Math.max(1, n))), [s, c] = o, l = o[0] * o[1] * o[2], u = new Float64Array(l), d = new Float64Array(l);
+		Mm(2 * r + 1),
+		Mm(2 * i + 1),
+		Mm(2 * a + 1)
+	].map((e) => Mm(e * Math.max(1, n))), [s, c] = o, l = o[0] * o[1] * o[2], u = new Float64Array(l), d = new Float64Array(l);
 	for (let { h: t, k: n, l: r, real: i, imaginary: a } of e.values()) {
-		let e = (Am(r, o[2]) * c + Am(n, c)) * s + Am(t, s);
+		let e = (Nm(r, o[2]) * c + Nm(n, c)) * s + Nm(t, s);
 		u[e] = i, d[e] = a;
 	}
-	Zm(u, d, o, 0), Zm(u, d, o, 1), Zm(u, d, o, 2);
-	let f = Qm(t), p = new Float32Array(l), m = 0, h = Infinity, g = -Infinity, _ = 0;
+	eh(u, d, o, 0), eh(u, d, o, 1), eh(u, d, o, 2);
+	let f = th(t), p = new Float32Array(l), m = 0, h = Infinity, g = -Infinity, _ = 0;
 	for (let e = 0; e < l; e++) {
 		let t = u[e] / f;
 		p[e] = t, m += t, h = Math.min(h, t), g = Math.max(g, t), _ = Math.max(_, Math.abs(d[e] / f));
@@ -21692,20 +21717,20 @@ function $m(e, t, n = 1) {
 		volume: f
 	};
 }
-function eh(e, t = 0, n = null, r = null) {
+function rh(e, t = 0, n = null, r = null) {
 	let i = new D(e), a = typeof t == "number" ? i.getBlock(t) : i.getBlockByName(t), o = yt.fromCIF(a), s = it.fromCIF(a), c;
 	try {
 		c = a.get(n?.loop ?? "_refln");
 	} catch (e) {
-		throw n ? e : new Om(e.message);
+		throw n ? e : new jm(e.message);
 	}
-	let l = jm(c, n?.h ?? ["_refln.index_h", "_refln_index_h"]), u = jm(c, n?.k ?? ["_refln.index_k", "_refln_index_k"]), d = jm(c, n?.l ?? ["_refln.index_l", "_refln_index_l"]), f = jm(c, ["_refln.phase_calc", "_refln_phase_calc"], null), p = jm(c, ["_refln.F_calc", "_refln_F_calc"], null), m = p === null ? jm(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null, h = p ?? m?.map((e) => Math.sqrt(Math.max(0, Number(e)))), g, _;
-	if (n) g = Fm(c, n), _ = n.omitF000 ?? !1;
+	let l = Pm(c, n?.h ?? ["_refln.index_h", "_refln_index_h"]), u = Pm(c, n?.k ?? ["_refln.index_k", "_refln_index_k"]), d = Pm(c, n?.l ?? ["_refln.index_l", "_refln_index_l"]), f = Pm(c, ["_refln.phase_calc", "_refln_phase_calc"], null), p = Pm(c, ["_refln.F_calc", "_refln_F_calc"], null), m = p === null ? Pm(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null, h = p ?? m?.map((e) => Math.sqrt(Math.max(0, Number(e)))), g, _;
+	if (n) g = Rm(c, n), _ = n.omitF000 ?? !1;
 	else {
-		if (f === null) throw new Om("None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop");
-		let e = f, t = jm(c, ["_refln.F_squared_meas", "_refln_F_squared_meas"], null), n = t === null ? jm(c, ["_refln.F_meas", "_refln_F_meas"], null) : null, r = jm(c, ["_refln.F_calc", "_refln_F_calc"], null), i = r === null ? jm(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null;
-		if (t === null && n === null) throw new Om("FCF contains neither measured F nor measured F-squared values");
-		if (r === null && i === null) throw new Om("FCF contains neither calculated F nor calculated F-squared values");
+		if (f === null) throw new jm("None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop");
+		let e = f, t = Pm(c, ["_refln.F_squared_meas", "_refln_F_squared_meas"], null), n = t === null ? Pm(c, ["_refln.F_meas", "_refln_F_meas"], null) : null, r = Pm(c, ["_refln.F_calc", "_refln_F_calc"], null), i = r === null ? Pm(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null;
+		if (t === null && n === null) throw new jm("FCF contains neither measured F nor measured F-squared values");
+		if (r === null && i === null) throw new jm("FCF contains neither calculated F nor calculated F-squared values");
 		g = {
 			mode: "fo-fc-common-phase",
 			componentCount: 2,
@@ -21724,7 +21749,7 @@ function eh(e, t = 0, n = null, r = null) {
 			}
 		}, _ = !0;
 	}
-	Mm([
+	Fm([
 		l,
 		u,
 		d,
@@ -21737,14 +21762,14 @@ function eh(e, t = 0, n = null, r = null) {
 	if (r) {
 		let e = r === !0 ? {} : r;
 		if (typeof e != "object") throw Error("Anomalous-dispersion options must be true or an object");
-		let t = Bm(a, e), n;
+		let t = Um(a, e), n;
 		if (e.phaseDetection === !1) n = {
 			available: !1,
 			disabled: !0
 		};
 		else {
-			let t = Vm(s, l, u, d, f, Number(e.phaseToleranceDegrees) || .05);
-			n = t.centrosymmetric ? t : Hm(l, u, d, f, h, Number(e.phaseToleranceDegrees) || .05, Number(e.friedelAmplitudeToleranceRelative) || 1e-4);
+			let t = Wm(s, l, u, d, f, Number(e.phaseToleranceDegrees) || .05);
+			n = t.centrosymmetric ? t : Gm(l, u, d, f, h, Number(e.phaseToleranceDegrees) || .05, Number(e.friedelAmplitudeToleranceRelative) || 1e-4);
 		}
 		let i = n.disabled ? "phase-detection-disabled" : n.alreadyCorrected ? "phases-already-corrected" : !n.available && t !== "olex" ? "exact-test-unavailable" : null;
 		if (i) y = {
@@ -21755,7 +21780,7 @@ function eh(e, t = 0, n = null, r = null) {
 			phaseCheck: n
 		};
 		else {
-			let r = e.target ?? g.defaultAnomalousTarget ?? "first", i = Hp(e.cifText, e.cifBlock ?? 0, e, o), a = zm(r, g.componentCount);
+			let r = e.target ?? g.defaultAnomalousTarget ?? "first", i = Gp(e.cifText, e.cifBlock ?? 0, e, o), a = Hm(r, g.componentCount);
 			v = (e) => {
 				let t = g.coefficientAt(e), n = i.coefficientAt(Number(l[e]), Number(u[e]), Number(d[e]));
 				return {
@@ -21772,9 +21797,9 @@ function eh(e, t = 0, n = null, r = null) {
 			};
 		}
 	}
-	return Gm({
+	return Jm({
 		cell: o,
-		coefficients: Wm(l, u, d, v, s, _),
+		coefficients: qm(l, u, d, v, s, _),
 		reflectionCount: l.length,
 		coefficientMode: g.mode,
 		omitF000: _,
@@ -21783,7 +21808,7 @@ function eh(e, t = 0, n = null, r = null) {
 		fieldKind: n ? "deformation-density" : "difference-density"
 	}, s);
 }
-function th(e, t = 1, n = 1) {
+function ih(e, t = 1, n = 1) {
 	if (!(Number.isFinite(t) && t > 0 && t <= 1)) throw Error("Difference-density resolution fraction must be in the interval (0, 1]");
 	let r = e.maximumReciprocalLength * t, i = t === 1 ? e.coefficients : new Map(Array.from(e.coefficients.entries()).filter(([, e]) => e.reciprocalLength <= r + 1e-12));
 	if (i.size === 0) {
@@ -21791,8 +21816,8 @@ function th(e, t = 1, n = 1) {
 		i = new Map(Array.from(e.coefficients.entries()).filter(([, e]) => e.reciprocalLength <= t + 1e-12));
 	}
 	if (!(Number.isFinite(n) && n >= 1)) throw Error("Difference-density grid oversampling must be at least 1");
-	let a = $m(i, e.cell, n);
-	return new Em(e.cell, a.dimensions, a.values, {
+	let a = nh(i, e.cell, n);
+	return new km(e.cell, a.dimensions, a.values, {
 		reflectionCount: e.reflectionCount,
 		coefficientCount: i.size,
 		fullCoefficientCount: e.coefficients.size,
@@ -21830,35 +21855,35 @@ function th(e, t = 1, n = 1) {
 }
 //#endregion
 //#region src/lib/density/cube.js
-var nh = .529177210903, rh = /* @__PURE__ */ new Set([
+var ah = .529177210903, oh = /* @__PURE__ */ new Set([
 	"density",
 	"signed-density",
 	"orbital",
 	"potential",
 	"generic"
 ]);
-function ih(e, t) {
+function sh(e, t) {
 	return e[0] * t[0] + e[1] * t[1] + e[2] * t[2];
 }
-function ah(e) {
+function ch(e) {
 	return Math.hypot(...e);
 }
-function oh(e, t) {
-	let n = Math.max(-1, Math.min(1, ih(e, t) / (ah(e) * ah(t))));
+function lh(e, t) {
+	let n = Math.max(-1, Math.min(1, sh(e, t) / (ch(e) * ch(t))));
 	return Math.acos(n) * 180 / Math.PI;
 }
-function sh(e) {
+function uh(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function ch(e, t, n) {
+function dh(e, t, n) {
 	let r = e.trim().split(/\s+/).map(Number);
 	if (r.length < t || r.some((e) => !Number.isFinite(e))) throw Error(`Invalid Gaussian Cube ${n} line`);
 	return r;
 }
-function lh(e, t, n) {
-	if (!rh.has(e)) throw Error(`Cube property must be one of: ${Array.from(rh).join(", ")}`);
+function fh(e, t, n) {
+	if (!oh.has(e)) throw Error(`Cube property must be one of: ${Array.from(oh).join(", ")}`);
 	let r = e === "density" || e === "signed-density", i = n.valueScale;
-	if (i === void 0 && (i = r && t === "bohr" ? 1 / nh ** 3 : 1), !(Number.isFinite(i) && i !== 0)) throw Error("Cube valueScale must be a finite non-zero number");
+	if (i === void 0 && (i = r && t === "bohr" ? 1 / ah ** 3 : 1), !(Number.isFinite(i) && i !== 0)) throw Error("Cube valueScale must be a finite non-zero number");
 	if (e === "density") return {
 		valueScale: i,
 		valueUnit: "e/angstrom^3",
@@ -21889,7 +21914,7 @@ function lh(e, t, n) {
 		defaultLevel: n.level ?? null
 	};
 }
-function uh(e) {
+function ph(e) {
 	let t = 0, n = 0, r = Infinity, i = -Infinity;
 	for (let a of e) t += a, n += a * a, r = Math.min(r, a), i = Math.max(i, a);
 	let a = t / e.length;
@@ -21900,24 +21925,24 @@ function uh(e) {
 		maximum: i
 	};
 }
-function dh(e, t = {}) {
+function mh(e, t = {}) {
 	if (typeof e != "string" || e.trim().length === 0) throw Error("Cannot parse an empty Gaussian Cube file");
 	let n = e.replace(/\r\n?/g, "\n").split("\n");
 	if (n.length < 6) throw Error("Gaussian Cube file is missing its header");
-	let r = [n[0], n[1]], i = ch(n[2], 4, "atom/origin"), a = Math.trunc(i[0]), o = Math.abs(a), s = i.slice(1, 4), c = i.length >= 5 ? Math.trunc(i[4]) : 1;
+	let r = [n[0], n[1]], i = dh(n[2], 4, "atom/origin"), a = Math.trunc(i[0]), o = Math.abs(a), s = i.slice(1, 4), c = i.length >= 5 ? Math.trunc(i[4]) : 1;
 	if (c < 1) throw Error("Gaussian Cube dataset count must be positive");
 	let l = [], u = [];
 	for (let e = 0; e < 3; e++) {
-		let t = ch(n[3 + e], 4, `axis ${e + 1}`);
+		let t = dh(n[3 + e], 4, `axis ${e + 1}`);
 		u.push(Math.trunc(t[0])), l.push(t.slice(1, 4));
 	}
 	if (u.some((e) => e === 0)) throw Error("Gaussian Cube grid dimensions must be non-zero");
 	let d = u.every((e) => e > 0), f = u.every((e) => e < 0);
 	if (!d && !f) throw Error("Gaussian Cube grid dimensions must use one consistent unit sign");
-	let p = d ? "bohr" : "angstrom", m = d ? nh : 1, h = u.map(Math.abs), g = s.map((e) => e * m), _ = l.map((e) => e.map((e) => e * m)), v = [];
+	let p = d ? "bohr" : "angstrom", m = d ? ah : 1, h = u.map(Math.abs), g = s.map((e) => e * m), _ = l.map((e) => e.map((e) => e * m)), v = [];
 	if (n.length < 6 + o) throw Error("Gaussian Cube file ends inside its atom list");
 	for (let e = 0; e < o; e++) {
-		let t = ch(n[6 + e], 5, `atom ${e + 1}`);
+		let t = dh(n[6 + e], 5, `atom ${e + 1}`);
 		v.push({
 			atomicNumber: Math.trunc(t[0]),
 			charge: t[1],
@@ -21934,7 +21959,7 @@ function dh(e, t = {}) {
 	if (!(Number.isInteger(C) && C >= 0 && C < x)) throw Error(`Cube datasetIndex must be between 0 and ${x - 1}`);
 	let w = h[0] * h[1] * h[2], T = w * x;
 	if (y.length - b !== T) throw Error(`Gaussian Cube grid contains ${y.length - b} values; expected ${T}`);
-	let E = t.property ?? "density", D = lh(E, p, t), O = new Float32Array(w);
+	let E = t.property ?? "density", D = fh(E, p, t), O = new Float32Array(w);
 	for (let e = 0; e < w; e++) {
 		let t = Number(y[b + e * x + C]);
 		if (!Number.isFinite(t)) throw Error(`Gaussian Cube grid value ${e + 1} is not finite`);
@@ -21942,8 +21967,8 @@ function dh(e, t = {}) {
 		O[a] = t * D.valueScale;
 	}
 	let k = _.map((e, t) => e.map((e) => e * h[t]));
-	if (k.some((e) => ah(e) === 0)) throw Error("Gaussian Cube lattice vectors must be non-zero");
-	let A = new yt(ah(k[0]), ah(k[1]), ah(k[2]), oh(k[1], k[2]), oh(k[0], k[2]), oh(k[0], k[1])), j = sh(P(se([
+	if (k.some((e) => ch(e) === 0)) throw Error("Gaussian Cube lattice vectors must be non-zero");
+	let A = new yt(ch(k[0]), ch(k[1]), ch(k[2]), lh(k[1], k[2]), lh(k[0], k[2]), lh(k[0], k[1])), j = uh(P(se([
 		[
 			k[0][0],
 			k[1][0],
@@ -21959,8 +21984,8 @@ function dh(e, t = {}) {
 			k[1][2],
 			k[2][2]
 		]
-	]), g)), ee = uh(O), M = D.defaultLevel ?? 3 * ee.sigma;
-	return new Em(A, h, O, {
+	]), g)), ee = ph(O), M = D.defaultLevel ?? 3 * ee.sigma;
+	return new km(A, h, O, {
 		...ee,
 		comments: r,
 		atoms: v,
@@ -21990,47 +22015,47 @@ function dh(e, t = {}) {
 }
 //#endregion
 //#region src/lib/density/plane-contours.js
-function fh() {
+function hh() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function ph(e, t) {
+function gh(e, t) {
 	return e[0] * t[0] + e[1] * t[1] + e[2] * t[2];
 }
-function mh(e, t) {
+function _h(e, t) {
 	return [
 		e[1] * t[2] - e[2] * t[1],
 		e[2] * t[0] - e[0] * t[2],
 		e[0] * t[1] - e[1] * t[0]
 	];
 }
-function hh(e, t) {
+function vh(e, t) {
 	let n = Math.hypot(...e);
 	if (!(Number.isFinite(n) && n > 1e-12)) throw Error(`${t} must be a finite non-zero vector`);
 	return e.map((e) => e / n);
 }
-function gh(e, t) {
+function yh(e, t) {
 	return e.map((e, n) => e + t[n]);
 }
-function _h(e, t) {
+function bh(e, t) {
 	return e.map((e, n) => e - t[n]);
 }
-function vh(e, t) {
+function xh(e, t) {
 	return e.map((e) => e * t);
 }
-function yh(e) {
+function Sh(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function bh(e, t) {
-	return yh(P(e, t));
+function Ch(e, t) {
+	return Sh(P(e, t));
 }
-function xh(e) {
-	return vh(e.reduce(gh, [
+function wh(e) {
+	return xh(e.reduce(yh, [
 		0,
 		0,
 		0
 	]), 1 / e.length);
 }
-function Sh(e, t) {
+function Th(e, t) {
 	if (e.length < 3) throw Error("A best-fit contour plane requires at least three atoms");
 	let n = [
 		[
@@ -22050,22 +22075,22 @@ function Sh(e, t) {
 		]
 	];
 	for (let r of e) {
-		let e = _h(r, t);
+		let e = bh(r, t);
 		for (let t = 0; t < 3; t++) for (let r = 0; r < 3; r++) n[t][r] += e[t] * e[r];
 	}
 	let r = he(n), i = r.values.map(Number).sort((e, t) => e - t), a = Math.max(1, i[2]);
 	if (!(i[1] > a * 1e-12)) throw Error("Contour plane atoms must not all be collinear");
 	let o = i[0];
-	return hh(yh(r.eigenvectors.find((e) => Math.abs(Number(e.value) - o) <= a * 1e-12).vector), "Best-fit plane normal");
+	return vh(Sh(r.eigenvectors.find((e) => Math.abs(Number(e.value) - o) <= a * 1e-12).vector), "Best-fit plane normal");
 }
-function Ch(e, t) {
-	if (e.length === 1) return hh(yh(P(ae(se(t)), [
+function Eh(e, t) {
+	if (e.length === 1) return vh(Sh(P(ae(se(t)), [
 		0,
 		0,
 		1
 	])), "Sparse-structure contour plane normal");
-	let n = hh(_h(e[1], e[0]), "Sparse atom separation");
-	return hh(mh(n, [
+	let n = vh(bh(e[1], e[0]), "Sparse atom separation");
+	return vh(_h(n, [
 		[
 			1,
 			0,
@@ -22081,10 +22106,10 @@ function Ch(e, t) {
 			0,
 			1
 		]
-	].reduce((e, t) => Math.abs(ph(n, t)) < Math.abs(ph(n, e)) ? t : e)), "Sparse-structure contour plane normal");
+	].reduce((e, t) => Math.abs(gh(n, t)) < Math.abs(gh(n, e)) ? t : e)), "Sparse-structure contour plane normal");
 }
-function wh(e) {
-	let t = hh(mh(Math.abs(e[2]) < .9 ? [
+function Dh(e) {
+	let t = vh(_h(Math.abs(e[2]) < .9 ? [
 		0,
 		0,
 		1
@@ -22095,29 +22120,29 @@ function wh(e) {
 	], e), "Contour plane basis");
 	return {
 		u: t,
-		v: hh(mh(e, t), "Contour plane basis")
+		v: vh(_h(e, t), "Contour plane basis")
 	};
 }
-function Th(e, t, n) {
+function Oh(e, t, n) {
 	for (let r of t) {
 		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
 		if (t * t + i * i + a * a <= n) return !0;
 	}
 	return !1;
 }
-function Eh(e) {
+function kh(e) {
 	let t = e.cell.fractToCartMatrix.toArray();
-	return e.atoms.map((e) => bh(t, [
+	return e.atoms.map((e) => Ch(t, [
 		e.position.x,
 		e.position.y,
 		e.position.z
 	]));
 }
-function Dh(e, t = { mode: "best-fit" }, n = 1.5) {
+function Ah(e, t = { mode: "best-fit" }, n = 1.5) {
 	if (!e?.atoms?.length) throw Error("A contour plane requires a displayed structure");
 	let r = typeof t == "string" ? { mode: t } : Array.isArray(t) ? { atoms: t } : t ?? { mode: "best-fit" };
 	if (r.mode !== void 0 && r.mode !== "best-fit") throw Error("Contour plane mode must be \"best-fit\"");
-	let i = e.cell.fractToCartMatrix.toArray(), a = Eh(e), o = a;
+	let i = e.cell.fractToCartMatrix.toArray(), a = kh(e), o = a;
 	if (r.atoms) {
 		if (!Array.isArray(r.atoms) || r.atoms.length < 3) throw Error("A contour plane atom definition requires at least three labels");
 		o = r.atoms.map((t) => {
@@ -22134,13 +22159,13 @@ function Dh(e, t = { mode: "best-fit" }, n = 1.5) {
 		if (r.coordinateSystem !== void 0 && !["cartesian", "fractional"].includes(r.coordinateSystem)) throw Error("Contour plane coordinateSystem must be \"cartesian\" or \"fractional\"");
 		if (r.coordinateSystem === "fractional") {
 			let r = e.cell.fractToCartMatrix.toArray();
-			s = bh(r, t), c = yh(P(ae(se(r)), n));
+			s = Ch(r, t), c = Sh(P(ae(se(r)), n));
 		} else s = t, c = n;
-		c = hh(c, "Contour plane normal");
-	} else s = xh(o), c = o.length >= 3 ? Sh(o, s) : Ch(o, i);
-	let { u: l, v: u } = wh(c), d = Infinity, f = -Infinity, p = Infinity, m = -Infinity;
+		c = vh(c, "Contour plane normal");
+	} else s = wh(o), c = o.length >= 3 ? Th(o, s) : Eh(o, i);
+	let { u: l, v: u } = Dh(c), d = Infinity, f = -Infinity, p = Infinity, m = -Infinity;
 	for (let e of a) {
-		let t = _h(e, s), n = ph(t, l), r = ph(t, u);
+		let t = bh(e, s), n = gh(t, l), r = gh(t, u);
 		d = Math.min(d, n), f = Math.max(f, n), p = Math.min(p, r), m = Math.max(m, r);
 	}
 	let h = Number(n);
@@ -22158,14 +22183,14 @@ function Dh(e, t = { mode: "best-fit" }, n = 1.5) {
 		bounds: g
 	};
 }
-function Oh(e, t, n, r = 0) {
-	return gh(gh(e.origin, vh(e.u, t)), gh(vh(e.v, n), vh(e.normal, r)));
+function jh(e, t, n, r = 0) {
+	return yh(yh(e.origin, xh(e.u, t)), yh(xh(e.v, n), xh(e.normal, r)));
 }
-function kh(e, t, n, r, i) {
+function Mh(e, t, n, r, i) {
 	let a = n === r ? .5 : Math.max(0, Math.min(1, (i - n) / (r - n)));
 	return [e[0] + (t[0] - e[0]) * a, e[1] + (t[1] - e[1]) * a];
 }
-function Ah(e, t, n, r, i) {
+function Nh(e, t, n, r, i) {
 	let [a, o] = t, s = (n.bounds.u[1] - n.bounds.u[0]) / (a - 1), c = (n.bounds.v[1] - n.bounds.v[0]) / (o - 1), l = [];
 	for (let t = 0; t < o - 1; t++) for (let o = 0; o < a - 1; o++) {
 		let u = n.bounds.u[0] + o * s, d = u + s, f = n.bounds.v[0] + t * c, p = f + c, m = [
@@ -22191,17 +22216,17 @@ function Ah(e, t, n, r, i) {
 				let [i, a] = t[n];
 				(_[i] < e && _[a] >= e || _[a] < e && _[i] >= e) && r.push({
 					edge: n,
-					point: kh(m[i], m[a], _[i], _[a], e)
+					point: Mh(m[i], m[a], _[i], _[a], e)
 				});
 			}
 			let a = [];
 			r.length === 2 ? a = [[r[0], r[1]]] : r.length === 4 && (a = _.reduce((e, t) => e + t, 0) / 4 >= e ? [[r[0], r[1]], [r[2], r[3]]] : [[r[0], r[3]], [r[1], r[2]]]);
-			for (let [e, t] of a) l.push([Oh(n, e.point[0], e.point[1], i), Oh(n, t.point[0], t.point[1], i)]);
+			for (let [e, t] of a) l.push([jh(n, e.point[0], e.point[1], i), jh(n, t.point[0], t.point[1], i)]);
 		}
 	}
 	return l;
 }
-function jh(e, t) {
+function Ph(e, t) {
 	if (Array.isArray(t.levels)) {
 		let e = [...new Set(t.levels.map((e) => Math.abs(Number(e))))].filter((e) => Number.isFinite(e) && e > 0).sort((e, t) => e - t);
 		if (e.length === 0) throw Error("Contour line levels must contain positive finite values");
@@ -22214,30 +22239,30 @@ function jh(e, t) {
 	if (!Number.isFinite(a)) throw Error("Contour line count must be a positive integer");
 	return Array.from({ length: a }, (e, t) => i * (t + 1));
 }
-function Mh(e, t, n = {}) {
-	let r = fh(), i = {
+function Fh(e, t, n = {}) {
+	let r = hh(), i = {
 		...sf,
 		...n
-	}, a = Dh(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
+	}, a = Ah(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
 	if (!(Number.isFinite(u) && u > 0)) throw Error("Contour line grid spacing must be a positive number");
 	if (!(Number.isFinite(c) && Number.isFinite(l))) throw Error("Contour line resolutions must be finite numbers");
-	let d = [o, s].map((e) => Math.min(l, Math.max(c, Math.ceil(e / u) + 1))), f = new Float32Array(d[0] * d[1]), p = se(t.cell.fractToCartMatrix), m = yh(P(p, a.origin)), h = yh(P(p, a.u)), g = yh(P(p, a.v)), _ = i.interpolation;
+	let d = [o, s].map((e) => Math.min(l, Math.max(c, Math.ceil(e / u) + 1))), f = new Float32Array(d[0] * d[1]), p = se(t.cell.fractToCartMatrix), m = Sh(P(p, a.origin)), h = Sh(P(p, a.u)), g = Sh(P(p, a.v)), _ = i.interpolation;
 	if (!["linear", "tricubic"].includes(_)) throw Error("Contour line interpolation must be \"linear\" or \"tricubic\"");
 	let v = _ === "tricubic" && typeof e.sampleCubic == "function" ? (...t) => e.sampleCubic(...t) : (...t) => e.sample(...t), y = i.maxAtomDistance, b = y !== null && Number(y) >= 0;
 	if (y !== null && !Number.isFinite(Number(y))) throw Error("Contour line maxAtomDistance must be null or a finite number");
-	let x = b ? Eh(t) : null, S = b ? Number(y) ** 2 : 0, C = fh();
+	let x = b ? kh(t) : null, S = b ? Number(y) ** 2 : 0, C = hh();
 	for (let e = 0; e < d[1]; e++) {
 		let t = a.bounds.v[0] + e / (d[1] - 1) * s;
 		for (let n = 0; n < d[0]; n++) {
 			let r = a.bounds.u[0] + n / (d[0] - 1) * o, i = e * d[0] + n;
-			if (b && !Th(Oh(a, r, t), x, S)) {
+			if (b && !Oh(jh(a, r, t), x, S)) {
 				f[i] = NaN;
 				continue;
 			}
 			f[i] = v(...m.map((e, n) => e + h[n] * r + g[n] * t));
 		}
 	}
-	let w = fh(), T = jh(e, i), E = i.sign ?? e.surfaceSign ?? "both";
+	let w = hh(), T = Ph(e, i), E = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
@@ -22245,7 +22270,7 @@ function Mh(e, t, n = {}) {
 	].includes(E)) throw Error("Contour line sign must be \"positive\", \"negative\", or \"both\"");
 	let D = Number(i.depthOffset);
 	if (!Number.isFinite(D)) throw Error("Contour line depth offset must be a finite number");
-	let O = E === "negative" ? [] : Ah(f, d, a, T, D), k = E === "positive" ? [] : Ah(f, d, a, T.map((e) => -e), D), A = i.zeroLine ? Ah(f, d, a, [0], D) : [], j = fh();
+	let O = E === "negative" ? [] : Nh(f, d, a, T, D), k = E === "positive" ? [] : Nh(f, d, a, T.map((e) => -e), D), A = i.zeroLine ? Nh(f, d, a, [0], D) : [], j = hh();
 	return {
 		plane: a,
 		dimensions: d,
@@ -22265,7 +22290,7 @@ function Mh(e, t, n = {}) {
 }
 //#endregion
 //#region node_modules/three/examples/jsm/objects/MarchingCubes.js
-var Nh = class extends Y {
+var Ih = class extends Y {
 	constructor(e, t, n = !1, r = !1, i = 1e4) {
 		let a = new Ra();
 		super(a, t), this.isMarchingCubes = !0;
@@ -22315,12 +22340,12 @@ var Nh = class extends Y {
 		function h(e, t, n, r, i) {
 			let a = r + 1, u = r + o.yd, h = r + o.zd, _ = a + o.yd, v = a + o.zd, y = r + o.yd + o.zd, b = a + o.yd + o.zd, x = 0, S = o.field[r], C = o.field[a], w = o.field[u], T = o.field[_], E = o.field[h], D = o.field[v], O = o.field[y], k = o.field[b];
 			S < i && (x |= 1), C < i && (x |= 2), w < i && (x |= 8), T < i && (x |= 4), E < i && (x |= 16), D < i && (x |= 32), O < i && (x |= 128), k < i && (x |= 64);
-			let A = Ph[x];
+			let A = Lh[x];
 			if (A === 0) return 0;
 			let j = o.delta, ee = e + j, M = t + j, te = n + j;
 			A & 1 && (m(r), m(a), d(r * 3, 0, i, e, t, n, S, C, r, a)), A & 2 && (m(a), m(_), f(a * 3, 3, i, ee, t, n, C, T, a, _)), A & 4 && (m(u), m(_), d(u * 3, 6, i, e, M, n, w, T, u, _)), A & 8 && (m(r), m(u), f(r * 3, 9, i, e, t, n, S, w, r, u)), A & 16 && (m(h), m(v), d(h * 3, 12, i, e, t, te, E, D, h, v)), A & 32 && (m(v), m(b), f(v * 3, 15, i, ee, t, te, D, k, v, b)), A & 64 && (m(y), m(b), d(y * 3, 18, i, e, M, te, O, k, y, b)), A & 128 && (m(h), m(y), f(h * 3, 21, i, e, t, te, E, O, h, y)), A & 256 && (m(r), m(h), p(r * 3, 24, i, e, t, n, S, E, r, h)), A & 512 && (m(a), m(v), p(a * 3, 27, i, ee, t, n, C, D, a, v)), A & 1024 && (m(_), m(b), p(_ * 3, 30, i, ee, M, n, T, k, _, b)), A & 2048 && (m(u), m(y), p(u * 3, 33, i, e, M, n, w, O, u, y)), x <<= 4;
 			let ne, N, P, re = 0, ie = 0;
-			for (; Fh[x + ie] != -1;) ne = x + ie, N = ne + 1, P = ne + 2, g(s, c, l, 3 * Fh[ne], 3 * Fh[N], 3 * Fh[P]), ie += 3, re++;
+			for (; Rh[x + ie] != -1;) ne = x + ie, N = ne + 1, P = ne + 2, g(s, c, l, 3 * Rh[ne], 3 * Rh[N], 3 * Rh[P]), ie += 3, re++;
 			return re;
 		}
 		function g(e, t, n, r, i, a) {
@@ -22410,7 +22435,7 @@ var Nh = class extends Y {
 			this.geometry.setDrawRange(0, this.count), a.getAttribute("position").needsUpdate = !0, a.getAttribute("normal").needsUpdate = !0, this.enableUvs && (a.getAttribute("uv").needsUpdate = !0), this.enableColors && (a.getAttribute("color").needsUpdate = !0), this.count / 3 > i && console.warn("THREE.MarchingCubes: Geometry buffers too small for rendering. Please create an instance with a higher poly count.");
 		}, this.init(e);
 	}
-}, Ph = new Int32Array([
+}, Lh = new Int32Array([
 	0,
 	265,
 	515,
@@ -22667,7 +22692,7 @@ var Nh = class extends Y {
 	515,
 	265,
 	0
-]), Fh = new Int32Array([
+]), Rh = new Int32Array([
 	-1,
 	-1,
 	-1,
@@ -26767,14 +26792,14 @@ var Nh = class extends Y {
 ]);
 //#endregion
 //#region src/lib/density/isosurface.js
-function Ih(e, t, n, r) {
+function zh(e, t, n, r) {
 	return [
 		e[0][0] * t + e[0][1] * n + e[0][2] * r,
 		e[1][0] * t + e[1][1] * n + e[1][2] * r,
 		e[2][0] * t + e[2][1] * n + e[2][2] * r
 	];
 }
-function Lh(e, t) {
+function Bh(e, t) {
 	if (!e?.atoms?.length) return {
 		minimum: [
 			0,
@@ -26809,29 +26834,29 @@ function Lh(e, t) {
 		maximum: i
 	};
 }
-function Rh(e, t = {}) {
+function Vh(e, t = {}) {
 	let n = {
 		...of,
 		...t
 	}, r = Math.max(8, Math.round(Number(n.resolution))), i = Math.max(r, Math.round(Number(n.maxResolution))), a = Number(n.gridSpacing);
 	if (!(Number.isFinite(a) && a > 0)) throw Error("Isosurface grid spacing must be a positive number");
 	if (!(Number.isFinite(i) && i >= 8)) throw Error("Maximum isosurface resolution must be at least 8");
-	let o = Lh(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
+	let o = Bh(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
 	return Math.min(i, Math.max(r, l));
 }
-function zh(e, t) {
-	let n = e.fractToCartMatrix.toArray(), r = t.maximum.map((e, n) => e - t.minimum[n]), i = Ih(n, ...t.minimum.map((e, t) => e + r[t] / 2));
+function Hh(e, t) {
+	let n = e.fractToCartMatrix.toArray(), r = t.maximum.map((e, n) => e - t.minimum[n]), i = zh(n, ...t.minimum.map((e, t) => e + r[t] / 2));
 	return new K().set(n[0][0] * r[0] / 2, n[0][1] * r[1] / 2, n[0][2] * r[2] / 2, i[0], n[1][0] * r[0] / 2, n[1][1] * r[1] / 2, n[1][2] * r[2] / 2, i[1], n[2][0] * r[0] / 2, n[2][1] * r[1] / 2, n[2][2] * r[2] / 2, i[2], 0, 0, 0, 1);
 }
-function Bh(e, t, n) {
+function Uh(e, t, n) {
 	for (let r of t) {
 		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
 		if (t * t + i * i + a * a <= n) return !0;
 	}
 	return !1;
 }
-function Vh(e, t, n) {
-	let r = e.geometry.index ? e.geometry : Hh(e.geometry), i = new rs(r);
+function Wh(e, t, n) {
+	let r = e.geometry.index ? e.geometry : Gh(e.geometry), i = new rs(r);
 	r !== e.geometry && r.dispose();
 	let a = new Uo(i, new jo({
 		color: t,
@@ -26840,27 +26865,27 @@ function Vh(e, t, n) {
 	}));
 	return a.name = e.name, a.userData = e.userData, a.matrix.copy(e.matrix), a.matrixAutoUpdate = e.matrixAutoUpdate, a;
 }
-function Hh(e) {
+function Gh(e) {
 	let { start: t, count: n } = e.drawRange, r = new Ra();
 	for (let [i, a] of Object.entries(e.attributes)) r.setAttribute(i, new wa(a.array.slice(t * a.itemSize, (t + n) * a.itemSize), a.itemSize, a.normalized));
 	return r;
 }
-function Uh(e, t, n, r, i) {
-	let a = new Nh(e, t, !1, !1, n);
+function Kh(e, t, n, r, i) {
+	let a = new Ih(e, t, !1, !1, n);
 	return a.name = r, a.isolation = i, a.userData = {
 		selectable: !1,
 		type: "isosurface",
 		sign: r.includes("Positive") ? "positive" : "negative"
 	}, a;
 }
-function Wh(e, t, n = {}) {
+function qh(e, t, n = {}) {
 	let r = performance.now(), i = {
 		...of,
 		...n
 	}, a = Math.max(8, Math.round(i.resolution)), o = i.level ?? e.defaultLevel ?? i.sigmaLevel * e.sigma;
 	if (!(Number.isFinite(o) && o > 0)) throw Error("Isosurface level must be a positive finite number");
 	if (!(Number.isFinite(i.radius) && i.radius > 0)) throw Error("Isosurface radius must be a positive finite number");
-	let s = Lh(t, i.radius), c = i.sign ?? e.surfaceSign ?? "both";
+	let s = Bh(t, i.radius), c = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
@@ -26877,16 +26902,16 @@ function Wh(e, t, n = {}) {
 	i.wireframe || (f.roughness = .35, f.metalness = 0);
 	let p = new d(f), m = p.clone();
 	m.color.set(i.negativeColor);
-	let h = l ? Uh(a, p, i.maxPolyCount, "PositiveIsosurface", o) : null, g = u ? Uh(a, m, i.maxPolyCount, "NegativeIsosurface", o) : null;
+	let h = l ? Kh(a, p, i.maxPolyCount, "PositiveIsosurface", o) : null, g = u ? Kh(a, m, i.maxPolyCount, "NegativeIsosurface", o) : null;
 	h || p.dispose(), g || m.dispose();
-	let _ = s.maximum.map((e, t) => e - s.minimum[t]), v = a / 2, y = t.cell.fractToCartMatrix.toArray(), b = t.atoms.map((e) => Ih(y, e.position.x, e.position.y, e.position.z)), x = i.radius ** 2;
+	let _ = s.maximum.map((e, t) => e - s.minimum[t]), v = a / 2, y = t.cell.fractToCartMatrix.toArray(), b = t.atoms.map((e) => zh(y, e.position.x, e.position.y, e.position.z)), x = i.radius ** 2;
 	for (let t = 0; t < a; t++) {
 		let n = s.minimum[2] + ((t - v) / v + 1) * _[2] / 2;
 		for (let r = 0; r < a; r++) {
 			let i = s.minimum[1] + ((r - v) / v + 1) * _[1] / 2, o = (t * a + r) * a;
 			for (let t = 0; t < a; t++) {
 				let r = s.minimum[0] + ((t - v) / v + 1) * _[0] / 2;
-				if (!Bh(Ih(y, r, i, n), b, x)) continue;
+				if (!Uh(zh(y, r, i, n), b, x)) continue;
 				let a = e.sample(r, i, n);
 				h && (h.field[o + t] = a), g && (g.field[o + t] = -a);
 			}
@@ -26894,7 +26919,7 @@ function Wh(e, t, n = {}) {
 	}
 	let S = performance.now();
 	h?.update(), g?.update();
-	let C = performance.now() - S, w = h ? h.geometry.drawRange.count / 3 : 0, T = g ? g.geometry.drawRange.count / 3 : 0, E = zh(t.cell, s), D = [h, g].filter(Boolean);
+	let C = performance.now() - S, w = h ? h.geometry.drawRange.count / 3 : 0, T = g ? g.geometry.drawRange.count / 3 : 0, E = Hh(t.cell, s), D = [h, g].filter(Boolean);
 	for (let e of D) e.matrix.copy(E), e.matrixAutoUpdate = !1;
 	let O = new Mi();
 	O.name = "Isosurface", O.visible = i.visible;
@@ -26922,32 +26947,32 @@ function Wh(e, t, n = {}) {
 		generationTimeMs: k
 	};
 	let A = i.wireframe && !i.keepTriangles ? D.map((e) => {
-		let t = Vh(e, e.material.color, i.opacity);
+		let t = Wh(e, e.material.color, i.opacity);
 		return e.geometry.dispose(), e.material.dispose(), t;
 	}) : D;
 	return O.add(...A), O;
 }
 //#endregion
 //#region src/lib/density/symmetry-isosurface.js
-var Gh = 1e-4;
-function Kh(e, t) {
+var Jh = 1e-4;
+function Yh(e, t) {
 	return [
 		e[0][0] * t[0] + e[0][1] * t[1] + e[0][2] * t[2],
 		e[1][0] * t[0] + e[1][1] * t[1] + e[1][2] * t[2],
 		e[2][0] * t[0] + e[2][1] * t[1] + e[2][2] * t[2]
 	];
 }
-function qh(e, t) {
+function Xh(e, t) {
 	return e.reduce((e, n, r) => e + (n - t[r]) ** 2, 0);
 }
-function Jh(e) {
+function Zh(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function Yh(e, t) {
+function Qh(e, t) {
 	let n = e.fractToCartMatrix.toArray();
 	return Math.max(...t.maximum.map((e, r) => (e - t.minimum[r]) * Math.hypot(n[0][r], n[1][r], n[2][r])));
 }
-function Xh(e, t) {
+function $h(e, t) {
 	let n = t;
 	for (; e[n] !== n;) n = e[n];
 	for (; e[t] !== t;) {
@@ -26956,40 +26981,40 @@ function Xh(e, t) {
 	}
 	return n;
 }
-function Zh(e, t, n) {
-	let r = Xh(e, t), i = Xh(e, n);
+function eg(e, t, n) {
+	let r = $h(e, t), i = $h(e, n);
 	r !== i && (e[i] = r);
 }
-function Qh(e, t, n = 0) {
+function tg(e, t, n = 0) {
 	let r = e?.atoms ?? [];
 	if (r.length === 0) return [];
-	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => Kh(i, [
+	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => Yh(i, [
 		e.position.x,
 		e.position.y,
 		e.position.z
 	])), o = r.map((e, t) => t), s = (2 * t + n) ** 2;
-	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) qh(a[e], a[t]) <= s && Zh(o, e, t);
+	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) Xh(a[e], a[t]) <= s && eg(o, e, t);
 	let c = /* @__PURE__ */ new Map();
 	for (let e = 0; e < r.length; e++) {
-		let t = Xh(o, e);
+		let t = $h(o, e);
 		c.has(t) || c.set(t, { atoms: [] }), c.get(t).atoms.push(r[e]);
 	}
 	return Array.from(c.values());
 }
-function $h(e, t, n, r, i = "both") {
-	return Qh(e, t);
+function ng(e, t, n, r, i = "both") {
+	return tg(e, t);
 }
-function eg(e) {
+function rg(e) {
 	return e.atoms.map((e) => `${e.label}\u0000${e.atomType}\u0000${e.disorderGroup}`).sort().join("");
 }
-function tg(e, t) {
+function ig(e, t) {
 	return e.label === t.label && e.atomType === t.atomType && Number(e.disorderGroup) === Number(t.disorderGroup);
 }
-function ng(e, t, n) {
-	return Jh(P(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
+function ag(e, t, n) {
+	return Zh(P(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
 }
-function rg(e, t, n, r) {
-	let i = e.atoms[0], a = ng(n, [
+function og(e, t, n, r) {
+	let i = e.atoms[0], a = ag(n, [
 		0,
 		0,
 		0
@@ -26997,7 +27022,7 @@ function rg(e, t, n, r) {
 		i.position.x,
 		i.position.y,
 		i.position.z
-	]), o = t.atoms.filter((e) => tg(i, e));
+	]), o = t.atoms.filter((e) => ig(i, e));
 	for (let i of o) {
 		let o = [
 			i.position.x - a[0],
@@ -27005,18 +27030,18 @@ function rg(e, t, n, r) {
 			i.position.z - a[2]
 		].map(Math.round), s = new Set(t.atoms.map((e, t) => t)), c = !0;
 		for (let i of e.atoms) {
-			let e = Kh(r, ng(n, o, [
+			let e = Yh(r, ag(n, o, [
 				i.position.x,
 				i.position.y,
 				i.position.z
 			])), a = -1;
 			for (let n of s) {
 				let o = t.atoms[n];
-				if (tg(i, o) && qh(e, Kh(r, [
+				if (ig(i, o) && Xh(e, Yh(r, [
 					o.position.x,
 					o.position.y,
 					o.position.z
-				])) <= Gh ** 2) {
+				])) <= Jh ** 2) {
 					a = n;
 					break;
 				}
@@ -27034,8 +27059,8 @@ function rg(e, t, n, r) {
 	}
 	return null;
 }
-function ig(e, t, n, r) {
-	if (e.atoms.length !== t.atoms.length || eg(e) !== eg(t)) return null;
+function sg(e, t, n, r) {
+	if (e.atoms.length !== t.atoms.length || rg(e) !== rg(t)) return null;
 	let i = n.symmetryOperations ?? [{
 		rotation: [
 			[
@@ -27061,19 +27086,19 @@ function ig(e, t, n, r) {
 		]
 	}];
 	for (let n of i) {
-		let i = rg(e, t, n, r);
+		let i = og(e, t, n, r);
 		if (i) return i;
 	}
 	return null;
 }
-function ag(e, t) {
-	let n = e.fractToCartMatrix.toArray(), r = Jh(se(n)), i = Jh(P(n, P(t.rotation, r))), a = Kh(n, t.translation);
+function cg(e, t) {
+	let n = e.fractToCartMatrix.toArray(), r = Zh(se(n)), i = Zh(P(n, P(t.rotation, r))), a = Yh(n, t.translation);
 	return {
 		determinant: oe(i),
 		matrix: new K().set(i[0][0], i[0][1], i[0][2], a[0], i[1][0], i[1][1], i[1][2], a[1], i[2][0], i[2][1], i[2][2], a[2], 0, 0, 0, 1)
 	};
 }
-function og(e, t = !1) {
+function lg(e, t = !1) {
 	let n = new Ra(), r = e.drawRange.count;
 	for (let [i, a] of Object.entries(e.attributes)) {
 		let e = a.array.slice(0, r * a.itemSize);
@@ -27085,7 +27110,7 @@ function og(e, t = !1) {
 	}
 	return n.setDrawRange(0, r), n.computeBoundingBox(), n.computeBoundingSphere(), n;
 }
-function sg(e, t) {
+function ug(e, t) {
 	let n = [], r = [], i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Set(), o = 1 / Math.max(t, 2 ** -52), s = 0;
 	for (let t of e) {
 		let e = t.getAttribute("position");
@@ -27120,18 +27145,18 @@ function sg(e, t) {
 		removedTriangles: s
 	};
 }
-function cg(e, t) {
+function dg(e, t) {
 	return {
 		cell: e.cell,
 		atoms: t.atoms
 	};
 }
-function lg(e, t, n) {
+function fg(e, t, n) {
 	let r = [];
 	for (let i of e) {
 		let e = null, a = null;
 		for (let o of r) {
-			let r = ig(o.representative, i, t, n);
+			let r = sg(o.representative, i, t, n);
 			if (r) {
 				e = o, a = r;
 				break;
@@ -27173,33 +27198,33 @@ function lg(e, t, n) {
 	}
 	return r;
 }
-var ug = .7;
-function dg(e, t, n, r, i) {
-	let a = Lh(cg(e, t), n);
-	return Math.max(8, Math.min(r, Math.ceil(Yh(e.cell, a) / i) + 1));
+var pg = .7;
+function mg(e, t, n, r, i) {
+	let a = Bh(dg(e, t), n);
+	return Math.max(8, Math.min(r, Math.ceil(Qh(e.cell, a) / i) + 1));
 }
-function fg(e, t, n = {}) {
+function hg(e, t, n = {}) {
 	let r = {
 		...of,
 		...n
 	};
-	if (r.useSymmetry === !1 || !t?.atoms?.length) return Wh(e, t, r);
-	let i = performance.now(), a = Lh(t, r.radius), o = Math.max(8, Math.round(r.resolution)), s = Yh(t.cell, a) / Math.max(1, o - 1), c = r.level ?? e.defaultLevel ?? r.sigmaLevel * e.sigma, l = t.cell.fractToCartMatrix.toArray(), u = ["positive", "negative"].map((n) => {
-		let i = $h(t, r.radius, e, c, n);
+	if (r.useSymmetry === !1 || !t?.atoms?.length) return qh(e, t, r);
+	let i = performance.now(), a = Bh(t, r.radius), o = Math.max(8, Math.round(r.resolution)), s = Qh(t.cell, a) / Math.max(1, o - 1), c = r.level ?? e.defaultLevel ?? r.sigmaLevel * e.sigma, l = t.cell.fractToCartMatrix.toArray(), u = ["positive", "negative"].map((n) => {
+		let i = ng(t, r.radius, e, c, n);
 		return {
 			sign: n,
 			regions: i,
-			classes: lg(i, e, l)
+			classes: fg(i, e, l)
 		};
 	}), d = u.reduce((e, t) => e + t.regions.length, 0), f = u.reduce((e, t) => e + t.classes.length, 0), p = d - f;
 	if (p === 0) {
-		let n = Wh(e, t, r);
+		let n = qh(e, t, r);
 		for (let e of u) n.userData[`${e.sign}DisplayedRegionCount`] = e.regions.length;
 		return n;
 	}
-	let m = u.reduce((e, n) => e + n.classes.reduce((e, n) => e + dg(t, n.representative, r.radius, o, s) ** 3, 0), 0), h = o ** 3;
-	if (m > h * ug) {
-		let n = Wh(e, t, r);
+	let m = u.reduce((e, n) => e + n.classes.reduce((e, n) => e + mg(t, n.representative, r.radius, o, s) ** 3, 0), 0), h = o ** 3;
+	if (m > h * pg) {
+		let n = qh(e, t, r);
 		for (let e of u) n.userData[`${e.sign}DisplayedRegionCount`] = e.regions.length;
 		return n.userData.symmetryDeclinedForCost = !0, n.userData.symmetryRegionSampleCost = m, n.userData.symmetryDirectSampleCost = h, n;
 	}
@@ -27214,7 +27239,7 @@ function fg(e, t, n = {}) {
 	};
 	u.forEach((n) => {
 		n.classes.forEach((i) => {
-			let a = cg(t, i.representative), c = dg(t, i.representative, r.radius, o, s), l = Math.max(2e3, Math.min(r.maxPolyCount, Math.ceil(r.maxPolyCount * (c / o) ** 2 * 2))), u = performance.now(), d = Wh(e, a, {
+			let a = dg(t, i.representative), c = mg(t, i.representative, r.radius, o, s), l = Math.max(2e3, Math.min(r.maxPolyCount, Math.ceil(r.maxPolyCount * (c / o) ** 2 * 2))), u = performance.now(), d = qh(e, a, {
 				...r,
 				resolution: c,
 				maxPolyCount: l,
@@ -27223,14 +27248,14 @@ function fg(e, t, n = {}) {
 			});
 			x += performance.now() - u, b += d.userData.polygonizationTimeMs;
 			let f = d.children[0], p = {
-				regular: og(f.geometry),
+				regular: lg(f.geometry),
 				mirrored: null,
 				material: f.material,
 				matrix: f.matrix.clone()
 			};
 			w[n.sign].push(p.material), f.geometry.dispose(), i.copies.forEach((e) => {
-				let r = ag(t.cell, e.transform), i = p.regular;
-				r.determinant < 0 && (S++, p.mirrored ??= og(p.regular, !0), i = p.mirrored);
+				let r = cg(t.cell, e.transform), i = p.regular;
+				r.determinant < 0 && (S++, p.mirrored ??= lg(p.regular, !0), i = p.mirrored);
 				let a = i.clone();
 				a.applyMatrix4(r.matrix.clone().multiply(p.matrix)), a.deleteAttribute("normal"), C[n.sign].push(a);
 			}), p.regular.dispose(), p.mirrored?.dispose();
@@ -27238,7 +27263,7 @@ function fg(e, t, n = {}) {
 	});
 	let T = performance.now(), E = 0;
 	for (let e of ["positive", "negative"]) {
-		let t = sg(C[e], r.stitchTolerance ?? 1e-4);
+		let t = ug(C[e], r.stitchTolerance ?? 1e-4);
 		E += t.removedTriangles;
 		let n = w[e][0];
 		w[e].slice(1).forEach((e) => e.dispose());
@@ -27248,7 +27273,7 @@ function fg(e, t, n = {}) {
 			type: "isosurface",
 			sign: e
 		}, r.wireframe) {
-			let e = Vh(a, n.color, r.opacity);
+			let e = Wh(a, n.color, r.opacity);
 			a.geometry.dispose(), n.dispose(), _.add(e);
 		} else _.add(a);
 		e === "positive" ? v = i : y = i;
@@ -27286,17 +27311,17 @@ function fg(e, t, n = {}) {
 }
 //#endregion
 //#region src/lib/fix-cif/reconcile-labels.js
-function pg(e, t = !0) {
+function gg(e, t = !0) {
 	if (!e || typeof e != "string") throw Error("Empty atom label");
 	let n = e.toUpperCase().replace(/[()[\]{}]/g, "");
 	if (t && (n = n.replace(/\^[a-zA-Z1-9]+$/, "").replace(/_[a-zA-Z1-9]+$/, "").replace(/_\$\d+$/, "")), n === "") throw Error(`Label "${e}" normalizes to empty string`);
 	return n;
 }
-function mg(e, t = !0) {
+function _g(e, t = !0) {
 	let n = /* @__PURE__ */ new Map();
 	e.forEach((e) => {
 		try {
-			let r = pg(e, t);
+			let r = gg(e, t);
 			n.has(r) || n.set(r, []), n.get(r).push(e);
 		} catch (e) {
 			console.warn(`Skipping invalid label: ${e.message}`);
@@ -27306,16 +27331,16 @@ function mg(e, t = !0) {
 	for (let [e, t] of n.entries()) t.length === 1 ? r.set(e, t[0]) : console.warn(`Multiple labels map to ${e}: ${t.join(", ")}. Skipping mapping.`);
 	return r;
 }
-function hg(e, t, n, r = !0) {
-	let i = mg(n, r), a = e.get(t).map((e) => {
-		let t = pg(e, r);
+function vg(e, t, n, r = !0) {
+	let i = _g(n, r), a = e.get(t).map((e) => {
+		let t = gg(e, r);
 		return i.has(t) ? i.get(t) : e;
 	});
 	e.data[t] = a;
 }
 //#endregion
 //#region src/lib/fix-cif/guess-symmetry.js
-function gg(e) {
+function yg(e) {
 	if (!e || e === ".") return ".";
 	let t = String(e).trim();
 	if (/^\d+_\d{3}$/.test(t)) return t;
@@ -27330,19 +27355,19 @@ function gg(e) {
 	}
 	return e;
 }
-function _g(e, t) {
-	let n = e.get(t).map((e) => gg(e));
+function bg(e, t) {
+	let n = e.get(t).map((e) => yg(e));
 	e.data[t] = n;
 }
 //#endregion
 //#region src/lib/fix-cif/base.js
-function vg(e, t) {
+function xg(e, t) {
 	for (let n of t) if (e.headerLines.includes(n)) return n;
 	return null;
 }
-function yg(e, t) {
-	if (vg(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
-	let n = vg(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = vg(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
+function Sg(e, t) {
+	if (xg(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
+	let n = xg(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = xg(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
 	if (!n || !r) return;
 	let i = e.get(n), a = e.get(r);
 	e.data[n] = i.map((e, t) => {
@@ -27350,52 +27375,52 @@ function yg(e, t) {
 		return /^uani$/i.test(String(e)) && n ? "Uiso" : e;
 	});
 }
-function bg(e, t = !0, n = !0, r = !0) {
+function Cg(e, t = !0, n = !0, r = !0) {
 	let i, a;
 	if ((t || n) && (i = e.get("_atom_site"), a = i.get(["_atom_site.label", "_atom_site_label"])), t) {
 		let t = e.get("_atom_site_aniso", !1);
 		if (t) {
-			let e = vg(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-			e ? hg(t, e, a) : yg(i, t);
+			let e = xg(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+			e ? vg(t, e, a) : Sg(i, t);
 		}
 	}
 	if (n || r) {
 		let t = e.get("_geom_bond", !1);
-		if (t && (n && (hg(t, vg(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), hg(t, vg(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
-			let e = vg(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
-			e && _g(t, e);
-			let n = vg(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
-			n && _g(t, n);
+		if (t && (n && (vg(t, xg(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), vg(t, xg(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
+			let e = xg(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
+			e && bg(t, e);
+			let n = xg(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
+			n && bg(t, n);
 		}
 		let i = e.get("_geom_hbond", !1);
 		if (i) {
 			if (n) {
-				hg(i, vg(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
-				let e = vg(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
-				e && hg(i, e, a), hg(i, vg(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
+				vg(i, xg(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
+				let e = xg(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
+				e && vg(i, e, a), vg(i, xg(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
 			}
 			if (r) {
-				let e = vg(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
-				e && _g(i, e);
+				let e = xg(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
+				e && bg(i, e);
 			}
 		}
 	}
 }
 //#endregion
 //#region src/lib/disorder-icons.js
-function xg(e, t) {
+function wg(e, t) {
 	if (t === "all") return e.all;
 	if (e[t]) return e[t];
 	let n = /^group(\d+)of\d+$/.exec(t)?.[1];
-	return n ? Sg(e, n) : "";
+	return n ? Tg(e, n) : "";
 }
-function Sg(e, t) {
+function Tg(e, t) {
 	let n = e.all.replace(/#000000/g, "#8f8f8f"), r = String(t).length, i = `<text x="8.925192" y="8.925193" text-anchor="middle" dominant-baseline="central" font-size="${r <= 1 ? 9 : Math.max(9 - (r - 1) * 1.5, 5)}" font-family="system-ui, sans-serif" font-weight="bold" fill="#000000">${t}</text>`;
 	return n.replace("</svg>", `${i}</svg>`);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/base.js
-var Cg = class e {
+var Eg = class e {
 	constructor(t, n, r, i = []) {
 		if (new.target === e) throw TypeError("Cannot instantiate BaseFilter directly");
 		this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(i), this.filterName = r, this._mode = null, this.mode = n;
@@ -27433,16 +27458,16 @@ var Cg = class e {
 };
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/util.js
-function wg(e, t) {
+function Dg(e, t) {
 	return `${e}|${t}`;
 }
-function Tg(e, t, n) {
+function Og(e, t, n) {
 	let r = e.split("|"), i = r[0], a = `${n.identitySymOpId}_555`;
-	return r.length === 2 && (a = r[1]), wg(i, n.combineSymmetryCodes(t, a));
+	return r.length === 2 && (a = r[1]), Dg(i, n.combineSymmetryCodes(t, a));
 }
 //#endregion
 //#region src/lib/structure/bond-classification.js
-var Eg = /* @__PURE__ */ new Set([
+var kg = /* @__PURE__ */ new Set([
 	"H",
 	"D",
 	"B",
@@ -27459,31 +27484,31 @@ var Eg = /* @__PURE__ */ new Set([
 	"Br",
 	"Te",
 	"I"
-]), Dg = 4, Og = 1.6;
-function kg(e) {
-	return Eg.has(e) ? ef[e] : void 0;
+]), Ag = 4, jg = 1.6;
+function Mg(e) {
+	return kg.has(e) ? ef[e] : void 0;
 }
-function Ag(e, t = e.bonds) {
+function Ng(e, t = e.bonds) {
 	let n = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) n.has(t.label) || n.set(t.label, t.atomType);
 	return t.filter((e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Dg) return !1;
+		if (e.bondLength > Ag) return !1;
 		let t = n.get(e.atom1Label), r = n.get(e.atom2Label);
 		if (t === void 0 || r === void 0) return !0;
-		let i = kg(t), a = kg(r);
-		return i === void 0 || a === void 0 || e.bondLength <= Og * (i + a);
+		let i = Mg(t), a = Mg(r);
+		return i === void 0 || a === void 0 || e.bondLength <= jg * (i + a);
 	});
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-fragment.js
-function jg(e, t) {
+function Pg(e, t) {
 	return e < t ? `${e}->${t}` : `${t}->${e}`;
 }
-function Mg(e, t, n) {
+function Fg(e, t, n) {
 	return `${e}-${t}...${n}`;
 }
-var Ng = class {
+var Ig = class {
 	constructor(e, t) {
 		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? ht.fromString(t) : t;
 	}
@@ -27494,37 +27519,37 @@ var Ng = class {
 		return this.appliedSymmetry.toString();
 	}
 };
-function Pg(e, t) {
+function Lg(e, t) {
 	return e.groupIndex === t.groupIndex && e.appliedSymmetry.id === t.appliedSymmetry.id && e.appliedSymmetry.translation.every((e, n) => e === t.appliedSymmetry.translation[n]);
 }
-var Fg = /* @__PURE__ */ new WeakMap();
-function Ig(e, t, n) {
-	let r = Fg.get(t);
-	r || (r = /* @__PURE__ */ new Map(), Fg.set(t, r));
+var Rg = /* @__PURE__ */ new WeakMap();
+function zg(e, t, n) {
+	let r = Rg.get(t);
+	r || (r = /* @__PURE__ */ new Map(), Rg.set(t, r));
 	let i = `${n.groupIndex}@${n.appliedSymmetry.id}`;
 	return r.has(i) || r.set(i, e.symmetry.applySymmetry(n.appliedSymmetry.id, t[n.groupIndex].atoms)), r.get(i);
 }
-function Lg(e, t, n, r) {
+function Bg(e, t, n, r) {
 	if (n.groupIndex !== r.groupIndex || t[n.groupIndex].atoms.length === 0) return !1;
-	let i = Ig(e, t, n), a = Ig(e, t, r);
+	let i = zg(e, t, n), a = zg(e, t, r);
 	return i.every((t, n) => I(t.position, a[n].position, e.cell));
 }
-function Rg(e, t) {
+function Vg(e, t) {
 	let n = Array.from(e.symmetry.operationIds.keys());
 	return t.map((r, i) => {
 		let a = /* @__PURE__ */ new Map(), o = [];
 		for (let r of n) {
-			let n = new Ng(i, `${r}_555`), s = o.find((r) => Lg(e, t, n, r));
+			let n = new Ig(i, `${r}_555`), s = o.find((r) => Bg(e, t, n, r));
 			s ? a.set(r, s.appliedSymmetry.id) : (o.push(n), a.set(r, r));
 		}
 		return a;
 	});
 }
-var zg = class {
+var Hg = class {
 	constructor(e, t, n, r) {
-		this.originAtom = e.includes("|") ? e : wg(e, "1_555"), this.targetAtom = t.includes("|") ? t : wg(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
+		this.originAtom = e.includes("|") ? e : Dg(e, "1_555"), this.targetAtom = t.includes("|") ? t : Dg(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
 	}
-}, Bg = class {
+}, Ug = class {
 	constructor(e, t, n, r, i, a) {
 		this.originIndex = e, this.originSymmetry = typeof t == "string" ? ht.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? ht.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
 	}
@@ -27533,7 +27558,7 @@ var zg = class {
 		return this.originIndex === this.targetIndex ? e < t ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}` : this.originIndex < this.targetIndex ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}`;
 	}
 };
-function Vg(e, t, n) {
+function Wg(e, t, n) {
 	let r = t.map(() => /* @__PURE__ */ new Map()), i = t.map(() => []);
 	return e.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 		let t = n.get(e.atom1Id) ?? n.get(e.atom1Label), a = e.atom2Id.split("|")[0], o = `${a}|1_555`, s = n.get(o) ?? n.get(a);
@@ -27541,15 +27566,15 @@ function Vg(e, t, n) {
 		let c = `${t}->${s}@.@${e.atom2SiteSymmetry}`;
 		if (r[t].has(c)) {
 			let n = r[t].get(c);
-			i[t][n].bonds.push(new zg(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
+			i[t][n].bonds.push(new Hg(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
 		} else r[t].set(c, i[t].length), i[t].push({
 			targetIndex: s,
 			targetSymmetry: ht.fromString(e.atom2SiteSymmetry),
-			bonds: [new zg(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
+			bonds: [new Hg(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
 		});
 	}), i;
 }
-function Hg(e) {
+function Gg(e) {
 	let t = e.map((e, t) => t), n = (e) => {
 		let n = e;
 		for (; t[n] !== n;) n = t[n];
@@ -27576,11 +27601,11 @@ function Hg(e) {
 		groupsByComponent: o
 	};
 }
-function Ug(e, t, n = null) {
+function Kg(e, t, n = null) {
 	let r = [], i = /* @__PURE__ */ new Set();
 	return e.forEach((e, a) => {
 		for (let o of e) {
-			let e = new Bg(a, t, o.targetIndex, o.targetSymmetry, o.bonds, n?.[a] ?? a), s = e.getKey();
+			let e = new Ug(a, t, o.targetIndex, o.targetSymmetry, o.bonds, n?.[a] ?? a), s = e.getKey();
 			i.has(s) || (r.push(e), i.add(s));
 		}
 	}), {
@@ -27588,13 +27613,13 @@ function Ug(e, t, n = null) {
 		processedConnections: i
 	};
 }
-function Wg(e, t, n, r, i, a, o = null, s = null, c = null) {
-	let l = [], u = [], d = new Ng(e.targetIndex, e.targetSymmetry), f = r[e.targetIndex];
+function qg(e, t, n, r, i, a, o = null, s = null, c = null) {
+	let l = [], u = [], d = new Ig(e.targetIndex, e.targetSymmetry), f = r[e.targetIndex];
 	for (let r of f) {
-		let d = (typeof r.targetSymmetry == "string" ? ht.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), f = new Bg(e.targetIndex, e.targetSymmetry, r.targetIndex, d, r.bonds, e.creationOriginIndex), p = f.getKey();
+		let d = (typeof r.targetSymmetry == "string" ? ht.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), f = new Ug(e.targetIndex, e.targetSymmetry, r.targetIndex, d, r.bonds, e.creationOriginIndex), p = f.getKey();
 		if (i.has(p)) continue;
 		i.add(p);
-		let m = new Ng(r.targetIndex, d), h = e.creationOriginIndex, g = n[h], _ = o?.[h] || [], v = (e) => g.some(e) || _.some(e), y = c?.[m.groupIndex]?.get(m.appliedSymmetry.id) || m.appliedSymmetry.id, b = `${m.groupIndex}|${y}`, x = s?.[h]?.get(b), S = x ? m.isTranslationalDuplicateOf(x) : v((e) => m.isTranslationalDuplicateOf(e)), C = !S && (x ? Lg(t, a, m, x) : v((e) => Lg(t, a, m, e)));
+		let m = new Ig(r.targetIndex, d), h = e.creationOriginIndex, g = n[h], _ = o?.[h] || [], v = (e) => g.some(e) || _.some(e), y = c?.[m.groupIndex]?.get(m.appliedSymmetry.id) || m.appliedSymmetry.id, b = `${m.groupIndex}|${y}`, x = s?.[h]?.get(b), S = x ? m.isTranslationalDuplicateOf(x) : v((e) => m.isTranslationalDuplicateOf(e)), C = !S && (x ? Bg(t, a, m, x) : v((e) => Bg(t, a, m, e)));
 		S ? u.push(f) : C || (l.push(f), o?.[h].push(m), s?.[h].set(b, m));
 	}
 	return {
@@ -27603,21 +27628,21 @@ function Wg(e, t, n, r, i, a, o = null, s = null, c = null) {
 		foundTranslations: u
 	};
 }
-function Gg(e, t) {
+function Jg(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	t.forEach((e, t) => {
 		e.atoms.forEach((e) => n.set(e.uniqueId, t));
 	});
-	let r = ht.fromString(e.symmetry.identitySymOpId + "_555"), i = Vg(e, t, n), { componentByGroup: a, groupsByComponent: o } = Hg(i), s = Rg(e, t), { danglingConnections: c, processedConnections: l } = Ug(i, r, a), u = c.length, d = [], f = [], p = o.map(() => []), m = o.map(() => []), h = o.map(() => /* @__PURE__ */ new Map());
+	let r = ht.fromString(e.symmetry.identitySymOpId + "_555"), i = Wg(e, t, n), { componentByGroup: a, groupsByComponent: o } = Gg(i), s = Vg(e, t), { danglingConnections: c, processedConnections: l } = Kg(i, r, a), u = c.length, d = [], f = [], p = o.map(() => []), m = o.map(() => []), h = o.map(() => /* @__PURE__ */ new Map());
 	t.forEach((e, t) => {
-		let n = a[t], i = new Ng(t, r);
+		let n = a[t], i = new Ig(t, r);
 		p[n].push(i);
 		let o = s[t].get(r.id) || r.id;
 		h[n].set(`${t}|${o}`, i);
 	});
 	let g = 0;
 	for (; g < c.length;) {
-		let n = c[g++], r = new Ng(n.targetIndex, n.targetSymmetry), a = n.creationOriginIndex, o = m[a], _ = o.findIndex((e) => Pg(e, r));
+		let n = c[g++], r = new Ig(n.targetIndex, n.targetSymmetry), a = n.creationOriginIndex, o = m[a], _ = o.findIndex((e) => Lg(e, r));
 		_ !== -1 && o.splice(_, 1);
 		let v = p[a], y = s[r.groupIndex].get(r.appliedSymmetry.id) || r.appliedSymmetry.id, b = `${r.groupIndex}|${y}`, x = h[a].get(b);
 		if (x && r.isTranslationalDuplicateOf(x)) {
@@ -27625,11 +27650,11 @@ function Gg(e, t) {
 			continue;
 		}
 		if (!x) v.push(r), h[a].set(b, r);
-		else if (!Pg(r, x) && Lg(e, t, r, x)) {
+		else if (!Lg(r, x) && Bg(e, t, r, x)) {
 			g <= u && d.push(n);
 			continue;
 		}
-		let S = Wg(n, e, p, i, l, t, m, h, s);
+		let S = qg(n, e, p, i, l, t, m, h, s);
 		c.push(...S.newDanglingConnections), f.push(...S.foundTranslations), d.push(n);
 	}
 	return {
@@ -27638,7 +27663,7 @@ function Gg(e, t) {
 		discoveredGroups: p
 	};
 }
-function Kg(e) {
+function Yg(e) {
 	let t = /* @__PURE__ */ new Set(), n = [];
 	return e.forEach((e) => {
 		t.add(`${e.originIndex}@.@${e.originSymmetry.key}`), t.add(`${e.targetIndex}@.@${e.targetSymmetry.key}`), e.connectingBonds.forEach((t) => {
@@ -27656,9 +27681,9 @@ function Kg(e) {
 		interGroupBonds: n
 	};
 }
-var qg = /* @__PURE__ */ new WeakMap();
-function Jg(e) {
-	let t = qg.get(e);
+var Xg = /* @__PURE__ */ new WeakMap();
+function Zg(e) {
+	let t = Xg.get(e);
 	if (!t) {
 		let n = e.fractToCartMatrix.toArray();
 		t = [];
@@ -27667,17 +27692,17 @@ function Jg(e) {
 			n[1][0] * e + n[1][1] * r + n[1][2] * i,
 			n[2][0] * e + n[2][1] * r + n[2][2] * i
 		]);
-		qg.set(e, t);
+		Xg.set(e, t);
 	}
 	return t;
 }
-function Yg(e, t, n, r) {
+function Qg(e, t, n, r) {
 	let i = Te(t.position, n), a = i.map((e) => Math.floor(e / r));
 	for (let t = -1; t <= 1; t += 1) for (let n = -1; n <= 1; n += 1) for (let o = -1; o <= 1; o += 1) {
 		let s = `${a[0] + t},${a[1] + n},${a[2] + o}`;
 		for (let t of e.get(s) || []) if (Math.hypot(t.coordinates[0] - i[0], t.coordinates[1] - i[1], t.coordinates[2] - i[2]) < r) return t.atom;
 	}
-	for (let a of Jg(n)) {
+	for (let a of Zg(n)) {
 		let n = i.map((e, t) => e + a[t]), o = n.map((e) => Math.floor(e / r)).join(","), s = e.get(o) || [];
 		s.push({
 			atom: t,
@@ -27686,18 +27711,18 @@ function Yg(e, t, n, r) {
 	}
 	return null;
 }
-function Xg(e, t, n, r) {
-	let i = Ig(e, t, new Ng(n, r));
+function $g(e, t, n, r) {
+	let i = zg(e, t, new Ig(n, r));
 	if (i.length === 0) return 0;
 	let a = 0, o = 0, s = 0;
 	for (let e of i) a += e.position.x, o += e.position.y, s += e.position.z;
 	let c = i.length, [l, u, d] = r.translation;
 	return Math.abs(a / c + l - .5) + Math.abs(o / c + u - .5) + Math.abs(s / c + d - .5);
 }
-function Zg(e, t = null, n = null) {
+function e_(e, t = null, n = null) {
 	let r = !!(t && n), i = /* @__PURE__ */ new Map();
 	for (let a of e) {
-		let [e, o] = a.split("@.@"), s = ht.fromString(o), c = `${e}|${s.id}`, l = r ? Xg(t, n, Number(e), s) : s.translation.reduce((e, t) => e + Math.abs(t), 0), u = i.get(c);
+		let [e, o] = a.split("@.@"), s = ht.fromString(o), c = `${e}|${s.id}`, l = r ? $g(t, n, Number(e), s) : s.translation.reduce((e, t) => e + Math.abs(t), 0), u = i.get(c);
 		(!u || l < u.magnitude - 1e-9 || Math.abs(l - u.magnitude) <= 1e-9 && a < u.instance) && i.set(c, {
 			instance: a,
 			magnitude: l
@@ -27705,7 +27730,7 @@ function Zg(e, t = null, n = null) {
 	}
 	return new Set([...i.values()].map((e) => e.instance));
 }
-function Qg(e, t, n, r) {
+function t_(e, t, n, r) {
 	let i = t.map((e) => [[...e.atoms]]), a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Set(), s = [];
 	return e.forEach((e) => {
 		let [a, o] = e.split("@.@");
@@ -27720,7 +27745,7 @@ function Qg(e, t, n, r) {
 			for (let r = 0; r < t; ++r) {
 				let t = e.map((e) => e[r]), i = /* @__PURE__ */ new Map();
 				for (let e = 0; e < t.length; e++) {
-					let r = t[e], c = e === 0, l = Yg(i, r, n.cell, F);
+					let r = t[e], c = e === 0, l = Qg(i, r, n.cell, F);
 					l ? Ee(r.position, l.position, n.cell, .001) ? a.set(r.uniqueId, l.uniqueId) : o.add(r.uniqueId) : c || s.push(r);
 				}
 			}
@@ -27731,30 +27756,30 @@ function Qg(e, t, n, r) {
 		newAtoms: s
 	};
 }
-function $g(e, t, n, r, i, a, o = null) {
+function n_(e, t, n, r, i, a, o = null) {
 	let s = [];
 	e.forEach((e) => {
 		s.push(...e.bonds);
 	});
 	let c = /* @__PURE__ */ new Set();
 	if (s.forEach((e) => {
-		c.add(jg(e.atom1Id, e.atom2Id));
+		c.add(Pg(e.atom1Id, e.atom2Id));
 	}), t.forEach((t) => {
 		let [n, i] = t.split("@.@");
 		i !== a && e[Number(n)].bonds.forEach((e) => {
-			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = wg(t, i), o = wg(n, i), l = r.get(a) || a, u = r.get(o) || o, d = jg(l, u);
+			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = Dg(t, i), o = Dg(n, i), l = r.get(a) || a, u = r.get(o) || o, d = Pg(l, u);
 			c.has(d) || (c.add(d), s.push(new st(l, u, e.bondLength, e.bondLengthSU, ".")));
 		});
 	}), n.forEach((e) => {
-		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || ht.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || ht.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? wg(i, a) : wg(i, l.key), f = u.key === a ? wg(o, a) : wg(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : wg(p, a), g = m.includes("|") ? m : wg(m, a);
+		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || ht.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || ht.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? Dg(i, a) : Dg(i, l.key), f = u.key === a ? Dg(o, a) : Dg(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : Dg(p, a), g = m.includes("|") ? m : Dg(m, a);
 		if (h === g) return;
-		let _ = jg(h, g);
+		let _ = Pg(h, g);
 		c.has(_) || (c.add(_), s.push(new st(h, g, e.bondLength, e.bondLengthSU, ".")));
 	}), o) {
 		let n = /* @__PURE__ */ new Map(), l = e.map(() => /* @__PURE__ */ new Set([a])), u = new Set(i.map((e) => e.uniqueId).filter(Boolean));
 		e.forEach((e, t) => {
 			e.atoms.forEach((e) => {
-				n.set(e.label, t), u.add(e.uniqueId || wg(e.label, a));
+				n.set(e.label, t), u.add(e.uniqueId || Dg(e.label, a));
 			});
 		}), t.forEach((e) => {
 			let [t, n] = e.split("@.@");
@@ -27764,9 +27789,9 @@ function $g(e, t, n, r, i, a, o = null) {
 			if (t === void 0) return;
 			let i = ht.fromString(e.atom2SiteSymmetry);
 			for (let n of l[t]) {
-				let t = ht.fromString(n), a = i.combine(t, o.symmetry), l = wg(e.atom1Label, n), d = wg(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
+				let t = ht.fromString(n), a = i.combine(t, o.symmetry), l = Dg(e.atom1Label, n), d = Dg(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
 				if (f === p || !u.has(f) || !u.has(p)) continue;
-				let m = jg(f, p);
+				let m = Pg(f, p);
 				c.has(m) || (c.add(m), s.push(new st(f, p, e.bondLength, e.bondLengthSU, ".")));
 			}
 		});
@@ -27776,11 +27801,11 @@ function $g(e, t, n, r, i, a, o = null) {
 		atomLabels: new Set(i.map((e) => e.uniqueId))
 	};
 }
-function e_(e, t, n, r, i, a, o) {
+function r_(e, t, n, r, i, a, o) {
 	let s = [], c = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((e) => {
 		let t;
-		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Mg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Mg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
+		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Fg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Fg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
 	});
 	let l = t.map(() => []);
 	return e.hBonds.filter((e) => e.acceptorAtomSymmetry !== ".").forEach((e) => {
@@ -27791,31 +27816,31 @@ function e_(e, t, n, r, i, a, o) {
 		if (u === o) return;
 		let d = Number(r);
 		t[d].hBonds.forEach((e) => {
-			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = wg(t, u), o = wg(n, u), l = wg(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Mg(d, f, p);
+			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = Dg(t, u), o = Dg(n, u), l = Dg(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Fg(d, f, p);
 			c.has(m) || (c.add(m), s.push(new ct(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
 		}), l[d].forEach((t) => {
-			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = wg(n, u), l = wg(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = wg(m, p), g = i.get(h) || h, _, v;
-			a.has(g) ? (_ = new ct(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Mg(d, f, g)) : (_ = new ct(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Mg(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
+			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = Dg(n, u), l = Dg(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = Dg(m, p), g = i.get(h) || h, _, v;
+			a.has(g) ? (_ = new ct(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Fg(d, f, g)) : (_ = new ct(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Fg(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
 		});
 	}), s;
 }
-function t_(e, t, n, r) {
+function i_(e, t, n, r) {
 	let i = [];
 	return e.forEach((e) => {
 		for (let t of e.connectingBonds) {
-			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = wg(a, e.originSymmetry.key), c = wg(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = jg(l, u);
+			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = Dg(a, e.originSymmetry.key), c = Dg(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = Pg(l, u);
 			r.has(f) || (r.add(f), i.push(new st(l, u, t.bondLength, t.bondLengthSU, d)));
 		}
 	}), i;
 }
-function n_(e) {
-	let t = new vt(e.cell, e.atoms, Ag(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
+function a_(e) {
+	let t = new vt(e.cell, e.atoms, Ng(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Gg(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Kg(a, e, i), l = Zg(s, t, n), { specialPositionAtoms: u, periodicDuplicateAtoms: d, newAtoms: f } = Qg(l, n, t, i), p = o.length > 0 || l.size < s.size || d.size > 0, { newBonds: m, atomLabels: h } = $g(n, l, c, u, f, i, t), g = e_(t, n, r, l, u, h, i), _ = p ? [] : t_(o, t, u, new Set(m.map((e) => jg(e.atom1Id, e.atom2Id))));
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Jg(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = Yg(a, e, i), l = e_(s, t, n), { specialPositionAtoms: u, periodicDuplicateAtoms: d, newAtoms: f } = t_(l, n, t, i), p = o.length > 0 || l.size < s.size || d.size > 0, { newBonds: m, atomLabels: h } = n_(n, l, c, u, f, i, t), g = r_(t, n, r, l, u, h, i), _ = p ? [] : i_(o, t, u, new Set(m.map((e) => Pg(e.atom1Id, e.atom2Id))));
 	for (let e of _) m.push(e);
 	let v = [...t.atoms, ...f], y = m, b = g;
 	if (p) {
@@ -27829,8 +27854,8 @@ function n_(e) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-cell.js
-var r_ = 4;
-function i_(e, t) {
+var o_ = 4;
+function s_(e, t) {
 	let n = /* @__PURE__ */ new Set([e.identitySymOpId]), r = /* @__PURE__ */ new Set();
 	for (let n of t) {
 		let t = e.combineSymmetryCodes(n + "_555", e.identitySymOpId + "_555");
@@ -27839,7 +27864,7 @@ function i_(e, t) {
 	for (let [t] of e.operationIds) n.has(t) || r.has(t) || n.add(t);
 	return n;
 }
-function a_(e) {
+function c_(e) {
 	if (e.length === 0) return {
 		minX: 0,
 		maxX: 1,
@@ -27862,15 +27887,15 @@ function a_(e) {
 		maxZ: o
 	};
 }
-function o_(e) {
-	let t = a_(e);
+function l_(e) {
+	let t = c_(e);
 	return M([
 		(t.minX + t.maxX) / 2,
 		(t.minY + t.maxY) / 2,
 		(t.minZ + t.maxZ) / 2
 	]);
 }
-function s_(e, t, n) {
+function u_(e, t, n) {
 	let r = t.symmetry.identitySymOpId, i = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) t.appliedSymmetry ? i.add(t.appliedSymmetry.id) : i.add(r);
 	let a = new Set(e.atoms.map((e) => e.uniqueId));
@@ -27880,15 +27905,15 @@ function s_(e, t, n) {
 	}
 	return Array.from(i);
 }
-function c_(e, t = 1e-6) {
+function d_(e, t = 1e-6) {
 	let { x: n, y: r, z: i } = e.position;
 	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
 }
-function l_(e, t = null) {
-	let n = u_(t), r = e.position.x.toFixed(n), i = e.position.y.toFixed(n), a = e.position.z.toFixed(n);
+function f_(e, t = null) {
+	let n = p_(t), r = e.position.x.toFixed(n), i = e.position.y.toFixed(n), a = e.position.z.toFixed(n);
 	return `${e.label}_x${r}_y${i}_z${a}`;
 }
-function u_(e) {
+function p_(e) {
 	if (!e || ![
 		e.a,
 		e.b,
@@ -27897,7 +27922,7 @@ function u_(e) {
 	let t = Math.max(e.a, e.b, e.c), n = Math.ceil(Math.log10(t / F));
 	return Math.min(Math.max(n, 3), 12);
 }
-function d_(e, t, n) {
+function m_(e, t, n) {
 	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = re(re(P(r.rotMatrix, M(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), { id: l, translation: u } = Ie(t), d = [
 		u[0] - o,
 		u[1] - s,
@@ -27912,13 +27937,13 @@ function d_(e, t, n) {
 		newString: Le(l, d)
 	};
 }
-function f_(e, t, n, r, i, a = null) {
+function h_(e, t, n, r, i, a = null) {
 	let o = [], s = t.applySymmetry(n, e.atoms);
 	for (let c = 0; c < s.length; c++) {
 		let l = s[c], u = e.atoms[c], d = n;
 		u.appliedSymmetry && u.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (d = t.combineSymmetryCodes(n, u.appliedSymmetry.key)), l.appliedSymmetry = ht.fromString(d);
 		let f = l.uniqueId;
-		if (i && !c_(l)) {
+		if (i && !d_(l)) {
 			let e = Math.floor(l.position.x), n = Math.floor(l.position.y), i = Math.floor(l.position.z);
 			l.position.x -= e, l.position.y -= n, l.position.z -= i, l.appliedSymmetry.translation[0] -= e, l.appliedSymmetry.translation[1] -= n, l.appliedSymmetry.translation[2] -= i, l.appliedSymmetry._updateKey();
 			let a = l.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
@@ -27932,20 +27957,20 @@ function f_(e, t, n, r, i, a = null) {
 				id: p
 			}), r.periodicAtomMap.set(e, t));
 		} else {
-			let e = l_(l, a);
+			let e = f_(l, a);
 			m = r.atomMap.get(e), m || r.atomMap.set(e, p);
 		}
 		m ? r.specialPositionMap.set(p, m) : h || o.push(l);
 	}
 	return o;
 }
-function p_(e, t, n, r) {
+function g_(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalBonds) {
-		let e = Tg(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = Tg(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
+		let e = Og(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = Og(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
 		if (o !== c) {
 			if (!r.atomTranslations.has(o) && !r.atomTranslations.has(c)) {
-				let e = jg(o, c);
+				let e = Pg(o, c);
 				if (!r.createdBonds.has(e)) {
 					let t = new st(o, c, a.bondLength, a.bondLengthSU, ".");
 					i.push(t), r.createdBonds.add(e);
@@ -27953,7 +27978,7 @@ function p_(e, t, n, r) {
 			} else if (r.atomTranslations.has(o) && r.atomTranslations.has(c)) {
 				let [e, t] = r.atomTranslations.get(o), [n, s] = r.atomTranslations.get(c);
 				if (t === s) {
-					let t = jg(e, n);
+					let t = Pg(e, n);
 					if (!r.createdBonds.has(t)) {
 						let o = new st(e, n, a.bondLength, a.bondLengthSU, ".");
 						i.push(o), r.createdBonds.add(t);
@@ -27964,16 +27989,16 @@ function p_(e, t, n, r) {
 	}
 	return i;
 }
-function m_(e, t, n, r) {
+function __(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalHBonds) {
-		let e = r.specialPositionMap.get(Tg(a.donorAtomId, n, t)) || Tg(a.donorAtomId, n, t), o = r.specialPositionMap.get(Tg(a.hydrogenAtomId, n, t)) || Tg(a.hydrogenAtomId, n, t), s;
+		let e = r.specialPositionMap.get(Og(a.donorAtomId, n, t)) || Og(a.donorAtomId, n, t), o = r.specialPositionMap.get(Og(a.hydrogenAtomId, n, t)) || Og(a.hydrogenAtomId, n, t), s;
 		if (a.acceptorAtomSymmetry && a.acceptorAtomSymmetry !== ".") {
 			let e = `${a.acceptorAtomId.split("|")[0]}|${t.combineSymmetryCodes(n, a.acceptorAtomSymmetry)}`;
 			s = r.specialPositionMap.get(e) || e;
-		} else s = r.specialPositionMap.get(Tg(a.acceptorAtomId, n, t)) || Tg(a.acceptorAtomId, n, t);
+		} else s = r.specialPositionMap.get(Og(a.acceptorAtomId, n, t)) || Og(a.acceptorAtomId, n, t);
 		if (!r.atomTranslations.has(e) && !r.atomTranslations.has(o) && !r.atomTranslations.has(s)) {
-			let t = Mg(e, o, s);
+			let t = Fg(e, o, s);
 			if (!r.createdHBonds.has(t)) {
 				let n = new ct(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 				r.createdHBonds.add(t), i.push(n);
@@ -27981,7 +28006,7 @@ function m_(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) && r.atomTranslations.has(o) && r.atomTranslations.has(s)) {
 			let [t, n] = r.atomTranslations.get(e), [c, l] = r.atomTranslations.get(o), [u, d] = r.atomTranslations.get(s);
 			if (n === l && l === d) {
-				let e = Mg(t, c, u);
+				let e = Fg(t, c, u);
 				if (!r.createdHBonds.has(e)) {
 					let n = new ct(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 					r.createdHBonds.add(e), i.push(n);
@@ -27991,17 +28016,17 @@ function m_(e, t, n, r) {
 	}
 	return i;
 }
-function h_(e, t, n, r) {
+function v_(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalBonds) {
-		let e = r.specialPositionMap.get(Tg(a.atom1Id, n, t)) || Tg(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
+		let e = r.specialPositionMap.get(Og(a.atom1Id, n, t)) || Og(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
 		if (r.atomTranslations.has(e)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e), o = t.combineSymmetryCodes(n, o);
 		}
 		let c = `${s}|${o}`;
 		c = r.specialPositionMap.get(c) || c;
-		let l = jg(e, c);
+		let l = Pg(e, c);
 		if (!r.createdBonds.has(l)) {
 			let t = new st(e, c, a.bondLength, a.bondLengthSU, o);
 			i.push(t), r.createdBonds.add(l);
@@ -28009,10 +28034,10 @@ function h_(e, t, n, r) {
 	}
 	return i;
 }
-function g_(e, t, n, r) {
+function y_(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalHBonds) {
-		let e = r.specialPositionMap.get(Tg(a.donorAtomId, n, t)) || Tg(a.donorAtomId, n, t), o = r.specialPositionMap.get(Tg(a.hydrogenAtomId, n, t)) || Tg(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
+		let e = r.specialPositionMap.get(Og(a.donorAtomId, n, t)) || Og(a.donorAtomId, n, t), o = r.specialPositionMap.get(Og(a.hydrogenAtomId, n, t)) || Og(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
 		if (r.atomTranslations.has(e) && r.atomTranslations.has(o)) {
 			let n;
 			[e, n] = r.atomTranslations.get(e);
@@ -28022,7 +28047,7 @@ function g_(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) || r.atomTranslations.has(o)) continue;
 		let c = `${a.acceptorAtomId.split("|")[0]}|${s}`;
 		if (e.split("|")[1] === s) continue;
-		let l = Mg(e, o, c);
+		let l = Fg(e, o, c);
 		if (!r.createdHBonds.has(l)) {
 			let t = new ct(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
 			i.push(t), r.createdHBonds.add(l);
@@ -28030,24 +28055,24 @@ function g_(e, t, n, r) {
 	}
 	return i;
 }
-function __(e, t, n, r, i, a = null) {
-	let { newCentre: o, newString: s } = d_(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function b_(e, t, n, r, i, a = null) {
+	let { newCentre: o, newString: s } = m_(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: f_(e, t, s, r, i, a),
-		internalBonds: p_(e, t, s, r),
-		internalHBonds: m_(e, t, s, r),
-		externalBonds: h_(e, t, s, r),
-		externalHBonds: g_(e, t, s, r),
+		atoms: h_(e, t, s, r, i, a),
+		internalBonds: g_(e, t, s, r),
+		internalHBonds: __(e, t, s, r),
+		externalBonds: v_(e, t, s, r),
+		externalHBonds: y_(e, t, s, r),
 		symmString: s,
 		groupCentre: o
 	};
 }
-function v_(e, t = !0, n = null, r = 1) {
+function x_(e, t = !0, n = null, r = 1) {
 	let i;
 	if (i = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new vt(e.cell, [], [], [], e.symmetry);
 	let a = e.calculateConnectedGroups(), o = a.map((t) => {
-		let n = s_(t, e, i);
-		return Array.from(i_(e.symmetry, n));
+		let n = u_(t, e, i);
+		return Array.from(s_(e.symmetry, n));
 	}), s = a.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), c = a.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), l = {
 		atomMap: /* @__PURE__ */ new Map(),
 		periodicAtomMap: /* @__PURE__ */ new Map(),
@@ -28057,7 +28082,7 @@ function v_(e, t = !0, n = null, r = 1) {
 		atomTranslations: /* @__PURE__ */ new Map()
 	}, u = [];
 	for (let n = 0; n < a.length; n++) {
-		let r = a[n], i = o[n], d = o_(r.atoms), f = i[0], p = {
+		let r = a[n], i = o[n], d = l_(r.atoms), f = i[0], p = {
 			atoms: r.atoms,
 			internalBonds: r.bonds,
 			internalHBonds: r.hBonds,
@@ -28067,7 +28092,7 @@ function v_(e, t = !0, n = null, r = 1) {
 			externalHBonds: c[n]
 		};
 		for (let n of i) {
-			let r = `${n}_555`, i = __(p, e.symmetry, r, l, t, e.cell);
+			let r = `${n}_555`, i = b_(p, e.symmetry, r, l, t, e.cell);
 			u.push(i);
 		}
 	}
@@ -28120,7 +28145,7 @@ function v_(e, t = !0, n = null, r = 1) {
 			}
 		});
 	}), t && r > 1) {
-		let t = y_(new vt(e.cell, p, m, h, e.symmetry), r, e.bonds);
+		let t = S_(new vt(e.cell, p, m, h, e.symmetry), r, e.bonds);
 		p = t.atoms, m = t.bonds, g = new Set(p.map((e) => e.uniqueId));
 	}
 	let v = new Map(p.map((e) => [e.uniqueId, e])), y = /* @__PURE__ */ new Map(), b = (t) => {
@@ -28128,7 +28153,7 @@ function v_(e, t = !0, n = null, r = 1) {
 		return n || (n = t.position.toCartesian(e.cell), y.set(t.uniqueId, n)), n;
 	}, x = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > r_) return !1;
+		if (e.bondLength > o_) return !1;
 		let t = v.get(e.atom1Id), n = v.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
 		let r = b(t), i = b(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
@@ -28138,7 +28163,7 @@ function v_(e, t = !0, n = null, r = 1) {
 		return t && (g.has(e.atom2Id) || n) && x(e);
 	}), C = h.filter((e) => g.has(e.donorAtomId) && g.has(e.hydrogenAtomId)), w = S, T = new vt(e.cell, p, w, [], e.symmetry), E = /* @__PURE__ */ new Map();
 	for (let t of T.calculateConnectedGroups()) {
-		let n = o_(t.atoms).toArray().map((e) => Math.floor(e)), r = n.some((e) => e !== 0);
+		let n = l_(t.atoms).toArray().map((e) => Math.floor(e)), r = n.some((e) => e !== 0);
 		for (let i of t.atoms) {
 			let t = i.uniqueId;
 			if (r) {
@@ -28155,7 +28180,7 @@ function v_(e, t = !0, n = null, r = 1) {
 	}
 	let D = [], O = /* @__PURE__ */ new Map(), k = /* @__PURE__ */ new Map(), A = /* @__PURE__ */ new Map();
 	for (let t of p) {
-		let n = l_(t, e.cell), r = k.get(t.uniqueId) || O.get(n);
+		let n = f_(t, e.cell), r = k.get(t.uniqueId) || O.get(n);
 		r ? A.set(t.uniqueId, r) : (O.set(n, t.uniqueId), k.set(t.uniqueId, t.uniqueId), D.push(t));
 	}
 	for (let [e, t] of E) E.set(e, A.get(t) || t);
@@ -28163,17 +28188,17 @@ function v_(e, t = !0, n = null, r = 1) {
 	for (let e of S) {
 		let t = E.get(e.atom1Id) || e.atom1Id, n = E.get(e.atom2Id) || e.atom2Id;
 		if (t === n) continue;
-		let r = jg(t, n);
+		let r = Pg(t, n);
 		ee.has(r) || (e.atom1Id = t, e.atom2Id = n, j.push(e), ee.add(r));
 	}
 	let M = [], te = /* @__PURE__ */ new Set();
 	for (let e of C) {
 		e.donorAtomId = E.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = E.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = E.get(e.acceptorAtomId) || e.acceptorAtomId;
-		let t = Mg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
+		let t = Fg(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
 		te.has(t) || (M.push(e), te.add(t));
 	}
 	let ne = t && r > 1 ? new Map(D.map((e) => [e.uniqueId, e])) : null, N = t && r > 1 ? j.filter((t) => {
-		if (!Number.isFinite(t.bondLength) || t.bondLength > r_) return !1;
+		if (!Number.isFinite(t.bondLength) || t.bondLength > o_) return !1;
 		let n = ne.get(t.atom1Id), r = ne.get(t.atom2Id);
 		if (!n || !r) return !1;
 		let i = n.position.toCartesian(e.cell), a = r.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
@@ -28181,7 +28206,7 @@ function v_(e, t = !0, n = null, r = 1) {
 	}) : j;
 	return new vt(e.cell, D, N, M, e.symmetry);
 }
-function y_(e, t, n = []) {
+function S_(e, t, n = []) {
 	let r = t - 1;
 	if (!(r > 0)) return e;
 	let i = [], a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Set();
@@ -28211,9 +28236,9 @@ function y_(e, t, n = []) {
 		}
 	}
 	let c = /* @__PURE__ */ new Set();
-	for (let t of e.bonds) c.add(jg(t.atom1Id, t.atom2Id));
+	for (let t of e.bonds) c.add(Pg(t.atom1Id, t.atom2Id));
 	let l = [], u = (t, n, r) => {
-		if (!Number.isFinite(r.bondLength) || r.bondLength > r_) return !1;
+		if (!Number.isFinite(r.bondLength) || r.bondLength > o_) return !1;
 		let i = t.position.toCartesian(e.cell), a = n.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
 		return Math.abs(o - r.bondLength) <= Math.max(.15, r.bondLength * .1);
 	};
@@ -28221,18 +28246,18 @@ function y_(e, t, n = []) {
 		let e = a.get(t.atom1Id) || o.get(t.atom1Label), n = a.get(t.atom2Id) || o.get(t.atom2Label);
 		if (!(!e || !n)) for (let r of e) for (let e of n) {
 			if (r.uniqueId === e.uniqueId || !s.has(r.uniqueId) && !s.has(e.uniqueId) || !u(r, e, t)) continue;
-			let n = jg(r.uniqueId, e.uniqueId);
+			let n = Pg(r.uniqueId, e.uniqueId);
 			c.has(n) || (l.push(new st(r.uniqueId, e.uniqueId, t.bondLength, t.bondLengthSU, ".")), c.add(n));
 		}
 	}
 	return new vt(e.cell, [...e.atoms, ...i], [...e.bonds, ...l], e.hBonds, e.symmetry);
 }
-function b_(e, t) {
+function C_(e, t) {
 	let n = t - 1;
 	if (!(n > 0)) return e;
-	let r = [...e.bonds, ...e.hBonds.map((e) => new st(e.donorAtomId, e.hydrogenAtomId, null, null, "."))], i = new vt(e.cell, e.atoms, r, [], e.symmetry), a = [], o = [], s = new Set(e.bonds.map((e) => jg(e.atom1Id, e.atom2Id)));
+	let r = [...e.bonds, ...e.hBonds.map((e) => new st(e.donorAtomId, e.hydrogenAtomId, null, null, "."))], i = new vt(e.cell, e.atoms, r, [], e.symmetry), a = [], o = [], s = new Set(e.bonds.map((e) => Pg(e.atom1Id, e.atom2Id)));
 	for (let t of i.calculateConnectedGroups()) {
-		let r = o_(t.atoms).toArray(), i = [];
+		let r = l_(t.atoms).toArray(), i = [];
 		for (let e = 0; e < 3; e++) r[e] < n && i.push(e);
 		if (i.length !== 0) for (let n = 1; n < 1 << i.length; n++) {
 			let r = [
@@ -28255,7 +28280,7 @@ function b_(e, t) {
 			for (let t of e.bonds) {
 				let e = c.get(t.atom1Id), n = c.get(t.atom2Id);
 				if (!e || !n || e === n) continue;
-				let r = jg(e, n);
+				let r = Pg(e, n);
 				s.has(r) || (o.push(new st(e, n, t.bondLength, t.bondLengthSU, ".")), s.add(r));
 			}
 		}
@@ -28264,20 +28289,20 @@ function b_(e, t) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
-var x_ = /* @__PURE__ */ new WeakMap(), S_ = /* @__PURE__ */ new WeakMap(), C_ = /* @__PURE__ */ new WeakMap();
-function w_(e) {
+var w_ = /* @__PURE__ */ new WeakMap(), T_ = /* @__PURE__ */ new WeakMap(), E_ = /* @__PURE__ */ new WeakMap();
+function D_(e) {
 	return `${Math.round(e.x * 1e8)},${Math.round(e.y * 1e8)},${Math.round(e.z * 1e8)}`;
 }
-function T_(e, t) {
-	let n = S_.get(e);
-	return n || (n = /* @__PURE__ */ new Map(), S_.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
+function O_(e, t) {
+	let n = T_.get(e);
+	return n || (n = /* @__PURE__ */ new Map(), T_.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
 }
-function E_(e, t, n) {
-	let r = x_.get(e.symmetry);
-	r || (r = /* @__PURE__ */ new Map(), x_.set(e.symmetry, r));
-	let i = w_(t.position), a = `code|${i}|${n}`;
+function k_(e, t, n) {
+	let r = w_.get(e.symmetry);
+	r || (r = /* @__PURE__ */ new Map(), w_.set(e.symmetry, r));
+	let i = D_(t.position), a = `code|${i}|${n}`;
 	if (r.has(a)) return r.get(a);
-	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${w_(o)}`;
+	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${D_(o)}`;
 	if (r.has(s)) {
 		let e = r.get(s);
 		return r.set(a, e), e;
@@ -28297,21 +28322,21 @@ function E_(e, t, n) {
 	}
 	return r.set(s, u), r.set(a, u), u;
 }
-function D_(e, t, n, r, i) {
-	let a = C_.get(e.symmetry);
-	a || (a = /* @__PURE__ */ new Map(), C_.set(e.symmetry, a));
+function A_(e, t, n, r, i) {
+	let a = E_.get(e.symmetry);
+	a || (a = /* @__PURE__ */ new Map(), E_.set(e.symmetry, a));
 	let o = [
 		t.donorAtomLabel,
 		t.hydrogenAtomLabel,
 		t.acceptorAtomLabel,
-		w_(n.position),
-		w_(r.position),
+		D_(n.position),
+		D_(r.position),
 		i.join(",")
 	].join("|");
 	if (a.has(o)) return a.get(o);
 	let s = [], c = /* @__PURE__ */ new Set();
 	for (let t of i) {
-		let i = T_(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${w_(a.position)},${w_(o.position)}`;
+		let i = O_(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${D_(a.position)},${D_(o.position)}`;
 		c.has(l) || (c.add(l), s.push({
 			inverseSymmetry: i,
 			positionKey: l
@@ -28319,7 +28344,7 @@ function D_(e, t, n, r, i) {
 	}
 	return a.set(o, s), s;
 }
-function O_(e, t) {
+function j_(e, t) {
 	let n = new Map(e.atoms.map((e) => [e.uniqueId, e])), r = /* @__PURE__ */ new Map();
 	for (let i of t) {
 		let t = n.get(i.atom1Id), a = n.get(i.atom2Id);
@@ -28336,7 +28361,7 @@ function O_(e, t) {
 	}
 	return Array.from(r.values());
 }
-function k_(e) {
+function M_(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e.atoms) t.has(n.label) || t.set(n.label, []), t.get(n.label).push(n);
 	let n = /* @__PURE__ */ new Map();
@@ -28380,7 +28405,7 @@ function k_(e) {
 	}
 	return new vt(e.cell, e.atoms, e.bonds, f, e.symmetry);
 }
-function A_(e, t = /* @__PURE__ */ new Map()) {
+function N_(e, t = /* @__PURE__ */ new Map()) {
 	let n = e.calculateConnectedGroups(), r = /* @__PURE__ */ new Map(), i = (e) => {
 		let n = t.get(e) || e;
 		return r.get(n) || r.get(e) || n;
@@ -28412,7 +28437,7 @@ function A_(e, t = /* @__PURE__ */ new Map()) {
 		let t = s.get(e.donorAtomId);
 		t !== void 0 && f[t].push(e);
 	}
-	let p = /* @__PURE__ */ new Set(), m = [...e.atoms], h = [...e.bonds], g = new Set(m.map((e) => e.uniqueId)), _ = new Map(m.map((e) => [`${e.label}|${w_(e.position)}`, e.uniqueId])), v = new Set(h.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), y = new Set(u.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), b = /* @__PURE__ */ new Set(), x = [], S = (e) => {
+	let p = /* @__PURE__ */ new Set(), m = [...e.atoms], h = [...e.bonds], g = new Set(m.map((e) => e.uniqueId)), _ = new Map(m.map((e) => [`${e.label}|${D_(e.position)}`, e.uniqueId])), v = new Set(h.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), y = new Set(u.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), b = /* @__PURE__ */ new Set(), x = [], S = (e) => {
 		let t = `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`;
 		y.has(t) || (u.push(e), y.add(t));
 	}, C = (e) => {
@@ -28426,7 +28451,7 @@ function A_(e, t = /* @__PURE__ */ new Map()) {
 		for (let t = 0; t < c.length; t++) {
 			let n = c[t], i = s.atoms[t], o = a;
 			i.appliedSymmetry && i.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (o = e.symmetry.combineSymmetryCodes(a, i.appliedSymmetry.key)), n.appliedSymmetry = ht.fromString(o);
-			let u = `${n.label}|${w_(n.position)}`, d = _.get(u);
+			let u = `${n.label}|${D_(n.position)}`, d = _.get(u);
 			d ? (d !== n.uniqueId && r.set(n.uniqueId, d), l.set(i.uniqueId, d)) : (g.has(n.uniqueId) || (m.push(n), g.add(n.uniqueId), _.set(u, n.uniqueId)), l.set(i.uniqueId, n.uniqueId));
 		}
 		s.bonds.filter(({ atom2SiteSymmetry: e }) => e === ".").forEach((e) => {
@@ -28434,22 +28459,22 @@ function A_(e, t = /* @__PURE__ */ new Map()) {
 			!t || !n || C(new st(i(t), i(n), e.bondLength, e.bondLengthSU, "."));
 		}), [...s.hBonds, ...f[t]].forEach((t) => {
 			if (t.acceptorAtomSymmetry === ".") {
-				S(new ct(i(Tg(t.donorAtomId, a, e.symmetry)), i(Tg(t.hydrogenAtomId, a, e.symmetry)), i(Tg(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+				S(new ct(i(Og(t.donorAtomId, a, e.symmetry)), i(Og(t.hydrogenAtomId, a, e.symmetry)), i(Og(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 				return;
 			}
-			x.push(new ct(i(Tg(t.donorAtomId, a, e.symmetry)), i(Tg(t.hydrogenAtomId, a, e.symmetry)), i(Tg(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+			x.push(new ct(i(Og(t.donorAtomId, a, e.symmetry)), i(Og(t.hydrogenAtomId, a, e.symmetry)), i(Og(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		});
 	};
 	for (let t of l) {
 		let n = t.acceptorAtomId.split("|")[0], r = t.acceptorAtomId.split("|")[0], l = c.get(r);
 		if (l === void 0) throw Error(`Cannot grow H-bond: acceptor atom ${r} is not in the structure`);
 		let u = t.acceptorAtomSymmetry;
-		w(l, u), S(new ct(i(t.donorAtomId), i(t.hydrogenAtomId), i(Tg(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+		w(l, u), S(new ct(i(t.donorAtomId), i(t.hydrogenAtomId), i(Og(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		let d = s.get(t.donorAtomId);
 		if (d === void 0) throw Error(`Cannot grow reciprocal H-bond: donor atom ${t.donorAtomId} is not in the structure`);
-		let f = E_(e, o.get(n), u), p = a.get(t.donorAtomId), m = a.get(t.hydrogenAtomId);
+		let f = k_(e, o.get(n), u), p = a.get(t.donorAtomId), m = a.get(t.hydrogenAtomId);
 		if (!p || !m) throw Error(`Cannot grow reciprocal H-bond: donor or hydrogen atom of ${t.donorAtomId}-${t.hydrogenAtomId} is not in the structure`);
-		let h = D_(e, t, p, m, f);
+		let h = A_(e, t, p, m, f);
 		for (let { inverseSymmetry: r, positionKey: a } of h) {
 			let o = [
 				t.donorAtomLabel,
@@ -28457,7 +28482,7 @@ function A_(e, t = /* @__PURE__ */ new Map()) {
 				n,
 				a
 			].join("|");
-			b.has(o) || (b.add(o), w(d, r), S(new ct(i(Tg(t.donorAtomId, r, e.symmetry)), i(Tg(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
+			b.has(o) || (b.add(o), w(d, r), S(new ct(i(Og(t.donorAtomId, r, e.symmetry)), i(Og(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
 		}
 	}
 	for (let e of x) g.has(e.donorAtomId) && g.has(e.hydrogenAtomId) && g.has(e.acceptorAtomId) && S(e);
@@ -28465,7 +28490,7 @@ function A_(e, t = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/modes.js
-var j_ = class e extends Cg {
+var P_ = class e extends Eg {
 	static MODES = Object.freeze({
 		NONE: "none",
 		CONSTANT: "constant",
@@ -28504,7 +28529,7 @@ var j_ = class e extends Cg {
 		let n = [e.MODES.NONE];
 		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof Oe) && n.push(e.MODES.ANISOTROPIC), n) : n;
 	}
-}, M_ = class e extends Cg {
+}, F_ = class e extends Eg {
 	static MODES = Object.freeze({ ALL: "all" });
 	static PREFERRED_FALLBACK_ORDER = [e.MODES.ALL];
 	static modeForGroup(e, t) {
@@ -28555,7 +28580,7 @@ var j_ = class e extends Cg {
 			r[`GROUP${i + 1}`] = e.modeForGroup(i + 1, n.length);
 		}), this.MODES = Object.freeze(r), Object.values(this.MODES);
 	}
-}, N_ = class e extends Cg {
+}, I_ = class e extends Eg {
 	static MODES = Object.freeze({
 		NONE: "none",
 		HBONDS: "hbonds",
@@ -28576,17 +28601,17 @@ var j_ = class e extends Cg {
 	}
 	apply(t) {
 		this.ensureValidMode(t);
-		let n = this.mode === e.MODES.NONE ? t : new vt(t.cell, t.atoms, Ag(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
+		let n = this.mode === e.MODES.NONE ? t : new vt(t.cell, t.atoms, Ng(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
 		if (this.mode === e.MODES.FRAGMENT || this.mode === e.MODES.FRAGMENT_HBONDS) {
-			let e = n_(n);
+			let e = a_(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = v_(n, !0, null, this.packingCutoff);
+		if (this.mode === e.MODES.CELL) n = x_(n, !0, null, this.packingCutoff);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
-			let e = n_(n);
-			r = e.specialPositionAtoms, n = b_(v_(e.grownStructure, !1, r), this.packingCutoff), n = k_(n);
+			let e = a_(n);
+			r = e.specialPositionAtoms, n = C_(x_(e.grownStructure, !1, r), this.packingCutoff), n = M_(n);
 		}
-		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new vt(n.cell, n.atoms, O_(n, n.bonds), n.hBonds, n.symmetry)), n = A_(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new vt(n.cell, n.atoms, O_(n, n.bonds), n.hBonds, n.symmetry), n = k_(n))), n;
+		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new vt(n.cell, n.atoms, j_(n, n.bonds), n.hBonds, n.symmetry)), n = N_(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new vt(n.cell, n.atoms, j_(n, n.bonds), n.hBonds, n.symmetry), n = M_(n))), n;
 	}
 	getApplicableModes(t) {
 		let n = [e.MODES.NONE];
@@ -28594,8 +28619,8 @@ var j_ = class e extends Cg {
 		let r = t.bonds.some((e) => e.atom2SiteSymmetry !== ".");
 		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n.push(e.MODES.CELL), n.push(e.MODES.FRAGMENT_CELL), n;
 	}
-}, P_ = 2;
-function F_(e, t = {}) {
+}, L_ = 2;
+function R_(e, t = {}) {
 	let n = t.tolerance ?? .05, r = t.maxPlausibleBond ?? 4, i = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) {
 		let e = i.get(t.label);
@@ -28640,7 +28665,7 @@ function F_(e, t = {}) {
 					d.position.y,
 					d.position.z
 				]);
-				for (let e = -2; e <= P_; e++) for (let c = -2; c <= P_; c++) for (let d = -2; d <= P_; d++) {
+				for (let e = -2; e <= L_; e++) for (let c = -2; c <= L_; c++) for (let d = -2; d <= L_; d++) {
 					let f = s(t, o([
 						r[0] + e,
 						r[1] + c,
@@ -28714,7 +28739,7 @@ function F_(e, t = {}) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/fixers.js
-var I_ = class e extends Cg {
+var z_ = class e extends Eg {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -28756,7 +28781,7 @@ var I_ = class e extends Cg {
 	getApplicableModes() {
 		return Object.values(e.MODES);
 	}
-}, L_ = class e extends Cg {
+}, B_ = class e extends Eg {
 	static MODES = Object.freeze({
 		KEEP: "keep",
 		ADD: "add",
@@ -29029,7 +29054,7 @@ var I_ = class e extends Cg {
 			e.MODES.REPLACE
 		] : [e.MODES.CREATE, e.MODES.IGNORE];
 	}
-}, R_ = class e extends Cg {
+}, V_ = class e extends Eg {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -29106,7 +29131,7 @@ var I_ = class e extends Cg {
 	getApplicableModes(t) {
 		return t.bonds.length === 0 ? [e.MODES.OFF] : this.findIsolatedHydrogenAtoms(t).length > 0 ? [e.MODES.ON] : [e.MODES.OFF];
 	}
-}, z_ = class e extends Cg {
+}, H_ = class e extends Eg {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -29117,15 +29142,15 @@ var I_ = class e extends Cg {
 	}
 	apply(t) {
 		if (this.ensureValidMode(t), this.mode === e.MODES.OFF) return this.lastRepairs = null, t;
-		let { structure: n, repairs: r } = F_(t, this.options);
+		let { structure: n, repairs: r } = R_(t, this.options);
 		return this.lastRepairs = r, r.recoded === 0 && r.lengthCorrected === 0 && r.dropped === 0 ? t : n;
 	}
 	getApplicableModes(t) {
 		if (!t?.bonds?.length) return [e.MODES.OFF];
-		let { repairs: n } = F_(t, this.options);
+		let { repairs: n } = R_(t, this.options);
 		return this.lastRepairs = n, n.recoded > 0 || n.lengthCorrected > 0 || n.dropped > 0 ? [e.MODES.ON, e.MODES.OFF] : [e.MODES.OFF];
 	}
-}, B_ = class {
+}, U_ = class {
 	static init() {
 		let e = [
 			1,
@@ -61911,32 +61936,32 @@ var I_ = class e extends Cg {
 		return c.needsUpdate = !0, l.needsUpdate = !0, this.LTC_HALF_1 = c, this.LTC_HALF_2 = l, this.LTC_FLOAT_1 = i, this.LTC_FLOAT_2 = a, this;
 	}
 };
-B_.LTC_HALF_1 = null, B_.LTC_HALF_2 = null, B_.LTC_FLOAT_1 = null, B_.LTC_FLOAT_2 = null;
+U_.LTC_HALF_1 = null, U_.LTC_HALF_2 = null, U_.LTC_FLOAT_1 = null, U_.LTC_FLOAT_2 = null;
 //#endregion
 //#region node_modules/three/examples/jsm/lights/RectAreaLightUniformsLib.js
-var V_ = class {
+var W_ = class {
 	static init() {
-		B_.init();
-		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = B_;
+		U_.init();
+		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = U_;
 		Z.LTC_FLOAT_1 = e, Z.LTC_FLOAT_2 = t, Z.LTC_HALF_1 = n, Z.LTC_HALF_2 = r;
 	}
-}, H_ = !1;
-function U_() {
-	H_ ||= (V_.init(), !0);
+}, G_ = !1;
+function K_() {
+	G_ ||= (W_.init(), !0);
 }
-function W_(e) {
+function q_(e) {
 	let t = new U();
 	e.forEach((e) => t.add(e)), t.divideScalar(e.length);
 	let n = new W(), r = new U();
 	e.forEach((e) => {
 		r.copy(e).sub(t), n.elements[0] += r.x * r.x, n.elements[1] += r.x * r.y, n.elements[2] += r.x * r.z, n.elements[3] += r.y * r.x, n.elements[4] += r.y * r.y, n.elements[5] += r.y * r.z, n.elements[6] += r.z * r.x, n.elements[7] += r.z * r.y, n.elements[8] += r.z * r.z;
 	});
-	let { values: i, eigenvectors: a } = he(G_(n)), o = pe(i);
+	let { values: i, eigenvectors: a } = he(J_(n)), o = pe(i);
 	if (o <= 0) return console.warn("Could not find a mean plane, expected?"), new U(0, 1, 0);
 	let s = a.filter((e) => e.value === o)[0].vector, c = new U(...s.toArray());
 	return c.normalize(), c;
 }
-function G_(e) {
+function J_(e) {
 	let t = e.elements;
 	return M([
 		[
@@ -61956,7 +61981,7 @@ function G_(e) {
 		]
 	]);
 }
-function K_(e) {
+function Y_(e) {
 	let t = [], n = new U();
 	if (e.traverse((e) => {
 		if (e.userData?.type === "atom") {
@@ -61965,7 +61990,7 @@ function K_(e) {
 		}
 	}), t.length === 0) return null;
 	n.divideScalar(t.length);
-	let r = t.map((e) => e.sub(n)), i = W_(r), a = new U(0, 0, 1), o = new Lr();
+	let r = t.map((e) => e.sub(n)), i = q_(r), a = new U(0, 0, 1), o = new Lr();
 	o.setFromUnitVectors(i, a);
 	let s = new K();
 	s.makeRotationFromQuaternion(o);
@@ -61979,21 +62004,21 @@ function K_(e) {
 	let f = -Math.atan2(d.y, d.x), p = new K().makeRotationZ(f);
 	return s.premultiply(p), s.premultiply(new K().makeRotationX(Math.PI / 8)), s.premultiply(new K().makeRotationY(Math.PI / 48)), s;
 }
-var q_ = 16384;
-function J_(e, t, n = {}) {
+var X_ = 16384;
+function Z_(e, t, n = {}) {
 	let r = Math.max(1, Math.floor(e)), i = Math.max(1, Math.floor(t)), a = Number.isFinite(n.scale) && n.scale > 0 ? n.scale : 1;
 	Number.isFinite(n.longEdge) && n.longEdge > 0 && (a = n.longEdge / Math.max(r, i));
-	let o = q_ / Math.max(r, i);
+	let o = X_ / Math.max(r, i);
 	return a = Math.min(a, o), {
 		width: Math.max(1, Math.round(r * a)),
 		height: Math.max(1, Math.round(i * a)),
 		scale: a
 	};
 }
-function Y_(e, t, n) {
+function Q_(e, t, n) {
 	e.children = e.children.filter((e) => !(e instanceof Bs));
 	let r = (n || new ta().setFromObject(t)).getSize(new U()), i = Math.max(r.length() * .5, 6), a = i * 2.5, o = new nc(16777215, .45);
-	e.add(o), U_();
+	e.add(o), K_();
 	let s = i * 2.25, c = new rc(16777215, 5, s, s);
 	c.position.set(-a * .6, -a * .5, a), c.lookAt(new U(0, 0, 0)), e.add(c), [{
 		pos: [
@@ -62016,7 +62041,7 @@ function Y_(e, t, n) {
 }
 //#endregion
 //#region src/lib/ortep3d/viewer-controls.js
-var X_ = class {
+var $_ = class {
 	constructor(e) {
 		this.viewer = e, this.state = {
 			isDragging: !1,
@@ -62237,7 +62262,7 @@ var X_ = class {
 		let e = this.renderer.domElement, { wheel: t, mouseDown: n, mouseMove: r, mouseUp: i, click: a, contextMenu: o, touchStart: s, touchMove: c, touchEnd: l, resize: u } = this.boundHandlers;
 		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u), this.interactionCallbacks.clear(), this.coupledInteractionStates.clear();
 	}
-}, Z_ = class e {
+}, ev = class e {
 	constructor(t, n) {
 		if (new.target === e) throw Error("AbstractCamera is an abstract class and cannot be instantiated directly");
 		this.container = t, this.options = n, this.cameraTarget = new U(0, 0, 0), this.createCamera();
@@ -62266,7 +62291,7 @@ var X_ = class {
 	applyCoupledViewState(e) {
 		throw Error("applyCoupledViewState() must be implemented by subclass");
 	}
-}, Q_ = class extends Z_ {
+}, tv = class extends ev {
 	createCamera() {
 		return this.camera = new Qs(this.options.fov, this.container.clientWidth / this.container.clientHeight, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
 	}
@@ -62305,7 +62330,7 @@ var X_ = class {
 		let t = this.options.fov;
 		this.container.clientWidth < this.container.clientHeight ? this.camera.fov = 2 * Math.atan(Math.tan(t * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = t, this.camera.updateProjectionMatrix();
 	}
-}, $_ = class extends Z_ {
+}, nv = class extends ev {
 	createCamera() {
 		let e = this.container.clientWidth / this.container.clientHeight, t = this.options.orthoSize || 5;
 		return this.camera = new $s(-t * e, t * e, t, -t, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
@@ -62355,21 +62380,21 @@ var X_ = class {
 		this.camera.top = e, this.camera.bottom = -e, this.camera.left = -e * t, this.camera.right = e * t;
 	}
 };
-function ev(e, t) {
+function rv(e, t) {
 	switch ((t.camera?.type || "perspective").toLowerCase()) {
-		case "orthographic": return new $_(e, t.camera);
-		default: return new Q_(e, t.camera);
+		case "orthographic": return new nv(e, t.camera);
+		default: return new tv(e, t.camera);
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/cell3d.js
-function tv(e, t, n, r, i) {
+function iv(e, t, n, r, i) {
 	let a = e.clone().normalize(), o = e.length() - n, s = new Y(new Xo(i, i, o, 8), new Qa({ color: t })), c = new Y(new Zo(r, n, 8), new Qa({ color: t })), l = new U(0, 1, 0), u = new Lr();
 	u.setFromUnitVectors(l, a), s.applyQuaternion(u), c.applyQuaternion(u), s.position.copy(a.clone().multiplyScalar(o / 2)), c.position.copy(a.clone().multiplyScalar(o + n / 2));
 	let d = new Mi();
 	return d.add(s), d.add(c), d;
 }
-function nv(e, t, n, r) {
+function av(e, t, n, r) {
 	let i = new Mi(), a = [
 		new U(0, 0, 0),
 		new U(1, 0, 0),
@@ -62403,12 +62428,12 @@ function nv(e, t, n, r) {
 		i.add(n);
 	}), i;
 }
-function rv(e, t) {
-	let { boxColor: n, boxOpacity: r, boxLineWidth: i, arrowColorA: a, arrowColorB: o, arrowColorC: s, arrowHeadLengthMult: c, arrowHeadWidthMult: l, arrowCylinderRadius: u } = t, d = new Mi(), f = e.fractToCartMatrix.toArray(), p = new K(f[0][0], f[0][1], f[0][2], 0, f[1][0], f[1][1], f[1][2], 0, f[2][0], f[2][1], f[2][2], 0, 0, 0, 0, 1), m = nv(p, n, r, i);
+function ov(e, t) {
+	let { boxColor: n, boxOpacity: r, boxLineWidth: i, arrowColorA: a, arrowColorB: o, arrowColorC: s, arrowHeadLengthMult: c, arrowHeadWidthMult: l, arrowCylinderRadius: u } = t, d = new Mi(), f = e.fractToCartMatrix.toArray(), p = new K(f[0][0], f[0][1], f[0][2], 0, f[1][0], f[1][1], f[1][2], 0, f[2][0], f[2][1], f[2][2], 0, 0, 0, 0, 1), m = av(p, n, r, i);
 	d.add(m);
 	let h = new U(), g = new U(), _ = new U();
 	p.extractBasis(h, g, _);
-	let { a: v, b: y, c: b } = e, x = Math.max(v, y, b) * c, S = x * l, C = tv(h, a, x, S, u), w = tv(g, o, x, S, u), T = tv(_, s, x, S, u);
+	let { a: v, b: y, c: b } = e, x = Math.max(v, y, b) * c, S = x * l, C = iv(h, a, x, S, u), w = iv(g, o, x, S, u), T = iv(_, s, x, S, u);
 	return d.add(C), d.add(w), d.add(T), d.name = "UnitCell", d.userData = {
 		selectable: !1,
 		cellParameters: {
@@ -62424,14 +62449,14 @@ function rv(e, t) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-layout.js
-function iv(e, t) {
+function sv(e, t) {
 	return e.left < t.right && e.right > t.left && e.top < t.bottom && e.bottom > t.top;
 }
-function av(e, t) {
+function cv(e, t) {
 	let n = Math.max(e.left, Math.min(t.x, e.right)), r = Math.max(e.top, Math.min(t.y, e.bottom)), i = t.x - n, a = t.y - r;
 	return i * i + a * a < t.radius * t.radius;
 }
-function ov(e, t) {
+function lv(e, t) {
 	let n = e.radius || 0, r = {
 		left: t.left - n,
 		right: t.right + n,
@@ -62458,16 +62483,16 @@ function ov(e, t) {
 	}
 	return !0;
 }
-function sv(e, t) {
+function uv(e, t) {
 	let n = t.x2 - t.x1, r = t.y2 - t.y1, i = n * n + r * r;
 	if (i === 0) return (e.x - t.x1) ** 2 + (e.y - t.y1) ** 2;
 	let a = Math.max(0, Math.min(1, ((e.x - t.x1) * n + (e.y - t.y1) * r) / i)), o = t.x1 + a * n, s = t.y1 + a * r;
 	return (e.x - o) ** 2 + (e.y - s) ** 2;
 }
-function cv(e, t, n) {
+function dv(e, t, n) {
 	return (t.x - e.x) * (n.y - e.y) - (t.y - e.y) * (n.x - e.x);
 }
-function lv(e, t) {
+function fv(e, t) {
 	let n = {
 		x: e.x1,
 		y: e.y1
@@ -62480,7 +62505,7 @@ function lv(e, t) {
 	}, a = {
 		x: t.x2,
 		y: t.y2
-	}, o = cv(n, r, i), s = cv(n, r, a), c = cv(i, a, n), l = cv(i, a, r);
+	}, o = dv(n, r, i), s = dv(n, r, a), c = dv(i, a, n), l = dv(i, a, r);
 	return [
 		o,
 		s,
@@ -62488,24 +62513,24 @@ function lv(e, t) {
 		l
 	].every((e) => Math.abs(e) < 1e-9) ? Math.max(Math.min(e.x1, e.x2), Math.min(t.x1, t.x2)) <= Math.min(Math.max(e.x1, e.x2), Math.max(t.x1, t.x2)) && Math.max(Math.min(e.y1, e.y2), Math.min(t.y1, t.y2)) <= Math.min(Math.max(e.y1, e.y2), Math.max(t.y1, t.y2)) : o * s <= 0 && c * l <= 0;
 }
-function uv(e, t) {
-	if (lv(e, t)) return !0;
+function pv(e, t) {
+	if (fv(e, t)) return !0;
 	let n = (e.radius || 0) + (t.radius || 0);
-	return Math.min(sv({
+	return Math.min(uv({
 		x: e.x1,
 		y: e.y1
-	}, t), sv({
+	}, t), uv({
 		x: e.x2,
 		y: e.y2
-	}, t), sv({
+	}, t), uv({
 		x: t.x1,
 		y: t.y1
-	}, e), sv({
+	}, e), uv({
 		x: t.x2,
 		y: t.y2
 	}, e)) <= n * n;
 }
-function dv(e) {
+function mv(e) {
 	let t = e.radius || 0;
 	return {
 		left: Math.min(e.x1, e.x2) - t,
@@ -62514,7 +62539,7 @@ function dv(e) {
 		bottom: Math.max(e.y1, e.y2) + t
 	};
 }
-function fv(e) {
+function hv(e) {
 	return {
 		left: e.x - e.radius,
 		right: e.x + e.radius,
@@ -62522,7 +62547,7 @@ function fv(e) {
 		bottom: e.y + e.radius
 	};
 }
-function pv(e) {
+function gv(e) {
 	return {
 		left: Math.min(...e.map((e) => e.x)),
 		right: Math.max(...e.map((e) => e.x)),
@@ -62530,8 +62555,8 @@ function pv(e) {
 		bottom: Math.max(...e.map((e) => e.y))
 	};
 }
-function mv(e, t) {
-	let n = [...e.map(fv), ...t.map(dv)];
+function _v(e, t) {
+	let n = [...e.map(hv), ...t.map(mv)];
 	return n.length === 0 ? null : n.reduce((e, t) => ({
 		left: Math.min(e.left, t.left),
 		right: Math.max(e.right, t.right),
@@ -62539,7 +62564,7 @@ function mv(e, t) {
 		bottom: Math.max(e.bottom, t.bottom)
 	}));
 }
-var hv = class {
+var vv = class {
 	constructor(e = 64) {
 		this.cellSize = e, this.cells = /* @__PURE__ */ new Map();
 	}
@@ -62564,7 +62589,7 @@ var hv = class {
 		return [...t];
 	}
 };
-function gv(e, t) {
+function yv(e, t) {
 	let n = !1;
 	for (let r = 0, i = t.length - 1; r < t.length; i = r++) {
 		let a = t[r], o = t[i];
@@ -62572,14 +62597,14 @@ function gv(e, t) {
 	}
 	return n;
 }
-var _v = Array.from({ length: 16 }, (e, t) => {
+var bv = Array.from({ length: 16 }, (e, t) => {
 	let n = t * Math.PI / 8;
 	return {
 		x: Math.cos(n),
 		y: Math.sin(n)
 	};
 });
-function vv(e, t, n, r) {
+function xv(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = Math.abs(t.x) * i + Math.abs(t.y) * a, s = e.radius + r.atomPadding + o + (n - 1) * r.fallbackDistance, c = e.x + t.x * s, l = e.y + t.y * s, u = r.labelPadding, d = n > 1 ? {
 		x1: e.x + t.x * (e.radius + r.atomPadding),
 		y1: e.y + t.y * (e.radius + r.atomPadding),
@@ -62604,18 +62629,18 @@ function vv(e, t, n, r) {
 		}
 	};
 }
-function yv(e, t, n, r, i) {
+function Sv(e, t, n, r, i) {
 	let a = t.preferredDirection || {
 		x: 1,
 		y: -1
 	}, o = (1 - (e.direction.x * a.x + e.direction.y * a.y)) * 50;
-	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => gv(e, t)) && (o += i.ringPenalty), r) {
+	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => yv(e, t)) && (o += i.ringPenalty), r) {
 		let t = e.direction.x * r.direction.x + e.direction.y * r.direction.y;
 		o += (1 - t) * i.movementPenalty;
 	}
 	return o;
 }
-function bv(e, t, n, r) {
+function Cv(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = t - e.x, s = n - e.y, c = Math.hypot(o, s) || 1, l = {
 		x: o / c,
 		y: s / c
@@ -62644,42 +62669,42 @@ function bv(e, t, n, r) {
 		}
 	};
 }
-function xv(e) {
+function wv(e) {
 	return e.leaderSegment ? Math.hypot(e.leaderSegment.x2 - e.leaderSegment.x1, e.leaderSegment.y2 - e.leaderSegment.y1) : 0;
 }
-function Sv(e, t) {
+function Tv(e, t) {
 	if (!Number.isFinite(e.z)) return null;
 	let n = Math.max(1, t.performanceNoSpaceCellSize ?? 24);
 	return [Math.floor(e.x / n), Math.floor(e.y / n)].join(":");
 }
-function Cv(e, t, n) {
+function Ev(e, t, n) {
 	return e.left >= n && e.top >= n && e.right <= t.width - n && e.bottom <= t.height - n;
 }
-function wv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
-	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new hv(u), f = new hv(u), p = new hv(u), m = new hv(u), h = new hv(u);
-	t.forEach((e) => d.insert(e, fv(e))), n.forEach((e) => f.insert(e, dv(e))), r.forEach((e) => p.insert(e, pv(e)));
-	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = mv(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
+function Dv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
+	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new vv(u), f = new vv(u), p = new vv(u), m = new vv(u), h = new vv(u);
+	t.forEach((e) => d.insert(e, hv(e))), n.forEach((e) => f.insert(e, mv(e))), r.forEach((e) => p.insert(e, gv(e)));
+	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = _v(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
 		if (C.has(e)) return C.get(e);
 		let n = !0;
-		if (xv(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Cv(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => av(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => ov(t, e.rect)) && (n = !1), n && e.leaderSegment) {
-			let r = dv(e.leaderSegment);
-			!b && f.query(r).some((t) => uv(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && sv(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
+		if (wv(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Ev(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => cv(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => lv(t, e.rect)) && (n = !1), n && e.leaderSegment) {
+			let r = mv(e.leaderSegment);
+			!b && f.query(r).some((t) => pv(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && uv(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
 		}
 		return C.set(e, n), n;
 	}, E = (e, t) => {
 		if (!T(e, t)) return null;
-		let n = new Set(m.query(e.rect).filter((t) => iv(e.rect, t.rect)));
-		if (h.query(e.rect).filter((t) => ov(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
-		let r = dv(e.leaderSegment);
-		return m.query(r).filter((t) => ov(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => uv(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
+		let n = new Set(m.query(e.rect).filter((t) => sv(e.rect, t.rect)));
+		if (h.query(e.rect).filter((t) => lv(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
+		let r = mv(e.leaderSegment);
+		return m.query(r).filter((t) => lv(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => pv(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
 	}, D = (e, t) => E(e, t)?.size === 0, O = (e, t) => {
 		let n = {
 			...e,
 			...t
 		};
-		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, dv(n.leaderSegment)), n;
+		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, mv(n.leaderSegment)), n;
 	}, k = (e) => {
-		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, dv(e.leaderSegment));
+		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, mv(e.leaderSegment));
 	}, A = (e, t, n, r, i) => {
 		for (let a of t) {
 			if (i.remaining-- <= 0) return !1;
@@ -62701,7 +62726,7 @@ function wv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 		return !1;
 	}, j = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
 	for (let e of y) {
-		let t = _ ? Sv(e, a) : null, n = t === null ? void 0 : w.get(t);
+		let t = _ ? Tv(e, a) : null, n = t === null ? void 0 : w.get(t);
 		if (n !== void 0 && n < e.z - 1e-6) {
 			c.push({
 				id: e.id,
@@ -62711,9 +62736,9 @@ function wv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			continue;
 		}
 		let r = [], i = b ? Array.from({ length: Math.max(2, a.maximumCoverageDistanceSteps ?? 6) }, (e, t) => t + 1) : [1, 2];
-		for (let t of i) for (let n of _v) {
-			let i = vv(e, n, t, a);
-			i.score = yv(i, e, p.query({
+		for (let t of i) for (let n of bv) {
+			let i = xv(e, n, t, a);
+			i.score = Sv(i, e, p.query({
 				left: i.x,
 				right: i.x,
 				top: i.y,
@@ -62738,14 +62763,14 @@ function wv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			calloutSearch: for (let t of g) for (let c = 0; c < e; c++) for (let e of v) {
 				if (l >= a.calloutSearchLimit || s.length >= a.calloutChoiceLimit) break calloutSearch;
 				l++;
-				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = bv(o, m, t, a);
+				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Cv(o, m, t, a);
 				if (E(h, o) !== null) {
 					h.score = Math.hypot(m - o.x, t - o.y);
-					let e = dv(h.leaderSegment);
-					h.score += f.query(e).filter((e) => uv(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
+					let e = mv(h.leaderSegment);
+					h.score += f.query(e).filter((e) => pv(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
 				}
 			}
-			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => xv(e) - xv(t) || e.score - t.score);
+			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => wv(e) - wv(t) || e.score - t.score);
 			S.set(o.id, y), A(o, y, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) }) || c.push({
 				id: o.id,
 				text: o.text,
@@ -62770,22 +62795,22 @@ function wv(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-worker.js?worker&inline
-var Tv = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", Ev = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Tv], { type: "text/javascript;charset=utf-8" });
-function Dv(e) {
+var Ov = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", kv = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Ov], { type: "text/javascript;charset=utf-8" });
+function Av(e) {
 	let t;
 	try {
-		if (t = Ev && (self.URL || self.webkitURL).createObjectURL(Ev), !t) throw "";
+		if (t = kv && (self.URL || self.webkitURL).createObjectURL(kv), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Tv), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Ov), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-manager.js
-var Ov = [
+var jv = [
 	"atomPadding",
 	"autoPerformanceLabelThreshold",
 	"calloutChoiceLimit",
@@ -62811,26 +62836,26 @@ var Ov = [
 	"spatialCellSize",
 	"viewportPadding"
 ];
-function kv(e) {
-	return Object.fromEntries(Ov.map((t) => [t, e[t]]));
+function Mv(e) {
+	return Object.fromEntries(jv.map((t) => [t, e[t]]));
 }
-function Av(e) {
+function Nv(e) {
 	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
 }
-function jv(e) {
+function Pv(e) {
 	return Array.isArray(e) ? e.map((e) => typeof e == "string" ? { id: e } : e).filter((e) => e && typeof e.id == "string") : [];
 }
-function Mv(e, t) {
-	return uf(Pv(e), t);
+function Fv(e, t) {
+	return uf(Lv(e), t);
 }
-function Nv(e, t) {
-	return ff(Pv(e), t);
+function Iv(e, t) {
+	return ff(Lv(e), t);
 }
-function Pv(e) {
+function Lv(e) {
 	let t = e || {};
 	return [.../* @__PURE__ */ new Set([...Object.keys(Q.elementProperties), ...Object.keys(t)])].map((e) => t[e]?.atomColor ?? Q.elementProperties[e]?.atomColor).filter(Boolean);
 }
-function Fv(e, t, n, r = null) {
+function Rv(e, t, n, r = null) {
 	if (t.colorMode !== "atom") return t.color;
 	let i = n || {}, a = e.atomType;
 	!i[a] && !Q.elementProperties[a] && (a = gt(e.atomType));
@@ -62838,10 +62863,10 @@ function Fv(e, t, n, r = null) {
 	if (!o) return t.color;
 	let s = t.atomColorLuminanceFloor, c, l;
 	if (s != null) {
-		let e = r ?? Nv(i, s);
+		let e = r ?? Iv(i, s);
 		c = pf(o, e), l = e === 0;
 	} else {
-		let e = r ?? Mv(i, t.atomColorLuminanceCeiling);
+		let e = r ?? Fv(i, t.atomColorLuminanceCeiling);
 		c = df(o, e), l = e === 1;
 	}
 	if (l) return `#${c.getHexString(Gn)}`;
@@ -62852,10 +62877,10 @@ function Fv(e, t, n, r = null) {
 		u.b
 	].map((e) => Math.floor(Ir.clamp(e, 0, 1) * 255)).map((e) => e.toString(16).padStart(2, "0")).join("")}`;
 }
-function Iv(e, t) {
+function zv(e, t) {
 	return e.includes("|") ? e === t.uniqueId : e === t.label;
 }
-function Lv(e) {
+function Bv(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) {
 		let r = (n + 1) % e.length;
@@ -62863,13 +62888,13 @@ function Lv(e) {
 	}
 	return Math.abs(t) / 2;
 }
-function Rv(e, t) {
+function Vv(e, t) {
 	return e.z >= -1 && e.z <= 1 && e.x + e.radius >= 0 && e.x - e.radius <= t.width && e.y + e.radius >= 0 && e.y - e.radius <= t.height;
 }
-function zv(e) {
+function Hv(e) {
 	if (!e) return [];
 	let t = [...new Map(e.atoms.map((e) => [e.uniqueId, e])).keys()].sort(), n = new Map(t.map((e, t) => [e, t])), r = new Map(t.map((e) => [e, /* @__PURE__ */ new Set()]));
-	for (let t of Ag(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
+	for (let t of Ng(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
 	let i = [], a = /* @__PURE__ */ new Set();
 	for (let e of t) {
 		let t = [e], o = new Set(t), s = (c) => {
@@ -62885,7 +62910,7 @@ function zv(e) {
 	}
 	return i;
 }
-var Bv = class {
+var Uv = class {
 	constructor(e) {
 		this.viewer = e, this.options = e.options.atomLabels, this.previousPlacements = /* @__PURE__ */ new Map(), this.layout = {
 			placed: [],
@@ -62919,14 +62944,14 @@ var Bv = class {
 		}), this.loadingIndicator.append(t, document.createTextNode("Laying out labels…")), e.container.appendChild(this.loadingIndicator);
 	}
 	setOptions(e) {
-		this.options = e, (!e.showLoadingIndicator || Av(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
+		this.options = e, (!e.showLoadingIndicator || Nv(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
 	}
 	setStructure(e) {
 		this.endLoadingIndicator(), this.displayStructure = e, this.rings = null, this.bondNeighbours.clear(), this.previousPlacements.clear(), this.invalidateLayout();
 	}
 	prepareTopology() {
 		if (this.rings === null) {
-			this.rings = zv(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
+			this.rings = Hv(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
 			for (let e of this.displayStructure.bonds) this.bondNeighbours.has(e.atom1Id) && this.bondNeighbours.has(e.atom2Id) && (this.bondNeighbours.get(e.atom1Id).add(e.atom2Id), this.bondNeighbours.get(e.atom2Id).add(e.atom1Id));
 		}
 	}
@@ -62988,7 +63013,7 @@ var Bv = class {
 		if (this.options.useWorker === !1 || this.workerUnavailable || typeof Worker > "u") return null;
 		if (this.worker) return this.worker;
 		try {
-			return this.worker = new Dv({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
+			return this.worker = new Av({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
 				e.preventDefault?.(), this.handleWorkerFailure(Error(e.message || "Atom-label worker failed"));
 			}, this.worker;
 		} catch (e) {
@@ -63000,7 +63025,7 @@ var Bv = class {
 		(this.canvas.width !== r || this.canvas.height !== i) && (this.canvas.width = r, this.canvas.height = i, this.canvas.style.width = `${t}px`, this.canvas.style.height = `${n}px`);
 	}
 	resolveRequests() {
-		let e = this.displayStructure, t = Av(this.options.show);
+		let e = this.displayStructure, t = Nv(this.options.show);
 		if (!e || t === "none") return [];
 		if (t === "all" || t === "non-hydrogen") return e.atoms.filter((e) => t === "all" || !["H", "D"].includes(e.atomType)).map((e) => ({
 			atom: e,
@@ -63010,9 +63035,9 @@ var Bv = class {
 			...e,
 			text: String(e.text).slice(0, 200)
 		}));
-		let n = jv(t), r = [];
+		let n = Pv(t), r = [];
 		for (let t of e.atoms) {
-			let e = n.find((e) => Iv(e.id, t));
+			let e = n.find((e) => zv(e.id, t));
 			if (!e) continue;
 			let i = e.text ?? this.options.text?.[t.uniqueId] ?? this.options.text?.[t.label] ?? t.label;
 			i !== null && String(i).length > 0 && r.push({
@@ -63090,14 +63115,14 @@ var Bv = class {
 		};
 	}
 	projectRings(e) {
-		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && Lv(e) >= 25);
+		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && Bv(e) >= 25);
 	}
 	getAtomLabelColor(e) {
 		if (this.options.colorMode !== "atom") return this.options.color;
 		let t = e.atomType;
 		this.atomLabelColorCache ||= /* @__PURE__ */ new Map();
 		let n = this.options.atomColorLuminanceFloor;
-		return this.atomLabelColorScale ??= n == null ? Mv(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : Nv(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, Fv(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
+		return this.atomLabelColorScale ??= n == null ? Fv(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : Iv(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, Rv(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
 	}
 	update() {
 		if (!this.context) return this.completeUpdate(this.layout);
@@ -63117,7 +63142,7 @@ var Bv = class {
 		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
 		let o = this.projectAnchors(), s = i.filter((n) => {
 			let r = o.get(n.atom.uniqueId);
-			return r && Rv(r, {
+			return r && Vv(r, {
 				width: e,
 				height: t
 			});
@@ -63132,16 +63157,18 @@ var Bv = class {
 		this.context.font = c, this.context.textAlign = "center", this.context.textBaseline = "middle";
 		let l = {
 			labels: s.map((e) => {
-				let t = o.get(e.atom.uniqueId), n = `${c}\u0000${e.text}`, r = this.measurementCache.get(n);
-				return r === void 0 && (r = this.context.measureText(e.text).width, this.measurementCache.set(n, r)), {
+				let t = o.get(e.atom.uniqueId), n = cp(e.text, this.options.subscriptNonElement), r = this.options.fontSize * .7, i = `${this.options.fontWeight} ${r}px ${this.options.fontFamily}`, a = `${c}\u0000${i}\u0000${n.element}\u0000${n.nonElement}`, s = this.measurementCache.get(a);
+				return s === void 0 && (this.context.font = c, s = this.context.measureText(n.element).width, n.nonElement && (this.context.font = i, s += this.context.measureText(n.nonElement).width, this.context.font = c), this.measurementCache.set(a, s)), {
 					id: e.atom.uniqueId,
 					text: e.text,
+					elementText: n.element,
+					nonElementText: n.nonElement,
 					color: this.getAtomLabelColor(e.atom),
 					x: t.x,
 					y: t.y,
 					z: t.z,
 					radius: t.radius,
-					width: r,
+					width: s,
 					height: this.options.fontSize * 1.2,
 					priority: e.priority,
 					preferredDirection: this.preferredDirection(e.atom, o)
@@ -63162,7 +63189,7 @@ var Bv = class {
 				width: e,
 				height: t
 			},
-			options: kv(this.options),
+			options: Mv(this.options),
 			previousPlacements: [...this.previousPlacements.entries()]
 		}, u = this.captureLayoutState(e, t), d = this.getWorker();
 		if (!d) {
@@ -63182,7 +63209,7 @@ var Bv = class {
 		}), p;
 	}
 	calculateLayout(e) {
-		return wv(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
+		return Dv(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
 	}
 	handleWorkerMessage(e) {
 		if (!this.pendingLayout || e.id !== this.pendingLayout.id) return;
@@ -63230,7 +63257,18 @@ var Bv = class {
 	}
 	paintLayout(e, t = null) {
 		t !== null && (e.setTransform(t, 0, 0, t, 0, 0), e.font = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`, e.textAlign = "center", e.textBaseline = "middle"), e.lineJoin = "round", e.lineCap = "round";
-		for (let t of this.layout.placed) t.leaderLine && this.options.leaderLines !== "none" && (e.strokeStyle = this.options.leaderColor, e.lineWidth = this.options.leaderWidth, e.beginPath(), e.moveTo(t.leaderSegment.x1, t.leaderSegment.y1), e.lineTo(t.leaderSegment.x2, t.leaderSegment.y2), e.stroke()), this.options.haloWidth > 0 && (e.strokeStyle = this.options.haloColor, e.lineWidth = this.options.haloWidth * 2, e.strokeText(t.text, t.x, t.y)), e.fillStyle = t.color || this.options.color, e.fillText(t.text, t.x, t.y);
+		let n = `${this.options.fontWeight} ${this.options.fontSize}px ${this.options.fontFamily}`, r = `${this.options.fontWeight} ${this.options.fontSize * .7}px ${this.options.fontFamily}`;
+		for (let t of this.layout.placed) {
+			t.leaderLine && this.options.leaderLines !== "none" && (e.strokeStyle = this.options.leaderColor === "label" ? t.color || this.options.color : this.options.leaderColor, e.lineWidth = this.options.leaderWidth, e.beginPath(), e.moveTo(t.leaderSegment.x1, t.leaderSegment.y1), e.lineTo(t.leaderSegment.x2, t.leaderSegment.y2), e.stroke());
+			let i = t.elementText ?? t.text, a = t.nonElementText ?? "";
+			e.font = n;
+			let o = e.measureText(i).width;
+			e.font = a ? r : n;
+			let s = a ? e.measureText(a).width : 0, c = t.x - (o + s) / 2, l = (n, r, i) => {
+				this.options.haloWidth > 0 && (e.strokeStyle = this.options.haloColor, e.lineWidth = this.options.haloWidth * 2, e.strokeText(n, r, i)), e.fillStyle = t.color || this.options.color, e.fillText(n, r, i);
+			};
+			e.textAlign = "left", e.font = n, l(i, c, t.y), a && (e.font = r, l(a, c + o, t.y + this.options.fontSize * .2)), e.textAlign = "center";
+		}
 	}
 	hasVisibleLabels() {
 		return this.canvas.style.visibility !== "hidden" && this.layout.placed.length > 0;
@@ -63238,34 +63276,34 @@ var Bv = class {
 	dispose() {
 		this.disposed = !0, this.endLoadingIndicator(), this.scheduledFrame !== null && (cancelAnimationFrame(this.scheduledFrame), this.scheduledFrame = null), this.worker?.terminate(), this.worker = null, this.pendingLayout = null, this.resolveLayoutWaiters(this.layout), this.canvas.remove(), this.loadingIndicator.remove(), this.changedContainerPosition && (this.viewer.container.style.position = this.previousContainerPosition), this.previousPlacements.clear(), this.measurementCache.clear(), this.viewer = null;
 	}
-}, Vv = "(function(){function e(e){let t=0,n=``;(e[t]===`+`||e[t]===`-`)&&(n=e[t++]);let r=t,i=0;for(;e[t]>=`0`&&e[t]<=`9`;)t++,i++;if(e[t]===`.`)for(t++;e[t]>=`0`&&e[t]<=`9`;)t++,i++;if(i===0)return null;let a=e.slice(r,t),o=null;if(e[t]===`e`||e[t]===`E`){t++;let n=t;(e[t]===`+`||e[t]===`-`)&&t++;let r=t;for(;e[t]>=`0`&&e[t]<=`9`;)t++;if(t===r)return null;o=e.slice(n,t)}let s=null;if(e[t]===`(`){t++;let n=t;for(;e[t]>=`0`&&e[t]<=`9`;)t++;if(t===n||e[t]!==`)`)return null;s=e.slice(n,t),t++}return t===e.length?{signString:n,numString:a,expString:o,suString:s}:null}function t(t,n=!0,r=1){let i=e(t);if(n&&i&&i.expString!==null&&i.suString!==null){let{signString:e,numString:t,expString:n,suString:r}=i,a=e===`-`?-1:1,o=parseFloat(t),s=parseInt(n),c=t.includes(`.`)?t.split(`.`)[1].length:0,l=Number(a*o*10**s),u=s-c,d=Number(parseInt(r)*10**u);return c-s>=0&&c-s<=100?{value:Number(l.toFixed(c-s)),su:Number(d.toFixed(c-s))}:{value:l,su:d}}if(i&&i.expString!==null&&i.suString===null){let{signString:e,numString:t,expString:n}=i,r=e===`-`?-1:1,a=t.includes(`.`)?t.split(`.`)[1].length:0,o=parseInt(n),s=Number(r*parseFloat(t)*10**o);return a-o>=0&&a-o<=100?{value:Number(s.toFixed(a-o)),su:NaN}:{value:s,su:NaN}}if(n&&i&&i.expString===null&&i.suString!==null){let{signString:e,numString:t,suString:n}=i,r=e===`-`?-1:1;if(t.includes(`.`)){let e=t.split(`.`)[1].length;return{value:Number((r*parseFloat(t)).toFixed(e)),su:Number((10**-e*parseFloat(n)).toFixed(e))}}else return{value:r*parseInt(t),su:parseInt(n)}}if(isNaN(t)){if(r===2)return{value:t,su:NaN};let e=t[0];return(e===`\"`||e===`'`)&&t.at(-1)===e?{value:t.slice(1,-1).replace(/\\\\([^\\\\])/g,`$1`),su:NaN}:{value:t.replace(/\\\\([^\\\\])/g,`$1`),su:NaN}}else return{value:t.includes(`.`)?parseFloat(t):parseInt(t),su:NaN}}function n(e,t){let n=[e[t].slice(1)],r=e.slice(t+1),i=r.findIndex(e=>e.startsWith(`;`));i===-1&&console.warn(`Unterminated CIF multiline text field starting at input line ${t+1}; treating end of file as the closing semicolon.`);let a=i===-1?r.length:i,o=n.concat(r.slice(0,a)),s=o.findIndex(e=>e.trim()!==``),c=o.findLastIndex(e=>e.trim()!==``);return{value:s===-1?``:o.slice(s,c+1).join(`\n`),endIndex:i===-1?e.length-1:t+i+1}}function r(e,n,r){let o=e[n];if(!o)throw Error(`Unexpected end of CIF2 value stream`);switch(o.type){case`value`:{if(o.quoted)return{value:o.value,su:NaN,nextPos:n+1};let e=t(o.value,r,2);return{value:e.value,su:e.su,nextPos:n+1}}case`listOpen`:return i(e,n,r);case`tableOpen`:return a(e,n,r);default:throw Error(`Unexpected token '${o.type}' where a CIF2 value was expected`)}}function i(e,t,n){let i=[],a=t+1;for(;e[a]&&e[a].type!==`listClose`;){let t=r(e,a,n);i.push(t.value),a=t.nextPos}if(!e[a])throw Error(`Unterminated CIF2 list value`);return{value:i,su:NaN,nextPos:a+1}}function a(e,t,n){let i=new Map,a=t+1;for(;e[a]&&e[a].type!==`tableClose`;){let t=e[a];if(t.type!==`value`)throw Error(`CIF2 table key must be a quoted string`);if(!e[a+1]||e[a+1].type!==`colon`)throw Error(`CIF2 table entry for key '${t.value}' is missing its colon`);let o=r(e,a+2,n);i.set(t.value,o.value),a=o.nextPos}if(!e[a])throw Error(`Unterminated CIF2 table value`);return{value:i,su:NaN,nextPos:a+1}}function o(e,t){let n=e[t];if(!n)throw Error(`Unexpected end of CIF2 value stream`);switch(n.type){case`value`:return t+1;case`listOpen`:case`tableOpen`:{let r={listOpen:`listClose`,tableOpen:`tableClose`},i=[n.type],a=t+1;for(;a<e.length&&i.length>0;){let t=e[a].type;if(t===`listOpen`||t===`tableOpen`)i.push(t);else if(t===`listClose`||t===`tableClose`){let e=r[i[i.length-1]];if(t!==e)throw Error(`Mismatched CIF2 container: expected '${e}' but found '${t}'`);i.pop()}a++}if(i.length>0)throw Error(n.type===`listOpen`?`Unterminated CIF2 list value`:`Unterminated CIF2 table value`);return a}default:throw Error(`Unexpected token '${n.type}' where a CIF2 value was expected`)}}let s=`_space_group_symop_ssg._space_group_symop._symmetry_equiv._geom_bond._geom_hbond._geom_angle._geom_torsion._diffrn_refln._refln._atom_site_fourier_wave_vector._atom_site_moment_fourier_param._atom_site_moment_special_func._atom_site_moment._atom_site_rotation._atom_site_displace_Fourier._atom_site_displace_special_func._atom_site_occ_Fourier._atom_site_occ_special_func._atom_site_phason._atom_site_rot_Fourier_param._atom_site_rot_Fourier._atom_site_rot_special_func._atom_site_U_Fourier._atom_site_anharm_gc_c._atom_site_anharm_gc_d._atom_site_aniso._atom_site`.split(`.`);function c(e){let t=[],n=0;for(;n<e.length;){for(;n<e.length&&/\\s/u.test(e[n]);)n++;if(n===e.length)break;let r=n,i=e[n]===`'`||e[n]===`\"`?e[n]:null;if(i!==null){for(n++;n<e.length;){if(e[n]===i&&(n+1===e.length||/\\s/u.test(e[n+1]))){t.push(e.slice(r,n+1)),n++;break}n++}if(n>=e.length&&e[n-1]!==i)n=r;else continue}let a=n;for(;n<e.length&&!/\\s/u.test(e[n]);)n++;t.push(e.slice(a,n))}return t}var l=class e{constructor(e,t,n,r,i=null){this.splitSU=r,this.headerLines=e,this.dataLines=t,this.endIndex=n,this.headers=null,this.data=null,this.name=null,i?this.name=i:this.name=this.findCommonStart()}static fromLines(t,n){let r=1;for(;r<t.length&&t[r].trim().startsWith(`_`);)r++;let i=t.slice(1,r).map(e=>e.trim()),a=r,o=!1;for(;a<t.length&&(!t[a].trim().startsWith(`_`)&&!t[a].trim().startsWith(`loop_`)||o);)t[a].startsWith(`;`)&&(o=!o),a++;let s=t.slice(r,a);return new e(i,s,a,n)}static fromTokens(t,n,r,i){let a=new e(t,[],0,i);return a._cif2Tokens=n,a._cif2CellTokenRanges=r,a}parse(){if(this.data!==null)return;this.headers=[...this.headerLines],this.data={};let e=this._cif2CellTokenRanges===void 0?this.dataLines.reduce((e,r,i)=>{if(r=r.trim(),!r.length)return e;if(r.startsWith(`;`)){let t=n(this.dataLines,i);e.push({value:t.value,su:NaN});for(let e=i;e<t.endIndex+1;e++)this.dataLines[e]=``;return e}return e.concat(c(r).map(e=>t(e,this.splitSU)))},[]):this._cif2CellTokenRanges.map(([e])=>{let t=r(this._cif2Tokens,e,this.splitSU);return{value:t.value,su:t.su}}),i=this.headers.length;if(e.length%i!==0){let t=e.map(({value:e,su:t})=>`{value: ${e}, su: ${t}}`).join(`, `);throw Error(`Loop ${this.name}: Cannot distribute ${e.length} values evenly into ${i} columns\\nentries are: ${t}`)}else if(e.length===0)throw Error(`Loop ${this.name} has no data values.`);for(let t=0;t<i;t++){let n=this.headers[t],r=e.slice(t).filter((e,t)=>t%i===0);r.some(e=>!isNaN(e.su))?(this.data[n]=r.map(e=>e.value),this.data[n+`_su`]=r.map(e=>e.su),this.headers.push(n+`_su`)):this.data[n]=r.map(e=>e.value)}}findCommonStart(e=!0){if(e){for(let e of s)if(this.headerLines.filter(t=>t.toLowerCase().startsWith(e.toLowerCase())).length>=this.headerLines.length/2)return e}let t=this.headerLines.map(e=>e.split(`.`));if(t[0].length>1){let e=t[0][0];if(this.headerLines.filter(t=>t.split(`.`)[0]===e).length>=this.headerLines.length/2)return e}let n=this.headerLines.map(e=>e.split(/[_.]/).filter(e=>e)),r=Math.min(...n.map(e=>e.length)),i=``;for(let e=0;e<r;e++){let t=n[0][e],r=n.filter(n=>n[e]===t).length;if(this.headerLines.length===2)if(r===2)i+=`_`+t;else break;else if(r>=this.headerLines.length/2)i+=`_`+t;else break}return i}get(e,t=null){this.parse();let n=Array.isArray(e)?e:[e];for(let e of n){let t=this.data[e];if(t!==void 0)return t}if(t!==null)return t;throw Error(`None of the keys [${n.join(`, `)}] found in CIF loop ${this.name}`)}getIndex(e,t,n=null){this.parse();let r=Array.isArray(e)?e:[e];if(!r.some(e=>this.headers.includes(e))){if(n!==null)return n;throw Error(`None of the keys [${r.join(`, `)}] found in CIF loop ${this.name}`)}let i=this.get(r);if(t<i.length)return i[t];throw Error(`Tried to look up value of index ${t} in ${this.name}, but length is only ${i.length}`)}getHeaders(){return this.headers||this.parse(),this.headers}getName(){return this.name}getEndIndex(){return this.endIndex}};function u(e){return e&&typeof e.getHeaders==`function`}function d(e){return e.getHeaders()[0].split(`_`).filter(e=>e.length>0)}function f(e,t,n){let r=u(e)?e:t,i=n.split(`_`).filter(e=>e.length>0),a=d(r),o=`_`+i.join(`_`)+`_`+a[i.length];return u(e)?[o,n]:[n,o]}function p(e,t){let n=e.findCommonStart(!1),r=t.findCommonStart(!1);return n.length===r.length?null:[n,r]}function m(e,t,n){let r=n.split(`_`).filter(e=>e.length>0),i=d(e),a=d(t);return i.length>=a.length?[n+`_`+i[r.length],n]:[n,n+`_`+a[r.length]]}function h(e,t,n){let r;r=!u(e)||!u(t)?f(e,t,n):p(e,t)||m(e,t,n);let i=[e,t];return i.forEach((e,t)=>{u(e)&&(e.name=r[t])}),{newNames:r,newEntries:i}}function g(e){return e.charCodeAt(0)===65279?e.slice(1):e}function _(e){let t=g(e);return/^#\\\\#CIF_2\\.0/.test(t)?2:1}let v=new Set([` `,`	`,`\\r`,`\n`]),y=new Set([`[`,`]`,`{`,`}`]);function b(e,t,n,r){if(e[t+1]===n&&e[t+2]===n){let i=n+n+n,a=e.indexOf(i,t+3);if(a===-1)throw Error(`Unterminated triple-quoted string starting on line ${r}`);let o=e.slice(t+3,a);return{value:o,next:a+3,newlines:S(o)}}let i=e.indexOf(n,t+1),a=e.indexOf(`\n`,t+1);if(i===-1||a!==-1&&a<i)throw Error(`Unterminated quoted string starting on line ${r}`);return{value:e.slice(t+1,i),next:i+1,newlines:0}}function x(e,t,n){let r=e.indexOf(`\n;`,t);if(r===-1)throw Error(`Unterminated text field starting on line ${n}`);let i=e.slice(t+1,r);return i.startsWith(`\n`)&&(i=i.slice(1)),{value:i,next:r+2,newlines:S(e.slice(t,r+2))}}function S(e){let t=0;for(let n=0;n<e.length;n++)e[n]===`\n`&&t++;return t}function C(e,t){let n=e.toLowerCase();return n===`loop_`?{type:`loop`,line:t}:n===`save_`?{type:`saveEnd`,line:t}:n===`global_`?{type:`global`,line:t}:n===`stop_`?{type:`stop`,line:t}:n.startsWith(`data_`)?{type:`data`,value:e.slice(5),line:t}:n.startsWith(`save_`)?{type:`save`,value:e.slice(5),line:t}:e[0]===`_`?{type:`tag`,value:e,line:t}:{type:`value`,value:e,quoted:!1,line:t}}function w(e){let t=e.replace(/\\r\\n?/g,`\n`),n=[],r=t.length,i=0,a=1,o=!0;for(;i<r;){let e=t[i];if(e===`\n`){i++,a++,o=!0;continue}if(v.has(e)){i++,o=!1;continue}if(e===`#`){for(;i<r&&t[i]!==`\n`;)i++;continue}if(e===`;`&&o){let e=x(t,i,a);n.push({type:`value`,value:e.value,quoted:!0,line:a}),i=e.next,a+=e.newlines,o=!1;continue}if(y.has(e)){let t={\"[\":`listOpen`,\"]\":`listClose`,\"{\":`tableOpen`,\"}\":`tableClose`}[e];n.push({type:t,line:a}),i++,o=!1;continue}if(e===`'`||e===`\"`){let r=b(t,i,e,a);n.push({type:`value`,value:r.value,quoted:!0,line:a}),i=r.next,a+=r.newlines,o=!1,t[i]===`:`&&(n.push({type:`colon`,line:a}),i++);continue}let s=i;for(;i<r&&!v.has(t[i])&&!y.has(t[i]);)i++;n.push(C(t.slice(s,i),a)),o=!1}return n}function T(e){let t=null;for(let n=0;n<e.length;n++){let r=e[n];if(t!==null){r===t&&(n+1===e.length||/\\s/u.test(e[n+1]))&&(t=null);continue}if((r===`'`||r===`\"`)&&(n===0||/\\s/u.test(e[n-1]))){t=r;continue}if(r===`#`&&n>0&&/\\s/u.test(e[n-1]))return e.slice(0,n-1)}return e}function E(e){let t=[],n=null,r=0;for(let i of e)i.type===`listOpen`||i.type===`tableOpen`?r++:(i.type===`listClose`||i.type===`tableClose`)&&r--,i.type===`data`&&r===0?(n=[i],t.push(n)):n&&n.push(i);return t}var D=class{constructor(e,t=!0){this.splitSU=t;let n=g(e);this.version=_(n),this.rawCifBlocks=this.version===2?E(w(n)):this.splitCifBlocks(`\n\n`+n),this.blocks=Array(this.rawCifBlocks.length).fill(null),this._blockNameMap=null}splitCifBlocks(e){let t=[],n=e.replaceAll(`\\r\n`,`\n`).split(/\\r?\\ndata_/).slice(1),r=0;for(;r<n.length;){let e=n[r],i=/\\n;/g,a=e.match(i),o=a?a.length:0;for(;o%2==1&&r+1<n.length;)r++,e+=`\ndata_`+n[r],o=e.match(i).length;t.push(e),r++}return t}getBlock(e=0){if(e<0||e>=this.rawCifBlocks.length)throw Error(`Block index ${e} out of range. This CIF has ${this.rawCifBlocks.length} block(s).`);return this.blocks[e]||(this.blocks[e]=new O(this.rawCifBlocks[e],this.splitSU,this.version)),this.blocks[e]}getAllBlocks(){for(let e=0;e<this.blocks.length;e++)this.blocks[e]||(this.blocks[e]=new O(this.rawCifBlocks[e],this.splitSU,this.version));return this.blocks}_extractBlockNames(){if(this._blockNameMap!==null)return this._blockNameMap;if(this._blockNameMap=new Map,this.version===2)return this.rawCifBlocks.forEach((e,t)=>{e[0]&&e[0].type===`data`&&this._blockNameMap.set(e[0].value,t)}),this._blockNameMap;let e=/^(\\w+[\\w.-]*)/;return this.rawCifBlocks.forEach((t,n)=>{let r=e.exec(t.trim());r&&r[1]&&this._blockNameMap.set(r[1],n)}),this._blockNameMap}getBlockNames(){return Array.from(this._extractBlockNames().keys())}getBlockByName(e){let t=this._extractBlockNames().get(e);if(t===void 0)throw Error(`Block with name '${e}' not found. Available blocks: ${this.getBlockNames().join(`, `)}`);return this.getBlock(t)}},O=class{constructor(e,t=!0,n=1){this.splitSU=t,this.version=n,n===2?(this.tokens=e,this.rawText=null):(this.rawText=e,this.tokens=null),this.data=null,this.dataBlockName=null}parse(){if(this.data!==null)return;if(this.version===2){this.parseV2();return}this.data={};let e=this.rawText.split(`\n`).filter(e=>!e.trim().startsWith(`#`)).map(T);this.dataBlockName=e[0];let r=1;for(;r<e.length;){if(r+1<e.length&&e[r+1].startsWith(`;`)){let t=n(e,r+1);this.data[e[r]]=t.value,r=t.endIndex+1;continue}if(e[r].trim().startsWith(`loop_`)){let t=l.fromLines(e.slice(r),this.splitSU);if(!Object.prototype.hasOwnProperty.call(this.data,t.getName()))this.data[t.getName()]=t;else{let e=h(this.data[t.getName()],t,t.getName());this.data[e.newNames[0]]=e.newEntries[0],this.data[e.newNames[1]]=e.newEntries[1]}r+=t.getEndIndex();continue}let i=e[r].trim();if(i.length===0){r++;continue}let a=i.match(/^(_\\S+)\\s+(.*)$/);if(a){let e=a[1],n=t(a[2],this.splitSU);this.data[e]=n.value,isNaN(n.su)||(this.data[e+`_su`]=n.su)}else if(i.startsWith(`_`)&&!e[r+1].startsWith(`_`)){let n=i,a=t(e[r+1].trim(),this.splitSU);this.data[n]=a.value,isNaN(a.su)||(this.data[n+`_su`]=a.su),r++}else throw Error(`Could not parse line `+String(r)+`: `+e[r]);r++}}parseV2(){this.data={};let e=this.tokens;this.dataBlockName=e[0]&&e[0].type===`data`?e[0].value:null;let t=1,n=0;for(;t<e.length;){let i=e[t];if(i.type===`save`){n++,t++;continue}if(i.type===`saveEnd`){n>0&&n--,t++;continue}if(n>0||i.type===`global`||i.type===`stop`){t++;continue}if(i.type===`tag`){let n=r(e,t+1,this.splitSU);this.data[i.value]=n.value,isNaN(n.su)||(this.data[i.value+`_su`]=n.su),t=n.nextPos;continue}if(i.type===`loop`){t=this.parseLoopV2(e,t);continue}t++}}parseLoopV2(e,t){let n=t+1,r=[];for(;n<e.length&&e[n].type===`tag`;)r.push(e[n].value),n++;let i=[];for(;n<e.length&&(e[n].type===`value`||e[n].type===`listOpen`||e[n].type===`tableOpen`);){let t=n;n=o(e,n),i.push([t,n])}let a=l.fromTokens(r,e,i,this.splitSU);if(!Object.prototype.hasOwnProperty.call(this.data,a.getName()))this.data[a.getName()]=a;else{let e=h(this.data[a.getName()],a,a.getName());this.data[e.newNames[0]]=e.newEntries[0],this.data[e.newNames[1]]=e.newEntries[1]}return n}get dataBlockName(){return this._dataBlockName||this.parse(),this._dataBlockName}set dataBlockName(e){this._dataBlockName=e}get(e,t=null){this.parse();let n=Array.isArray(e)?e:[e];for(let e of n){let t=this.data[e];if(t!==void 0)return t}if(t!==null)return t;throw Error(`None of the keys [${n.join(`, `)}] found in CIF block`)}},k=class e{constructor(e){this._data=e}toArray(){return this._data}size(){return Array.isArray(this._data[0])?[this._data.length,this._data[0].length]:[this._data.length]}get(e){return e.length===2?this._data[e[0]][e[1]]:this._data[e[0]]}map(t){let n=Array.isArray(this._data[0])?this._data.map((e,n)=>e.map((e,r)=>t(e,[n,r],this))):this._data.map((e,n)=>t(e,[n],this));return new e(n)}};function A(e){return e instanceof k?A(e.toArray()):Array.isArray(e)?e.map(A):e}function j(e,t){return e.some(e=>e instanceof k)?new k(t):t}function M(e,t,n){return Array.isArray(e)&&Array.isArray(t)?e.map((e,r)=>M(e,t[r],n)):n(e,t)}function N(e){return new k(A(e))}function ee(e,t){let n=[[0,0,0],[0,0,0],[0,0,0]];for(let r=0;r<3;r++)for(let i=0;i<3;i++)n[r][i]=e[r][0]*t[0][i]+e[r][1]*t[1][i]+e[r][2]*t[2][i];return n}function te(e,t){return[e[0][0]*t[0]+e[0][1]*t[1]+e[0][2]*t[2],e[1][0]*t[0]+e[1][1]*t[1]+e[1][2]*t[2],e[2][0]*t[0]+e[2][1]*t[1]+e[2][2]*t[2]]}function ne(e){return e.length===3&&e[0].length===3&&e[1].length===3&&e[2].length===3}function P(e,t){let n=A(e),r=A(t),i;if(typeof r==`number`)i=Array.isArray(n[0])?n.map(e=>e.map(e=>e*r)):n.map(e=>e*r);else if(typeof n==`number`)i=Array.isArray(r[0])?r.map(e=>e.map(e=>e*n)):r.map(e=>e*n);else if(Array.isArray(n[0])&&Array.isArray(r[0]))i=ne(n)&&ne(r)?ee(n,r):n.map((e,t)=>e.map((i,a)=>e.reduce((e,i,o)=>e+n[t][o]*r[o][a],0)));else if(Array.isArray(n[0]))i=ne(n)&&r.length===3?te(n,r):n.map(e=>e.reduce((e,t,n)=>e+t*r[n],0));else throw Error(`multiply: unsupported operand shapes`);return j([e,t],i)}function F(e,t){return j([e,t],M(A(e),A(t),(e,t)=>e+t))}function I(e){let t=A(e),n=t[0].map((e,n)=>t.map(e=>e[n]));return j([e],n)}function re(e){let t=A(e);if(t.length!==3)throw Error(`det: only 3x3 matrices are supported`);return t[0][0]*(t[1][1]*t[2][2]-t[1][2]*t[2][1])-t[0][1]*(t[1][0]*t[2][2]-t[1][2]*t[2][0])+t[0][2]*(t[1][0]*t[2][1]-t[1][1]*t[2][0])}function L(e){let t=A(e);if(t.length!==3)throw Error(`inv: only 3x3 matrices are supported`);let n=re(t);if(n===0)throw Error(`inv: matrix is singular`);let r=[[t[1][1]*t[2][2]-t[1][2]*t[2][1],-(t[1][0]*t[2][2]-t[1][2]*t[2][0]),t[1][0]*t[2][1]-t[1][1]*t[2][0]],[-(t[0][1]*t[2][2]-t[0][2]*t[2][1]),t[0][0]*t[2][2]-t[0][2]*t[2][0],-(t[0][0]*t[2][1]-t[0][1]*t[2][0])],[t[0][1]*t[1][2]-t[0][2]*t[1][1],-(t[0][0]*t[1][2]-t[0][2]*t[1][0]),t[0][0]*t[1][1]-t[0][1]*t[1][0]]],i=r.map((e,t)=>e.map((e,i)=>r[i][t]/n));return j([e],i)}function ie(e){let t=A(e),n=t.length,r=Array.from({length:n},(e,r)=>Array.from({length:n},(e,n)=>r===n?t[r]:0));return j([e],r)}function ae(e){let t=A(e);return Math.sqrt(t.reduce((e,t)=>e+t*t,0))}function oe(e,t){if(t!==`deg`)throw Error(`unit: unsupported unit '${t}'`);return{toNumber(t){if(t!==`rad`)throw Error(`unit: unsupported conversion to '${t}'`);return e*Math.PI/180}}}function se(e){return Array.from({length:e},(t,n)=>Array.from({length:e},(e,t)=>+(n===t)))}function ce(e){let t=A(e),n=Array.isArray(t[0])?t.map(e=>[...e]):[...t];return j([e],n)}function le(e){let t=e.map(e=>[...e]),n=se(3);for(let e=0;e<100;e++){let e=0;for(let n=0;n<3;n++)for(let r=n+1;r<3;r++)e+=t[n][r]*t[n][r];if(e<1e-28)break;for(let e=0;e<3;e++)for(let r=e+1;r<3;r++){if(Math.abs(t[e][r])<1e-300)continue;let i=(t[r][r]-t[e][e])/(2*t[e][r]),a=(i>=0?1:-1)/(Math.abs(i)+Math.sqrt(i*i+1)),o=1/Math.sqrt(a*a+1),s=a*o,c=t[e][e],l=t[r][r],u=t[e][r];t[e][e]=o*o*c-2*s*o*u+s*s*l,t[r][r]=s*s*c+2*s*o*u+o*o*l,t[e][r]=0,t[r][e]=0;for(let n=0;n<3;n++)if(n!==e&&n!==r){let i=t[n][e],a=t[n][r];t[n][e]=o*i-s*a,t[e][n]=t[n][e],t[n][r]=s*i+o*a,t[r][n]=t[n][r]}for(let t=0;t<3;t++){let i=n[t][e],a=n[t][r];n[t][e]=o*i-s*a,n[t][r]=s*i+o*a}}}let r=[0,1,2].sort((e,n)=>t[e][e]-t[n][n]);return{eigenvalues:r.map(e=>t[e][e]),eigenvectors:r.map(e=>[n[0][e],n[1][e],n[2][e]])}}function ue(e){let{eigenvalues:t,eigenvectors:n}=le(A(e));return{values:t,eigenvectors:t.map((e,t)=>({value:e,vector:new k(n[t])}))}}function R(e){let t=oe(e.alpha,`deg`).toNumber(`rad`),n=oe(e.beta,`deg`).toNumber(`rad`),r=oe(e.gamma,`deg`).toNumber(`rad`),i=Math.cos(t),a=Math.cos(n),o=Math.cos(r),s=Math.sin(r),c=Math.sqrt(1-i*i-a*a-o*o+2*i*a*o);return N([[e.a,e.b*o,e.c*a],[0,e.b*s,e.c*(i-a*o)/s],[0,0,e.c*c/s]])}function de(e){return N([[e[0],e[3],e[4]],[e[3],e[1],e[5]],[e[4],e[5],e[2]]])}function fe(e){let t=N(e);return[t.get([0,0]),t.get([1,1]),t.get([2,2]),t.get([0,1]),t.get([0,2]),t.get([1,2])]}function pe(e,t){let n=N(e),r=ie(N(I(I(L(n))).toArray().map(e=>ae(e))));return fe(P(P(n,P(P(r,de(t)),I(r))),I(n)))}var me=class e{#e;constructor(t,n,r){if(new.target===e)throw TypeError(`BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition`);this.#e=[Number(t),Number(n),Number(r)],Object.defineProperties(this,{0:{get:()=>this.#e[0]},1:{get:()=>this.#e[1]},2:{get:()=>this.#e[2]},length:{value:3},[Symbol.iterator]:{value:function*(){yield this.#e[0],yield this.#e[1],yield this.#e[2]}}})}get x(){return this.#e[0]}get y(){return this.#e[1]}get z(){return this.#e[2]}set x(e){this.#e[0]=e}set y(e){this.#e[1]=e}set z(e){this.#e[2]=e}toCartesian(e){throw Error(`toCartesian must be implemented by subclass`)}},he=class extends me{constructor(e,t,n){super(e,t,n)}toCartesian(e){return new ye(...P(e.fractToCartMatrix,N([this.x,this.y,this.z])).toArray())}};let ge=new WeakMap;function _e(e){let t=ge.get(e);return t||(t=e.fractToCartMatrix.toArray(),ge.set(e,t)),t}function ve(e,t,n,r=.001){let i=_e(n),a=e.x-t.x-Math.round(e.x-t.x),o=e.y-t.y-Math.round(e.y-t.y),s=e.z-t.z-Math.round(e.z-t.z),c=i[0][0]*a+i[0][1]*o+i[0][2]*s,l=i[1][0]*a+i[1][1]*o+i[1][2]*s,u=i[2][0]*a+i[2][1]*o+i[2][2]*s;return Math.hypot(c,l,u)<r}var ye=class extends me{constructor(e,t,n){super(e,t,n)}toCartesian(e){return this}},be=class{static fromCIF(e,t){let n=!1,r=e.get(`_atom_site`),i=[`.`,`?`];if(String(r.getIndex([`_atom_site.calc_flag`,`_atom_site_calc_flag`],t,``)).toLowerCase()===`dum`)throw Error(`Dummy atom: calc_flag is dum`);try{let e=r.getIndex([`_atom_site.fract_x`,`_atom_site_fract_x`],t),a=r.getIndex([`_atom_site.fract_y`,`_atom_site_fract_y`],t),o=r.getIndex([`_atom_site.fract_z`,`_atom_site_fract_z`],t);if(!i.includes(e)&&!i.includes(a)&&!i.includes(o))return new he(e,a,o);n=!0}catch{}try{let e=r.getIndex([`_atom_site.Cartn_x`,`_atom_site.cartn_x`,`_atom_site_Cartn_x`],t),a=r.getIndex([`_atom_site.Cartn_y`,`_atom_site.cartn_y`,`_atom_site_Cartn_y`],t),o=r.getIndex([`_atom_site.Cartn_z`,`_atom_site.cartn_z`,`_atom_site_Cartn_z`],t);if(!i.includes(e)&&!i.includes(a)&&!i.includes(o))return new ye(e,a,o);n=!0}catch{}throw Error(n?`Dummy atom: Invalid position`:`Invalid position: No valid fractional or Cartesian coordinates found`)}},z=class e{constructor(e){this.uiso=e}static fromBiso(t){return new e(t/(8*Math.PI*Math.PI))}},B=class e{constructor(e,t,n,r,i,a){this.u11=e,this.u22=t,this.u33=n,this.u12=r,this.u13=i,this.u23=a}static fromBani(t,n,r,i,a,o){let s=1/(8*Math.PI*Math.PI);return new e(t*s,n*s,r*s,i*s,a*s,o*s)}getUCart(e){return pe(e.fractToCartMatrix,[this.u11,this.u22,this.u33,this.u12,this.u13,this.u23])}getEllipsoidMatrix(e){let t=xe(this,e);return t.valid?N(P(t.rotation,ie(t.eigenvalues.map(Math.sqrt)))):N([[NaN,NaN,NaN],[NaN,NaN,NaN],[NaN,NaN,NaN]])}};function xe(e,t){let n={eigenvalues:[NaN,NaN,NaN],rotation:[[1,0,0],[0,1,0],[0,0,1]],valid:!1,tolerance:NaN};try{let{eigenvectors:r}=ue(de(e.getUCart(t))),i=r.map(e=>({value:Number(e.value),vector:(e.vector.toArray?.()||e.vector).map(Number)})).sort((e,t)=>t.value-e.value);if(i.length!==3||i.some(e=>!Number.isFinite(e.value)||e.vector.some(e=>!Number.isFinite(e))))return n;for(let e of i){let t=0;for(let n=1;n<3;n++)Math.abs(e.vector[n])>Math.abs(e.vector[t])&&(t=n);e.vector[t]<0&&(e.vector=e.vector.map(e=>-e))}let a=I(i.map(e=>e.vector));if(re(a)<0)for(let e=0;e<3;e++)a[e][2]*=-1;let o=i.map(e=>e.value),s=o[0],c=Math.max(1e-12,Math.abs(s)*1e-10);return{eigenvalues:o,rotation:a,valid:Number.isFinite(s)&&o.every(e=>Number.isFinite(e)&&e>c),tolerance:c}}catch{return n}}var Se=class e{static fromCIF(t,n){let r=t.get(`_atom_site`),i=r.getIndex([`_atom_site.label`,`_atom_site_label`],n),a=r.getIndex([`_atom_site.adp_type`,`_atom_site_adp_type`,`_atom_site.thermal_displace_type`,`_atom_site_thermal_displace_type`],n,!1);if(a)return e.createFromExplicitType(t,n,i,a);if(e.isInAnisoLoop(t,i)){let n=e.createUani(t,i);if(n!==null)return n;let r=e.createBani(t,i);if(r!==null)return r}let o=e.createUiso(t,n);if(o!==null)return o;let s=e.createBiso(t,n);return s===null?null:s}static createFromExplicitType(t,n,r,i){switch(i.toLowerCase()){case`uani`:return e.createUani(t,r);case`aniso`:return e.createUani(t,r);case`bani`:return e.createBani(t,r);case`uiso`:return e.createUiso(t,n);case`iso`:return e.createUiso(t,n);case`biso`:return e.createBiso(t,n);default:return null}}static isInAnisoLoop(e,t){try{return e.get(`_atom_site_aniso`).get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).includes(t)}catch{return!1}}static createUani(e,t){let n;try{n=e.get(`_atom_site_aniso`)}catch{throw Error(`Atom ${t} had ADP type UAni, but no atom_site_aniso loop was found`)}let r=n.get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).indexOf(t);if(r===-1)throw Error(`Atom ${t} has ADP type Uani, but was not found in atom_site_aniso.label`);let i=n.getIndex([`_atom_site_aniso.u_11`,`_atom_site_aniso_U_11`],r,NaN),a=n.getIndex([`_atom_site_aniso.u_22`,`_atom_site_aniso_U_22`],r,NaN),o=n.getIndex([`_atom_site_aniso.u_33`,`_atom_site_aniso_U_33`],r,NaN),s=n.getIndex([`_atom_site_aniso.u_12`,`_atom_site_aniso_U_12`],r,NaN),c=n.getIndex([`_atom_site_aniso.u_13`,`_atom_site_aniso_U_13`],r,NaN),l=n.getIndex([`_atom_site_aniso.u_23`,`_atom_site_aniso_U_23`],r,NaN);return[i,a,o,s,c,l].some(isNaN)?null:new B(i,a,o,s,c,l)}static createBani(e,t){let n;try{n=e.get(`_atom_site_aniso`)}catch{throw Error(`Atom ${t} had ADP type BAni, but no atom_site_aniso loop was found`)}let r=n.get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).indexOf(t);if(r===-1)throw Error(`Atom ${t} has ADP type Bani, but was not found in atom_site_aniso.label`);let i=n.getIndex([`_atom_site_aniso.b_11`,`_atom_site_aniso_B_11`],r,NaN),a=n.getIndex([`_atom_site_aniso.b_22`,`_atom_site_aniso_B_22`],r,NaN),o=n.getIndex([`_atom_site_aniso.b_33`,`_atom_site_aniso_B_33`],r,NaN),s=n.getIndex([`_atom_site_aniso.b_12`,`_atom_site_aniso_B_12`],r,NaN),c=n.getIndex([`_atom_site_aniso.b_13`,`_atom_site_aniso_B_13`],r,NaN),l=n.getIndex([`_atom_site_aniso.b_23`,`_atom_site_aniso_B_23`],r,NaN);return[i,a,o,s,c,l].some(isNaN)?null:B.fromBani(i,a,o,s,c,l)}static createUiso(e,t){try{let n=e.get(`_atom_site`).getIndex([`_atom_site.u_iso_or_equiv`,`_atom_site_U_iso_or_equiv`],t,NaN);return isNaN(n)?null:new z(n)}catch{return null}}static createBiso(e,t){try{let n=e.get(`_atom_site`).getIndex([`_atom_site.b_iso_or_equiv`,`_atom_site_B_iso_or_equiv`],t,NaN);return isNaN(n)?null:z.fromBiso(n)}catch{return null}}};function Ce(e){if(e==null)throw Error(`Invalid symmetry position code: ${e}`);let t=String(e).trim();if(t===``)throw Error(`Invalid empty symmetry position code`);let n=t.match(/^([^_]+)_\\[(-?\\d+),(-?\\d+),(-?\\d+)\\]$/);if(n)return{id:n[1],translation:n.slice(2).map(Number)};let r=t.match(/^([^_]+)_([0-9]{3})$/);if(r)return{id:r[1],translation:r[2].split(``).map(e=>Number(e)-5)};if(!t.includes(`_`))return{id:t,translation:[0,0,0]};throw Error(`Invalid symmetry position code ${t}; expected \"<id>_abc\" or \"<id>_[x,y,z]\"`)}function we(e,t){let n=String(e);if(!n||n.includes(`_`))throw Error(`Invalid symmetry operation ID: ${e}`);if(!Array.isArray(t)||t.length!==3||!t.every(Number.isInteger))throw Error(`Invalid symmetry translation: ${t}`);let r=t.map(e=>e+5);return r.every(e=>e>=0&&e<=9)?`${n}_${r.join(``)}`:`${n}_[${t.join(`,`)}]`}function Te(e){if(e.length===0)return null;let t=-1,n=!1,r=0,i=0;for(let a=0;a<e.length;a++){let o=e[a];if(o>=`0`&&o<=`9`){r++;continue}if(o===`.`&&!n){n=!0;continue}if(o===`/`&&t===-1&&r>0){t=a,i=r,r=0,n=!1;continue}return null}if(r===0)return null;if(t===-1)return Number(e);if(i===0)return null;let a=Number(e.slice(t+1));return Number(e.slice(0,t))/a}function Ee(e){let t=[];for(let n of e)n.trim()!==``&&t.push(n.toUpperCase());let n=t.join(``),r=[0,0,0],i=0,a=0;for(let e=1;e<=n.length;e++){let t=e===n.length,o=n[e];if(!t&&o!==`+`&&o!==`-`)continue;let s=n.slice(a,e);if(a=e,s.length===0)continue;let c=1;if((s[0]===`+`||s[0]===`-`)&&(c=s[0]===`-`?-1:1,s=s.slice(1)),s.length===0)continue;let l=`XYZ`.indexOf(s[s.length-1]);if(l!==-1){let e=s.slice(0,-1);e.endsWith(`*`)&&(e=e.slice(0,-1));let t=e===``?1:Te(e);t!==null&&(r[l]=c*t);continue}let u=Te(s);u!==null&&(i+=c*u)}return{coefficients:r,translation:i}}let De=[[1,0,1],[-1,1,1],[0,-1,1]],Oe=[[2/3,-1/3,-1/3],[1/3,1/3,-2/3],[1/3,1/3,1/3]];function ke(e,t){return e.map(e=>[0,1,2].map(n=>e[0]*t[0][n]+e[1]*t[1][n]+e[2]*t[2][n]))}function Ae(e,t){return e.map(e=>e[0]*t[0]+e[1]*t[1]+e[2]*t[2])}function je(e){return(Math.round(e*12)/12%1+1)%1}function Me(e,t){let n=[`x`,`y`,`z`],r=``;if(e.forEach((e,t)=>{let i=Math.round(e);i!==0&&(i>0&&r!==``&&(r+=`+`),i===-1?r+=`-`:i!==1&&(r+=String(i)),r+=n[t])}),t!==0){let e=Math.round(t*12),n=Ne(e,12);r+=`+${e/n}/${12/n}`}return r===``?`0`:r}function Ne(e,t){return t===0?e:Ne(t,e%t)}function Pe(e,t=.001,n=.01){if(!e)return!1;let{a:r,b:i,c:a,alpha:o,beta:s,gamma:c}=e;if(![r,i,a,o,s,c].every(Number.isFinite))return!1;let l=Math.abs(r-i)<t&&Math.abs(i-a)<t,u=Math.abs(o-s)<n&&Math.abs(s-c)<n;return l&&u&&Math.abs(o-90)>n}function Fe(e){let t=new Set,n=[];for(let r of e){let{rotation:e,translation:i}=Ie(r),a=ke(ke(De,e),Oe),o=Ae(De,i).map(je),s=a.map(e=>e.map(e=>Math.round(e)).join(`,`)).join(`;`)+`|`+o.map(e=>Math.round(e*12)).join(`,`);t.has(s)||(t.add(s),n.push([0,1,2].map(e=>Me(a[e],o[e])).join(`,`)))}return n}function Ie(e){let t=[],n=[],r=e.split(`,`);if(r.length!==3)throw Error(`Invalid symmetry operation: ${e}`);for(let e of r){let r=Ee(e);t.push(r.coefficients),n.push(r.translation)}return{rotation:t,translation:n}}let Le=Object.freeze([{number:1,symbol_cif:`P 1`,symbol_hm_short:`P1`,hall_symbol:`P 1`,operations:[`x,y,z`]},{number:2,symbol_cif:`P -1`,symbol_hm_short:`P-1`,hall_symbol:`-P 1`,operations:[`x,y,z`,`-x,-y,-z`]},{number:3,symbol_cif:`P 2`,symbol_hm_short:`P2`,hall_symbol:`P 2y`,operations:[`x,y,z`,`-x,y,-z`]},{number:4,symbol_cif:`P 21`,symbol_hm_short:`P21`,hall_symbol:`P 2yb`,operations:[`x,y,z`,`-x,y+1/2,-z`]},{number:5,symbol_cif:`C 2`,symbol_hm_short:`C2`,hall_symbol:`C 2y`,operations:[`x,y,z`,`-x,y,-z`,`x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`]},{number:6,symbol_cif:`P m`,symbol_hm_short:`Pm`,hall_symbol:`P -2y`,operations:[`x,y,z`,`x,-y,z`]},{number:7,symbol_cif:`P c`,symbol_hm_short:`Pc`,hall_symbol:`P -2yc`,operations:[`x,y,z`,`x,-y,z+1/2`]},{number:8,symbol_cif:`C m`,symbol_hm_short:`Cm`,hall_symbol:`C -2y`,operations:[`x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:9,symbol_cif:`C c`,symbol_hm_short:`Cc`,hall_symbol:`C -2yc`,operations:[`x,y,z`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z+1/2`]},{number:10,symbol_cif:`P 2/m`,symbol_hm_short:`P2/m`,hall_symbol:`-P 2y`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z`,`x,-y,z`]},{number:11,symbol_cif:`P 21/m`,symbol_hm_short:`P21/m`,hall_symbol:`-P 2yb`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:12,symbol_cif:`C 2/m`,symbol_hm_short:`C2/m`,hall_symbol:`-C 2y`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:13,symbol_cif:`P 2/c`,symbol_hm_short:`P2/c`,hall_symbol:`-P 2yc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:14,symbol_cif:`P 21/c`,symbol_hm_short:`P21/c`,hall_symbol:`-P 2ybc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:15,symbol_cif:`C 2/c`,symbol_hm_short:`C2/c`,hall_symbol:`-C 2yc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:16,symbol_cif:`P 2 2 2`,symbol_hm_short:`P222`,hall_symbol:`P 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`]},{number:17,symbol_cif:`P 2 2 21`,symbol_hm_short:`P2221`,hall_symbol:`P 2c 2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`x,-y,-z`,`-x,y,-z+1/2`]},{number:18,symbol_cif:`P 21 21 2`,symbol_hm_short:`P21212`,hall_symbol:`P 2 2ab`,operations:[`x,y,z`,`-x,-y,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:19,symbol_cif:`P 21 21 21`,symbol_hm_short:`P212121`,hall_symbol:`P 2ac 2ab`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x,y+1/2,-z+1/2`]},{number:20,symbol_cif:`C 2 2 21`,symbol_hm_short:`C2221`,hall_symbol:`C 2c 2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`x,-y,-z`,`-x,y,-z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z+1/2`]},{number:21,symbol_cif:`C 2 2 2`,symbol_hm_short:`C222`,hall_symbol:`C 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:22,symbol_cif:`F 2 2 2`,symbol_hm_short:`F222`,hall_symbol:`F 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,-z+1/2`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:23,symbol_cif:`I 2 2 2`,symbol_hm_short:`I222`,hall_symbol:`I 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`]},{number:24,symbol_cif:`I 21 21 21`,symbol_hm_short:`I212121`,hall_symbol:`I 2b 2c`,operations:[`x,y,z`,`-x,-y+1/2,z`,`x,-y,-z+1/2`,`-x,y+1/2,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y,-z`]},{number:25,symbol_cif:`P m m 2`,symbol_hm_short:`Pmm2`,hall_symbol:`P 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`]},{number:26,symbol_cif:`P m c 21`,symbol_hm_short:`Pmc21`,hall_symbol:`P 2c -2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x,y,z`,`x,-y,z+1/2`]},{number:27,symbol_cif:`P c c 2`,symbol_hm_short:`Pcc2`,hall_symbol:`P 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`]},{number:28,symbol_cif:`P m a 2`,symbol_hm_short:`Pma2`,hall_symbol:`P 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`]},{number:29,symbol_cif:`P c a 21`,symbol_hm_short:`Pca21`,hall_symbol:`P 2c -2ac`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z`]},{number:30,symbol_cif:`P n c 2`,symbol_hm_short:`Pnc2`,hall_symbol:`P 2 -2bc`,operations:[`x,y,z`,`-x,-y,z`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:31,symbol_cif:`P m n 21`,symbol_hm_short:`Pmn21`,hall_symbol:`P 2ac -2`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`-x,y,z`,`x+1/2,-y,z+1/2`]},{number:32,symbol_cif:`P b a 2`,symbol_hm_short:`Pba2`,hall_symbol:`P 2 -2ab`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:33,symbol_cif:`P n a 21`,symbol_hm_short:`Pna21`,hall_symbol:`P 2c -2n`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z`]},{number:34,symbol_cif:`P n n 2`,symbol_hm_short:`Pnn2`,hall_symbol:`P 2 -2n`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:35,symbol_cif:`C m m 2`,symbol_hm_short:`Cmm2`,hall_symbol:`C 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:36,symbol_cif:`C m c 21`,symbol_hm_short:`Cmc21`,hall_symbol:`C 2c -2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x,y,z`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z+1/2`]},{number:37,symbol_cif:`C c c 2`,symbol_hm_short:`Ccc2`,hall_symbol:`C 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:38,symbol_cif:`A m m 2`,symbol_hm_short:`Amm2`,hall_symbol:`A 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:39,symbol_cif:`A e m 2`,symbol_hm_short:`Aem2`,hall_symbol:`A 2 -2b`,operations:[`x,y,z`,`-x,-y,z`,`-x,y+1/2,z`,`x,-y+1/2,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y,z+1/2`,`x,-y,z+1/2`]},{number:40,symbol_cif:`A m a 2`,symbol_hm_short:`Ama2`,hall_symbol:`A 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:41,symbol_cif:`A e a 2`,symbol_hm_short:`Aea2`,hall_symbol:`A 2 -2ab`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z+1/2`]},{number:42,symbol_cif:`F m m 2`,symbol_hm_short:`Fmm2`,hall_symbol:`F 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:43,symbol_cif:`F d d 2`,symbol_hm_short:`Fdd2`,hall_symbol:`F 2 -2d`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/4,y+3/4,z+3/4`,`x+1/4,-y+3/4,z+3/4`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/4,y+1/4,z+1/4`,`x+1/4,-y+1/4,z+1/4`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`-x+3/4,y+3/4,z+1/4`,`x+3/4,-y+3/4,z+1/4`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+3/4,y+1/4,z+3/4`,`x+3/4,-y+1/4,z+3/4`]},{number:44,symbol_cif:`I m m 2`,symbol_hm_short:`Imm2`,hall_symbol:`I 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:45,symbol_cif:`I b a 2`,symbol_hm_short:`Iba2`,hall_symbol:`I 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:46,symbol_cif:`I m a 2`,symbol_hm_short:`Ima2`,hall_symbol:`I 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:47,symbol_cif:`P m m m`,symbol_hm_short:`Pmmm`,hall_symbol:`-P 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`]},{number:48,symbol_cif:`P n n n`,symbol_hm_short:`Pnnn`,hall_symbol:`-P 2ab 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:49,symbol_cif:`P c c m`,symbol_hm_short:`Pccm`,hall_symbol:`-P 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:50,symbol_cif:`P b a n`,symbol_hm_short:`Pban`,hall_symbol:`-P 2ab 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`]},{number:51,symbol_cif:`P m m a`,symbol_hm_short:`Pmma`,hall_symbol:`-P 2a 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-x,y,-z`,`x,-y,z`]},{number:52,symbol_cif:`P n n a`,symbol_hm_short:`Pnna`,hall_symbol:`-P 2a 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:53,symbol_cif:`P m n a`,symbol_hm_short:`Pmna`,hall_symbol:`-P 2ac 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:54,symbol_cif:`P c c a`,symbol_hm_short:`Pcca`,hall_symbol:`-P 2a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:55,symbol_cif:`P b a m`,symbol_hm_short:`Pbam`,hall_symbol:`-P 2 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:56,symbol_cif:`P c c n`,symbol_hm_short:`Pccn`,hall_symbol:`-P 2ab 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:57,symbol_cif:`P b c m`,symbol_hm_short:`Pbcm`,hall_symbol:`-P 2c 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:58,symbol_cif:`P n n m`,symbol_hm_short:`Pnnm`,hall_symbol:`-P 2 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:59,symbol_cif:`P m m n`,symbol_hm_short:`Pmmn`,hall_symbol:`-P 2ab 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:60,symbol_cif:`P b c n`,symbol_hm_short:`Pbcn`,hall_symbol:`-P 2n 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:61,symbol_cif:`P b c a`,symbol_hm_short:`Pbca`,hall_symbol:`-P 2ac 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:62,symbol_cif:`P n m a`,symbol_hm_short:`Pnma`,hall_symbol:`-P 2ac 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:63,symbol_cif:`C m c m`,symbol_hm_short:`Cmcm`,hall_symbol:`-C 2c 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:64,symbol_cif:`C m c e`,symbol_hm_short:`Cmce`,hall_symbol:`-C 2ac 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z+1/2`,`x,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:65,symbol_cif:`C m m m`,symbol_hm_short:`Cmmm`,hall_symbol:`-C 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:66,symbol_cif:`C c c m`,symbol_hm_short:`Cccm`,hall_symbol:`-C 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:67,symbol_cif:`C m m e`,symbol_hm_short:`Cmme`,hall_symbol:`-C 2a 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:68,symbol_cif:`C c c e`,symbol_hm_short:`Ccce`,hall_symbol:`-C 2a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:69,symbol_cif:`F m m m`,symbol_hm_short:`Fmmm`,hall_symbol:`-F 2 2`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z`.split(`.`)},{number:70,symbol_cif:`F d d d`,symbol_hm_short:`Fddd`,hall_symbol:`-F 2uv 2vw`,operations:`x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4`.split(`.`)},{number:71,symbol_cif:`I m m m`,symbol_hm_short:`Immm`,hall_symbol:`-I 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:72,symbol_cif:`I b a m`,symbol_hm_short:`Ibam`,hall_symbol:`-I 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:73,symbol_cif:`I b c a`,symbol_hm_short:`Ibca`,hall_symbol:`-I 2b 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`]},{number:74,symbol_cif:`I m m a`,symbol_hm_short:`Imma`,hall_symbol:`-I 2b 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y,-z`,`-x,y,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:75,symbol_cif:`P 4`,symbol_hm_short:`P4`,hall_symbol:`P 4`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`]},{number:76,symbol_cif:`P 41`,symbol_hm_short:`P41`,hall_symbol:`P 4w`,operations:[`x,y,z`,`-y,x,z+1/4`,`-x,-y,z+1/2`,`y,-x,z+3/4`]},{number:77,symbol_cif:`P 42`,symbol_hm_short:`P42`,hall_symbol:`P 4c`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`]},{number:78,symbol_cif:`P 43`,symbol_hm_short:`P43`,hall_symbol:`P 4cw`,operations:[`x,y,z`,`-y,x,z+3/4`,`-x,-y,z+1/2`,`y,-x,z+1/4`]},{number:79,symbol_cif:`I 4`,symbol_hm_short:`I4`,hall_symbol:`I 4`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`]},{number:80,symbol_cif:`I 41`,symbol_hm_short:`I41`,hall_symbol:`I 4bw`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`]},{number:81,symbol_cif:`P -4`,symbol_hm_short:`P-4`,hall_symbol:`P -4`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`]},{number:82,symbol_cif:`I -4`,symbol_hm_short:`I-4`,hall_symbol:`I -4`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`]},{number:83,symbol_cif:`P 4/m`,symbol_hm_short:`P4/m`,hall_symbol:`-P 4`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`]},{number:84,symbol_cif:`P 42/m`,symbol_hm_short:`P42/m`,hall_symbol:`-P 4c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`]},{number:85,symbol_cif:`P 4/n`,symbol_hm_short:`P4/n`,hall_symbol:`-P 4a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`]},{number:86,symbol_cif:`P 42/n`,symbol_hm_short:`P42/n`,hall_symbol:`-P 4bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x+1/2,z+1/2`,`y,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y+1/2,-x,z+1/2`,`-y+1/2,x,-z+1/2`]},{number:87,symbol_cif:`I 4/m`,symbol_hm_short:`I4/m`,hall_symbol:`-I 4`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-y+1/2,x+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`]},{number:88,symbol_cif:`I 41/a`,symbol_hm_short:`I41/a`,hall_symbol:`-I 4ad`,operations:[`x,y,z`,`-x,-y,-z`,`-y+3/4,x+1/4,z+1/4`,`y+3/4,-x+1/4,-z+1/4`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`y+3/4,-x+3/4,z+3/4`,`-y+3/4,x+3/4,-z+3/4`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-y+1/4,x+3/4,z+3/4`,`y+1/4,-x+3/4,-z+3/4`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`y+1/4,-x+1/4,z+1/4`,`-y+1/4,x+1/4,-z+1/4`]},{number:89,symbol_cif:`P 4 2 2`,symbol_hm_short:`P422`,hall_symbol:`P 4 2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`]},{number:90,symbol_cif:`P 4 21 2`,symbol_hm_short:`P4212`,hall_symbol:`P 4ab 2ab`,operations:[`x,y,z`,`-y+1/2,x+1/2,z`,`-x,-y,z`,`y+1/2,-x+1/2,z`,`x+1/2,-y+1/2,-z`,`-y,-x,-z`,`-x+1/2,y+1/2,-z`,`y,x,-z`]},{number:91,symbol_cif:`P 41 2 2`,symbol_hm_short:`P4122`,hall_symbol:`P 4w 2c`,operations:[`x,y,z`,`-y,x,z+1/4`,`-x,-y,z+1/2`,`y,-x,z+3/4`,`x,-y,-z+1/2`,`-y,-x,-z+1/4`,`-x,y,-z`,`y,x,-z+3/4`]},{number:92,symbol_cif:`P 41 21 2`,symbol_hm_short:`P41212`,hall_symbol:`P 4abw 2nw`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/4`,`-x,-y,z+1/2`,`y+1/2,-x+1/2,z+3/4`,`x+1/2,-y+1/2,-z+3/4`,`-y,-x,-z+1/2`,`-x+1/2,y+1/2,-z+1/4`,`y,x,-z`]},{number:93,symbol_cif:`P 42 2 2`,symbol_hm_short:`P4222`,hall_symbol:`P 4c 2`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`x,-y,-z`,`-y,-x,-z+1/2`,`-x,y,-z`,`y,x,-z+1/2`]},{number:94,symbol_cif:`P 42 21 2`,symbol_hm_short:`P42212`,hall_symbol:`P 4n 2n`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-y,-x,-z`,`-x+1/2,y+1/2,-z+1/2`,`y,x,-z`]},{number:95,symbol_cif:`P 43 2 2`,symbol_hm_short:`P4322`,hall_symbol:`P 4cw 2c`,operations:[`x,y,z`,`-y,x,z+3/4`,`-x,-y,z+1/2`,`y,-x,z+1/4`,`x,-y,-z+1/2`,`-y,-x,-z+3/4`,`-x,y,-z`,`y,x,-z+1/4`]},{number:96,symbol_cif:`P 43 21 2`,symbol_hm_short:`P43212`,hall_symbol:`P 4nw 2abw`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+3/4`,`-x,-y,z+1/2`,`y+1/2,-x+1/2,z+1/4`,`x+1/2,-y+1/2,-z+1/4`,`-y,-x,-z+1/2`,`-x+1/2,y+1/2,-z+3/4`,`y,x,-z`]},{number:97,symbol_cif:`I 4 2 2`,symbol_hm_short:`I422`,hall_symbol:`I 4 2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:98,symbol_cif:`I 41 2 2`,symbol_hm_short:`I4122`,hall_symbol:`I 4bw 2bw`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`x,-y+1/2,-z+1/4`,`-y,-x,-z`,`-x+1/2,y,-z+3/4`,`y+1/2,x+1/2,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`x+1/2,-y,-z+3/4`,`-y+1/2,-x+1/2,-z+1/2`,`-x,y+1/2,-z+1/4`,`y,x,-z`]},{number:99,symbol_cif:`P 4 m m`,symbol_hm_short:`P4mm`,hall_symbol:`P 4 -2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z`,`y,x,z`,`x,-y,z`,`-y,-x,z`]},{number:100,symbol_cif:`P 4 b m`,symbol_hm_short:`P4bm`,hall_symbol:`P 4 -2ab`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z`]},{number:101,symbol_cif:`P 42 c m`,symbol_hm_short:`P42cm`,hall_symbol:`P 4c -2c`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x,y,z+1/2`,`y,x,z`,`x,-y,z+1/2`,`-y,-x,z`]},{number:102,symbol_cif:`P 42 n m`,symbol_hm_short:`P42nm`,hall_symbol:`P 4n -2n`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`y,x,z`,`x+1/2,-y+1/2,z+1/2`,`-y,-x,z`]},{number:103,symbol_cif:`P 4 c c`,symbol_hm_short:`P4cc`,hall_symbol:`P 4 -2c`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z+1/2`,`y,x,z+1/2`,`x,-y,z+1/2`,`-y,-x,z+1/2`]},{number:104,symbol_cif:`P 4 n c`,symbol_hm_short:`P4nc`,hall_symbol:`P 4 -2n`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:105,symbol_cif:`P 42 m c`,symbol_hm_short:`P42mc`,hall_symbol:`P 4c -2`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x,y,z`,`y,x,z+1/2`,`x,-y,z`,`-y,-x,z+1/2`]},{number:106,symbol_cif:`P 42 b c`,symbol_hm_short:`P42bc`,hall_symbol:`P 4c -2ab`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z+1/2`]},{number:107,symbol_cif:`I 4 m m`,symbol_hm_short:`I4mm`,hall_symbol:`I 4 -2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z`,`y,x,z`,`x,-y,z`,`-y,-x,z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:108,symbol_cif:`I 4 c m`,symbol_hm_short:`I4cm`,hall_symbol:`I 4 -2c`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z+1/2`,`y,x,z+1/2`,`x,-y,z+1/2`,`-y,-x,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z`]},{number:109,symbol_cif:`I 41 m d`,symbol_hm_short:`I41md`,hall_symbol:`I 4bw -2`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`-x,y,z`,`y,x+1/2,z+1/4`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x,z+3/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x,z+3/4`,`x,-y,z`,`-y,-x+1/2,z+1/4`]},{number:110,symbol_cif:`I 41 c d`,symbol_hm_short:`I41cd`,hall_symbol:`I 4bw -2c`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`-x,y,z+1/2`,`y,x+1/2,z+3/4`,`x+1/2,-y+1/2,z`,`-y+1/2,-x,z+1/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`-x+1/2,y+1/2,z`,`y+1/2,x,z+1/4`,`x,-y,z+1/2`,`-y,-x+1/2,z+3/4`]},{number:111,symbol_cif:`P -4 2 m`,symbol_hm_short:`P-42m`,hall_symbol:`P -4 2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`]},{number:112,symbol_cif:`P -4 2 c`,symbol_hm_short:`P-42c`,hall_symbol:`P -4 2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z+1/2`,`y,x,z+1/2`,`-x,y,-z+1/2`,`-y,-x,z+1/2`]},{number:113,symbol_cif:`P -4 21 m`,symbol_hm_short:`P-421m`,hall_symbol:`P -4 2ab`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:114,symbol_cif:`P -4 21 c`,symbol_hm_short:`P-421c`,hall_symbol:`P -4 2n`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:115,symbol_cif:`P -4 m 2`,symbol_hm_short:`P-4m2`,hall_symbol:`P -4 -2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z`,`-y,-x,-z`,`x,-y,z`,`y,x,-z`]},{number:116,symbol_cif:`P -4 c 2`,symbol_hm_short:`P-4c2`,hall_symbol:`P -4 -2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`]},{number:117,symbol_cif:`P -4 b 2`,symbol_hm_short:`P-4b2`,hall_symbol:`P -4 -2ab`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`]},{number:118,symbol_cif:`P -4 n 2`,symbol_hm_short:`P-4n2`,hall_symbol:`P -4 -2n`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:119,symbol_cif:`I -4 m 2`,symbol_hm_short:`I-4m2`,hall_symbol:`I -4 -2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z`,`-y,-x,-z`,`x,-y,z`,`y,x,-z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:120,symbol_cif:`I -4 c 2`,symbol_hm_short:`I-4c2`,hall_symbol:`I -4 -2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`]},{number:121,symbol_cif:`I -4 2 m`,symbol_hm_short:`I-42m`,hall_symbol:`I -4 2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:122,symbol_cif:`I -4 2 d`,symbol_hm_short:`I-42d`,hall_symbol:`I -4 2bw`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y+1/2,-z+1/4`,`y,x+1/2,z+1/4`,`-x,y+1/2,-z+1/4`,`-y,-x+1/2,z+1/4`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y,-z+3/4`,`y+1/2,x,z+3/4`,`-x+1/2,y,-z+3/4`,`-y+1/2,-x,z+3/4`]},{number:123,symbol_cif:`P 4/m m m`,symbol_hm_short:`P4/mmm`,hall_symbol:`-P 4 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x,-y,-z`,`-x,y,z`,`-y,-x,-z`,`y,x,z`,`-x,y,-z`,`x,-y,z`,`y,x,-z`,`-y,-x,z`]},{number:124,symbol_cif:`P 4/m c c`,symbol_hm_short:`P4/mcc`,hall_symbol:`-P 4 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:125,symbol_cif:`P 4/n b m`,symbol_hm_short:`P4/nbm`,hall_symbol:`-P 4a 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`y,x,-z`,`-y,-x,z`]},{number:126,symbol_cif:`P 4/n n c`,symbol_hm_short:`P4/nnc`,hall_symbol:`-P 4a 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:127,symbol_cif:`P 4/m b m`,symbol_hm_short:`P4/mbm`,hall_symbol:`-P 4 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:128,symbol_cif:`P 4/m n c`,symbol_hm_short:`P4/mnc`,hall_symbol:`-P 4 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:129,symbol_cif:`P 4/n m m`,symbol_hm_short:`P4/nmm`,hall_symbol:`-P 4a 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-y,-x,-z`,`y,x,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:130,symbol_cif:`P 4/n c c`,symbol_hm_short:`P4/ncc`,hall_symbol:`-P 4a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:131,symbol_cif:`P 42/m m c`,symbol_hm_short:`P42/mmc`,hall_symbol:`-P 4c 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y,-z`,`x,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:132,symbol_cif:`P 42/m c m`,symbol_hm_short:`P42/mcm`,hall_symbol:`-P 4c 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:133,symbol_cif:`P 42/n b c`,symbol_hm_short:`P42/nbc`,hall_symbol:`-P 4ac 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:134,symbol_cif:`P 42/n n m`,symbol_hm_short:`P42/nnm`,hall_symbol:`-P 4ac 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:135,symbol_cif:`P 42/m b c`,symbol_hm_short:`P42/mbc`,hall_symbol:`-P 4c 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:136,symbol_cif:`P 42/m n m`,symbol_hm_short:`P42/mnm`,hall_symbol:`-P 4n 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y+1/2,-x+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:137,symbol_cif:`P 42/n m c`,symbol_hm_short:`P42/nmc`,hall_symbol:`-P 4ac 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:138,symbol_cif:`P 42/n c m`,symbol_hm_short:`P42/ncm`,hall_symbol:`-P 4ac 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:139,symbol_cif:`I 4/m m m`,symbol_hm_short:`I4/mmm`,hall_symbol:`-I 4 2`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2`.split(`.`)},{number:140,symbol_cif:`I 4/m c m`,symbol_hm_short:`I4/mcm`,hall_symbol:`-I 4 2c`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z+1/2.-x,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y,-z+1/2.x,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z`.split(`.`)},{number:141,symbol_cif:`I 41/a m d`,symbol_hm_short:`I41/amd`,hall_symbol:`-I 4bd 2`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z.-x,y,z.-y+1/4,-x+1/4,-z+3/4.y+1/4,x+1/4,z+3/4.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/4,x+3/4,-z+1/4.-y+1/4,-x+3/4,z+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+3/4,-x+3/4,-z+1/4.y+3/4,x+3/4,z+1/4.-x,y+1/2,-z.x,-y+1/2,z.y+3/4,x+1/4,-z+3/4.-y+3/4,-x+1/4,z+3/4`.split(`.`)},{number:142,symbol_cif:`I 41/a c d`,symbol_hm_short:`I41/acd`,hall_symbol:`-I 4bd 2c`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4`.split(`.`)},{number:143,symbol_cif:`P 3`,symbol_hm_short:`P3`,hall_symbol:`P 3`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`]},{number:144,symbol_cif:`P 31`,symbol_hm_short:`P31`,hall_symbol:`P 31`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`]},{number:145,symbol_cif:`P 32`,symbol_hm_short:`P32`,hall_symbol:`P 32`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`]},{number:146,symbol_cif:`R 3`,symbol_hm_short:`R3`,hall_symbol:`R 3`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`]},{number:147,symbol_cif:`P -3`,symbol_hm_short:`P-3`,hall_symbol:`-P 3`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`]},{number:148,symbol_cif:`R -3`,symbol_hm_short:`R-3`,hall_symbol:`-R 3`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`x+2/3,y+1/3,z+1/3`,`-x+2/3,-y+1/3,-z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`y+2/3,-x+y+1/3,-z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`x-y+2/3,x+1/3,-z+1/3`,`x+1/3,y+2/3,z+2/3`,`-x+1/3,-y+2/3,-z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`y+1/3,-x+y+2/3,-z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`x-y+1/3,x+2/3,-z+2/3`]},{number:149,symbol_cif:`P 3 1 2`,symbol_hm_short:`P312`,hall_symbol:`P 3 2`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,-z`,`-x+y,y,-z`,`x,x-y,-z`]},{number:150,symbol_cif:`P 3 2 1`,symbol_hm_short:`P321`,hall_symbol:`P 3 2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,-z`,`x-y,-y,-z`,`-x,-x+y,-z`]},{number:151,symbol_cif:`P 31 1 2`,symbol_hm_short:`P3112`,hall_symbol:`P 31 2 (0 0 4)`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`,`-y,-x,-z+2/3`,`-x+y,y,-z+1/3`,`x,x-y,-z`]},{number:152,symbol_cif:`P 31 2 1`,symbol_hm_short:`P3121`,hall_symbol:`P 31 2\"`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`,`y,x,-z`,`x-y,-y,-z+2/3`,`-x,-x+y,-z+1/3`]},{number:153,symbol_cif:`P 32 1 2`,symbol_hm_short:`P3212`,hall_symbol:`P 32 2 (0 0 2)`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`,`-y,-x,-z+1/3`,`-x+y,y,-z+2/3`,`x,x-y,-z`]},{number:154,symbol_cif:`P 32 2 1`,symbol_hm_short:`P3221`,hall_symbol:`P 32 2\"`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`,`y,x,-z`,`x-y,-y,-z+1/3`,`-x,-x+y,-z+2/3`]},{number:155,symbol_cif:`R 3 2`,symbol_hm_short:`R32`,hall_symbol:`R 3 2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,-z`,`x-y,-y,-z`,`-x,-x+y,-z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`y+2/3,x+1/3,-z+1/3`,`x-y+2/3,-y+1/3,-z+1/3`,`-x+2/3,-x+y+1/3,-z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`y+1/3,x+2/3,-z+2/3`,`x-y+1/3,-y+2/3,-z+2/3`,`-x+1/3,-x+y+2/3,-z+2/3`]},{number:156,symbol_cif:`P 3 m 1`,symbol_hm_short:`P3m1`,hall_symbol:`P 3 -2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z`,`-x+y,y,z`,`x,x-y,z`]},{number:157,symbol_cif:`P 3 1 m`,symbol_hm_short:`P31m`,hall_symbol:`P 3 -2`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,z`,`x-y,-y,z`,`-x,-x+y,z`]},{number:158,symbol_cif:`P 3 c 1`,symbol_hm_short:`P3c1`,hall_symbol:`P 3 -2\"c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z+1/2`,`-x+y,y,z+1/2`,`x,x-y,z+1/2`]},{number:159,symbol_cif:`P 3 1 c`,symbol_hm_short:`P31c`,hall_symbol:`P 3 -2c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,z+1/2`,`x-y,-y,z+1/2`,`-x,-x+y,z+1/2`]},{number:160,symbol_cif:`R 3 m`,symbol_hm_short:`R3m`,hall_symbol:`R 3 -2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z`,`-x+y,y,z`,`x,x-y,z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`-y+2/3,-x+1/3,z+1/3`,`-x+y+2/3,y+1/3,z+1/3`,`x+2/3,x-y+1/3,z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`-y+1/3,-x+2/3,z+2/3`,`-x+y+1/3,y+2/3,z+2/3`,`x+1/3,x-y+2/3,z+2/3`]},{number:161,symbol_cif:`R 3 c`,symbol_hm_short:`R3c`,hall_symbol:`R 3 -2\"c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z+1/2`,`-x+y,y,z+1/2`,`x,x-y,z+1/2`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`-y+2/3,-x+1/3,z+5/6`,`-x+y+2/3,y+1/3,z+5/6`,`x+2/3,x-y+1/3,z+5/6`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`-y+1/3,-x+2/3,z+1/6`,`-x+y+1/3,y+2/3,z+1/6`,`x+1/3,x-y+2/3,z+1/6`]},{number:162,symbol_cif:`P -3 1 m`,symbol_hm_short:`P-31m`,hall_symbol:`-P 3 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`-y,-x,-z`,`y,x,z`,`-x+y,y,-z`,`x-y,-y,z`,`x,x-y,-z`,`-x,-x+y,z`]},{number:163,symbol_cif:`P -3 1 c`,symbol_hm_short:`P-31c`,hall_symbol:`-P 3 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`]},{number:164,symbol_cif:`P -3 m 1`,symbol_hm_short:`P-3m1`,hall_symbol:`-P 3 2\"`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,x,-z`,`-y,-x,z`,`x-y,-y,-z`,`-x+y,y,z`,`-x,-x+y,-z`,`x,x-y,z`]},{number:165,symbol_cif:`P -3 c 1`,symbol_hm_short:`P-3c1`,hall_symbol:`-P 3 2\"c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`]},{number:166,symbol_cif:`R -3 m`,symbol_hm_short:`R-3m`,hall_symbol:`-R 3 2\"`,operations:`x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z.-y,-x,z.x-y,-y,-z.-x+y,y,z.-x,-x+y,-z.x,x-y,z.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+1/3.-y+2/3,-x+1/3,z+1/3.x-y+2/3,-y+1/3,-z+1/3.-x+y+2/3,y+1/3,z+1/3.-x+2/3,-x+y+1/3,-z+1/3.x+2/3,x-y+1/3,z+1/3.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+2/3.-y+1/3,-x+2/3,z+2/3.x-y+1/3,-y+2/3,-z+2/3.-x+y+1/3,y+2/3,z+2/3.-x+1/3,-x+y+2/3,-z+2/3.x+1/3,x-y+2/3,z+2/3`.split(`.`)},{number:167,symbol_cif:`R -3 c`,symbol_hm_short:`R-3c`,hall_symbol:`-R 3 2\"c`,operations:`x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z+1/2.-y,-x,z+1/2.x-y,-y,-z+1/2.-x+y,y,z+1/2.-x,-x+y,-z+1/2.x,x-y,z+1/2.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+5/6.-y+2/3,-x+1/3,z+5/6.x-y+2/3,-y+1/3,-z+5/6.-x+y+2/3,y+1/3,z+5/6.-x+2/3,-x+y+1/3,-z+5/6.x+2/3,x-y+1/3,z+5/6.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+1/6.-y+1/3,-x+2/3,z+1/6.x-y+1/3,-y+2/3,-z+1/6.-x+y+1/3,y+2/3,z+1/6.-x+1/3,-x+y+2/3,-z+1/6.x+1/3,x-y+2/3,z+1/6`.split(`.`)},{number:168,symbol_cif:`P 6`,symbol_hm_short:`P6`,hall_symbol:`P 6`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`]},{number:169,symbol_cif:`P 61`,symbol_hm_short:`P61`,hall_symbol:`P 61`,operations:[`x,y,z`,`x-y,x,z+1/6`,`-y,x-y,z+1/3`,`-x,-y,z+1/2`,`-x+y,-x,z+2/3`,`y,-x+y,z+5/6`]},{number:170,symbol_cif:`P 65`,symbol_hm_short:`P65`,hall_symbol:`P 65`,operations:[`x,y,z`,`x-y,x,z+5/6`,`-y,x-y,z+2/3`,`-x,-y,z+1/2`,`-x+y,-x,z+1/3`,`y,-x+y,z+1/6`]},{number:171,symbol_cif:`P 62`,symbol_hm_short:`P62`,hall_symbol:`P 62`,operations:[`x,y,z`,`x-y,x,z+1/3`,`-y,x-y,z+2/3`,`-x,-y,z`,`-x+y,-x,z+1/3`,`y,-x+y,z+2/3`]},{number:172,symbol_cif:`P 64`,symbol_hm_short:`P64`,hall_symbol:`P 64`,operations:[`x,y,z`,`x-y,x,z+2/3`,`-y,x-y,z+1/3`,`-x,-y,z`,`-x+y,-x,z+2/3`,`y,-x+y,z+1/3`]},{number:173,symbol_cif:`P 63`,symbol_hm_short:`P63`,hall_symbol:`P 6c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`]},{number:174,symbol_cif:`P -6`,symbol_hm_short:`P-6`,hall_symbol:`P -6`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`]},{number:175,symbol_cif:`P 6/m`,symbol_hm_short:`P6/m`,hall_symbol:`-P 6`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`]},{number:176,symbol_cif:`P 63/m`,symbol_hm_short:`P63/m`,hall_symbol:`-P 6c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`]},{number:177,symbol_cif:`P 6 2 2`,symbol_hm_short:`P622`,hall_symbol:`P 6 2`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`-y,-x,-z`,`-x,-x+y,-z`,`-x+y,y,-z`,`y,x,-z`,`x,x-y,-z`,`x-y,-y,-z`]},{number:178,symbol_cif:`P 61 2 2`,symbol_hm_short:`P6122`,hall_symbol:`P 61 2 (0 0 5)`,operations:[`x,y,z`,`x-y,x,z+1/6`,`-y,x-y,z+1/3`,`-x,-y,z+1/2`,`-x+y,-x,z+2/3`,`y,-x+y,z+5/6`,`-y,-x,-z+5/6`,`-x,-x+y,-z+2/3`,`-x+y,y,-z+1/2`,`y,x,-z+1/3`,`x,x-y,-z+1/6`,`x-y,-y,-z`]},{number:179,symbol_cif:`P 65 2 2`,symbol_hm_short:`P6522`,hall_symbol:`P 65 2 (0 0 1)`,operations:[`x,y,z`,`x-y,x,z+5/6`,`-y,x-y,z+2/3`,`-x,-y,z+1/2`,`-x+y,-x,z+1/3`,`y,-x+y,z+1/6`,`-y,-x,-z+1/6`,`-x,-x+y,-z+1/3`,`-x+y,y,-z+1/2`,`y,x,-z+2/3`,`x,x-y,-z+5/6`,`x-y,-y,-z`]},{number:180,symbol_cif:`P 62 2 2`,symbol_hm_short:`P6222`,hall_symbol:`P 62 2 (0 0 4)`,operations:[`x,y,z`,`x-y,x,z+1/3`,`-y,x-y,z+2/3`,`-x,-y,z`,`-x+y,-x,z+1/3`,`y,-x+y,z+2/3`,`-y,-x,-z+2/3`,`-x,-x+y,-z+1/3`,`-x+y,y,-z`,`y,x,-z+2/3`,`x,x-y,-z+1/3`,`x-y,-y,-z`]},{number:181,symbol_cif:`P 64 2 2`,symbol_hm_short:`P6422`,hall_symbol:`P 64 2 (0 0 2)`,operations:[`x,y,z`,`x-y,x,z+2/3`,`-y,x-y,z+1/3`,`-x,-y,z`,`-x+y,-x,z+2/3`,`y,-x+y,z+1/3`,`-y,-x,-z+1/3`,`-x,-x+y,-z+2/3`,`-x+y,y,-z`,`y,x,-z+1/3`,`x,x-y,-z+2/3`,`x-y,-y,-z`]},{number:182,symbol_cif:`P 63 2 2`,symbol_hm_short:`P6322`,hall_symbol:`P 6c 2c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`-y,-x,-z+1/2`,`-x,-x+y,-z`,`-x+y,y,-z+1/2`,`y,x,-z`,`x,x-y,-z+1/2`,`x-y,-y,-z`]},{number:183,symbol_cif:`P 6 m m`,symbol_hm_short:`P6mm`,hall_symbol:`P 6 -2`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`y,x,z`,`x,x-y,z`,`x-y,-y,z`,`-y,-x,z`,`-x,-x+y,z`,`-x+y,y,z`]},{number:184,symbol_cif:`P 6 c c`,symbol_hm_short:`P6cc`,hall_symbol:`P 6 -2c`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`y,x,z+1/2`,`x,x-y,z+1/2`,`x-y,-y,z+1/2`,`-y,-x,z+1/2`,`-x,-x+y,z+1/2`,`-x+y,y,z+1/2`]},{number:185,symbol_cif:`P 63 c m`,symbol_hm_short:`P63cm`,hall_symbol:`P 6c -2`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`y,x,z`,`x,x-y,z+1/2`,`x-y,-y,z`,`-y,-x,z+1/2`,`-x,-x+y,z`,`-x+y,y,z+1/2`]},{number:186,symbol_cif:`P 63 m c`,symbol_hm_short:`P63mc`,hall_symbol:`P 6c -2c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`y,x,z+1/2`,`x,x-y,z`,`x-y,-y,z+1/2`,`-y,-x,z`,`-x,-x+y,z+1/2`,`-x+y,y,z`]},{number:187,symbol_cif:`P -6 m 2`,symbol_hm_short:`P-6m2`,hall_symbol:`P -6 2`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`,`-y,-x,-z`,`x,x-y,z`,`-x+y,y,-z`,`-y,-x,z`,`x,x-y,-z`,`-x+y,y,z`]},{number:188,symbol_cif:`P -6 c 2`,symbol_hm_short:`P-6c2`,hall_symbol:`P -6c 2`,operations:[`x,y,z`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`x,y,-z+1/2`,`-x+y,-x,z`,`-y,x-y,-z+1/2`,`-y,-x,-z`,`x,x-y,z+1/2`,`-x+y,y,-z`,`-y,-x,z+1/2`,`x,x-y,-z`,`-x+y,y,z+1/2`]},{number:189,symbol_cif:`P -6 2 m`,symbol_hm_short:`P-62m`,hall_symbol:`P -6 -2`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`,`y,x,z`,`-x,-x+y,-z`,`x-y,-y,z`,`y,x,-z`,`-x,-x+y,z`,`x-y,-y,-z`]},{number:190,symbol_cif:`P -6 2 c`,symbol_hm_short:`P-62c`,hall_symbol:`P -6c -2c`,operations:[`x,y,z`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`x,y,-z+1/2`,`-x+y,-x,z`,`-y,x-y,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z`,`x-y,-y,z+1/2`,`y,x,-z`,`-x,-x+y,z+1/2`,`x-y,-y,-z`]},{number:191,symbol_cif:`P 6/m m m`,symbol_hm_short:`P6/mmm`,hall_symbol:`-P 6 2`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`,`-y,-x,-z`,`y,x,z`,`-x,-x+y,-z`,`x,x-y,z`,`-x+y,y,-z`,`x-y,-y,z`,`y,x,-z`,`-y,-x,z`,`x,x-y,-z`,`-x,-x+y,z`,`x-y,-y,-z`,`-x+y,y,z`]},{number:192,symbol_cif:`P 6/m c c`,symbol_hm_short:`P6/mcc`,hall_symbol:`-P 6 2c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`]},{number:193,symbol_cif:`P 63/m c m`,symbol_hm_short:`P63/mcm`,hall_symbol:`-P 6c 2`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`,`-x+y,y,-z`,`x-y,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x,x-y,-z`,`-x,-x+y,z`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`]},{number:194,symbol_cif:`P 63/m m c`,symbol_hm_short:`P63/mmc`,hall_symbol:`-P 6c 2c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z`,`x,x-y,z`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`y,x,-z`,`-y,-x,z`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`,`x-y,-y,-z`,`-x+y,y,z`]},{number:195,symbol_cif:`P 2 3`,symbol_hm_short:`P23`,hall_symbol:`P 2 2 3`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`z,x,y`,`z,-x,-y`,`-z,x,-y`,`-z,-x,y`,`y,z,x`,`-y,z,-x`,`-y,-z,x`,`y,-z,-x`]},{number:196,symbol_cif:`F 2 3`,symbol_hm_short:`F23`,hall_symbol:`F 2 2 3`,operations:`x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.z,x+1/2,y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,-y+1/2.-z,-x+1/2,y+1/2.y,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y,-z+1/2,x+1/2.y,-z+1/2,-x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.z+1/2,x,y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,-y+1/2.-z+1/2,-x,y+1/2.y+1/2,z,x+1/2.-y+1/2,z,-x+1/2.-y+1/2,-z,x+1/2.y+1/2,-z,-x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.z+1/2,x+1/2,y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,-y.-z+1/2,-x+1/2,y.y+1/2,z+1/2,x.-y+1/2,z+1/2,-x.-y+1/2,-z+1/2,x.y+1/2,-z+1/2,-x`.split(`.`)},{number:197,symbol_cif:`I 2 3`,symbol_hm_short:`I23`,hall_symbol:`I 2 2 3`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`z,x,y`,`z,-x,-y`,`-z,x,-y`,`-z,-x,y`,`y,z,x`,`-y,z,-x`,`-y,-z,x`,`y,-z,-x`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`z+1/2,x+1/2,y+1/2`,`z+1/2,-x+1/2,-y+1/2`,`-z+1/2,x+1/2,-y+1/2`,`-z+1/2,-x+1/2,y+1/2`,`y+1/2,z+1/2,x+1/2`,`-y+1/2,z+1/2,-x+1/2`,`-y+1/2,-z+1/2,x+1/2`,`y+1/2,-z+1/2,-x+1/2`]},{number:198,symbol_cif:`P 21 3`,symbol_hm_short:`P213`,hall_symbol:`P 2ac 2ab 3`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x,y+1/2,-z+1/2`,`z,x,y`,`z+1/2,-x+1/2,-y`,`-z,x+1/2,-y+1/2`,`-z+1/2,-x,y+1/2`,`y,z,x`,`-y,z+1/2,-x+1/2`,`-y+1/2,-z,x+1/2`,`y+1/2,-z+1/2,-x`]},{number:199,symbol_cif:`I 21 3`,symbol_hm_short:`I213`,hall_symbol:`I 2b 2c 3`,operations:[`x,y,z`,`-x,-y+1/2,z`,`x,-y,-z+1/2`,`-x,y+1/2,-z+1/2`,`z,x,y`,`z,-x,-y+1/2`,`-z+1/2,x,-y`,`-z+1/2,-x,y+1/2`,`y,z,x`,`-y+1/2,z,-x`,`-y,-z+1/2,x`,`y+1/2,-z+1/2,-x`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y,-z`,`z+1/2,x+1/2,y+1/2`,`z+1/2,-x+1/2,-y`,`-z,x+1/2,-y+1/2`,`-z,-x+1/2,y`,`y+1/2,z+1/2,x+1/2`,`-y,z+1/2,-x+1/2`,`-y+1/2,-z,x+1/2`,`y,-z,-x+1/2`]},{number:200,symbol_cif:`P m -3`,symbol_hm_short:`Pm-3`,hall_symbol:`-P 2 2 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`z,x,y`,`-z,-x,-y`,`z,-x,-y`,`-z,x,y`,`-z,x,-y`,`z,-x,y`,`-z,-x,y`,`z,x,-y`,`y,z,x`,`-y,-z,-x`,`-y,z,-x`,`y,-z,x`,`-y,-z,x`,`y,z,-x`,`y,-z,-x`,`-y,z,x`]},{number:201,symbol_cif:`P n -3`,symbol_hm_short:`Pn-3`,hall_symbol:`-P 2ab 2bc 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`z,x,y`,`-z,-x,-y`,`z,-x+1/2,-y+1/2`,`-z,x+1/2,y+1/2`,`-z+1/2,x,-y+1/2`,`z+1/2,-x,y+1/2`,`-z+1/2,-x+1/2,y`,`z+1/2,x+1/2,-y`,`y,z,x`,`-y,-z,-x`,`-y+1/2,z,-x+1/2`,`y+1/2,-z,x+1/2`,`-y+1/2,-z+1/2,x`,`y+1/2,z+1/2,-x`,`y,-z+1/2,-x+1/2`,`-y,z+1/2,x+1/2`]},{number:202,symbol_cif:`F m -3`,symbol_hm_short:`Fm-3`,hall_symbol:`-F 2 2 3`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x`.split(`.`)},{number:203,symbol_cif:`F d -3`,symbol_hm_short:`Fd-3`,hall_symbol:`-F 2uv 2vw 3`,operations:`x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.z,x,y.-z,-x,-y.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.y,z,x.-y,-z,-x.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4`.split(`.`)},{number:204,symbol_cif:`I m -3`,symbol_hm_short:`Im-3`,hall_symbol:`-I 2 2 3`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2`.split(`.`)},{number:205,symbol_cif:`P a -3`,symbol_hm_short:`Pa-3`,hall_symbol:`-P 2ac 2ab 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`z,x,y`,`-z,-x,-y`,`z+1/2,-x+1/2,-y`,`-z+1/2,x+1/2,y`,`-z,x+1/2,-y+1/2`,`z,-x+1/2,y+1/2`,`-z+1/2,-x,y+1/2`,`z+1/2,x,-y+1/2`,`y,z,x`,`-y,-z,-x`,`-y,z+1/2,-x+1/2`,`y,-z+1/2,x+1/2`,`-y+1/2,-z,x+1/2`,`y+1/2,z,-x+1/2`,`y+1/2,-z+1/2,-x`,`-y+1/2,z+1/2,x`]},{number:206,symbol_cif:`I a -3`,symbol_hm_short:`Ia-3`,hall_symbol:`-I 2b 2c 3`,operations:`x,y,z.-x,-y,-z.-x,-y+1/2,z.x,y+1/2,-z.x,-y,-z+1/2.-x,y,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x,y.-z,-x,-y.z,-x,-y+1/2.-z,x,y+1/2.-z+1/2,x,-y.z+1/2,-x,y.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y,z,x.-y,-z,-x.-y+1/2,z,-x.y+1/2,-z,x.-y,-z+1/2,x.y,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y,-z.x+1/2,-y,z.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y.z,x+1/2,-y.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y,-z,-x+1/2.-y,z,x+1/2`.split(`.`)},{number:207,symbol_cif:`P 4 3 2`,symbol_hm_short:`P432`,hall_symbol:`P 4 2 3`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`,`z,x,y`,`z,-y,x`,`z,-x,-y`,`z,y,-x`,`-z,x,-y`,`-z,-y,-x`,`-z,-x,y`,`-z,y,x`,`y,z,x`,`x,z,-y`,`-y,z,-x`,`-x,z,y`,`-y,-z,x`,`-x,-z,-y`,`y,-z,-x`,`x,-z,y`]},{number:208,symbol_cif:`P 42 3 2`,symbol_hm_short:`P4232`,hall_symbol:`P 4n 2 3`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`x,-y,-z`,`-y+1/2,-x+1/2,-z+1/2`,`-x,y,-z`,`y+1/2,x+1/2,-z+1/2`,`z,x,y`,`z+1/2,-y+1/2,x+1/2`,`z,-x,-y`,`z+1/2,y+1/2,-x+1/2`,`-z,x,-y`,`-z+1/2,-y+1/2,-x+1/2`,`-z,-x,y`,`-z+1/2,y+1/2,x+1/2`,`y,z,x`,`x+1/2,z+1/2,-y+1/2`,`-y,z,-x`,`-x+1/2,z+1/2,y+1/2`,`-y,-z,x`,`-x+1/2,-z+1/2,-y+1/2`,`y,-z,-x`,`x+1/2,-z+1/2,y+1/2`]},{number:209,symbol_cif:`F 4 3 2`,symbol_hm_short:`F432`,hall_symbol:`F 4 2 3`,operations:`x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.z,x+1/2,y+1/2.z,-y+1/2,x+1/2.z,-x+1/2,-y+1/2.z,y+1/2,-x+1/2.-z,x+1/2,-y+1/2.-z,-y+1/2,-x+1/2.-z,-x+1/2,y+1/2.-z,y+1/2,x+1/2.y,z+1/2,x+1/2.x,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,z+1/2,y+1/2.-y,-z+1/2,x+1/2.-x,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y,x+1/2.z+1/2,-x,-y+1/2.z+1/2,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y,-x+1/2.-z+1/2,-x,y+1/2.-z+1/2,y,x+1/2.y+1/2,z,x+1/2.x+1/2,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,z,y+1/2.-y+1/2,-z,x+1/2.-x+1/2,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.z+1/2,x+1/2,y.z+1/2,-y+1/2,x.z+1/2,-x+1/2,-y.z+1/2,y+1/2,-x.-z+1/2,x+1/2,-y.-z+1/2,-y+1/2,-x.-z+1/2,-x+1/2,y.-z+1/2,y+1/2,x.y+1/2,z+1/2,x.x+1/2,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,z+1/2,y.-y+1/2,-z+1/2,x.-x+1/2,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y`.split(`.`)},{number:210,symbol_cif:`F 41 3 2`,symbol_hm_short:`F4132`,hall_symbol:`F 4d 2 3`,operations:`x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,z+3/4,y+3/4.-y,-z,x.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,z+1/4,y+1/4.-y,-z+1/2,x+1/2.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,z+3/4,y+1/4.-y+1/2,-z,x+1/2.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4`.split(`.`)},{number:211,symbol_cif:`I 4 3 2`,symbol_hm_short:`I432`,hall_symbol:`I 4 2 3`,operations:`x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y+1/2.-z+1/2,y+1/2,x+1/2.y+1/2,z+1/2,x+1/2.x+1/2,z+1/2,-y+1/2.-y+1/2,z+1/2,-x+1/2.-x+1/2,z+1/2,y+1/2.-y+1/2,-z+1/2,x+1/2.-x+1/2,-z+1/2,-y+1/2.y+1/2,-z+1/2,-x+1/2.x+1/2,-z+1/2,y+1/2`.split(`.`)},{number:212,symbol_cif:`P 43 3 2`,symbol_hm_short:`P4332`,hall_symbol:`P 4acd 2ab 3`,operations:[`x,y,z`,`-y+3/4,x+1/4,z+3/4`,`-x+1/2,-y,z+1/2`,`y+3/4,-x+3/4,z+1/4`,`x+1/2,-y+1/2,-z`,`-y+1/4,-x+1/4,-z+1/4`,`-x,y+1/2,-z+1/2`,`y+1/4,x+3/4,-z+3/4`,`z,x,y`,`z+3/4,-y+3/4,x+1/4`,`z+1/2,-x+1/2,-y`,`z+1/4,y+3/4,-x+3/4`,`-z,x+1/2,-y+1/2`,`-z+1/4,-y+1/4,-x+1/4`,`-z+1/2,-x,y+1/2`,`-z+3/4,y+1/4,x+3/4`,`y,z,x`,`x+1/4,z+3/4,-y+3/4`,`-y,z+1/2,-x+1/2`,`-x+3/4,z+1/4,y+3/4`,`-y+1/2,-z,x+1/2`,`-x+1/4,-z+1/4,-y+1/4`,`y+1/2,-z+1/2,-x`,`x+3/4,-z+3/4,y+1/4`]},{number:213,symbol_cif:`P 41 3 2`,symbol_hm_short:`P4132`,hall_symbol:`P 4bd 2ab 3`,operations:[`x,y,z`,`-y+1/4,x+3/4,z+1/4`,`-x+1/2,-y,z+1/2`,`y+1/4,-x+1/4,z+3/4`,`x+1/2,-y+1/2,-z`,`-y+3/4,-x+3/4,-z+3/4`,`-x,y+1/2,-z+1/2`,`y+3/4,x+1/4,-z+1/4`,`z,x,y`,`z+1/4,-y+1/4,x+3/4`,`z+1/2,-x+1/2,-y`,`z+3/4,y+1/4,-x+1/4`,`-z,x+1/2,-y+1/2`,`-z+3/4,-y+3/4,-x+3/4`,`-z+1/2,-x,y+1/2`,`-z+1/4,y+3/4,x+1/4`,`y,z,x`,`x+3/4,z+1/4,-y+1/4`,`-y,z+1/2,-x+1/2`,`-x+1/4,z+3/4,y+1/4`,`-y+1/2,-z,x+1/2`,`-x+3/4,-z+3/4,-y+3/4`,`y+1/2,-z+1/2,-x`,`x+1/4,-z+1/4,y+3/4`]},{number:214,symbol_cif:`I 41 3 2`,symbol_hm_short:`I4132`,hall_symbol:`I 4bd 2c 3`,operations:`x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.z,x,y.z+1/4,-y+1/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+1/4.-z+1/2,x,-y.-z+1/4,-y+1/4,-x+1/4.-z,-x+1/2,y.-z+3/4,y+1/4,x+3/4.y,z,x.x+3/4,z+1/4,-y+1/4.-y,z+1/2,-x+1/2.-x+1/4,z+3/4,y+1/4.-y,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.z+1/2,x+1/2,y+1/2.z+3/4,-y+3/4,x+1/4.z,-x,-y+1/2.z+1/4,y+3/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+1/4.y+1/2,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z,x+1/2.-x+3/4,-z+3/4,-y+3/4.y+1/2,-z+1/2,-x.x+1/4,-z+1/4,y+3/4`.split(`.`)},{number:215,symbol_cif:`P -4 3 m`,symbol_hm_short:`P-43m`,hall_symbol:`P -4 2 3`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`,`z,x,y`,`-z,y,-x`,`z,-x,-y`,`-z,-y,x`,`-z,x,-y`,`z,y,x`,`-z,-x,y`,`z,-y,-x`,`y,z,x`,`-x,-z,y`,`-y,z,-x`,`x,-z,-y`,`-y,-z,x`,`x,z,y`,`y,-z,-x`,`-x,z,-y`]},{number:216,symbol_cif:`F -4 3 m`,symbol_hm_short:`F-43m`,hall_symbol:`F -4 2 3`,operations:`x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x,y+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y`.split(`.`)},{number:217,symbol_cif:`I -4 3 m`,symbol_hm_short:`I-43m`,hall_symbol:`I -4 2 3`,operations:`x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x+1/2,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:218,symbol_cif:`P -4 3 n`,symbol_hm_short:`P-43n`,hall_symbol:`P -4n 2 3`,operations:[`x,y,z`,`y+1/2,-x+1/2,-z+1/2`,`-x,-y,z`,`-y+1/2,x+1/2,-z+1/2`,`x,-y,-z`,`y+1/2,x+1/2,z+1/2`,`-x,y,-z`,`-y+1/2,-x+1/2,z+1/2`,`z,x,y`,`-z+1/2,y+1/2,-x+1/2`,`z,-x,-y`,`-z+1/2,-y+1/2,x+1/2`,`-z,x,-y`,`z+1/2,y+1/2,x+1/2`,`-z,-x,y`,`z+1/2,-y+1/2,-x+1/2`,`y,z,x`,`-x+1/2,-z+1/2,y+1/2`,`-y,z,-x`,`x+1/2,-z+1/2,-y+1/2`,`-y,-z,x`,`x+1/2,z+1/2,y+1/2`,`y,-z,-x`,`-x+1/2,z+1/2,-y+1/2`]},{number:219,symbol_cif:`F -4 3 c`,symbol_hm_short:`F-43c`,hall_symbol:`F -4a 2 3`,operations:`x,y,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.-y,x+1/2,-z.x,-y,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.-y,-x+1/2,z.z,x,y.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,-y,x+1/2.-z,x,-y.z,y+1/2,x.-z,-x+1/2,y+1/2.z,-y,-x+1/2.y,z,x.-x,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y.-y,-z,x.x,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y.x,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,y,-x+1/2.z,-x,-y.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,y,x+1/2.-z,-x,y.z,-y+1/2,-x.y,z+1/2,x+1/2.-x,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,-y,-x.y+1/2,z,x+1/2.-x+1/2,-z,y.-y,z,-x.x,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y.y,-z,-x.-x,z,-y+1/2.x+1/2,y+1/2,z.y,-x+1/2,-z.-x,-y,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.y,x+1/2,z.-x,y,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y`.split(`.`)},{number:220,symbol_cif:`I -4 3 d`,symbol_hm_short:`I-43d`,hall_symbol:`I -4bd 2c 3`,operations:`x,y,z.y+1/4,-x+3/4,-z+1/4.-x,-y+1/2,z.-y+3/4,x+3/4,-z+1/4.x,-y,-z+1/2.y+1/4,x+1/4,z+1/4.-x,y+1/2,-z+1/2.-y+3/4,-x+1/4,z+1/4.z,x,y.-z+1/4,y+1/4,-x+3/4.z,-x,-y+1/2.-z+1/4,-y+3/4,x+3/4.-z+1/2,x,-y.z+1/4,y+1/4,x+1/4.-z+1/2,-x,y+1/2.z+1/4,-y+3/4,-x+1/4.y,z,x.-x+3/4,-z+1/4,y+1/4.-y+1/2,z,-x.x+3/4,-z+1/4,-y+3/4.-y,-z+1/2,x.x+1/4,z+1/4,y+1/4.y+1/2,-z+1/2,-x.-x+1/4,z+1/4,-y+3/4.x+1/2,y+1/2,z+1/2.y+3/4,-x+1/4,-z+3/4.-x+1/2,-y,z+1/2.-y+1/4,x+1/4,-z+3/4.x+1/2,-y+1/2,-z.y+3/4,x+3/4,z+3/4.-x+1/2,y,-z.-y+1/4,-x+3/4,z+3/4.z+1/2,x+1/2,y+1/2.-z+3/4,y+3/4,-x+1/4.z+1/2,-x+1/2,-y.-z+3/4,-y+1/4,x+1/4.-z,x+1/2,-y+1/2.z+3/4,y+3/4,x+3/4.-z,-x+1/2,y.z+3/4,-y+1/4,-x+3/4.y+1/2,z+1/2,x+1/2.-x+1/4,-z+3/4,y+3/4.-y,z+1/2,-x+1/2.x+1/4,-z+3/4,-y+1/4.-y+1/2,-z,x+1/2.x+3/4,z+3/4,y+3/4.y,-z,-x+1/2.-x+3/4,z+3/4,-y+1/4`.split(`.`)},{number:221,symbol_cif:`P m -3 m`,symbol_hm_short:`Pm-3m`,hall_symbol:`-P 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y`.split(`.`)},{number:222,symbol_cif:`P n -3 n`,symbol_hm_short:`Pn-3n`,hall_symbol:`-P 4a 2bc 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y`.split(`.`)},{number:223,symbol_cif:`P m -3 n`,symbol_hm_short:`Pm-3n`,hall_symbol:`-P 4n 2 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x,-y,z.x,y,-z.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x,-y,-z.-x,y,z.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x,y,-z.x,-y,z.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z,x,y.-z,-x,-y.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z,-x,-y.-z,x,y.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z,x,-y.z,-x,y.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z,-x,y.z,x,-y.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z,-x.y,-z,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z,x.y,z,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z,-x.-y,z,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:224,symbol_cif:`P n -3 m`,symbol_hm_short:`Pn-3m`,hall_symbol:`-P 4bc 2bc 3`,operations:`x,y,z.-x,-y,-z.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x,-z.y,x,z.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z,x,y.-z,-x,-y.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z,-y,-x.z,y,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x,-z,-y.x,z,y.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2`.split(`.`)},{number:225,symbol_cif:`F m -3 m`,symbol_hm_short:`Fm-3m`,hall_symbol:`-F 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y,-x+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y,x+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y+1/2,x+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y+1/2,-x+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y,-x+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y,x+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y+1/2,x.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y+1/2,x.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y.-x+1/2,z+1/2,-y`.split(`.`)},{number:226,symbol_cif:`F m -3 c`,symbol_hm_short:`Fm-3c`,hall_symbol:`-F 4a 2 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y,-z.-x,y,z.-y+1/2,-x,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y,x+1/2,-z.-y,-x+1/2,z.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z,x,-y.z,-x,y.-z,-y+1/2,-x.z,y+1/2,x.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y,x+1/2.z,-y,-x+1/2.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y.-x+1/2,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y,-x,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y,x+1/2.-z,y,-x+1/2.z,-x,-y.-z,x,y.z,y+1/2,-x.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y,-x+1/2.z,y,x+1/2.-z,-x,y.z,x,-y.-z,y+1/2,x.z,-y+1/2,-x.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y.-x,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y,-x.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y.-x+1/2,-z,y.-y,z,-x.y,-z,x.-x,z,y+1/2.x,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z,-x.-y,z,x.x,-z,y+1/2.-x,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+1/2,z.y,-x+1/2,-z.-x,-y,z.x,y,-z.y+1/2,-x,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y,-x+1/2,-z.y,x+1/2,z.-x,y,-z.x,-y,z.y+1/2,x,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y,x.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y,-x.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y.x,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y`.split(`.`)},{number:227,symbol_cif:`F d -3 m`,symbol_hm_short:`Fd-3m`,hall_symbol:`-F 4vw 2vw 3`,operations:`x,y,z.-x,-y,-z.-y,x+1/4,z+1/4.y,-x+1/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+3/4,-x,z+3/4.-y+3/4,x,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y,-x,-z.y,x,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+3/4,x+1/4,-z+1/2.-y+3/4,-x+1/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y,x+1/4.-z+1/4,y,-x+1/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+3/4,-x.-z+3/4,-y+3/4,x.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y,-x.z,y,x.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+3/4,x+1/4.z+1/2,-y+3/4,-x+1/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y.-x+1/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+3/4.x,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y.x,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+3/4.-x+1/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+3/4,z+3/4.y,-x+3/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+3/4,-x+1/2,z+1/4.-y+3/4,x+1/2,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+3/4,x+3/4,-z.-y+3/4,-x+3/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y+1/2,x+3/4.-z+1/4,y+1/2,-x+3/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+1/4,-x+1/2.-z+3/4,-y+1/4,x+1/2.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+1/4,x+3/4.z+1/2,-y+1/4,-x+3/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+1/2.-x+1/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+1/4.x,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+1/4.-x+1/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x+1/4,z+3/4.y+1/2,-x+1/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+1/4,-x,z+1/4.-y+1/4,x,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+1/4,x+1/4,-z.-y+1/4,-x+1/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y,x+3/4.-z+3/4,y,-x+3/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+3/4,-x+1/2.-z+1/4,-y+3/4,x+1/2.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+3/4,x+3/4.z,-y+3/4,-x+3/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y+1/2.-x+3/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+1/4.x+1/2,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+1/4.-x+3/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+3/4,z+1/4.y+1/2,-x+3/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+1/4,-x+1/2,z+3/4.-y+1/4,x+1/2,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+1/4,x+3/4,-z+1/2.-y+1/4,-x+3/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y+1/2,x+1/4.-z+3/4,y+1/2,-x+1/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+1/4,-x.-z+1/4,-y+1/4,x.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+1/4,x+1/4.z,-y+1/4,-x+1/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y.-x+3/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+3/4.x+1/2,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+3/4.-x+3/4,z,-y+3/4`.split(`.`)},{number:228,symbol_cif:`F d -3 c`,symbol_hm_short:`Fd-3c`,hall_symbol:`-F 4ud 2vw 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x+1/4,z+1/4.y+1/2,-x+1/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+3/4,-x+1/2,z+3/4.-y+3/4,x+1/2,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y+1/2,-x,-z.y+1/2,x,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+3/4,x+3/4,-z+1/2.-y+3/4,-x+3/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y+1/2,x+1/4.-z+1/4,y+1/2,-x+1/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+3/4,-x+1/2.-z+3/4,-y+3/4,x+1/2.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y+1/2,-x.z,y+1/2,x.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+3/4,x+3/4.z+1/2,-y+3/4,-x+3/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y+1/2.-x+1/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+3/4.x+1/2,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+3/4.-x+3/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+3/4,z+3/4.y+1/2,-x+3/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+3/4,-x,z+1/4.-y+3/4,x,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+3/4,x+1/4,-z.-y+3/4,-x+1/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y,x+3/4.-z+1/4,y,-x+3/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+1/4,-x.-z+3/4,-y+1/4,x.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y,-x+1/2.z,y,x+1/2.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+1/4,x+1/4.z+1/2,-y+1/4,-x+1/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y.-x+1/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+1/4.x+1/2,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+1/4.-x+3/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x+1/4,z+3/4.y,-x+1/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+1/4,-x+1/2,z+1/4.-y+1/4,x+1/2,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y,-x,-z+1/2.y,x,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+1/4,x+3/4,-z.-y+1/4,-x+3/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y+1/2,x+3/4.-z+3/4,y+1/2,-x+3/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+3/4,-x.-z+1/4,-y+3/4,x.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+3/4,x+1/4.z,-y+3/4,-x+1/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y.-x+3/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+1/4.x,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+1/4.-x+1/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+3/4,z+1/4.y,-x+3/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+1/4,-x,z+3/4.-y+1/4,x,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y,-x+1/2,-z.y,x+1/2,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+1/4,x+1/4,-z+1/2.-y+1/4,-x+1/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y,x+1/4.-z+3/4,y,-x+1/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+1/4,-x+1/2.-z+1/4,-y+1/4,x+1/2.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y,-x.z+1/2,y,x.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+1/4,x+3/4.z,-y+1/4,-x+3/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y+1/2.-x+3/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+3/4.x,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+3/4.-x+1/4,z,-y+3/4`.split(`.`)},{number:229,symbol_cif:`I m -3 m`,symbol_hm_short:`Im-3m`,hall_symbol:`-I 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:230,symbol_cif:`I a -3 d`,symbol_hm_short:`Ia-3d`,hall_symbol:`-I 4bd 2c 3`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.z,x,y.-z,-x,-y.z+1/4,-y+1/4,x+3/4.-z+1/4,y+1/4,-x+3/4.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+3/4,y+1/4,-x+1/4.-z+3/4,-y+1/4,x+1/4.-z+1/2,x,-y.z+1/2,-x,y.-z+1/4,-y+1/4,-x+1/4.z+1/4,y+1/4,x+1/4.-z,-x+1/2,y.z,x+1/2,-y.-z+3/4,y+1/4,x+3/4.z+3/4,-y+1/4,-x+3/4.y,z,x.-y,-z,-x.x+3/4,z+1/4,-y+1/4.-x+3/4,-z+1/4,y+1/4.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x+1/4,z+3/4,y+1/4.x+1/4,-z+3/4,-y+1/4.-y,-z+1/2,x.y,z+1/2,-x.-x+1/4,-z+1/4,-y+1/4.x+1/4,z+1/4,y+1/4.y,-z,-x+1/2.-y,z,x+1/2.x+3/4,-z+3/4,y+1/4.-x+3/4,z+3/4,-y+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+3/4,-y+3/4,x+1/4.-z+3/4,y+3/4,-x+1/4.z,-x,-y+1/2.-z,x,y+1/2.z+1/4,y+3/4,-x+3/4.-z+1/4,-y+3/4,x+3/4.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z+3/4,-y+3/4,-x+3/4.z+3/4,y+3/4,x+3/4.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/4,y+3/4,x+1/4.z+1/4,-y+3/4,-x+1/4.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+3/4.-x+1/4,-z+3/4,y+3/4.-y+1/2,z,-x.y+1/2,-z,x.-x+3/4,z+1/4,y+3/4.x+3/4,-z+1/4,-y+3/4.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+3/4,-z+3/4,-y+3/4.x+3/4,z+3/4,y+3/4.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/4,-z+1/4,y+3/4.-x+1/4,z+1/4,-y+3/4`.split(`.`)}]);function Re(e){return String(e).replace(/[\\s_]+/g,``).toLowerCase()}let ze=new Map,Be=new Map;for(let e of Le){ze.set(e.number,e);for(let t of[e.symbol_cif,e.symbol_hm_short,e.hall_symbol]){let n=Re(t);Be.has(n)||Be.set(n,e)}}function Ve({number:e,name:t}={}){let n=typeof e==`string`?parseInt(e,10):e;if(Number.isInteger(n)&&ze.has(n))return ze.get(n);if(t&&t!==`Unknown`){let e=Be.get(Re(t));if(e)return e}return null}function He(e){if(Math.abs(e)<.0021)return``;let t=[2,3,4,6],n=e<0?`-`:``,r=Math.abs(e);if(Math.abs(r-Math.round(r))<.0021)return n+Math.round(r);for(let e of t){let t=r*e,i=Math.round(t);if(Math.abs(t-i)<.0021)return i===e?n+`1`:n+i+`/`+e}return n+r.toString()}var V=class e{constructor(e){let{matrix:t,vector:n}=this.parseSymmetryInstruction(e);this.rotMatrix=t,this.transVector=n}parseSymmetryInstruction(e){let t=[,,,].fill().map(()=>[,,,].fill(0)),n=[,,,].fill(0),r=e.split(`,`).map(e=>e.toUpperCase().replace(/\\s+/g,``));if(r.length!==3)throw Error(`Symmetry operation must have exactly three components`);return r.forEach((e,r)=>{let i=Ee(e);t[r]=i.coefficients,n[r]=i.translation}),{matrix:t,vector:n}}static fromCIF(t,n){let r=t.get([`_space_group_symop`,`_symmetry_equiv`,`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`]).getIndex([`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`],n);return new e(r)}applyToPoint(e){let t=F(P(this.rotMatrix,e),this.transVector);return Array.isArray(t)?t:t.toArray()}applyToAtom(e){let t=new he(...F(P(this.rotMatrix,[e.position.x,e.position.y,e.position.z]),this.transVector)),n=null;if(e.adp&&e.adp instanceof B){let t=[[e.adp.u11,e.adp.u12,e.adp.u13],[e.adp.u12,e.adp.u22,e.adp.u23],[e.adp.u13,e.adp.u23,e.adp.u33]],r=this.rotMatrix,i=I(r),a=P(P(r,t),i);n=new B(a[0][0],a[1][1],a[2][2],a[0][1],a[0][2],a[1][2])}else e.adp&&e.adp instanceof z&&(n=new z(e.adp.uiso));return new Ge(e.label,e.atomType,t,n,e.disorderGroup)}applyToAtoms(e){return e.map(e=>this.applyToAtom(e))}copy(){let t=new e(`x,y,z`);return t.rotMatrix=ce(this.rotMatrix),t.transVector=ce(this.transVector),t}toSymmetryString(e=null){let t=[`x`,`y`,`z`],n=[],r=e?F(this.transVector,e):this.transVector;for(let e=0;e<3;e++){let i=``,a=[];for(let n=0;n<3;n++){let r=this.rotMatrix[e][n];if(Math.abs(r)>1e-10)if(Math.abs(Math.abs(r)-1)<1e-10)a.push(r>0?t[n]:`-${t[n]}`);else{let e=He(Math.abs(r));a.push(r>0?`${e}${t[n]}`:`-${e}${t[n]}`)}}if(i=a.join(`+`),i===``&&(i=`0`),Math.abs(r[e])>1e-10){let t=He(Math.abs(r[e])),n=r[e]<0?`-${t}`:t;i=i===`0`?n:i.startsWith(`-`)?`${n}${i}`:`${n}+${i}`}n.push(i)}return n.join(`,`)}},H=class e{constructor(e,t,n,r=null){this.spaceGroupName=e,this.spaceGroupNumber=t,this.symmetryOperations=n,this.operationIds=r||new Map(n.map((e,t)=>[(t+1).toString(),t]));let i=e=>e.rotMatrix.every((e,t)=>e.every((e,n)=>e===+(t===n)))&&e.transVector.every(e=>e===0);this.identitySymOpId=Array.from(this.operationIds.entries()).find(([e,t])=>i(this.symmetryOperations[t]))?.[0],this._combineSymmetryCodesCache=new Map,this._combineOperationCache=new Map,this._operationIdsByIndex=new Map([...this.operationIds.entries()].map(([e,t])=>[t,e])),this._rotationMatrixIndex=new Map,this._buildRotationIndex()}_buildRotationIndex(){this.symmetryOperations.forEach((e,t)=>{let n=this._matrixToKey(e.rotMatrix);this._rotationMatrixIndex.has(n)||this._rotationMatrixIndex.set(n,[]),this._rotationMatrixIndex.get(n).push(t)})}_matrixToKey(e){let t=e.map(e=>e.map(e=>Math.round(e*1e3)/1e3));return JSON.stringify(t)}_getCacheKey(e,t){return`${e}\\u0000${t}`}generateEquivalentPositions(e){return this.symmetryOperations.map(t=>t.applyToPoint(e))}parsePositionCode(e){let{id:t,translation:n}=Ce(e),r=this.operationIds.get(t);if(r===void 0)throw Error(`Invalid symmetry operation ID in string ${e}: ${t}, expecting string format \"<symOpId>_abc\". ID entry in present symOp loop?`);return{symOp:this.symmetryOperations[r],transVector:n}}_multiplyMatrices3x3(e,t){return[[e[0][0]*t[0][0]+e[0][1]*t[1][0]+e[0][2]*t[2][0],e[0][0]*t[0][1]+e[0][1]*t[1][1]+e[0][2]*t[2][1],e[0][0]*t[0][2]+e[0][1]*t[1][2]+e[0][2]*t[2][2]],[e[1][0]*t[0][0]+e[1][1]*t[1][0]+e[1][2]*t[2][0],e[1][0]*t[0][1]+e[1][1]*t[1][1]+e[1][2]*t[2][1],e[1][0]*t[0][2]+e[1][1]*t[1][2]+e[1][2]*t[2][2]],[e[2][0]*t[0][0]+e[2][1]*t[1][0]+e[2][2]*t[2][0],e[2][0]*t[0][1]+e[2][1]*t[1][1]+e[2][2]*t[2][1],e[2][0]*t[0][2]+e[2][1]*t[1][2]+e[2][2]*t[2][2]]]}_multiplyMatrixVector3x3(e,t){return[e[0][0]*t[0]+e[0][1]*t[1]+e[0][2]*t[2],e[1][0]*t[0]+e[1][1]*t[1]+e[1][2]*t[2],e[2][0]*t[0]+e[2][1]*t[1]+e[2][2]*t[2]]}combineSymmetryCodes(e,t){let n=this._getCacheKey(e,t),r=this._combineSymmetryCodesCache.get(n);if(r!==void 0){if(r instanceof Error)throw r;return r}let{id:i,translation:a}=Ce(e),{id:o,translation:s}=Ce(t),c=`${i}\\u0000${o}`,l=this._combineOperationCache.get(c);if(!l){let n=this.operationIds.get(i),r=this.operationIds.get(o);if(n===void 0||r===void 0)throw Error(`Invalid symmetry operation ID in string ${e}: ${n===void 0?i:o}, expecting string format \"<symOpId>_abc\". ID entry in present symOp loop?`);let{symOp:a}=this.parsePositionCode(e),{symOp:s}=this.parsePositionCode(t),u=this._multiplyMatrices3x3(a.rotMatrix,s.rotMatrix),d=this._matrixToKey(u),f=this._rotationMatrixIndex.get(d);if(f){let e=this._multiplyMatrixVector3x3(a.rotMatrix,s.transVector),t=a.transVector.map((t,n)=>t+e[n]);for(let e of f){let n=this.symmetryOperations[e],r=t.map((e,t)=>e-n.transVector[t]);if(r.every(e=>Math.abs(e-Math.round(e))<1e-5)){l={id:this._operationIdsByIndex.get(e),offset:r.map(e=>Math.round(e)),outerRotation:a.rotMatrix},this._combineOperationCache.set(c,l);break}}}}if(!l)throw Error(`No matching symmetry operation found for combined position codes: ${e} and ${t}`);let u=this._multiplyMatrixVector3x3(l.outerRotation,s),d=a.map((e,t)=>e+u[t]+l.offset[t]),f=we(l.id,d);return this._combineSymmetryCodesCache.set(n,f),f}invertPositionCode(e){let{symOp:t,transVector:n}=this.parsePositionCode(e),r=[n[0]+t.transVector[0],n[1]+t.transVector[1],n[2]+t.transVector[2]],i=L(t.rotMatrix),a=this._multiplyMatrixVector3x3(i,r.map(e=>-e)),o=this._rotationMatrixIndex.get(this._matrixToKey(i));if(o)for(let e of o){let t=this.symmetryOperations[e],n=a.map((e,n)=>e-t.transVector[n]);if(!n.every(e=>Math.abs(e-Math.round(e))<1e-5))continue;let r=Array.from(this.operationIds.entries()).find(([,t])=>t===e)?.[0];return we(r,n.map(e=>Math.round(e)))}throw Error(`No inverse symmetry operation found for position code: ${e}`)}applySymmetry(e,t){let{symOp:n,transVector:r}=this.parsePositionCode(e),i=n.applyToAtoms(t);return i.forEach(e=>{e.position.x+=r[0],e.position.y+=r[1],e.position.z+=r[2]}),i}applySymmetryNonSpecial(e,t,n){let r=this.applySymmetry(e,t),i=[],a=[];return r.forEach((e,r)=>{ve(e.position,t[r].position,n,.001)?i.push(e.label):a.push(e)}),{atoms:a,specialPositions:i}}static fromCIF(t){let n=t.get([`_space_group.name_h-m_alt`,`_space_group.name_H-M_full`,`_symmetry_space_group_name_H-M`,`_space_group_name_H-M_alt`],`Unknown`),r=t.get([`_space_group.it_number`,`_space_group.IT_number`,`_symmetry_Int_Tables_number`,`_space_group_IT_number`],0),i=t.get([`_space_group_symop`,`_symmetry_equiv`,`_symmetry_equiv_pos`,`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`],!1);if(i&&!(i instanceof l))return new e(n,r,[new V(i)]);if(i||console.warn(Object.keys(t).filter(e=>e.includes(`sym`))),i){let t=i.get([`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`]),a=null;try{let e=i.get([`_space_group_symop.id`,`_space_group_symop_id`,`_symmetry_equiv.id`,`_symmetry_equiv_pos_site_id`]);a=new Map(e.map((e,t)=>[e.toString(),t]))}catch{}let o=t.map(e=>new V(e));return new e(n,r,o,a)}let a=Ve({number:r,name:n});if(a){let i=a.operations,o=`standard International Tables setting`;if(a.symbol_cif.trim().startsWith(`R`)){let e=null;try{e=U.fromCIF(t)}catch{e=null}Pe(e)&&(i=Fe(a.operations),o=`rhombohedral axes, matching the cell given in the file`)}return console.warn(`No symmetry operations found in CIF block; reconstructing them from space group ${a.symbol_cif} (No. ${a.number}) assuming the ${o}.`),new e(n===`Unknown`?a.symbol_cif:n,r||a.number,i.map(e=>new V(e)))}return console.warn(`No symmetry operations found in CIF block, will use P1`),new e(`Unknown`,0,[new V(`x,y,z`)])}};function Ue(e){if(!e||typeof e!=`string`)throw Error(`Invalid atom label: ${e}`);let t=e.toUpperCase(),n=RegExp(`^(${`HE.LI.BE.NE.NA.MG.AL.SI.CL.AR.CA.SC.TI.CR.MN.FE.CO.NI.CU.ZN.GA.GE.AS.SE.BR.KR.RB.SR.ZR.NB.MO.TC.RU.RH.PD.AG.CD.IN.SN.SB.TE.XE.CS.BA.LA.CE.PR.ND.PM.SM.EU.GD.TB.DY.HO.ER.TM.YB.LU.HF.TA.RE.OS.IR.PT.AU.HG.TL.PB.BI.PO.AT.RN.FR.RA.AC.TH.PA.NP.PU.AM.CM`.split(`.`).join(`|`)})`),r=t.match(n);if(r)return We(r[1]);let i=t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);if(i)return We(i[1]);throw Error(`Could not infer element type from atom label: ${e}`)}function We(e){return e.length===1?e:e[0]+e[1].toLowerCase()}var U=class e{constructor(e,t,n,r,i,a){this._a=e,this._b=t,this._c=n,this._alpha=r,this._beta=i,this._gamma=a,this.fractToCartMatrix=R(this)}static fromCIF(t){let n=[t.get([`_cell.length_a`,`_cell_length_a`],`not found`),t.get([`_cell.length_b`,`_cell_length_b`],`not found`),t.get([`_cell.length_c`,`_cell_length_c`],`not found`),t.get([`_cell.angle_alpha`,`_cell_angle_alpha`],`not found`),t.get([`_cell.angle_beta`,`_cell_angle_beta`],`not found`),t.get([`_cell.angle_gamma`,`_cell_angle_gamma`],`not found`)];if(n.some(e=>e===`not found`)){let e=[`a`,`b`,`c`,`alpha`,`beta`,`gamma`],t=[];n.forEach((n,r)=>{n===`not found`&&t.push(e[r])});let r=t.join(`, `);throw Error(`Unit cell parameter entries missing in CIF for: ${r}`)}if(n.some(e=>e<0)){let e=[`a`,`b`,`c`,`alpha`,`beta`,`gamma`],t=[];n.forEach((n,r)=>{n<0&&t.push(e[r])});let r=t.join(`, `);throw Error(`Unit cell parameter entries negative in CIF for: ${r}`)}return new e(...n)}get a(){return this._a}set a(e){if(e<=0)throw Error(`Cell parameter 'a' must be positive`);this._a=e,this.fractToCartMatrix=R(this)}get b(){return this._b}set b(e){if(e<=0)throw Error(`Cell parameter 'b' must be positive`);this._b=e,this.fractToCartMatrix=R(this)}get c(){return this._c}set c(e){if(e<=0)throw Error(`Cell parameter 'c' must be positive`);this._c=e,this.fractToCartMatrix=R(this)}get alpha(){return this._alpha}set alpha(e){if(e<=0||e>=180)throw Error(`Angle alpha must be between 0 and 180 degrees`);this._alpha=e,this.fractToCartMatrix=R(this)}get beta(){return this._beta}set beta(e){if(e<=0||e>=180)throw Error(`Angle beta must be between 0 and 180 degrees`);this._beta=e,this.fractToCartMatrix=R(this)}get gamma(){return this._gamma}set gamma(e){if(e<=0||e>=180)throw Error(`Angle gamma must be between 0 and 180 degrees`);this._gamma=e,this.fractToCartMatrix=R(this)}},Ge=class e{constructor(e,t,n,r=null,i=0,a=null){this.label=String(e),this.atomType=t,this.position=n,this.adp=r,this.disorderGroup=i,this.appliedSymmetry=a}get uniqueId(){return this.appliedSymmetry?`${this.label}|${this.appliedSymmetry.key}`:`${this.label}|1_555`}isIdentityImage(e){if(!this.appliedSymmetry)return!0;let t=`${e??`1`}_555`;return this.appliedSymmetry.key===t}static fromCIF(t,n=null,r=null){let i=t.get(`_atom_site`),a=i.get([`_atom_site.label`,`_atom_site_label`]),o=n;if(n===null&&r)o=a.indexOf(r);else if(n===null)throw Error(`either atomIndex or atomLabel need to be provided`);let s=a[o],c=[`.`,`?`];if(c.includes(s))throw Error(`Dummy atom: Invalid label`);if(String(i.getIndex([`_atom_site.calc_flag`,`_atom_site_calc_flag`],o,``)).toLowerCase()===`dum`)throw Error(`Dummy atom: calc_flag is dum`);let l=i.getIndex([`_atom_site.type_symbol`,`_atom_site_type_symbol`],o,!1);if(l||=Ue(s),c.includes(l))throw Error(`Dummy atom: Invalid atom type`);let u=be.fromCIF(t,o),d=Se.fromCIF(t,o),f=i.getIndex([`_atom_site.disorder_group`,`_atom_site_disorder_group`],o,`.`);return new e(s,l,u,d,f===`.`?0:f)}};let Ke=Object.freeze({relativeLength:.001,angleDegrees:.05});function qe(e,t,n=Ke){for(let r of[`a`,`b`,`c`]){let i=Math.max(Math.abs(t[r]),1);if(Math.abs(e[r]-t[r])/i>n.relativeLength)return!1}for(let r of[`alpha`,`beta`,`gamma`])if(Math.abs(e[r]-t[r])>n.angleDegrees)return!1;return!0}function W(e){if(e==null||e===!1||e===`.`||e===`?`)return null;let t=Number(e);return Number.isFinite(t)?t:null}function G(e,t){for(let n of typeof t==`string`?[t]:t)try{let t=e.get(n,!1);if(t&&typeof t.get==`function`)return t}catch{}return null}function K(e,t,n=null){if(!e)return n;try{return e.get(t,n!==null&&n)||n}catch{return n}}function Je(e,t){for(let n of t)try{let t=W(e.get(n));if(t!==null)return t}catch{}return null}function Ye(e,t){for(let n of t)try{let t=e.get(n);if(typeof t==`string`&&t.trim())return t}catch{}return null}let Xe=2*Math.PI;function Ze(e,t,n){if(e.adp instanceof z)return{isotropic:e.adp.uiso};if(e.adp instanceof B){let[r,i,a,o,s,c]=e.adp.getUCart(t),l=P(P(n,[[r,o,s],[o,i,c],[s,c,a]]),I(n));return{anisotropic:[l[0][0],l[1][1],l[2][2],l[0][1],l[0][2],l[1][2]]}}return null}function Qe(e,t,n){if(!e)return 1;if(e.isotropic!==void 0)return Math.exp(-2*Math.PI**2*e.isotropic*n);let[r,i,a,o,s,c]=e.anisotropic,[l,u,d]=t,f=r*l*l+i*u*u+a*d*d+2*o*l*u+2*s*l*d+2*c*u*d;return Math.exp(-2*Math.PI**2*f)}function $e(e){return e.map(e=>{let t=(e%1+1)%1,n=Math.abs(t-1)<1e-8?0:t;return Math.round(n*1e8)}).join(`,`)}function et(e){return Array.isArray(e)?e:[e.h,e.k,e.l]}function tt(e){return e?.type===`Uiso`?new z(e.values[0]):e?.type===`Uani`?new B(...e.values):null}function nt(e,t){if(e instanceof z)return e.uiso<-1e-10;if(!(e instanceof B))return!1;let n=e.getUCart(t);return ue([[n[0],n[3],n[4]],[n[3],n[1],n[5]],[n[4],n[5],n[2]]]).eigenvectors.some(e=>e.value<-1e-10)}function rt(e,t=0,n={}){if(typeof e!=`string`||e.length===0)throw Error(`Structure-factor calculation requires the coordinate CIF text`);if(typeof n.resolveAtom!=`function`)throw Error(`Structure-factor calculation requires an atom factor resolver`);let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=n.structureModel??null,o=a?new U(a.cell.a,a.cell.b,a.cell.c,a.cell.alpha,a.cell.beta,a.cell.gamma):U.fromCIF(i);if(n.expectedCell&&!qe(o,n.expectedCell))throw Error(`Structure-factor coordinate CIF cell does not match the reflection cell`);let s=a?.wavelength??Je(i,[`_diffrn_radiation_wavelength.wavelength`,`_diffrn_radiation.wavelength`,`_diffrn_radiation_wavelength`])??W(n.wavelength),c=a?.atoms??(()=>{let e=i.get(`_atom_site`),t=e.get([`_atom_site.label`,`_atom_site_label`]),n=e.get([`_atom_site.occupancy`,`_atom_site_occupancy`],Array(t.length).fill(1));return t.map((e,t)=>({label:e,index:t,occupancy:n[t]}))})(),l=[],u={},d=[],f=new Map;for(let e=0;e<c.length;e++){let t=c[e],r,o=t.index??e;if(a)r=new Ge(t.label,t.atomType,new he(...t.position),tt(t.adp));else try{r=Ge.fromCIF(i,o)}catch(e){if(e.message.includes(`Dummy atom`))continue;throw e}let p=n.resolveAtom({atom:r,index:o,block:i,wavelength:s});if(!p||typeof p.scatteringAt!=`function`)throw Error(`No scattering-factor model for atom ${r.label} (${r.atomType})`);let m=p.source??`unknown`;u[m]=(u[m]??0)+1;let h=p.scatteringKey??p.scatteringAt,g=f.get(h);g===void 0&&(g=d.length,f.set(h,g),d.push({scatteringAt:p.scatteringAt,atoms:[]})),l.push({atom:r,occupancy:W(t.occupancy)??1,scatteringModelIndex:g})}let p=o.fractToCartMatrix.toArray(),m=L(p),h=I(m),g=Array.isArray(h)?h:h.toArray(),_=(a?.symmetryOperations??H.fromCIF(i).symmetryOperations.map(e=>({rotation:e.rotMatrix,translation:e.transVector}))).map(e=>({operation:{rotation:e.rotation,translation:e.translation},cartesianRotation:P(P(p,e.rotation),m)})),v=0;for(let e of l){let t=new Set,n=e.atom.position instanceof he?[e.atom.position.x,e.atom.position.y,e.atom.position.z]:P(m,[e.atom.position.x,e.atom.position.y,e.atom.position.z]);for(let r of _){let i=F(P(r.operation.rotation,n),r.operation.translation),a=Array.isArray(i)?i:i.toArray(),s=$e(a);if(t.has(s))continue;t.add(s);let c={position:a,occupancy:e.occupancy,displacement:Ze(e.atom,o,r.cartesianRotation)};v++,d[e.scatteringModelIndex].atoms.push(c)}}let y=l.filter(e=>nt(e.atom.adp,o)).map(e=>e.atom.label);function b(e,t,n){let r=g.map(r=>r[0]*e+r[1]*t+r[2]*n),i=r.reduce((e,t)=>e+t**2,0),a=i/4,o=0,s=0;for(let c=0;c<d.length;c++){let l=d[c],u=l.scatteringAt(a);for(let a of l.atoms){let c=Xe*(e*a.position[0]+t*a.position[1]+n*a.position[2]),l=a.occupancy*Qe(a.displacement,r,i),d=Math.cos(c),f=Math.sin(c);o+=l*(u.real*d-u.imaginary*f),s+=l*(u.real*f+u.imaginary*d)}}return{real:o,imaginary:s}}return{coefficientAt:b,calculate(e){return e.map(e=>{let[t,n,r]=et(e),i=b(t,n,r);return{h:t,k:n,l:r,...i,amplitude:Math.hypot(i.real,i.imaginary),phase:Math.atan2(i.imaginary,i.real)*180/Math.PI}})},metadata:{wavelength:s,atomCount:l.length,expandedAtomCount:v,scatteringModelCount:d.length,sourceCounts:u,npdAdpCount:y.length,npdAdpLabels:y}}}let q=`H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf`.split(` `),it=Object.fromEntries(Object.entries({mo:{wavelength:.71073,real:`0 0 0 0 0 .002 .004 .008 .014 .021 .03 .042 .056 .072 .09 .11 .132 .155 .179 .203 .226 .248 .267 .284 .295 .301 .299 .285 .263 .222 .163 .081 -.03 -.178 -.374 -.652 -1.044 -1.657 -2.951 -2.965 -2.197 -1.825 -1.59 -1.42 -1.287 -1.177 -1.085 -1.005 -.936 -.873 -.816 -.772 -.726 -.684 -.644 -.613 -.588 -.564 -.53 -.535 -.53 -.533 -.542 -.564 -.591 -.619 -.666 -.723 -.795 -.884 -.988 -1.118 -1.258 -1.421 -1.598 -1.816 -2.066 -2.352 -2.688 -3.084 -3.556 -4.133 -4.861 -5.924 -7.444 -8.862 -7.912 -7.62 -7.725 -8.127 -8.96 -10.673 -11.158 -9.725 -8.926 -8.416 -7.99 -7.683`,imaginary:`0 0 0 0 .001 .002 .003 .006 .01 .016 .025 .036 .052 .071 .095 .124 .159 .201 .25 .306 .372 .446 .53 .624 .729 .845 .973 1.113 1.266 1.431 1.609 1.801 2.007 2.223 2.456 2.713 2.973 3.264 3.542 .56 .621 .688 .759 .836 .919 1.007 1.101 1.202 1.31 1.424 1.546 1.675 1.812 1.958 2.119 2.282 2.452 2.632 2.845 3.018 3.225 3.442 3.669 3.904 4.151 4.41 4.678 4.958 5.248 5.548 5.858 6.185 6.523 6.872 7.232 7.605 7.99 8.388 8.798 9.223 9.659 10.102 10.559 11.042 9.961 10.403 7.754 8.105 8.472 8.87 9.284 9.654 4.148 4.33 4.511 4.697 4.908 5.107`},cu:{wavelength:1.54184,real:`0 0 .001 .003 .008 .017 .029 .047 .069 .097 .129 .165 .204 .244 .283 .319 .348 .366 .365 .341 .285 .189 .035 -.198 -.568 -1.179 -2.464 -2.956 -2.019 -1.612 -1.354 -1.163 -1.011 -.879 -.767 -.665 -.574 -.465 -.386 -.314 -.248 -.191 -.145 -.105 -.077 -.059 -.06 -.079 -.126 -.194 -.287 -.418 -.579 -.783 -1.022 -1.334 -1.716 -2.17 -2.939 -3.431 -4.357 -5.696 -7.718 -9.242 -9.498 -10.423 -12.255 -9.733 -8.488 -7.701 -7.133 -6.715 -6.351 -6.048 -5.79 -5.581 -5.391 -5.233 -5.096 -4.99 -4.883 -4.818 -4.776 -4.756 -4.772 -4.787 -4.833 -4.898 -4.994 -5.091 -5.216 -5.359 -5.529 -5.712 -5.93 -6.176 -6.498 -6.798`,imaginary:`0 0 0 .001 .004 .009 .018 .032 .053 .083 .124 .177 .246 .33 .434 .557 .702 .872 1.066 1.286 1.533 1.807 2.11 2.443 2.808 3.204 3.608 .509 .589 .678 .777 .886 1.006 1.139 1.283 1.439 1.608 1.82 2.025 2.245 2.482 2.735 3.005 3.296 3.605 3.934 4.282 4.653 5.045 5.459 5.894 6.352 6.835 7.348 7.904 8.46 9.036 9.648 10.535 10.933 11.614 12.32 11.276 11.946 9.242 9.748 3.704 3.937 4.181 4.432 4.693 4.977 5.271 5.577 5.891 6.221 6.566 6.925 7.297 7.686 8.089 8.505 8.93 9.383 9.843 10.317 10.803 11.296 11.799 12.33 12.868 13.409 13.967 14.536 15.087 15.634 16.317 16.93`}}).map(([e,t])=>{let n=t.real.trim().split(/\\s+/).map(Number),r=t.imaginary.trim().split(/\\s+/).map(Number);if(n.length!==q.length||r.length!==q.length)throw Error(`Invalid internal anomalous-dispersion table: ${e}`);return[e,{wavelength:t.wavelength,values:new Map(q.map((e,t)=>[e,{real:n[t],imaginary:r[t]}]))}]}));function at(e){let t=String(e).trim().match(/^([A-Za-z]{1,2})/);if(!t)return null;if(t[1].toUpperCase()===`D`)return`H`;let n=t[1][0].toUpperCase()+t[1].slice(1).toLowerCase();return q.includes(n)?n:null}function ot(e,t){if(e.table!==void 0){let t=String(e.table).toLowerCase().replace(/[^a-z]/g,``).slice(0,2),n=it[t];if(!n)throw Error(`Anomalous-dispersion table must be \"Cu\" or \"Mo\"`);return{key:t,...n}}if(!Number.isFinite(t))return null;let n=W(e.wavelengthTolerance)??.005,r=Object.entries(it).find(([,e])=>Math.abs(e.wavelength-t)<=n);return r?{key:r[0],...r[1]}:null}function st(e,t,n={}){let r=at(e),i=ot(n,W(t)),a=r&&i?.values.get(r);return a?{...a,table:i.key,wavelength:i.wavelength}:null}function ct(e,t,n){let r=G(e,t),i=K(r,n),a=K(r,[`_atom_site_dispersion.real`,`_atom_site_dispersion_real`,`_atom_type_scat.dispersion_real`,`_atom_type_scat_dispersion_real`]),o=K(r,[`_atom_site_dispersion.imag`,`_atom_site_dispersion_imag`,`_atom_type_scat.dispersion_imag`,`_atom_type_scat_dispersion_imag`]),s=new Map;if(!i||!a&&!o)return s;for(let e=0;e<i.length;e++)s.set(String(i[e]),{real:a?W(a[e]):null,imaginary:o?W(o[e]):null});return s}function lt(e,t,n){let r=e.values??e.fallbackValues;if(!r)return null;let i=r[t]??r[n];return Array.isArray(i)?{real:W(i[0]),imaginary:W(i[1])}:i&&typeof i==`object`?{real:W(i.real??i.fPrime),imaginary:W(i.imaginary??i.fDoublePrime)}:null}function ut(e,t){return!e&&!t?null:{real:e?.real??t?.real??null,imaginary:e?.imaginary??t?.imaginary??null}}function dt(e,t,n,r,i,a){let o=at(e),s=lt(a,e,o),c=ut(s,o?i?.values.get(o):null),l=r.get(String(e))??r.get(o),u=ut(n.get(String(t)),ut(l,c));if(!u||u.real===null||u.imaginary===null)throw Error(`No complete anomalous-dispersion factors for atom ${t} (${e}); provide them in the CIF or select a supported internal table`);let d=n.has(String(t))?`site-cif`:l?`type-cif`:s?`configured`:`internal`;return{real:u.real,imaginary:u.imaginary,source:d}}function ft(e,t=0,n={},r=null){let i,a,o,s=rt(e,t,{expectedCell:r,wavelength:n.wavelength,structureModel:n.structureModel,resolveAtom({atom:e,block:t,wavelength:r}){i??=ot(n,r),a??=ct(t,[`_atom_site_dispersion`],[`_atom_site_dispersion.label`,`_atom_site_dispersion_label`]),o??=ct(t,[`_atom_type`,`_atom_type_scat`],[`_atom_type.symbol`,`_atom_type_symbol`]);let s=dt(e.atomType,e.label,a,o,i,n);return{source:s.source,scatteringKey:`${s.real},${s.imaginary}`,scatteringAt(){return{real:s.real,imaginary:s.imaginary}}}}});return{...s,metadata:{...s.metadata,enabled:!0,internalTable:i?.key??null}}}let pt=new Map(`H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674`.split(`\n`).map(e=>{let[t,...n]=e.trim().split(/\\s+/);if(n.length!==9||n.some(e=>!Number.isFinite(Number(e))))throw Error(`Invalid internal Cromer-Mann coefficients for ${t}`);return[t,n.map(Number)]}));function mt(e){let t=pt.get(e===`D`?`H`:e);return t?[...t]:null}function ht(e,t){let n=e[8];for(let r=0;r<4;r++)n+=e[r]*Math.exp(-e[r+4]*t);return n}let gt=`H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf`.split(` `),_t=[`a1`,`a2`,`a3`,`a4`,`b1`,`b2`,`b3`,`b4`,`c`];function vt(e){let t=String(e).trim().match(/^([A-Za-z]{1,2})/);if(!t)return null;if(t[1].toUpperCase()===`D`)return`H`;let n=t[1][0].toUpperCase()+t[1].slice(1).toLowerCase();return gt.includes(n)?n:null}function yt(e){let t=G(e,[`_atom_type`,`_atom_type_scat`]),n=K(t,[`_atom_type.symbol`,`_atom_type_symbol`]),r=_t.map(e=>K(t,[`_atom_type_scat.Cromer_Mann_${e}`,`_atom_type_scat_Cromer_Mann_${e}`,`_atom_type.scat_Cromer_Mann_${e}`])),i=new Map;if(!n||r.some(e=>!e))return i;for(let e=0;e<n.length;e++){let t=r.map(t=>W(t[e]));if(t.every(e=>e!==null)){let r=String(n[e]);i.set(r,t);let a=vt(r);a&&!i.has(a)&&i.set(a,t)}}return i}function bt(e,t,n){let r=G(e,t),i=K(r,n),a=K(r,[`_atom_site_dispersion.real`,`_atom_site_dispersion_real`,`_atom_type_scat.dispersion_real`,`_atom_type_scat_dispersion_real`]),o=K(r,[`_atom_site_dispersion.imag`,`_atom_site_dispersion_imag`,`_atom_type_scat.dispersion_imag`,`_atom_type_scat_dispersion_imag`]),s=new Map;if(!i||!a&&!o)return s;for(let e=0;e<i.length;e++)s.set(String(i[e]),{real:a?W(a[e]):null,imaginary:o?W(o[e]):null});return s}function xt(e,t,n){let r=e.cromerMann?.[t]??e.cromerMann?.[n];if(!Array.isArray(r)||r.length!==9)return null;let i=r.map(W);return i.every(e=>e!==null)?i:null}function St(e,t,n){let r=e.dispersionValues?.[t]??e.dispersionValues?.[n];return Array.isArray(r)?{real:W(r[0]),imaginary:W(r[1])}:r&&typeof r==`object`?{real:W(r.real??r.fPrime),imaginary:W(r.imaginary??r.fDoublePrime)}:null}function Ct(e){return e?.real!==null&&e?.real!==void 0&&e?.imaginary!==null&&e?.imaginary!==void 0}function wt(e,t){return{real:e?.real??t?.real??null,imaginary:e?.imaginary??t?.imaginary??null}}function Tt(e,t=0,n={}){let r,i,a,o=n.includeAnomalous!==!1,s=rt(e,t,{expectedCell:n.expectedCell,wavelength:n.wavelength,structureModel:n.structureModel,resolveAtom({atom:e,block:t,wavelength:s}){r??=yt(t),i??=bt(t,[`_atom_type`,`_atom_type_scat`],[`_atom_type.symbol`,`_atom_type_symbol`]),a??=bt(t,[`_atom_site_dispersion`],[`_atom_site_dispersion.label`,`_atom_site_dispersion_label`]);let c=vt(e.atomType),l=r.get(e.atomType)??r.get(c),u=xt(n,e.atomType,c),d=l??u??mt(c);if(!d)throw Error(`No Cromer-Mann coefficients for atom ${e.label} (${e.atomType})`);let f={real:0,imaginary:0},p=`disabled`;if(o){let t=a.get(e.label),r=i.get(e.atomType)??i.get(c),o=St(n,e.atomType,c),l=wt(t,wt(r,wt(o,st(c,s,n.anomalous??{}))));Ct(l)?(f=l,p=t?`site-cif`:r?`type-cif`:o?`configured`:`internal`):p=`zero`}return{source:`${l?`cif`:u?`configured`:`internal`}/${p}`,scatteringKey:JSON.stringify([...d,f.real,f.imaginary]),scatteringAt(e){return{real:ht(d,e)+f.real,imaginary:f.imaginary}}}}});return{...s,metadata:{...s.metadata,model:`IAM`,includeAnomalous:o}}}let Et=2*Math.PI,Dt=new WeakMap;function Ot(e,t,n=1e-6){return e.map(e=>{let r=e[0]*t[0]+e[1]*t[1]+e[2]*t[2],i=Math.round(r);if(Math.abs(r-i)>n)throw Error(`Symmetry operation produced a non-integral reflection index: ${r}`);return Object.is(i,-0)?0:i})}function kt(e){let t=Dt.get(e);return t||(t=e.symmetryOperations.map(e=>({operation:e,reciprocalRotation:I(L(e.rotMatrix)),positionReciprocalRotation:I(e.rotMatrix),translation:e.transVector})),Dt.set(e,t)),t}function At(e,t){for(let n=0;n<3;n++)if(e[n]!==t[n])return e[n]-t[n];return 0}function jt(e,t,n,r,i=!0){let a=kt(r).map(r=>Ot(r.reciprocalRotation,[e,t,n]));return i&&a.push(...a.map(e=>e.map(e=>e===0?0:-e))),a.sort(At),a[0]}function Mt(e,t,n,r,i=1e-8){if(e===0&&t===0&&n===0)return!1;let a=new Map;for(let i of kt(r)){let r=Ot(i.positionReciprocalRotation,[e,t,n]).join(`,`),o=Et*(e*i.translation[0]+t*i.translation[1]+n*i.translation[2]),s=a.get(r)??{real:0,imaginary:0};s.real+=Math.cos(o),s.imaginary+=Math.sin(o),a.set(r,s)}return[...a.values()].every(e=>Math.hypot(e.real,e.imaginary)<=i)}function Nt(e,t){return[t,...e.getAllBlocks().filter(e=>e!==t)]}function Pt(e,t,n){return[e,t,n].every(e=>Number.isInteger(e))}function J(e,t,n,r,i=null){let a=[e,t,n,r].map(e=>e?.length);if(a.some(e=>e===void 0)||!a.every(e=>e===a[0]))throw Error(`Reflection index and intensity columns must have the same row count`);if(i&&i.length!==a[0])throw Error(`Reflection intensity and uncertainty columns must have the same row count`);let o=[],s=0;for(let c=0;c<a[0];c++){let a=W(e[c]),l=W(t[c]),u=W(n[c]),d=W(r[c]),f=i?W(i[c]):null;if(!Pt(a,l,u)||d===null||i&&f===null){s++;continue}o.push({h:a,k:l,l:u,intensity:d,sigma:f,sourceIndex:c})}return{rows:o,invalidCount:s}}function Ft(e){let t=K(e,[`_refln.index_h`,`_refln_index_h`]),n=K(e,[`_refln.index_k`,`_refln_index_k`]),r=K(e,[`_refln.index_l`,`_refln_index_l`]),i=K(e,[`_refln.intensity_meas`,`_refln_intensity_meas`]);if(i)return{...J(t,n,r,i,K(e,[`_refln.intensity_sigma`,`_refln_intensity_sigma`,`_refln.intensity_meas_su`,`_refln_intensity_meas_su`])),valueKind:`intensity`};let a=K(e,[`_refln.F_squared_meas`,`_refln_F_squared_meas`]);if(a)return{...J(t,n,r,a,K(e,[`_refln.F_squared_sigma`,`_refln_F_squared_sigma`,`_refln.F_squared_meas_su`,`_refln_F_squared_meas_su`])),valueKind:`F-squared`};let o=K(e,[`_refln.F_meas`,`_refln_F_meas`]);if(o){let i=K(e,[`_refln.F_sigma`,`_refln_F_sigma`]);return{...J(t,n,r,o.map(e=>{let t=W(e);return t===null?null:t**2}),i?.map((e,t)=>{let n=W(e),r=W(o[t]);return n===null||r===null?null:2*Math.abs(r)*n})??null),valueKind:`F-amplitude-squared`}}throw Error(`The _refln loop contains no measured intensity, F-squared, or F columns`)}function It(e){let t=K(e,[`_diffrn_refln.index_h`,`_diffrn_refln_index_h`]),n=K(e,[`_diffrn_refln.index_k`,`_diffrn_refln_index_k`]),r=K(e,[`_diffrn_refln.index_l`,`_diffrn_refln_index_l`]),i=K(e,[`_diffrn_refln.intensity_net`,`_diffrn_refln_intensity_net`,`_diffrn_refln.intensity_meas`,`_diffrn_refln_intensity_meas`]),a=K(e,[`_diffrn_refln.intensity_u`,`_diffrn_refln_intensity_u`,`_diffrn_refln.intensity_sigma`,`_diffrn_refln_intensity_sigma`,`_diffrn_refln.intensity_net_su`,`_diffrn_refln_intensity_net_su`]);if(!i)throw Error(`The _diffrn_refln loop contains no net measured intensity column`);return J(t,n,r,i,a)}function Lt(e){let t=[e.slice(0,4),e.slice(4,8),e.slice(8,12),e.slice(12,20),e.slice(20,28),e.slice(28,32)].map(e=>e.trim());return t.slice(0,5).some(e=>e.length===0)?null:t}function Rt(e){let t=[],n=0;for(let[r,i]of String(e).split(/\\r?\\n/).entries()){if(i.trim().length===0)continue;let e=Lt(i),[a,o,s,c,l]=e?e.slice(0,5).map(W):[null,null,null,null,null];if(!Pt(a,o,s)||c===null||l===null){let e=i.trim().split(/\\s+/);[a,o,s,c,l]=e.slice(0,5).map(W)}if(!Pt(a,o,s)||c===null||l===null){n++;continue}if(a===0&&o===0&&s===0&&c===0&&l===0)break;t.push({h:a,k:o,l:s,intensity:c,sigma:l,sourceIndex:r})}return{rows:t,invalidCount:n}}function zt(e){e.parse();let t=Object.keys(e.data).find(e=>/shelx.*hkl_file/i.test(e));return t?e.data[t]:null}function Bt(e){let t=[];for(let n of[`_iucr_refine_fcf_details`]){let r;try{r=e.get(n)}catch{continue}if(!(typeof r!=`string`||!r.includes(`data_`)))try{for(let e of new D(r).getAllBlocks()){let n=G(e,`_refln`);n&&t.push(n)}}catch{}}return t}function Vt(e,t,n,r,i=1e-8){return Mt(e,t,n,r,i)}function Ht(e,t,n={}){let r=n.mergeFriedel!==!1,i=n.removeSystematicAbsences!==!1,a=new Map,o=new Map,s=new Map,c=0;for(let l of e){let e=`${l.h},${l.k},${l.l}`,u=o.get(e);if(u===void 0&&(u=i&&Vt(l.h,l.k,l.l,t,n.absenceTolerance),o.set(e,u)),u){c++;continue}let d=s.get(e);d||(d=jt(l.h,l.k,l.l,t,r),s.set(e,d));let[f,p,m]=d,h=`${f},${p},${m}`;a.has(h)||a.set(h,{h:f,k:p,l:m,observations:[]}),a.get(h).observations.push(l)}let l=[...a.values()].map(e=>{let t=e.observations.every(e=>e.sigma>0),n,r;if(t){let t=e.observations.reduce((e,t)=>e+1/t.sigma**2,0);n=e.observations.reduce((e,t)=>e+t.intensity/t.sigma**2,0)/t,r=Math.sqrt(1/t)}else n=e.observations.reduce((e,t)=>e+t.intensity,0)/e.observations.length,r=e.observations.every(e=>e.sigma!==null)?Math.sqrt(e.observations.reduce((e,t)=>e+t.sigma**2,0))/e.observations.length:null;return{h:e.h,k:e.k,l:e.l,intensity:n,sigma:r,multiplicity:e.observations.length}});return l.sort((e,t)=>At([e.h,e.k,e.l],[t.h,t.k,t.l])),{reflections:l,systematicAbsenceCount:c}}function Ut(e,t=0,n={}){let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=Nt(r,i),o=n.source??`auto`,s=e=>o===`auto`||o===e;if(s(`refln`)){let e=[...a.map(e=>G(e,`_refln`)).filter(Boolean).map(e=>({loop:e,source:`refln`})),...a.flatMap(Bt).map(e=>({loop:e,source:`embedded-refln`}))],t=null;for(let n of e)try{let e=Ft(n.loop);return{reflections:e.rows.map(e=>({...e,multiplicity:1})),metadata:{source:n.source,valueKind:e.valueKind,alreadyMerged:!0,inputCount:e.rows.length+e.invalidCount,outputCount:e.rows.length,invalidCount:e.invalidCount,systematicAbsenceCount:0,mergeFriedel:null}}}catch(e){if(!e.message.includes(`contains no measured`))throw e;t=e}if(o===`refln`&&t)throw t}let c,l;if(s(`diffrn_refln`)){let e=a.map(e=>G(e,`_diffrn_refln`)).find(Boolean);e&&(c=It(e),l=`diffrn_refln`)}if(!c&&s(`shelx_hkl_file`)){let e=a.map(zt).find(e=>typeof e==`string`);e&&(c=Rt(e),l=`shelx_hkl_file`)}if(!c)throw Error(`No usable reflection intensities found for source \"${o}\"`);let u=H.fromCIF(i),d=Ht(c.rows,u,n);return{reflections:d.reflections,metadata:{source:l,valueKind:`intensity`,alreadyMerged:!1,inputCount:c.rows.length+c.invalidCount,outputCount:d.reflections.length,invalidCount:c.invalidCount,systematicAbsenceCount:d.systematicAbsenceCount,mergeFriedel:n.mergeFriedel!==!1}}}function Wt(e,t,n,r){if(!(e>0)||!(t>0)||n===0)return 1;let i=r*t/2;if(!(i>0&&i<1))throw Error(`Cannot apply SHELXL extinction at sin(theta)=${i}; check the radiation wavelength and reflection indices`);let a=2*i*Math.sqrt(1-i**2);return(1+.001*n*e*r**3/a)**-.25}function Gt(e,t,n,r,i,a=!0){let o=(e,t={})=>({factors:Array(r.length).fill(1),metadata:{enabled:!1,model:`SHELXL-isotropic`,reason:e,...t}});if(a===!1)return o(`disabled`);if(a!==!0&&typeof a!=`number`&&(typeof a!=`object`||!a||Array.isArray(a)))throw Error(`extinctionCorrection must be true, false, a coefficient, or an object`);let s=W(typeof a==`number`?a:a?.coefficient),c=Je(e,[`_refine_ls.extinction_coef`,`_refine_ls_extinction_coef`]),l=s??c,u=s===null?`cif`:`configured`;if(l===null)return o(`not-reported`);if(l<0)throw Error(`SHELXL extinction coefficient must not be negative`);if(l===0)return o(`zero-coefficient`,{coefficient:l,source:u});let d=Ye(e,[`_refine_ls.extinction_method`,`_refine_ls_extinction_method`]),f=Ye(e,[`_refine_ls.extinction_expression`,`_refine_ls_extinction_expression`]);if(!(/shelxl/i.test(d??``)||/0\\.001/i.test(f??``)&&/sin\\s*\\(?\\s*2/i.test(f??``))&&s===null)return o(`unsupported-model`,{coefficient:l,source:u,method:d,expression:f});let p=(typeof a==`object`?W(a.wavelength):null)??n;if(!(p>0))throw Error(`SHELXL extinction correction requires a positive radiation wavelength`);if(r.length!==i.length)throw Error(`Extinction correction requires matching observed and calculated reflections`);let m=I(L(t.fractToCartMatrix)),h=r.map((e,t)=>{let n=ae(P(m,[e.h,e.k,e.l]));return Wt(i[t].amplitude**2,n,l,p)}),g=h.reduce((e,t)=>Math.min(e,t),1);return{factors:h,metadata:{enabled:!0,model:`SHELXL-isotropic`,coefficient:l,wavelength:p,source:u,method:d,expression:f,correctedReflectionCount:h.filter(e=>e<1).length,minimumAmplitudeFactor:g,maximumAmplitudeCorrection:1/g}}}function Kt(e,t){return(e%t+t)%t}function qt(e,t,n,r,i){let a=t-e,o=n-t,s=r-n;if(o===0)return t;let c=a*o<=0?0:2*a*o/(a+o),l=o*s<=0?0:2*o*s/(o+s),u=i*i,d=u*i;return(2*d-3*u+1)*t+(d-2*u+i)*c+(-2*d+3*u)*n+(d-u)*l}var Jt=class e{constructor(e,t,n,r={}){this.cell=e,this.dimensions=t,this.values=n,Object.assign(this,r)}toPayload(){let{cell:e,dimensions:t,values:n,...r}=this;return{cell:{a:e.a,b:e.b,c:e.c,alpha:e.alpha,beta:e.beta,gamma:e.gamma},dimensions:t,values:n,...r}}static fromPayload(t){let n=new U(t.cell.a,t.cell.b,t.cell.c,t.cell.alpha,t.cell.beta,t.cell.gamma),{cell:r,dimensions:i,values:a,...o}=t;return new e(n,i,a,o)}sample(e,t,n){let[r,i,a]=this.dimensions,o=this.originFractional??[0,0,0],s=[(e-o[0])*r,(t-o[1])*i,(n-o[2])*a],c=this.boundaryMode!==`zero`;if(!c&&s.some((e,t)=>e<0||e>this.dimensions[t]-1))return 0;let l=s.map(Math.floor),u=s.map((e,t)=>!c&&l[t]>=this.dimensions[t]-1?(l[t]=this.dimensions[t]-1,0):e-l[t]),d=(e,t,n)=>{let o=c?Kt(e,r):Math.min(r-1,e),s=c?Kt(t,i):Math.min(i-1,t),l=c?Kt(n,a):Math.min(a-1,n);return this.values[(l*i+s)*r+o]},f=(e,t,n)=>e+(t-e)*n,p=f(d(l[0],l[1],l[2]),d(l[0]+1,l[1],l[2]),u[0]),m=f(d(l[0],l[1]+1,l[2]),d(l[0]+1,l[1]+1,l[2]),u[0]),h=f(d(l[0],l[1],l[2]+1),d(l[0]+1,l[1],l[2]+1),u[0]),g=f(d(l[0],l[1]+1,l[2]+1),d(l[0]+1,l[1]+1,l[2]+1),u[0]);return f(f(p,m,u[1]),f(h,g,u[1]),u[2])}sampleCubic(e,t,n){let[r,i,a]=this.dimensions,o=this.originFractional??[0,0,0],s=(e-o[0])*r,c=(t-o[1])*i,l=(n-o[2])*a,u=this.boundaryMode!==`zero`;if(!u&&(s<0||s>r-1||c<0||c>i-1||l<0||l>a-1))return 0;let d=u?Math.floor(s):Math.min(Math.floor(s),r-1),f=u?Math.floor(c):Math.min(Math.floor(c),i-1),p=u?Math.floor(l):Math.min(Math.floor(l),a-1),m=d===r-1&&!u?0:s-d,h=f===i-1&&!u?0:c-f,g=p===a-1&&!u?0:l-p,_=(e,t)=>u?Kt(e,t):e<0||e>=t?-1:e,v=_(d-1,r),y=_(d,r),b=_(d+1,r),x=_(d+2,r),S=_(f-1,i),C=_(f,i),w=_(f+1,i),T=_(f+2,i),E=_(p-1,a),D=_(p,a),O=_(p+1,a),k=_(p+2,a),A=(e,t)=>{if(e<0||t<0)return 0;let n=(t*i+e)*r;return qt(v<0?0:this.values[n+v],y<0?0:this.values[n+y],b<0?0:this.values[n+b],x<0?0:this.values[n+x],m)},j=e=>qt(A(S,e),A(C,e),A(w,e),A(T,e),h);return qt(j(E),j(D),j(O),j(k),g)}};let Yt=2*Math.PI;var Y=class extends Error{constructor(e){super(e),this.name=`UnsupportedCoefficientSourceError`}};function Xt(e){let t=1;for(;t<e;)t*=2;return Math.max(2,t)}function Zt(e,t){return(e%t+t)%t}function X(e,t,...n){try{return e.get(t)}catch(e){if(n.length>0)return n[0];throw e}}function Qt(e){let t=e.map(e=>e.length);if(t.some(e=>e!==t[0]))throw Error(`Reflection columns have inconsistent lengths: ${t.join(`, `)}`)}function $t(e,t){let n=typeof e==`string`?[e]:e;if(!Array.isArray(n)||n.length<1||n.length>2||n.some(e=>typeof e!=`string`||e.length===0))throw Error(`${t} must name one or two CIF columns`);return n}function en(e,t,n){return $t(t,n).map(t=>{try{return e.get(t)}catch{throw Error(`Custom density column not found: ${t}`)}})}function tn(e,t){let n=t.amplitudes??t.amplitudeColumns??t.amplitude,r=t.phases??t.phaseColumns??t.phase,i=t.aValues??t.a??t.A,a=t.bValues??t.b??t.B,o=n!==void 0||r!==void 0,s=i!==void 0||a!==void 0;if(o===s)throw Error(`Custom density columns must specify either amplitudes/phases or A/B values`);if(s){if(i===void 0||a===void 0)throw Error(`Custom density A and B columns must both be specified`);let t=en(e,i,`a`),n=en(e,a,`b`);if(t.length!==n.length)throw Error(`Custom density A and B column counts must match`);return Qt([...t,...n]),{mode:t.length===1?`a-b`:`a-b-difference`,componentCount:t.length,valueColumns:[...t,...n],coefficientAt(e){return{real:Number(t[0][e])-(t[1]?Number(t[1][e]):0),imaginary:Number(n[0][e])-(n[1]?Number(n[1][e]):0)}}}}if(n===void 0||r===void 0)throw Error(`Custom density amplitude and phase columns must both be specified`);let c=en(e,n,`amplitudes`),l=en(e,r,`phases`);if(l.length!==1&&l.length!==c.length)throw Error(`Use one common phase column or one phase column per amplitude`);Qt([...c,...l]);let u=t.phaseUnit===`radians`?1:Math.PI/180;if(t.phaseUnit!==void 0&&![`degrees`,`radians`].includes(t.phaseUnit))throw Error(`Custom density phaseUnit must be \"degrees\" or \"radians\"`);let d=l.length===c.length&&l.length===2;return{mode:c.length===1?`amplitude-phase`:d?`split-phase-difference`:`common-phase-difference`,componentCount:c.length,valueColumns:[...c,...l],coefficientAt(e){if(!d){let t=Number(c[0][e])-(c[1]?Number(c[1][e]):0),n=Number(l[0][e])*u;return{real:t*Math.cos(n),imaginary:t*Math.sin(n)}}let t=Number(l[0][e])*u,n=Number(l[1][e])*u;return{real:Number(c[0][e])*Math.cos(t)-Number(c[1][e])*Math.cos(n),imaginary:Number(c[0][e])*Math.sin(t)-Number(c[1][e])*Math.sin(n)}}}}function nn(e){e.parse();let t=Object.keys(e.data).find(e=>/shelx.*fab_file/i.test(e));return t?e.data[t]:null}function rn(e){let t=nn(e);if(typeof t!=`string`)return null;let n=[],r=[],i=[],a=[],o=[];for(let e of t.split(`\n`)){let t=e.trim().split(/\\s+/).map(Number);if(t.length<5||t.slice(0,5).some(e=>!Number.isFinite(e)))continue;let[s,c,l,u,d]=t;n.push(s),r.push(c),i.push(l),a.push(u),o.push(d)}return n.length>0?{h:n,k:r,l:i,real:a,imaginary:o}:null}function an(e){let t=K(G(e,`_smtbx_masks_void`),[`_smtbx_masks_void.count_electrons`,`_smtbx_masks_void_count_electrons`]);if(!t)return null;let n=t.reduce((e,t)=>e+(W(t)??0),0);return{voidCount:t.length,totalElectrons:n}}function on(e,t){let n=e??`first`;if(![`first`,`second`,`both`,`result`].includes(n))throw Error(`Anomalous-dispersion target must be \"first\", \"second\", \"both\", or \"result\"`);if(n===`second`){if(t<2)throw Error(`Cannot correct the second operand of a single coefficient set`);return 1}return n===`both`&&t>1?0:-1}function sn(e,t){if(t.generator!==void 0&&t.generator!==`auto`){let e=String(t.generator).toLowerCase();if(![`olex`,`shelxl`].includes(e))throw Error(`Anomalous-dispersion generator must be \"auto\", \"olex\", or \"shelxl\"`);return e}let n=t=>{try{return String(e.get(t,``)).toLowerCase()}catch{return``}},r=n(`_computing_structure_refinement`);if(r.includes(`olex2.refine`)||r.includes(`olex2_refine`))return`olex`;if(r.includes(`shelxl`))return`shelxl`;let i=n(`_audit_creation_method`);return i.includes(`olex2.refine`)||i.includes(`olex2_refine`)?`olex`:i.includes(`shelxl`)?`shelxl`:`unknown`}function cn(e,t,n,r,i,a=.05){let o=e.symmetryOperations.find(e=>e.rotMatrix.every((e,t)=>e.every((e,n)=>Math.abs(e-(t===n?-1:0))<1e-8)));if(!o)return{centrosymmetric:!1,available:!1};if(!i)return{centrosymmetric:!0,available:!1};let s=0,c=0;for(let e=0;e<i.length;e++){let a=Number(i[e]),l=[Number(t[e]),Number(n[e]),Number(r[e])];if(![a,...l].every(Number.isFinite))continue;let u=180*(l[0]*o.transVector[0]+l[1]*o.transVector[1]+l[2]*o.transVector[2]),d=Math.abs(((a-u+90)%180+180)%180-90);c=Math.max(c,d),s++}return{centrosymmetric:!0,method:`inversion-phases`,available:s>0,checkedCount:s,toleranceDegrees:a,maximumDeviationDegrees:c,alreadyCorrected:s>0&&c<=a,needsCorrection:s>0&&c>a}}function ln(e,t,n,r,i,a=.05,o=1e-4){if(!r)return{centrosymmetric:!1,method:`friedel-pair-phases`,available:!1};let s=new Map,c=0;for(let a=0;a<r.length;a++){let o=[Number(e[a]),Number(t[a]),Number(n[a])],l=Number(r[a]),u=i?Number(i[a]):null;[...o,l].every(Number.isFinite)&&(Number.isFinite(u)&&(c=Math.max(c,Math.abs(u))),s.set(o.join(`,`),{indices:o,phase:l,amplitude:u}))}let l=new Set,u=0,d=0,f=0,p=c*1e-4;for(let[e,t]of s){if(l.has(e)||t.indices.every(e=>e===0))continue;let n=t.indices.map(e=>-e).join(`,`),r=s.get(n);if(!r||(l.add(e),l.add(n),c>0&&(Math.abs(t.amplitude)<p||Math.abs(r.amplitude)<p)))continue;let i=Math.abs(((t.phase+r.phase+180)%360+360)%360-180);d=Math.max(d,i),c>0&&Number.isFinite(t.amplitude)&&Number.isFinite(r.amplitude)&&(f=Math.max(f,Math.abs(Math.abs(t.amplitude)-Math.abs(r.amplitude))/c)),u++}let m=u>0&&d<=a&&f<=o;return{centrosymmetric:!1,method:`friedel-pair-phases`,available:u>0,checkedPairCount:u,toleranceDegrees:a,maximumDeviationDegrees:d,amplitudeToleranceRelative:o,maximumAmplitudeDeviationRelative:f,alreadyCorrected:m,needsCorrection:u>0&&!m}}function un(e,t,n,r,i,a){let o=`${t},${n},${r}`,s=e.get(o);s?(s.real+=i,s.imaginary+=a,s.count++):e.set(o,{h:t,k:n,l:r,real:i,imaginary:a,count:1})}function dn(e,t,n,r,i,a){let o=new Map;for(let a=0;a<e.length;a++){let s=Number(e[a]),c=Number(t[a]),l=Number(n[a]),{real:u,imaginary:d}=r(a);if([s,c,l,u,d].every(Number.isFinite))for(let e of kt(i)){let t=e.operation,[n,r,i]=Ot(e.reciprocalRotation,[s,c,l]),a=Yt*(n*t.transVector[0]+r*t.transVector[1]+i*t.transVector[2]),f=Math.cos(a),p=Math.sin(a),m=u*f-d*p,h=u*p+d*f;un(o,n,r,i,m,h),(n!==0||r!==0||i!==0)&&un(o,-n,-r,-i,m,-h)}}a&&o.delete(`0,0,0`);for(let e of o.values())e.real/=e.count,e.imaginary/=e.count;return o}function fn(e,t){if(e.coefficients.size===0)throw Error(`Reflection source contains no usable difference-map coefficients`);let n=I(L(e.cell.fractToCartMatrix)),r=0;for(let t of e.coefficients.values())t.reciprocalLength=ae(P(n,[t.h,t.k,t.l])),r=Math.max(r,t.reciprocalLength);return{...e,maximumReciprocalLength:r,symmetryOperations:t.symmetryOperations.map(e=>({rotation:e.rotMatrix.map(e=>[...e]),translation:[...e.transVector]}))}}function pn(e,t,n,r){let i=Number(n);if(Number.isFinite(i)&&i>0)return{scale:i,fittedReflectionCount:0,explicit:!0};let a=0,o=0,s=0;for(let n=0;n<e.length;n++){let i=e[n],c=t[n].amplitude**2*r[n]**2;if(!(i.intensity>0&&c>0))continue;let l=i.sigma>0?1/i.sigma**2:1;a+=l*i.intensity*c,o+=l*i.intensity**2,s++}let c=a/o;if(!(Number.isFinite(c)&&c>0&&s>0))throw Error(`Could not fit a positive intensity scale against the IAM calculation`);return{scale:c,fittedReflectionCount:s,explicit:!1}}function mn(e,t=0,n={}){let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=U.fromCIF(i),o=H.fromCIF(i),s={includeAnomalous:!1,...n.iam},c={...n.reflections};c.mergeFriedel===void 0&&(c.mergeFriedel=s.includeAnomalous===!1);let l=Ut(e,t,c),u=n.coordinateCifText??e,d=n.coordinateCifBlock??t,f=Tt(u,d,{...s,expectedCell:a,structureModel:n.structureModel}),p=f.calculate(l.reflections),m=u===e?r:new D(u),h=typeof d==`number`?m.getBlock(d):m.getBlockByName(d),g=n.solventMaskCorrection??`auto`;if(![!0,!1,`auto`].includes(g))throw Error(`solventMaskCorrection must be \"auto\", true, or false`);let _=g===!1?null:rn(h),v=p,y=0;if(_){let e=dn(_.h,_.k,_.l,e=>({real:_.real[e],imaginary:_.imaginary[e]}),o,!1);v=p.map((t,n)=>{let r=l.reflections[n],i=e.get(`${r.h},${r.k},${r.l}`);if(!i)return t;y++;let a=t.real+i.real,o=t.imaginary+i.imaginary;return{...t,real:a,imaginary:o,amplitude:Math.hypot(a,o),phase:Math.atan2(o,a)*180/Math.PI}})}else if(g===!0)throw Error(`solventMaskCorrection was requested but no _shelx_fab_file was found`);let b={enabled:!!_,requested:g,source:`shelx-fab-file`,fabReflectionCount:_?.h.length??0,appliedReflectionCount:y,...an(h)},x=n.extinctionCorrection??`auto`;if(![`auto`,!0,!1].includes(x)&&typeof x!=`number`&&(typeof x!=`object`||!x||Array.isArray(x)))throw Error(`extinctionCorrection must be \"auto\", true, false, a coefficient, or an object`);let S=x===`auto`&&l.metadata.source===`embedded-refln`,C=Gt(h,a,f.metadata.wavelength,l.reflections,v,S?!1:x===`auto`||x);S&&(C.metadata.reason=`embedded-fcf-already-corrected`);let w=pn(l.reflections,v,n.intensityScale,C.factors),T=0,E=0,O=0;return fn({cell:a,coefficients:dn(l.reflections.map(e=>e.h),l.reflections.map(e=>e.k),l.reflections.map(e=>e.l),e=>{let t=l.reflections[e],n=v[e],r=w.scale*t.intensity/C.factors[e]**2;r<0&&T++;let i=Math.sqrt(Math.max(0,r))-n.amplitude,a=Math.atan2(n.imaginary,n.real);return E+=Math.abs(r-n.amplitude**2),O+=n.amplitude**2,{real:i*Math.cos(a),imaginary:i*Math.sin(a)}},o,!0),reflectionCount:l.reflections.length,coefficientMode:`fo-fc-iam-phase`,omitF000:!0,anomalousDispersion:{enabled:f.metadata.includeAnomalous,target:`both`,source:`iam`},sourceType:`cif-iam`,fieldKind:`difference-density`,intensityScale:w.scale,intensityScaleExplicit:w.explicit,scaleFittedReflectionCount:w.fittedReflectionCount,scaleR1:O>0?E/O:null,negativeIntensityCount:T,observations:l.metadata,iam:f.metadata,solventMaskCorrection:b,reflectionPolicy:{mergeFriedel:l.metadata.mergeFriedel,includeAnomalous:f.metadata.includeAnomalous},extinctionCorrection:C.metadata},o)}function hn(e,t){try{let n=new D(e),r=typeof t==`number`?n.getBlock(t):n.getBlockByName(t),i=e=>r.get(e,null),a=i(`_cifvis_difference_density_loop`),o=i(`_cifvis_difference_density_h`),s=i(`_cifvis_difference_density_k`),c=i(`_cifvis_difference_density_l`),l=i(`_cifvis_difference_density_a`),u=i(`_cifvis_difference_density_b`);if([a,o,s,c,l,u].every(e=>typeof e==`string`&&e.length>0))return{loop:a,h:o,k:s,l:c,a:l,b:u,omitF000:!1,fieldKind:`deformation-density`}}catch{}return null}function gn(e,t=0,n={}){let r=n.inputMode??`auto`;if(![`auto`,`fcf`,`cif-iam`].includes(r))throw Error(`Difference-density inputMode must be \"auto\", \"fcf\", or \"cif-iam\"`);let i=n.coefficientColumns??hn(e,t);if(r!==`cif-iam`)try{return xn(e,t,i,n.anomalousDispersion??null)}catch(e){if(r===`fcf`||i||!(e instanceof Y))throw e}return mn(e,t,n)}function _n(e,t,n=!1){let r=e.length;for(let n=1,i=0;n<r;n++){let a=r>>1;for(;i&a;a>>=1)i^=a;i^=a,n<i&&([e[n],e[i]]=[e[i],e[n]],[t[n],t[i]]=[t[i],t[n]])}let i=n?1:-1;for(let n=2;n<=r;n*=2){let a=i*Yt/n,o=Math.cos(a),s=Math.sin(a);for(let i=0;i<r;i+=n){let r=1,a=0,c=n/2;for(let n=0;n<c;n++){let l=i+n,u=l+c,d=e[u]*r-t[u]*a,f=e[u]*a+t[u]*r,p=e[l],m=t[l];e[l]=p+d,t[l]=m+f,e[u]=p-d,t[u]=m-f;let h=r*o-a*s;a=r*s+a*o,r=h}}}if(n)for(let n=0;n<r;n++)e[n]/=r,t[n]/=r}function vn(e,t,n,r){let[i,a,o]=n,s=n[r],c=new Float64Array(s),l=new Float64Array(s),u=n=>{for(let r=0;r<s;r++){let i=n(r);c[r]=e[i],l[r]=t[i]}_n(c,l);for(let r=0;r<s;r++){let i=n(r);e[i]=c[r],t[i]=l[r]}};if(r===0)for(let e=0;e<o;e++)for(let t=0;t<a;t++){let n=(e*a+t)*i;u(e=>n+e)}else if(r===1)for(let e=0;e<o;e++)for(let t=0;t<i;t++)u(n=>(e*a+n)*i+t);else for(let e=0;e<a;e++)for(let t=0;t<i;t++)u(n=>(n*a+e)*i+t)}function yn(e){return Math.abs(re(e.fractToCartMatrix))}function bn(e,t,n=1){let r=0,i=0,a=0;for(let{h:t,k:n,l:o}of e.values())r=Math.max(r,Math.abs(t)),i=Math.max(i,Math.abs(n)),a=Math.max(a,Math.abs(o));let o=[Xt(2*r+1),Xt(2*i+1),Xt(2*a+1)].map(e=>Xt(e*Math.max(1,n))),[s,c]=o,l=o[0]*o[1]*o[2],u=new Float64Array(l),d=new Float64Array(l);for(let{h:t,k:n,l:r,real:i,imaginary:a}of e.values()){let e=(Zt(r,o[2])*c+Zt(n,c))*s+Zt(t,s);u[e]=i,d[e]=a}vn(u,d,o,0),vn(u,d,o,1),vn(u,d,o,2);let f=yn(t),p=new Float32Array(l),m=0,h=1/0,g=-1/0,_=0;for(let e=0;e<l;e++){let t=u[e]/f;p[e]=t,m+=t,h=Math.min(h,t),g=Math.max(g,t),_=Math.max(_,Math.abs(d[e]/f))}let v=m/l,y=0;for(let e of p)y+=(e-v)**2;return{dimensions:o,values:p,mean:v,sigma:Math.sqrt(y/l),minimum:h,maximum:g,maxImaginary:_,volume:f}}function xn(e,t=0,n=null,r=null){let i=new D(e),a=typeof t==`number`?i.getBlock(t):i.getBlockByName(t),o=U.fromCIF(a),s=H.fromCIF(a),c;try{c=a.get(n?.loop??`_refln`)}catch(e){throw n?e:new Y(e.message)}let l=X(c,n?.h??[`_refln.index_h`,`_refln_index_h`]),u=X(c,n?.k??[`_refln.index_k`,`_refln_index_k`]),d=X(c,n?.l??[`_refln.index_l`,`_refln_index_l`]),f=X(c,[`_refln.phase_calc`,`_refln_phase_calc`],null),p=X(c,[`_refln.F_calc`,`_refln_F_calc`],null),m=p===null?X(c,[`_refln.F_squared_calc`,`_refln_F_squared_calc`],null):null,h=p??m?.map(e=>Math.sqrt(Math.max(0,Number(e)))),g,_;if(n)g=tn(c,n),_=n.omitF000??!1;else{if(f===null)throw new Y(`None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop`);let e=f,t=X(c,[`_refln.F_squared_meas`,`_refln_F_squared_meas`],null),n=t===null?X(c,[`_refln.F_meas`,`_refln_F_meas`],null):null,r=X(c,[`_refln.F_calc`,`_refln_F_calc`],null),i=r===null?X(c,[`_refln.F_squared_calc`,`_refln_F_squared_calc`],null):null;if(t===null&&n===null)throw new Y(`FCF contains neither measured F nor measured F-squared values`);if(r===null&&i===null)throw new Y(`FCF contains neither calculated F nor calculated F-squared values`);g={mode:`fo-fc-common-phase`,componentCount:2,defaultAnomalousTarget:t!==null&&i!==null?`both`:`first`,valueColumns:[e,t??n,r??i],coefficientAt(a){let o=t===null?Math.max(0,Number(n[a])):Math.sqrt(Math.max(0,Number(t[a]))),s=i===null?Math.abs(Number(r[a])):Math.sqrt(Math.max(0,Number(i[a]))),c=Number(e[a])*Math.PI/180,l=o-s;return{real:l*Math.cos(c),imaginary:l*Math.sin(c)}}},_=!0}Qt([l,u,d,...g.valueColumns]);let v=g.coefficientAt,y={enabled:!1,requested:!!r};if(r){let e=r===!0?{}:r;if(typeof e!=`object`)throw Error(`Anomalous-dispersion options must be true or an object`);let t=sn(a,e),n;if(e.phaseDetection===!1)n={available:!1,disabled:!0};else{let t=cn(s,l,u,d,f,Number(e.phaseToleranceDegrees)||.05);n=t.centrosymmetric?t:ln(l,u,d,f,h,Number(e.phaseToleranceDegrees)||.05,Number(e.friedelAmplitudeToleranceRelative)||1e-4)}let i=n.disabled?`phase-detection-disabled`:n.alreadyCorrected?`phases-already-corrected`:!n.available&&t!==`olex`?`exact-test-unavailable`:null;if(i)y={enabled:!1,requested:!0,generator:t,reason:i,phaseCheck:n};else{let r=e.target??g.defaultAnomalousTarget??`first`,i=ft(e.cifText,e.cifBlock??0,e,o),a=on(r,g.componentCount);v=e=>{let t=g.coefficientAt(e),n=i.coefficientAt(Number(l[e]),Number(u[e]),Number(d[e]));return{real:t.real+a*n.real,imaginary:t.imaginary+a*n.imaginary}},y={...i.metadata,requested:!0,generator:t,phaseCheck:n,target:r,correctionScale:a}}}return fn({cell:o,coefficients:dn(l,u,d,v,s,_),reflectionCount:l.length,coefficientMode:g.mode,omitF000:_,anomalousDispersion:y,sourceType:`fcf`,fieldKind:n?`deformation-density`:`difference-density`},s)}function Sn(e,t=1,n=1){if(!(Number.isFinite(t)&&t>0&&t<=1))throw Error(`Difference-density resolution fraction must be in the interval (0, 1]`);let r=e.maximumReciprocalLength*t,i=t===1?e.coefficients:new Map(Array.from(e.coefficients.entries()).filter(([,e])=>e.reciprocalLength<=r+1e-12));if(i.size===0){let t=Math.min(...Array.from(e.coefficients.values()).map(e=>e.reciprocalLength));i=new Map(Array.from(e.coefficients.entries()).filter(([,e])=>e.reciprocalLength<=t+1e-12))}if(!(Number.isFinite(n)&&n>=1))throw Error(`Difference-density grid oversampling must be at least 1`);let a=bn(i,e.cell,n);return new Jt(e.cell,a.dimensions,a.values,{reflectionCount:e.reflectionCount,coefficientCount:i.size,fullCoefficientCount:e.coefficients.size,coefficientMode:e.coefficientMode,omitF000:e.omitF000,anomalousDispersion:e.anomalousDispersion,sourceType:e.sourceType,fieldKind:e.fieldKind,contourMode:`sigma`,displayLabel:`Δρ/eÅ⁻³`,quantityName:e.fieldKind===`deformation-density`?`deformation density`:`difference density`,valueUnit:`e/angstrom^3`,surfaceSign:`both`,boundaryMode:`periodic`,intensityScale:e.intensityScale,intensityScaleExplicit:e.intensityScaleExplicit,scaleFittedReflectionCount:e.scaleFittedReflectionCount,scaleR1:e.scaleR1,negativeIntensityCount:e.negativeIntensityCount,observations:e.observations,iam:e.iam,reflectionPolicy:e.reflectionPolicy,extinctionCorrection:e.extinctionCorrection,solventMaskCorrection:e.solventMaskCorrection,symmetryOperations:e.symmetryOperations,resolutionFraction:t,gridOversampling:n,mean:a.mean,sigma:a.sigma,minimum:a.minimum,maximum:a.maximum,maxImaginary:a.maxImaginary,volume:a.volume})}function Cn(e){let t=(Array.isArray(e)?e:[1]).map(Number).filter(e=>Number.isFinite(e)&&e>0&&e<=1).sort((e,t)=>e-t);return t.includes(1)||t.push(1),[...new Set(t)]}function wn(e,t={}){let n=Cn(t.steps),r=Number(t.reciprocalResolution)||1,i=Math.max(1,Number(t.gridOversampling)||1),a=n.length===1?i:Math.min(i,Math.max(1,Number(t.initialGridOversampling)||1)),o=null;return{steps:n,mapAt(t){let n=t===0?a:t===1&&a!==i?i:null;return n!==null&&(o=Sn(e,r,n)),{map:o,changed:n!==null}}}}let Tn=.529177210903,En=new Set([`density`,`signed-density`,`orbital`,`potential`,`generic`]);function Dn(e,t){return e[0]*t[0]+e[1]*t[1]+e[2]*t[2]}function Z(e){return Math.hypot(...e)}function On(e,t){let n=Math.max(-1,Math.min(1,Dn(e,t)/(Z(e)*Z(t))));return Math.acos(n)*180/Math.PI}function kn(e){return Array.isArray(e)?e:e.toArray()}function An(e,t,n){let r=e.trim().split(/\\s+/).map(Number);if(r.length<t||r.some(e=>!Number.isFinite(e)))throw Error(`Invalid Gaussian Cube ${n} line`);return r}function jn(e,t,n){if(!En.has(e))throw Error(`Cube property must be one of: ${Array.from(En).join(`, `)}`);let r=e===`density`||e===`signed-density`,i=n.valueScale;if(i===void 0&&(i=r&&t===`bohr`?1/Tn**3:1),!(Number.isFinite(i)&&i!==0))throw Error(`Cube valueScale must be a finite non-zero number`);if(e===`density`)return{valueScale:i,valueUnit:`e/angstrom^3`,displayLabel:`ρ/eÅ⁻³`,quantityName:`electron density`,surfaceSign:`positive`,defaultLevel:n.level??.3};if(e===`signed-density`)return{valueScale:i,valueUnit:`e/angstrom^3`,displayLabel:`Δρ/eÅ⁻³`,quantityName:`signed density`,surfaceSign:`both`,defaultLevel:n.level??.05};let a={orbital:[`ψ`,`orbital`],potential:[`V`,`potential`],generic:[`Cube`,`Cube field`]};return{valueScale:i,valueUnit:n.valueUnit??`cube`,displayLabel:n.displayLabel??a[e][0],quantityName:n.quantityName??a[e][1],surfaceSign:n.sign??`both`,defaultLevel:n.level??null}}function Mn(e){let t=0,n=0,r=1/0,i=-1/0;for(let a of e)t+=a,n+=a*a,r=Math.min(r,a),i=Math.max(i,a);let a=t/e.length;return{mean:a,sigma:Math.sqrt(Math.max(0,n/e.length-a*a)),minimum:r,maximum:i}}function Nn(e,t={}){if(typeof e!=`string`||e.trim().length===0)throw Error(`Cannot parse an empty Gaussian Cube file`);let n=e.replace(/\\r\\n?/g,`\n`).split(`\n`);if(n.length<6)throw Error(`Gaussian Cube file is missing its header`);let r=[n[0],n[1]],i=An(n[2],4,`atom/origin`),a=Math.trunc(i[0]),o=Math.abs(a),s=i.slice(1,4),c=i.length>=5?Math.trunc(i[4]):1;if(c<1)throw Error(`Gaussian Cube dataset count must be positive`);let l=[],u=[];for(let e=0;e<3;e++){let t=An(n[3+e],4,`axis ${e+1}`);u.push(Math.trunc(t[0])),l.push(t.slice(1,4))}if(u.some(e=>e===0))throw Error(`Gaussian Cube grid dimensions must be non-zero`);let d=u.every(e=>e>0),f=u.every(e=>e<0);if(!d&&!f)throw Error(`Gaussian Cube grid dimensions must use one consistent unit sign`);let p=d?`bohr`:`angstrom`,m=d?Tn:1,h=u.map(Math.abs),g=s.map(e=>e*m),_=l.map(e=>e.map(e=>e*m)),v=[];if(n.length<6+o)throw Error(`Gaussian Cube file ends inside its atom list`);for(let e=0;e<o;e++){let t=An(n[6+e],5,`atom ${e+1}`);v.push({atomicNumber:Math.trunc(t[0]),charge:t[1],position:t.slice(2,5).map(e=>e*m)})}let y=n.slice(6+o).join(` `).trim().split(/\\s+/).filter(Boolean),b=0,x=c,S=Array.from({length:x},(e,t)=>t+1);if(a<0){if(x=Number(y[b++]),!(Number.isInteger(x)&&x>0))throw Error(`Gaussian Cube orbital dataset count is invalid`);if(S=y.slice(b,b+x).map(Number),S.length!==x||S.some(e=>!Number.isFinite(e)))throw Error(`Gaussian Cube orbital identifiers are incomplete`);b+=x}let C=t.datasetIndex??0;if(!(Number.isInteger(C)&&C>=0&&C<x))throw Error(`Cube datasetIndex must be between 0 and ${x-1}`);let w=h[0]*h[1]*h[2],T=w*x;if(y.length-b!==T)throw Error(`Gaussian Cube grid contains ${y.length-b} values; expected ${T}`);let E=t.property??`density`,D=jn(E,p,t),O=new Float32Array(w);for(let e=0;e<w;e++){let t=Number(y[b+e*x+C]);if(!Number.isFinite(t))throw Error(`Gaussian Cube grid value ${e+1} is not finite`);let n=Math.floor(e/(h[1]*h[2])),r=e%(h[1]*h[2]),i=Math.floor(r/h[2]),a=(r%h[2]*h[1]+i)*h[0]+n;O[a]=t*D.valueScale}let k=_.map((e,t)=>e.map(e=>e*h[t]));if(k.some(e=>Z(e)===0))throw Error(`Gaussian Cube lattice vectors must be non-zero`);let A=new U(Z(k[0]),Z(k[1]),Z(k[2]),On(k[1],k[2]),On(k[0],k[2]),On(k[0],k[1])),j=kn(P(L([[k[0][0],k[1][0],k[2][0]],[k[0][1],k[1][1],k[2][1]],[k[0][2],k[1][2],k[2][2]]]),g)),M=Mn(O),N=D.defaultLevel??3*M.sigma;return new Jt(A,h,O,{...M,comments:r,atoms:v,origin:g,originFractional:j,axisVectors:_,latticeVectors:k,coordinateUnit:p,datasetCount:x,datasetIds:S,datasetIndex:C,datasetId:S[C],property:E,valueScale:D.valueScale,valueUnit:D.valueUnit,displayLabel:D.displayLabel,quantityName:D.quantityName,surfaceSign:D.surfaceSign,defaultLevel:N,boundaryMode:t.periodic===!1?`zero`:`periodic`,sourceType:`cube`,fieldKind:E===`density`?`electron-density`:E===`signed-density`?`deformation-density`:E,contourMode:`absolute`,resolutionFraction:1,gridOversampling:1})}let Pn=Object.freeze({enabled:!1,plane:Object.freeze({mode:`best-fit`}),padding:1.5,maxAtomDistance:2.5,resolution:256,gridSpacing:.04,maxResolution:512,interpolation:`tricubic`,contourCount:20,contourStep:null,levelSubdivisions:4,levels:null,sign:null,zeroLine:!1,zeroColor:`#666666`,lineColor:null,lineWidth:1.5,haloColor:`#ffffff`,haloWidth:1,opacity:1,depthOffset:.02});function Fn(){return globalThis.performance?.now?.()??Date.now()}function In(e,t){return e[0]*t[0]+e[1]*t[1]+e[2]*t[2]}function Ln(e,t){return[e[1]*t[2]-e[2]*t[1],e[2]*t[0]-e[0]*t[2],e[0]*t[1]-e[1]*t[0]]}function Q(e,t){let n=Math.hypot(...e);if(!(Number.isFinite(n)&&n>1e-12))throw Error(`${t} must be a finite non-zero vector`);return e.map(e=>e/n)}function Rn(e,t){return e.map((e,n)=>e+t[n])}function zn(e,t){return e.map((e,n)=>e-t[n])}function Bn(e,t){return e.map(e=>e*t)}function $(e){return Array.isArray(e)?e:e.toArray()}function Vn(e,t){return $(P(e,t))}function Hn(e){return Bn(e.reduce(Rn,[0,0,0]),1/e.length)}function Un(e,t){if(e.length<3)throw Error(`A best-fit contour plane requires at least three atoms`);let n=[[0,0,0],[0,0,0],[0,0,0]];for(let r of e){let e=zn(r,t);for(let t=0;t<3;t++)for(let r=0;r<3;r++)n[t][r]+=e[t]*e[r]}let r=ue(n),i=r.values.map(Number).sort((e,t)=>e-t),a=Math.max(1,i[2]);if(!(i[1]>a*1e-12))throw Error(`Contour plane atoms must not all be collinear`);let o=i[0];return Q($(r.eigenvectors.find(e=>Math.abs(Number(e.value)-o)<=a*1e-12).vector),`Best-fit plane normal`)}function Wn(e,t){if(e.length===1)return Q($(P(I(L(t)),[0,0,1])),`Sparse-structure contour plane normal`);let n=Q(zn(e[1],e[0]),`Sparse atom separation`);return Q(Ln(n,[[1,0,0],[0,1,0],[0,0,1]].reduce((e,t)=>Math.abs(In(n,t))<Math.abs(In(n,e))?t:e)),`Sparse-structure contour plane normal`)}function Gn(e){let t=Q(Ln(Math.abs(e[2])<.9?[0,0,1]:[0,1,0],e),`Contour plane basis`);return{u:t,v:Q(Ln(e,t),`Contour plane basis`)}}function Kn(e,t,n){for(let r of t){let t=e[0]-r[0],i=e[1]-r[1],a=e[2]-r[2];if(t*t+i*i+a*a<=n)return!0}return!1}function qn(e){let t=e.cell.fractToCartMatrix.toArray();return e.atoms.map(e=>Vn(t,[e.position.x,e.position.y,e.position.z]))}function Jn(e,t={mode:`best-fit`},n=1.5){if(!e?.atoms?.length)throw Error(`A contour plane requires a displayed structure`);let r=typeof t==`string`?{mode:t}:Array.isArray(t)?{atoms:t}:t??{mode:`best-fit`};if(r.mode!==void 0&&r.mode!==`best-fit`)throw Error(`Contour plane mode must be \"best-fit\"`);let i=e.cell.fractToCartMatrix.toArray(),a=qn(e),o=a;if(r.atoms){if(!Array.isArray(r.atoms)||r.atoms.length<3)throw Error(`A contour plane atom definition requires at least three labels`);o=r.atoms.map(t=>{let n=e.atoms.findIndex(e=>e.label===t);if(n===-1)throw Error(`Contour plane atom not found: ${t}`);return a[n]})}let s,c;if(r.origin||r.normal){if(!Array.isArray(r.origin)||r.origin.length!==3||!Array.isArray(r.normal)||r.normal.length!==3)throw Error(`An explicit contour plane requires three-value origin and normal arrays`);let t=r.origin.map(Number),n=r.normal.map(Number);if(!t.every(Number.isFinite)||!n.every(Number.isFinite))throw Error(`Contour plane origin and normal must contain finite numbers`);if(r.coordinateSystem!==void 0&&![`cartesian`,`fractional`].includes(r.coordinateSystem))throw Error(`Contour plane coordinateSystem must be \"cartesian\" or \"fractional\"`);if(r.coordinateSystem===`fractional`){let r=e.cell.fractToCartMatrix.toArray();s=Vn(r,t),c=$(P(I(L(r)),n))}else s=t,c=n;c=Q(c,`Contour plane normal`)}else s=Hn(o),c=o.length>=3?Un(o,s):Wn(o,i);let{u:l,v:u}=Gn(c),d=1/0,f=-1/0,p=1/0,m=-1/0;for(let e of a){let t=zn(e,s),n=In(t,l),r=In(t,u);d=Math.min(d,n),f=Math.max(f,n),p=Math.min(p,r),m=Math.max(m,r)}let h=Number(n);if(!(Number.isFinite(h)&&h>=0))throw Error(`Contour plane padding must be a non-negative number`);let g=r.bounds??{u:[d-h,f+h],v:[p-h,m+h]};if(!Array.isArray(g.u)||!Array.isArray(g.v)||g.u.length!==2||g.v.length!==2||!g.u.concat(g.v).every(Number.isFinite)||g.u[1]<=g.u[0]||g.v[1]<=g.v[0])throw Error(`Contour plane bounds must contain increasing u and v pairs`);return{origin:s,normal:c,u:l,v:u,bounds:g}}function Yn(e,t,n,r=0){return Rn(Rn(e.origin,Bn(e.u,t)),Rn(Bn(e.v,n),Bn(e.normal,r)))}function Xn(e,t,n,r,i){let a=n===r?.5:Math.max(0,Math.min(1,(i-n)/(r-n)));return[e[0]+(t[0]-e[0])*a,e[1]+(t[1]-e[1])*a]}function Zn(e,t,n,r,i){let[a,o]=t,s=(n.bounds.u[1]-n.bounds.u[0])/(a-1),c=(n.bounds.v[1]-n.bounds.v[0])/(o-1),l=[];for(let t=0;t<o-1;t++)for(let o=0;o<a-1;o++){let u=n.bounds.u[0]+o*s,d=u+s,f=n.bounds.v[0]+t*c,p=f+c,m=[[u,f],[d,f],[d,p],[u,p]],h=t*a+o,g=h+a,_=[e[h],e[h+1],e[g+1],e[g]],v=Math.min(..._),y=Math.max(..._);for(let e of r){if(!(v<e&&y>=e))continue;let t=[[0,1],[1,2],[2,3],[3,0]],r=[];for(let n=0;n<t.length;n++){let[i,a]=t[n];(_[i]<e&&_[a]>=e||_[a]<e&&_[i]>=e)&&r.push({edge:n,point:Xn(m[i],m[a],_[i],_[a],e)})}let a=[];r.length===2?a=[[r[0],r[1]]]:r.length===4&&(a=_.reduce((e,t)=>e+t,0)/4>=e?[[r[0],r[1]],[r[2],r[3]]]:[[r[0],r[3]],[r[1],r[2]]]);for(let[e,t]of a)l.push([Yn(n,e.point[0],e.point[1],i),Yn(n,t.point[0],t.point[1],i)])}}return l}function Qn(e,t){if(Array.isArray(t.levels)){let e=[...new Set(t.levels.map(e=>Math.abs(Number(e))))].filter(e=>Number.isFinite(e)&&e>0).sort((e,t)=>e-t);if(e.length===0)throw Error(`Contour line levels must contain positive finite values`);return e}let n=t.level??e.defaultLevel??(t.sigmaLevel??3)*e.sigma,r=Number(t.levelSubdivisions);if(!(Number.isFinite(r)&&r>=1))throw Error(`Contour line levelSubdivisions must be at least one`);let i=t.contourStep??n/r,a=Math.max(1,Math.round(Number(t.contourCount)));if(!(Number.isFinite(i)&&i>0))throw Error(`Contour line step must be a positive finite number`);if(!Number.isFinite(a))throw Error(`Contour line count must be a positive integer`);return Array.from({length:a},(e,t)=>i*(t+1))}function $n(e,t,n={}){let r=Fn(),i={...Pn,...n},a=Jn(t,i.plane,i.padding),o=a.bounds.u[1]-a.bounds.u[0],s=a.bounds.v[1]-a.bounds.v[0],c=Math.max(8,Math.round(Number(i.resolution))),l=Math.max(c,Math.round(Number(i.maxResolution))),u=Number(i.gridSpacing);if(!(Number.isFinite(u)&&u>0))throw Error(`Contour line grid spacing must be a positive number`);if(!(Number.isFinite(c)&&Number.isFinite(l)))throw Error(`Contour line resolutions must be finite numbers`);let d=[o,s].map(e=>Math.min(l,Math.max(c,Math.ceil(e/u)+1))),f=new Float32Array(d[0]*d[1]),p=L(t.cell.fractToCartMatrix),m=$(P(p,a.origin)),h=$(P(p,a.u)),g=$(P(p,a.v)),_=i.interpolation;if(![`linear`,`tricubic`].includes(_))throw Error(`Contour line interpolation must be \"linear\" or \"tricubic\"`);let v=_===`tricubic`&&typeof e.sampleCubic==`function`?(...t)=>e.sampleCubic(...t):(...t)=>e.sample(...t),y=i.maxAtomDistance,b=y!==null&&Number(y)>=0;if(y!==null&&!Number.isFinite(Number(y)))throw Error(`Contour line maxAtomDistance must be null or a finite number`);let x=b?qn(t):null,S=b?Number(y)**2:0,C=Fn();for(let e=0;e<d[1];e++){let t=a.bounds.v[0]+e/(d[1]-1)*s;for(let n=0;n<d[0];n++){let r=a.bounds.u[0]+n/(d[0]-1)*o,i=e*d[0]+n;if(b&&!Kn(Yn(a,r,t),x,S)){f[i]=NaN;continue}f[i]=v(...m.map((e,n)=>e+h[n]*r+g[n]*t))}}let w=Fn(),T=Qn(e,i),E=i.sign??e.surfaceSign??`both`;if(![`positive`,`negative`,`both`].includes(E))throw Error(`Contour line sign must be \"positive\", \"negative\", or \"both\"`);let D=Number(i.depthOffset);if(!Number.isFinite(D))throw Error(`Contour line depth offset must be a finite number`);let O=E===`negative`?[]:Zn(f,d,a,T,D),k=E===`positive`?[]:Zn(f,d,a,T.map(e=>-e),D),A=i.zeroLine?Zn(f,d,a,[0],D):[],j=Fn();return{plane:a,dimensions:d,levels:T,level:T[0],positiveSegments:O,negativeSegments:k,zeroSegments:A,segmentCount:O.length+k.length+A.length,timings:{planeSetupTimeMs:C-r,samplingTimeMs:w-C,contourExtractionTimeMs:j-w,totalTimeMs:j-r}}}function er(e){let t=new Float32Array(e.length*6),n=0;for(let[r,i]of e)t.set(r,n),t.set(i,n+3),n+=6;return t}function tr(e){return{...e,positiveSegments:er(e.positiveSegments),negativeSegments:er(e.negativeSegments),zeroSegments:er(e.zeroSegments),packed:!0}}function nr(e){return{cell:new U(e.cell.a,e.cell.b,e.cell.c,e.cell.alpha,e.cell.beta,e.cell.gamma),atoms:e.atoms}}function rr(e,t,n){if(!t)return null;let r=Math.max(.1,Number(n)||1),i={...t.options,resolution:Math.max(8,Math.round(t.options.resolution*r)),maxResolution:Math.max(8,Math.round(t.options.maxResolution*r)),gridSpacing:t.options.gridSpacing/r},a=tr($n(e,nr(t.structure),i));return a.displayVersion=t.displayVersion,a}function ir(e){return e?[e.positiveSegments.buffer,e.negativeSegments.buffer,e.zeroSegments.buffer]:[]}let ar=new Map;function or(e,t){return new Promise(n=>{ar.set(`${e}:${t}`,n)})}async function sr(e){let t=performance.now();try{let n=wn(gn(e.fcfText,e.fcfBlock,e.datasetOptions),{steps:e.steps,reciprocalResolution:e.reciprocalResolution,initialGridOversampling:e.initialGridOversampling,gridOversampling:e.gridOversampling}),r=n.steps;for(let i=0;i<r.length;i++){let a=performance.now(),{map:o,changed:s}=n.mapAt(i),c=s?performance.now()-a:0,l=performance.now(),u=rr(o,e.contourRequest,r[i]),d=u?performance.now()-l:0,f=s?o.toPayload():null,p={type:`update`,loadId:e.loadId,stepIndex:i,totalSteps:r.length,final:i===r.length-1,computeTimeMs:c,contourTimeMs:d,elapsedTimeMs:performance.now()-t,surfaceResolutionFraction:r[i],map:f,contours:u};globalThis.postMessage(p,[...f&&!e.contourRequest?[f.values.buffer]:[],...ir(u)]),i<r.length-1&&await or(e.loadId,i)}}catch(t){globalThis.postMessage({type:`error`,loadId:e.loadId,error:t.message})}}async function cr(e){let t=performance.now();try{let n=Nn(e.cubeText,e.cubeOptions),r=performance.now()-t,i=Cn(e.steps);for(let a=0;a<i.length;a++){let o=a===0?n.toPayload():null,s=performance.now(),c=rr(n,e.contourRequest,i[a]),l=c?performance.now()-s:0;globalThis.postMessage({type:`update`,loadId:e.loadId,stepIndex:a,totalSteps:i.length,final:a===i.length-1,computeTimeMs:a===0?r:0,contourTimeMs:l,elapsedTimeMs:performance.now()-t,surfaceResolutionFraction:i[a],map:o,contours:c},[...o&&!e.contourRequest?[o.values.buffer]:[],...ir(c)]),a<i.length-1&&await or(e.loadId,a)}}catch(t){globalThis.postMessage({type:`error`,loadId:e.loadId,error:t.message})}}globalThis.addEventListener(`message`,e=>{let t=e.data;if(t.type===`continue`){let e=`${t.loadId}:${t.stepIndex}`;ar.get(e)?.(),ar.delete(e);return}t.type===`load-difference-density`?sr(t):t.type===`load-cube`&&cr(t)})})();", Hv = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Vv], { type: "text/javascript;charset=utf-8" });
-function Uv(e) {
+}, Wv = "(function(){function e(e){let t=0,n=``;(e[t]===`+`||e[t]===`-`)&&(n=e[t++]);let r=t,i=0;for(;e[t]>=`0`&&e[t]<=`9`;)t++,i++;if(e[t]===`.`)for(t++;e[t]>=`0`&&e[t]<=`9`;)t++,i++;if(i===0)return null;let a=e.slice(r,t),o=null;if(e[t]===`e`||e[t]===`E`){t++;let n=t;(e[t]===`+`||e[t]===`-`)&&t++;let r=t;for(;e[t]>=`0`&&e[t]<=`9`;)t++;if(t===r)return null;o=e.slice(n,t)}let s=null;if(e[t]===`(`){t++;let n=t;for(;e[t]>=`0`&&e[t]<=`9`;)t++;if(t===n||e[t]!==`)`)return null;s=e.slice(n,t),t++}return t===e.length?{signString:n,numString:a,expString:o,suString:s}:null}function t(t,n=!0,r=1){let i=e(t);if(n&&i&&i.expString!==null&&i.suString!==null){let{signString:e,numString:t,expString:n,suString:r}=i,a=e===`-`?-1:1,o=parseFloat(t),s=parseInt(n),c=t.includes(`.`)?t.split(`.`)[1].length:0,l=Number(a*o*10**s),u=s-c,d=Number(parseInt(r)*10**u);return c-s>=0&&c-s<=100?{value:Number(l.toFixed(c-s)),su:Number(d.toFixed(c-s))}:{value:l,su:d}}if(i&&i.expString!==null&&i.suString===null){let{signString:e,numString:t,expString:n}=i,r=e===`-`?-1:1,a=t.includes(`.`)?t.split(`.`)[1].length:0,o=parseInt(n),s=Number(r*parseFloat(t)*10**o);return a-o>=0&&a-o<=100?{value:Number(s.toFixed(a-o)),su:NaN}:{value:s,su:NaN}}if(n&&i&&i.expString===null&&i.suString!==null){let{signString:e,numString:t,suString:n}=i,r=e===`-`?-1:1;if(t.includes(`.`)){let e=t.split(`.`)[1].length;return{value:Number((r*parseFloat(t)).toFixed(e)),su:Number((10**-e*parseFloat(n)).toFixed(e))}}else return{value:r*parseInt(t),su:parseInt(n)}}if(isNaN(t)){if(r===2)return{value:t,su:NaN};let e=t[0];return(e===`\"`||e===`'`)&&t.at(-1)===e?{value:t.slice(1,-1).replace(/\\\\([^\\\\])/g,`$1`),su:NaN}:{value:t.replace(/\\\\([^\\\\])/g,`$1`),su:NaN}}else return{value:t.includes(`.`)?parseFloat(t):parseInt(t),su:NaN}}function n(e,t){let n=[e[t].slice(1)],r=e.slice(t+1),i=r.findIndex(e=>e.startsWith(`;`));i===-1&&console.warn(`Unterminated CIF multiline text field starting at input line ${t+1}; treating end of file as the closing semicolon.`);let a=i===-1?r.length:i,o=n.concat(r.slice(0,a)),s=o.findIndex(e=>e.trim()!==``),c=o.findLastIndex(e=>e.trim()!==``);return{value:s===-1?``:o.slice(s,c+1).join(`\n`),endIndex:i===-1?e.length-1:t+i+1}}function r(e,n,r){let o=e[n];if(!o)throw Error(`Unexpected end of CIF2 value stream`);switch(o.type){case`value`:{if(o.quoted)return{value:o.value,su:NaN,nextPos:n+1};let e=t(o.value,r,2);return{value:e.value,su:e.su,nextPos:n+1}}case`listOpen`:return i(e,n,r);case`tableOpen`:return a(e,n,r);default:throw Error(`Unexpected token '${o.type}' where a CIF2 value was expected`)}}function i(e,t,n){let i=[],a=t+1;for(;e[a]&&e[a].type!==`listClose`;){let t=r(e,a,n);i.push(t.value),a=t.nextPos}if(!e[a])throw Error(`Unterminated CIF2 list value`);return{value:i,su:NaN,nextPos:a+1}}function a(e,t,n){let i=new Map,a=t+1;for(;e[a]&&e[a].type!==`tableClose`;){let t=e[a];if(t.type!==`value`)throw Error(`CIF2 table key must be a quoted string`);if(!e[a+1]||e[a+1].type!==`colon`)throw Error(`CIF2 table entry for key '${t.value}' is missing its colon`);let o=r(e,a+2,n);i.set(t.value,o.value),a=o.nextPos}if(!e[a])throw Error(`Unterminated CIF2 table value`);return{value:i,su:NaN,nextPos:a+1}}function o(e,t){let n=e[t];if(!n)throw Error(`Unexpected end of CIF2 value stream`);switch(n.type){case`value`:return t+1;case`listOpen`:case`tableOpen`:{let r={listOpen:`listClose`,tableOpen:`tableClose`},i=[n.type],a=t+1;for(;a<e.length&&i.length>0;){let t=e[a].type;if(t===`listOpen`||t===`tableOpen`)i.push(t);else if(t===`listClose`||t===`tableClose`){let e=r[i[i.length-1]];if(t!==e)throw Error(`Mismatched CIF2 container: expected '${e}' but found '${t}'`);i.pop()}a++}if(i.length>0)throw Error(n.type===`listOpen`?`Unterminated CIF2 list value`:`Unterminated CIF2 table value`);return a}default:throw Error(`Unexpected token '${n.type}' where a CIF2 value was expected`)}}let s=`_space_group_symop_ssg._space_group_symop._symmetry_equiv._geom_bond._geom_hbond._geom_angle._geom_torsion._diffrn_refln._refln._atom_site_fourier_wave_vector._atom_site_moment_fourier_param._atom_site_moment_special_func._atom_site_moment._atom_site_rotation._atom_site_displace_Fourier._atom_site_displace_special_func._atom_site_occ_Fourier._atom_site_occ_special_func._atom_site_phason._atom_site_rot_Fourier_param._atom_site_rot_Fourier._atom_site_rot_special_func._atom_site_U_Fourier._atom_site_anharm_gc_c._atom_site_anharm_gc_d._atom_site_aniso._atom_site`.split(`.`);function c(e){let t=[],n=0;for(;n<e.length;){for(;n<e.length&&/\\s/u.test(e[n]);)n++;if(n===e.length)break;let r=n,i=e[n]===`'`||e[n]===`\"`?e[n]:null;if(i!==null){for(n++;n<e.length;){if(e[n]===i&&(n+1===e.length||/\\s/u.test(e[n+1]))){t.push(e.slice(r,n+1)),n++;break}n++}if(n>=e.length&&e[n-1]!==i)n=r;else continue}let a=n;for(;n<e.length&&!/\\s/u.test(e[n]);)n++;t.push(e.slice(a,n))}return t}var l=class e{constructor(e,t,n,r,i=null){this.splitSU=r,this.headerLines=e,this.dataLines=t,this.endIndex=n,this.headers=null,this.data=null,this.name=null,i?this.name=i:this.name=this.findCommonStart()}static fromLines(t,n){let r=1;for(;r<t.length&&t[r].trim().startsWith(`_`);)r++;let i=t.slice(1,r).map(e=>e.trim()),a=r,o=!1;for(;a<t.length&&(!t[a].trim().startsWith(`_`)&&!t[a].trim().startsWith(`loop_`)||o);)t[a].startsWith(`;`)&&(o=!o),a++;let s=t.slice(r,a);return new e(i,s,a,n)}static fromTokens(t,n,r,i){let a=new e(t,[],0,i);return a._cif2Tokens=n,a._cif2CellTokenRanges=r,a}parse(){if(this.data!==null)return;this.headers=[...this.headerLines],this.data={};let e=this._cif2CellTokenRanges===void 0?this.dataLines.reduce((e,r,i)=>{if(r=r.trim(),!r.length)return e;if(r.startsWith(`;`)){let t=n(this.dataLines,i);e.push({value:t.value,su:NaN});for(let e=i;e<t.endIndex+1;e++)this.dataLines[e]=``;return e}return e.concat(c(r).map(e=>t(e,this.splitSU)))},[]):this._cif2CellTokenRanges.map(([e])=>{let t=r(this._cif2Tokens,e,this.splitSU);return{value:t.value,su:t.su}}),i=this.headers.length;if(e.length%i!==0){let t=e.map(({value:e,su:t})=>`{value: ${e}, su: ${t}}`).join(`, `);throw Error(`Loop ${this.name}: Cannot distribute ${e.length} values evenly into ${i} columns\\nentries are: ${t}`)}else if(e.length===0)throw Error(`Loop ${this.name} has no data values.`);for(let t=0;t<i;t++){let n=this.headers[t],r=e.slice(t).filter((e,t)=>t%i===0);r.some(e=>!isNaN(e.su))?(this.data[n]=r.map(e=>e.value),this.data[n+`_su`]=r.map(e=>e.su),this.headers.push(n+`_su`)):this.data[n]=r.map(e=>e.value)}}findCommonStart(e=!0){if(e){for(let e of s)if(this.headerLines.filter(t=>t.toLowerCase().startsWith(e.toLowerCase())).length>=this.headerLines.length/2)return e}let t=this.headerLines.map(e=>e.split(`.`));if(t[0].length>1){let e=t[0][0];if(this.headerLines.filter(t=>t.split(`.`)[0]===e).length>=this.headerLines.length/2)return e}let n=this.headerLines.map(e=>e.split(/[_.]/).filter(e=>e)),r=Math.min(...n.map(e=>e.length)),i=``;for(let e=0;e<r;e++){let t=n[0][e],r=n.filter(n=>n[e]===t).length;if(this.headerLines.length===2)if(r===2)i+=`_`+t;else break;else if(r>=this.headerLines.length/2)i+=`_`+t;else break}return i}get(e,t=null){this.parse();let n=Array.isArray(e)?e:[e];for(let e of n){let t=this.data[e];if(t!==void 0)return t}if(t!==null)return t;throw Error(`None of the keys [${n.join(`, `)}] found in CIF loop ${this.name}`)}getIndex(e,t,n=null){this.parse();let r=Array.isArray(e)?e:[e];if(!r.some(e=>this.headers.includes(e))){if(n!==null)return n;throw Error(`None of the keys [${r.join(`, `)}] found in CIF loop ${this.name}`)}let i=this.get(r);if(t<i.length)return i[t];throw Error(`Tried to look up value of index ${t} in ${this.name}, but length is only ${i.length}`)}getHeaders(){return this.headers||this.parse(),this.headers}getName(){return this.name}getEndIndex(){return this.endIndex}};function u(e){return e&&typeof e.getHeaders==`function`}function d(e){return e.getHeaders()[0].split(`_`).filter(e=>e.length>0)}function f(e,t,n){let r=u(e)?e:t,i=n.split(`_`).filter(e=>e.length>0),a=d(r),o=`_`+i.join(`_`)+`_`+a[i.length];return u(e)?[o,n]:[n,o]}function p(e,t){let n=e.findCommonStart(!1),r=t.findCommonStart(!1);return n.length===r.length?null:[n,r]}function m(e,t,n){let r=n.split(`_`).filter(e=>e.length>0),i=d(e),a=d(t);return i.length>=a.length?[n+`_`+i[r.length],n]:[n,n+`_`+a[r.length]]}function h(e,t,n){let r;r=!u(e)||!u(t)?f(e,t,n):p(e,t)||m(e,t,n);let i=[e,t];return i.forEach((e,t)=>{u(e)&&(e.name=r[t])}),{newNames:r,newEntries:i}}function g(e){return e.charCodeAt(0)===65279?e.slice(1):e}function _(e){let t=g(e);return/^#\\\\#CIF_2\\.0/.test(t)?2:1}let v=new Set([` `,`	`,`\\r`,`\n`]),y=new Set([`[`,`]`,`{`,`}`]);function b(e,t,n,r){if(e[t+1]===n&&e[t+2]===n){let i=n+n+n,a=e.indexOf(i,t+3);if(a===-1)throw Error(`Unterminated triple-quoted string starting on line ${r}`);let o=e.slice(t+3,a);return{value:o,next:a+3,newlines:S(o)}}let i=e.indexOf(n,t+1),a=e.indexOf(`\n`,t+1);if(i===-1||a!==-1&&a<i)throw Error(`Unterminated quoted string starting on line ${r}`);return{value:e.slice(t+1,i),next:i+1,newlines:0}}function x(e,t,n){let r=e.indexOf(`\n;`,t);if(r===-1)throw Error(`Unterminated text field starting on line ${n}`);let i=e.slice(t+1,r);return i.startsWith(`\n`)&&(i=i.slice(1)),{value:i,next:r+2,newlines:S(e.slice(t,r+2))}}function S(e){let t=0;for(let n=0;n<e.length;n++)e[n]===`\n`&&t++;return t}function C(e,t){let n=e.toLowerCase();return n===`loop_`?{type:`loop`,line:t}:n===`save_`?{type:`saveEnd`,line:t}:n===`global_`?{type:`global`,line:t}:n===`stop_`?{type:`stop`,line:t}:n.startsWith(`data_`)?{type:`data`,value:e.slice(5),line:t}:n.startsWith(`save_`)?{type:`save`,value:e.slice(5),line:t}:e[0]===`_`?{type:`tag`,value:e,line:t}:{type:`value`,value:e,quoted:!1,line:t}}function w(e){let t=e.replace(/\\r\\n?/g,`\n`),n=[],r=t.length,i=0,a=1,o=!0;for(;i<r;){let e=t[i];if(e===`\n`){i++,a++,o=!0;continue}if(v.has(e)){i++,o=!1;continue}if(e===`#`){for(;i<r&&t[i]!==`\n`;)i++;continue}if(e===`;`&&o){let e=x(t,i,a);n.push({type:`value`,value:e.value,quoted:!0,line:a}),i=e.next,a+=e.newlines,o=!1;continue}if(y.has(e)){let t={\"[\":`listOpen`,\"]\":`listClose`,\"{\":`tableOpen`,\"}\":`tableClose`}[e];n.push({type:t,line:a}),i++,o=!1;continue}if(e===`'`||e===`\"`){let r=b(t,i,e,a);n.push({type:`value`,value:r.value,quoted:!0,line:a}),i=r.next,a+=r.newlines,o=!1,t[i]===`:`&&(n.push({type:`colon`,line:a}),i++);continue}let s=i;for(;i<r&&!v.has(t[i])&&!y.has(t[i]);)i++;n.push(C(t.slice(s,i),a)),o=!1}return n}function T(e){let t=null;for(let n=0;n<e.length;n++){let r=e[n];if(t!==null){r===t&&(n+1===e.length||/\\s/u.test(e[n+1]))&&(t=null);continue}if((r===`'`||r===`\"`)&&(n===0||/\\s/u.test(e[n-1]))){t=r;continue}if(r===`#`&&n>0&&/\\s/u.test(e[n-1]))return e.slice(0,n-1)}return e}function E(e){let t=[],n=null,r=0;for(let i of e)i.type===`listOpen`||i.type===`tableOpen`?r++:(i.type===`listClose`||i.type===`tableClose`)&&r--,i.type===`data`&&r===0?(n=[i],t.push(n)):n&&n.push(i);return t}var D=class{constructor(e,t=!0){this.splitSU=t;let n=g(e);this.version=_(n),this.rawCifBlocks=this.version===2?E(w(n)):this.splitCifBlocks(`\n\n`+n),this.blocks=Array(this.rawCifBlocks.length).fill(null),this._blockNameMap=null}splitCifBlocks(e){let t=[],n=e.replaceAll(`\\r\n`,`\n`).split(/\\r?\\ndata_/).slice(1),r=0;for(;r<n.length;){let e=n[r],i=/\\n;/g,a=e.match(i),o=a?a.length:0;for(;o%2==1&&r+1<n.length;)r++,e+=`\ndata_`+n[r],o=e.match(i).length;t.push(e),r++}return t}getBlock(e=0){if(e<0||e>=this.rawCifBlocks.length)throw Error(`Block index ${e} out of range. This CIF has ${this.rawCifBlocks.length} block(s).`);return this.blocks[e]||(this.blocks[e]=new O(this.rawCifBlocks[e],this.splitSU,this.version)),this.blocks[e]}getAllBlocks(){for(let e=0;e<this.blocks.length;e++)this.blocks[e]||(this.blocks[e]=new O(this.rawCifBlocks[e],this.splitSU,this.version));return this.blocks}_extractBlockNames(){if(this._blockNameMap!==null)return this._blockNameMap;if(this._blockNameMap=new Map,this.version===2)return this.rawCifBlocks.forEach((e,t)=>{e[0]&&e[0].type===`data`&&this._blockNameMap.set(e[0].value,t)}),this._blockNameMap;let e=/^(\\w+[\\w.-]*)/;return this.rawCifBlocks.forEach((t,n)=>{let r=e.exec(t.trim());r&&r[1]&&this._blockNameMap.set(r[1],n)}),this._blockNameMap}getBlockNames(){return Array.from(this._extractBlockNames().keys())}getBlockByName(e){let t=this._extractBlockNames().get(e);if(t===void 0)throw Error(`Block with name '${e}' not found. Available blocks: ${this.getBlockNames().join(`, `)}`);return this.getBlock(t)}},O=class{constructor(e,t=!0,n=1){this.splitSU=t,this.version=n,n===2?(this.tokens=e,this.rawText=null):(this.rawText=e,this.tokens=null),this.data=null,this.dataBlockName=null}parse(){if(this.data!==null)return;if(this.version===2){this.parseV2();return}this.data={};let e=this.rawText.split(`\n`).filter(e=>!e.trim().startsWith(`#`)).map(T);this.dataBlockName=e[0];let r=1;for(;r<e.length;){if(r+1<e.length&&e[r+1].startsWith(`;`)){let t=n(e,r+1);this.data[e[r]]=t.value,r=t.endIndex+1;continue}if(e[r].trim().startsWith(`loop_`)){let t=l.fromLines(e.slice(r),this.splitSU);if(!Object.prototype.hasOwnProperty.call(this.data,t.getName()))this.data[t.getName()]=t;else{let e=h(this.data[t.getName()],t,t.getName());this.data[e.newNames[0]]=e.newEntries[0],this.data[e.newNames[1]]=e.newEntries[1]}r+=t.getEndIndex();continue}let i=e[r].trim();if(i.length===0){r++;continue}let a=i.match(/^(_\\S+)\\s+(.*)$/);if(a){let e=a[1],n=t(a[2],this.splitSU);this.data[e]=n.value,isNaN(n.su)||(this.data[e+`_su`]=n.su)}else if(i.startsWith(`_`)&&!e[r+1].startsWith(`_`)){let n=i,a=t(e[r+1].trim(),this.splitSU);this.data[n]=a.value,isNaN(a.su)||(this.data[n+`_su`]=a.su),r++}else throw Error(`Could not parse line `+String(r)+`: `+e[r]);r++}}parseV2(){this.data={};let e=this.tokens;this.dataBlockName=e[0]&&e[0].type===`data`?e[0].value:null;let t=1,n=0;for(;t<e.length;){let i=e[t];if(i.type===`save`){n++,t++;continue}if(i.type===`saveEnd`){n>0&&n--,t++;continue}if(n>0||i.type===`global`||i.type===`stop`){t++;continue}if(i.type===`tag`){let n=r(e,t+1,this.splitSU);this.data[i.value]=n.value,isNaN(n.su)||(this.data[i.value+`_su`]=n.su),t=n.nextPos;continue}if(i.type===`loop`){t=this.parseLoopV2(e,t);continue}t++}}parseLoopV2(e,t){let n=t+1,r=[];for(;n<e.length&&e[n].type===`tag`;)r.push(e[n].value),n++;let i=[];for(;n<e.length&&(e[n].type===`value`||e[n].type===`listOpen`||e[n].type===`tableOpen`);){let t=n;n=o(e,n),i.push([t,n])}let a=l.fromTokens(r,e,i,this.splitSU);if(!Object.prototype.hasOwnProperty.call(this.data,a.getName()))this.data[a.getName()]=a;else{let e=h(this.data[a.getName()],a,a.getName());this.data[e.newNames[0]]=e.newEntries[0],this.data[e.newNames[1]]=e.newEntries[1]}return n}get dataBlockName(){return this._dataBlockName||this.parse(),this._dataBlockName}set dataBlockName(e){this._dataBlockName=e}get(e,t=null){this.parse();let n=Array.isArray(e)?e:[e];for(let e of n){let t=this.data[e];if(t!==void 0)return t}if(t!==null)return t;throw Error(`None of the keys [${n.join(`, `)}] found in CIF block`)}},k=class e{constructor(e){this._data=e}toArray(){return this._data}size(){return Array.isArray(this._data[0])?[this._data.length,this._data[0].length]:[this._data.length]}get(e){return e.length===2?this._data[e[0]][e[1]]:this._data[e[0]]}map(t){let n=Array.isArray(this._data[0])?this._data.map((e,n)=>e.map((e,r)=>t(e,[n,r],this))):this._data.map((e,n)=>t(e,[n],this));return new e(n)}};function A(e){return e instanceof k?A(e.toArray()):Array.isArray(e)?e.map(A):e}function j(e,t){return e.some(e=>e instanceof k)?new k(t):t}function M(e,t,n){return Array.isArray(e)&&Array.isArray(t)?e.map((e,r)=>M(e,t[r],n)):n(e,t)}function N(e){return new k(A(e))}function ee(e,t){let n=[[0,0,0],[0,0,0],[0,0,0]];for(let r=0;r<3;r++)for(let i=0;i<3;i++)n[r][i]=e[r][0]*t[0][i]+e[r][1]*t[1][i]+e[r][2]*t[2][i];return n}function te(e,t){return[e[0][0]*t[0]+e[0][1]*t[1]+e[0][2]*t[2],e[1][0]*t[0]+e[1][1]*t[1]+e[1][2]*t[2],e[2][0]*t[0]+e[2][1]*t[1]+e[2][2]*t[2]]}function ne(e){return e.length===3&&e[0].length===3&&e[1].length===3&&e[2].length===3}function P(e,t){let n=A(e),r=A(t),i;if(typeof r==`number`)i=Array.isArray(n[0])?n.map(e=>e.map(e=>e*r)):n.map(e=>e*r);else if(typeof n==`number`)i=Array.isArray(r[0])?r.map(e=>e.map(e=>e*n)):r.map(e=>e*n);else if(Array.isArray(n[0])&&Array.isArray(r[0]))i=ne(n)&&ne(r)?ee(n,r):n.map((e,t)=>e.map((i,a)=>e.reduce((e,i,o)=>e+n[t][o]*r[o][a],0)));else if(Array.isArray(n[0]))i=ne(n)&&r.length===3?te(n,r):n.map(e=>e.reduce((e,t,n)=>e+t*r[n],0));else throw Error(`multiply: unsupported operand shapes`);return j([e,t],i)}function F(e,t){return j([e,t],M(A(e),A(t),(e,t)=>e+t))}function I(e){let t=A(e),n=t[0].map((e,n)=>t.map(e=>e[n]));return j([e],n)}function re(e){let t=A(e);if(t.length!==3)throw Error(`det: only 3x3 matrices are supported`);return t[0][0]*(t[1][1]*t[2][2]-t[1][2]*t[2][1])-t[0][1]*(t[1][0]*t[2][2]-t[1][2]*t[2][0])+t[0][2]*(t[1][0]*t[2][1]-t[1][1]*t[2][0])}function L(e){let t=A(e);if(t.length!==3)throw Error(`inv: only 3x3 matrices are supported`);let n=re(t);if(n===0)throw Error(`inv: matrix is singular`);let r=[[t[1][1]*t[2][2]-t[1][2]*t[2][1],-(t[1][0]*t[2][2]-t[1][2]*t[2][0]),t[1][0]*t[2][1]-t[1][1]*t[2][0]],[-(t[0][1]*t[2][2]-t[0][2]*t[2][1]),t[0][0]*t[2][2]-t[0][2]*t[2][0],-(t[0][0]*t[2][1]-t[0][1]*t[2][0])],[t[0][1]*t[1][2]-t[0][2]*t[1][1],-(t[0][0]*t[1][2]-t[0][2]*t[1][0]),t[0][0]*t[1][1]-t[0][1]*t[1][0]]],i=r.map((e,t)=>e.map((e,i)=>r[i][t]/n));return j([e],i)}function ie(e){let t=A(e),n=t.length,r=Array.from({length:n},(e,r)=>Array.from({length:n},(e,n)=>r===n?t[r]:0));return j([e],r)}function ae(e){let t=A(e);return Math.sqrt(t.reduce((e,t)=>e+t*t,0))}function oe(e,t){if(t!==`deg`)throw Error(`unit: unsupported unit '${t}'`);return{toNumber(t){if(t!==`rad`)throw Error(`unit: unsupported conversion to '${t}'`);return e*Math.PI/180}}}function se(e){return Array.from({length:e},(t,n)=>Array.from({length:e},(e,t)=>+(n===t)))}function ce(e){let t=A(e),n=Array.isArray(t[0])?t.map(e=>[...e]):[...t];return j([e],n)}function le(e){let t=e.map(e=>[...e]),n=se(3);for(let e=0;e<100;e++){let e=0;for(let n=0;n<3;n++)for(let r=n+1;r<3;r++)e+=t[n][r]*t[n][r];if(e<1e-28)break;for(let e=0;e<3;e++)for(let r=e+1;r<3;r++){if(Math.abs(t[e][r])<1e-300)continue;let i=(t[r][r]-t[e][e])/(2*t[e][r]),a=(i>=0?1:-1)/(Math.abs(i)+Math.sqrt(i*i+1)),o=1/Math.sqrt(a*a+1),s=a*o,c=t[e][e],l=t[r][r],u=t[e][r];t[e][e]=o*o*c-2*s*o*u+s*s*l,t[r][r]=s*s*c+2*s*o*u+o*o*l,t[e][r]=0,t[r][e]=0;for(let n=0;n<3;n++)if(n!==e&&n!==r){let i=t[n][e],a=t[n][r];t[n][e]=o*i-s*a,t[e][n]=t[n][e],t[n][r]=s*i+o*a,t[r][n]=t[n][r]}for(let t=0;t<3;t++){let i=n[t][e],a=n[t][r];n[t][e]=o*i-s*a,n[t][r]=s*i+o*a}}}let r=[0,1,2].sort((e,n)=>t[e][e]-t[n][n]);return{eigenvalues:r.map(e=>t[e][e]),eigenvectors:r.map(e=>[n[0][e],n[1][e],n[2][e]])}}function ue(e){let{eigenvalues:t,eigenvectors:n}=le(A(e));return{values:t,eigenvectors:t.map((e,t)=>({value:e,vector:new k(n[t])}))}}function R(e){let t=oe(e.alpha,`deg`).toNumber(`rad`),n=oe(e.beta,`deg`).toNumber(`rad`),r=oe(e.gamma,`deg`).toNumber(`rad`),i=Math.cos(t),a=Math.cos(n),o=Math.cos(r),s=Math.sin(r),c=Math.sqrt(1-i*i-a*a-o*o+2*i*a*o);return N([[e.a,e.b*o,e.c*a],[0,e.b*s,e.c*(i-a*o)/s],[0,0,e.c*c/s]])}function de(e){return N([[e[0],e[3],e[4]],[e[3],e[1],e[5]],[e[4],e[5],e[2]]])}function fe(e){let t=N(e);return[t.get([0,0]),t.get([1,1]),t.get([2,2]),t.get([0,1]),t.get([0,2]),t.get([1,2])]}function pe(e,t){let n=N(e),r=ie(N(I(I(L(n))).toArray().map(e=>ae(e))));return fe(P(P(n,P(P(r,de(t)),I(r))),I(n)))}var me=class e{#e;constructor(t,n,r){if(new.target===e)throw TypeError(`BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition`);this.#e=[Number(t),Number(n),Number(r)],Object.defineProperties(this,{0:{get:()=>this.#e[0]},1:{get:()=>this.#e[1]},2:{get:()=>this.#e[2]},length:{value:3},[Symbol.iterator]:{value:function*(){yield this.#e[0],yield this.#e[1],yield this.#e[2]}}})}get x(){return this.#e[0]}get y(){return this.#e[1]}get z(){return this.#e[2]}set x(e){this.#e[0]=e}set y(e){this.#e[1]=e}set z(e){this.#e[2]=e}toCartesian(e){throw Error(`toCartesian must be implemented by subclass`)}},he=class extends me{constructor(e,t,n){super(e,t,n)}toCartesian(e){return new ye(...P(e.fractToCartMatrix,N([this.x,this.y,this.z])).toArray())}};let ge=new WeakMap;function _e(e){let t=ge.get(e);return t||(t=e.fractToCartMatrix.toArray(),ge.set(e,t)),t}function ve(e,t,n,r=.001){let i=_e(n),a=e.x-t.x-Math.round(e.x-t.x),o=e.y-t.y-Math.round(e.y-t.y),s=e.z-t.z-Math.round(e.z-t.z),c=i[0][0]*a+i[0][1]*o+i[0][2]*s,l=i[1][0]*a+i[1][1]*o+i[1][2]*s,u=i[2][0]*a+i[2][1]*o+i[2][2]*s;return Math.hypot(c,l,u)<r}var ye=class extends me{constructor(e,t,n){super(e,t,n)}toCartesian(e){return this}},be=class{static fromCIF(e,t){let n=!1,r=e.get(`_atom_site`),i=[`.`,`?`];if(String(r.getIndex([`_atom_site.calc_flag`,`_atom_site_calc_flag`],t,``)).toLowerCase()===`dum`)throw Error(`Dummy atom: calc_flag is dum`);try{let e=r.getIndex([`_atom_site.fract_x`,`_atom_site_fract_x`],t),a=r.getIndex([`_atom_site.fract_y`,`_atom_site_fract_y`],t),o=r.getIndex([`_atom_site.fract_z`,`_atom_site_fract_z`],t);if(!i.includes(e)&&!i.includes(a)&&!i.includes(o))return new he(e,a,o);n=!0}catch{}try{let e=r.getIndex([`_atom_site.Cartn_x`,`_atom_site.cartn_x`,`_atom_site_Cartn_x`],t),a=r.getIndex([`_atom_site.Cartn_y`,`_atom_site.cartn_y`,`_atom_site_Cartn_y`],t),o=r.getIndex([`_atom_site.Cartn_z`,`_atom_site.cartn_z`,`_atom_site_Cartn_z`],t);if(!i.includes(e)&&!i.includes(a)&&!i.includes(o))return new ye(e,a,o);n=!0}catch{}throw Error(n?`Dummy atom: Invalid position`:`Invalid position: No valid fractional or Cartesian coordinates found`)}},z=class e{constructor(e){this.uiso=e}static fromBiso(t){return new e(t/(8*Math.PI*Math.PI))}},B=class e{constructor(e,t,n,r,i,a){this.u11=e,this.u22=t,this.u33=n,this.u12=r,this.u13=i,this.u23=a}static fromBani(t,n,r,i,a,o){let s=1/(8*Math.PI*Math.PI);return new e(t*s,n*s,r*s,i*s,a*s,o*s)}getUCart(e){return pe(e.fractToCartMatrix,[this.u11,this.u22,this.u33,this.u12,this.u13,this.u23])}getEllipsoidMatrix(e){let t=xe(this,e);return t.valid?N(P(t.rotation,ie(t.eigenvalues.map(Math.sqrt)))):N([[NaN,NaN,NaN],[NaN,NaN,NaN],[NaN,NaN,NaN]])}};function xe(e,t){let n={eigenvalues:[NaN,NaN,NaN],rotation:[[1,0,0],[0,1,0],[0,0,1]],valid:!1,tolerance:NaN};try{let{eigenvectors:r}=ue(de(e.getUCart(t))),i=r.map(e=>({value:Number(e.value),vector:(e.vector.toArray?.()||e.vector).map(Number)})).sort((e,t)=>t.value-e.value);if(i.length!==3||i.some(e=>!Number.isFinite(e.value)||e.vector.some(e=>!Number.isFinite(e))))return n;for(let e of i){let t=0;for(let n=1;n<3;n++)Math.abs(e.vector[n])>Math.abs(e.vector[t])&&(t=n);e.vector[t]<0&&(e.vector=e.vector.map(e=>-e))}let a=I(i.map(e=>e.vector));if(re(a)<0)for(let e=0;e<3;e++)a[e][2]*=-1;let o=i.map(e=>e.value),s=o[0],c=Math.max(1e-12,Math.abs(s)*1e-10);return{eigenvalues:o,rotation:a,valid:Number.isFinite(s)&&o.every(e=>Number.isFinite(e)&&e>c),tolerance:c}}catch{return n}}var Se=class e{static fromCIF(t,n){let r=t.get(`_atom_site`),i=r.getIndex([`_atom_site.label`,`_atom_site_label`],n),a=r.getIndex([`_atom_site.adp_type`,`_atom_site_adp_type`,`_atom_site.thermal_displace_type`,`_atom_site_thermal_displace_type`],n,!1);if(a)return e.createFromExplicitType(t,n,i,a);if(e.isInAnisoLoop(t,i)){let n=e.createUani(t,i);if(n!==null)return n;let r=e.createBani(t,i);if(r!==null)return r}let o=e.createUiso(t,n);if(o!==null)return o;let s=e.createBiso(t,n);return s===null?null:s}static createFromExplicitType(t,n,r,i){switch(i.toLowerCase()){case`uani`:return e.createUani(t,r);case`aniso`:return e.createUani(t,r);case`bani`:return e.createBani(t,r);case`uiso`:return e.createUiso(t,n);case`iso`:return e.createUiso(t,n);case`biso`:return e.createBiso(t,n);default:return null}}static isInAnisoLoop(e,t){try{return e.get(`_atom_site_aniso`).get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).includes(t)}catch{return!1}}static createUani(e,t){let n;try{n=e.get(`_atom_site_aniso`)}catch{throw Error(`Atom ${t} had ADP type UAni, but no atom_site_aniso loop was found`)}let r=n.get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).indexOf(t);if(r===-1)throw Error(`Atom ${t} has ADP type Uani, but was not found in atom_site_aniso.label`);let i=n.getIndex([`_atom_site_aniso.u_11`,`_atom_site_aniso_U_11`],r,NaN),a=n.getIndex([`_atom_site_aniso.u_22`,`_atom_site_aniso_U_22`],r,NaN),o=n.getIndex([`_atom_site_aniso.u_33`,`_atom_site_aniso_U_33`],r,NaN),s=n.getIndex([`_atom_site_aniso.u_12`,`_atom_site_aniso_U_12`],r,NaN),c=n.getIndex([`_atom_site_aniso.u_13`,`_atom_site_aniso_U_13`],r,NaN),l=n.getIndex([`_atom_site_aniso.u_23`,`_atom_site_aniso_U_23`],r,NaN);return[i,a,o,s,c,l].some(isNaN)?null:new B(i,a,o,s,c,l)}static createBani(e,t){let n;try{n=e.get(`_atom_site_aniso`)}catch{throw Error(`Atom ${t} had ADP type BAni, but no atom_site_aniso loop was found`)}let r=n.get([`_atom_site_aniso.label`,`_atom_site_aniso_label`]).indexOf(t);if(r===-1)throw Error(`Atom ${t} has ADP type Bani, but was not found in atom_site_aniso.label`);let i=n.getIndex([`_atom_site_aniso.b_11`,`_atom_site_aniso_B_11`],r,NaN),a=n.getIndex([`_atom_site_aniso.b_22`,`_atom_site_aniso_B_22`],r,NaN),o=n.getIndex([`_atom_site_aniso.b_33`,`_atom_site_aniso_B_33`],r,NaN),s=n.getIndex([`_atom_site_aniso.b_12`,`_atom_site_aniso_B_12`],r,NaN),c=n.getIndex([`_atom_site_aniso.b_13`,`_atom_site_aniso_B_13`],r,NaN),l=n.getIndex([`_atom_site_aniso.b_23`,`_atom_site_aniso_B_23`],r,NaN);return[i,a,o,s,c,l].some(isNaN)?null:B.fromBani(i,a,o,s,c,l)}static createUiso(e,t){try{let n=e.get(`_atom_site`).getIndex([`_atom_site.u_iso_or_equiv`,`_atom_site_U_iso_or_equiv`],t,NaN);return isNaN(n)?null:new z(n)}catch{return null}}static createBiso(e,t){try{let n=e.get(`_atom_site`).getIndex([`_atom_site.b_iso_or_equiv`,`_atom_site_B_iso_or_equiv`],t,NaN);return isNaN(n)?null:z.fromBiso(n)}catch{return null}}};function Ce(e){if(e==null)throw Error(`Invalid symmetry position code: ${e}`);let t=String(e).trim();if(t===``)throw Error(`Invalid empty symmetry position code`);let n=t.match(/^([^_]+)_\\[(-?\\d+),(-?\\d+),(-?\\d+)\\]$/);if(n)return{id:n[1],translation:n.slice(2).map(Number)};let r=t.match(/^([^_]+)_([0-9]{3})$/);if(r)return{id:r[1],translation:r[2].split(``).map(e=>Number(e)-5)};if(!t.includes(`_`))return{id:t,translation:[0,0,0]};throw Error(`Invalid symmetry position code ${t}; expected \"<id>_abc\" or \"<id>_[x,y,z]\"`)}function we(e,t){let n=String(e);if(!n||n.includes(`_`))throw Error(`Invalid symmetry operation ID: ${e}`);if(!Array.isArray(t)||t.length!==3||!t.every(Number.isInteger))throw Error(`Invalid symmetry translation: ${t}`);let r=t.map(e=>e+5);return r.every(e=>e>=0&&e<=9)?`${n}_${r.join(``)}`:`${n}_[${t.join(`,`)}]`}function Te(e){if(e.length===0)return null;let t=-1,n=!1,r=0,i=0;for(let a=0;a<e.length;a++){let o=e[a];if(o>=`0`&&o<=`9`){r++;continue}if(o===`.`&&!n){n=!0;continue}if(o===`/`&&t===-1&&r>0){t=a,i=r,r=0,n=!1;continue}return null}if(r===0)return null;if(t===-1)return Number(e);if(i===0)return null;let a=Number(e.slice(t+1));return Number(e.slice(0,t))/a}function Ee(e){let t=[];for(let n of e)n.trim()!==``&&t.push(n.toUpperCase());let n=t.join(``),r=[0,0,0],i=0,a=0;for(let e=1;e<=n.length;e++){let t=e===n.length,o=n[e];if(!t&&o!==`+`&&o!==`-`)continue;let s=n.slice(a,e);if(a=e,s.length===0)continue;let c=1;if((s[0]===`+`||s[0]===`-`)&&(c=s[0]===`-`?-1:1,s=s.slice(1)),s.length===0)continue;let l=`XYZ`.indexOf(s[s.length-1]);if(l!==-1){let e=s.slice(0,-1);e.endsWith(`*`)&&(e=e.slice(0,-1));let t=e===``?1:Te(e);t!==null&&(r[l]=c*t);continue}let u=Te(s);u!==null&&(i+=c*u)}return{coefficients:r,translation:i}}let De=[[1,0,1],[-1,1,1],[0,-1,1]],Oe=[[2/3,-1/3,-1/3],[1/3,1/3,-2/3],[1/3,1/3,1/3]];function ke(e,t){return e.map(e=>[0,1,2].map(n=>e[0]*t[0][n]+e[1]*t[1][n]+e[2]*t[2][n]))}function Ae(e,t){return e.map(e=>e[0]*t[0]+e[1]*t[1]+e[2]*t[2])}function je(e){return(Math.round(e*12)/12%1+1)%1}function Me(e,t){let n=[`x`,`y`,`z`],r=``;if(e.forEach((e,t)=>{let i=Math.round(e);i!==0&&(i>0&&r!==``&&(r+=`+`),i===-1?r+=`-`:i!==1&&(r+=String(i)),r+=n[t])}),t!==0){let e=Math.round(t*12),n=Ne(e,12);r+=`+${e/n}/${12/n}`}return r===``?`0`:r}function Ne(e,t){return t===0?e:Ne(t,e%t)}function Pe(e,t=.001,n=.01){if(!e)return!1;let{a:r,b:i,c:a,alpha:o,beta:s,gamma:c}=e;if(![r,i,a,o,s,c].every(Number.isFinite))return!1;let l=Math.abs(r-i)<t&&Math.abs(i-a)<t,u=Math.abs(o-s)<n&&Math.abs(s-c)<n;return l&&u&&Math.abs(o-90)>n}function Fe(e){let t=new Set,n=[];for(let r of e){let{rotation:e,translation:i}=Ie(r),a=ke(ke(De,e),Oe),o=Ae(De,i).map(je),s=a.map(e=>e.map(e=>Math.round(e)).join(`,`)).join(`;`)+`|`+o.map(e=>Math.round(e*12)).join(`,`);t.has(s)||(t.add(s),n.push([0,1,2].map(e=>Me(a[e],o[e])).join(`,`)))}return n}function Ie(e){let t=[],n=[],r=e.split(`,`);if(r.length!==3)throw Error(`Invalid symmetry operation: ${e}`);for(let e of r){let r=Ee(e);t.push(r.coefficients),n.push(r.translation)}return{rotation:t,translation:n}}let Le=Object.freeze([{number:1,symbol_cif:`P 1`,symbol_hm_short:`P1`,hall_symbol:`P 1`,operations:[`x,y,z`]},{number:2,symbol_cif:`P -1`,symbol_hm_short:`P-1`,hall_symbol:`-P 1`,operations:[`x,y,z`,`-x,-y,-z`]},{number:3,symbol_cif:`P 2`,symbol_hm_short:`P2`,hall_symbol:`P 2y`,operations:[`x,y,z`,`-x,y,-z`]},{number:4,symbol_cif:`P 21`,symbol_hm_short:`P21`,hall_symbol:`P 2yb`,operations:[`x,y,z`,`-x,y+1/2,-z`]},{number:5,symbol_cif:`C 2`,symbol_hm_short:`C2`,hall_symbol:`C 2y`,operations:[`x,y,z`,`-x,y,-z`,`x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`]},{number:6,symbol_cif:`P m`,symbol_hm_short:`Pm`,hall_symbol:`P -2y`,operations:[`x,y,z`,`x,-y,z`]},{number:7,symbol_cif:`P c`,symbol_hm_short:`Pc`,hall_symbol:`P -2yc`,operations:[`x,y,z`,`x,-y,z+1/2`]},{number:8,symbol_cif:`C m`,symbol_hm_short:`Cm`,hall_symbol:`C -2y`,operations:[`x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:9,symbol_cif:`C c`,symbol_hm_short:`Cc`,hall_symbol:`C -2yc`,operations:[`x,y,z`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z+1/2`]},{number:10,symbol_cif:`P 2/m`,symbol_hm_short:`P2/m`,hall_symbol:`-P 2y`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z`,`x,-y,z`]},{number:11,symbol_cif:`P 21/m`,symbol_hm_short:`P21/m`,hall_symbol:`-P 2yb`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:12,symbol_cif:`C 2/m`,symbol_hm_short:`C2/m`,hall_symbol:`-C 2y`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:13,symbol_cif:`P 2/c`,symbol_hm_short:`P2/c`,hall_symbol:`-P 2yc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:14,symbol_cif:`P 21/c`,symbol_hm_short:`P21/c`,hall_symbol:`-P 2ybc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:15,symbol_cif:`C 2/c`,symbol_hm_short:`C2/c`,hall_symbol:`-C 2yc`,operations:[`x,y,z`,`-x,-y,-z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:16,symbol_cif:`P 2 2 2`,symbol_hm_short:`P222`,hall_symbol:`P 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`]},{number:17,symbol_cif:`P 2 2 21`,symbol_hm_short:`P2221`,hall_symbol:`P 2c 2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`x,-y,-z`,`-x,y,-z+1/2`]},{number:18,symbol_cif:`P 21 21 2`,symbol_hm_short:`P21212`,hall_symbol:`P 2 2ab`,operations:[`x,y,z`,`-x,-y,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:19,symbol_cif:`P 21 21 21`,symbol_hm_short:`P212121`,hall_symbol:`P 2ac 2ab`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x,y+1/2,-z+1/2`]},{number:20,symbol_cif:`C 2 2 21`,symbol_hm_short:`C2221`,hall_symbol:`C 2c 2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`x,-y,-z`,`-x,y,-z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z+1/2`]},{number:21,symbol_cif:`C 2 2 2`,symbol_hm_short:`C222`,hall_symbol:`C 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:22,symbol_cif:`F 2 2 2`,symbol_hm_short:`F222`,hall_symbol:`F 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,-z+1/2`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,-z`]},{number:23,symbol_cif:`I 2 2 2`,symbol_hm_short:`I222`,hall_symbol:`I 2 2`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`]},{number:24,symbol_cif:`I 21 21 21`,symbol_hm_short:`I212121`,hall_symbol:`I 2b 2c`,operations:[`x,y,z`,`-x,-y+1/2,z`,`x,-y,-z+1/2`,`-x,y+1/2,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y,-z`]},{number:25,symbol_cif:`P m m 2`,symbol_hm_short:`Pmm2`,hall_symbol:`P 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`]},{number:26,symbol_cif:`P m c 21`,symbol_hm_short:`Pmc21`,hall_symbol:`P 2c -2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x,y,z`,`x,-y,z+1/2`]},{number:27,symbol_cif:`P c c 2`,symbol_hm_short:`Pcc2`,hall_symbol:`P 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`]},{number:28,symbol_cif:`P m a 2`,symbol_hm_short:`Pma2`,hall_symbol:`P 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`]},{number:29,symbol_cif:`P c a 21`,symbol_hm_short:`Pca21`,hall_symbol:`P 2c -2ac`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z`]},{number:30,symbol_cif:`P n c 2`,symbol_hm_short:`Pnc2`,hall_symbol:`P 2 -2bc`,operations:[`x,y,z`,`-x,-y,z`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:31,symbol_cif:`P m n 21`,symbol_hm_short:`Pmn21`,hall_symbol:`P 2ac -2`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`-x,y,z`,`x+1/2,-y,z+1/2`]},{number:32,symbol_cif:`P b a 2`,symbol_hm_short:`Pba2`,hall_symbol:`P 2 -2ab`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:33,symbol_cif:`P n a 21`,symbol_hm_short:`Pna21`,hall_symbol:`P 2c -2n`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z`]},{number:34,symbol_cif:`P n n 2`,symbol_hm_short:`Pnn2`,hall_symbol:`P 2 -2n`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:35,symbol_cif:`C m m 2`,symbol_hm_short:`Cmm2`,hall_symbol:`C 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:36,symbol_cif:`C m c 21`,symbol_hm_short:`Cmc21`,hall_symbol:`C 2c -2`,operations:[`x,y,z`,`-x,-y,z+1/2`,`-x,y,z`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z+1/2`]},{number:37,symbol_cif:`C c c 2`,symbol_hm_short:`Ccc2`,hall_symbol:`C 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:38,symbol_cif:`A m m 2`,symbol_hm_short:`Amm2`,hall_symbol:`A 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:39,symbol_cif:`A e m 2`,symbol_hm_short:`Aem2`,hall_symbol:`A 2 -2b`,operations:[`x,y,z`,`-x,-y,z`,`-x,y+1/2,z`,`x,-y+1/2,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y,z+1/2`,`x,-y,z+1/2`]},{number:40,symbol_cif:`A m a 2`,symbol_hm_short:`Ama2`,hall_symbol:`A 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:41,symbol_cif:`A e a 2`,symbol_hm_short:`Aea2`,hall_symbol:`A 2 -2ab`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z+1/2`]},{number:42,symbol_cif:`F m m 2`,symbol_hm_short:`Fmm2`,hall_symbol:`F 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`-x+1/2,y,z+1/2`,`x+1/2,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:43,symbol_cif:`F d d 2`,symbol_hm_short:`Fdd2`,hall_symbol:`F 2 -2d`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/4,y+3/4,z+3/4`,`x+1/4,-y+3/4,z+3/4`,`x,y+1/2,z+1/2`,`-x,-y+1/2,z+1/2`,`-x+1/4,y+1/4,z+1/4`,`x+1/4,-y+1/4,z+1/4`,`x+1/2,y,z+1/2`,`-x+1/2,-y,z+1/2`,`-x+3/4,y+3/4,z+1/4`,`x+3/4,-y+3/4,z+1/4`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,z`,`-x+3/4,y+1/4,z+3/4`,`x+3/4,-y+1/4,z+3/4`]},{number:44,symbol_cif:`I m m 2`,symbol_hm_short:`Imm2`,hall_symbol:`I 2 -2`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z`,`x,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:45,symbol_cif:`I b a 2`,symbol_hm_short:`Iba2`,hall_symbol:`I 2 -2c`,operations:[`x,y,z`,`-x,-y,z`,`-x,y,z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`x+1/2,-y+1/2,z`]},{number:46,symbol_cif:`I m a 2`,symbol_hm_short:`Ima2`,hall_symbol:`I 2 -2a`,operations:[`x,y,z`,`-x,-y,z`,`-x+1/2,y,z`,`x+1/2,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-x,y+1/2,z+1/2`,`x,-y+1/2,z+1/2`]},{number:47,symbol_cif:`P m m m`,symbol_hm_short:`Pmmm`,hall_symbol:`-P 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`]},{number:48,symbol_cif:`P n n n`,symbol_hm_short:`Pnnn`,hall_symbol:`-P 2ab 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:49,symbol_cif:`P c c m`,symbol_hm_short:`Pccm`,hall_symbol:`-P 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:50,symbol_cif:`P b a n`,symbol_hm_short:`Pban`,hall_symbol:`-P 2ab 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`]},{number:51,symbol_cif:`P m m a`,symbol_hm_short:`Pmma`,hall_symbol:`-P 2a 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-x,y,-z`,`x,-y,z`]},{number:52,symbol_cif:`P n n a`,symbol_hm_short:`Pnna`,hall_symbol:`-P 2a 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:53,symbol_cif:`P m n a`,symbol_hm_short:`Pmna`,hall_symbol:`-P 2ac 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:54,symbol_cif:`P c c a`,symbol_hm_short:`Pcca`,hall_symbol:`-P 2a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:55,symbol_cif:`P b a m`,symbol_hm_short:`Pbam`,hall_symbol:`-P 2 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:56,symbol_cif:`P c c n`,symbol_hm_short:`Pccn`,hall_symbol:`-P 2ab 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:57,symbol_cif:`P b c m`,symbol_hm_short:`Pbcm`,hall_symbol:`-P 2c 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:58,symbol_cif:`P n n m`,symbol_hm_short:`Pnnm`,hall_symbol:`-P 2 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:59,symbol_cif:`P m m n`,symbol_hm_short:`Pmmn`,hall_symbol:`-P 2ab 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:60,symbol_cif:`P b c n`,symbol_hm_short:`Pbcn`,hall_symbol:`-P 2n 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`]},{number:61,symbol_cif:`P b c a`,symbol_hm_short:`Pbca`,hall_symbol:`-P 2ac 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:62,symbol_cif:`P n m a`,symbol_hm_short:`Pnma`,hall_symbol:`-P 2ac 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:63,symbol_cif:`C m c m`,symbol_hm_short:`Cmcm`,hall_symbol:`-C 2c 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:64,symbol_cif:`C m c e`,symbol_hm_short:`Cmce`,hall_symbol:`-C 2ac 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z+1/2`,`x,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`]},{number:65,symbol_cif:`C m m m`,symbol_hm_short:`Cmmm`,hall_symbol:`-C 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:66,symbol_cif:`C c c m`,symbol_hm_short:`Cccm`,hall_symbol:`-C 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:67,symbol_cif:`C m m e`,symbol_hm_short:`Cmme`,hall_symbol:`-C 2a 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x,-y,-z`,`-x,y,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`]},{number:68,symbol_cif:`C c c e`,symbol_hm_short:`Ccce`,hall_symbol:`-C 2a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z`,`x+1/2,y,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z`,`-x+1/2,-y+1/2,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:69,symbol_cif:`F m m m`,symbol_hm_short:`Fmmm`,hall_symbol:`-F 2 2`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z`.split(`.`)},{number:70,symbol_cif:`F d d d`,symbol_hm_short:`Fddd`,hall_symbol:`-F 2uv 2vw`,operations:`x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4`.split(`.`)},{number:71,symbol_cif:`I m m m`,symbol_hm_short:`Immm`,hall_symbol:`-I 2 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`]},{number:72,symbol_cif:`I b a m`,symbol_hm_short:`Ibam`,hall_symbol:`-I 2 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`]},{number:73,symbol_cif:`I b c a`,symbol_hm_short:`Ibca`,hall_symbol:`-I 2b 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`]},{number:74,symbol_cif:`I m m a`,symbol_hm_short:`Imma`,hall_symbol:`-I 2b 2`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`x,-y,-z`,`-x,y,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`]},{number:75,symbol_cif:`P 4`,symbol_hm_short:`P4`,hall_symbol:`P 4`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`]},{number:76,symbol_cif:`P 41`,symbol_hm_short:`P41`,hall_symbol:`P 4w`,operations:[`x,y,z`,`-y,x,z+1/4`,`-x,-y,z+1/2`,`y,-x,z+3/4`]},{number:77,symbol_cif:`P 42`,symbol_hm_short:`P42`,hall_symbol:`P 4c`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`]},{number:78,symbol_cif:`P 43`,symbol_hm_short:`P43`,hall_symbol:`P 4cw`,operations:[`x,y,z`,`-y,x,z+3/4`,`-x,-y,z+1/2`,`y,-x,z+1/4`]},{number:79,symbol_cif:`I 4`,symbol_hm_short:`I4`,hall_symbol:`I 4`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`]},{number:80,symbol_cif:`I 41`,symbol_hm_short:`I41`,hall_symbol:`I 4bw`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`]},{number:81,symbol_cif:`P -4`,symbol_hm_short:`P-4`,hall_symbol:`P -4`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`]},{number:82,symbol_cif:`I -4`,symbol_hm_short:`I-4`,hall_symbol:`I -4`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`]},{number:83,symbol_cif:`P 4/m`,symbol_hm_short:`P4/m`,hall_symbol:`-P 4`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`]},{number:84,symbol_cif:`P 42/m`,symbol_hm_short:`P42/m`,hall_symbol:`-P 4c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`]},{number:85,symbol_cif:`P 4/n`,symbol_hm_short:`P4/n`,hall_symbol:`-P 4a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`]},{number:86,symbol_cif:`P 42/n`,symbol_hm_short:`P42/n`,hall_symbol:`-P 4bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x+1/2,z+1/2`,`y,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y+1/2,-x,z+1/2`,`-y+1/2,x,-z+1/2`]},{number:87,symbol_cif:`I 4/m`,symbol_hm_short:`I4/m`,hall_symbol:`-I 4`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-y+1/2,x+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,y+1/2,-z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`]},{number:88,symbol_cif:`I 41/a`,symbol_hm_short:`I41/a`,hall_symbol:`-I 4ad`,operations:[`x,y,z`,`-x,-y,-z`,`-y+3/4,x+1/4,z+1/4`,`y+3/4,-x+1/4,-z+1/4`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`y+3/4,-x+3/4,z+3/4`,`-y+3/4,x+3/4,-z+3/4`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,-z+1/2`,`-y+1/4,x+3/4,z+3/4`,`y+1/4,-x+3/4,-z+3/4`,`-x,-y+1/2,z`,`x,y+1/2,-z`,`y+1/4,-x+1/4,z+1/4`,`-y+1/4,x+1/4,-z+1/4`]},{number:89,symbol_cif:`P 4 2 2`,symbol_hm_short:`P422`,hall_symbol:`P 4 2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`]},{number:90,symbol_cif:`P 4 21 2`,symbol_hm_short:`P4212`,hall_symbol:`P 4ab 2ab`,operations:[`x,y,z`,`-y+1/2,x+1/2,z`,`-x,-y,z`,`y+1/2,-x+1/2,z`,`x+1/2,-y+1/2,-z`,`-y,-x,-z`,`-x+1/2,y+1/2,-z`,`y,x,-z`]},{number:91,symbol_cif:`P 41 2 2`,symbol_hm_short:`P4122`,hall_symbol:`P 4w 2c`,operations:[`x,y,z`,`-y,x,z+1/4`,`-x,-y,z+1/2`,`y,-x,z+3/4`,`x,-y,-z+1/2`,`-y,-x,-z+1/4`,`-x,y,-z`,`y,x,-z+3/4`]},{number:92,symbol_cif:`P 41 21 2`,symbol_hm_short:`P41212`,hall_symbol:`P 4abw 2nw`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/4`,`-x,-y,z+1/2`,`y+1/2,-x+1/2,z+3/4`,`x+1/2,-y+1/2,-z+3/4`,`-y,-x,-z+1/2`,`-x+1/2,y+1/2,-z+1/4`,`y,x,-z`]},{number:93,symbol_cif:`P 42 2 2`,symbol_hm_short:`P4222`,hall_symbol:`P 4c 2`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`x,-y,-z`,`-y,-x,-z+1/2`,`-x,y,-z`,`y,x,-z+1/2`]},{number:94,symbol_cif:`P 42 21 2`,symbol_hm_short:`P42212`,hall_symbol:`P 4n 2n`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-y,-x,-z`,`-x+1/2,y+1/2,-z+1/2`,`y,x,-z`]},{number:95,symbol_cif:`P 43 2 2`,symbol_hm_short:`P4322`,hall_symbol:`P 4cw 2c`,operations:[`x,y,z`,`-y,x,z+3/4`,`-x,-y,z+1/2`,`y,-x,z+1/4`,`x,-y,-z+1/2`,`-y,-x,-z+3/4`,`-x,y,-z`,`y,x,-z+1/4`]},{number:96,symbol_cif:`P 43 21 2`,symbol_hm_short:`P43212`,hall_symbol:`P 4nw 2abw`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+3/4`,`-x,-y,z+1/2`,`y+1/2,-x+1/2,z+1/4`,`x+1/2,-y+1/2,-z+1/4`,`-y,-x,-z+1/2`,`-x+1/2,y+1/2,-z+3/4`,`y,x,-z`]},{number:97,symbol_cif:`I 4 2 2`,symbol_hm_short:`I422`,hall_symbol:`I 4 2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:98,symbol_cif:`I 41 2 2`,symbol_hm_short:`I4122`,hall_symbol:`I 4bw 2bw`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`x,-y+1/2,-z+1/4`,`-y,-x,-z`,`-x+1/2,y,-z+3/4`,`y+1/2,x+1/2,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`x+1/2,-y,-z+3/4`,`-y+1/2,-x+1/2,-z+1/2`,`-x,y+1/2,-z+1/4`,`y,x,-z`]},{number:99,symbol_cif:`P 4 m m`,symbol_hm_short:`P4mm`,hall_symbol:`P 4 -2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z`,`y,x,z`,`x,-y,z`,`-y,-x,z`]},{number:100,symbol_cif:`P 4 b m`,symbol_hm_short:`P4bm`,hall_symbol:`P 4 -2ab`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z`]},{number:101,symbol_cif:`P 42 c m`,symbol_hm_short:`P42cm`,hall_symbol:`P 4c -2c`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x,y,z+1/2`,`y,x,z`,`x,-y,z+1/2`,`-y,-x,z`]},{number:102,symbol_cif:`P 42 n m`,symbol_hm_short:`P42nm`,hall_symbol:`P 4n -2n`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`y,x,z`,`x+1/2,-y+1/2,z+1/2`,`-y,-x,z`]},{number:103,symbol_cif:`P 4 c c`,symbol_hm_short:`P4cc`,hall_symbol:`P 4 -2c`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z+1/2`,`y,x,z+1/2`,`x,-y,z+1/2`,`-y,-x,z+1/2`]},{number:104,symbol_cif:`P 4 n c`,symbol_hm_short:`P4nc`,hall_symbol:`P 4 -2n`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:105,symbol_cif:`P 42 m c`,symbol_hm_short:`P42mc`,hall_symbol:`P 4c -2`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x,y,z`,`y,x,z+1/2`,`x,-y,z`,`-y,-x,z+1/2`]},{number:106,symbol_cif:`P 42 b c`,symbol_hm_short:`P42bc`,hall_symbol:`P 4c -2ab`,operations:[`x,y,z`,`-y,x,z+1/2`,`-x,-y,z`,`y,-x,z+1/2`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z+1/2`]},{number:107,symbol_cif:`I 4 m m`,symbol_hm_short:`I4mm`,hall_symbol:`I 4 -2`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z`,`y,x,z`,`x,-y,z`,`-y,-x,z`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x+1/2,z+1/2`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:108,symbol_cif:`I 4 c m`,symbol_hm_short:`I4cm`,hall_symbol:`I 4 -2c`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`-x,y,z+1/2`,`y,x,z+1/2`,`x,-y,z+1/2`,`-y,-x,z+1/2`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x+1/2,z+1/2`,`-x+1/2,y+1/2,z`,`y+1/2,x+1/2,z`,`x+1/2,-y+1/2,z`,`-y+1/2,-x+1/2,z`]},{number:109,symbol_cif:`I 41 m d`,symbol_hm_short:`I41md`,hall_symbol:`I 4bw -2`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`-x,y,z`,`y,x+1/2,z+1/4`,`x+1/2,-y+1/2,z+1/2`,`-y+1/2,-x,z+3/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`-x+1/2,y+1/2,z+1/2`,`y+1/2,x,z+3/4`,`x,-y,z`,`-y,-x+1/2,z+1/4`]},{number:110,symbol_cif:`I 41 c d`,symbol_hm_short:`I41cd`,hall_symbol:`I 4bw -2c`,operations:[`x,y,z`,`-y,x+1/2,z+1/4`,`-x+1/2,-y+1/2,z+1/2`,`y+1/2,-x,z+3/4`,`-x,y,z+1/2`,`y,x+1/2,z+3/4`,`x+1/2,-y+1/2,z`,`-y+1/2,-x,z+1/4`,`x+1/2,y+1/2,z+1/2`,`-y+1/2,x,z+3/4`,`-x,-y,z`,`y,-x+1/2,z+1/4`,`-x+1/2,y+1/2,z`,`y+1/2,x,z+1/4`,`x,-y,z+1/2`,`-y,-x+1/2,z+3/4`]},{number:111,symbol_cif:`P -4 2 m`,symbol_hm_short:`P-42m`,hall_symbol:`P -4 2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`]},{number:112,symbol_cif:`P -4 2 c`,symbol_hm_short:`P-42c`,hall_symbol:`P -4 2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z+1/2`,`y,x,z+1/2`,`-x,y,-z+1/2`,`-y,-x,z+1/2`]},{number:113,symbol_cif:`P -4 21 m`,symbol_hm_short:`P-421m`,hall_symbol:`P -4 2ab`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:114,symbol_cif:`P -4 21 c`,symbol_hm_short:`P-421c`,hall_symbol:`P -4 2n`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:115,symbol_cif:`P -4 m 2`,symbol_hm_short:`P-4m2`,hall_symbol:`P -4 -2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z`,`-y,-x,-z`,`x,-y,z`,`y,x,-z`]},{number:116,symbol_cif:`P -4 c 2`,symbol_hm_short:`P-4c2`,hall_symbol:`P -4 -2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`]},{number:117,symbol_cif:`P -4 b 2`,symbol_hm_short:`P-4b2`,hall_symbol:`P -4 -2ab`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`]},{number:118,symbol_cif:`P -4 n 2`,symbol_hm_short:`P-4n2`,hall_symbol:`P -4 -2n`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:119,symbol_cif:`I -4 m 2`,symbol_hm_short:`I-4m2`,hall_symbol:`I -4 -2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z`,`-y,-x,-z`,`x,-y,z`,`y,x,-z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`]},{number:120,symbol_cif:`I -4 c 2`,symbol_hm_short:`I-4c2`,hall_symbol:`I -4 -2c`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`]},{number:121,symbol_cif:`I -4 2 m`,symbol_hm_short:`I-42m`,hall_symbol:`I -4 2`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:122,symbol_cif:`I -4 2 d`,symbol_hm_short:`I-42d`,hall_symbol:`I -4 2bw`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y+1/2,-z+1/4`,`y,x+1/2,z+1/4`,`-x,y+1/2,-z+1/4`,`-y,-x+1/2,z+1/4`,`x+1/2,y+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y,-z+3/4`,`y+1/2,x,z+3/4`,`-x+1/2,y,-z+3/4`,`-y+1/2,-x,z+3/4`]},{number:123,symbol_cif:`P 4/m m m`,symbol_hm_short:`P4/mmm`,hall_symbol:`-P 4 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x,-y,-z`,`-x,y,z`,`-y,-x,-z`,`y,x,z`,`-x,y,-z`,`x,-y,z`,`y,x,-z`,`-y,-x,z`]},{number:124,symbol_cif:`P 4/m c c`,symbol_hm_short:`P4/mcc`,hall_symbol:`-P 4 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:125,symbol_cif:`P 4/n b m`,symbol_hm_short:`P4/nbm`,hall_symbol:`-P 4a 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`y,x,-z`,`-y,-x,z`]},{number:126,symbol_cif:`P 4/n n c`,symbol_hm_short:`P4/nnc`,hall_symbol:`-P 4a 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:127,symbol_cif:`P 4/m b m`,symbol_hm_short:`P4/mbm`,hall_symbol:`-P 4 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:128,symbol_cif:`P 4/m n c`,symbol_hm_short:`P4/mnc`,hall_symbol:`-P 4 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z`,`y,-x,-z`,`-x,-y,z`,`x,y,-z`,`y,-x,z`,`-y,x,-z`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:129,symbol_cif:`P 4/n m m`,symbol_hm_short:`P4/nmm`,hall_symbol:`-P 4a 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-y,-x,-z`,`y,x,z`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:130,symbol_cif:`P 4/n c c`,symbol_hm_short:`P4/ncc`,hall_symbol:`-P 4a 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z`,`y+1/2,-x,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z`,`-y,x+1/2,-z`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:131,symbol_cif:`P 42/m m c`,symbol_hm_short:`P42/mmc`,hall_symbol:`-P 4c 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x,-y,-z`,`-x,y,z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y,-z`,`x,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:132,symbol_cif:`P 42/m c m`,symbol_hm_short:`P42/mcm`,hall_symbol:`-P 4c 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x,-y,-z+1/2`,`-x,y,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,y,-z+1/2`,`x,-y,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:133,symbol_cif:`P 42/n b c`,symbol_hm_short:`P42/nbc`,hall_symbol:`-P 4ac 2b`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x,-y+1/2,-z`,`-x,y+1/2,z`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y,-z`,`x+1/2,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`]},{number:134,symbol_cif:`P 42/n n m`,symbol_hm_short:`P42/nnm`,hall_symbol:`-P 4ac 2bc`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-y+1/2,-x+1/2,-z`,`y+1/2,x+1/2,z`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:135,symbol_cif:`P 42/m b c`,symbol_hm_short:`P42/mbc`,hall_symbol:`-P 4c 2ab`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x,z+1/2`,`y,-x,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y,-x,z+1/2`,`-y,x,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-y+1/2,-x+1/2,-z+1/2`,`y+1/2,x+1/2,z+1/2`,`-x+1/2,y+1/2,-z`,`x+1/2,-y+1/2,z`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:136,symbol_cif:`P 42/m n m`,symbol_hm_short:`P42/mnm`,hall_symbol:`-P 4n 2n`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x+1/2,z+1/2`,`y+1/2,-x+1/2,-z+1/2`,`-x,-y,z`,`x,y,-z`,`y+1/2,-x+1/2,z+1/2`,`-y+1/2,x+1/2,-z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x+1/2,y+1/2,-z+1/2`,`x+1/2,-y+1/2,z+1/2`,`y,x,-z`,`-y,-x,z`]},{number:137,symbol_cif:`P 42/n m c`,symbol_hm_short:`P42/nmc`,hall_symbol:`-P 4ac 2a`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x+1/2,-y,-z`,`-x+1/2,y,z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,y+1/2,-z`,`x,-y+1/2,z`,`y+1/2,x+1/2,-z+1/2`,`-y+1/2,-x+1/2,z+1/2`]},{number:138,symbol_cif:`P 42/n c m`,symbol_hm_short:`P42/ncm`,hall_symbol:`-P 4ac 2ac`,operations:[`x,y,z`,`-x,-y,-z`,`-y+1/2,x,z+1/2`,`y+1/2,-x,-z+1/2`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`y,-x+1/2,z+1/2`,`-y,x+1/2,-z+1/2`,`x+1/2,-y,-z+1/2`,`-x+1/2,y,z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`y+1/2,x+1/2,-z`,`-y+1/2,-x+1/2,z`]},{number:139,symbol_cif:`I 4/m m m`,symbol_hm_short:`I4/mmm`,hall_symbol:`-I 4 2`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2`.split(`.`)},{number:140,symbol_cif:`I 4/m c m`,symbol_hm_short:`I4/mcm`,hall_symbol:`-I 4 2c`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z+1/2.-x,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y,-z+1/2.x,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z`.split(`.`)},{number:141,symbol_cif:`I 41/a m d`,symbol_hm_short:`I41/amd`,hall_symbol:`-I 4bd 2`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z.-x,y,z.-y+1/4,-x+1/4,-z+3/4.y+1/4,x+1/4,z+3/4.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/4,x+3/4,-z+1/4.-y+1/4,-x+3/4,z+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+3/4,-x+3/4,-z+1/4.y+3/4,x+3/4,z+1/4.-x,y+1/2,-z.x,-y+1/2,z.y+3/4,x+1/4,-z+3/4.-y+3/4,-x+1/4,z+3/4`.split(`.`)},{number:142,symbol_cif:`I 41/a c d`,symbol_hm_short:`I41/acd`,hall_symbol:`-I 4bd 2c`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4`.split(`.`)},{number:143,symbol_cif:`P 3`,symbol_hm_short:`P3`,hall_symbol:`P 3`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`]},{number:144,symbol_cif:`P 31`,symbol_hm_short:`P31`,hall_symbol:`P 31`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`]},{number:145,symbol_cif:`P 32`,symbol_hm_short:`P32`,hall_symbol:`P 32`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`]},{number:146,symbol_cif:`R 3`,symbol_hm_short:`R3`,hall_symbol:`R 3`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`]},{number:147,symbol_cif:`P -3`,symbol_hm_short:`P-3`,hall_symbol:`-P 3`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`]},{number:148,symbol_cif:`R -3`,symbol_hm_short:`R-3`,hall_symbol:`-R 3`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`x+2/3,y+1/3,z+1/3`,`-x+2/3,-y+1/3,-z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`y+2/3,-x+y+1/3,-z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`x-y+2/3,x+1/3,-z+1/3`,`x+1/3,y+2/3,z+2/3`,`-x+1/3,-y+2/3,-z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`y+1/3,-x+y+2/3,-z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`x-y+1/3,x+2/3,-z+2/3`]},{number:149,symbol_cif:`P 3 1 2`,symbol_hm_short:`P312`,hall_symbol:`P 3 2`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,-z`,`-x+y,y,-z`,`x,x-y,-z`]},{number:150,symbol_cif:`P 3 2 1`,symbol_hm_short:`P321`,hall_symbol:`P 3 2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,-z`,`x-y,-y,-z`,`-x,-x+y,-z`]},{number:151,symbol_cif:`P 31 1 2`,symbol_hm_short:`P3112`,hall_symbol:`P 31 2 (0 0 4)`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`,`-y,-x,-z+2/3`,`-x+y,y,-z+1/3`,`x,x-y,-z`]},{number:152,symbol_cif:`P 31 2 1`,symbol_hm_short:`P3121`,hall_symbol:`P 31 2\"`,operations:[`x,y,z`,`-y,x-y,z+1/3`,`-x+y,-x,z+2/3`,`y,x,-z`,`x-y,-y,-z+2/3`,`-x,-x+y,-z+1/3`]},{number:153,symbol_cif:`P 32 1 2`,symbol_hm_short:`P3212`,hall_symbol:`P 32 2 (0 0 2)`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`,`-y,-x,-z+1/3`,`-x+y,y,-z+2/3`,`x,x-y,-z`]},{number:154,symbol_cif:`P 32 2 1`,symbol_hm_short:`P3221`,hall_symbol:`P 32 2\"`,operations:[`x,y,z`,`-y,x-y,z+2/3`,`-x+y,-x,z+1/3`,`y,x,-z`,`x-y,-y,-z+1/3`,`-x,-x+y,-z+2/3`]},{number:155,symbol_cif:`R 3 2`,symbol_hm_short:`R32`,hall_symbol:`R 3 2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,-z`,`x-y,-y,-z`,`-x,-x+y,-z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`y+2/3,x+1/3,-z+1/3`,`x-y+2/3,-y+1/3,-z+1/3`,`-x+2/3,-x+y+1/3,-z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`y+1/3,x+2/3,-z+2/3`,`x-y+1/3,-y+2/3,-z+2/3`,`-x+1/3,-x+y+2/3,-z+2/3`]},{number:156,symbol_cif:`P 3 m 1`,symbol_hm_short:`P3m1`,hall_symbol:`P 3 -2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z`,`-x+y,y,z`,`x,x-y,z`]},{number:157,symbol_cif:`P 3 1 m`,symbol_hm_short:`P31m`,hall_symbol:`P 3 -2`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,z`,`x-y,-y,z`,`-x,-x+y,z`]},{number:158,symbol_cif:`P 3 c 1`,symbol_hm_short:`P3c1`,hall_symbol:`P 3 -2\"c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z+1/2`,`-x+y,y,z+1/2`,`x,x-y,z+1/2`]},{number:159,symbol_cif:`P 3 1 c`,symbol_hm_short:`P31c`,hall_symbol:`P 3 -2c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`y,x,z+1/2`,`x-y,-y,z+1/2`,`-x,-x+y,z+1/2`]},{number:160,symbol_cif:`R 3 m`,symbol_hm_short:`R3m`,hall_symbol:`R 3 -2\"`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z`,`-x+y,y,z`,`x,x-y,z`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`-y+2/3,-x+1/3,z+1/3`,`-x+y+2/3,y+1/3,z+1/3`,`x+2/3,x-y+1/3,z+1/3`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`-y+1/3,-x+2/3,z+2/3`,`-x+y+1/3,y+2/3,z+2/3`,`x+1/3,x-y+2/3,z+2/3`]},{number:161,symbol_cif:`R 3 c`,symbol_hm_short:`R3c`,hall_symbol:`R 3 -2\"c`,operations:[`x,y,z`,`-y,x-y,z`,`-x+y,-x,z`,`-y,-x,z+1/2`,`-x+y,y,z+1/2`,`x,x-y,z+1/2`,`x+2/3,y+1/3,z+1/3`,`-y+2/3,x-y+1/3,z+1/3`,`-x+y+2/3,-x+1/3,z+1/3`,`-y+2/3,-x+1/3,z+5/6`,`-x+y+2/3,y+1/3,z+5/6`,`x+2/3,x-y+1/3,z+5/6`,`x+1/3,y+2/3,z+2/3`,`-y+1/3,x-y+2/3,z+2/3`,`-x+y+1/3,-x+2/3,z+2/3`,`-y+1/3,-x+2/3,z+1/6`,`-x+y+1/3,y+2/3,z+1/6`,`x+1/3,x-y+2/3,z+1/6`]},{number:162,symbol_cif:`P -3 1 m`,symbol_hm_short:`P-31m`,hall_symbol:`-P 3 2`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`-y,-x,-z`,`y,x,z`,`-x+y,y,-z`,`x-y,-y,z`,`x,x-y,-z`,`-x,-x+y,z`]},{number:163,symbol_cif:`P -3 1 c`,symbol_hm_short:`P-31c`,hall_symbol:`-P 3 2c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`]},{number:164,symbol_cif:`P -3 m 1`,symbol_hm_short:`P-3m1`,hall_symbol:`-P 3 2\"`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,x,-z`,`-y,-x,z`,`x-y,-y,-z`,`-x+y,y,z`,`-x,-x+y,-z`,`x,x-y,z`]},{number:165,symbol_cif:`P -3 c 1`,symbol_hm_short:`P-3c1`,hall_symbol:`-P 3 2\"c`,operations:[`x,y,z`,`-x,-y,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`]},{number:166,symbol_cif:`R -3 m`,symbol_hm_short:`R-3m`,hall_symbol:`-R 3 2\"`,operations:`x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z.-y,-x,z.x-y,-y,-z.-x+y,y,z.-x,-x+y,-z.x,x-y,z.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+1/3.-y+2/3,-x+1/3,z+1/3.x-y+2/3,-y+1/3,-z+1/3.-x+y+2/3,y+1/3,z+1/3.-x+2/3,-x+y+1/3,-z+1/3.x+2/3,x-y+1/3,z+1/3.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+2/3.-y+1/3,-x+2/3,z+2/3.x-y+1/3,-y+2/3,-z+2/3.-x+y+1/3,y+2/3,z+2/3.-x+1/3,-x+y+2/3,-z+2/3.x+1/3,x-y+2/3,z+2/3`.split(`.`)},{number:167,symbol_cif:`R -3 c`,symbol_hm_short:`R-3c`,hall_symbol:`-R 3 2\"c`,operations:`x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z+1/2.-y,-x,z+1/2.x-y,-y,-z+1/2.-x+y,y,z+1/2.-x,-x+y,-z+1/2.x,x-y,z+1/2.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+5/6.-y+2/3,-x+1/3,z+5/6.x-y+2/3,-y+1/3,-z+5/6.-x+y+2/3,y+1/3,z+5/6.-x+2/3,-x+y+1/3,-z+5/6.x+2/3,x-y+1/3,z+5/6.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+1/6.-y+1/3,-x+2/3,z+1/6.x-y+1/3,-y+2/3,-z+1/6.-x+y+1/3,y+2/3,z+1/6.-x+1/3,-x+y+2/3,-z+1/6.x+1/3,x-y+2/3,z+1/6`.split(`.`)},{number:168,symbol_cif:`P 6`,symbol_hm_short:`P6`,hall_symbol:`P 6`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`]},{number:169,symbol_cif:`P 61`,symbol_hm_short:`P61`,hall_symbol:`P 61`,operations:[`x,y,z`,`x-y,x,z+1/6`,`-y,x-y,z+1/3`,`-x,-y,z+1/2`,`-x+y,-x,z+2/3`,`y,-x+y,z+5/6`]},{number:170,symbol_cif:`P 65`,symbol_hm_short:`P65`,hall_symbol:`P 65`,operations:[`x,y,z`,`x-y,x,z+5/6`,`-y,x-y,z+2/3`,`-x,-y,z+1/2`,`-x+y,-x,z+1/3`,`y,-x+y,z+1/6`]},{number:171,symbol_cif:`P 62`,symbol_hm_short:`P62`,hall_symbol:`P 62`,operations:[`x,y,z`,`x-y,x,z+1/3`,`-y,x-y,z+2/3`,`-x,-y,z`,`-x+y,-x,z+1/3`,`y,-x+y,z+2/3`]},{number:172,symbol_cif:`P 64`,symbol_hm_short:`P64`,hall_symbol:`P 64`,operations:[`x,y,z`,`x-y,x,z+2/3`,`-y,x-y,z+1/3`,`-x,-y,z`,`-x+y,-x,z+2/3`,`y,-x+y,z+1/3`]},{number:173,symbol_cif:`P 63`,symbol_hm_short:`P63`,hall_symbol:`P 6c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`]},{number:174,symbol_cif:`P -6`,symbol_hm_short:`P-6`,hall_symbol:`P -6`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`]},{number:175,symbol_cif:`P 6/m`,symbol_hm_short:`P6/m`,hall_symbol:`-P 6`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`]},{number:176,symbol_cif:`P 63/m`,symbol_hm_short:`P63/m`,hall_symbol:`-P 6c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`]},{number:177,symbol_cif:`P 6 2 2`,symbol_hm_short:`P622`,hall_symbol:`P 6 2`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`-y,-x,-z`,`-x,-x+y,-z`,`-x+y,y,-z`,`y,x,-z`,`x,x-y,-z`,`x-y,-y,-z`]},{number:178,symbol_cif:`P 61 2 2`,symbol_hm_short:`P6122`,hall_symbol:`P 61 2 (0 0 5)`,operations:[`x,y,z`,`x-y,x,z+1/6`,`-y,x-y,z+1/3`,`-x,-y,z+1/2`,`-x+y,-x,z+2/3`,`y,-x+y,z+5/6`,`-y,-x,-z+5/6`,`-x,-x+y,-z+2/3`,`-x+y,y,-z+1/2`,`y,x,-z+1/3`,`x,x-y,-z+1/6`,`x-y,-y,-z`]},{number:179,symbol_cif:`P 65 2 2`,symbol_hm_short:`P6522`,hall_symbol:`P 65 2 (0 0 1)`,operations:[`x,y,z`,`x-y,x,z+5/6`,`-y,x-y,z+2/3`,`-x,-y,z+1/2`,`-x+y,-x,z+1/3`,`y,-x+y,z+1/6`,`-y,-x,-z+1/6`,`-x,-x+y,-z+1/3`,`-x+y,y,-z+1/2`,`y,x,-z+2/3`,`x,x-y,-z+5/6`,`x-y,-y,-z`]},{number:180,symbol_cif:`P 62 2 2`,symbol_hm_short:`P6222`,hall_symbol:`P 62 2 (0 0 4)`,operations:[`x,y,z`,`x-y,x,z+1/3`,`-y,x-y,z+2/3`,`-x,-y,z`,`-x+y,-x,z+1/3`,`y,-x+y,z+2/3`,`-y,-x,-z+2/3`,`-x,-x+y,-z+1/3`,`-x+y,y,-z`,`y,x,-z+2/3`,`x,x-y,-z+1/3`,`x-y,-y,-z`]},{number:181,symbol_cif:`P 64 2 2`,symbol_hm_short:`P6422`,hall_symbol:`P 64 2 (0 0 2)`,operations:[`x,y,z`,`x-y,x,z+2/3`,`-y,x-y,z+1/3`,`-x,-y,z`,`-x+y,-x,z+2/3`,`y,-x+y,z+1/3`,`-y,-x,-z+1/3`,`-x,-x+y,-z+2/3`,`-x+y,y,-z`,`y,x,-z+1/3`,`x,x-y,-z+2/3`,`x-y,-y,-z`]},{number:182,symbol_cif:`P 63 2 2`,symbol_hm_short:`P6322`,hall_symbol:`P 6c 2c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`-y,-x,-z+1/2`,`-x,-x+y,-z`,`-x+y,y,-z+1/2`,`y,x,-z`,`x,x-y,-z+1/2`,`x-y,-y,-z`]},{number:183,symbol_cif:`P 6 m m`,symbol_hm_short:`P6mm`,hall_symbol:`P 6 -2`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`y,x,z`,`x,x-y,z`,`x-y,-y,z`,`-y,-x,z`,`-x,-x+y,z`,`-x+y,y,z`]},{number:184,symbol_cif:`P 6 c c`,symbol_hm_short:`P6cc`,hall_symbol:`P 6 -2c`,operations:[`x,y,z`,`x-y,x,z`,`-y,x-y,z`,`-x,-y,z`,`-x+y,-x,z`,`y,-x+y,z`,`y,x,z+1/2`,`x,x-y,z+1/2`,`x-y,-y,z+1/2`,`-y,-x,z+1/2`,`-x,-x+y,z+1/2`,`-x+y,y,z+1/2`]},{number:185,symbol_cif:`P 63 c m`,symbol_hm_short:`P63cm`,hall_symbol:`P 6c -2`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`y,x,z`,`x,x-y,z+1/2`,`x-y,-y,z`,`-y,-x,z+1/2`,`-x,-x+y,z`,`-x+y,y,z+1/2`]},{number:186,symbol_cif:`P 63 m c`,symbol_hm_short:`P63mc`,hall_symbol:`P 6c -2c`,operations:[`x,y,z`,`x-y,x,z+1/2`,`-y,x-y,z`,`-x,-y,z+1/2`,`-x+y,-x,z`,`y,-x+y,z+1/2`,`y,x,z+1/2`,`x,x-y,z`,`x-y,-y,z+1/2`,`-y,-x,z`,`-x,-x+y,z+1/2`,`-x+y,y,z`]},{number:187,symbol_cif:`P -6 m 2`,symbol_hm_short:`P-6m2`,hall_symbol:`P -6 2`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`,`-y,-x,-z`,`x,x-y,z`,`-x+y,y,-z`,`-y,-x,z`,`x,x-y,-z`,`-x+y,y,z`]},{number:188,symbol_cif:`P -6 c 2`,symbol_hm_short:`P-6c2`,hall_symbol:`P -6c 2`,operations:[`x,y,z`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`x,y,-z+1/2`,`-x+y,-x,z`,`-y,x-y,-z+1/2`,`-y,-x,-z`,`x,x-y,z+1/2`,`-x+y,y,-z`,`-y,-x,z+1/2`,`x,x-y,-z`,`-x+y,y,z+1/2`]},{number:189,symbol_cif:`P -6 2 m`,symbol_hm_short:`P-62m`,hall_symbol:`P -6 -2`,operations:[`x,y,z`,`-x+y,-x,-z`,`-y,x-y,z`,`x,y,-z`,`-x+y,-x,z`,`-y,x-y,-z`,`y,x,z`,`-x,-x+y,-z`,`x-y,-y,z`,`y,x,-z`,`-x,-x+y,z`,`x-y,-y,-z`]},{number:190,symbol_cif:`P -6 2 c`,symbol_hm_short:`P-62c`,hall_symbol:`P -6c -2c`,operations:[`x,y,z`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`x,y,-z+1/2`,`-x+y,-x,z`,`-y,x-y,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z`,`x-y,-y,z+1/2`,`y,x,-z`,`-x,-x+y,z+1/2`,`x-y,-y,-z`]},{number:191,symbol_cif:`P 6/m m m`,symbol_hm_short:`P6/mmm`,hall_symbol:`-P 6 2`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`,`-y,-x,-z`,`y,x,z`,`-x,-x+y,-z`,`x,x-y,z`,`-x+y,y,-z`,`x-y,-y,z`,`y,x,-z`,`-y,-x,z`,`x,x-y,-z`,`-x,-x+y,z`,`x-y,-y,-z`,`-x+y,y,z`]},{number:192,symbol_cif:`P 6/m c c`,symbol_hm_short:`P6/mcc`,hall_symbol:`-P 6 2c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z`,`-x+y,-x,-z`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z`,`x,y,-z`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z`,`-y,x-y,-z`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`]},{number:193,symbol_cif:`P 63/m c m`,symbol_hm_short:`P63/mcm`,hall_symbol:`-P 6c 2`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`,`-y,-x,-z`,`y,x,z`,`-x,-x+y,-z+1/2`,`x,x-y,z+1/2`,`-x+y,y,-z`,`x-y,-y,z`,`y,x,-z+1/2`,`-y,-x,z+1/2`,`x,x-y,-z`,`-x,-x+y,z`,`x-y,-y,-z+1/2`,`-x+y,y,z+1/2`]},{number:194,symbol_cif:`P 63/m m c`,symbol_hm_short:`P63/mmc`,hall_symbol:`-P 6c 2c`,operations:[`x,y,z`,`-x,-y,-z`,`x-y,x,z+1/2`,`-x+y,-x,-z+1/2`,`-y,x-y,z`,`y,-x+y,-z`,`-x,-y,z+1/2`,`x,y,-z+1/2`,`-x+y,-x,z`,`x-y,x,-z`,`y,-x+y,z+1/2`,`-y,x-y,-z+1/2`,`-y,-x,-z+1/2`,`y,x,z+1/2`,`-x,-x+y,-z`,`x,x-y,z`,`-x+y,y,-z+1/2`,`x-y,-y,z+1/2`,`y,x,-z`,`-y,-x,z`,`x,x-y,-z+1/2`,`-x,-x+y,z+1/2`,`x-y,-y,-z`,`-x+y,y,z`]},{number:195,symbol_cif:`P 2 3`,symbol_hm_short:`P23`,hall_symbol:`P 2 2 3`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`z,x,y`,`z,-x,-y`,`-z,x,-y`,`-z,-x,y`,`y,z,x`,`-y,z,-x`,`-y,-z,x`,`y,-z,-x`]},{number:196,symbol_cif:`F 2 3`,symbol_hm_short:`F23`,hall_symbol:`F 2 2 3`,operations:`x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.z,x+1/2,y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,-y+1/2.-z,-x+1/2,y+1/2.y,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y,-z+1/2,x+1/2.y,-z+1/2,-x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.z+1/2,x,y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,-y+1/2.-z+1/2,-x,y+1/2.y+1/2,z,x+1/2.-y+1/2,z,-x+1/2.-y+1/2,-z,x+1/2.y+1/2,-z,-x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.z+1/2,x+1/2,y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,-y.-z+1/2,-x+1/2,y.y+1/2,z+1/2,x.-y+1/2,z+1/2,-x.-y+1/2,-z+1/2,x.y+1/2,-z+1/2,-x`.split(`.`)},{number:197,symbol_cif:`I 2 3`,symbol_hm_short:`I23`,hall_symbol:`I 2 2 3`,operations:[`x,y,z`,`-x,-y,z`,`x,-y,-z`,`-x,y,-z`,`z,x,y`,`z,-x,-y`,`-z,x,-y`,`-z,-x,y`,`y,z,x`,`-y,z,-x`,`-y,-z,x`,`y,-z,-x`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y+1/2,z+1/2`,`x+1/2,-y+1/2,-z+1/2`,`-x+1/2,y+1/2,-z+1/2`,`z+1/2,x+1/2,y+1/2`,`z+1/2,-x+1/2,-y+1/2`,`-z+1/2,x+1/2,-y+1/2`,`-z+1/2,-x+1/2,y+1/2`,`y+1/2,z+1/2,x+1/2`,`-y+1/2,z+1/2,-x+1/2`,`-y+1/2,-z+1/2,x+1/2`,`y+1/2,-z+1/2,-x+1/2`]},{number:198,symbol_cif:`P 21 3`,symbol_hm_short:`P213`,hall_symbol:`P 2ac 2ab 3`,operations:[`x,y,z`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x,y+1/2,-z+1/2`,`z,x,y`,`z+1/2,-x+1/2,-y`,`-z,x+1/2,-y+1/2`,`-z+1/2,-x,y+1/2`,`y,z,x`,`-y,z+1/2,-x+1/2`,`-y+1/2,-z,x+1/2`,`y+1/2,-z+1/2,-x`]},{number:199,symbol_cif:`I 21 3`,symbol_hm_short:`I213`,hall_symbol:`I 2b 2c 3`,operations:[`x,y,z`,`-x,-y+1/2,z`,`x,-y,-z+1/2`,`-x,y+1/2,-z+1/2`,`z,x,y`,`z,-x,-y+1/2`,`-z+1/2,x,-y`,`-z+1/2,-x,y+1/2`,`y,z,x`,`-y+1/2,z,-x`,`-y,-z+1/2,x`,`y+1/2,-z+1/2,-x`,`x+1/2,y+1/2,z+1/2`,`-x+1/2,-y,z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y,-z`,`z+1/2,x+1/2,y+1/2`,`z+1/2,-x+1/2,-y`,`-z,x+1/2,-y+1/2`,`-z,-x+1/2,y`,`y+1/2,z+1/2,x+1/2`,`-y,z+1/2,-x+1/2`,`-y+1/2,-z,x+1/2`,`y,-z,-x+1/2`]},{number:200,symbol_cif:`P m -3`,symbol_hm_short:`Pm-3`,hall_symbol:`-P 2 2 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x,-y,z`,`x,y,-z`,`x,-y,-z`,`-x,y,z`,`-x,y,-z`,`x,-y,z`,`z,x,y`,`-z,-x,-y`,`z,-x,-y`,`-z,x,y`,`-z,x,-y`,`z,-x,y`,`-z,-x,y`,`z,x,-y`,`y,z,x`,`-y,-z,-x`,`-y,z,-x`,`y,-z,x`,`-y,-z,x`,`y,z,-x`,`y,-z,-x`,`-y,z,x`]},{number:201,symbol_cif:`P n -3`,symbol_hm_short:`Pn-3`,hall_symbol:`-P 2ab 2bc 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y+1/2,z`,`x+1/2,y+1/2,-z`,`x,-y+1/2,-z+1/2`,`-x,y+1/2,z+1/2`,`-x+1/2,y,-z+1/2`,`x+1/2,-y,z+1/2`,`z,x,y`,`-z,-x,-y`,`z,-x+1/2,-y+1/2`,`-z,x+1/2,y+1/2`,`-z+1/2,x,-y+1/2`,`z+1/2,-x,y+1/2`,`-z+1/2,-x+1/2,y`,`z+1/2,x+1/2,-y`,`y,z,x`,`-y,-z,-x`,`-y+1/2,z,-x+1/2`,`y+1/2,-z,x+1/2`,`-y+1/2,-z+1/2,x`,`y+1/2,z+1/2,-x`,`y,-z+1/2,-x+1/2`,`-y,z+1/2,x+1/2`]},{number:202,symbol_cif:`F m -3`,symbol_hm_short:`Fm-3`,hall_symbol:`-F 2 2 3`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x`.split(`.`)},{number:203,symbol_cif:`F d -3`,symbol_hm_short:`Fd-3`,hall_symbol:`-F 2uv 2vw 3`,operations:`x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.z,x,y.-z,-x,-y.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.y,z,x.-y,-z,-x.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4`.split(`.`)},{number:204,symbol_cif:`I m -3`,symbol_hm_short:`Im-3`,hall_symbol:`-I 2 2 3`,operations:`x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2`.split(`.`)},{number:205,symbol_cif:`P a -3`,symbol_hm_short:`Pa-3`,hall_symbol:`-P 2ac 2ab 3`,operations:[`x,y,z`,`-x,-y,-z`,`-x+1/2,-y,z+1/2`,`x+1/2,y,-z+1/2`,`x+1/2,-y+1/2,-z`,`-x+1/2,y+1/2,z`,`-x,y+1/2,-z+1/2`,`x,-y+1/2,z+1/2`,`z,x,y`,`-z,-x,-y`,`z+1/2,-x+1/2,-y`,`-z+1/2,x+1/2,y`,`-z,x+1/2,-y+1/2`,`z,-x+1/2,y+1/2`,`-z+1/2,-x,y+1/2`,`z+1/2,x,-y+1/2`,`y,z,x`,`-y,-z,-x`,`-y,z+1/2,-x+1/2`,`y,-z+1/2,x+1/2`,`-y+1/2,-z,x+1/2`,`y+1/2,z,-x+1/2`,`y+1/2,-z+1/2,-x`,`-y+1/2,z+1/2,x`]},{number:206,symbol_cif:`I a -3`,symbol_hm_short:`Ia-3`,hall_symbol:`-I 2b 2c 3`,operations:`x,y,z.-x,-y,-z.-x,-y+1/2,z.x,y+1/2,-z.x,-y,-z+1/2.-x,y,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x,y.-z,-x,-y.z,-x,-y+1/2.-z,x,y+1/2.-z+1/2,x,-y.z+1/2,-x,y.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y,z,x.-y,-z,-x.-y+1/2,z,-x.y+1/2,-z,x.-y,-z+1/2,x.y,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y,-z.x+1/2,-y,z.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y.z,x+1/2,-y.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y,-z,-x+1/2.-y,z,x+1/2`.split(`.`)},{number:207,symbol_cif:`P 4 3 2`,symbol_hm_short:`P432`,hall_symbol:`P 4 2 3`,operations:[`x,y,z`,`-y,x,z`,`-x,-y,z`,`y,-x,z`,`x,-y,-z`,`-y,-x,-z`,`-x,y,-z`,`y,x,-z`,`z,x,y`,`z,-y,x`,`z,-x,-y`,`z,y,-x`,`-z,x,-y`,`-z,-y,-x`,`-z,-x,y`,`-z,y,x`,`y,z,x`,`x,z,-y`,`-y,z,-x`,`-x,z,y`,`-y,-z,x`,`-x,-z,-y`,`y,-z,-x`,`x,-z,y`]},{number:208,symbol_cif:`P 42 3 2`,symbol_hm_short:`P4232`,hall_symbol:`P 4n 2 3`,operations:[`x,y,z`,`-y+1/2,x+1/2,z+1/2`,`-x,-y,z`,`y+1/2,-x+1/2,z+1/2`,`x,-y,-z`,`-y+1/2,-x+1/2,-z+1/2`,`-x,y,-z`,`y+1/2,x+1/2,-z+1/2`,`z,x,y`,`z+1/2,-y+1/2,x+1/2`,`z,-x,-y`,`z+1/2,y+1/2,-x+1/2`,`-z,x,-y`,`-z+1/2,-y+1/2,-x+1/2`,`-z,-x,y`,`-z+1/2,y+1/2,x+1/2`,`y,z,x`,`x+1/2,z+1/2,-y+1/2`,`-y,z,-x`,`-x+1/2,z+1/2,y+1/2`,`-y,-z,x`,`-x+1/2,-z+1/2,-y+1/2`,`y,-z,-x`,`x+1/2,-z+1/2,y+1/2`]},{number:209,symbol_cif:`F 4 3 2`,symbol_hm_short:`F432`,hall_symbol:`F 4 2 3`,operations:`x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.z,x+1/2,y+1/2.z,-y+1/2,x+1/2.z,-x+1/2,-y+1/2.z,y+1/2,-x+1/2.-z,x+1/2,-y+1/2.-z,-y+1/2,-x+1/2.-z,-x+1/2,y+1/2.-z,y+1/2,x+1/2.y,z+1/2,x+1/2.x,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,z+1/2,y+1/2.-y,-z+1/2,x+1/2.-x,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y,x+1/2.z+1/2,-x,-y+1/2.z+1/2,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y,-x+1/2.-z+1/2,-x,y+1/2.-z+1/2,y,x+1/2.y+1/2,z,x+1/2.x+1/2,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,z,y+1/2.-y+1/2,-z,x+1/2.-x+1/2,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.z+1/2,x+1/2,y.z+1/2,-y+1/2,x.z+1/2,-x+1/2,-y.z+1/2,y+1/2,-x.-z+1/2,x+1/2,-y.-z+1/2,-y+1/2,-x.-z+1/2,-x+1/2,y.-z+1/2,y+1/2,x.y+1/2,z+1/2,x.x+1/2,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,z+1/2,y.-y+1/2,-z+1/2,x.-x+1/2,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y`.split(`.`)},{number:210,symbol_cif:`F 41 3 2`,symbol_hm_short:`F4132`,hall_symbol:`F 4d 2 3`,operations:`x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,z+3/4,y+3/4.-y,-z,x.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,z+1/4,y+1/4.-y,-z+1/2,x+1/2.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,z+3/4,y+1/4.-y+1/2,-z,x+1/2.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4`.split(`.`)},{number:211,symbol_cif:`I 4 3 2`,symbol_hm_short:`I432`,hall_symbol:`I 4 2 3`,operations:`x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y+1/2.-z+1/2,y+1/2,x+1/2.y+1/2,z+1/2,x+1/2.x+1/2,z+1/2,-y+1/2.-y+1/2,z+1/2,-x+1/2.-x+1/2,z+1/2,y+1/2.-y+1/2,-z+1/2,x+1/2.-x+1/2,-z+1/2,-y+1/2.y+1/2,-z+1/2,-x+1/2.x+1/2,-z+1/2,y+1/2`.split(`.`)},{number:212,symbol_cif:`P 43 3 2`,symbol_hm_short:`P4332`,hall_symbol:`P 4acd 2ab 3`,operations:[`x,y,z`,`-y+3/4,x+1/4,z+3/4`,`-x+1/2,-y,z+1/2`,`y+3/4,-x+3/4,z+1/4`,`x+1/2,-y+1/2,-z`,`-y+1/4,-x+1/4,-z+1/4`,`-x,y+1/2,-z+1/2`,`y+1/4,x+3/4,-z+3/4`,`z,x,y`,`z+3/4,-y+3/4,x+1/4`,`z+1/2,-x+1/2,-y`,`z+1/4,y+3/4,-x+3/4`,`-z,x+1/2,-y+1/2`,`-z+1/4,-y+1/4,-x+1/4`,`-z+1/2,-x,y+1/2`,`-z+3/4,y+1/4,x+3/4`,`y,z,x`,`x+1/4,z+3/4,-y+3/4`,`-y,z+1/2,-x+1/2`,`-x+3/4,z+1/4,y+3/4`,`-y+1/2,-z,x+1/2`,`-x+1/4,-z+1/4,-y+1/4`,`y+1/2,-z+1/2,-x`,`x+3/4,-z+3/4,y+1/4`]},{number:213,symbol_cif:`P 41 3 2`,symbol_hm_short:`P4132`,hall_symbol:`P 4bd 2ab 3`,operations:[`x,y,z`,`-y+1/4,x+3/4,z+1/4`,`-x+1/2,-y,z+1/2`,`y+1/4,-x+1/4,z+3/4`,`x+1/2,-y+1/2,-z`,`-y+3/4,-x+3/4,-z+3/4`,`-x,y+1/2,-z+1/2`,`y+3/4,x+1/4,-z+1/4`,`z,x,y`,`z+1/4,-y+1/4,x+3/4`,`z+1/2,-x+1/2,-y`,`z+3/4,y+1/4,-x+1/4`,`-z,x+1/2,-y+1/2`,`-z+3/4,-y+3/4,-x+3/4`,`-z+1/2,-x,y+1/2`,`-z+1/4,y+3/4,x+1/4`,`y,z,x`,`x+3/4,z+1/4,-y+1/4`,`-y,z+1/2,-x+1/2`,`-x+1/4,z+3/4,y+1/4`,`-y+1/2,-z,x+1/2`,`-x+3/4,-z+3/4,-y+3/4`,`y+1/2,-z+1/2,-x`,`x+1/4,-z+1/4,y+3/4`]},{number:214,symbol_cif:`I 41 3 2`,symbol_hm_short:`I4132`,hall_symbol:`I 4bd 2c 3`,operations:`x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.z,x,y.z+1/4,-y+1/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+1/4.-z+1/2,x,-y.-z+1/4,-y+1/4,-x+1/4.-z,-x+1/2,y.-z+3/4,y+1/4,x+3/4.y,z,x.x+3/4,z+1/4,-y+1/4.-y,z+1/2,-x+1/2.-x+1/4,z+3/4,y+1/4.-y,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.z+1/2,x+1/2,y+1/2.z+3/4,-y+3/4,x+1/4.z,-x,-y+1/2.z+1/4,y+3/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+1/4.y+1/2,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z,x+1/2.-x+3/4,-z+3/4,-y+3/4.y+1/2,-z+1/2,-x.x+1/4,-z+1/4,y+3/4`.split(`.`)},{number:215,symbol_cif:`P -4 3 m`,symbol_hm_short:`P-43m`,hall_symbol:`P -4 2 3`,operations:[`x,y,z`,`y,-x,-z`,`-x,-y,z`,`-y,x,-z`,`x,-y,-z`,`y,x,z`,`-x,y,-z`,`-y,-x,z`,`z,x,y`,`-z,y,-x`,`z,-x,-y`,`-z,-y,x`,`-z,x,-y`,`z,y,x`,`-z,-x,y`,`z,-y,-x`,`y,z,x`,`-x,-z,y`,`-y,z,-x`,`x,-z,-y`,`-y,-z,x`,`x,z,y`,`y,-z,-x`,`-x,z,-y`]},{number:216,symbol_cif:`F -4 3 m`,symbol_hm_short:`F-43m`,hall_symbol:`F -4 2 3`,operations:`x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x,y+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y`.split(`.`)},{number:217,symbol_cif:`I -4 3 m`,symbol_hm_short:`I-43m`,hall_symbol:`I -4 2 3`,operations:`x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x+1/2,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:218,symbol_cif:`P -4 3 n`,symbol_hm_short:`P-43n`,hall_symbol:`P -4n 2 3`,operations:[`x,y,z`,`y+1/2,-x+1/2,-z+1/2`,`-x,-y,z`,`-y+1/2,x+1/2,-z+1/2`,`x,-y,-z`,`y+1/2,x+1/2,z+1/2`,`-x,y,-z`,`-y+1/2,-x+1/2,z+1/2`,`z,x,y`,`-z+1/2,y+1/2,-x+1/2`,`z,-x,-y`,`-z+1/2,-y+1/2,x+1/2`,`-z,x,-y`,`z+1/2,y+1/2,x+1/2`,`-z,-x,y`,`z+1/2,-y+1/2,-x+1/2`,`y,z,x`,`-x+1/2,-z+1/2,y+1/2`,`-y,z,-x`,`x+1/2,-z+1/2,-y+1/2`,`-y,-z,x`,`x+1/2,z+1/2,y+1/2`,`y,-z,-x`,`-x+1/2,z+1/2,-y+1/2`]},{number:219,symbol_cif:`F -4 3 c`,symbol_hm_short:`F-43c`,hall_symbol:`F -4a 2 3`,operations:`x,y,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.-y,x+1/2,-z.x,-y,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.-y,-x+1/2,z.z,x,y.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,-y,x+1/2.-z,x,-y.z,y+1/2,x.-z,-x+1/2,y+1/2.z,-y,-x+1/2.y,z,x.-x,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y.-y,-z,x.x,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y.x,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,y,-x+1/2.z,-x,-y.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,y,x+1/2.-z,-x,y.z,-y+1/2,-x.y,z+1/2,x+1/2.-x,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,-y,-x.y+1/2,z,x+1/2.-x+1/2,-z,y.-y,z,-x.x,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y.y,-z,-x.-x,z,-y+1/2.x+1/2,y+1/2,z.y,-x+1/2,-z.-x,-y,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.y,x+1/2,z.-x,y,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y`.split(`.`)},{number:220,symbol_cif:`I -4 3 d`,symbol_hm_short:`I-43d`,hall_symbol:`I -4bd 2c 3`,operations:`x,y,z.y+1/4,-x+3/4,-z+1/4.-x,-y+1/2,z.-y+3/4,x+3/4,-z+1/4.x,-y,-z+1/2.y+1/4,x+1/4,z+1/4.-x,y+1/2,-z+1/2.-y+3/4,-x+1/4,z+1/4.z,x,y.-z+1/4,y+1/4,-x+3/4.z,-x,-y+1/2.-z+1/4,-y+3/4,x+3/4.-z+1/2,x,-y.z+1/4,y+1/4,x+1/4.-z+1/2,-x,y+1/2.z+1/4,-y+3/4,-x+1/4.y,z,x.-x+3/4,-z+1/4,y+1/4.-y+1/2,z,-x.x+3/4,-z+1/4,-y+3/4.-y,-z+1/2,x.x+1/4,z+1/4,y+1/4.y+1/2,-z+1/2,-x.-x+1/4,z+1/4,-y+3/4.x+1/2,y+1/2,z+1/2.y+3/4,-x+1/4,-z+3/4.-x+1/2,-y,z+1/2.-y+1/4,x+1/4,-z+3/4.x+1/2,-y+1/2,-z.y+3/4,x+3/4,z+3/4.-x+1/2,y,-z.-y+1/4,-x+3/4,z+3/4.z+1/2,x+1/2,y+1/2.-z+3/4,y+3/4,-x+1/4.z+1/2,-x+1/2,-y.-z+3/4,-y+1/4,x+1/4.-z,x+1/2,-y+1/2.z+3/4,y+3/4,x+3/4.-z,-x+1/2,y.z+3/4,-y+1/4,-x+3/4.y+1/2,z+1/2,x+1/2.-x+1/4,-z+3/4,y+3/4.-y,z+1/2,-x+1/2.x+1/4,-z+3/4,-y+1/4.-y+1/2,-z,x+1/2.x+3/4,z+3/4,y+3/4.y,-z,-x+1/2.-x+3/4,z+3/4,-y+1/4`.split(`.`)},{number:221,symbol_cif:`P m -3 m`,symbol_hm_short:`Pm-3m`,hall_symbol:`-P 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y`.split(`.`)},{number:222,symbol_cif:`P n -3 n`,symbol_hm_short:`Pn-3n`,hall_symbol:`-P 4a 2bc 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y`.split(`.`)},{number:223,symbol_cif:`P m -3 n`,symbol_hm_short:`Pm-3n`,hall_symbol:`-P 4n 2 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x,-y,z.x,y,-z.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x,-y,-z.-x,y,z.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x,y,-z.x,-y,z.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z,x,y.-z,-x,-y.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z,-x,-y.-z,x,y.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z,x,-y.z,-x,y.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z,-x,y.z,x,-y.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z,-x.y,-z,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z,x.y,z,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z,-x.-y,z,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:224,symbol_cif:`P n -3 m`,symbol_hm_short:`Pn-3m`,hall_symbol:`-P 4bc 2bc 3`,operations:`x,y,z.-x,-y,-z.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x,-z.y,x,z.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z,x,y.-z,-x,-y.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z,-y,-x.z,y,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x,-z,-y.x,z,y.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2`.split(`.`)},{number:225,symbol_cif:`F m -3 m`,symbol_hm_short:`Fm-3m`,hall_symbol:`-F 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y,-x+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y,x+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y+1/2,x+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y+1/2,-x+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y,-x+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y,x+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y+1/2,x.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y+1/2,x.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y.-x+1/2,z+1/2,-y`.split(`.`)},{number:226,symbol_cif:`F m -3 c`,symbol_hm_short:`Fm-3c`,hall_symbol:`-F 4a 2 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y,-z.-x,y,z.-y+1/2,-x,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y,x+1/2,-z.-y,-x+1/2,z.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z,x,-y.z,-x,y.-z,-y+1/2,-x.z,y+1/2,x.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y,x+1/2.z,-y,-x+1/2.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y.-x+1/2,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y,-x,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y,x+1/2.-z,y,-x+1/2.z,-x,-y.-z,x,y.z,y+1/2,-x.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y,-x+1/2.z,y,x+1/2.-z,-x,y.z,x,-y.-z,y+1/2,x.z,-y+1/2,-x.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y.-x,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y,-x.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y.-x+1/2,-z,y.-y,z,-x.y,-z,x.-x,z,y+1/2.x,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z,-x.-y,z,x.x,-z,y+1/2.-x,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+1/2,z.y,-x+1/2,-z.-x,-y,z.x,y,-z.y+1/2,-x,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y,-x+1/2,-z.y,x+1/2,z.-x,y,-z.x,-y,z.y+1/2,x,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y,x.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y,-x.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y.x,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y`.split(`.`)},{number:227,symbol_cif:`F d -3 m`,symbol_hm_short:`Fd-3m`,hall_symbol:`-F 4vw 2vw 3`,operations:`x,y,z.-x,-y,-z.-y,x+1/4,z+1/4.y,-x+1/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+3/4,-x,z+3/4.-y+3/4,x,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y,-x,-z.y,x,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+3/4,x+1/4,-z+1/2.-y+3/4,-x+1/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y,x+1/4.-z+1/4,y,-x+1/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+3/4,-x.-z+3/4,-y+3/4,x.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y,-x.z,y,x.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+3/4,x+1/4.z+1/2,-y+3/4,-x+1/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y.-x+1/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+3/4.x,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y.x,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+3/4.-x+1/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+3/4,z+3/4.y,-x+3/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+3/4,-x+1/2,z+1/4.-y+3/4,x+1/2,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+3/4,x+3/4,-z.-y+3/4,-x+3/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y+1/2,x+3/4.-z+1/4,y+1/2,-x+3/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+1/4,-x+1/2.-z+3/4,-y+1/4,x+1/2.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+1/4,x+3/4.z+1/2,-y+1/4,-x+3/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+1/2.-x+1/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+1/4.x,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+1/4.-x+1/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x+1/4,z+3/4.y+1/2,-x+1/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+1/4,-x,z+1/4.-y+1/4,x,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+1/4,x+1/4,-z.-y+1/4,-x+1/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y,x+3/4.-z+3/4,y,-x+3/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+3/4,-x+1/2.-z+1/4,-y+3/4,x+1/2.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+3/4,x+3/4.z,-y+3/4,-x+3/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y+1/2.-x+3/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+1/4.x+1/2,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+1/4.-x+3/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+3/4,z+1/4.y+1/2,-x+3/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+1/4,-x+1/2,z+3/4.-y+1/4,x+1/2,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+1/4,x+3/4,-z+1/2.-y+1/4,-x+3/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y+1/2,x+1/4.-z+3/4,y+1/2,-x+1/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+1/4,-x.-z+1/4,-y+1/4,x.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+1/4,x+1/4.z,-y+1/4,-x+1/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y.-x+3/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+3/4.x+1/2,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+3/4.-x+3/4,z,-y+3/4`.split(`.`)},{number:228,symbol_cif:`F d -3 c`,symbol_hm_short:`Fd-3c`,hall_symbol:`-F 4ud 2vw 3`,operations:`x,y,z.-x,-y,-z.-y+1/2,x+1/4,z+1/4.y+1/2,-x+1/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+3/4,-x+1/2,z+3/4.-y+3/4,x+1/2,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y+1/2,-x,-z.y+1/2,x,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+3/4,x+3/4,-z+1/2.-y+3/4,-x+3/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y+1/2,x+1/4.-z+1/4,y+1/2,-x+1/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+3/4,-x+1/2.-z+3/4,-y+3/4,x+1/2.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y+1/2,-x.z,y+1/2,x.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+3/4,x+3/4.z+1/2,-y+3/4,-x+3/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y+1/2.-x+1/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+3/4.x+1/2,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+3/4.-x+3/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+3/4,z+3/4.y+1/2,-x+3/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+3/4,-x,z+1/4.-y+3/4,x,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+3/4,x+1/4,-z.-y+3/4,-x+1/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y,x+3/4.-z+1/4,y,-x+3/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+1/4,-x.-z+3/4,-y+1/4,x.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y,-x+1/2.z,y,x+1/2.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+1/4,x+1/4.z+1/2,-y+1/4,-x+1/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y.-x+1/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+1/4.x+1/2,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+1/4.-x+3/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x+1/4,z+3/4.y,-x+1/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+1/4,-x+1/2,z+1/4.-y+1/4,x+1/2,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y,-x,-z+1/2.y,x,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+1/4,x+3/4,-z.-y+1/4,-x+3/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y+1/2,x+3/4.-z+3/4,y+1/2,-x+3/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+3/4,-x.-z+1/4,-y+3/4,x.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+3/4,x+1/4.z,-y+3/4,-x+1/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y.-x+3/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+1/4.x,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+1/4.-x+1/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+3/4,z+1/4.y,-x+3/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+1/4,-x,z+3/4.-y+1/4,x,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y,-x+1/2,-z.y,x+1/2,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+1/4,x+1/4,-z+1/2.-y+1/4,-x+1/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y,x+1/4.-z+3/4,y,-x+1/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+1/4,-x+1/2.-z+1/4,-y+1/4,x+1/2.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y,-x.z+1/2,y,x.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+1/4,x+3/4.z,-y+1/4,-x+3/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y+1/2.-x+3/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+3/4.x,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+3/4.-x+1/4,z,-y+3/4`.split(`.`)},{number:229,symbol_cif:`I m -3 m`,symbol_hm_short:`Im-3m`,hall_symbol:`-I 4 2 3`,operations:`x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2`.split(`.`)},{number:230,symbol_cif:`I a -3 d`,symbol_hm_short:`Ia-3d`,hall_symbol:`-I 4bd 2c 3`,operations:`x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.z,x,y.-z,-x,-y.z+1/4,-y+1/4,x+3/4.-z+1/4,y+1/4,-x+3/4.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+3/4,y+1/4,-x+1/4.-z+3/4,-y+1/4,x+1/4.-z+1/2,x,-y.z+1/2,-x,y.-z+1/4,-y+1/4,-x+1/4.z+1/4,y+1/4,x+1/4.-z,-x+1/2,y.z,x+1/2,-y.-z+3/4,y+1/4,x+3/4.z+3/4,-y+1/4,-x+3/4.y,z,x.-y,-z,-x.x+3/4,z+1/4,-y+1/4.-x+3/4,-z+1/4,y+1/4.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x+1/4,z+3/4,y+1/4.x+1/4,-z+3/4,-y+1/4.-y,-z+1/2,x.y,z+1/2,-x.-x+1/4,-z+1/4,-y+1/4.x+1/4,z+1/4,y+1/4.y,-z,-x+1/2.-y,z,x+1/2.x+3/4,-z+3/4,y+1/4.-x+3/4,z+3/4,-y+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+3/4,-y+3/4,x+1/4.-z+3/4,y+3/4,-x+1/4.z,-x,-y+1/2.-z,x,y+1/2.z+1/4,y+3/4,-x+3/4.-z+1/4,-y+3/4,x+3/4.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z+3/4,-y+3/4,-x+3/4.z+3/4,y+3/4,x+3/4.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/4,y+3/4,x+1/4.z+1/4,-y+3/4,-x+1/4.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+3/4.-x+1/4,-z+3/4,y+3/4.-y+1/2,z,-x.y+1/2,-z,x.-x+3/4,z+1/4,y+3/4.x+3/4,-z+1/4,-y+3/4.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+3/4,-z+3/4,-y+3/4.x+3/4,z+3/4,y+3/4.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/4,-z+1/4,y+3/4.-x+1/4,z+1/4,-y+3/4`.split(`.`)}]);function Re(e){return String(e).replace(/[\\s_]+/g,``).toLowerCase()}let ze=new Map,Be=new Map;for(let e of Le){ze.set(e.number,e);for(let t of[e.symbol_cif,e.symbol_hm_short,e.hall_symbol]){let n=Re(t);Be.has(n)||Be.set(n,e)}}function Ve({number:e,name:t}={}){let n=typeof e==`string`?parseInt(e,10):e;if(Number.isInteger(n)&&ze.has(n))return ze.get(n);if(t&&t!==`Unknown`){let e=Be.get(Re(t));if(e)return e}return null}function He(e){if(Math.abs(e)<.0021)return``;let t=[2,3,4,6],n=e<0?`-`:``,r=Math.abs(e);if(Math.abs(r-Math.round(r))<.0021)return n+Math.round(r);for(let e of t){let t=r*e,i=Math.round(t);if(Math.abs(t-i)<.0021)return i===e?n+`1`:n+i+`/`+e}return n+r.toString()}var V=class e{constructor(e){let{matrix:t,vector:n}=this.parseSymmetryInstruction(e);this.rotMatrix=t,this.transVector=n}parseSymmetryInstruction(e){let t=[,,,].fill().map(()=>[,,,].fill(0)),n=[,,,].fill(0),r=e.split(`,`).map(e=>e.toUpperCase().replace(/\\s+/g,``));if(r.length!==3)throw Error(`Symmetry operation must have exactly three components`);return r.forEach((e,r)=>{let i=Ee(e);t[r]=i.coefficients,n[r]=i.translation}),{matrix:t,vector:n}}static fromCIF(t,n){let r=t.get([`_space_group_symop`,`_symmetry_equiv`,`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`]).getIndex([`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`],n);return new e(r)}applyToPoint(e){let t=F(P(this.rotMatrix,e),this.transVector);return Array.isArray(t)?t:t.toArray()}applyToAtom(e){let t=new he(...F(P(this.rotMatrix,[e.position.x,e.position.y,e.position.z]),this.transVector)),n=null;if(e.adp&&e.adp instanceof B){let t=[[e.adp.u11,e.adp.u12,e.adp.u13],[e.adp.u12,e.adp.u22,e.adp.u23],[e.adp.u13,e.adp.u23,e.adp.u33]],r=this.rotMatrix,i=I(r),a=P(P(r,t),i);n=new B(a[0][0],a[1][1],a[2][2],a[0][1],a[0][2],a[1][2])}else e.adp&&e.adp instanceof z&&(n=new z(e.adp.uiso));return new Ge(e.label,e.atomType,t,n,e.disorderGroup)}applyToAtoms(e){return e.map(e=>this.applyToAtom(e))}copy(){let t=new e(`x,y,z`);return t.rotMatrix=ce(this.rotMatrix),t.transVector=ce(this.transVector),t}toSymmetryString(e=null){let t=[`x`,`y`,`z`],n=[],r=e?F(this.transVector,e):this.transVector;for(let e=0;e<3;e++){let i=``,a=[];for(let n=0;n<3;n++){let r=this.rotMatrix[e][n];if(Math.abs(r)>1e-10)if(Math.abs(Math.abs(r)-1)<1e-10)a.push(r>0?t[n]:`-${t[n]}`);else{let e=He(Math.abs(r));a.push(r>0?`${e}${t[n]}`:`-${e}${t[n]}`)}}if(i=a.join(`+`),i===``&&(i=`0`),Math.abs(r[e])>1e-10){let t=He(Math.abs(r[e])),n=r[e]<0?`-${t}`:t;i=i===`0`?n:i.startsWith(`-`)?`${n}${i}`:`${n}+${i}`}n.push(i)}return n.join(`,`)}},H=class e{constructor(e,t,n,r=null){this.spaceGroupName=e,this.spaceGroupNumber=t,this.symmetryOperations=n,this.operationIds=r||new Map(n.map((e,t)=>[(t+1).toString(),t]));let i=e=>e.rotMatrix.every((e,t)=>e.every((e,n)=>e===+(t===n)))&&e.transVector.every(e=>e===0);this.identitySymOpId=Array.from(this.operationIds.entries()).find(([e,t])=>i(this.symmetryOperations[t]))?.[0],this._combineSymmetryCodesCache=new Map,this._combineOperationCache=new Map,this._operationIdsByIndex=new Map([...this.operationIds.entries()].map(([e,t])=>[t,e])),this._rotationMatrixIndex=new Map,this._buildRotationIndex()}_buildRotationIndex(){this.symmetryOperations.forEach((e,t)=>{let n=this._matrixToKey(e.rotMatrix);this._rotationMatrixIndex.has(n)||this._rotationMatrixIndex.set(n,[]),this._rotationMatrixIndex.get(n).push(t)})}_matrixToKey(e){let t=e.map(e=>e.map(e=>Math.round(e*1e3)/1e3));return JSON.stringify(t)}_getCacheKey(e,t){return`${e}\\u0000${t}`}generateEquivalentPositions(e){return this.symmetryOperations.map(t=>t.applyToPoint(e))}parsePositionCode(e){let{id:t,translation:n}=Ce(e),r=this.operationIds.get(t);if(r===void 0)throw Error(`Invalid symmetry operation ID in string ${e}: ${t}, expecting string format \"<symOpId>_abc\". ID entry in present symOp loop?`);return{symOp:this.symmetryOperations[r],transVector:n}}_multiplyMatrices3x3(e,t){return[[e[0][0]*t[0][0]+e[0][1]*t[1][0]+e[0][2]*t[2][0],e[0][0]*t[0][1]+e[0][1]*t[1][1]+e[0][2]*t[2][1],e[0][0]*t[0][2]+e[0][1]*t[1][2]+e[0][2]*t[2][2]],[e[1][0]*t[0][0]+e[1][1]*t[1][0]+e[1][2]*t[2][0],e[1][0]*t[0][1]+e[1][1]*t[1][1]+e[1][2]*t[2][1],e[1][0]*t[0][2]+e[1][1]*t[1][2]+e[1][2]*t[2][2]],[e[2][0]*t[0][0]+e[2][1]*t[1][0]+e[2][2]*t[2][0],e[2][0]*t[0][1]+e[2][1]*t[1][1]+e[2][2]*t[2][1],e[2][0]*t[0][2]+e[2][1]*t[1][2]+e[2][2]*t[2][2]]]}_multiplyMatrixVector3x3(e,t){return[e[0][0]*t[0]+e[0][1]*t[1]+e[0][2]*t[2],e[1][0]*t[0]+e[1][1]*t[1]+e[1][2]*t[2],e[2][0]*t[0]+e[2][1]*t[1]+e[2][2]*t[2]]}combineSymmetryCodes(e,t){let n=this._getCacheKey(e,t),r=this._combineSymmetryCodesCache.get(n);if(r!==void 0){if(r instanceof Error)throw r;return r}let{id:i,translation:a}=Ce(e),{id:o,translation:s}=Ce(t),c=`${i}\\u0000${o}`,l=this._combineOperationCache.get(c);if(!l){let n=this.operationIds.get(i),r=this.operationIds.get(o);if(n===void 0||r===void 0)throw Error(`Invalid symmetry operation ID in string ${e}: ${n===void 0?i:o}, expecting string format \"<symOpId>_abc\". ID entry in present symOp loop?`);let{symOp:a}=this.parsePositionCode(e),{symOp:s}=this.parsePositionCode(t),u=this._multiplyMatrices3x3(a.rotMatrix,s.rotMatrix),d=this._matrixToKey(u),f=this._rotationMatrixIndex.get(d);if(f){let e=this._multiplyMatrixVector3x3(a.rotMatrix,s.transVector),t=a.transVector.map((t,n)=>t+e[n]);for(let e of f){let n=this.symmetryOperations[e],r=t.map((e,t)=>e-n.transVector[t]);if(r.every(e=>Math.abs(e-Math.round(e))<1e-5)){l={id:this._operationIdsByIndex.get(e),offset:r.map(e=>Math.round(e)),outerRotation:a.rotMatrix},this._combineOperationCache.set(c,l);break}}}}if(!l)throw Error(`No matching symmetry operation found for combined position codes: ${e} and ${t}`);let u=this._multiplyMatrixVector3x3(l.outerRotation,s),d=a.map((e,t)=>e+u[t]+l.offset[t]),f=we(l.id,d);return this._combineSymmetryCodesCache.set(n,f),f}invertPositionCode(e){let{symOp:t,transVector:n}=this.parsePositionCode(e),r=[n[0]+t.transVector[0],n[1]+t.transVector[1],n[2]+t.transVector[2]],i=L(t.rotMatrix),a=this._multiplyMatrixVector3x3(i,r.map(e=>-e)),o=this._rotationMatrixIndex.get(this._matrixToKey(i));if(o)for(let e of o){let t=this.symmetryOperations[e],n=a.map((e,n)=>e-t.transVector[n]);if(!n.every(e=>Math.abs(e-Math.round(e))<1e-5))continue;let r=Array.from(this.operationIds.entries()).find(([,t])=>t===e)?.[0];return we(r,n.map(e=>Math.round(e)))}throw Error(`No inverse symmetry operation found for position code: ${e}`)}applySymmetry(e,t){let{symOp:n,transVector:r}=this.parsePositionCode(e),i=n.applyToAtoms(t);return i.forEach(e=>{e.position.x+=r[0],e.position.y+=r[1],e.position.z+=r[2]}),i}applySymmetryNonSpecial(e,t,n){let r=this.applySymmetry(e,t),i=[],a=[];return r.forEach((e,r)=>{ve(e.position,t[r].position,n,.001)?i.push(e.label):a.push(e)}),{atoms:a,specialPositions:i}}static fromCIF(t){let n=t.get([`_space_group.name_h-m_alt`,`_space_group.name_H-M_full`,`_symmetry_space_group_name_H-M`,`_space_group_name_H-M_alt`],`Unknown`),r=t.get([`_space_group.it_number`,`_space_group.IT_number`,`_symmetry_Int_Tables_number`,`_space_group_IT_number`],0),i=t.get([`_space_group_symop`,`_symmetry_equiv`,`_symmetry_equiv_pos`,`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`],!1);if(i&&!(i instanceof l))return new e(n,r,[new V(i)]);if(i||console.warn(Object.keys(t).filter(e=>e.includes(`sym`))),i){let t=i.get([`_space_group_symop.operation_xyz`,`_space_group_symop_operation_xyz`,`_symmetry_equiv.pos_as_xyz`,`_symmetry_equiv_pos_as_xyz`]),a=null;try{let e=i.get([`_space_group_symop.id`,`_space_group_symop_id`,`_symmetry_equiv.id`,`_symmetry_equiv_pos_site_id`]);a=new Map(e.map((e,t)=>[e.toString(),t]))}catch{}let o=t.map(e=>new V(e));return new e(n,r,o,a)}let a=Ve({number:r,name:n});if(a){let i=a.operations,o=`standard International Tables setting`;if(a.symbol_cif.trim().startsWith(`R`)){let e=null;try{e=U.fromCIF(t)}catch{e=null}Pe(e)&&(i=Fe(a.operations),o=`rhombohedral axes, matching the cell given in the file`)}return console.warn(`No symmetry operations found in CIF block; reconstructing them from space group ${a.symbol_cif} (No. ${a.number}) assuming the ${o}.`),new e(n===`Unknown`?a.symbol_cif:n,r||a.number,i.map(e=>new V(e)))}return console.warn(`No symmetry operations found in CIF block, will use P1`),new e(`Unknown`,0,[new V(`x,y,z`)])}};function Ue(e){if(!e||typeof e!=`string`)throw Error(`Invalid atom label: ${e}`);let t=e.toUpperCase(),n=RegExp(`^(${`HE.LI.BE.NE.NA.MG.AL.SI.CL.AR.CA.SC.TI.CR.MN.FE.CO.NI.CU.ZN.GA.GE.AS.SE.BR.KR.RB.SR.ZR.NB.MO.TC.RU.RH.PD.AG.CD.IN.SN.SB.TE.XE.CS.BA.LA.CE.PR.ND.PM.SM.EU.GD.TB.DY.HO.ER.TM.YB.LU.HF.TA.RE.OS.IR.PT.AU.HG.TL.PB.BI.PO.AT.RN.FR.RA.AC.TH.PA.NP.PU.AM.CM`.split(`.`).join(`|`)})`),r=t.match(n);if(r)return We(r[1]);let i=t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);if(i)return We(i[1]);throw Error(`Could not infer element type from atom label: ${e}`)}function We(e){return e.length===1?e:e[0]+e[1].toLowerCase()}var U=class e{constructor(e,t,n,r,i,a){this._a=e,this._b=t,this._c=n,this._alpha=r,this._beta=i,this._gamma=a,this.fractToCartMatrix=R(this)}static fromCIF(t){let n=[t.get([`_cell.length_a`,`_cell_length_a`],`not found`),t.get([`_cell.length_b`,`_cell_length_b`],`not found`),t.get([`_cell.length_c`,`_cell_length_c`],`not found`),t.get([`_cell.angle_alpha`,`_cell_angle_alpha`],`not found`),t.get([`_cell.angle_beta`,`_cell_angle_beta`],`not found`),t.get([`_cell.angle_gamma`,`_cell_angle_gamma`],`not found`)];if(n.some(e=>e===`not found`)){let e=[`a`,`b`,`c`,`alpha`,`beta`,`gamma`],t=[];n.forEach((n,r)=>{n===`not found`&&t.push(e[r])});let r=t.join(`, `);throw Error(`Unit cell parameter entries missing in CIF for: ${r}`)}if(n.some(e=>e<0)){let e=[`a`,`b`,`c`,`alpha`,`beta`,`gamma`],t=[];n.forEach((n,r)=>{n<0&&t.push(e[r])});let r=t.join(`, `);throw Error(`Unit cell parameter entries negative in CIF for: ${r}`)}return new e(...n)}get a(){return this._a}set a(e){if(e<=0)throw Error(`Cell parameter 'a' must be positive`);this._a=e,this.fractToCartMatrix=R(this)}get b(){return this._b}set b(e){if(e<=0)throw Error(`Cell parameter 'b' must be positive`);this._b=e,this.fractToCartMatrix=R(this)}get c(){return this._c}set c(e){if(e<=0)throw Error(`Cell parameter 'c' must be positive`);this._c=e,this.fractToCartMatrix=R(this)}get alpha(){return this._alpha}set alpha(e){if(e<=0||e>=180)throw Error(`Angle alpha must be between 0 and 180 degrees`);this._alpha=e,this.fractToCartMatrix=R(this)}get beta(){return this._beta}set beta(e){if(e<=0||e>=180)throw Error(`Angle beta must be between 0 and 180 degrees`);this._beta=e,this.fractToCartMatrix=R(this)}get gamma(){return this._gamma}set gamma(e){if(e<=0||e>=180)throw Error(`Angle gamma must be between 0 and 180 degrees`);this._gamma=e,this.fractToCartMatrix=R(this)}},Ge=class e{constructor(e,t,n,r=null,i=0,a=null){this.label=String(e),this.atomType=t,this.position=n,this.adp=r,this.disorderGroup=i,this.appliedSymmetry=a}get uniqueId(){return this.appliedSymmetry?`${this.label}|${this.appliedSymmetry.key}`:`${this.label}|1_555`}isIdentityImage(e){if(!this.appliedSymmetry)return!0;let t=`${e??`1`}_555`;return this.appliedSymmetry.key===t}static fromCIF(t,n=null,r=null){let i=t.get(`_atom_site`),a=i.get([`_atom_site.label`,`_atom_site_label`]),o=n;if(n===null&&r)o=a.indexOf(r);else if(n===null)throw Error(`either atomIndex or atomLabel need to be provided`);let s=a[o],c=[`.`,`?`];if(c.includes(s))throw Error(`Dummy atom: Invalid label`);if(String(i.getIndex([`_atom_site.calc_flag`,`_atom_site_calc_flag`],o,``)).toLowerCase()===`dum`)throw Error(`Dummy atom: calc_flag is dum`);let l=i.getIndex([`_atom_site.type_symbol`,`_atom_site_type_symbol`],o,!1);if(l||=Ue(s),c.includes(l))throw Error(`Dummy atom: Invalid atom type`);let u=be.fromCIF(t,o),d=Se.fromCIF(t,o),f=i.getIndex([`_atom_site.disorder_group`,`_atom_site_disorder_group`],o,`.`);return new e(s,l,u,d,f===`.`?0:f)}};let Ke=Object.freeze({relativeLength:.001,angleDegrees:.05});function qe(e,t,n=Ke){for(let r of[`a`,`b`,`c`]){let i=Math.max(Math.abs(t[r]),1);if(Math.abs(e[r]-t[r])/i>n.relativeLength)return!1}for(let r of[`alpha`,`beta`,`gamma`])if(Math.abs(e[r]-t[r])>n.angleDegrees)return!1;return!0}function W(e){if(e==null||e===!1||e===`.`||e===`?`)return null;let t=Number(e);return Number.isFinite(t)?t:null}function G(e,t){for(let n of typeof t==`string`?[t]:t)try{let t=e.get(n,!1);if(t&&typeof t.get==`function`)return t}catch{}return null}function K(e,t,n=null){if(!e)return n;try{return e.get(t,n!==null&&n)||n}catch{return n}}function Je(e,t){for(let n of t)try{let t=W(e.get(n));if(t!==null)return t}catch{}return null}function Ye(e,t){for(let n of t)try{let t=e.get(n);if(typeof t==`string`&&t.trim())return t}catch{}return null}let Xe=2*Math.PI;function Ze(e,t,n){if(e.adp instanceof z)return{isotropic:e.adp.uiso};if(e.adp instanceof B){let[r,i,a,o,s,c]=e.adp.getUCart(t),l=P(P(n,[[r,o,s],[o,i,c],[s,c,a]]),I(n));return{anisotropic:[l[0][0],l[1][1],l[2][2],l[0][1],l[0][2],l[1][2]]}}return null}function Qe(e,t,n){if(!e)return 1;if(e.isotropic!==void 0)return Math.exp(-2*Math.PI**2*e.isotropic*n);let[r,i,a,o,s,c]=e.anisotropic,[l,u,d]=t,f=r*l*l+i*u*u+a*d*d+2*o*l*u+2*s*l*d+2*c*u*d;return Math.exp(-2*Math.PI**2*f)}function $e(e){return e.map(e=>{let t=(e%1+1)%1,n=Math.abs(t-1)<1e-8?0:t;return Math.round(n*1e8)}).join(`,`)}function et(e){return Array.isArray(e)?e:[e.h,e.k,e.l]}function tt(e){return e?.type===`Uiso`?new z(e.values[0]):e?.type===`Uani`?new B(...e.values):null}function nt(e,t){if(e instanceof z)return e.uiso<-1e-10;if(!(e instanceof B))return!1;let n=e.getUCart(t);return ue([[n[0],n[3],n[4]],[n[3],n[1],n[5]],[n[4],n[5],n[2]]]).eigenvectors.some(e=>e.value<-1e-10)}function rt(e,t=0,n={}){if(typeof e!=`string`||e.length===0)throw Error(`Structure-factor calculation requires the coordinate CIF text`);if(typeof n.resolveAtom!=`function`)throw Error(`Structure-factor calculation requires an atom factor resolver`);let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=n.structureModel??null,o=a?new U(a.cell.a,a.cell.b,a.cell.c,a.cell.alpha,a.cell.beta,a.cell.gamma):U.fromCIF(i);if(n.expectedCell&&!qe(o,n.expectedCell))throw Error(`Structure-factor coordinate CIF cell does not match the reflection cell`);let s=a?.wavelength??Je(i,[`_diffrn_radiation_wavelength.wavelength`,`_diffrn_radiation.wavelength`,`_diffrn_radiation_wavelength`])??W(n.wavelength),c=a?.atoms??(()=>{let e=i.get(`_atom_site`),t=e.get([`_atom_site.label`,`_atom_site_label`]),n=e.get([`_atom_site.occupancy`,`_atom_site_occupancy`],Array(t.length).fill(1));return t.map((e,t)=>({label:e,index:t,occupancy:n[t]}))})(),l=[],u={},d=[],f=new Map;for(let e=0;e<c.length;e++){let t=c[e],r,o=t.index??e;if(a)r=new Ge(t.label,t.atomType,new he(...t.position),tt(t.adp));else try{r=Ge.fromCIF(i,o)}catch(e){if(e.message.includes(`Dummy atom`))continue;throw e}let p=n.resolveAtom({atom:r,index:o,block:i,wavelength:s});if(!p||typeof p.scatteringAt!=`function`)throw Error(`No scattering-factor model for atom ${r.label} (${r.atomType})`);let m=p.source??`unknown`;u[m]=(u[m]??0)+1;let h=p.scatteringKey??p.scatteringAt,g=f.get(h);g===void 0&&(g=d.length,f.set(h,g),d.push({scatteringAt:p.scatteringAt,atoms:[]})),l.push({atom:r,occupancy:W(t.occupancy)??1,scatteringModelIndex:g})}let p=o.fractToCartMatrix.toArray(),m=L(p),h=I(m),g=Array.isArray(h)?h:h.toArray(),_=(a?.symmetryOperations??H.fromCIF(i).symmetryOperations.map(e=>({rotation:e.rotMatrix,translation:e.transVector}))).map(e=>({operation:{rotation:e.rotation,translation:e.translation},cartesianRotation:P(P(p,e.rotation),m)})),v=0;for(let e of l){let t=new Set,n=e.atom.position instanceof he?[e.atom.position.x,e.atom.position.y,e.atom.position.z]:P(m,[e.atom.position.x,e.atom.position.y,e.atom.position.z]);for(let r of _){let i=F(P(r.operation.rotation,n),r.operation.translation),a=Array.isArray(i)?i:i.toArray(),s=$e(a);if(t.has(s))continue;t.add(s);let c={position:a,occupancy:e.occupancy,displacement:Ze(e.atom,o,r.cartesianRotation)};v++,d[e.scatteringModelIndex].atoms.push(c)}}let y=l.filter(e=>nt(e.atom.adp,o)).map(e=>e.atom.label);function b(e,t,n){let r=g.map(r=>r[0]*e+r[1]*t+r[2]*n),i=r.reduce((e,t)=>e+t**2,0),a=i/4,o=0,s=0;for(let c=0;c<d.length;c++){let l=d[c],u=l.scatteringAt(a);for(let a of l.atoms){let c=Xe*(e*a.position[0]+t*a.position[1]+n*a.position[2]),l=a.occupancy*Qe(a.displacement,r,i),d=Math.cos(c),f=Math.sin(c);o+=l*(u.real*d-u.imaginary*f),s+=l*(u.real*f+u.imaginary*d)}}return{real:o,imaginary:s}}return{coefficientAt:b,calculate(e){return e.map(e=>{let[t,n,r]=et(e),i=b(t,n,r);return{h:t,k:n,l:r,...i,amplitude:Math.hypot(i.real,i.imaginary),phase:Math.atan2(i.imaginary,i.real)*180/Math.PI}})},metadata:{wavelength:s,atomCount:l.length,expandedAtomCount:v,scatteringModelCount:d.length,sourceCounts:u,npdAdpCount:y.length,npdAdpLabels:y}}}let q=`H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf`.split(` `),it=Object.fromEntries(Object.entries({mo:{wavelength:.71073,real:`0 0 0 0 0 .002 .004 .008 .014 .021 .03 .042 .056 .072 .09 .11 .132 .155 .179 .203 .226 .248 .267 .284 .295 .301 .299 .285 .263 .222 .163 .081 -.03 -.178 -.374 -.652 -1.044 -1.657 -2.951 -2.965 -2.197 -1.825 -1.59 -1.42 -1.287 -1.177 -1.085 -1.005 -.936 -.873 -.816 -.772 -.726 -.684 -.644 -.613 -.588 -.564 -.53 -.535 -.53 -.533 -.542 -.564 -.591 -.619 -.666 -.723 -.795 -.884 -.988 -1.118 -1.258 -1.421 -1.598 -1.816 -2.066 -2.352 -2.688 -3.084 -3.556 -4.133 -4.861 -5.924 -7.444 -8.862 -7.912 -7.62 -7.725 -8.127 -8.96 -10.673 -11.158 -9.725 -8.926 -8.416 -7.99 -7.683`,imaginary:`0 0 0 0 .001 .002 .003 .006 .01 .016 .025 .036 .052 .071 .095 .124 .159 .201 .25 .306 .372 .446 .53 .624 .729 .845 .973 1.113 1.266 1.431 1.609 1.801 2.007 2.223 2.456 2.713 2.973 3.264 3.542 .56 .621 .688 .759 .836 .919 1.007 1.101 1.202 1.31 1.424 1.546 1.675 1.812 1.958 2.119 2.282 2.452 2.632 2.845 3.018 3.225 3.442 3.669 3.904 4.151 4.41 4.678 4.958 5.248 5.548 5.858 6.185 6.523 6.872 7.232 7.605 7.99 8.388 8.798 9.223 9.659 10.102 10.559 11.042 9.961 10.403 7.754 8.105 8.472 8.87 9.284 9.654 4.148 4.33 4.511 4.697 4.908 5.107`},cu:{wavelength:1.54184,real:`0 0 .001 .003 .008 .017 .029 .047 .069 .097 .129 .165 .204 .244 .283 .319 .348 .366 .365 .341 .285 .189 .035 -.198 -.568 -1.179 -2.464 -2.956 -2.019 -1.612 -1.354 -1.163 -1.011 -.879 -.767 -.665 -.574 -.465 -.386 -.314 -.248 -.191 -.145 -.105 -.077 -.059 -.06 -.079 -.126 -.194 -.287 -.418 -.579 -.783 -1.022 -1.334 -1.716 -2.17 -2.939 -3.431 -4.357 -5.696 -7.718 -9.242 -9.498 -10.423 -12.255 -9.733 -8.488 -7.701 -7.133 -6.715 -6.351 -6.048 -5.79 -5.581 -5.391 -5.233 -5.096 -4.99 -4.883 -4.818 -4.776 -4.756 -4.772 -4.787 -4.833 -4.898 -4.994 -5.091 -5.216 -5.359 -5.529 -5.712 -5.93 -6.176 -6.498 -6.798`,imaginary:`0 0 0 .001 .004 .009 .018 .032 .053 .083 .124 .177 .246 .33 .434 .557 .702 .872 1.066 1.286 1.533 1.807 2.11 2.443 2.808 3.204 3.608 .509 .589 .678 .777 .886 1.006 1.139 1.283 1.439 1.608 1.82 2.025 2.245 2.482 2.735 3.005 3.296 3.605 3.934 4.282 4.653 5.045 5.459 5.894 6.352 6.835 7.348 7.904 8.46 9.036 9.648 10.535 10.933 11.614 12.32 11.276 11.946 9.242 9.748 3.704 3.937 4.181 4.432 4.693 4.977 5.271 5.577 5.891 6.221 6.566 6.925 7.297 7.686 8.089 8.505 8.93 9.383 9.843 10.317 10.803 11.296 11.799 12.33 12.868 13.409 13.967 14.536 15.087 15.634 16.317 16.93`}}).map(([e,t])=>{let n=t.real.trim().split(/\\s+/).map(Number),r=t.imaginary.trim().split(/\\s+/).map(Number);if(n.length!==q.length||r.length!==q.length)throw Error(`Invalid internal anomalous-dispersion table: ${e}`);return[e,{wavelength:t.wavelength,values:new Map(q.map((e,t)=>[e,{real:n[t],imaginary:r[t]}]))}]}));function at(e){let t=String(e).trim().match(/^([A-Za-z]{1,2})/);if(!t)return null;if(t[1].toUpperCase()===`D`)return`H`;let n=t[1][0].toUpperCase()+t[1].slice(1).toLowerCase();return q.includes(n)?n:null}function ot(e,t){if(e.table!==void 0){let t=String(e.table).toLowerCase().replace(/[^a-z]/g,``).slice(0,2),n=it[t];if(!n)throw Error(`Anomalous-dispersion table must be \"Cu\" or \"Mo\"`);return{key:t,...n}}if(!Number.isFinite(t))return null;let n=W(e.wavelengthTolerance)??.005,r=Object.entries(it).find(([,e])=>Math.abs(e.wavelength-t)<=n);return r?{key:r[0],...r[1]}:null}function st(e,t,n={}){let r=at(e),i=ot(n,W(t)),a=r&&i?.values.get(r);return a?{...a,table:i.key,wavelength:i.wavelength}:null}function ct(e,t,n){let r=G(e,t),i=K(r,n),a=K(r,[`_atom_site_dispersion.real`,`_atom_site_dispersion_real`,`_atom_type_scat.dispersion_real`,`_atom_type_scat_dispersion_real`]),o=K(r,[`_atom_site_dispersion.imag`,`_atom_site_dispersion_imag`,`_atom_type_scat.dispersion_imag`,`_atom_type_scat_dispersion_imag`]),s=new Map;if(!i||!a&&!o)return s;for(let e=0;e<i.length;e++)s.set(String(i[e]),{real:a?W(a[e]):null,imaginary:o?W(o[e]):null});return s}function lt(e,t,n){let r=e.values??e.fallbackValues;if(!r)return null;let i=r[t]??r[n];return Array.isArray(i)?{real:W(i[0]),imaginary:W(i[1])}:i&&typeof i==`object`?{real:W(i.real??i.fPrime),imaginary:W(i.imaginary??i.fDoublePrime)}:null}function ut(e,t){return!e&&!t?null:{real:e?.real??t?.real??null,imaginary:e?.imaginary??t?.imaginary??null}}function dt(e,t,n,r,i,a){let o=at(e),s=lt(a,e,o),c=ut(s,o?i?.values.get(o):null),l=r.get(String(e))??r.get(o),u=ut(n.get(String(t)),ut(l,c));if(!u||u.real===null||u.imaginary===null)throw Error(`No complete anomalous-dispersion factors for atom ${t} (${e}); provide them in the CIF or select a supported internal table`);let d=n.has(String(t))?`site-cif`:l?`type-cif`:s?`configured`:`internal`;return{real:u.real,imaginary:u.imaginary,source:d}}function ft(e,t=0,n={},r=null){let i,a,o,s=rt(e,t,{expectedCell:r,wavelength:n.wavelength,structureModel:n.structureModel,resolveAtom({atom:e,block:t,wavelength:r}){i??=ot(n,r),a??=ct(t,[`_atom_site_dispersion`],[`_atom_site_dispersion.label`,`_atom_site_dispersion_label`]),o??=ct(t,[`_atom_type`,`_atom_type_scat`],[`_atom_type.symbol`,`_atom_type_symbol`]);let s=dt(e.atomType,e.label,a,o,i,n);return{source:s.source,scatteringKey:`${s.real},${s.imaginary}`,scatteringAt(){return{real:s.real,imaginary:s.imaginary}}}}});return{...s,metadata:{...s.metadata,enabled:!0,internalTable:i?.key??null}}}let pt=new Map(`H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674`.split(`\n`).map(e=>{let[t,...n]=e.trim().split(/\\s+/);if(n.length!==9||n.some(e=>!Number.isFinite(Number(e))))throw Error(`Invalid internal Cromer-Mann coefficients for ${t}`);return[t,n.map(Number)]}));function mt(e){let t=pt.get(e===`D`?`H`:e);return t?[...t]:null}function ht(e,t){let n=e[8];for(let r=0;r<4;r++)n+=e[r]*Math.exp(-e[r+4]*t);return n}let gt=`H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf`.split(` `),_t=[`a1`,`a2`,`a3`,`a4`,`b1`,`b2`,`b3`,`b4`,`c`];function vt(e){let t=String(e).trim().match(/^([A-Za-z]{1,2})/);if(!t)return null;if(t[1].toUpperCase()===`D`)return`H`;let n=t[1][0].toUpperCase()+t[1].slice(1).toLowerCase();return gt.includes(n)?n:null}function yt(e){let t=G(e,[`_atom_type`,`_atom_type_scat`]),n=K(t,[`_atom_type.symbol`,`_atom_type_symbol`]),r=_t.map(e=>K(t,[`_atom_type_scat.Cromer_Mann_${e}`,`_atom_type_scat_Cromer_Mann_${e}`,`_atom_type.scat_Cromer_Mann_${e}`])),i=new Map;if(!n||r.some(e=>!e))return i;for(let e=0;e<n.length;e++){let t=r.map(t=>W(t[e]));if(t.every(e=>e!==null)){let r=String(n[e]);i.set(r,t);let a=vt(r);a&&!i.has(a)&&i.set(a,t)}}return i}function bt(e,t,n){let r=G(e,t),i=K(r,n),a=K(r,[`_atom_site_dispersion.real`,`_atom_site_dispersion_real`,`_atom_type_scat.dispersion_real`,`_atom_type_scat_dispersion_real`]),o=K(r,[`_atom_site_dispersion.imag`,`_atom_site_dispersion_imag`,`_atom_type_scat.dispersion_imag`,`_atom_type_scat_dispersion_imag`]),s=new Map;if(!i||!a&&!o)return s;for(let e=0;e<i.length;e++)s.set(String(i[e]),{real:a?W(a[e]):null,imaginary:o?W(o[e]):null});return s}function xt(e,t,n){let r=e.cromerMann?.[t]??e.cromerMann?.[n];if(!Array.isArray(r)||r.length!==9)return null;let i=r.map(W);return i.every(e=>e!==null)?i:null}function St(e,t,n){let r=e.dispersionValues?.[t]??e.dispersionValues?.[n];return Array.isArray(r)?{real:W(r[0]),imaginary:W(r[1])}:r&&typeof r==`object`?{real:W(r.real??r.fPrime),imaginary:W(r.imaginary??r.fDoublePrime)}:null}function Ct(e){return e?.real!==null&&e?.real!==void 0&&e?.imaginary!==null&&e?.imaginary!==void 0}function wt(e,t){return{real:e?.real??t?.real??null,imaginary:e?.imaginary??t?.imaginary??null}}function Tt(e,t=0,n={}){let r,i,a,o=n.includeAnomalous!==!1,s=rt(e,t,{expectedCell:n.expectedCell,wavelength:n.wavelength,structureModel:n.structureModel,resolveAtom({atom:e,block:t,wavelength:s}){r??=yt(t),i??=bt(t,[`_atom_type`,`_atom_type_scat`],[`_atom_type.symbol`,`_atom_type_symbol`]),a??=bt(t,[`_atom_site_dispersion`],[`_atom_site_dispersion.label`,`_atom_site_dispersion_label`]);let c=vt(e.atomType),l=r.get(e.atomType)??r.get(c),u=xt(n,e.atomType,c),d=l??u??mt(c);if(!d)throw Error(`No Cromer-Mann coefficients for atom ${e.label} (${e.atomType})`);let f={real:0,imaginary:0},p=`disabled`;if(o){let t=a.get(e.label),r=i.get(e.atomType)??i.get(c),o=St(n,e.atomType,c),l=wt(t,wt(r,wt(o,st(c,s,n.anomalous??{}))));Ct(l)?(f=l,p=t?`site-cif`:r?`type-cif`:o?`configured`:`internal`):p=`zero`}return{source:`${l?`cif`:u?`configured`:`internal`}/${p}`,scatteringKey:JSON.stringify([...d,f.real,f.imaginary]),scatteringAt(e){return{real:ht(d,e)+f.real,imaginary:f.imaginary}}}}});return{...s,metadata:{...s.metadata,model:`IAM`,includeAnomalous:o}}}let Et=2*Math.PI,Dt=new WeakMap;function Ot(e,t,n=1e-6){return e.map(e=>{let r=e[0]*t[0]+e[1]*t[1]+e[2]*t[2],i=Math.round(r);if(Math.abs(r-i)>n)throw Error(`Symmetry operation produced a non-integral reflection index: ${r}`);return Object.is(i,-0)?0:i})}function kt(e){let t=Dt.get(e);return t||(t=e.symmetryOperations.map(e=>({operation:e,reciprocalRotation:I(L(e.rotMatrix)),positionReciprocalRotation:I(e.rotMatrix),translation:e.transVector})),Dt.set(e,t)),t}function At(e,t){for(let n=0;n<3;n++)if(e[n]!==t[n])return e[n]-t[n];return 0}function jt(e,t,n,r,i=!0){let a=kt(r).map(r=>Ot(r.reciprocalRotation,[e,t,n]));return i&&a.push(...a.map(e=>e.map(e=>e===0?0:-e))),a.sort(At),a[0]}function Mt(e,t,n,r,i=1e-8){if(e===0&&t===0&&n===0)return!1;let a=new Map;for(let i of kt(r)){let r=Ot(i.positionReciprocalRotation,[e,t,n]).join(`,`),o=Et*(e*i.translation[0]+t*i.translation[1]+n*i.translation[2]),s=a.get(r)??{real:0,imaginary:0};s.real+=Math.cos(o),s.imaginary+=Math.sin(o),a.set(r,s)}return[...a.values()].every(e=>Math.hypot(e.real,e.imaginary)<=i)}function Nt(e,t){return[t,...e.getAllBlocks().filter(e=>e!==t)]}function Pt(e,t,n){return[e,t,n].every(e=>Number.isInteger(e))}function J(e,t,n,r,i=null){let a=[e,t,n,r].map(e=>e?.length);if(a.some(e=>e===void 0)||!a.every(e=>e===a[0]))throw Error(`Reflection index and intensity columns must have the same row count`);if(i&&i.length!==a[0])throw Error(`Reflection intensity and uncertainty columns must have the same row count`);let o=[],s=0;for(let c=0;c<a[0];c++){let a=W(e[c]),l=W(t[c]),u=W(n[c]),d=W(r[c]),f=i?W(i[c]):null;if(!Pt(a,l,u)||d===null||i&&f===null){s++;continue}o.push({h:a,k:l,l:u,intensity:d,sigma:f,sourceIndex:c})}return{rows:o,invalidCount:s}}function Ft(e){let t=K(e,[`_refln.index_h`,`_refln_index_h`]),n=K(e,[`_refln.index_k`,`_refln_index_k`]),r=K(e,[`_refln.index_l`,`_refln_index_l`]),i=K(e,[`_refln.intensity_meas`,`_refln_intensity_meas`]);if(i)return{...J(t,n,r,i,K(e,[`_refln.intensity_sigma`,`_refln_intensity_sigma`,`_refln.intensity_meas_su`,`_refln_intensity_meas_su`])),valueKind:`intensity`};let a=K(e,[`_refln.F_squared_meas`,`_refln_F_squared_meas`]);if(a)return{...J(t,n,r,a,K(e,[`_refln.F_squared_sigma`,`_refln_F_squared_sigma`,`_refln.F_squared_meas_su`,`_refln_F_squared_meas_su`])),valueKind:`F-squared`};let o=K(e,[`_refln.F_meas`,`_refln_F_meas`]);if(o){let i=K(e,[`_refln.F_sigma`,`_refln_F_sigma`]);return{...J(t,n,r,o.map(e=>{let t=W(e);return t===null?null:t**2}),i?.map((e,t)=>{let n=W(e),r=W(o[t]);return n===null||r===null?null:2*Math.abs(r)*n})??null),valueKind:`F-amplitude-squared`}}throw Error(`The _refln loop contains no measured intensity, F-squared, or F columns`)}function It(e){let t=K(e,[`_diffrn_refln.index_h`,`_diffrn_refln_index_h`]),n=K(e,[`_diffrn_refln.index_k`,`_diffrn_refln_index_k`]),r=K(e,[`_diffrn_refln.index_l`,`_diffrn_refln_index_l`]),i=K(e,[`_diffrn_refln.intensity_net`,`_diffrn_refln_intensity_net`,`_diffrn_refln.intensity_meas`,`_diffrn_refln_intensity_meas`]),a=K(e,[`_diffrn_refln.intensity_u`,`_diffrn_refln_intensity_u`,`_diffrn_refln.intensity_sigma`,`_diffrn_refln_intensity_sigma`,`_diffrn_refln.intensity_net_su`,`_diffrn_refln_intensity_net_su`]);if(!i)throw Error(`The _diffrn_refln loop contains no net measured intensity column`);return J(t,n,r,i,a)}function Lt(e){let t=[e.slice(0,4),e.slice(4,8),e.slice(8,12),e.slice(12,20),e.slice(20,28),e.slice(28,32)].map(e=>e.trim());return t.slice(0,5).some(e=>e.length===0)?null:t}function Rt(e){let t=[],n=0;for(let[r,i]of String(e).split(/\\r?\\n/).entries()){if(i.trim().length===0)continue;let e=Lt(i),[a,o,s,c,l]=e?e.slice(0,5).map(W):[null,null,null,null,null];if(!Pt(a,o,s)||c===null||l===null){let e=i.trim().split(/\\s+/);[a,o,s,c,l]=e.slice(0,5).map(W)}if(!Pt(a,o,s)||c===null||l===null){n++;continue}if(a===0&&o===0&&s===0&&c===0&&l===0)break;t.push({h:a,k:o,l:s,intensity:c,sigma:l,sourceIndex:r})}return{rows:t,invalidCount:n}}function zt(e){e.parse();let t=Object.keys(e.data).find(e=>/shelx.*hkl_file/i.test(e));return t?e.data[t]:null}function Bt(e){let t=[];for(let n of[`_iucr_refine_fcf_details`]){let r;try{r=e.get(n)}catch{continue}if(!(typeof r!=`string`||!r.includes(`data_`)))try{for(let e of new D(r).getAllBlocks()){let n=G(e,`_refln`);n&&t.push(n)}}catch{}}return t}function Vt(e,t,n,r,i=1e-8){return Mt(e,t,n,r,i)}function Ht(e,t,n={}){let r=n.mergeFriedel!==!1,i=n.removeSystematicAbsences!==!1,a=new Map,o=new Map,s=new Map,c=0;for(let l of e){let e=`${l.h},${l.k},${l.l}`,u=o.get(e);if(u===void 0&&(u=i&&Vt(l.h,l.k,l.l,t,n.absenceTolerance),o.set(e,u)),u){c++;continue}let d=s.get(e);d||(d=jt(l.h,l.k,l.l,t,r),s.set(e,d));let[f,p,m]=d,h=`${f},${p},${m}`;a.has(h)||a.set(h,{h:f,k:p,l:m,observations:[]}),a.get(h).observations.push(l)}let l=[...a.values()].map(e=>{let t=e.observations.every(e=>e.sigma>0),n,r;if(t){let t=e.observations.reduce((e,t)=>e+1/t.sigma**2,0);n=e.observations.reduce((e,t)=>e+t.intensity/t.sigma**2,0)/t,r=Math.sqrt(1/t)}else n=e.observations.reduce((e,t)=>e+t.intensity,0)/e.observations.length,r=e.observations.every(e=>e.sigma!==null)?Math.sqrt(e.observations.reduce((e,t)=>e+t.sigma**2,0))/e.observations.length:null;return{h:e.h,k:e.k,l:e.l,intensity:n,sigma:r,multiplicity:e.observations.length}});return l.sort((e,t)=>At([e.h,e.k,e.l],[t.h,t.k,t.l])),{reflections:l,systematicAbsenceCount:c}}function Ut(e,t=0,n={}){let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=Nt(r,i),o=n.source??`auto`,s=e=>o===`auto`||o===e;if(s(`refln`)){let e=[...a.map(e=>G(e,`_refln`)).filter(Boolean).map(e=>({loop:e,source:`refln`})),...a.flatMap(Bt).map(e=>({loop:e,source:`embedded-refln`}))],t=null;for(let n of e)try{let e=Ft(n.loop);return{reflections:e.rows.map(e=>({...e,multiplicity:1})),metadata:{source:n.source,valueKind:e.valueKind,alreadyMerged:!0,inputCount:e.rows.length+e.invalidCount,outputCount:e.rows.length,invalidCount:e.invalidCount,systematicAbsenceCount:0,mergeFriedel:null}}}catch(e){if(!e.message.includes(`contains no measured`))throw e;t=e}if(o===`refln`&&t)throw t}let c,l;if(s(`diffrn_refln`)){let e=a.map(e=>G(e,`_diffrn_refln`)).find(Boolean);e&&(c=It(e),l=`diffrn_refln`)}if(!c&&s(`shelx_hkl_file`)){let e=a.map(zt).find(e=>typeof e==`string`);e&&(c=Rt(e),l=`shelx_hkl_file`)}if(!c)throw Error(`No usable reflection intensities found for source \"${o}\"`);let u=H.fromCIF(i),d=Ht(c.rows,u,n);return{reflections:d.reflections,metadata:{source:l,valueKind:`intensity`,alreadyMerged:!1,inputCount:c.rows.length+c.invalidCount,outputCount:d.reflections.length,invalidCount:c.invalidCount,systematicAbsenceCount:d.systematicAbsenceCount,mergeFriedel:n.mergeFriedel!==!1}}}function Wt(e,t,n,r){if(!(e>0)||!(t>0)||n===0)return 1;let i=r*t/2;if(!(i>0&&i<1))throw Error(`Cannot apply SHELXL extinction at sin(theta)=${i}; check the radiation wavelength and reflection indices`);let a=2*i*Math.sqrt(1-i**2);return(1+.001*n*e*r**3/a)**-.25}function Gt(e,t,n,r,i,a=!0){let o=(e,t={})=>({factors:Array(r.length).fill(1),metadata:{enabled:!1,model:`SHELXL-isotropic`,reason:e,...t}});if(a===!1)return o(`disabled`);if(a!==!0&&typeof a!=`number`&&(typeof a!=`object`||!a||Array.isArray(a)))throw Error(`extinctionCorrection must be true, false, a coefficient, or an object`);let s=W(typeof a==`number`?a:a?.coefficient),c=Je(e,[`_refine_ls.extinction_coef`,`_refine_ls_extinction_coef`]),l=s??c,u=s===null?`cif`:`configured`;if(l===null)return o(`not-reported`);if(l<0)throw Error(`SHELXL extinction coefficient must not be negative`);if(l===0)return o(`zero-coefficient`,{coefficient:l,source:u});let d=Ye(e,[`_refine_ls.extinction_method`,`_refine_ls_extinction_method`]),f=Ye(e,[`_refine_ls.extinction_expression`,`_refine_ls_extinction_expression`]);if(!(/shelxl/i.test(d??``)||/0\\.001/i.test(f??``)&&/sin\\s*\\(?\\s*2/i.test(f??``))&&s===null)return o(`unsupported-model`,{coefficient:l,source:u,method:d,expression:f});let p=(typeof a==`object`?W(a.wavelength):null)??n;if(!(p>0))throw Error(`SHELXL extinction correction requires a positive radiation wavelength`);if(r.length!==i.length)throw Error(`Extinction correction requires matching observed and calculated reflections`);let m=I(L(t.fractToCartMatrix)),h=r.map((e,t)=>{let n=ae(P(m,[e.h,e.k,e.l]));return Wt(i[t].amplitude**2,n,l,p)}),g=h.reduce((e,t)=>Math.min(e,t),1);return{factors:h,metadata:{enabled:!0,model:`SHELXL-isotropic`,coefficient:l,wavelength:p,source:u,method:d,expression:f,correctedReflectionCount:h.filter(e=>e<1).length,minimumAmplitudeFactor:g,maximumAmplitudeCorrection:1/g}}}function Kt(e,t){return(e%t+t)%t}function qt(e,t,n,r,i){let a=t-e,o=n-t,s=r-n;if(o===0)return t;let c=a*o<=0?0:2*a*o/(a+o),l=o*s<=0?0:2*o*s/(o+s),u=i*i,d=u*i;return(2*d-3*u+1)*t+(d-2*u+i)*c+(-2*d+3*u)*n+(d-u)*l}var Jt=class e{constructor(e,t,n,r={}){this.cell=e,this.dimensions=t,this.values=n,Object.assign(this,r)}toPayload(){let{cell:e,dimensions:t,values:n,...r}=this;return{cell:{a:e.a,b:e.b,c:e.c,alpha:e.alpha,beta:e.beta,gamma:e.gamma},dimensions:t,values:n,...r}}static fromPayload(t){let n=new U(t.cell.a,t.cell.b,t.cell.c,t.cell.alpha,t.cell.beta,t.cell.gamma),{cell:r,dimensions:i,values:a,...o}=t;return new e(n,i,a,o)}sample(e,t,n){let[r,i,a]=this.dimensions,o=this.originFractional??[0,0,0],s=[(e-o[0])*r,(t-o[1])*i,(n-o[2])*a],c=this.boundaryMode!==`zero`;if(!c&&s.some((e,t)=>e<0||e>this.dimensions[t]-1))return 0;let l=s.map(Math.floor),u=s.map((e,t)=>!c&&l[t]>=this.dimensions[t]-1?(l[t]=this.dimensions[t]-1,0):e-l[t]),d=(e,t,n)=>{let o=c?Kt(e,r):Math.min(r-1,e),s=c?Kt(t,i):Math.min(i-1,t),l=c?Kt(n,a):Math.min(a-1,n);return this.values[(l*i+s)*r+o]},f=(e,t,n)=>e+(t-e)*n,p=f(d(l[0],l[1],l[2]),d(l[0]+1,l[1],l[2]),u[0]),m=f(d(l[0],l[1]+1,l[2]),d(l[0]+1,l[1]+1,l[2]),u[0]),h=f(d(l[0],l[1],l[2]+1),d(l[0]+1,l[1],l[2]+1),u[0]),g=f(d(l[0],l[1]+1,l[2]+1),d(l[0]+1,l[1]+1,l[2]+1),u[0]);return f(f(p,m,u[1]),f(h,g,u[1]),u[2])}sampleCubic(e,t,n){let[r,i,a]=this.dimensions,o=this.originFractional??[0,0,0],s=(e-o[0])*r,c=(t-o[1])*i,l=(n-o[2])*a,u=this.boundaryMode!==`zero`;if(!u&&(s<0||s>r-1||c<0||c>i-1||l<0||l>a-1))return 0;let d=u?Math.floor(s):Math.min(Math.floor(s),r-1),f=u?Math.floor(c):Math.min(Math.floor(c),i-1),p=u?Math.floor(l):Math.min(Math.floor(l),a-1),m=d===r-1&&!u?0:s-d,h=f===i-1&&!u?0:c-f,g=p===a-1&&!u?0:l-p,_=(e,t)=>u?Kt(e,t):e<0||e>=t?-1:e,v=_(d-1,r),y=_(d,r),b=_(d+1,r),x=_(d+2,r),S=_(f-1,i),C=_(f,i),w=_(f+1,i),T=_(f+2,i),E=_(p-1,a),D=_(p,a),O=_(p+1,a),k=_(p+2,a),A=(e,t)=>{if(e<0||t<0)return 0;let n=(t*i+e)*r;return qt(v<0?0:this.values[n+v],y<0?0:this.values[n+y],b<0?0:this.values[n+b],x<0?0:this.values[n+x],m)},j=e=>qt(A(S,e),A(C,e),A(w,e),A(T,e),h);return qt(j(E),j(D),j(O),j(k),g)}};let Yt=2*Math.PI;var Y=class extends Error{constructor(e){super(e),this.name=`UnsupportedCoefficientSourceError`}};function Xt(e){let t=1;for(;t<e;)t*=2;return Math.max(2,t)}function Zt(e,t){return(e%t+t)%t}function X(e,t,...n){try{return e.get(t)}catch(e){if(n.length>0)return n[0];throw e}}function Qt(e){let t=e.map(e=>e.length);if(t.some(e=>e!==t[0]))throw Error(`Reflection columns have inconsistent lengths: ${t.join(`, `)}`)}function $t(e,t){let n=typeof e==`string`?[e]:e;if(!Array.isArray(n)||n.length<1||n.length>2||n.some(e=>typeof e!=`string`||e.length===0))throw Error(`${t} must name one or two CIF columns`);return n}function en(e,t,n){return $t(t,n).map(t=>{try{return e.get(t)}catch{throw Error(`Custom density column not found: ${t}`)}})}function tn(e,t){let n=t.amplitudes??t.amplitudeColumns??t.amplitude,r=t.phases??t.phaseColumns??t.phase,i=t.aValues??t.a??t.A,a=t.bValues??t.b??t.B,o=n!==void 0||r!==void 0,s=i!==void 0||a!==void 0;if(o===s)throw Error(`Custom density columns must specify either amplitudes/phases or A/B values`);if(s){if(i===void 0||a===void 0)throw Error(`Custom density A and B columns must both be specified`);let t=en(e,i,`a`),n=en(e,a,`b`);if(t.length!==n.length)throw Error(`Custom density A and B column counts must match`);return Qt([...t,...n]),{mode:t.length===1?`a-b`:`a-b-difference`,componentCount:t.length,valueColumns:[...t,...n],coefficientAt(e){return{real:Number(t[0][e])-(t[1]?Number(t[1][e]):0),imaginary:Number(n[0][e])-(n[1]?Number(n[1][e]):0)}}}}if(n===void 0||r===void 0)throw Error(`Custom density amplitude and phase columns must both be specified`);let c=en(e,n,`amplitudes`),l=en(e,r,`phases`);if(l.length!==1&&l.length!==c.length)throw Error(`Use one common phase column or one phase column per amplitude`);Qt([...c,...l]);let u=t.phaseUnit===`radians`?1:Math.PI/180;if(t.phaseUnit!==void 0&&![`degrees`,`radians`].includes(t.phaseUnit))throw Error(`Custom density phaseUnit must be \"degrees\" or \"radians\"`);let d=l.length===c.length&&l.length===2;return{mode:c.length===1?`amplitude-phase`:d?`split-phase-difference`:`common-phase-difference`,componentCount:c.length,valueColumns:[...c,...l],coefficientAt(e){if(!d){let t=Number(c[0][e])-(c[1]?Number(c[1][e]):0),n=Number(l[0][e])*u;return{real:t*Math.cos(n),imaginary:t*Math.sin(n)}}let t=Number(l[0][e])*u,n=Number(l[1][e])*u;return{real:Number(c[0][e])*Math.cos(t)-Number(c[1][e])*Math.cos(n),imaginary:Number(c[0][e])*Math.sin(t)-Number(c[1][e])*Math.sin(n)}}}}function nn(e){e.parse();let t=Object.keys(e.data).find(e=>/shelx.*fab_file/i.test(e));return t?e.data[t]:null}function rn(e){let t=nn(e);if(typeof t!=`string`)return null;let n=[],r=[],i=[],a=[],o=[];for(let e of t.split(`\n`)){let t=e.trim().split(/\\s+/).map(Number);if(t.length<5||t.slice(0,5).some(e=>!Number.isFinite(e)))continue;let[s,c,l,u,d]=t;n.push(s),r.push(c),i.push(l),a.push(u),o.push(d)}return n.length>0?{h:n,k:r,l:i,real:a,imaginary:o}:null}function an(e){let t=K(G(e,`_smtbx_masks_void`),[`_smtbx_masks_void.count_electrons`,`_smtbx_masks_void_count_electrons`]);if(!t)return null;let n=t.reduce((e,t)=>e+(W(t)??0),0);return{voidCount:t.length,totalElectrons:n}}function on(e,t){let n=e??`first`;if(![`first`,`second`,`both`,`result`].includes(n))throw Error(`Anomalous-dispersion target must be \"first\", \"second\", \"both\", or \"result\"`);if(n===`second`){if(t<2)throw Error(`Cannot correct the second operand of a single coefficient set`);return 1}return n===`both`&&t>1?0:-1}function sn(e,t){if(t.generator!==void 0&&t.generator!==`auto`){let e=String(t.generator).toLowerCase();if(![`olex`,`shelxl`].includes(e))throw Error(`Anomalous-dispersion generator must be \"auto\", \"olex\", or \"shelxl\"`);return e}let n=t=>{try{return String(e.get(t,``)).toLowerCase()}catch{return``}},r=n(`_computing_structure_refinement`);if(r.includes(`olex2.refine`)||r.includes(`olex2_refine`))return`olex`;if(r.includes(`shelxl`))return`shelxl`;let i=n(`_audit_creation_method`);return i.includes(`olex2.refine`)||i.includes(`olex2_refine`)?`olex`:i.includes(`shelxl`)?`shelxl`:`unknown`}function cn(e,t,n,r,i,a=.05){let o=e.symmetryOperations.find(e=>e.rotMatrix.every((e,t)=>e.every((e,n)=>Math.abs(e-(t===n?-1:0))<1e-8)));if(!o)return{centrosymmetric:!1,available:!1};if(!i)return{centrosymmetric:!0,available:!1};let s=0,c=0;for(let e=0;e<i.length;e++){let a=Number(i[e]),l=[Number(t[e]),Number(n[e]),Number(r[e])];if(![a,...l].every(Number.isFinite))continue;let u=180*(l[0]*o.transVector[0]+l[1]*o.transVector[1]+l[2]*o.transVector[2]),d=Math.abs(((a-u+90)%180+180)%180-90);c=Math.max(c,d),s++}return{centrosymmetric:!0,method:`inversion-phases`,available:s>0,checkedCount:s,toleranceDegrees:a,maximumDeviationDegrees:c,alreadyCorrected:s>0&&c<=a,needsCorrection:s>0&&c>a}}function ln(e,t,n,r,i,a=.05,o=1e-4){if(!r)return{centrosymmetric:!1,method:`friedel-pair-phases`,available:!1};let s=new Map,c=0;for(let a=0;a<r.length;a++){let o=[Number(e[a]),Number(t[a]),Number(n[a])],l=Number(r[a]),u=i?Number(i[a]):null;[...o,l].every(Number.isFinite)&&(Number.isFinite(u)&&(c=Math.max(c,Math.abs(u))),s.set(o.join(`,`),{indices:o,phase:l,amplitude:u}))}let l=new Set,u=0,d=0,f=0,p=c*1e-4;for(let[e,t]of s){if(l.has(e)||t.indices.every(e=>e===0))continue;let n=t.indices.map(e=>-e).join(`,`),r=s.get(n);if(!r||(l.add(e),l.add(n),c>0&&(Math.abs(t.amplitude)<p||Math.abs(r.amplitude)<p)))continue;let i=Math.abs(((t.phase+r.phase+180)%360+360)%360-180);d=Math.max(d,i),c>0&&Number.isFinite(t.amplitude)&&Number.isFinite(r.amplitude)&&(f=Math.max(f,Math.abs(Math.abs(t.amplitude)-Math.abs(r.amplitude))/c)),u++}let m=u>0&&d<=a&&f<=o;return{centrosymmetric:!1,method:`friedel-pair-phases`,available:u>0,checkedPairCount:u,toleranceDegrees:a,maximumDeviationDegrees:d,amplitudeToleranceRelative:o,maximumAmplitudeDeviationRelative:f,alreadyCorrected:m,needsCorrection:u>0&&!m}}function un(e,t,n,r,i,a){let o=`${t},${n},${r}`,s=e.get(o);s?(s.real+=i,s.imaginary+=a,s.count++):e.set(o,{h:t,k:n,l:r,real:i,imaginary:a,count:1})}function dn(e,t,n,r,i,a){let o=new Map;for(let a=0;a<e.length;a++){let s=Number(e[a]),c=Number(t[a]),l=Number(n[a]),{real:u,imaginary:d}=r(a);if([s,c,l,u,d].every(Number.isFinite))for(let e of kt(i)){let t=e.operation,[n,r,i]=Ot(e.reciprocalRotation,[s,c,l]),a=Yt*(n*t.transVector[0]+r*t.transVector[1]+i*t.transVector[2]),f=Math.cos(a),p=Math.sin(a),m=u*f-d*p,h=u*p+d*f;un(o,n,r,i,m,h),(n!==0||r!==0||i!==0)&&un(o,-n,-r,-i,m,-h)}}a&&o.delete(`0,0,0`);for(let e of o.values())e.real/=e.count,e.imaginary/=e.count;return o}function fn(e,t){if(e.coefficients.size===0)throw Error(`Reflection source contains no usable difference-map coefficients`);let n=I(L(e.cell.fractToCartMatrix)),r=0;for(let t of e.coefficients.values())t.reciprocalLength=ae(P(n,[t.h,t.k,t.l])),r=Math.max(r,t.reciprocalLength);return{...e,maximumReciprocalLength:r,symmetryOperations:t.symmetryOperations.map(e=>({rotation:e.rotMatrix.map(e=>[...e]),translation:[...e.transVector]}))}}function pn(e,t,n,r){let i=Number(n);if(Number.isFinite(i)&&i>0)return{scale:i,fittedReflectionCount:0,explicit:!0};let a=0,o=0,s=0;for(let n=0;n<e.length;n++){let i=e[n],c=t[n].amplitude**2*r[n]**2;if(!(i.intensity>0&&c>0))continue;let l=i.sigma>0?1/i.sigma**2:1;a+=l*i.intensity*c,o+=l*i.intensity**2,s++}let c=a/o;if(!(Number.isFinite(c)&&c>0&&s>0))throw Error(`Could not fit a positive intensity scale against the IAM calculation`);return{scale:c,fittedReflectionCount:s,explicit:!1}}function mn(e,t=0,n={}){let r=new D(e),i=typeof t==`number`?r.getBlock(t):r.getBlockByName(t),a=U.fromCIF(i),o=H.fromCIF(i),s={includeAnomalous:!1,...n.iam},c={...n.reflections};c.mergeFriedel===void 0&&(c.mergeFriedel=s.includeAnomalous===!1);let l=Ut(e,t,c),u=n.coordinateCifText??e,d=n.coordinateCifBlock??t,f=Tt(u,d,{...s,expectedCell:a,structureModel:n.structureModel}),p=f.calculate(l.reflections),m=u===e?r:new D(u),h=typeof d==`number`?m.getBlock(d):m.getBlockByName(d),g=n.solventMaskCorrection??`auto`;if(![!0,!1,`auto`].includes(g))throw Error(`solventMaskCorrection must be \"auto\", true, or false`);let _=g===!1?null:rn(h),v=p,y=0;if(_){let e=dn(_.h,_.k,_.l,e=>({real:_.real[e],imaginary:_.imaginary[e]}),o,!1);v=p.map((t,n)=>{let r=l.reflections[n],i=e.get(`${r.h},${r.k},${r.l}`);if(!i)return t;y++;let a=t.real+i.real,o=t.imaginary+i.imaginary;return{...t,real:a,imaginary:o,amplitude:Math.hypot(a,o),phase:Math.atan2(o,a)*180/Math.PI}})}else if(g===!0)throw Error(`solventMaskCorrection was requested but no _shelx_fab_file was found`);let b={enabled:!!_,requested:g,source:`shelx-fab-file`,fabReflectionCount:_?.h.length??0,appliedReflectionCount:y,...an(h)},x=n.extinctionCorrection??`auto`;if(![`auto`,!0,!1].includes(x)&&typeof x!=`number`&&(typeof x!=`object`||!x||Array.isArray(x)))throw Error(`extinctionCorrection must be \"auto\", true, false, a coefficient, or an object`);let S=x===`auto`&&l.metadata.source===`embedded-refln`,C=Gt(h,a,f.metadata.wavelength,l.reflections,v,S?!1:x===`auto`||x);S&&(C.metadata.reason=`embedded-fcf-already-corrected`);let w=pn(l.reflections,v,n.intensityScale,C.factors),T=0,E=0,O=0;return fn({cell:a,coefficients:dn(l.reflections.map(e=>e.h),l.reflections.map(e=>e.k),l.reflections.map(e=>e.l),e=>{let t=l.reflections[e],n=v[e],r=w.scale*t.intensity/C.factors[e]**2;r<0&&T++;let i=Math.sqrt(Math.max(0,r))-n.amplitude,a=Math.atan2(n.imaginary,n.real);return E+=Math.abs(r-n.amplitude**2),O+=n.amplitude**2,{real:i*Math.cos(a),imaginary:i*Math.sin(a)}},o,!0),reflectionCount:l.reflections.length,coefficientMode:`fo-fc-iam-phase`,omitF000:!0,anomalousDispersion:{enabled:f.metadata.includeAnomalous,target:`both`,source:`iam`},sourceType:`cif-iam`,fieldKind:`difference-density`,intensityScale:w.scale,intensityScaleExplicit:w.explicit,scaleFittedReflectionCount:w.fittedReflectionCount,scaleR1:O>0?E/O:null,negativeIntensityCount:T,observations:l.metadata,iam:f.metadata,solventMaskCorrection:b,reflectionPolicy:{mergeFriedel:l.metadata.mergeFriedel,includeAnomalous:f.metadata.includeAnomalous},extinctionCorrection:C.metadata},o)}function hn(e,t){try{let n=new D(e),r=typeof t==`number`?n.getBlock(t):n.getBlockByName(t),i=e=>r.get(e,null),a=i(`_cifvis_difference_density_loop`),o=i(`_cifvis_difference_density_h`),s=i(`_cifvis_difference_density_k`),c=i(`_cifvis_difference_density_l`),l=i(`_cifvis_difference_density_a`),u=i(`_cifvis_difference_density_b`);if([a,o,s,c,l,u].every(e=>typeof e==`string`&&e.length>0))return{loop:a,h:o,k:s,l:c,a:l,b:u,omitF000:!1,fieldKind:`deformation-density`}}catch{}return null}function gn(e,t=0,n={}){let r=n.inputMode??`auto`;if(![`auto`,`fcf`,`cif-iam`].includes(r))throw Error(`Difference-density inputMode must be \"auto\", \"fcf\", or \"cif-iam\"`);let i=n.coefficientColumns??hn(e,t);if(r!==`cif-iam`)try{return xn(e,t,i,n.anomalousDispersion??null)}catch(e){if(r===`fcf`||i||!(e instanceof Y))throw e}return mn(e,t,n)}function _n(e,t,n=!1){let r=e.length;for(let n=1,i=0;n<r;n++){let a=r>>1;for(;i&a;a>>=1)i^=a;i^=a,n<i&&([e[n],e[i]]=[e[i],e[n]],[t[n],t[i]]=[t[i],t[n]])}let i=n?1:-1;for(let n=2;n<=r;n*=2){let a=i*Yt/n,o=Math.cos(a),s=Math.sin(a);for(let i=0;i<r;i+=n){let r=1,a=0,c=n/2;for(let n=0;n<c;n++){let l=i+n,u=l+c,d=e[u]*r-t[u]*a,f=e[u]*a+t[u]*r,p=e[l],m=t[l];e[l]=p+d,t[l]=m+f,e[u]=p-d,t[u]=m-f;let h=r*o-a*s;a=r*s+a*o,r=h}}}if(n)for(let n=0;n<r;n++)e[n]/=r,t[n]/=r}function vn(e,t,n,r){let[i,a,o]=n,s=n[r],c=new Float64Array(s),l=new Float64Array(s),u=n=>{for(let r=0;r<s;r++){let i=n(r);c[r]=e[i],l[r]=t[i]}_n(c,l);for(let r=0;r<s;r++){let i=n(r);e[i]=c[r],t[i]=l[r]}};if(r===0)for(let e=0;e<o;e++)for(let t=0;t<a;t++){let n=(e*a+t)*i;u(e=>n+e)}else if(r===1)for(let e=0;e<o;e++)for(let t=0;t<i;t++)u(n=>(e*a+n)*i+t);else for(let e=0;e<a;e++)for(let t=0;t<i;t++)u(n=>(n*a+e)*i+t)}function yn(e){return Math.abs(re(e.fractToCartMatrix))}function bn(e,t,n=1){let r=0,i=0,a=0;for(let{h:t,k:n,l:o}of e.values())r=Math.max(r,Math.abs(t)),i=Math.max(i,Math.abs(n)),a=Math.max(a,Math.abs(o));let o=[Xt(2*r+1),Xt(2*i+1),Xt(2*a+1)].map(e=>Xt(e*Math.max(1,n))),[s,c]=o,l=o[0]*o[1]*o[2],u=new Float64Array(l),d=new Float64Array(l);for(let{h:t,k:n,l:r,real:i,imaginary:a}of e.values()){let e=(Zt(r,o[2])*c+Zt(n,c))*s+Zt(t,s);u[e]=i,d[e]=a}vn(u,d,o,0),vn(u,d,o,1),vn(u,d,o,2);let f=yn(t),p=new Float32Array(l),m=0,h=1/0,g=-1/0,_=0;for(let e=0;e<l;e++){let t=u[e]/f;p[e]=t,m+=t,h=Math.min(h,t),g=Math.max(g,t),_=Math.max(_,Math.abs(d[e]/f))}let v=m/l,y=0;for(let e of p)y+=(e-v)**2;return{dimensions:o,values:p,mean:v,sigma:Math.sqrt(y/l),minimum:h,maximum:g,maxImaginary:_,volume:f}}function xn(e,t=0,n=null,r=null){let i=new D(e),a=typeof t==`number`?i.getBlock(t):i.getBlockByName(t),o=U.fromCIF(a),s=H.fromCIF(a),c;try{c=a.get(n?.loop??`_refln`)}catch(e){throw n?e:new Y(e.message)}let l=X(c,n?.h??[`_refln.index_h`,`_refln_index_h`]),u=X(c,n?.k??[`_refln.index_k`,`_refln_index_k`]),d=X(c,n?.l??[`_refln.index_l`,`_refln_index_l`]),f=X(c,[`_refln.phase_calc`,`_refln_phase_calc`],null),p=X(c,[`_refln.F_calc`,`_refln_F_calc`],null),m=p===null?X(c,[`_refln.F_squared_calc`,`_refln_F_squared_calc`],null):null,h=p??m?.map(e=>Math.sqrt(Math.max(0,Number(e)))),g,_;if(n)g=tn(c,n),_=n.omitF000??!1;else{if(f===null)throw new Y(`None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop`);let e=f,t=X(c,[`_refln.F_squared_meas`,`_refln_F_squared_meas`],null),n=t===null?X(c,[`_refln.F_meas`,`_refln_F_meas`],null):null,r=X(c,[`_refln.F_calc`,`_refln_F_calc`],null),i=r===null?X(c,[`_refln.F_squared_calc`,`_refln_F_squared_calc`],null):null;if(t===null&&n===null)throw new Y(`FCF contains neither measured F nor measured F-squared values`);if(r===null&&i===null)throw new Y(`FCF contains neither calculated F nor calculated F-squared values`);g={mode:`fo-fc-common-phase`,componentCount:2,defaultAnomalousTarget:t!==null&&i!==null?`both`:`first`,valueColumns:[e,t??n,r??i],coefficientAt(a){let o=t===null?Math.max(0,Number(n[a])):Math.sqrt(Math.max(0,Number(t[a]))),s=i===null?Math.abs(Number(r[a])):Math.sqrt(Math.max(0,Number(i[a]))),c=Number(e[a])*Math.PI/180,l=o-s;return{real:l*Math.cos(c),imaginary:l*Math.sin(c)}}},_=!0}Qt([l,u,d,...g.valueColumns]);let v=g.coefficientAt,y={enabled:!1,requested:!!r};if(r){let e=r===!0?{}:r;if(typeof e!=`object`)throw Error(`Anomalous-dispersion options must be true or an object`);let t=sn(a,e),n;if(e.phaseDetection===!1)n={available:!1,disabled:!0};else{let t=cn(s,l,u,d,f,Number(e.phaseToleranceDegrees)||.05);n=t.centrosymmetric?t:ln(l,u,d,f,h,Number(e.phaseToleranceDegrees)||.05,Number(e.friedelAmplitudeToleranceRelative)||1e-4)}let i=n.disabled?`phase-detection-disabled`:n.alreadyCorrected?`phases-already-corrected`:!n.available&&t!==`olex`?`exact-test-unavailable`:null;if(i)y={enabled:!1,requested:!0,generator:t,reason:i,phaseCheck:n};else{let r=e.target??g.defaultAnomalousTarget??`first`,i=ft(e.cifText,e.cifBlock??0,e,o),a=on(r,g.componentCount);v=e=>{let t=g.coefficientAt(e),n=i.coefficientAt(Number(l[e]),Number(u[e]),Number(d[e]));return{real:t.real+a*n.real,imaginary:t.imaginary+a*n.imaginary}},y={...i.metadata,requested:!0,generator:t,phaseCheck:n,target:r,correctionScale:a}}}return fn({cell:o,coefficients:dn(l,u,d,v,s,_),reflectionCount:l.length,coefficientMode:g.mode,omitF000:_,anomalousDispersion:y,sourceType:`fcf`,fieldKind:n?`deformation-density`:`difference-density`},s)}function Sn(e,t=1,n=1){if(!(Number.isFinite(t)&&t>0&&t<=1))throw Error(`Difference-density resolution fraction must be in the interval (0, 1]`);let r=e.maximumReciprocalLength*t,i=t===1?e.coefficients:new Map(Array.from(e.coefficients.entries()).filter(([,e])=>e.reciprocalLength<=r+1e-12));if(i.size===0){let t=Math.min(...Array.from(e.coefficients.values()).map(e=>e.reciprocalLength));i=new Map(Array.from(e.coefficients.entries()).filter(([,e])=>e.reciprocalLength<=t+1e-12))}if(!(Number.isFinite(n)&&n>=1))throw Error(`Difference-density grid oversampling must be at least 1`);let a=bn(i,e.cell,n);return new Jt(e.cell,a.dimensions,a.values,{reflectionCount:e.reflectionCount,coefficientCount:i.size,fullCoefficientCount:e.coefficients.size,coefficientMode:e.coefficientMode,omitF000:e.omitF000,anomalousDispersion:e.anomalousDispersion,sourceType:e.sourceType,fieldKind:e.fieldKind,contourMode:`sigma`,displayLabel:`Δρ/eÅ⁻³`,quantityName:e.fieldKind===`deformation-density`?`deformation density`:`difference density`,valueUnit:`e/angstrom^3`,surfaceSign:`both`,boundaryMode:`periodic`,intensityScale:e.intensityScale,intensityScaleExplicit:e.intensityScaleExplicit,scaleFittedReflectionCount:e.scaleFittedReflectionCount,scaleR1:e.scaleR1,negativeIntensityCount:e.negativeIntensityCount,observations:e.observations,iam:e.iam,reflectionPolicy:e.reflectionPolicy,extinctionCorrection:e.extinctionCorrection,solventMaskCorrection:e.solventMaskCorrection,symmetryOperations:e.symmetryOperations,resolutionFraction:t,gridOversampling:n,mean:a.mean,sigma:a.sigma,minimum:a.minimum,maximum:a.maximum,maxImaginary:a.maxImaginary,volume:a.volume})}function Cn(e){let t=(Array.isArray(e)?e:[1]).map(Number).filter(e=>Number.isFinite(e)&&e>0&&e<=1).sort((e,t)=>e-t);return t.includes(1)||t.push(1),[...new Set(t)]}function wn(e,t={}){let n=Cn(t.steps),r=Number(t.reciprocalResolution)||1,i=Math.max(1,Number(t.gridOversampling)||1),a=n.length===1?i:Math.min(i,Math.max(1,Number(t.initialGridOversampling)||1)),o=null;return{steps:n,mapAt(t){let n=t===0?a:t===1&&a!==i?i:null;return n!==null&&(o=Sn(e,r,n)),{map:o,changed:n!==null}}}}let Tn=.529177210903,En=new Set([`density`,`signed-density`,`orbital`,`potential`,`generic`]);function Dn(e,t){return e[0]*t[0]+e[1]*t[1]+e[2]*t[2]}function Z(e){return Math.hypot(...e)}function On(e,t){let n=Math.max(-1,Math.min(1,Dn(e,t)/(Z(e)*Z(t))));return Math.acos(n)*180/Math.PI}function kn(e){return Array.isArray(e)?e:e.toArray()}function An(e,t,n){let r=e.trim().split(/\\s+/).map(Number);if(r.length<t||r.some(e=>!Number.isFinite(e)))throw Error(`Invalid Gaussian Cube ${n} line`);return r}function jn(e,t,n){if(!En.has(e))throw Error(`Cube property must be one of: ${Array.from(En).join(`, `)}`);let r=e===`density`||e===`signed-density`,i=n.valueScale;if(i===void 0&&(i=r&&t===`bohr`?1/Tn**3:1),!(Number.isFinite(i)&&i!==0))throw Error(`Cube valueScale must be a finite non-zero number`);if(e===`density`)return{valueScale:i,valueUnit:`e/angstrom^3`,displayLabel:`ρ/eÅ⁻³`,quantityName:`electron density`,surfaceSign:`positive`,defaultLevel:n.level??.3};if(e===`signed-density`)return{valueScale:i,valueUnit:`e/angstrom^3`,displayLabel:`Δρ/eÅ⁻³`,quantityName:`signed density`,surfaceSign:`both`,defaultLevel:n.level??.05};let a={orbital:[`ψ`,`orbital`],potential:[`V`,`potential`],generic:[`Cube`,`Cube field`]};return{valueScale:i,valueUnit:n.valueUnit??`cube`,displayLabel:n.displayLabel??a[e][0],quantityName:n.quantityName??a[e][1],surfaceSign:n.sign??`both`,defaultLevel:n.level??null}}function Mn(e){let t=0,n=0,r=1/0,i=-1/0;for(let a of e)t+=a,n+=a*a,r=Math.min(r,a),i=Math.max(i,a);let a=t/e.length;return{mean:a,sigma:Math.sqrt(Math.max(0,n/e.length-a*a)),minimum:r,maximum:i}}function Nn(e,t={}){if(typeof e!=`string`||e.trim().length===0)throw Error(`Cannot parse an empty Gaussian Cube file`);let n=e.replace(/\\r\\n?/g,`\n`).split(`\n`);if(n.length<6)throw Error(`Gaussian Cube file is missing its header`);let r=[n[0],n[1]],i=An(n[2],4,`atom/origin`),a=Math.trunc(i[0]),o=Math.abs(a),s=i.slice(1,4),c=i.length>=5?Math.trunc(i[4]):1;if(c<1)throw Error(`Gaussian Cube dataset count must be positive`);let l=[],u=[];for(let e=0;e<3;e++){let t=An(n[3+e],4,`axis ${e+1}`);u.push(Math.trunc(t[0])),l.push(t.slice(1,4))}if(u.some(e=>e===0))throw Error(`Gaussian Cube grid dimensions must be non-zero`);let d=u.every(e=>e>0),f=u.every(e=>e<0);if(!d&&!f)throw Error(`Gaussian Cube grid dimensions must use one consistent unit sign`);let p=d?`bohr`:`angstrom`,m=d?Tn:1,h=u.map(Math.abs),g=s.map(e=>e*m),_=l.map(e=>e.map(e=>e*m)),v=[];if(n.length<6+o)throw Error(`Gaussian Cube file ends inside its atom list`);for(let e=0;e<o;e++){let t=An(n[6+e],5,`atom ${e+1}`);v.push({atomicNumber:Math.trunc(t[0]),charge:t[1],position:t.slice(2,5).map(e=>e*m)})}let y=n.slice(6+o).join(` `).trim().split(/\\s+/).filter(Boolean),b=0,x=c,S=Array.from({length:x},(e,t)=>t+1);if(a<0){if(x=Number(y[b++]),!(Number.isInteger(x)&&x>0))throw Error(`Gaussian Cube orbital dataset count is invalid`);if(S=y.slice(b,b+x).map(Number),S.length!==x||S.some(e=>!Number.isFinite(e)))throw Error(`Gaussian Cube orbital identifiers are incomplete`);b+=x}let C=t.datasetIndex??0;if(!(Number.isInteger(C)&&C>=0&&C<x))throw Error(`Cube datasetIndex must be between 0 and ${x-1}`);let w=h[0]*h[1]*h[2],T=w*x;if(y.length-b!==T)throw Error(`Gaussian Cube grid contains ${y.length-b} values; expected ${T}`);let E=t.property??`density`,D=jn(E,p,t),O=new Float32Array(w);for(let e=0;e<w;e++){let t=Number(y[b+e*x+C]);if(!Number.isFinite(t))throw Error(`Gaussian Cube grid value ${e+1} is not finite`);let n=Math.floor(e/(h[1]*h[2])),r=e%(h[1]*h[2]),i=Math.floor(r/h[2]),a=(r%h[2]*h[1]+i)*h[0]+n;O[a]=t*D.valueScale}let k=_.map((e,t)=>e.map(e=>e*h[t]));if(k.some(e=>Z(e)===0))throw Error(`Gaussian Cube lattice vectors must be non-zero`);let A=new U(Z(k[0]),Z(k[1]),Z(k[2]),On(k[1],k[2]),On(k[0],k[2]),On(k[0],k[1])),j=kn(P(L([[k[0][0],k[1][0],k[2][0]],[k[0][1],k[1][1],k[2][1]],[k[0][2],k[1][2],k[2][2]]]),g)),M=Mn(O),N=D.defaultLevel??3*M.sigma;return new Jt(A,h,O,{...M,comments:r,atoms:v,origin:g,originFractional:j,axisVectors:_,latticeVectors:k,coordinateUnit:p,datasetCount:x,datasetIds:S,datasetIndex:C,datasetId:S[C],property:E,valueScale:D.valueScale,valueUnit:D.valueUnit,displayLabel:D.displayLabel,quantityName:D.quantityName,surfaceSign:D.surfaceSign,defaultLevel:N,boundaryMode:t.periodic===!1?`zero`:`periodic`,sourceType:`cube`,fieldKind:E===`density`?`electron-density`:E===`signed-density`?`deformation-density`:E,contourMode:`absolute`,resolutionFraction:1,gridOversampling:1})}let Pn=Object.freeze({enabled:!1,plane:Object.freeze({mode:`best-fit`}),padding:1.5,maxAtomDistance:2.5,resolution:256,gridSpacing:.04,maxResolution:512,interpolation:`tricubic`,contourCount:20,contourStep:null,levelSubdivisions:4,levels:null,sign:null,zeroLine:!1,zeroColor:`#666666`,lineColor:null,lineWidth:1.5,haloColor:`#ffffff`,haloWidth:1,opacity:1,depthOffset:.02});function Fn(){return globalThis.performance?.now?.()??Date.now()}function In(e,t){return e[0]*t[0]+e[1]*t[1]+e[2]*t[2]}function Ln(e,t){return[e[1]*t[2]-e[2]*t[1],e[2]*t[0]-e[0]*t[2],e[0]*t[1]-e[1]*t[0]]}function Q(e,t){let n=Math.hypot(...e);if(!(Number.isFinite(n)&&n>1e-12))throw Error(`${t} must be a finite non-zero vector`);return e.map(e=>e/n)}function Rn(e,t){return e.map((e,n)=>e+t[n])}function zn(e,t){return e.map((e,n)=>e-t[n])}function Bn(e,t){return e.map(e=>e*t)}function $(e){return Array.isArray(e)?e:e.toArray()}function Vn(e,t){return $(P(e,t))}function Hn(e){return Bn(e.reduce(Rn,[0,0,0]),1/e.length)}function Un(e,t){if(e.length<3)throw Error(`A best-fit contour plane requires at least three atoms`);let n=[[0,0,0],[0,0,0],[0,0,0]];for(let r of e){let e=zn(r,t);for(let t=0;t<3;t++)for(let r=0;r<3;r++)n[t][r]+=e[t]*e[r]}let r=ue(n),i=r.values.map(Number).sort((e,t)=>e-t),a=Math.max(1,i[2]);if(!(i[1]>a*1e-12))throw Error(`Contour plane atoms must not all be collinear`);let o=i[0];return Q($(r.eigenvectors.find(e=>Math.abs(Number(e.value)-o)<=a*1e-12).vector),`Best-fit plane normal`)}function Wn(e,t){if(e.length===1)return Q($(P(I(L(t)),[0,0,1])),`Sparse-structure contour plane normal`);let n=Q(zn(e[1],e[0]),`Sparse atom separation`);return Q(Ln(n,[[1,0,0],[0,1,0],[0,0,1]].reduce((e,t)=>Math.abs(In(n,t))<Math.abs(In(n,e))?t:e)),`Sparse-structure contour plane normal`)}function Gn(e){let t=Q(Ln(Math.abs(e[2])<.9?[0,0,1]:[0,1,0],e),`Contour plane basis`);return{u:t,v:Q(Ln(e,t),`Contour plane basis`)}}function Kn(e,t,n){for(let r of t){let t=e[0]-r[0],i=e[1]-r[1],a=e[2]-r[2];if(t*t+i*i+a*a<=n)return!0}return!1}function qn(e){let t=e.cell.fractToCartMatrix.toArray();return e.atoms.map(e=>Vn(t,[e.position.x,e.position.y,e.position.z]))}function Jn(e,t={mode:`best-fit`},n=1.5){if(!e?.atoms?.length)throw Error(`A contour plane requires a displayed structure`);let r=typeof t==`string`?{mode:t}:Array.isArray(t)?{atoms:t}:t??{mode:`best-fit`};if(r.mode!==void 0&&r.mode!==`best-fit`)throw Error(`Contour plane mode must be \"best-fit\"`);let i=e.cell.fractToCartMatrix.toArray(),a=qn(e),o=a;if(r.atoms){if(!Array.isArray(r.atoms)||r.atoms.length<3)throw Error(`A contour plane atom definition requires at least three labels`);o=r.atoms.map(t=>{let n=e.atoms.findIndex(e=>e.label===t);if(n===-1)throw Error(`Contour plane atom not found: ${t}`);return a[n]})}let s,c;if(r.origin||r.normal){if(!Array.isArray(r.origin)||r.origin.length!==3||!Array.isArray(r.normal)||r.normal.length!==3)throw Error(`An explicit contour plane requires three-value origin and normal arrays`);let t=r.origin.map(Number),n=r.normal.map(Number);if(!t.every(Number.isFinite)||!n.every(Number.isFinite))throw Error(`Contour plane origin and normal must contain finite numbers`);if(r.coordinateSystem!==void 0&&![`cartesian`,`fractional`].includes(r.coordinateSystem))throw Error(`Contour plane coordinateSystem must be \"cartesian\" or \"fractional\"`);if(r.coordinateSystem===`fractional`){let r=e.cell.fractToCartMatrix.toArray();s=Vn(r,t),c=$(P(I(L(r)),n))}else s=t,c=n;c=Q(c,`Contour plane normal`)}else s=Hn(o),c=o.length>=3?Un(o,s):Wn(o,i);let{u:l,v:u}=Gn(c),d=1/0,f=-1/0,p=1/0,m=-1/0;for(let e of a){let t=zn(e,s),n=In(t,l),r=In(t,u);d=Math.min(d,n),f=Math.max(f,n),p=Math.min(p,r),m=Math.max(m,r)}let h=Number(n);if(!(Number.isFinite(h)&&h>=0))throw Error(`Contour plane padding must be a non-negative number`);let g=r.bounds??{u:[d-h,f+h],v:[p-h,m+h]};if(!Array.isArray(g.u)||!Array.isArray(g.v)||g.u.length!==2||g.v.length!==2||!g.u.concat(g.v).every(Number.isFinite)||g.u[1]<=g.u[0]||g.v[1]<=g.v[0])throw Error(`Contour plane bounds must contain increasing u and v pairs`);return{origin:s,normal:c,u:l,v:u,bounds:g}}function Yn(e,t,n,r=0){return Rn(Rn(e.origin,Bn(e.u,t)),Rn(Bn(e.v,n),Bn(e.normal,r)))}function Xn(e,t,n,r,i){let a=n===r?.5:Math.max(0,Math.min(1,(i-n)/(r-n)));return[e[0]+(t[0]-e[0])*a,e[1]+(t[1]-e[1])*a]}function Zn(e,t,n,r,i){let[a,o]=t,s=(n.bounds.u[1]-n.bounds.u[0])/(a-1),c=(n.bounds.v[1]-n.bounds.v[0])/(o-1),l=[];for(let t=0;t<o-1;t++)for(let o=0;o<a-1;o++){let u=n.bounds.u[0]+o*s,d=u+s,f=n.bounds.v[0]+t*c,p=f+c,m=[[u,f],[d,f],[d,p],[u,p]],h=t*a+o,g=h+a,_=[e[h],e[h+1],e[g+1],e[g]],v=Math.min(..._),y=Math.max(..._);for(let e of r){if(!(v<e&&y>=e))continue;let t=[[0,1],[1,2],[2,3],[3,0]],r=[];for(let n=0;n<t.length;n++){let[i,a]=t[n];(_[i]<e&&_[a]>=e||_[a]<e&&_[i]>=e)&&r.push({edge:n,point:Xn(m[i],m[a],_[i],_[a],e)})}let a=[];r.length===2?a=[[r[0],r[1]]]:r.length===4&&(a=_.reduce((e,t)=>e+t,0)/4>=e?[[r[0],r[1]],[r[2],r[3]]]:[[r[0],r[3]],[r[1],r[2]]]);for(let[e,t]of a)l.push([Yn(n,e.point[0],e.point[1],i),Yn(n,t.point[0],t.point[1],i)])}}return l}function Qn(e,t){if(Array.isArray(t.levels)){let e=[...new Set(t.levels.map(e=>Math.abs(Number(e))))].filter(e=>Number.isFinite(e)&&e>0).sort((e,t)=>e-t);if(e.length===0)throw Error(`Contour line levels must contain positive finite values`);return e}let n=t.level??e.defaultLevel??(t.sigmaLevel??3)*e.sigma,r=Number(t.levelSubdivisions);if(!(Number.isFinite(r)&&r>=1))throw Error(`Contour line levelSubdivisions must be at least one`);let i=t.contourStep??n/r,a=Math.max(1,Math.round(Number(t.contourCount)));if(!(Number.isFinite(i)&&i>0))throw Error(`Contour line step must be a positive finite number`);if(!Number.isFinite(a))throw Error(`Contour line count must be a positive integer`);return Array.from({length:a},(e,t)=>i*(t+1))}function $n(e,t,n={}){let r=Fn(),i={...Pn,...n},a=Jn(t,i.plane,i.padding),o=a.bounds.u[1]-a.bounds.u[0],s=a.bounds.v[1]-a.bounds.v[0],c=Math.max(8,Math.round(Number(i.resolution))),l=Math.max(c,Math.round(Number(i.maxResolution))),u=Number(i.gridSpacing);if(!(Number.isFinite(u)&&u>0))throw Error(`Contour line grid spacing must be a positive number`);if(!(Number.isFinite(c)&&Number.isFinite(l)))throw Error(`Contour line resolutions must be finite numbers`);let d=[o,s].map(e=>Math.min(l,Math.max(c,Math.ceil(e/u)+1))),f=new Float32Array(d[0]*d[1]),p=L(t.cell.fractToCartMatrix),m=$(P(p,a.origin)),h=$(P(p,a.u)),g=$(P(p,a.v)),_=i.interpolation;if(![`linear`,`tricubic`].includes(_))throw Error(`Contour line interpolation must be \"linear\" or \"tricubic\"`);let v=_===`tricubic`&&typeof e.sampleCubic==`function`?(...t)=>e.sampleCubic(...t):(...t)=>e.sample(...t),y=i.maxAtomDistance,b=y!==null&&Number(y)>=0;if(y!==null&&!Number.isFinite(Number(y)))throw Error(`Contour line maxAtomDistance must be null or a finite number`);let x=b?qn(t):null,S=b?Number(y)**2:0,C=Fn();for(let e=0;e<d[1];e++){let t=a.bounds.v[0]+e/(d[1]-1)*s;for(let n=0;n<d[0];n++){let r=a.bounds.u[0]+n/(d[0]-1)*o,i=e*d[0]+n;if(b&&!Kn(Yn(a,r,t),x,S)){f[i]=NaN;continue}f[i]=v(...m.map((e,n)=>e+h[n]*r+g[n]*t))}}let w=Fn(),T=Qn(e,i),E=i.sign??e.surfaceSign??`both`;if(![`positive`,`negative`,`both`].includes(E))throw Error(`Contour line sign must be \"positive\", \"negative\", or \"both\"`);let D=Number(i.depthOffset);if(!Number.isFinite(D))throw Error(`Contour line depth offset must be a finite number`);let O=E===`negative`?[]:Zn(f,d,a,T,D),k=E===`positive`?[]:Zn(f,d,a,T.map(e=>-e),D),A=i.zeroLine?Zn(f,d,a,[0],D):[],j=Fn();return{plane:a,dimensions:d,levels:T,level:T[0],positiveSegments:O,negativeSegments:k,zeroSegments:A,segmentCount:O.length+k.length+A.length,timings:{planeSetupTimeMs:C-r,samplingTimeMs:w-C,contourExtractionTimeMs:j-w,totalTimeMs:j-r}}}function er(e){let t=new Float32Array(e.length*6),n=0;for(let[r,i]of e)t.set(r,n),t.set(i,n+3),n+=6;return t}function tr(e){return{...e,positiveSegments:er(e.positiveSegments),negativeSegments:er(e.negativeSegments),zeroSegments:er(e.zeroSegments),packed:!0}}function nr(e){return{cell:new U(e.cell.a,e.cell.b,e.cell.c,e.cell.alpha,e.cell.beta,e.cell.gamma),atoms:e.atoms}}function rr(e,t,n){if(!t)return null;let r=Math.max(.1,Number(n)||1),i={...t.options,resolution:Math.max(8,Math.round(t.options.resolution*r)),maxResolution:Math.max(8,Math.round(t.options.maxResolution*r)),gridSpacing:t.options.gridSpacing/r},a=tr($n(e,nr(t.structure),i));return a.displayVersion=t.displayVersion,a}function ir(e){return e?[e.positiveSegments.buffer,e.negativeSegments.buffer,e.zeroSegments.buffer]:[]}let ar=new Map;function or(e,t){return new Promise(n=>{ar.set(`${e}:${t}`,n)})}async function sr(e){let t=performance.now();try{let n=wn(gn(e.fcfText,e.fcfBlock,e.datasetOptions),{steps:e.steps,reciprocalResolution:e.reciprocalResolution,initialGridOversampling:e.initialGridOversampling,gridOversampling:e.gridOversampling}),r=n.steps;for(let i=0;i<r.length;i++){let a=performance.now(),{map:o,changed:s}=n.mapAt(i),c=s?performance.now()-a:0,l=performance.now(),u=rr(o,e.contourRequest,r[i]),d=u?performance.now()-l:0,f=s?o.toPayload():null,p={type:`update`,loadId:e.loadId,stepIndex:i,totalSteps:r.length,final:i===r.length-1,computeTimeMs:c,contourTimeMs:d,elapsedTimeMs:performance.now()-t,surfaceResolutionFraction:r[i],map:f,contours:u};globalThis.postMessage(p,[...f&&!e.contourRequest?[f.values.buffer]:[],...ir(u)]),i<r.length-1&&await or(e.loadId,i)}}catch(t){globalThis.postMessage({type:`error`,loadId:e.loadId,error:t.message})}}async function cr(e){let t=performance.now();try{let n=Nn(e.cubeText,e.cubeOptions),r=performance.now()-t,i=Cn(e.steps);for(let a=0;a<i.length;a++){let o=a===0?n.toPayload():null,s=performance.now(),c=rr(n,e.contourRequest,i[a]),l=c?performance.now()-s:0;globalThis.postMessage({type:`update`,loadId:e.loadId,stepIndex:a,totalSteps:i.length,final:a===i.length-1,computeTimeMs:a===0?r:0,contourTimeMs:l,elapsedTimeMs:performance.now()-t,surfaceResolutionFraction:i[a],map:o,contours:c},[...o&&!e.contourRequest?[o.values.buffer]:[],...ir(c)]),a<i.length-1&&await or(e.loadId,a)}}catch(t){globalThis.postMessage({type:`error`,loadId:e.loadId,error:t.message})}}globalThis.addEventListener(`message`,e=>{let t=e.data;if(t.type===`continue`){let e=`${t.loadId}:${t.stepIndex}`;ar.get(e)?.(),ar.delete(e);return}t.type===`load-difference-density`?sr(t):t.type===`load-cube`&&cr(t)})})();", Gv = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Wv], { type: "text/javascript;charset=utf-8" });
+function Kv(e) {
 	let t;
 	try {
-		if (t = Hv && (self.URL || self.webkitURL).createObjectURL(Hv), !t) throw "";
+		if (t = Gv && (self.URL || self.webkitURL).createObjectURL(Gv), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Vv), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Wv), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/lib/density/isosurface-progress.js
-function Wv(e) {
+function qv(e) {
 	let t = (Array.isArray(e) ? e : [1]).map(Number).filter((e) => Number.isFinite(e) && e > 0 && e <= 1).sort((e, t) => e - t);
 	return t.includes(1) || t.push(1), [...new Set(t)];
 }
 //#endregion
 //#region src/lib/density/difference-density-progress.js
-function Gv(e, t = {}) {
-	let n = Wv(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
+function Jv(e, t = {}) {
+	let n = qv(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
 	return {
 		steps: n,
 		mapAt(t) {
 			let n = t === 0 ? a : t === 1 && a !== i ? i : null;
-			return n !== null && (o = th(e, r, n)), {
+			return n !== null && (o = ih(e, r, n)), {
 				map: o,
 				changed: n !== null
 			};
@@ -63274,7 +63312,7 @@ function Gv(e, t = {}) {
 }
 //#endregion
 //#region src/lib/ortep3d/three-isosurface-layer.js
-var Kv = class {
+var Yv = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null, this.resolutionFraction = 1;
 	}
@@ -63292,11 +63330,11 @@ var Kv = class {
 	}
 	rebuild() {
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let e = Rh(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
+		let e = Vh(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
 			positiveColor: this.options.deformationPositiveColor,
 			negativeColor: this.options.deformationNegativeColor
 		} : {};
-		return this.group = fg(this.field, this.structure, {
+		return this.group = hg(this.field, this.structure, {
 			...this.options,
 			...t,
 			resolution: Math.max(8, Math.round(e * this.resolutionFraction))
@@ -63335,7 +63373,7 @@ var Kv = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, qv = new ta(), Jv = new U(), Yv = class extends ic {
+}, Xv = new ta(), Zv = new U(), Qv = class extends ic {
 	constructor() {
 		super(), this.isLineSegmentsGeometry = !0, this.type = "LineSegmentsGeometry", this.setIndex([
 			0,
@@ -63432,7 +63470,7 @@ var Kv = class {
 	computeBoundingBox() {
 		this.boundingBox === null && (this.boundingBox = new ta());
 		let e = this.attributes.instanceStart, t = this.attributes.instanceEnd;
-		e !== void 0 && t !== void 0 && (this.boundingBox.setFromBufferAttribute(e), qv.setFromBufferAttribute(t), this.boundingBox.union(qv));
+		e !== void 0 && t !== void 0 && (this.boundingBox.setFromBufferAttribute(e), Xv.setFromBufferAttribute(t), this.boundingBox.union(Xv));
 	}
 	computeBoundingSphere() {
 		this.boundingSphere === null && (this.boundingSphere = new Aa()), this.boundingBox === null && this.computeBoundingBox();
@@ -63441,7 +63479,7 @@ var Kv = class {
 			let n = this.boundingSphere.center;
 			this.boundingBox.getCenter(n);
 			let r = 0;
-			for (let i = 0, a = e.count; i < a; i++) Jv.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(Jv)), Jv.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(Jv));
+			for (let i = 0, a = e.count; i < a; i++) Zv.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(Zv)), Zv.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(Zv));
 			this.boundingSphere.radius = Math.sqrt(r), isNaN(this.boundingSphere.radius) && console.error("THREE.LineSegmentsGeometry.computeBoundingSphere(): Computed radius is NaN. The instanced position data is likely to have NaN values.", this);
 		}
 	}
@@ -63464,7 +63502,7 @@ Z.line = {
 	vertexShader: "\n		#include <common>\n		#include <color_pars_vertex>\n		#include <fog_pars_vertex>\n		#include <logdepthbuf_pars_vertex>\n		#include <clipping_planes_pars_vertex>\n\n		uniform float linewidth;\n		uniform vec2 resolution;\n\n		attribute vec3 instanceStart;\n		attribute vec3 instanceEnd;\n\n		attribute vec3 instanceColorStart;\n		attribute vec3 instanceColorEnd;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#ifdef USE_DASH\n\n			uniform float dashScale;\n			attribute float instanceDistanceStart;\n			attribute float instanceDistanceEnd;\n			varying float vLineDistance;\n\n		#endif\n\n		float trimSegmentAlpha( const in vec4 start, const in vec4 end ) {\n\n			// compute the interpolation factor needed to trim the segment so it terminates\n			// between the camera plane and the near plane\n\n			// conservative estimate of the near plane\n			float a = projectionMatrix[ 2 ][ 2 ]; // 3nd entry in 3th column\n			float b = projectionMatrix[ 3 ][ 2 ]; // 3nd entry in 4th column\n\n			// we need different nearEstimate formula for reversed and default depth buffer\n			// a is positive with a reversed depth buffer so it can be used for controlling the code flow\n			float nearEstimate = ( a > 0.0 ) ? ( - b / ( a + 1.0 ) ) : ( - 0.5 * b / a );\n\n			return ( nearEstimate - start.z ) / ( end.z - start.z );\n\n		}\n\n		void main() {\n\n			#ifdef USE_COLOR\n\n				vColor.xyz = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;\n\n			#endif\n\n			float aspect = resolution.x / resolution.y;\n\n			// camera space\n			vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );\n			vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );\n\n			#ifdef USE_DASH\n\n				float lineDistanceStart = dashScale * instanceDistanceStart;\n				float lineDistanceEnd = dashScale * instanceDistanceEnd;\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				worldStart = start.xyz;\n				worldEnd = end.xyz;\n\n			#else\n\n				vUv = uv;\n\n			#endif\n\n			// special case for perspective projection, and segments that terminate either in, or behind, the camera plane\n			// clearly the gpu firmware has a way of addressing this issue when projecting into ndc space\n			// but we need to perform ndc-space calculations in the shader, so we must address this issue directly\n			// perhaps there is a more elegant solution -- WestLangley\n\n			bool perspective = ( projectionMatrix[ 2 ][ 3 ] == - 1.0 ); // 4th entry in the 3rd column\n\n			if ( perspective ) {\n\n				if ( start.z < 0.0 && end.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( start, end );\n					end.xyz = mix( start.xyz, end.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceEnd = mix( lineDistanceStart, lineDistanceEnd, alpha );\n\n					#endif\n\n				} else if ( end.z < 0.0 && start.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( end, start );\n					start.xyz = mix( end.xyz, start.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceStart = mix( lineDistanceEnd, lineDistanceStart, alpha );\n\n					#endif\n\n				}\n\n			}\n\n			#ifdef USE_DASH\n\n				vLineDistance = ( position.y < 0.5 ) ? lineDistanceStart : lineDistanceEnd;\n				vUv = uv;\n\n			#endif\n\n			// clip space\n			vec4 clipStart = projectionMatrix * start;\n			vec4 clipEnd = projectionMatrix * end;\n\n			// ndc space\n			vec3 ndcStart = clipStart.xyz / clipStart.w;\n			vec3 ndcEnd = clipEnd.xyz / clipEnd.w;\n\n			// direction\n			vec2 dir = ndcEnd.xy - ndcStart.xy;\n\n			// account for clip-space aspect ratio\n			dir.x *= aspect;\n			dir = normalize( dir );\n\n			#ifdef WORLD_UNITS\n\n				vec3 worldDir = normalize( end.xyz - start.xyz );\n				vec3 tmpFwd = normalize( mix( start.xyz, end.xyz, 0.5 ) );\n				vec3 worldUp = normalize( cross( worldDir, tmpFwd ) );\n				vec3 worldFwd = cross( worldDir, worldUp );\n				worldPos = position.y < 0.5 ? start: end;\n\n				// height offset\n				float hw = linewidth * 0.5;\n				worldPos.xyz += position.x < 0.0 ? hw * worldUp : - hw * worldUp;\n\n				// don't extend the line if we're rendering dashes because we\n				// won't be rendering the endcaps\n				#ifndef USE_DASH\n\n					// cap extension\n					worldPos.xyz += position.y < 0.5 ? - hw * worldDir : hw * worldDir;\n\n					// add width to the box\n					worldPos.xyz += worldFwd * hw;\n\n					// endcaps\n					if ( position.y > 1.0 || position.y < 0.0 ) {\n\n						worldPos.xyz -= worldFwd * 2.0 * hw;\n\n					}\n\n				#endif\n\n				// project the worldpos\n				vec4 clip = projectionMatrix * worldPos;\n\n				// shift the depth of the projected points so the line\n				// segments overlap neatly\n				vec3 clipPose = ( position.y < 0.5 ) ? ndcStart : ndcEnd;\n				clip.z = clipPose.z * clip.w;\n\n			#else\n\n				vec2 offset = vec2( dir.y, - dir.x );\n				// undo aspect ratio adjustment\n				dir.x /= aspect;\n				offset.x /= aspect;\n\n				// sign flip\n				if ( position.x < 0.0 ) offset *= - 1.0;\n\n				// endcaps\n				if ( position.y < 0.0 ) {\n\n					offset += - dir;\n\n				} else if ( position.y > 1.0 ) {\n\n					offset += dir;\n\n				}\n\n				// adjust for linewidth\n				offset *= linewidth;\n\n				// adjust for clip-space to screen-space conversion // maybe resolution should be based on viewport ...\n				offset /= resolution.y;\n\n				// select end\n				vec4 clip = ( position.y < 0.5 ) ? clipStart : clipEnd;\n\n				// back to clip space\n				offset *= clip.w;\n\n				clip.xy += offset;\n\n			#endif\n\n			gl_Position = clip;\n\n			vec4 mvPosition = ( position.y < 0.5 ) ? start : end; // this is an approximation\n\n			#include <logdepthbuf_vertex>\n			#include <clipping_planes_vertex>\n			#include <fog_vertex>\n\n		}\n		",
 	fragmentShader: "\n		uniform vec3 diffuse;\n		uniform float opacity;\n		uniform float linewidth;\n\n		#ifdef USE_DASH\n\n			uniform float dashOffset;\n			uniform float dashSize;\n			uniform float gapSize;\n\n		#endif\n\n		varying float vLineDistance;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#include <common>\n		#include <color_pars_fragment>\n		#include <fog_pars_fragment>\n		#include <logdepthbuf_pars_fragment>\n		#include <clipping_planes_pars_fragment>\n\n		vec2 closestLineToLine(vec3 p1, vec3 p2, vec3 p3, vec3 p4) {\n\n			float mua;\n			float mub;\n\n			vec3 p13 = p1 - p3;\n			vec3 p43 = p4 - p3;\n\n			vec3 p21 = p2 - p1;\n\n			float d1343 = dot( p13, p43 );\n			float d4321 = dot( p43, p21 );\n			float d1321 = dot( p13, p21 );\n			float d4343 = dot( p43, p43 );\n			float d2121 = dot( p21, p21 );\n\n			float denom = d2121 * d4343 - d4321 * d4321;\n\n			float numer = d1343 * d4321 - d1321 * d4343;\n\n			mua = numer / denom;\n			mua = clamp( mua, 0.0, 1.0 );\n			mub = ( d1343 + d4321 * ( mua ) ) / d4343;\n			mub = clamp( mub, 0.0, 1.0 );\n\n			return vec2( mua, mub );\n\n		}\n\n		void main() {\n\n			float alpha = opacity;\n			vec4 diffuseColor = vec4( diffuse, alpha );\n\n			#include <clipping_planes_fragment>\n\n			#ifdef USE_DASH\n\n				if ( vUv.y < - 1.0 || vUv.y > 1.0 ) discard; // discard endcaps\n\n				if ( mod( vLineDistance + dashOffset, dashSize + gapSize ) > dashSize ) discard; // todo - FIX\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				// Find the closest points on the view ray and the line segment\n				vec3 rayEnd = normalize( worldPos.xyz ) * 1e5;\n				vec3 lineDir = worldEnd - worldStart;\n				vec2 params = closestLineToLine( worldStart, worldEnd, vec3( 0.0, 0.0, 0.0 ), rayEnd );\n\n				vec3 p1 = worldStart + lineDir * params.x;\n				vec3 p2 = rayEnd * params.y;\n				vec3 delta = p1 - p2;\n				float len = length( delta );\n				float norm = len / linewidth;\n\n				#ifndef USE_DASH\n\n					#ifdef USE_ALPHA_TO_COVERAGE\n\n						float dnorm = fwidth( norm );\n						alpha = 1.0 - smoothstep( 0.5 - dnorm, 0.5 + dnorm, norm );\n\n					#else\n\n						if ( norm > 0.5 ) {\n\n							discard;\n\n						}\n\n					#endif\n\n				#endif\n\n			#else\n\n				#ifdef USE_ALPHA_TO_COVERAGE\n\n					// artifacts appear on some hardware if a derivative is taken within a conditional\n					float a = vUv.x;\n					float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n					float len2 = a * a + b * b;\n					float dlen = fwidth( len2 );\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						alpha = 1.0 - smoothstep( 1.0 - dlen, 1.0 + dlen, len2 );\n\n					}\n\n				#else\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						float a = vUv.x;\n						float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n						float len2 = a * a + b * b;\n\n						if ( len2 > 1.0 ) discard;\n\n					}\n\n				#endif\n\n			#endif\n\n			#include <logdepthbuf_fragment>\n			#include <color_fragment>\n\n			gl_FragColor = vec4( diffuseColor.rgb, alpha );\n\n			#include <tonemapping_fragment>\n			#include <colorspace_fragment>\n			#include <fog_fragment>\n			#include <premultiplied_alpha_fragment>\n\n		}\n		"
 };
-var Xv = class extends ys {
+var $v = class extends ys {
 	constructor(e) {
 		super({
 			type: "LineMaterial",
@@ -63540,19 +63578,19 @@ var Xv = class extends ys {
 	set alphaToCoverage(e) {
 		this.defines && (e === !0 !== this.alphaToCoverage && (this.needsUpdate = !0), e === !0 ? this.defines.USE_ALPHA_TO_COVERAGE = "" : delete this.defines.USE_ALPHA_TO_COVERAGE);
 	}
-}, Zv = new ei(), Qv = new U(), $v = new U(), ey = new ei(), ty = new ei(), ny = new ei(), ry = new U(), iy = new K(), ay = new Nc(), oy = new U(), sy = new ta(), cy = new Aa(), ly = new ei(), uy, dy;
-function fy(e, t, n) {
-	return ly.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), ly.multiplyScalar(1 / ly.w), ly.x = dy / n.width, ly.y = dy / n.height, ly.applyMatrix4(e.projectionMatrixInverse), ly.multiplyScalar(1 / ly.w), Math.abs(Math.max(ly.x, ly.y));
+}, ey = new ei(), ty = new U(), ny = new U(), ry = new ei(), iy = new ei(), ay = new ei(), oy = new U(), sy = new K(), cy = new Nc(), ly = new U(), uy = new ta(), dy = new Aa(), fy = new ei(), py, my;
+function hy(e, t, n) {
+	return fy.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), fy.multiplyScalar(1 / fy.w), fy.x = my / n.width, fy.y = my / n.height, fy.applyMatrix4(e.projectionMatrixInverse), fy.multiplyScalar(1 / fy.w), Math.abs(Math.max(fy.x, fy.y));
 }
-function py(e, t) {
+function gy(e, t) {
 	let n = e.matrixWorld, r = e.geometry, i = r.attributes.instanceStart, a = r.attributes.instanceEnd, o = Math.min(r.instanceCount, i.count);
 	for (let r = 0, s = o; r < s; r++) {
-		ay.start.fromBufferAttribute(i, r), ay.end.fromBufferAttribute(a, r), ay.applyMatrix4(n);
+		cy.start.fromBufferAttribute(i, r), cy.end.fromBufferAttribute(a, r), cy.applyMatrix4(n);
 		let o = new U(), s = new U();
-		uy.distanceSqToSegment(ay.start, ay.end, s, o), s.distanceTo(o) < dy * .5 && t.push({
+		py.distanceSqToSegment(cy.start, cy.end, s, o), s.distanceTo(o) < my * .5 && t.push({
 			point: s,
 			pointOnLine: o,
-			distance: uy.origin.distanceTo(s),
+			distance: py.origin.distanceTo(s),
 			object: e,
 			face: null,
 			faceIndex: r,
@@ -63561,29 +63599,29 @@ function py(e, t) {
 		});
 	}
 }
-function my(e, t, n) {
+function _y(e, t, n) {
 	let r = t.projectionMatrix, i = e.material.resolution, a = e.matrixWorld, o = e.geometry, s = o.attributes.instanceStart, c = o.attributes.instanceEnd, l = Math.min(o.instanceCount, s.count), u = -t.near;
-	uy.at(1, ny), ny.w = 1, ny.applyMatrix4(t.matrixWorldInverse), ny.applyMatrix4(r), ny.multiplyScalar(1 / ny.w), ny.x *= i.x / 2, ny.y *= i.y / 2, ny.z = 0, ry.copy(ny), iy.multiplyMatrices(t.matrixWorldInverse, a);
+	py.at(1, ay), ay.w = 1, ay.applyMatrix4(t.matrixWorldInverse), ay.applyMatrix4(r), ay.multiplyScalar(1 / ay.w), ay.x *= i.x / 2, ay.y *= i.y / 2, ay.z = 0, oy.copy(ay), sy.multiplyMatrices(t.matrixWorldInverse, a);
 	for (let t = 0, o = l; t < o; t++) {
-		if (ey.fromBufferAttribute(s, t), ty.fromBufferAttribute(c, t), ey.w = 1, ty.w = 1, ey.applyMatrix4(iy), ty.applyMatrix4(iy), ey.z > u && ty.z > u) continue;
-		if (ey.z > u) {
-			let e = ey.z - ty.z, t = (ey.z - u) / e;
-			ey.lerp(ty, t);
-		} else if (ty.z > u) {
-			let e = ty.z - ey.z, t = (ty.z - u) / e;
-			ty.lerp(ey, t);
+		if (ry.fromBufferAttribute(s, t), iy.fromBufferAttribute(c, t), ry.w = 1, iy.w = 1, ry.applyMatrix4(sy), iy.applyMatrix4(sy), ry.z > u && iy.z > u) continue;
+		if (ry.z > u) {
+			let e = ry.z - iy.z, t = (ry.z - u) / e;
+			ry.lerp(iy, t);
+		} else if (iy.z > u) {
+			let e = iy.z - ry.z, t = (iy.z - u) / e;
+			iy.lerp(ry, t);
 		}
-		ey.applyMatrix4(r), ty.applyMatrix4(r), ey.multiplyScalar(1 / ey.w), ty.multiplyScalar(1 / ty.w), ey.x *= i.x / 2, ey.y *= i.y / 2, ty.x *= i.x / 2, ty.y *= i.y / 2, ay.start.copy(ey), ay.start.z = 0, ay.end.copy(ty), ay.end.z = 0;
-		let o = ay.closestPointToPointParameter(ry, !0);
-		ay.at(o, oy);
-		let l = Ir.lerp(ey.z, ty.z, o), d = l >= -1 && l <= 1, f = ry.distanceTo(oy) < dy * .5;
+		ry.applyMatrix4(r), iy.applyMatrix4(r), ry.multiplyScalar(1 / ry.w), iy.multiplyScalar(1 / iy.w), ry.x *= i.x / 2, ry.y *= i.y / 2, iy.x *= i.x / 2, iy.y *= i.y / 2, cy.start.copy(ry), cy.start.z = 0, cy.end.copy(iy), cy.end.z = 0;
+		let o = cy.closestPointToPointParameter(oy, !0);
+		cy.at(o, ly);
+		let l = Ir.lerp(ry.z, iy.z, o), d = l >= -1 && l <= 1, f = oy.distanceTo(ly) < my * .5;
 		if (d && f) {
-			ay.start.fromBufferAttribute(s, t), ay.end.fromBufferAttribute(c, t), ay.start.applyMatrix4(a), ay.end.applyMatrix4(a);
+			cy.start.fromBufferAttribute(s, t), cy.end.fromBufferAttribute(c, t), cy.start.applyMatrix4(a), cy.end.applyMatrix4(a);
 			let r = new U(), i = new U();
-			uy.distanceSqToSegment(ay.start, ay.end, i, r), n.push({
+			py.distanceSqToSegment(cy.start, cy.end, i, r), n.push({
 				point: i,
 				pointOnLine: r,
-				distance: uy.origin.distanceTo(i),
+				distance: py.origin.distanceTo(i),
 				object: e,
 				face: null,
 				faceIndex: t,
@@ -63593,13 +63631,13 @@ function my(e, t, n) {
 		}
 	}
 }
-var hy = class extends Y {
-	constructor(e = new Yv(), t = new Xv({ color: Math.random() * 16777215 })) {
+var vy = class extends Y {
+	constructor(e = new Qv(), t = new $v({ color: Math.random() * 16777215 })) {
 		super(e, t), this.isLineSegments2 = !0, this.type = "LineSegments2";
 	}
 	computeLineDistances() {
 		let e = this.geometry, t = e.attributes.instanceStart, n = e.attributes.instanceEnd, r = new Float32Array(2 * t.count);
-		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) Qv.fromBufferAttribute(t, e), $v.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + Qv.distanceTo($v);
+		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) ty.fromBufferAttribute(t, e), ny.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + ty.distanceTo(ny);
 		let i = new xc(r, 2, 1);
 		return e.setAttribute("instanceDistanceStart", new Va(i, 1, 0)), e.setAttribute("instanceDistanceEnd", new Va(i, 1, 1)), this;
 	}
@@ -63607,30 +63645,30 @@ var hy = class extends Y {
 		let n = this.material.worldUnits, r = e.camera;
 		if (r === null && !n && console.error("LineSegments2: \"Raycaster.camera\" needs to be set in order to raycast against LineSegments2 while worldUnits is set to false."), n === !1 && (this.material.resolution.x === 0 || this.material.resolution.y === 0)) return;
 		let i = e.params.Line2 === void 0 ? 0 : e.params.Line2.threshold || 0;
-		uy = e.ray;
+		py = e.ray;
 		let a = this.matrixWorld, o = this.geometry, s = this.material;
-		dy = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), cy.copy(o.boundingSphere).applyMatrix4(a);
+		my = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), dy.copy(o.boundingSphere).applyMatrix4(a);
 		let c;
-		if (c = n ? dy * .5 : fy(r, Math.max(r.near, cy.distanceToPoint(uy.origin)), s.resolution), cy.radius += c, uy.intersectsSphere(cy) === !1) return;
-		o.boundingBox === null && o.computeBoundingBox(), sy.copy(o.boundingBox).applyMatrix4(a);
+		if (c = n ? my * .5 : hy(r, Math.max(r.near, dy.distanceToPoint(py.origin)), s.resolution), dy.radius += c, py.intersectsSphere(dy) === !1) return;
+		o.boundingBox === null && o.computeBoundingBox(), uy.copy(o.boundingBox).applyMatrix4(a);
 		let l;
-		l = n ? dy * .5 : fy(r, Math.max(r.near, sy.distanceToPoint(uy.origin)), s.resolution), sy.expandByScalar(l), uy.intersectsBox(sy) !== !1 && (n ? py(this, t) : my(this, r, t));
+		l = n ? my * .5 : hy(r, Math.max(r.near, uy.distanceToPoint(py.origin)), s.resolution), uy.expandByScalar(l), py.intersectsBox(uy) !== !1 && (n ? gy(this, t) : _y(this, r, t));
 	}
 	onBeforeRender(e) {
 		let t = this.material.uniforms;
-		t && t.resolution && (e.getViewport(Zv), this.material.uniforms.resolution.value.set(Zv.z, Zv.w));
+		t && t.resolution && (e.getViewport(ey), this.material.uniforms.resolution.value.set(ey.z, ey.w));
 	}
-}, gy = 0, _y = 1;
-function vy() {
+}, yy = 0, by = 1;
+function xy() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function yy(e) {
+function Sy(e) {
 	return ArrayBuffer.isView(e) ? e : new Float32Array(e.flat(2));
 }
-function by(e) {
+function Cy(e) {
 	return ArrayBuffer.isView(e) ? e.length / 6 : e.length;
 }
-var xy = class {
+var wy = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null;
 	}
@@ -63647,13 +63685,13 @@ var xy = class {
 		};
 	}
 	addSegments(e, t, n, r) {
-		let i = by(t);
+		let i = Cy(t);
 		if (i === 0) return;
-		let a = yy(t);
+		let a = Sy(t);
 		if (this.options.haloWidth > 0) {
-			let t = new Yv();
+			let t = new Qv();
 			t.setPositions(a);
-			let r = new hy(t, new Xv({
+			let r = new vy(t, new $v({
 				color: this.options.haloColor,
 				linewidth: this.options.lineWidth + 2 * this.options.haloWidth,
 				opacity: this.options.opacity,
@@ -63662,14 +63700,14 @@ var xy = class {
 				worldUnits: !1,
 				alphaToCoverage: this.options.opacity >= 1,
 				polygonOffset: !0,
-				polygonOffsetFactor: gy,
-				polygonOffsetUnits: _y
+				polygonOffsetFactor: yy,
+				polygonOffsetUnits: by
 			}));
 			r.name = `${n[0].toUpperCase()}${n.slice(1)} contour halo`, r.renderOrder = -1, e.add(r);
 		}
-		let o = new Yv();
+		let o = new Qv();
 		o.setPositions(a);
-		let s = new hy(o, new Xv({
+		let s = new vy(o, new $v({
 			color: r,
 			linewidth: this.options.lineWidth,
 			opacity: this.options.opacity,
@@ -63678,25 +63716,25 @@ var xy = class {
 			worldUnits: !1,
 			alphaToCoverage: this.options.opacity >= 1,
 			polygonOffset: !0,
-			polygonOffsetFactor: gy,
-			polygonOffsetUnits: _y
+			polygonOffsetFactor: yy,
+			polygonOffsetUnits: by
 		}));
 		s.name = `${n[0].toUpperCase()}${n.slice(1)} contour lines`, s.userData.sign = n, s.userData.segmentCount = i, e.add(s);
 	}
 	rebuild() {
-		let e = vy();
+		let e = xy();
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let t = Mh(this.field, this.structure, this.options);
+		let t = Fh(this.field, this.structure, this.options);
 		return this.buildContours(t, e);
 	}
 	rebuildFromContours(e) {
-		let t = vy();
+		let t = xy();
 		return this.clearMesh(), !this.field || !e ? null : this.buildContours(e, t);
 	}
 	buildContours(e, t) {
-		let n = this.field.fieldKind === "deformation-density", r = this.options.lineColor ?? (n ? this.options.deformationPositiveColor : this.options.positiveColor), i = this.options.lineColor ?? (n ? this.options.deformationNegativeColor : this.options.negativeColor), a = vy(), o = new Mi();
+		let n = this.field.fieldKind === "deformation-density", r = this.options.lineColor ?? (n ? this.options.deformationPositiveColor : this.options.positiveColor), i = this.options.lineColor ?? (n ? this.options.deformationNegativeColor : this.options.negativeColor), a = xy(), o = new Mi();
 		o.name = "Planar contour lines", this.addSegments(o, e.positiveSegments, "positive", r), this.addSegments(o, e.negativeSegments, "negative", i), this.addSegments(o, e.zeroSegments, "zero", this.options.zeroColor);
-		let s = vy();
+		let s = xy();
 		return o.userData = {
 			displayMode: "contour-lines",
 			level: e.level,
@@ -63705,9 +63743,9 @@ var xy = class {
 			dimensions: e.dimensions,
 			plane: e.plane,
 			segmentCount: e.segmentCount,
-			positiveSegmentCount: by(e.positiveSegments),
-			negativeSegmentCount: by(e.negativeSegments),
-			zeroSegmentCount: by(e.zeroSegments),
+			positiveSegmentCount: Cy(e.positiveSegments),
+			negativeSegmentCount: Cy(e.negativeSegments),
+			zeroSegmentCount: Cy(e.zeroSegments),
 			polygonCount: 0,
 			resolution: Math.max(...e.dimensions),
 			planeSetupTimeMs: e.timings.planeSetupTimeMs,
@@ -63753,21 +63791,21 @@ var xy = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, Sy = Object.freeze(["constant", "onDemand"]), Cy = Object.freeze([
+}, Ty = Object.freeze(["constant", "onDemand"]), Ey = Object.freeze([
 	"solid-3d",
 	"cutout-3d",
 	"cutout-2d"
-]), wy = Object.freeze(["ellipsoid", "rmsd-peanut"]), Ty = Object.freeze([
+]), Dy = Object.freeze(["ellipsoid", "rmsd-peanut"]), Oy = Object.freeze([
 	"structure-y",
 	"principal-maximum",
 	"principal-intermediate",
 	"principal-minimum"
-]), Ey = Object.freeze(["uniform", "split"]), Dy = Object.freeze([
+]), ky = Object.freeze(["uniform", "split"]), Ay = Object.freeze([
 	"auto-omit",
 	"quality-omit",
 	"performance-omit",
 	"maximum-coverage"
-]), Oy = Object.freeze(["structure", "viewport"]), ky = Object.freeze(["uniform", "atom"]), Ay = Object.freeze(["single", "multiple"]);
+]), jy = Object.freeze(["structure", "viewport"]), My = Object.freeze(["uniform", "atom"]), Ny = Object.freeze(["single", "multiple"]);
 Object.freeze(["orthographic", "perspective"]), Object.freeze([
 	"none",
 	"constant",
@@ -63782,32 +63820,33 @@ Object.freeze(["orthographic", "perspective"]), Object.freeze([
 ]);
 //#endregion
 //#region src/lib/ortep3d/crystal-viewer.js
-var jy = 16777215, My = 2e6, Ny = 2000001, Py = 2000002;
-function Fy(e, t) {
+var Py = 16777215, Fy = 2e6, Iy = 2000001, Ly = 2000002;
+function Ry(e, t) {
 	if (!Array.isArray(e) || e.length === 0 || e.some((e) => !Number.isInteger(e) || e < 0 || e > 16777215)) throw Error(`${t} must be a non-empty array of numeric hex colours`);
 }
-function Iy(e) {
+function zy(e) {
 	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
 }
-function Ly(e) {
-	if (e.placementMode !== void 0 && !Dy.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${Dy.join(", ")}`);
-	if (e.calloutPlacement !== void 0 && !Oy.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${Oy.join(", ")}`);
-	if (e.colorMode !== void 0 && !ky.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${ky.join(", ")}`);
+function By(e) {
+	if (e.subscriptNonElement !== void 0 && typeof e.subscriptNonElement != "boolean") throw Error("atomLabels.subscriptNonElement must be a boolean");
+	if (e.placementMode !== void 0 && !Ay.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${Ay.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !jy.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${jy.join(", ")}`);
+	if (e.colorMode !== void 0 && !My.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${My.join(", ")}`);
 	if (e.atomColorLuminanceCeiling !== void 0 && !(typeof e.atomColorLuminanceCeiling == "number" && e.atomColorLuminanceCeiling >= 0 && e.atomColorLuminanceCeiling <= 1)) throw Error("atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1");
 	if (e.atomColorLuminanceFloor !== void 0 && e.atomColorLuminanceFloor !== null && !(typeof e.atomColorLuminanceFloor == "number" && e.atomColorLuminanceFloor >= 0 && e.atomColorLuminanceFloor <= 1)) throw Error("atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1");
-	if (e.show !== void 0 && !Iy(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+	if (e.show !== void 0 && !zy(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
 	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
 	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
 }
-function Ry(e) {
+function Vy(e) {
 	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
 }
-function zy(e, t, n = []) {
+function Hy(e, t, n = []) {
 	let r = /* @__PURE__ */ new Set([...Object.keys(t), ...n]);
-	return Object.fromEntries(Object.entries(Ry(e)).filter(([e]) => r.has(e)));
+	return Object.fromEntries(Object.entries(Vy(e)).filter(([e]) => r.has(e)));
 }
-var By = class {
+var Uy = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -63951,27 +63990,27 @@ var By = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, Vy = class {
+}, Wy = class {
 	constructor(e, t = {}) {
-		if (t.renderMode && !Sy.includes(t.renderMode)) throw Error(`Invalid render mode: "${t.renderMode}". Must be one of: ${Sy.join(", ")}`);
-		if (t.renderStyle && !Cy.includes(t.renderStyle)) throw Error(`Invalid render style: "${t.renderStyle}". Must be one of: ${Cy.join(", ")}`);
-		if (t.adpRepresentation && !wy.includes(t.adpRepresentation)) throw Error(`Invalid ADP representation: "${t.adpRepresentation}". Must be one of: ${wy.join(", ")}`);
-		if (t.peanutGridPoleAxis !== void 0 && !Ty.includes(t.peanutGridPoleAxis)) throw Error(`Invalid PEANUT grid pole axis: "${t.peanutGridPoleAxis}". Must be one of: ${Ty.join(", ")}`);
+		if (t.renderMode && !Ty.includes(t.renderMode)) throw Error(`Invalid render mode: "${t.renderMode}". Must be one of: ${Ty.join(", ")}`);
+		if (t.renderStyle && !Ey.includes(t.renderStyle)) throw Error(`Invalid render style: "${t.renderStyle}". Must be one of: ${Ey.join(", ")}`);
+		if (t.adpRepresentation && !Dy.includes(t.adpRepresentation)) throw Error(`Invalid ADP representation: "${t.adpRepresentation}". Must be one of: ${Dy.join(", ")}`);
+		if (t.peanutGridPoleAxis !== void 0 && !Oy.includes(t.peanutGridPoleAxis)) throw Error(`Invalid PEANUT grid pole axis: "${t.peanutGridPoleAxis}". Must be one of: ${Oy.join(", ")}`);
 		if (t.peanutScale !== void 0 && !(typeof t.peanutScale == "number" && Number.isFinite(t.peanutScale) && t.peanutScale > 0)) throw Error("peanutScale must be a finite number greater than 0");
 		for (let [e, n] of [["peanutMeridianCount", 1], ["peanutLatitudeIntervals", 2]]) if (t[e] !== void 0 && !(Number.isInteger(t[e]) && t[e] >= n)) throw Error(`${e} must be an integer greater than or equal to ${n}`);
 		if (t.peanutGridLineWidth !== void 0 && !(typeof t.peanutGridLineWidth == "number" && Number.isFinite(t.peanutGridLineWidth) && t.peanutGridLineWidth > 0)) throw Error("peanutGridLineWidth must be a finite number greater than 0");
-		if (t.bondColorMode !== void 0 && !Ey.includes(t.bondColorMode)) throw Error(`Invalid bond color mode: "${t.bondColorMode}". Must be one of: ${Ey.join(", ")}`);
+		if (t.bondColorMode !== void 0 && !ky.includes(t.bondColorMode)) throw Error(`Invalid bond color mode: "${t.bondColorMode}". Must be one of: ${ky.join(", ")}`);
 		if (t.plot2DColorLuminanceCeiling !== void 0 && !(typeof t.plot2DColorLuminanceCeiling == "number" && t.plot2DColorLuminanceCeiling >= 0 && t.plot2DColorLuminanceCeiling <= 1)) throw Error("plot2DColorLuminanceCeiling must be a number from 0 to 1");
 		if (t.plot2DColorLuminanceFloor !== void 0 && t.plot2DColorLuminanceFloor !== null && !(typeof t.plot2DColorLuminanceFloor == "number" && t.plot2DColorLuminanceFloor >= 0 && t.plot2DColorLuminanceFloor <= 1)) throw Error("plot2DColorLuminanceFloor must be null or a number from 0 to 1");
 		for (let e of ["plot2DBondOutlineWidth", "plot2DOutlineWidth"]) if (t[e] !== void 0 && !(typeof t[e] == "number" && Number.isFinite(t[e]) && t[e] >= 0)) throw Error(`${e} must be a finite number greater than or equal to 0`);
 		if (t.selection?.haloWidth !== void 0 && !(typeof t.selection.haloWidth == "number" && Number.isFinite(t.selection.haloWidth) && t.selection.haloWidth >= 0)) throw Error("selection.haloWidth must be a finite number greater than or equal to 0");
-		t.measurement?.markerColors !== void 0 && Fy(t.measurement.markerColors, "measurement.markerColors");
+		t.measurement?.markerColors !== void 0 && Ry(t.measurement.markerColors, "measurement.markerColors");
 		for (let e of ["lineRadius", "markerRadius"]) {
 			let n = t.measurement?.[e];
 			if (n !== void 0 && !(typeof n == "number" && Number.isFinite(n) && n > 0)) throw Error(`measurement.${e} must be a finite number greater than 0`);
 		}
-		Ly(t.atomLabels || {});
-		let n = Ry(t.atomLabels || {});
+		By(t.atomLabels || {});
+		let n = Vy(t.atomLabels || {});
 		this.container = e;
 		let r = t.camera?.initialPosition ?? Q.camera.initialPosition;
 		this.options = {
@@ -64058,19 +64097,19 @@ var By = class {
 			},
 			differenceDensity: {
 				...Q.differenceDensity,
-				...Ry(t.differenceDensity || {})
+				...Vy(t.differenceDensity || {})
 			},
 			scalarField: {
 				...Q.scalarField,
-				...Ry(t.scalarField || {})
+				...Vy(t.scalarField || {})
 			},
 			isosurface: {
 				...Q.isosurface,
-				...Ry(t.isosurface || {})
+				...Vy(t.isosurface || {})
 			},
 			contourLines: {
 				...Q.contourLines,
-				...Ry(t.contourLines || {})
+				...Vy(t.contourLines || {})
 			}
 		}, this.state = {
 			isDragging: !1,
@@ -64089,19 +64128,19 @@ var By = class {
 			contourDisplayVersion: 0,
 			currentStructureFactorModel: null
 		}, this.scalarFieldUpdateCallbacks = /* @__PURE__ */ new Set(), this.modifierModeCallbacks = /* @__PURE__ */ new Set(), this.measurementCallbacks = /* @__PURE__ */ new Set(), this.measurementGroups = /* @__PURE__ */ new Map(), this.measurements = /* @__PURE__ */ new Map(), this.measurementSequence = 0, this.currentMeasurement = null, this.hoveredAtomObjects = /* @__PURE__ */ new Map(), this.scalarFieldLoadSequence = 0, this.scalarFieldWorker = null, this.scalarFieldPendingResolve = null, this.scalarFieldMainThreadLoadId = null, this.scalarFieldLoadTarget = null, this.scalarFieldIdSequence = 0, this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity }, this.defaultScalarFieldOptions = { ...this.options.scalarField }, this.defaultIsosurfaceOptions = { ...this.options.isosurface }, this.modifiers = {
-			removeatoms: new I_(),
-			addhydrogen: new R_(),
-			missingbonds: new L_(this.options.elementProperties, this.options.bondGrowTolerance),
-			disorder: new M_(this.options.disorderMode),
-			symmetry: new N_(this.options.symmetryMode, this.options.packingCutoff),
-			hydrogen: new j_(this.options.hydrogenMode)
-		}, this.selections = new By(this.options), this.setupScene(), this.isosurfaceLayer = new Kv(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new xy(this.moleculeContainer, {
+			removeatoms: new z_(),
+			addhydrogen: new V_(),
+			missingbonds: new B_(this.options.elementProperties, this.options.bondGrowTolerance),
+			disorder: new F_(this.options.disorderMode),
+			symmetry: new I_(this.options.symmetryMode, this.options.packingCutoff),
+			hydrogen: new P_(this.options.hydrogenMode)
+		}, this.selections = new Uy(this.options), this.setupScene(), this.isosurfaceLayer = new Yv(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new wy(this.moleculeContainer, {
 			...this.options.isosurface,
 			...this.options.contourLines
-		}), this.atomLabelManager = new Bv(this), this.controls = new X_(this), this.animate(), this.needsRender = !0;
+		}), this.atomLabelManager = new Uv(this), this.controls = new $_(this), this.animate(), this.needsRender = !0;
 	}
 	setupScene() {
-		this.scene = new Bi(), this.cameraController = ev(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new Zd({
+		this.scene = new Bi(), this.cameraController = rv(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new Zd({
 			antialias: !0,
 			alpha: !0,
 			stencil: !0,
@@ -64137,13 +64176,13 @@ var By = class {
 			} catch (e) {
 				if (this.options.fixCifErrors) throw e;
 				try {
-					bg(i), a = vt.fromCIF(i);
+					Cg(i), a = vt.fromCIF(i);
 				} catch {
 					throw e;
 				}
 			}
 			let o = this.state.scalarFields.length > 0;
-			this.cancelScalarFieldLoad("Coordinate structure changed"), this.isosurfaceLayer.clear(), this.contourLineLayer.clear(), this.state.scalarField = null, this.state.scalarFields = [], this.state.activeScalarFieldIndex = -1, this.scalarFieldLoadTarget = null, o && this.notifyScalarFieldUpdate({ type: "cleared" }), await this.loadStructure(a), this.state.currentCifContent = e, this.state.currentCifBlock = t, this.state.currentStructureFactorModel = jp(a, i);
+			this.cancelScalarFieldLoad("Coordinate structure changed"), this.isosurfaceLayer.clear(), this.contourLineLayer.clear(), this.state.scalarField = null, this.state.scalarFields = [], this.state.activeScalarFieldIndex = -1, this.scalarFieldLoadTarget = null, o && this.notifyScalarFieldUpdate({ type: "cleared" }), await this.loadStructure(a), this.state.currentCifContent = e, this.state.currentCifBlock = t, this.state.currentStructureFactorModel = Pp(a, i);
 			let s = n.differenceDensity ?? this.options.differenceDensity.autoLoad;
 			if (!s) return { success: !0 };
 			let c = s === !0 ? {} : s;
@@ -64187,15 +64226,15 @@ var By = class {
 		};
 		this.cancelScalarFieldLoad("Superseded by a new FCF load"), this.options.differenceDensity = {
 			...this.defaultDifferenceDensityOptions,
-			...zy(n, Q.differenceDensity)
+			...Hy(n, Q.differenceDensity)
 		};
 		let r = {
 			...this.defaultIsosurfaceOptions,
-			...zy(n, Q.isosurface, ["level", "sign"])
+			...Hy(n, Q.isosurface, ["level", "sign"])
 		};
 		this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...zy(n, Q.scalarField)
+			...Hy(n, Q.scalarField)
 		};
 		let i = ++this.scalarFieldLoadSequence, a = this.prepareScalarFieldLoad(i, n, r, "Difference density");
 		return this.notifyScalarFieldUpdate({
@@ -64235,15 +64274,15 @@ var By = class {
 			"periodic",
 			"level",
 			"sign"
-		]), r = zy(t, Q.isosurface, ["level", "sign"]), i = {
+		]), r = Hy(t, Q.isosurface, ["level", "sign"]), i = {
 			...this.defaultIsosurfaceOptions,
 			...r
 		};
 		delete i.level, delete i.sign, this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...zy(t, Q.scalarField)
+			...Hy(t, Q.scalarField)
 		};
-		let a = Object.fromEntries(Object.entries(Ry(t)).filter(([e]) => n.has(e))), o = {
+		let a = Object.fromEntries(Object.entries(Vy(t)).filter(([e]) => n.has(e))), o = {
 			density: {
 				displayLabel: "ρ/eÅ⁻³",
 				quantityName: "electron density",
@@ -64301,7 +64340,7 @@ var By = class {
 	}
 	loadDifferenceDensityInWorker(e, t, n) {
 		return new Promise((r) => {
-			let i = new Uv();
+			let i = new Kv();
 			this.scalarFieldWorker = i, this.scalarFieldPendingResolve = r;
 			let a = (e) => {
 				if (n !== this.scalarFieldLoadSequence) return;
@@ -64355,7 +64394,7 @@ var By = class {
 	}
 	loadCubeInWorker(e, t, n) {
 		return new Promise((r) => {
-			let i = new Uv();
+			let i = new Kv();
 			this.scalarFieldWorker = i, this.scalarFieldPendingResolve = r;
 			let a = (e) => {
 				if (n !== this.scalarFieldLoadSequence) return;
@@ -64406,7 +64445,7 @@ var By = class {
 	async loadDifferenceDensityOnMainThread(e, t, n) {
 		this.scalarFieldMainThreadLoadId = n;
 		try {
-			let r = Gv(Ym(e, t, this.differenceDensityDatasetOptions()), {
+			let r = Jv(Qm(e, t, this.differenceDensityDatasetOptions()), {
 				steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
 				reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
 				initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -64455,7 +64494,7 @@ var By = class {
 	async loadCubeOnMainThread(e, t, n) {
 		this.scalarFieldMainThreadLoadId = n;
 		try {
-			let r = dh(e, t), i = this.normalizedIsosurfaceSteps();
+			let r = mh(e, t), i = this.normalizedIsosurfaceSteps();
 			for (let e = 0; e < i.length; e++) {
 				if (n !== this.scalarFieldLoadSequence) return {
 					success: !1,
@@ -64521,7 +64560,7 @@ var By = class {
 		};
 	}
 	normalizedIsosurfaceSteps() {
-		return Wv(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
+		return qv(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
 	}
 	prepareScalarFieldLoad(e, t, n, r) {
 		let i = t.fieldId, a = i == null ? `scalar-field-${++this.scalarFieldIdSequence}` : String(i);
@@ -64616,7 +64655,7 @@ var By = class {
 		};
 	}
 	scalarFieldFromPayload(e) {
-		return Em.fromPayload(e);
+		return km.fromPayload(e);
 	}
 	applyProgressiveScalarField(e, t) {
 		this.validateScalarFieldCell(e.cell, this.state.baseStructure.cell, e.sourceType === "cube" ? "Cube" : "FCF");
@@ -64779,7 +64818,7 @@ var By = class {
 			this.cancelScalarFieldLoad("Superseded by a direct scalar field");
 			let n = {
 				...this.defaultIsosurfaceOptions,
-				...zy(t, Q.isosurface, ["level", "sign"])
+				...Hy(t, Q.isosurface, ["level", "sign"])
 			};
 			this.prepareScalarFieldLoad(null, t, n, e.quantityName ?? "Scalar field"), this.applyProgressiveScalarField(e, {
 				loadId: null,
@@ -64879,7 +64918,7 @@ var By = class {
 		};
 	}
 	updateIsosurfaceOptions(e = {}) {
-		let t = Ry(e);
+		let t = Vy(e);
 		if (Object.keys(t).length === 1 && Object.hasOwn(t, "visible")) return this.setIsosurfaceVisibility(t.visible);
 		this.options.isosurface = {
 			...this.options.isosurface,
@@ -64894,7 +64933,7 @@ var By = class {
 	updateContourLineOptions(e = {}) {
 		return this.options.contourLines = {
 			...this.options.contourLines,
-			...Ry(e)
+			...Vy(e)
 		}, this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1, this.state.scalarField && this.state.displayStructure && (this.rebuildScalarFieldDisplay(), this.requestRender(), this.notifyScalarFieldUpdate({
 			type: "display",
 			...this.scalarFieldDisplayState()
@@ -64950,14 +64989,14 @@ var By = class {
 		};
 	}
 	validateScalarFieldCell(e, t, n = "scalar field") {
-		vp(e, t, n);
+		xp(e, t, n);
 	}
 	async loadStructure(e = this.state.baseStructure) {
 		this.state.baseStructure = e, this.clearMeasurement?.(), this.setHoveredAtom?.(null), this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-		let t = K_(this.state.currentStructure);
+		let t = Y_(this.state.currentStructure);
 		t && (this.container.clientHeight > this.container.clientWidth && t.premultiply(new K().makeRotationZ(Math.PI / 2)), this.moleculeContainer.setRotationFromMatrix(t), this.moleculeContainer.updateMatrix()), this.moleculeContainer.updateMatrixWorld(!0);
 		let n = new ta().setFromObject(this.state.currentStructure);
-		return n.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), Y_(this.scene, this.state.currentStructure, n), this.requestRender(), { success: !0 };
+		return n.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), Q_(this.scene, this.state.currentStructure, n), this.requestRender(), { success: !0 };
 	}
 	async updateStructure() {
 		try {
@@ -64976,7 +65015,7 @@ var By = class {
 		let e = this.state.baseStructure, t = !1;
 		for (let n of Object.values(this.modifiers)) e = n.apply(e), t ||= n.drawCell;
 		if (t) {
-			let t = rv(e.cell, this.options.cell);
+			let t = ov(e.cell, this.options.cell);
 			this.moleculeContainer.add(t);
 		}
 		let n = new Hf(e, this.options).getGroup();
@@ -65186,7 +65225,7 @@ var By = class {
 		return i && (this.renderer.setSize(n, r, !1), e.style.width = `${this.container.clientWidth}px`, e.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, n, r), this.state?.currentStructure?.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight)), i;
 	}
 	captureImage({ scale: e = 2, longEdge: t = null, background: n = "transparent", includeLabels: r = !0 } = {}) {
-		let i = this.container.clientWidth, a = this.container.clientHeight, o = J_(i, a, {
+		let i = this.container.clientWidth, a = this.container.clientHeight, o = Z_(i, a, {
 			scale: e,
 			longEdge: t
 		}), s = this.renderer.domElement, c = s.width, l = s.height, u = s.style.width, d = s.style.height;
@@ -65203,7 +65242,7 @@ var By = class {
 		});
 	}
 	updateSelectionOptions(e = {}) {
-		if (e.mode !== void 0 && !Ay.includes(e.mode)) throw Error(`Invalid selection mode: "${e.mode}". Must be one of: ${Ay.join(", ")}`);
+		if (e.mode !== void 0 && !Ny.includes(e.mode)) throw Error(`Invalid selection mode: "${e.mode}". Must be one of: ${Ny.join(", ")}`);
 		if (e.haloWidth !== void 0 && !(typeof e.haloWidth == "number" && Number.isFinite(e.haloWidth) && e.haloWidth >= 0)) throw Error("selection.haloWidth must be a finite number greater than or equal to 0");
 		this.options.selection = {
 			...this.options.selection,
@@ -65216,7 +65255,7 @@ var By = class {
 		this.requestRender();
 	}
 	updateMeasurementOptions(e = {}) {
-		e.markerColors !== void 0 && Fy(e.markerColors, "measurement.markerColors");
+		e.markerColors !== void 0 && Ry(e.markerColors, "measurement.markerColors");
 		for (let t of ["lineRadius", "markerRadius"]) {
 			let n = e[t];
 			if (n !== void 0 && !(typeof n == "number" && Number.isFinite(n) && n > 0)) throw Error(`measurement.${t} must be a finite number greater than 0`);
@@ -65244,14 +65283,14 @@ var By = class {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
 	measureSelectedAtoms() {
-		let e = pp(Array.from(this.selections.selectedObjects).filter((e) => e.userData?.type === "atom").map((e) => e.userData.atomData), this.state.baseStructure?.cell);
+		let e = gp(Array.from(this.selections.selectedObjects).filter((e) => e.userData?.type === "atom").map((e) => e.userData.atomData), this.state.baseStructure?.cell);
 		return this.displayMeasurement(e), e;
 	}
 	measureAtomsById(e) {
 		if (!Array.isArray(e)) throw Error("Measurement atoms must be an array of atom IDs or labels");
 		let t = this.state.displayStructure?.atoms ?? [], n = e.map((e) => t.find((t) => t.uniqueId === e) ?? t.find((t) => t.label === e)), r = n.findIndex((e) => e === void 0);
 		if (r >= 0) throw Error(`Could not find displayed atom "${e[r]}"`);
-		let i = pp(n, this.state.displayStructure?.cell);
+		let i = gp(n, this.state.displayStructure?.cell);
 		return this.displayMeasurement(i), i;
 	}
 	displayMeasurement(e) {
@@ -65269,12 +65308,12 @@ var By = class {
 			let s = new U(...e), c = new U(...t), l = c.clone().sub(s);
 			if (l.lengthSq() < 1e-12) return;
 			let u = new Y(new Xo(r, r, l.length(), 12), a.clone());
-			u.position.copy(s).add(c).multiplyScalar(.5), u.quaternion.setFromUnitVectors(new U(0, 1, 0), l.normalize()), u.renderOrder = Ny, i && (u.userData.measurementLineRadius = o), n.add(u);
+			u.position.copy(s).add(c).multiplyScalar(.5), u.quaternion.setFromUnitVectors(new U(0, 1, 0), l.normalize()), u.renderOrder = Iy, i && (u.userData.measurementLineRadius = o), n.add(u);
 		}, l = e.type === "plane-distance" ? [e.points.at(-1), e.plane.projection] : e.points;
 		for (let e = 1; e < l.length; e++) c(l[e - 1], l[e]);
 		for (let e of l) {
 			let t = new Y(new os(s, 12, 8), a.clone());
-			t.position.set(...e), t.renderOrder = Py, t.userData.measurementMarkerRadius = s, n.add(t);
+			t.position.set(...e), t.renderOrder = Ly, t.userData.measurementMarkerRadius = s, n.add(t);
 		}
 		if (e.type === "plane-distance") {
 			let t = new U(...e.plane.centroid), r = new U(...e.plane.normal), a = Math.abs(r.z) < .9 ? new U(0, 0, 1) : new U(0, 1, 0), o = new U().crossVectors(r, a).normalize(), s = new U().crossVectors(r, o).normalize(), l = new U(...e.plane.projection), u = [...e.points.slice(0, -1).map((e) => new U(...e)), l], d = (e) => {
@@ -65305,7 +65344,7 @@ var By = class {
 				depthWrite: !1,
 				side: 2
 			}));
-			g.renderOrder = My, n.add(g);
+			g.renderOrder = Fy, n.add(g);
 			for (let e = 0; e < m.length; e++) c(m[e].toArray(), m[(e + 1) % m.length].toArray(), .04, !1);
 		}
 		a.dispose(), this.measurementGroups.set(t, n), this.measurements.set(t, e), this.currentMeasurement = e, n.visible = !1, this.moleculeContainer.add(n), this.notifyMeasurementCallbacks(), this.requestRender();
@@ -65334,7 +65373,7 @@ var By = class {
 		for (let [t, n] of this.measurementGroups) n.visible = t === e;
 		this.requestRender();
 	}
-	setHoveredAtom(e, t = jy) {
+	setHoveredAtom(e, t = Py) {
 		for (let [e, t] of this.hoveredAtomObjects) e.deselect(), t !== null && e.select(t, this.options);
 		this.hoveredAtomObjects.clear(), e !== null && this.moleculeContainer.traverse((n) => {
 			if (n.userData?.type === "atom" && n.userData.atomData.uniqueId === e && typeof n.select == "function" && typeof n.deselect == "function") {
@@ -65344,12 +65383,12 @@ var By = class {
 		}), this.requestRender();
 	}
 	setAtomLabels(e) {
-		if (!Iy(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		if (!zy(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
 	}
 	updateAtomLabelOptions(e) {
-		Ly(e);
-		let t = Ry(e);
+		By(e);
+		let t = Vy(e), n = t.subscriptNonElement !== void 0 && t.subscriptNonElement !== this.options.atomLabels.subscriptNonElement;
 		this.options.atomLabels = {
 			...this.options.atomLabels,
 			...t,
@@ -65357,7 +65396,7 @@ var By = class {
 				...this.options.atomLabels.text,
 				...t.text || {}
 			}
-		}, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
+		}, this.atomLabelManager.setOptions(this.options.atomLabels), n && (this.selections.notifyCallbacks(), this.notifyMeasurementCallbacks()), this.requestRender();
 	}
 	clearAtomLabels() {
 		this.setAtomLabels("none");
@@ -65373,27 +65412,27 @@ var By = class {
 };
 //#endregion
 //#region src/lib/ortep3d/viewer-interaction-coupling.js
-function Hy(e) {
+function Gy(e) {
 	let t = e?.viewer || e;
 	if (!t?.controls?.onInteraction || typeof t.controls.applyCoupledInteraction != "function" || typeof t.requestRender != "function") throw Error("Coupled participants must be CrystalViewer or initialized cifview-widget instances");
 	return t;
 }
-function Uy(e) {
+function Ky(e) {
 	return typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 0);
 }
-function Wy(e) {
+function qy(e) {
 	typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e);
 }
-var Gy = [
+var Jy = [
 	"hydrogen",
 	"disorder",
 	"symmetry"
-], Ky = class {
+], Yy = class {
 	constructor(e = [], t = {}) {
 		this.coupleModes = t.coupleModes !== !1, this.viewers = /* @__PURE__ */ new Map(), this.pendingInteractions = [], this.pendingFrame = null, this.pendingModeUpdate = Promise.resolve(), e.forEach((e) => this.add(e));
 	}
 	add(e) {
-		let t = Hy(e);
+		let t = Gy(e);
 		if (this.viewers.has(t)) return this;
 		let n = t.controls.onInteraction((e) => {
 			this.enqueue(t, e);
@@ -65406,14 +65445,14 @@ var Gy = [
 		}), this;
 	}
 	async synchronizeFrom(e, t = {}) {
-		let n = Hy(e);
+		let n = Gy(e);
 		if (!this.viewers.has(n)) throw Error("The synchronization source must belong to this coupling");
 		if (!(t.modes ?? this.coupleModes)) return this.#e(n), this;
-		let r = Object.fromEntries(Gy.map((e) => [e, n.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
+		let r = Object.fromEntries(Jy.map((e) => [e, n.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
 		return await Promise.all([...this.viewers.keys()].filter((e) => e !== n).map((e) => e.setModifierModes?.(r, { broadcast: !1 }))), this.#e(n), this;
 	}
 	synchronizeViewFrom(e) {
-		let t = Hy(e);
+		let t = Gy(e);
 		if (!this.viewers.has(t)) throw Error("The synchronization source must belong to this coupling");
 		return this.#e(t), this;
 	}
@@ -65436,17 +65475,17 @@ var Gy = [
 				this.pendingInteractions[n] = {
 					source: e,
 					interaction: t
-				}, this.pendingFrame === null && (this.pendingFrame = Uy(() => this.flush()));
+				}, this.pendingFrame === null && (this.pendingFrame = Ky(() => this.flush()));
 				return;
 			}
 		}
 		this.pendingInteractions.push({
 			source: e,
 			interaction: t
-		}), this.pendingFrame === null && (this.pendingFrame = Uy(() => this.flush()));
+		}), this.pendingFrame === null && (this.pendingFrame = Ky(() => this.flush()));
 	}
 	enqueueModeChange(e, t) {
-		t.coupled || !Gy.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
+		t.coupled || !Jy.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
 			this.viewers.has(e) && (await Promise.all([...this.viewers.keys()].filter((t) => t !== e).map((e) => e.setModifierModes?.({ [t.modifierName]: t.mode }, { broadcast: !1 }))), this.viewers.has(e) && this.#e(e));
 		}).catch((e) => {
 			console.error("Coupled modifier mode update failed:", e);
@@ -65456,7 +65495,7 @@ var Gy = [
 		this.flush(), await this.pendingModeUpdate;
 	}
 	flush() {
-		if (this.pendingFrame !== null && (Wy(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
+		if (this.pendingFrame !== null && (qy(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
 		let e = this.pendingInteractions;
 		this.pendingInteractions = [];
 		let t = /* @__PURE__ */ new Set();
@@ -65464,7 +65503,7 @@ var Gy = [
 		t.forEach((e) => e.requestRender());
 	}
 	dispose() {
-		this.pendingFrame !== null && (Wy(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
+		this.pendingFrame !== null && (qy(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
 		let e = [...this.viewers.keys()];
 		this.viewers.forEach(({ stopInteraction: e, stopMode: t }) => {
 			e(), t();
@@ -65473,48 +65512,54 @@ var Gy = [
 		});
 	}
 };
-function qy(...e) {
+function Xy(...e) {
 	let t = {};
 	if (e.length > 1) {
 		let n = e[e.length - 1];
 		n && typeof n == "object" && !Array.isArray(n) && !n.viewer && !n.controls && (t = e.pop());
 	}
-	return new Ky(e.length === 1 && Array.isArray(e[0]) ? e[0] : e, t);
+	return new Yy(e.length === 1 && Array.isArray(e[0]) ? e[0] : e, t);
 }
 //#endregion
 //#region src/lib/measurement-controls.js
-var Jy = "cifvis-measurement-controls-styles", Yy = "\n  .cifvis-measurement-action {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    gap: 0.35rem;\n    min-height: 2.25rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.4rem 0.7rem;\n    background: var(--cifvis-measurement-button-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-action:disabled { cursor: default; opacity: 0.5; }\n  .cifvis-measurement-results {\n    display: flex;\n    flex-wrap: wrap;\n    gap: var(--cifvis-measurement-gap, 0.45rem);\n    align-items: center;\n  }\n  .cifvis-measurement-result {\n    display: inline-flex;\n    align-items: center;\n    gap: 0.3rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-bottom: 3px solid var(--cifvis-measurement-color, #3a7bd5);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.3rem 0.45rem;\n    background: var(--cifvis-measurement-result-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n  }\n  .cifvis-measurement-atom,\n  .cifvis-measurement-dismiss {\n    border: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-atom {\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n  .cifvis-measurement-dismiss { padding-inline: 0.15rem; font-size: 1.1em; }\n";
-function Xy() {
-	if (typeof document > "u" || document.getElementById(Jy)) return;
+var Zy = "cifvis-measurement-controls-styles", Qy = "\n  .cifvis-measurement-action {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    gap: 0.35rem;\n    min-height: 2.25rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.4rem 0.7rem;\n    background: var(--cifvis-measurement-button-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-action:disabled { cursor: default; opacity: 0.5; }\n  .cifvis-measurement-results {\n    display: flex;\n    flex-wrap: wrap;\n    gap: var(--cifvis-measurement-gap, 0.45rem);\n    align-items: center;\n  }\n  .cifvis-measurement-result {\n    display: inline-flex;\n    align-items: center;\n    gap: 0.3rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-bottom: 3px solid var(--cifvis-measurement-color, #3a7bd5);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.3rem 0.45rem;\n    background: var(--cifvis-measurement-result-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n  }\n  .cifvis-measurement-atom,\n  .cifvis-measurement-dismiss {\n    border: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-atom {\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n  .cifvis-measurement-dismiss { padding-inline: 0.15rem; font-size: 1.1em; }\n";
+function $y() {
+	if (typeof document > "u" || document.getElementById(Zy)) return;
 	let e = document.createElement("style");
-	e.id = Jy, e.textContent = Yy, document.head.appendChild(e);
-}
-function Zy(e) {
-	return `#${Number(e).toString(16).padStart(6, "0").slice(-6)}`;
-}
-function Qy(e, t) {
-	let n = document.createElement("button");
-	return n.type = "button", n.className = "cifvis-measurement-atom", n.dataset.cifvisAtomId = t ?? "", n.textContent = e, n.title = `Highlight ${e}`, n;
-}
-function $y(e, t, n, r) {
-	t.forEach((t, i) => {
-		i > 0 && e.append(r), e.append(Qy(t, n[i]));
-	});
+	e.id = Zy, e.textContent = Qy, document.head.appendChild(e);
 }
 function eb(e) {
-	let t = document.createElement("span"), n = document.createElement("strong"), r = e.value.toFixed(e.unit === "°" ? 2 : 3);
-	if (e.type === "plane-distance") n.append(Qy(e.probeLabel, e.atomIds.at(-1))), n.append(" to mean plane ("), $y(n, e.planeLabels, e.atomIds, ", "), n.append(`): ${r} Å`);
-	else {
-		let t = e.type === "distance" ? "Distance " : e.type === "angle" ? "Angle " : "Torsion ";
-		n.append(t), $y(n, e.labels, e.atomIds, "–"), n.append(`: ${r}${e.unit === "°" ? "" : " "}${e.unit}`);
-	}
-	let i = document.createElement("button");
-	return i.type = "button", i.className = "cifvis-measurement-dismiss", i.dataset.cifvisDismiss = "", i.setAttribute("aria-label", "Remove measurement"), i.title = "Remove measurement", i.textContent = "×", t.append(n, i), t;
+	return `#${Number(e).toString(16).padStart(6, "0").slice(-6)}`;
 }
-var tb = class {
+function tb(e, t, n) {
+	let r = document.createElement("button");
+	r.type = "button", r.className = "cifvis-measurement-atom", r.dataset.cifvisAtomId = t ?? "";
+	let i = lp(e, n), a = cp(e, n);
+	if (r.append(a.element), a.nonElement) {
+		let e = document.createElement("sub");
+		e.textContent = a.nonElement, r.append(e);
+	}
+	return r.title = `Highlight ${i}`, r;
+}
+function nb(e, t, n, r, i) {
+	t.forEach((t, a) => {
+		a > 0 && e.append(r), e.append(tb(t, n[a], i));
+	});
+}
+function rb(e, t = {}) {
+	let n = document.createElement("span"), r = document.createElement("strong"), i = e.value.toFixed(e.unit === "°" ? 2 : 3);
+	if (e.type === "plane-distance") r.append(tb(e.probeLabel, e.atomIds.at(-1), t.subscriptNonElement)), r.append(" to mean plane ("), nb(r, e.planeLabels, e.atomIds, ", ", t.subscriptNonElement), r.append(`): ${i} Å`);
+	else {
+		let n = e.type === "distance" ? "Distance " : e.type === "angle" ? "Angle " : "Torsion ";
+		r.append(n), nb(r, e.labels, e.atomIds, "–", t.subscriptNonElement), r.append(`: ${i}${e.unit === "°" ? "" : " "}${e.unit}`);
+	}
+	let a = document.createElement("button");
+	return a.type = "button", a.className = "cifvis-measurement-dismiss", a.dataset.cifvisDismiss = "", a.setAttribute("aria-label", "Remove measurement"), a.title = "Remove measurement", a.textContent = "×", n.append(r, a), n;
+}
+var ib = class {
 	constructor(e, t = {}) {
 		if (!e?.selections?.onChange || !e?.onMeasurementChange) throw TypeError("MeasurementControls requires a CrystalViewer instance");
-		Xy(), this.viewer = e, this.onError = t.onError ?? ((e) => console.warn("Measurement controls:", e)), this.subscribers = /* @__PURE__ */ new Set(), this.unbinders = /* @__PURE__ */ new Set(), this.disposed = !1, this.selections = e.selections.getSelections?.() ?? [], this.measurements = e.getMeasurements?.() ?? [];
+		$y(), this.viewer = e, this.onError = t.onError ?? ((e) => console.warn("Measurement controls:", e)), this.subscribers = /* @__PURE__ */ new Set(), this.unbinders = /* @__PURE__ */ new Set(), this.disposed = !1, this.selections = e.selections.getSelections?.() ?? [], this.measurements = e.getMeasurements?.() ?? [];
 		let n = t.measurements ?? [];
 		if (!Array.isArray(n)) throw TypeError("measurements must be an array of atom-ID arrays");
 		this.stopSelectionUpdates = e.selections.onChange((e) => {
@@ -65540,7 +65585,7 @@ var tb = class {
 		return {
 			measurements: [...this.measurements],
 			selectedAtomCount: e,
-			action: { ...hp(e) }
+			action: { ...vp(e) }
 		};
 	}
 	subscribe(e) {
@@ -65594,7 +65639,7 @@ var tb = class {
 	bindResults(e, t = {}) {
 		if (this.assertActive(), !(e instanceof HTMLElement)) throw TypeError("bindResults requires an HTMLElement");
 		e.classList.add("cifvis-measurement-results");
-		let n = t.renderItem ?? eb, r = [], i = this.subscribe(({ measurements: t }) => {
+		let n = t.renderItem ?? ((e) => rb(e, { subscriptNonElement: this.viewer.options?.atomLabels?.subscriptNonElement })), r = [], i = this.subscribe(({ measurements: t }) => {
 			r.forEach((e) => e()), r = [];
 			let i = [];
 			for (let e of t) try {
@@ -65614,7 +65659,7 @@ var tb = class {
 		let n = [], r = (e, t, r) => {
 			e.addEventListener(t, r), n.push(() => e.removeEventListener(t, r));
 		};
-		e.classList.add("cifvis-measurement-result"), e.dataset.cifvisMeasurementId = t.id, e.style.setProperty("--cifvis-measurement-color", Zy(t.color));
+		e.classList.add("cifvis-measurement-result"), e.dataset.cifvisMeasurementId = t.id, e.style.setProperty("--cifvis-measurement-color", eb(t.color));
 		let i = () => this.preview(t.id), a = () => this.preview(null);
 		r(e, "pointerenter", i), r(e, "pointerleave", a), r(e, "mouseenter", i), r(e, "mouseleave", a), r(e, "focusin", i), r(e, "focusout", (t) => {
 			e.contains(t.relatedTarget) || a();
@@ -65645,7 +65690,7 @@ var tb = class {
 	dispose() {
 		this.disposed ||= (this.preview(null), this.viewer.setHoveredAtom?.(null), [...this.unbinders].forEach((e) => e()), this.stopSelectionUpdates(), this.stopMeasurementUpdates(), this.subscribers.clear(), !0);
 	}
-}, nb = {
+}, ab = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -65669,7 +65714,7 @@ var tb = class {
 };
 //#endregion
 //#region src/lib/density/scalar-field-display-state.js
-function rb() {
+function ob() {
 	return {
 		loading: !1,
 		available: !1,
@@ -65688,9 +65733,9 @@ function rb() {
 		pendingFieldName: null
 	};
 }
-function ib(e, t) {
+function sb(e, t) {
 	if (t.type === "started") return {
-		...rb(),
+		...ob(),
 		loading: !0,
 		visible: t.visible ?? !0,
 		sigmaLevel: t.sigmaLevel ?? null,
@@ -65705,7 +65750,7 @@ function ib(e, t) {
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: t.pendingFieldName ?? null
 	};
-	if (t.type === "cleared") return rb();
+	if (t.type === "cleared") return ob();
 	if (["error", "cancelled"].includes(t.type)) return e.fieldCount > 0 ? {
 		...e,
 		loading: !1,
@@ -65721,7 +65766,7 @@ function ib(e, t) {
 		activeFieldId: t.activeFieldId ?? e.activeFieldId,
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: null
-	} : rb();
+	} : ob();
 	if (t.type === "visibility") return {
 		...e,
 		visible: !!t.visible,
@@ -65757,7 +65802,7 @@ function ib(e, t) {
 }
 //#endregion
 //#region src/lib/widget.js
-var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button.measurement-button {\n    position: relative;\n    flex-direction: column;\n    gap: 0;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n  }\n\n  cifview-widget .measurement-button:disabled {\n    cursor: default;\n    opacity: 0.45;\n  }\n\n  cifview-widget .measurement-symbol {\n    font-size: 19px;\n    line-height: 17px;\n  }\n\n  cifview-widget .measurement-count {\n    font-size: 9px;\n    font-weight: 700;\n    line-height: 10px;\n  }\n\n  cifview-widget .atom-name {\n    cursor: default;\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n\n  cifview-widget .measurement-caption {\n    display: inline-flex;\n    align-items: baseline;\n    gap: 4px;\n    margin-left: 4px;\n    border: 0;\n    border-bottom: 3px solid var(--cifvis-measurement-color);\n    border-radius: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n  }\n\n  cifview-widget .widget-measurement-results {\n    display: inline;\n  }\n\n  cifview-widget .measurement-dismiss {\n    border: 0;\n    padding: 0 2px;\n    background: transparent;\n    color: inherit;\n    cursor: pointer;\n    font-size: 17px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", ob = class extends HTMLElement {
+var cb = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button.measurement-button {\n    position: relative;\n    flex-direction: column;\n    gap: 0;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n  }\n\n  cifview-widget .measurement-button:disabled {\n    cursor: default;\n    opacity: 0.45;\n  }\n\n  cifview-widget .measurement-symbol {\n    font-size: 19px;\n    line-height: 17px;\n  }\n\n  cifview-widget .measurement-count {\n    font-size: 9px;\n    font-weight: 700;\n    line-height: 10px;\n  }\n\n  cifview-widget .atom-name {\n    cursor: default;\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n\n  cifview-widget .measurement-caption {\n    display: inline-flex;\n    align-items: baseline;\n    gap: 4px;\n    margin-left: 4px;\n    border: 0;\n    border-bottom: 3px solid var(--cifvis-measurement-color);\n    border-radius: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n  }\n\n  cifview-widget .widget-measurement-results {\n    display: inline;\n  }\n\n  cifview-widget .measurement-dismiss {\n    border: 0;\n    padding: 0 2px;\n    background: transparent;\n    color: inherit;\n    cursor: pointer;\n    font-size: 17px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", lb = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -65778,13 +65823,13 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = ab, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = cb, document.head.appendChild(e);
 		}
-		this.viewer = null, this.baseCaption = "", this.selections = [], this.measurements = [], this.prepopulatedMeasurements = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = rb(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
+		this.viewer = null, this.baseCaption = "", this.selections = [], this.measurements = [], this.prepopulatedMeasurements = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = ob(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...nb,
+			...ab,
 			...this.customIcons
 		};
 	}
@@ -65795,7 +65840,7 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new Vy(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new Wy(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
 		r ? await this.loadFromUrl(r, a) : i && await this.loadFromString(i, a);
 	}
@@ -65803,10 +65848,10 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		return e ? /^\d+$/.test(e) ? Number(e) : e : 0;
 	}
 	connectViewerEvents() {
-		this.disconnectViewerEvents(), this.measurementControls = new tb(this.viewer, { onError: (e) => console.warn("Could not measure selected atoms:", e) }), this.stopMeasurementState = this.measurementControls.subscribe((e) => {
+		this.disconnectViewerEvents(), this.measurementControls = new ib(this.viewer, { onError: (e) => console.warn("Could not measure selected atoms:", e) }), this.stopMeasurementState = this.measurementControls.subscribe((e) => {
 			this.measurements = e.measurements, this.updateCaption();
 		}), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
-			this.scalarFieldDisplay = ib(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+			this.scalarFieldDisplay = sb(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
 		}) ?? null, this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
 			this.prepopulateMeasurements(), this.setupButtons();
 		}) ?? null, this.stopSelectionUpdates = this.viewer.selections.onChange((e) => {
@@ -65964,7 +66009,7 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		i && (i.setAttribute("alt", r), i.setAttribute("role", "img"), i.setAttribute("aria-label", r));
 	}
 	getIcon(e, t) {
-		return e === "disorder" ? xg(this.icons.disorder, t) : this.icons[e]?.[t] || "";
+		return e === "disorder" ? wg(this.icons.disorder, t) : this.icons[e]?.[t] || "";
 	}
 	async attributeChangedCallback(e, t, n) {
 		if (this.viewer) switch (e) {
@@ -66005,7 +66050,7 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 			case "options":
 				if (this.parseOptions(), this.parseInitialAtomLabels(), this.parseMeasurementsAttribute(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.disconnectViewerEvents(), this.viewer.dispose(), this.measurements = [], this.viewer = new Vy(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.prepopulateMeasurements(), this.setupButtons(), this.updateCaption());
+					this.disconnectViewerEvents(), this.viewer.dispose(), this.measurements = [], this.viewer = new Wy(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.prepopulateMeasurements(), this.setupButtons(), this.updateCaption());
 				}
 				break;
 			case "block": {
@@ -66081,8 +66126,13 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	sanitizeHTML(e) {
 		return e ? String(e).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
 	}
+	atomLabelHTML(e) {
+		let t = cp(e, this.viewer.options?.atomLabels?.subscriptNonElement);
+		return this.sanitizeHTML(t.element) + (t.nonElement ? `<sub>${this.sanitizeHTML(t.nonElement)}</sub>` : "");
+	}
 	measurementAtomHTML(e, t, n) {
-		return `<span class="atom-name" data-atom-id="${this.sanitizeHTML(t)}" data-cifvis-atom-id="${this.sanitizeHTML(t)}" data-cifvis-hover-color="${n}">${this.sanitizeHTML(e)}</span>`;
+		let r = this.atomLabelHTML(e);
+		return `<span class="atom-name" data-atom-id="${this.sanitizeHTML(t)}" data-cifvis-atom-id="${this.sanitizeHTML(t)}" data-cifvis-hover-color="${n}">${r}</span>`;
 	}
 	measurementCaptionHTML(e) {
 		let t = e.value.toFixed(e.unit === "°" ? 2 : 3);
@@ -66105,11 +66155,14 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 			e.endsWith(".") || (e += "."), e += " Selected Atoms and Bonds: ";
 			let t = this.selections.map((e) => {
 				let t = "#" + e.color.toString(16).padStart(6, "0"), n = "";
-				if (e.type === "atom") n = `<span class="atom-name" data-atom-id="${this.sanitizeHTML(e.data.uniqueId)}">${this.sanitizeHTML(e.data.label)}</span>`;
+				if (e.type === "atom") n = `<span class="atom-name" data-atom-id="${this.sanitizeHTML(e.data.uniqueId)}">${this.atomLabelHTML(e.data.label)}</span>`;
 				else if (e.type === "bond") {
-					let t = ap(e.data.bondLength, e.data.bondLengthSU);
-					n = `${e.data.atom1Label}-${e.data.atom2Label}: ${t} Å`;
-				} else e.type === "hbond" && (n = `${e.data.donorAtomLabel}→${e.data.acceptorAtomLabel}`);
+					let t = ap(e.data.bondLength, e.data.bondLengthSU), r = e.data.atom1Label, i = e.data.atom2Label;
+					n = `${this.atomLabelHTML(r)}-${this.atomLabelHTML(i)}: ${t} Å`;
+				} else if (e.type === "hbond") {
+					let t = e.data.donorAtomLabel, r = e.data.acceptorAtomLabel;
+					n = `${this.atomLabelHTML(t)}→${this.atomLabelHTML(r)}`;
+				}
 				return `<span style="color:${t}">${n}</span>`;
 			}).join(", ");
 			e += t + ".";
@@ -66129,9 +66182,9 @@ var ab = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", ob);
+	window.customElements.define("cifview-widget", lb);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { I_ as AtomLabelFilter, nh as BOHR_TO_ANGSTROM, L_ as BondGenerator, z_ as BondGeometryFixer, D as CIF, ob as CifViewWidget, vt as CrystalStructure, Vy as CrystalViewer, sf as DEFAULT_CONTOUR_LINE_OPTIONS, rf as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, of as DEFAULT_ISOSURFACE_OPTIONS, af as DEFAULT_SCALAR_FIELD_OPTIONS, M_ as DisorderFilter, j_ as HydrogenFilter, R_ as IsolatedHydrogenFixer, tb as MeasurementControls, Hf as ORTEP3JsStructure, Em as ScalarFieldGrid, N_ as SymmetryGrower, xy as ThreeContourLineLayer, Kv as ThreeIsosurfaceLayer, Ky as ViewerInteractionCoupling, th as calculateDifferenceDensityMap, nm as calculateIAMStructureFactors, Mh as calculatePlanarContours, Qh as connectedIsosurfaceRegions, qy as coupleViewerInteractions, qm as createCifDifferenceDensityDataset, tm as createIAMStructureFactorCalculator, Wh as createIsosurfaces, fg as createSymmetryAwareIsosurfaces, Gp as evaluateCromerMann, mp as formatMeasurement, ap as formatValueEsd, Sg as generateDisorderGroupIcon, xg as getDisorderIcon, ym as isSystematicAbsence, Lh as isosurfaceBounds, Rh as isosurfaceResolution, Lp as lookupAnomalousDispersion, Wp as lookupCromerMann, pp as measureAtoms, hp as measurementAction, bm as mergeReflectionIntensities, dh as parseCube, Ym as parseDifferenceDensitySource, xm as readReflectionIntensities, Dh as resolveContourPlane, bg as tryToFixCifBlock };
+export { z_ as AtomLabelFilter, ah as BOHR_TO_ANGSTROM, B_ as BondGenerator, H_ as BondGeometryFixer, D as CIF, lb as CifViewWidget, vt as CrystalStructure, Wy as CrystalViewer, sf as DEFAULT_CONTOUR_LINE_OPTIONS, rf as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, of as DEFAULT_ISOSURFACE_OPTIONS, af as DEFAULT_SCALAR_FIELD_OPTIONS, F_ as DisorderFilter, P_ as HydrogenFilter, V_ as IsolatedHydrogenFixer, ib as MeasurementControls, Hf as ORTEP3JsStructure, km as ScalarFieldGrid, I_ as SymmetryGrower, wy as ThreeContourLineLayer, Yv as ThreeIsosurfaceLayer, Yy as ViewerInteractionCoupling, cp as atomLabelParts, ih as calculateDifferenceDensityMap, am as calculateIAMStructureFactors, Fh as calculatePlanarContours, tg as connectedIsosurfaceRegions, Xy as coupleViewerInteractions, Xm as createCifDifferenceDensityDataset, im as createIAMStructureFactorCalculator, qh as createIsosurfaces, hg as createSymmetryAwareIsosurfaces, Jp as evaluateCromerMann, lp as formatAtomLabel, _p as formatMeasurement, ap as formatValueEsd, Tg as generateDisorderGroupIcon, wg as getDisorderIcon, Sm as isSystematicAbsence, Bh as isosurfaceBounds, Vh as isosurfaceResolution, Bp as lookupAnomalousDispersion, qp as lookupCromerMann, gp as measureAtoms, vp as measurementAction, Cm as mergeReflectionIntensities, mh as parseCube, Qm as parseDifferenceDensitySource, wm as readReflectionIntensities, Ah as resolveContourPlane, Cg as tryToFixCifBlock };
