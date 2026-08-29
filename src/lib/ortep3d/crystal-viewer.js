@@ -45,6 +45,46 @@ const DEFAULT_HOVER_COLOR = 0xffffff;
 const MEASUREMENT_PLANE_RENDER_ORDER = 2e6;
 const MEASUREMENT_LINE_RENDER_ORDER = MEASUREMENT_PLANE_RENDER_ORDER + 1;
 const MEASUREMENT_MARKER_RENDER_ORDER = MEASUREMENT_PLANE_RENDER_ORDER + 2;
+const SURFACE_EXTRACTION_STATISTICS = [
+    'surfaceBoundsTimeMs',
+    'surfaceMaskTimeMs',
+    'surfaceSamplingTimeMs',
+    'surfaceClassificationTimeMs',
+    'surfaceAllocationTimeMs',
+    'surfaceInterpolationTimeMs',
+    'surfaceGeometryTimeMs',
+    'surfaceWireframeTimeMs',
+    'surfaceSymmetryAssemblyTimeMs',
+    'surfaceTotalTimeMs',
+    'surfaceLatticeNodeCount',
+    'surfaceLatticeCellCount',
+    'candidateCellCount',
+    'activeCellCount',
+    'activeRowCount',
+    'activeSurfaceCellCount',
+    'fieldSampleCount',
+    'positiveTriangleCount',
+    'negativeTriangleCount',
+    'generatedVertexCount',
+    'generatedLineSegmentCount',
+    'allocatedGeometryBytes',
+    'atomDistanceTestCount',
+    'threeMarchingCubesTimeMs',
+];
+
+/**
+ * @param {object} statistics - Surface-layer generation statistics.
+ * @returns {object} Stable extraction diagnostics for viewer events/results.
+ */
+function surfaceExtractionStatistics(statistics) {
+    return {
+        surfaceExtractor: statistics.surfaceExtractor ?? null,
+        ...Object.fromEntries(SURFACE_EXTRACTION_STATISTICS.map(key => [
+            key,
+            statistics[key] ?? 0,
+        ])),
+    };
+}
 
 /**
  * Checks a user-configurable cycle of numeric RGB colours.
@@ -1834,6 +1874,7 @@ export class CrystalViewer {
             regionCacheBytes: surfaceStatistics.regionCacheBytes ?? 0,
             regionCacheEvictionCount: surfaceStatistics.regionCacheEvictionCount ?? 0,
             surfaceAssemblyTimeMs: surfaceStatistics.surfaceAssemblyTimeMs ?? 0,
+            ...surfaceExtractionStatistics(surfaceStatistics),
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
             loadedFieldIndex: index,
@@ -1944,6 +1985,7 @@ export class CrystalViewer {
             regionCacheBytes: surfaceStatistics.regionCacheBytes ?? 0,
             regionCacheEvictionCount: surfaceStatistics.regionCacheEvictionCount ?? 0,
             surfaceAssemblyTimeMs: surfaceStatistics.surfaceAssemblyTimeMs ?? 0,
+            ...surfaceExtractionStatistics(surfaceStatistics),
             removedDuplicateTriangleCount:
                 surfaceStatistics.removedDuplicateTriangleCount ?? 0,
             ...this.scalarFieldDisplayState(),

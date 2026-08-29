@@ -256,6 +256,7 @@ const groupBy = classifier => Object.fromEntries([...successful.reduce((groups, 
     return groups;
 }, new Map())].map(([key, rows]) => [key, summarize(rows)]));
 const surfaceRows = successful.filter(row => row.bestSurfaceMode);
+const extractorRows = successful.filter(row => number(row, 'cifvisSurfaceWallMs') !== null);
 const realWinner = row => smoothHybridTime(row) <= number(row, 'radixRealMs')
     ? 'smoothHybrid'
     : 'radixReal';
@@ -310,6 +311,147 @@ const surfaceSummary = surfaceRows.length === 0 ? null : {
             medianPatchExpansionMs: median(rows.map(row => number(row, 'cachedExpandCellMs'))),
         }];
     })),
+};
+const extractorSpeedups = extractorRows.map(row =>
+    number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs'));
+const extractorActiveFractions = extractorRows.map(row =>
+    number(row, 'cifvisSurfaceActiveCellCount') /
+    number(row, 'cifvisSurfaceSurfaceLatticeCellCount'));
+const extractorActiveLimits = [0.25, 0.5, 0.75].map(fraction =>
+    quantile(extractorActiveFractions, fraction));
+const extractorActiveGroup = row => {
+    const fraction = number(row, 'cifvisSurfaceActiveCellCount') /
+        number(row, 'cifvisSurfaceSurfaceLatticeCellCount');
+    if (fraction <= extractorActiveLimits[0]) {
+        return 'sparse';
+    }
+    if (fraction <= extractorActiveLimits[1]) {
+        return 'moderately-sparse';
+    }
+    if (fraction <= extractorActiveLimits[2]) {
+        return 'moderately-dense';
+    }
+    return 'dense';
+};
+const extractorStageNames = [
+    'BoundsTimeMs',
+    'MaskTimeMs',
+    'SamplingTimeMs',
+    'ClassificationTimeMs',
+    'AllocationTimeMs',
+    'InterpolationTimeMs',
+    'GeometryTimeMs',
+    'WireframeTimeMs',
+    'SymmetryAssemblyTimeMs',
+];
+const coldExtractorSummary = extractorRows.length === 0 ? null : {
+    count: extractorRows.length,
+    cifvisWins: extractorRows.filter(row =>
+        number(row, 'cifvisSurfaceWallMs') < number(row, 'threeSurfaceWallMs')).length,
+    speedup: Object.fromEntries([
+        ['p01', 0.01],
+        ['p05', 0.05],
+        ['p10', 0.1],
+        ['median', 0.5],
+        ['p75', 0.75],
+        ['p90', 0.9],
+        ['p95', 0.95],
+        ['p99', 0.99],
+    ].map(([key, fraction]) => [key, quantile(extractorSpeedups, fraction)])),
+    aggregateSpeedup: extractorRows.reduce(
+        (sum, row) => sum + number(row, 'threeSurfaceWallMs'), 0,
+    ) / extractorRows.reduce((sum, row) => sum + number(row, 'cifvisSurfaceWallMs'), 0),
+    wallTimeMs: Object.fromEntries(['threeSurface', 'cifvisSurface'].map(prefix => [
+        prefix,
+        Object.fromEntries([
+            ['median', 0.5],
+            ['p75', 0.75],
+            ['p90', 0.9],
+            ['p95', 0.95],
+            ['p99', 0.99],
+        ].map(([key, fraction]) => [key, quantile(
+            extractorRows.map(row => number(row, `${prefix}WallMs`)), fraction,
+        )])),
+    ])),
+    medianThreeAttribution: median(extractorRows.map(row =>
+        number(row, 'threeSurfaceAttributionFraction'))),
+    medianCifvisAttribution: median(extractorRows.map(row =>
+        number(row, 'cifvisSurfaceAttributionFraction'))),
+    structuresWithAtLeast95PercentAttribution: extractorRows.filter(row =>
+        number(row, 'threeSurfaceAttributionFraction') >= 0.95 &&
+        number(row, 'cifvisSurfaceAttributionFraction') >= 0.95).length,
+    medianFieldSamplingReduction: median(extractorRows.map(row =>
+        number(row, 'threeSurfaceFieldSampleCount') /
+        number(row, 'cifvisSurfaceFieldSampleCount'))),
+    medianAtomDistanceTestsRemoved: median(extractorRows.map(row =>
+        number(row, 'threeSurfaceAtomDistanceTestCount'))),
+    medianGeometryMemoryReduction: median(extractorRows.map(row =>
+        number(row, 'threeSurfaceAllocatedGeometryBytes') /
+        (number(row, 'cifvisSurfaceGeneratedVertexCount') * 3 *
+            Float32Array.BYTES_PER_ELEMENT * 2))),
+    medianTriangleCountRatio: median(extractorRows.map(row =>
+        (number(row, 'cifvisSurfacePositiveTriangleCount') +
+            number(row, 'cifvisSurfaceNegativeTriangleCount')) /
+        (number(row, 'threeSurfacePositiveTriangleCount') +
+            number(row, 'threeSurfaceNegativeTriangleCount')))),
+    medianStageTimeMs: Object.fromEntries(['threeSurface', 'cifvisSurface'].map(prefix => [
+        prefix,
+        Object.fromEntries(extractorStageNames.map(stage => [
+            stage,
+            median(extractorRows.map(row => number(row, `${prefix}Surface${stage}`))),
+        ])),
+    ])),
+    bySize: Object.fromEntries(['small', 'medium', 'large', 'very-large'].map(group => {
+        const rows = extractorRows.filter(row => sizeGroup(row) === group);
+        return [group, {
+            count: rows.length,
+            medianSpeedup: median(rows.map(row =>
+                number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs')),
+            ),
+        }];
+    })),
+    bySymmetry: Object.fromEntries(['1', '2-4', '5-8', '9-16', '17+'].map(group => {
+        const rows = extractorRows.filter(row => symmetryGroup(row) === group);
+        return [group, {
+            count: rows.length,
+            medianSpeedup: median(rows.map(row =>
+                number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs')),
+            ),
+        }];
+    })),
+    activeFractionQuartileLimits: extractorActiveLimits,
+    byActiveFraction: Object.fromEntries([
+        'sparse', 'moderately-sparse', 'moderately-dense', 'dense',
+    ].map(group => {
+        const rows = extractorRows.filter(row => extractorActiveGroup(row) === group);
+        return [group, {
+            count: rows.length,
+            medianActiveFraction: median(rows.map(row =>
+                number(row, 'cifvisSurfaceActiveCellCount') /
+                number(row, 'cifvisSurfaceSurfaceLatticeCellCount'))),
+            medianSpeedup: median(rows.map(row =>
+                number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs')),
+            ),
+        }];
+    })),
+    correlations: {
+        atomCountVsSpeedup: correlation(
+            extractorRows,
+            row => number(row, 'asymmetricUnitAtoms'),
+            row => number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs'),
+        ),
+        symmetryOperationsVsSpeedup: correlation(
+            extractorRows,
+            row => number(row, 'symmetryOperationCount'),
+            row => number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs'),
+        ),
+        activeFractionVsSpeedup: correlation(
+            extractorRows,
+            row => number(row, 'cifvisSurfaceActiveCellCount') /
+                number(row, 'cifvisSurfaceSurfaceLatticeCellCount'),
+            row => number(row, 'threeSurfaceWallMs') / number(row, 'cifvisSurfaceWallMs'),
+        ),
+    },
 };
 const hybridAxisDiagnostics = {
     kernelPatterns: counts(successful.map(row => ({
@@ -418,4 +560,5 @@ console.log(JSON.stringify({
         ),
     },
     surface: surfaceSummary,
+    coldSurfaceExtractor: coldExtractorSummary,
 }, null, 2));

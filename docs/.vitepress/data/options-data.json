@@ -426,6 +426,11 @@
       "default": "\"legacy\""
     },
     {
+      "path": "isosurface.surfaceExtractor",
+      "type": "String",
+      "default": "\"three-marching-cubes\""
+    },
+    {
       "path": "isosurface.patchCacheMaxBytes",
       "type": "Number",
       "default": "67108864"

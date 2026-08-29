@@ -299,6 +299,10 @@ export const descriptions = {
     'isosurface.generationMode': '<code>legacy</code> uses persistent symmetry-region reuse. ' +
         '<code>patch-cache</code> enables the experimental fixed-spacing, open-clipped cell cache ' +
         'for repeated expansion switching.',
+    'isosurface.surfaceExtractor': 'Numerical extraction kernel used on cold cache misses. ' +
+        '<code>three-marching-cubes</code> retains the reference implementation; ' +
+        '<code>cifvis</code> enables conservative atom stencils, sparse scalar sampling and ' +
+        'dual-sign typed-array Marching Cubes.',
     'isosurface.patchCacheMaxBytes': 'Maximum CPU memory retained for the active field&#39;s ' +
         'symmetry-region or grid-cell surface cache.',
 

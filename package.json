@@ -49,6 +49,7 @@
     "bench:contours": "node benchmark/contour-lines.mjs",
     "bench:iam": "node benchmark/iam.mjs",
     "bench:density-optimization": "node benchmark/density-optimization-cod.mjs",
+    "bench:surface-extractor": "node benchmark/surface-extractor.mjs",
     "bench:density-analyze": "node benchmark/analyze-density-optimization.mjs"
   },
   "keywords": [],

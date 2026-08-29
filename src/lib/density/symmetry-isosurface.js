@@ -199,6 +199,7 @@ function regionCacheKey(region, sign, level, resolution, options) {
         level.toPrecision(12),
         resolution,
         Number(options.radius).toPrecision(8),
+        options.surfaceExtractor ?? 'three-marching-cubes',
         atoms,
     ].join(';');
 }
@@ -598,6 +599,28 @@ export function createSymmetryAwareIsosurfaces(
     let improperTransformCount = 0;
     let regionCacheHitCount = 0;
     let regionCacheMissCount = 0;
+    let surfaceWireframeTimeMs = 0;
+    const surfaceStageStatistics = Object.fromEntries([
+        'surfaceBoundsTimeMs',
+        'surfaceMaskTimeMs',
+        'surfaceSamplingTimeMs',
+        'surfaceClassificationTimeMs',
+        'surfaceAllocationTimeMs',
+        'surfaceInterpolationTimeMs',
+        'surfaceGeometryTimeMs',
+        'surfaceLatticeNodeCount',
+        'surfaceLatticeCellCount',
+        'candidateCellCount',
+        'activeCellCount',
+        'activeRowCount',
+        'fieldSampleCount',
+        'generatedVertexCount',
+        'generatedLineSegmentCount',
+        'allocatedGeometryBytes',
+        'atomDistanceTestCount',
+        'threeMarchingCubesTimeMs',
+    ].map(key => [key, 0]));
+    let numericalExtractionTimeMs = 0;
     const initialCacheEvictions = regionCache?.evictions ?? 0;
     const surfacePatches = { positive: [], negative: [] };
     const surfaceMaterials = { positive: [], negative: [] };
@@ -649,6 +672,10 @@ export function createSymmetryAwareIsosurfaces(
                 );
                 marchingCubesTimeMs += performance.now() - regionStarted;
                 polygonizationTimeMs += canonicalGroup.userData.polygonizationTimeMs;
+                numericalExtractionTimeMs += canonicalGroup.userData.surfaceTotalTimeMs ?? 0;
+                for (const key of Object.keys(surfaceStageStatistics)) {
+                    surfaceStageStatistics[key] += canonicalGroup.userData[key] ?? 0;
+                }
                 const canonicalSurface = canonicalGroup.children[0];
                 geometryData = {
                     regular: compactGeometry(canonicalSurface.geometry),
@@ -699,7 +726,11 @@ export function createSymmetryAwareIsosurfaces(
         surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}Isosurface`;
         surface.userData = { selectable: false, type: 'isosurface', sign };
         if (usedOptions.wireframe) {
+            const wireframeStarted = performance.now();
             const lines = wireframeFromSurface(surface, material.color, usedOptions.opacity);
+            surfaceWireframeTimeMs += performance.now() - wireframeStarted;
+            surfaceStageStatistics.generatedLineSegmentCount +=
+                lines.geometry.getAttribute('position')?.count / 2 || 0;
             surface.geometry.dispose();
             material.dispose();
             group.add(lines);
@@ -713,6 +744,7 @@ export function createSymmetryAwareIsosurfaces(
         }
     }
     const stitchTimeMs = performance.now() - stitchingStarted;
+    const surfaceTotalTimeMs = performance.now() - started;
 
     group.userData = {
         selectable: false,
@@ -743,11 +775,20 @@ export function createSymmetryAwareIsosurfaces(
         symmetryPlanningTimeMs: planningTimeMs,
         polygonizationTimeMs,
         marchingCubesTimeMs,
-        generationTimeMs: performance.now() - started,
+        generationTimeMs: surfaceTotalTimeMs,
         regionCacheHitCount,
         regionCacheMissCount,
         regionCacheBytes: regionCache?.bytes ?? 0,
         regionCacheEvictionCount: (regionCache?.evictions ?? 0) - initialCacheEvictions,
+        ...surfaceStageStatistics,
+        surfaceExtractor: usedOptions.surfaceExtractor,
+        surfaceWireframeTimeMs,
+        surfaceSymmetryAssemblyTimeMs: Math.max(
+            0, surfaceTotalTimeMs - numericalExtractionTimeMs,
+        ),
+        surfaceTotalTimeMs,
+        positiveTriangleCount: positivePolygonCount,
+        negativeTriangleCount: negativePolygonCount,
     };
     return group;
 }

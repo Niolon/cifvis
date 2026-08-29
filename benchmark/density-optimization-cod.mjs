@@ -31,6 +31,33 @@ const seed = Number(option('seed', 20260829)) || 20260829;
 const outputPath = resolve(option('out', 'benchmark/density-optimization-cod.csv'));
 const includeSurfaces = option('surfaces', 'true') !== 'false';
 const includeCellPatches = option('cell-patches', 'true') !== 'false';
+const surfaceTimingKeys = [
+    'surfaceBoundsTimeMs',
+    'surfaceMaskTimeMs',
+    'surfaceSamplingTimeMs',
+    'surfaceClassificationTimeMs',
+    'surfaceAllocationTimeMs',
+    'surfaceInterpolationTimeMs',
+    'surfaceGeometryTimeMs',
+    'surfaceWireframeTimeMs',
+    'surfaceSymmetryAssemblyTimeMs',
+];
+const surfaceCountKeys = [
+    'surfaceLatticeNodeCount',
+    'surfaceLatticeCellCount',
+    'candidateCellCount',
+    'activeCellCount',
+    'activeRowCount',
+    'activeSurfaceCellCount',
+    'fieldSampleCount',
+    'positiveTriangleCount',
+    'negativeTriangleCount',
+    'generatedVertexCount',
+    'generatedLineSegmentCount',
+    'allocatedGeometryBytes',
+    'atomDistanceTestCount',
+    'threeMarchingCubesTimeMs',
+];
 
 function dispose(group) {
     const geometries = new Set();
@@ -210,6 +237,17 @@ for (let index = 0; index < sample.files.length; index++) {
             const fragment = new SymmetryGrower(SymmetryGrower.MODES.FRAGMENT).apply(filtered);
             const cell = new SymmetryGrower(SymmetryGrower.MODES.CELL).apply(filtered);
             const surfaceOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, visible: true };
+            const coldExtractors = index % 2 === 0
+                ? ['three-marching-cubes', 'cifvis']
+                : ['cifvis', 'three-marching-cubes'];
+            const coldSurfaces = {};
+            for (const surfaceExtractor of coldExtractors) {
+                coldSurfaces[surfaceExtractor] = timed(() => createSymmetryAwareIsosurfaces(
+                    optimized.value,
+                    cell,
+                    { ...surfaceOptions, surfaceExtractor },
+                ));
+            }
             const legacySurface = timed(() => createSymmetryAwareIsosurfaces(
                 legacy.value, cell, { ...surfaceOptions, generationMode: 'legacy' },
             ));
@@ -224,6 +262,8 @@ for (let index = 0; index < sample.files.length; index++) {
                 optimized.value, fragment, surfaceOptions, regionCache,
             ));
             Object.assign(record, {
+                threeSurfaceWallMs: coldSurfaces['three-marching-cubes'].milliseconds,
+                cifvisSurfaceWallMs: coldSurfaces.cifvis.milliseconds,
                 legacyCellSurfaceMs: legacySurface.milliseconds,
                 regionFragmentColdMs: regionFragment.milliseconds,
                 regionExpandCellMs: regionExpanded.milliseconds,
@@ -235,7 +275,26 @@ for (let index = 0; index < sample.files.length; index++) {
                     ? 'region-cache'
                     : 'direct-legacy',
             });
-            [legacySurface, regionFragment, regionExpanded, regionReturn].forEach(result =>
+            for (const [extractor, prefix] of [
+                ['three-marching-cubes', 'threeSurface'],
+                ['cifvis', 'cifvisSurface'],
+            ]) {
+                const statistics = coldSurfaces[extractor].value.userData;
+                for (const key of [...surfaceTimingKeys, ...surfaceCountKeys]) {
+                    record[`${prefix}${key[0].toUpperCase()}${key.slice(1)}`] = statistics[key] ?? 0;
+                }
+                record[`${prefix}TotalTimeMs`] = statistics.surfaceTotalTimeMs ?? 0;
+                record[`${prefix}AttributionFraction`] = surfaceTimingKeys.reduce(
+                    (sum, key) => sum + (statistics[key] ?? 0), 0,
+                ) / coldSurfaces[extractor].milliseconds;
+            }
+            [
+                legacySurface,
+                regionFragment,
+                regionExpanded,
+                regionReturn,
+                ...Object.values(coldSurfaces),
+            ].forEach(result =>
                 dispose(result.value));
             regionCache.clear();
             if (includeCellPatches) {
@@ -292,5 +351,14 @@ console.log(JSON.stringify({
     )) : null,
     medianRegionReturnSpeedup: includeSurfaces ? median(successful.map(
         row => row.regionFragmentColdMs / row.regionReturnFragmentMs,
+    )) : null,
+    medianCifvisColdSurfaceSpeedup: includeSurfaces ? median(successful.map(
+        row => row.threeSurfaceWallMs / row.cifvisSurfaceWallMs,
+    )) : null,
+    medianThreeSurfaceAttribution: includeSurfaces ? median(successful.map(
+        row => row.threeSurfaceAttributionFraction,
+    )) : null,
+    medianCifvisSurfaceAttribution: includeSurfaces ? median(successful.map(
+        row => row.cifvisSurfaceAttributionFraction,
     )) : null,
 }, null, 2));

@@ -19,5 +19,8 @@ export const DEFAULT_ISOSURFACE_OPTIONS = Object.freeze({
     // established symmetry-aware path as the default until the COD performance
     // gate demonstrates that patch enumeration is a consistent win.
     generationMode: 'legacy',
+    // Numerical extraction is independent from the cache/generation strategy.
+    // Keep Three.js as the default reference until the COD cold-surface gate passes.
+    surfaceExtractor: 'three-marching-cubes',
     patchCacheMaxBytes: 64 * 1024 * 1024,
 });

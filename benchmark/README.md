@@ -7,7 +7,12 @@ regressions in the library:
 - `labels.mjs`: atom-label layout and draw-call behaviour;
 - `iam.mjs`: IAM structure-factor construction and calculation;
 - `contour-lines.mjs`: contour sampling and extraction;
-- `difference-density-symmetry.mjs`: direct versus symmetry-aware density surfaces.
+- `difference-density-symmetry.mjs`: direct versus symmetry-aware density surfaces;
+- `surface-extractor.mjs`: Three.js versus CifVis typed-array polygonization across
+  lattice sizes and active-cell fractions;
+- `density-optimization-cod.mjs`: deterministic COD comparison of FFT modes, cold
+  surface extractors, and warm expansion caches. Use `analyze-density-optimization.mjs`
+  to summarize its CSV output by size, symmetry and active-cell occupancy.
 
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.
