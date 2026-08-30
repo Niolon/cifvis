@@ -363,8 +363,10 @@ export const descriptions = {
     'metalRingCentroidOptions.maxRingSize': 'Largest candidate ligand-ring size.',
     'metalRingCentroidOptions.minBondedAtoms': 'Minimum number of ring atoms already bonded to the centre.',
     'metalRingCentroidOptions.minRingCoverage': 'Minimum fraction of ring atoms already bonded to the centre.',
-    'metalRingCentroidOptions.requireGeometryCheck': 'Requires the centre to lie over the ring and ' +
-        'the centre&ndash;ring distances to be coherent.',
+    'metalRingCentroidOptions.requireGeometryCheck': 'Requires a planar ring, a centre over the ' +
+        'ring, and coherent centre&ndash;ring distances.',
+    'metalRingCentroidOptions.maxRingPlanarityRatio': 'Largest accepted root-mean-square ' +
+        'displacement from the fitted ring plane, divided by the mean ring radius.',
     'metalRingCentroidOptions.maxLateralDisplacementRatio': 'Largest accepted in-plane displacement ' +
         'from the centroid, divided by the mean ring radius.',
     'metalRingCentroidOptions.maxDistanceSpreadRatio': 'Largest accepted centre&ndash;ring distance ' +

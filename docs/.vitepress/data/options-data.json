@@ -588,6 +588,11 @@
       "default": "true"
     },
     {
+      "path": "metalRingCentroidOptions.maxRingPlanarityRatio",
+      "type": "Number",
+      "default": "0.15"
+    },
+    {
       "path": "metalRingCentroidOptions.maxLateralDisplacementRatio",
       "type": "Number",
       "default": "0.75"

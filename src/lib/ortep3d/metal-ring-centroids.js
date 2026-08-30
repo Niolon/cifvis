@@ -18,6 +18,7 @@ export const DEFAULT_METAL_RING_CENTROID_OPTIONS = {
     minBondedAtoms: 3,
     minRingCoverage: 0.5,
     requireGeometryCheck: true,
+    maxRingPlanarityRatio: 0.15,
     maxLateralDisplacementRatio: 0.75,
     maxDistanceSpreadRatio: 0.35,
     dashSegmentLength: 0.3,
@@ -55,7 +56,9 @@ export function validateMetalRingCentroidOptions(options) {
             throw new TypeError(`metalRingCentroidOptions.${name} must be greater than 0 and at most 1`);
         }
     }
-    for (const name of ['maxLateralDisplacementRatio', 'maxDistanceSpreadRatio']) {
+    for (const name of [
+        'maxRingPlanarityRatio', 'maxLateralDisplacementRatio', 'maxDistanceSpreadRatio',
+    ]) {
         if (!(Number.isFinite(options[name]) && options[name] >= 0)) {
             throw new TypeError(`metalRingCentroidOptions.${name} must be a non-negative finite number`);
         }
@@ -106,16 +109,20 @@ function isChordless(cycle, adjacency) {
  * @param {Iterable<string>} starts - Existing centre-neighbour atom IDs
  * @param {number} minSize - Minimum cycle size
  * @param {number} maxSize - Maximum cycle size
+ * @param {Set<string>} [excluded] - Atom IDs that traversal must not enter
  * @returns {Array<{key:string, atoms:string[]}>} Unique cycles
  */
-export function findChordlessCycles(adjacency, starts, minSize, maxSize) {
+export function findChordlessCycles(adjacency, starts, minSize, maxSize, excluded = new Set()) {
     const cycles = new Map();
     for (const start of starts) {
-        if (!adjacency.has(start)) {
+        if (!adjacency.has(start) || excluded.has(start)) {
             continue;
         }
         const visit = (current, path, visited) => {
             for (const next of adjacency.get(current) || []) {
+                if (excluded.has(next)) {
+                    continue;
+                }
                 if (next === start) {
                     if (path.length >= minSize && isChordless(path, adjacency)) {
                         cycles.set(canonicalCycle(path), [...path]);
@@ -150,8 +157,9 @@ const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
  * @param {object} centre - Candidate centre atom
  * @param {object[]} ringAtoms - Atoms forming the ligand ring
  * @param {object} cell - Unit cell used for coordinate conversion
- * @returns {?{centroid:number[], lateralDisplacementRatio:number,
- *     distanceSpreadRatio:number}} Candidate geometry, or null for degenerate input
+ * @returns {?{centroid:number[], ringPlanarityRatio:number,
+ *     lateralDisplacementRatio:number, distanceSpreadRatio:number}} Candidate geometry,
+ *     or null for degenerate input
  */
 function geometryFor(centre, ringAtoms, cell) {
     const centrePoint = cartesian(centre, cell);
@@ -165,11 +173,17 @@ function geometryFor(centre, ringAtoms, cell) {
     const covariance = [0, 1, 2].map(i => [0, 1, 2].map(j =>
         offsets.reduce((sum, offset) => sum + offset[i] * offset[j], 0) / offsets.length));
     const eigen = eigs(covariance);
+    if (eigen.values.some(value => !Number.isFinite(value))) {
+        return null;
+    }
     const scale = Math.max(1, Math.abs(eigen.values[2]));
     if (!(eigen.values[1] > scale * 1e-12)) {
         return null;
     }
     const normal = eigen.eigenvectors[0].vector.toArray();
+    if (normal.some(value => !Number.isFinite(value))) {
+        return null;
+    }
     const centreOffset = centrePoint.map((value, axis) => value - centroid[axis]);
     const normalDistance = centreOffset.reduce((sum, value, axis) => sum + value * normal[axis], 0);
     const lateral = Math.hypot(...centreOffset.map((value, axis) => value - normalDistance * normal[axis]));
@@ -184,6 +198,7 @@ function geometryFor(centre, ringAtoms, cell) {
     }
     return {
         centroid,
+        ringPlanarityRatio: Math.sqrt(Math.max(0, eigen.values[0])) / meanRadius,
         lateralDisplacementRatio: lateral / meanRadius,
         distanceSpreadRatio: (Math.max(...distances) - Math.min(...distances)) / meanDistance,
     };
@@ -253,7 +268,7 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
         const centreAtom = atomsById.get(centreId);
         const starts = new Set(centreContacts.map(contact => contact.ligandId));
         for (const cycle of findChordlessCycles(
-            adjacency, starts, options.minRingSize, options.maxRingSize,
+            adjacency, starts, options.minRingSize, options.maxRingSize, new Set([centreId]),
         )) {
             const ringSet = new Set(cycle.atoms);
             const relevant = centreContacts.filter(contact => ringSet.has(contact.ligandId));
@@ -262,12 +277,19 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
             if (bondedIds.length < options.minBondedAtoms || coverage < options.minRingCoverage) {
                 continue;
             }
+            const bondedSet = new Set(bondedIds);
+            const hasAdjacentContacts = cycle.atoms.some((id, index) =>
+                bondedSet.has(id) && bondedSet.has(cycle.atoms[(index + 1) % cycle.atoms.length]));
+            if (!hasAdjacentContacts) {
+                continue;
+            }
             const ringAtoms = cycle.atoms.map(id => atomsById.get(id));
             const geometry = geometryFor(centreAtom, ringAtoms, structure.cell);
             if (!geometry) {
                 continue;
             }
             if (options.requireGeometryCheck && (
+                geometry.ringPlanarityRatio > options.maxRingPlanarityRatio ||
                 geometry.lateralDisplacementRatio > options.maxLateralDisplacementRatio ||
                 geometry.distanceSpreadRatio > options.maxDistanceSpreadRatio
             )) {
@@ -278,6 +300,7 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
                 originalBondedAtoms: bondedIds.map(id => atomsById.get(id)),
                 originalBonds: relevant.map(contact => contact.bond),
                 centroid: geometry.centroid, coverage, bondedAtomCount: bondedIds.length,
+                ringPlanarityRatio: geometry.ringPlanarityRatio,
                 lateralDisplacementRatio: geometry.lateralDisplacementRatio,
                 distanceSpreadRatio: geometry.distanceSpreadRatio,
                 canonicalRingId: cycle.key,
@@ -289,14 +312,30 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
         a.lateralDisplacementRatio - b.lateralDisplacementRatio ||
         a.ringAtoms.length - b.ringAtoms.length ||
         a.canonicalRingId.localeCompare(b.canonicalRingId));
-    const used = new Set();
+    const usedBondKeys = new Set();
+    const acceptedRingSetsByCentre = new Map();
     const accepted = [];
     for (const candidate of candidates) {
         const keys = candidate.originalBonds.map(endpointKey);
-        if (keys.some(key => used.has(key))) {
+        const centreId = candidate.centreAtom.uniqueId;
+        const acceptedRingSets = acceptedRingSetsByCentre.get(centreId) || [];
+        const ringIds = new Set(candidate.ringAtoms.map(atom => atom.uniqueId));
+        const substantiallyOverlaps = acceptedRingSets.some(acceptedRing => {
+            let overlap = 0;
+            for (const id of ringIds) {
+                if (acceptedRing.has(id) && ++overlap >= 2) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        if (keys.some(key => usedBondKeys.has(key)) ||
+            substantiallyOverlaps) {
             continue;
         }
-        keys.forEach(key => used.add(key));
+        keys.forEach(key => usedBondKeys.add(key));
+        acceptedRingSets.push(ringIds);
+        acceptedRingSetsByCentre.set(centreId, acceptedRingSets);
         accepted.push(candidate);
     }
     return { interactions: accepted, suppressedBonds: new Set(accepted.flatMap(item => item.originalBonds)) };

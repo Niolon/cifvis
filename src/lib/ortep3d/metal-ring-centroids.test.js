@@ -80,6 +80,58 @@ describe('metal-ring centroid detection', () => {
             .toHaveLength(0);
     });
 
+    test('rejects non-planar rings using the configurable RMS planarity ratio', () => {
+        const { structure } = polygonStructure({ size: 6, contacts: [0, 1, 2, 3, 4, 5] });
+        structure.atoms.filter(candidate => candidate.atomType === 'C').forEach((candidate, index) => {
+            const original = candidate.position.toCartesian();
+            const z = index % 2 === 0 ? 0.35 : -0.35;
+            const point = Object.assign([original.x, original.y, z], {
+                x: original.x, y: original.y, z,
+            });
+            candidate.position.toCartesian = () => point;
+        });
+        const relaxed = {
+            ...options(), maxRingPlanarityRatio: 1, maxDistanceSpreadRatio: 1,
+        };
+        const accepted = findMetalRingCentroidInteractions(structure, structure.bonds, relaxed);
+        expect(accepted.interactions).toHaveLength(1);
+        expect(accepted.interactions[0].ringPlanarityRatio).toBeGreaterThan(
+            options().maxRingPlanarityRatio,
+        );
+        expect(findMetalRingCentroidInteractions(structure, structure.bonds, {
+            ...relaxed, maxRingPlanarityRatio: options().maxRingPlanarityRatio,
+        }).interactions).toEqual([]);
+    });
+
+    test('excludes the current centre from its own configurable ligand topology', () => {
+        const iron = atom('Fe1', 'Fe', [0, 0, 0]);
+        const ring = [
+            atom('C1', 'C', [1, 0, 0]),
+            atom('C2', 'C', [1, 1, 0]),
+            atom('C3', 'C', [0, 2, 0]),
+            atom('C4', 'C', [-1, 1, 0]),
+        ];
+        const atoms = [iron, ...ring];
+        const bonds = atoms.map((current, index) =>
+            new Bond(current.uniqueId, atoms[(index + 1) % atoms.length].uniqueId, 1.4));
+        const structure = { atoms, bonds, cell: {} };
+        expect(findMetalRingCentroidInteractions(structure, bonds, {
+            ...options(), centreElements: ['Fe'], ringElements: ['C', 'Fe'],
+            minBondedAtoms: 2, minRingCoverage: 0.4, requireGeometryCheck: false,
+        }).interactions).toEqual([]);
+    });
+
+    test('rejects purely alternating contacts while retaining adjacent 1,2,4 contacts', () => {
+        const alternating = polygonStructure({ size: 6, contacts: [0, 2, 4] }).structure;
+        expect(findMetalRingCentroidInteractions(
+            alternating, alternating.bonds, options(),
+        ).interactions).toEqual([]);
+
+        const cp = polygonStructure({ contacts: [0, 1, 3] }).structure;
+        expect(findMetalRingCentroidInteractions(cp, cp.bonds, options()).interactions)
+            .toHaveLength(1);
+    });
+
     test('does not mistake shared centre contacts for a ligand ring', () => {
         const sodium = atom('Na1', 'Na', [0, 0, 0]);
         const chlorides = Array.from({ length: 4 }, (_, index) =>
@@ -147,7 +199,7 @@ describe('metal-ring centroid detection', () => {
         ];
         const bonds = edges.map(([first, second]) =>
             new Bond(byLabel.get(first).uniqueId, byLabel.get(second).uniqueId, 1.4));
-        for (const label of ['A', 'B', 'C', 'D', 'G', 'H']) {
+        for (const label of ['C', 'D', 'E', 'G', 'H', 'I']) {
             bonds.push(new Bond(iron.uniqueId, byLabel.get(label).uniqueId, 2));
         }
         const structure = { atoms: [iron, ...atoms], bonds, cell: {} };
@@ -157,12 +209,40 @@ describe('metal-ring centroid detection', () => {
         expect(result.interactions).toHaveLength(1);
     });
 
+    test('keeps distinct same-centre rings that share only one spiro atom', () => {
+        const coordinates = {
+            A: [0, 0, 0], B: [1, 0, 0], C: [1.5, 1, 0], D: [0.5, 2, 0],
+            E: [-0.5, 1, 0], F: [-1, 0, 0], G: [-1.5, -1, 0], H: [-0.5, -2, 0],
+            I: [0.5, -1, 0],
+        };
+        const atoms = Object.entries(coordinates).map(([label, xyz]) => atom(label, 'C', xyz));
+        const byLabel = new Map(atoms.map(value => [value.label, value]));
+        const iron = atom('Fe1', 'Fe', [0, 0, 1.5]);
+        const edges = [
+            ['A', 'B'], ['B', 'C'], ['C', 'D'], ['D', 'E'], ['E', 'A'],
+            ['A', 'F'], ['F', 'G'], ['G', 'H'], ['H', 'I'], ['I', 'A'],
+        ];
+        const bonds = edges.map(([first, second]) =>
+            new Bond(byLabel.get(first).uniqueId, byLabel.get(second).uniqueId, 1.4));
+        for (const label of ['B', 'C', 'D', 'F', 'G', 'H']) {
+            bonds.push(new Bond(iron.uniqueId, byLabel.get(label).uniqueId, 2));
+        }
+        const structure = { atoms: [iron, ...atoms], bonds, cell: {} };
+        const result = findMetalRingCentroidInteractions(structure, bonds, {
+            ...options(), requireGeometryCheck: false,
+        });
+        expect(result.interactions).toHaveLength(2);
+    });
+
     test('validates nested configuration', () => {
         expect(() => validateMetalRingCentroidOptions({
             ...options(), minRingSize: 9, maxRingSize: 5,
         })).toThrow(/minRingSize/);
         expect(() => validateMetalRingCentroidOptions({ ...options(), dashFraction: 0 }))
             .toThrow(/dashFraction/);
+        expect(() => validateMetalRingCentroidOptions({
+            ...options(), maxRingPlanarityRatio: -0.1,
+        })).toThrow(/maxRingPlanarityRatio/);
     });
 
     test.each(['solid-3d', 'cutout-3d', 'cutout-2d'])(
