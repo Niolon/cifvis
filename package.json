@@ -52,7 +52,9 @@
     "bench:density-optimization": "node benchmark/density-optimization-cod.mjs",
     "bench:surface-extractor": "node benchmark/surface-extractor.mjs",
     "bench:surface-sampler": "node benchmark/surface-sampler.mjs",
-    "bench:density-analyze": "node benchmark/analyze-density-optimization.mjs"
+    "bench:density-analyze": "node benchmark/analyze-density-optimization.mjs",
+    "bench:browser-density-consistency": "node benchmark/browser-node-fcalc-comparison.mjs",
+    "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

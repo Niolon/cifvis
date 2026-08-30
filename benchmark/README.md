@@ -18,6 +18,11 @@ regressions in the library:
 - `density-optimization-cod.mjs`: deterministic COD comparison of FFT modes, cold
   surface extractors, and warm expansion caches. Use `analyze-density-optimization.mjs`
   to summarize its CSV output by size, symmetry and active-cell occupancy.
+- `browser-node-fcalc-comparison.mjs`: browser-only density pipeline timings. Its
+  `--representative-csv`, `--representative-root`, and `--representative-count` options
+  select equal-count stratum midpoints from a population census for reproducible
+  consistency runs. `analyze-browser-density-consistency.mjs` reports every named main
+  thread and worker component separately, including run-to-run spread.
 
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.

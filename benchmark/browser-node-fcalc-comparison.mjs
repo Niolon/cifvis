@@ -13,18 +13,85 @@ import {
     isGeneralPositionSystematicAbsence,
 } from '../src/lib/density/reciprocal-symmetry.js';
 import { readCodStructure } from './lib/cod-sample.mjs';
+import { parseCsv } from './lib/csv.mjs';
 import * as math from '../src/lib/math-lite.js';
 
 const repository = resolve(import.meta.dirname, '..');
 const bundle = join(repository, 'dist/cifvis.alldeps.js');
 const output = resolve(process.argv[2] ?? '/tmp/browser-node-fcalc-comparison.json');
-const cifPaths = process.argv.slice(3);
 const TWO_PI = 2 * Math.PI;
-const REPETITIONS = 3;
+const REPETITIONS = Number.parseInt(process.env.REPETITIONS ?? '3', 10);
 const DWF_MODE = process.env.DWF_MODE ?? 'direct';
 const PREWARM_WORKER = process.env.PREWARM_WORKER === 'true';
 const SURFACE_MODE = process.env.SURFACE_MODE ?? 'legacy';
 const USE_SYMMETRY = process.env.USE_SYMMETRY !== 'false';
+
+function parseArguments(args) {
+    const options = {
+        paths: [],
+        representativeCount: 50,
+        representativeMetric: 'corePipelineMs',
+        representativeRoot: null,
+        representativeCsv: null,
+    };
+    for (let index = 0; index < args.length; index++) {
+        const argument = args[index];
+        if (argument === '--representative-csv') {
+            options.representativeCsv = resolve(args[++index]);
+        } else if (argument === '--representative-root') {
+            options.representativeRoot = resolve(args[++index]);
+        } else if (argument === '--representative-count') {
+            options.representativeCount = Number.parseInt(args[++index], 10);
+        } else if (argument === '--representative-metric') {
+            options.representativeMetric = args[++index];
+        } else {
+            options.paths.push(resolve(argument));
+        }
+    }
+    return options;
+}
+
+function selectRepresentatives(options) {
+    if (!options.representativeCsv) {
+        return options.paths.map(path => ({ path }));
+    }
+    if (!options.representativeRoot) {
+        throw new Error('--representative-root is required with --representative-csv');
+    }
+    const candidates = parseCsv(readFileSync(options.representativeCsv, 'utf8'))
+        .filter(row => row.success === 'true' && Number.isFinite(Number(row[options.representativeMetric])))
+        .sort((first, second) => Number(first[options.representativeMetric]) -
+            Number(second[options.representativeMetric]));
+    const count = Math.min(options.representativeCount, candidates.length);
+    if (!Number.isInteger(count) || count < 1) {
+        throw new Error(`Invalid representative count: ${options.representativeCount}`);
+    }
+    return Array.from({ length: count }, (_, index) => {
+        const start = Math.floor(index * candidates.length / count);
+        const end = Math.max(start + 1, Math.floor((index + 1) * candidates.length / count));
+        const midpoint = Math.floor((start + end - 1) / 2);
+        const ranks = Array.from({ length: end - start }, (_, offset) => start + offset)
+            .sort((first, second) => Math.abs(first - midpoint) - Math.abs(second - midpoint));
+        return {
+            representativeQuantile: (index + 0.5) / count,
+            representativeTargetRank: midpoint,
+            representativePopulationSize: candidates.length,
+            censusMetric: options.representativeMetric,
+            candidates: ranks.map(rank => ({
+                path: resolve(options.representativeRoot, candidates[rank].path),
+                representativeRank: rank,
+                censusMetricValue: Number(candidates[rank][options.representativeMetric]),
+                censusStructure: Object.fromEntries([
+                    'asymmetricUnitAtoms', 'unitCellAtoms', 'symmetryOperationCount',
+                    'reflectionCount', 'gridPoints', 'polygonCount', 'fieldSampleCount',
+                ].map(name => [name, Number(candidates[rank][name])])),
+            })),
+        };
+    });
+}
+
+const benchmarkOptions = parseArguments(process.argv.slice(3));
+const representativeCases = selectRepresentatives(benchmarkOptions);
 
 function median(values) {
     const sorted = [...values].sort((first, second) => first - second);
@@ -83,7 +150,8 @@ function appendObservedReflectionLoop(cifText, calculated) {
     return `${cifText.trimEnd()}\n${lines.join('\n')}\n`;
 }
 
-function prepareCase(path) {
+function prepareCase(selection) {
+    const { path } = selection;
     const cifText = readFileSync(path, 'utf8');
     const { structure } = readCodStructure(cifText);
     const reflections = generateReflections(structure);
@@ -101,12 +169,39 @@ function prepareCase(path) {
             iam: { dwfMode: DWF_MODE },
         }));
     return {
+        ...selection,
         codId: basename(path, '.cif'),
         combinedText,
         reflectionCount: reflections.length,
         nodeIamModelBuildMs: median(nodeRuns.map(run => run.iam.modelBuildTimeMs)),
         nodeFcalcMs: median(nodeRuns.map(run => run.iam.calculation.timeMs)),
     };
+}
+
+function prepareRepresentative(selection) {
+    if (!selection.candidates) {
+        return prepareCase(selection);
+    }
+    const rejectedCandidates = [];
+    for (const candidate of selection.candidates) {
+        try {
+            return prepareCase({
+                ...selection,
+                ...candidate,
+                candidates: undefined,
+                representativeAttemptCount: rejectedCandidates.length + 1,
+                representativeRejectedCandidates: rejectedCandidates,
+            });
+        } catch (error) {
+            rejectedCandidates.push({
+                path: candidate.path,
+                rank: candidate.representativeRank,
+                error: error.message,
+            });
+        }
+    }
+    throw new Error(`No usable browser benchmark case in stratum near p${
+        (100 * selection.representativeQuantile).toFixed(0)}`);
 }
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
@@ -168,10 +263,10 @@ function startServer() {
     });
 }
 
-if (cifPaths.length === 0) {
+if (representativeCases.length === 0) {
     throw new Error('Provide one or more coordinate CIF paths after the output path');
 }
-const preparedCases = cifPaths.map(prepareCase);
+const preparedCases = representativeCases.map(prepareRepresentative);
 const { server, port } = await startServer();
 const browser = await chromium.launch({
     headless: true,
@@ -207,6 +302,16 @@ try {
         const metric = select => median(browserRuns.map(select));
         results.push({
             codId: prepared.codId,
+            path: prepared.path,
+            representativeQuantile: prepared.representativeQuantile ?? null,
+            representativeTargetRank: prepared.representativeTargetRank ?? null,
+            representativeRank: prepared.representativeRank ?? null,
+            representativeAttemptCount: prepared.representativeAttemptCount ?? 1,
+            representativeRejectedCandidates: prepared.representativeRejectedCandidates ?? [],
+            representativePopulationSize: prepared.representativePopulationSize ?? null,
+            censusMetric: prepared.censusMetric ?? null,
+            censusMetricValue: prepared.censusMetricValue ?? null,
+            censusStructure: prepared.censusStructure ?? null,
             dwfMode: DWF_MODE,
             reflectionCount: prepared.reflectionCount,
             nodeIamModelBuildMs: prepared.nodeIamModelBuildMs,
@@ -270,6 +375,10 @@ try {
             ].map(name => [name, metric(run => run.density[name])])),
             browserDatasetPreparationMs:
                 metric(run => run.density.workerDatasetPreparationTimeMs),
+            browserWorkerStages: Object.fromEntries([
+                'workerProgressionSetupTimeMs', 'workerComputeTimeMs',
+                'workerPayloadPreparationTimeMs', 'workerElapsedTimeMs',
+            ].map(name => [name, metric(run => run.density[name])])),
             browserDatasetStages: Object.fromEntries([
                 'datasetSelfDescriptionDetectionMs',
                 'datasetExplicitCoefficientAttemptMs', 'datasetSourceDispatchTotalMs',
@@ -284,12 +393,26 @@ try {
                 'datasetFinalizationMs', 'datasetInstrumentedTotalMs',
             ].map(name => [name, metric(run => run.density[name])])),
             browserFftMs: metric(run => run.density.fftTotalTimeMs),
+            browserDensityMapStages: Object.fromEntries([
+                'densityCoefficientSelectionTimeMs', 'densityMapAssemblyTimeMs',
+                'densityMapTotalTimeMs', 'fftPlanSetupTimeMs',
+                'fftGridPlanningTimeMs', 'fftHermitianValidationTimeMs',
+                'fftAllocationTimeMs', 'fftCoefficientPlacementTimeMs',
+                'fftTransformTimeMs', 'fftStatisticsTimeMs', 'fftTotalTimeMs',
+            ].map(name => [name, metric(run => run.density[name])])),
             browserWorkerElapsedMs: metric(run => run.density.workerElapsedTimeMs),
             browserWallMs: metric(run => run.wallMs),
             browserRuns: browserRuns.map(run => ({
                 iamModelBuildMs: run.density.iam?.modelBuildTimeMs,
                 fcalcMs: run.density.iam?.calculation?.timeMs,
                 reflectionPreparationMs: run.density.workerReflectionPreparationTimeMs,
+                reflectionStages: Object.fromEntries([
+                    'reflectionSourceDiscoveryMs', 'reflectionSourceParseMs',
+                    'reflectionRowDecodeMs', 'reflectionSymmetrySetupMs',
+                    'reflectionAbsenceMs', 'reflectionCanonicalizationMs',
+                    'reflectionMergeAccumulationMs', 'reflectionMergeFinalizationMs',
+                    'reflectionMergeSortMs', 'reflectionPreparationTotalMs',
+                ].map(name => [name, run.density[name]])),
                 workerIdleAfterReflectionPreparationMs:
                     run.density.workerIdleAfterReflectionPreparationMs,
                 modelWaitForReflectionPreparationMs:
@@ -315,6 +438,10 @@ try {
                     'reusedCellCount', 'fieldSampleCount', 'allocatedGeometryBytes',
                 ].map(name => [name, run.density[name]])),
                 datasetPreparationMs: run.density.workerDatasetPreparationTimeMs,
+                workerStages: Object.fromEntries([
+                    'workerProgressionSetupTimeMs', 'workerComputeTimeMs',
+                    'workerPayloadPreparationTimeMs', 'workerElapsedTimeMs',
+                ].map(name => [name, run.density[name]])),
                 datasetStages: Object.fromEntries([
                     'datasetSelfDescriptionDetectionMs',
                     'datasetExplicitCoefficientAttemptMs', 'datasetSourceDispatchTotalMs',
@@ -330,6 +457,13 @@ try {
                     'datasetInstrumentedTotalMs',
                 ].map(name => [name, run.density[name]])),
                 fftMs: run.density.fftTotalTimeMs,
+                densityMapStages: Object.fromEntries([
+                    'densityCoefficientSelectionTimeMs', 'densityMapAssemblyTimeMs',
+                    'densityMapTotalTimeMs', 'fftPlanSetupTimeMs',
+                    'fftGridPlanningTimeMs', 'fftHermitianValidationTimeMs',
+                    'fftAllocationTimeMs', 'fftCoefficientPlacementTimeMs',
+                    'fftTransformTimeMs', 'fftStatisticsTimeMs', 'fftTotalTimeMs',
+                ].map(name => [name, run.density[name]])),
                 workerElapsedMs: run.density.workerElapsedTimeMs,
                 wallMs: run.wallMs,
             })),
@@ -344,6 +478,14 @@ writeFileSync(output, `${JSON.stringify({
     prewarmWorker: PREWARM_WORKER,
     surfaceMode: SURFACE_MODE,
     useSymmetry: USE_SYMMETRY,
+    repetitions: REPETITIONS,
+    representativeSelection: benchmarkOptions.representativeCsv ? {
+        source: benchmarkOptions.representativeCsv,
+        root: benchmarkOptions.representativeRoot,
+        count: representativeCases.length,
+        metric: benchmarkOptions.representativeMetric,
+        method: 'equal-count-stratum-midpoints',
+    } : null,
     results,
 }, null, 2)}\n`);
 console.log(JSON.stringify({ output, results }, null, 2));
