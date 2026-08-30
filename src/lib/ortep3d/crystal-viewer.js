@@ -895,6 +895,8 @@ export class CrystalViewer {
         this.scalarFieldPreparationId = null;
         this.scalarFieldLoadTimings = null;
         this.scalarFieldWorker = null;
+        this.scalarFieldWorkerConstructedEpochMs = null;
+        this.scalarFieldWorkerReadyEpochMs = null;
         this.scalarFieldPendingResolve = null;
         this.scalarFieldMainThreadLoadId = null;
         this.scalarFieldLoadTarget = null;
@@ -902,6 +904,11 @@ export class CrystalViewer {
         this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity };
         this.defaultScalarFieldOptions = { ...this.options.scalarField };
         this.defaultIsosurfaceOptions = { ...this.options.isosurface };
+
+        if (this.options.scalarField.useWorker &&
+            this.options.differenceDensity.autoLoad && typeof Worker !== 'undefined') {
+            this.ensureScalarFieldWorker();
+        }
 
         this.modifiers = {
             removeatoms: new AtomLabelFilter(),
@@ -1068,33 +1075,50 @@ export class CrystalViewer {
             ...this.defaultScalarFieldOptions,
             ...optionSubset(densityOptions, defaultSettings.scalarField),
         } : null;
+        this.cancelScalarFieldLoad('Coordinate structure changed');
         let earlyWorker = null;
         const preparationId = densityRequest && requestedScalarFieldOptions.useWorker &&
             typeof Worker !== 'undefined'
             ? ++this.scalarFieldPreparationSequence
             : null;
         if (preparationId !== null) {
-            earlyWorker = new ScalarFieldWorker();
-            markLoadTime('workerCreatedMs');
+            const existingWorker = this.scalarFieldWorker;
+            earlyWorker = this.ensureScalarFieldWorker();
+            this.scalarFieldPreparationId = preparationId;
+            if (!existingWorker) {
+                markLoadTime('workerCreatedMs');
+            }
+            if (loadTimings) {
+                loadTimings.workerConstructedMs =
+                    this.scalarFieldWorkerConstructedEpochMs - loadStartedEpochMs;
+                if (this.scalarFieldWorkerReadyEpochMs !== null) {
+                    loadTimings.workerReadyMs =
+                        this.scalarFieldWorkerReadyEpochMs - loadStartedEpochMs;
+                }
+            }
             if (debugTimings) {
-                earlyWorker.addEventListener('message', event => {
+                const handlePrepared = event => {
                     const message = event.data;
                     if (message.type !== 'reflection-prepared' ||
                         message.preparationId !== preparationId) {
                         return;
                     }
+                    earlyWorker.removeEventListener('message', handlePrepared);
                     loadTimings.reflectionPreparationStartedMs =
                         message.startedEpochMs - loadStartedEpochMs;
                     loadTimings.reflectionsPreparedMs =
                         message.completedEpochMs - loadStartedEpochMs;
                     loadTimings.reflectionPreparationTimeMs = message.preparationTimeMs;
+                    loadTimings.workerReadyToFirstTaskMs =
+                        message.startedEpochMs - this.scalarFieldWorkerReadyEpochMs;
                     this.notifyScalarFieldUpdate({
                         type: 'reflection-prepared',
                         preparationId,
                         reflectionPreparationTimeMs: message.preparationTimeMs,
                         ...message.reflectionDiagnostics,
                     });
-                });
+                };
+                earlyWorker.addEventListener('message', handlePrepared);
             }
             earlyWorker.postMessage({
                 type: 'prepare-difference-density-reflections',
@@ -1116,7 +1140,9 @@ export class CrystalViewer {
                 block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
                 markLoadTime('cifParsedMs');
             } catch (e) {
-                earlyWorker?.terminate();
+                if (earlyWorker) {
+                    this.destroyScalarFieldWorker(earlyWorker);
+                }
                 return { success: false, error: e.message };
             }
             let structure;
@@ -1139,7 +1165,6 @@ export class CrystalViewer {
             // Density data belongs to a specific coordinate model/cell. A new
             // coordinate CIF must never inherit the previous FCF implicitly.
             const hadScalarField = this.state.scalarFields.length > 0;
-            this.cancelScalarFieldLoad('Coordinate structure changed');
             this.isosurfaceLayer.clear();
             this.contourLineLayer.clear();
             this.state.scalarField = null;
@@ -1148,13 +1173,6 @@ export class CrystalViewer {
             this.scalarFieldLoadTarget = null;
             if (hadScalarField) {
                 this.notifyScalarFieldUpdate({ type: 'cleared' });
-            }
-            if (earlyWorker) {
-                if (this.scalarFieldWorker && this.scalarFieldWorker !== earlyWorker) {
-                    this.scalarFieldWorker.terminate();
-                }
-                this.scalarFieldWorker = earlyWorker;
-                this.scalarFieldPreparationId = preparationId;
             }
             this.state.currentCifContent = cifText;
             this.state.currentCifBlock = cifBlock;
@@ -1201,11 +1219,6 @@ export class CrystalViewer {
         } catch (error) {
             if (earlyWorker) {
                 this.cancelScalarFieldLoad('Structure loading failed');
-                earlyWorker.terminate();
-                if (this.scalarFieldWorker === earlyWorker) {
-                    this.scalarFieldWorker = null;
-                }
-                this.scalarFieldPreparationId = null;
             }
             console.error('Error loading structure:', error);
             return { success: false, error: error.message };
@@ -1232,7 +1245,12 @@ export class CrystalViewer {
             return { success: false, error: 'loadDifferenceDensity options must be an object' };
         }
 
-        this.cancelScalarFieldLoad('Superseded by a new FCF load');
+        // An automatic load consumes the reflection preparation already queued
+        // by loadCIF. Direct/replacement FCF loads have no preparation id and
+        // must still terminate any synchronous job they supersede.
+        if (this.scalarFieldPreparationId === null) {
+            this.cancelScalarFieldLoad('Superseded by a new FCF load');
+        }
         this.options.differenceDensity = {
             ...this.defaultDifferenceDensityOptions,
             ...optionSubset(options, defaultSettings.differenceDensity),
@@ -1395,14 +1413,16 @@ export class CrystalViewer {
      */
     loadDifferenceDensityInWorker(fcfText, fcfBlock, loadId) {
         return new Promise(resolve => {
-            const worker = this.scalarFieldWorker ?? new ScalarFieldWorker();
-            this.scalarFieldWorker = worker;
+            const worker = this.ensureScalarFieldWorker();
             this.scalarFieldPendingResolve = resolve;
+            let settled = false;
 
             const fail = (error) => {
-                if (loadId !== this.scalarFieldLoadSequence) {
+                if (settled || loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
+                settled = true;
+                cleanup();
                 const message = error?.message || String(error);
                 console.error('Error loading difference density:', error);
                 this.notifyScalarFieldUpdate({
@@ -1411,12 +1431,11 @@ export class CrystalViewer {
                     error: message,
                     ...this.scalarFieldDisplayState(),
                 });
-                this.finishScalarFieldWorker();
+                this.destroyScalarFieldWorker(worker);
                 resolve({ success: false, error: message });
             };
 
-            worker.addEventListener('error', fail);
-            worker.addEventListener('message', event => {
+            const handleMessage = event => {
                 const message = event.data;
                 if (message.loadId !== loadId || loadId !== this.scalarFieldLoadSequence) {
                     return;
@@ -1485,7 +1504,9 @@ export class CrystalViewer {
                             type: 'complete',
                             loadId,
                         });
-                        this.finishScalarFieldWorker();
+                        settled = true;
+                        cleanup();
+                        this.finishScalarFieldLoad(worker);
                         resolve(result);
                     } else {
                         this.continueScalarFieldWorkerAfterRender(worker, loadId, message.stepIndex);
@@ -1493,7 +1514,13 @@ export class CrystalViewer {
                 } catch (error) {
                     fail(error);
                 }
-            });
+            };
+            const cleanup = () => {
+                worker.removeEventListener('error', fail);
+                worker.removeEventListener('message', handleMessage);
+            };
+            worker.addEventListener('error', fail);
+            worker.addEventListener('message', handleMessage);
 
             const debugTimings = this.options.debug === true;
             const modelPostedEpochMs = debugTimings
@@ -1536,14 +1563,16 @@ export class CrystalViewer {
      */
     loadCubeInWorker(cubeText, cubeOptions, loadId) {
         return new Promise(resolve => {
-            const worker = new ScalarFieldWorker();
-            this.scalarFieldWorker = worker;
+            const worker = this.ensureScalarFieldWorker();
             this.scalarFieldPendingResolve = resolve;
+            let settled = false;
 
             const fail = (error) => {
-                if (loadId !== this.scalarFieldLoadSequence) {
+                if (settled || loadId !== this.scalarFieldLoadSequence) {
                     return;
                 }
+                settled = true;
+                cleanup();
                 const message = error?.message || String(error);
                 console.error('Error loading Cube field:', error);
                 this.notifyScalarFieldUpdate({
@@ -1552,12 +1581,11 @@ export class CrystalViewer {
                     error: message,
                     ...this.scalarFieldDisplayState(),
                 });
-                this.finishScalarFieldWorker();
+                this.destroyScalarFieldWorker(worker);
                 resolve({ success: false, error: message });
             };
 
-            worker.addEventListener('error', fail);
-            worker.addEventListener('message', event => {
+            const handleMessage = event => {
                 const message = event.data;
                 if (message.loadId !== loadId || loadId !== this.scalarFieldLoadSequence) {
                     return;
@@ -1585,7 +1613,9 @@ export class CrystalViewer {
                             type: 'complete',
                             loadId,
                         });
-                        this.finishScalarFieldWorker();
+                        settled = true;
+                        cleanup();
+                        this.finishScalarFieldLoad(worker);
                         resolve(result);
                     } else {
                         this.continueScalarFieldWorkerAfterRender(worker, loadId, message.stepIndex);
@@ -1593,7 +1623,13 @@ export class CrystalViewer {
                 } catch (error) {
                     fail(error);
                 }
-            });
+            };
+            const cleanup = () => {
+                worker.removeEventListener('error', fail);
+                worker.removeEventListener('message', handleMessage);
+            };
+            worker.addEventListener('error', fail);
+            worker.addEventListener('message', handleMessage);
 
             worker.postMessage({
                 type: 'load-cube',
@@ -2220,10 +2256,59 @@ export class CrystalViewer {
         };
     }
 
-    /** Terminates the active worker without resolving its already-handled promise. */
-    finishScalarFieldWorker() {
-        this.scalarFieldWorker?.terminate();
+    /** @returns {Worker} Warm per-viewer scalar-field worker. */
+    ensureScalarFieldWorker() {
+        if (this.scalarFieldWorker) {
+            return this.scalarFieldWorker;
+        }
+        const worker = new ScalarFieldWorker();
+        this.scalarFieldWorker = worker;
+        this.scalarFieldWorkerConstructedEpochMs = performance.timeOrigin + performance.now();
+        this.scalarFieldWorkerReadyEpochMs = null;
+        worker.addEventListener('message', event => {
+            if (event.data?.type !== 'ready' || worker !== this.scalarFieldWorker) {
+                return;
+            }
+            this.scalarFieldWorkerReadyEpochMs = event.data.epochMs;
+            if (this.scalarFieldLoadTimings) {
+                this.scalarFieldLoadTimings.workerReadyMs =
+                    event.data.epochMs - this.scalarFieldLoadTimings.loadStartedEpochMs;
+            }
+        });
+        // A prewarmed module can fail before a load-specific error listener is
+        // installed. Do not retain a worker that can no longer accept work.
+        worker.addEventListener('error', () => {
+            if (worker === this.scalarFieldWorker && !this.scalarFieldPendingResolve) {
+                this.destroyScalarFieldWorker(worker);
+            }
+        });
+        return worker;
+    }
+
+    /**
+     * Marks a successful scalar-field load complete while retaining its warm worker.
+     * @param {Worker} [worker] - Worker that completed the load.
+     */
+    finishScalarFieldLoad(worker = this.scalarFieldWorker) {
+        if (worker !== this.scalarFieldWorker) {
+            return;
+        }
+        this.scalarFieldPreparationId = null;
+        this.scalarFieldPendingResolve = null;
+    }
+
+    /**
+     * Terminates a worker that is busy, failed, replaced, or no longer needed.
+     * @param {Worker} [worker] - Worker to terminate.
+     */
+    destroyScalarFieldWorker(worker = this.scalarFieldWorker) {
+        worker?.terminate();
+        if (worker !== this.scalarFieldWorker) {
+            return;
+        }
         this.scalarFieldWorker = null;
+        this.scalarFieldWorkerConstructedEpochMs = null;
+        this.scalarFieldWorkerReadyEpochMs = null;
         this.scalarFieldPreparationId = null;
         this.scalarFieldPendingResolve = null;
     }
@@ -2234,7 +2319,8 @@ export class CrystalViewer {
      */
     cancelScalarFieldLoad(reason = 'Scalar-field load cancelled') {
         const mainThreadActive = this.scalarFieldMainThreadLoadId !== null;
-        if (!this.scalarFieldPendingResolve && !mainThreadActive) {
+        const workerPreparationActive = this.scalarFieldPreparationId !== null;
+        if (!this.scalarFieldPendingResolve && !mainThreadActive && !workerPreparationActive) {
             return;
         }
         const loadId = this.scalarFieldMainThreadLoadId ?? this.scalarFieldLoadSequence;
@@ -2242,11 +2328,8 @@ export class CrystalViewer {
             this.scalarFieldLoadSequence++;
             this.scalarFieldMainThreadLoadId = null;
         }
-        this.scalarFieldWorker?.terminate();
-        this.scalarFieldWorker = null;
-        this.scalarFieldPreparationId = null;
         const resolve = this.scalarFieldPendingResolve;
-        this.scalarFieldPendingResolve = null;
+        this.destroyScalarFieldWorker();
         resolve?.({ success: false, cancelled: true, error: reason });
         this.notifyScalarFieldUpdate({
             type: 'cancelled',
@@ -3657,8 +3740,7 @@ export class CrystalViewer {
         this.containerResizeObserver?.disconnect();
         this.containerResizeObserver = null;
         this.cancelScalarFieldLoad('Viewer disposed');
-        this.scalarFieldWorker?.terminate();
-        this.scalarFieldWorker = null;
+        this.destroyScalarFieldWorker();
         this.isosurfaceLayer.dispose();
         this.contourLineLayer.dispose();
         this.controls.dispose();

@@ -958,6 +958,9 @@ describe('CrystalViewer progressive difference-density events', () => {
                 scalarFieldPreparationSequence: 0,
                 scalarFieldPreparationId: null,
                 scalarFieldWorker: null,
+                ensureScalarFieldWorker() {
+                    return CrystalViewer.prototype.ensureScalarFieldWorker.call(this);
+                },
                 cancelScalarFieldLoad: vi.fn(),
                 isosurfaceLayer: { clear: vi.fn() },
                 contourLineLayer: { clear: vi.fn() },
@@ -988,6 +991,97 @@ describe('CrystalViewer progressive difference-density events', () => {
         } finally {
             vi.unstubAllGlobals();
         }
+    });
+
+    test('retains a completed worker and destroys it only for cancellation or disposal', () => {
+        class FakeWorker {
+            constructor() {
+                this.listeners = new Map();
+                this.terminate = vi.fn();
+            }
+
+            addEventListener(type, listener) {
+                this.listeners.set(type, listener);
+            }
+
+            emit(type, data) {
+                this.listeners.get(type)?.({ data });
+            }
+        }
+        vi.stubGlobal('Worker', FakeWorker);
+        try {
+            const viewer = {
+                scalarFieldWorker: null,
+                scalarFieldWorkerConstructedEpochMs: null,
+                scalarFieldWorkerReadyEpochMs: null,
+                scalarFieldPreparationId: null,
+                scalarFieldPendingResolve: vi.fn(),
+                scalarFieldLoadTimings: null,
+                destroyScalarFieldWorker(selectedWorker) {
+                    return CrystalViewer.prototype.destroyScalarFieldWorker.call(
+                        this,
+                        selectedWorker,
+                    );
+                },
+            };
+            const worker = CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer);
+            expect(CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer)).toBe(worker);
+
+            worker.emit('message', { type: 'ready', epochMs: 123 });
+            expect(viewer.scalarFieldWorkerReadyEpochMs).toBe(123);
+
+            CrystalViewer.prototype.finishScalarFieldLoad.call(viewer, worker);
+            expect(viewer.scalarFieldWorker).toBe(worker);
+            expect(worker.terminate).not.toHaveBeenCalled();
+
+            CrystalViewer.prototype.destroyScalarFieldWorker.call(viewer, worker);
+            expect(worker.terminate).toHaveBeenCalledOnce();
+            expect(viewer.scalarFieldWorker).toBeNull();
+
+            const failedPrewarm = CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer);
+            failedPrewarm.emit('error', new Error('module failed'));
+            expect(failedPrewarm.terminate).toHaveBeenCalledOnce();
+            expect(viewer.scalarFieldWorker).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    test('keeps an idle warm worker but terminates an active worker when cancelled', () => {
+        const worker = { terminate: vi.fn() };
+        const viewer = {
+            scalarFieldWorker: worker,
+            scalarFieldWorkerConstructedEpochMs: 1,
+            scalarFieldWorkerReadyEpochMs: 2,
+            scalarFieldPreparationId: null,
+            scalarFieldPendingResolve: null,
+            scalarFieldMainThreadLoadId: null,
+            scalarFieldLoadSequence: 7,
+            notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldDisplayState: vi.fn(() => ({})),
+            destroyScalarFieldWorker(selectedWorker) {
+                return CrystalViewer.prototype.destroyScalarFieldWorker.call(this, selectedWorker);
+            },
+        };
+
+        CrystalViewer.prototype.cancelScalarFieldLoad.call(viewer, 'idle');
+        expect(worker.terminate).not.toHaveBeenCalled();
+        expect(viewer.scalarFieldWorker).toBe(worker);
+
+        const resolve = vi.fn();
+        viewer.scalarFieldPreparationId = 11;
+        viewer.scalarFieldPendingResolve = resolve;
+        CrystalViewer.prototype.cancelScalarFieldLoad.call(viewer, 'replaced');
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        expect(viewer.scalarFieldWorker).toBeNull();
+        expect(resolve).toHaveBeenCalledWith({
+            success: false,
+            cancelled: true,
+            error: 'replaced',
+        });
+        expect(viewer.notifyScalarFieldUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'cancelled', loadId: 7, error: 'replaced' }),
+        );
     });
 
     test('subscribes and unsubscribes update listeners', () => {

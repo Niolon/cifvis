@@ -266,3 +266,8 @@ globalThis.addEventListener('message', (event) => {
         loadCubeProgressively(message);
     }
 });
+
+globalThis.postMessage({
+    type: 'ready',
+    epochMs: performance.timeOrigin + performance.now(),
+});

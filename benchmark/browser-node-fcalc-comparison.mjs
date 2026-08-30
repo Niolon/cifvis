@@ -214,7 +214,8 @@ try {
                 metric(run => run.density.workerWaitForModelMs),
             browserWorkerJoinDelayMs: metric(run => run.density.workerJoinDelayMs),
             browserTimings: Object.fromEntries([
-                'workerCreatedMs', 'rawCifPostedMs', 'cifParsedMs', 'structureReadyMs',
+                'workerCreatedMs', 'workerConstructedMs', 'workerReadyMs',
+                'workerReadyToFirstTaskMs', 'rawCifPostedMs', 'cifParsedMs', 'structureReadyMs',
                 'structureModelReadyMs', 'modelPostedMs', 'densityLoadStartedMs',
                 'structureSceneReadyMs', 'reflectionPreparationStartedMs',
                 'reflectionsPreparedMs', 'workerCalculationStartedMs',
