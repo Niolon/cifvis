@@ -54,7 +54,9 @@
     "bench:surface-sampler": "node benchmark/surface-sampler.mjs",
     "bench:density-analyze": "node benchmark/analyze-density-optimization.mjs",
     "bench:browser-density-consistency": "node benchmark/browser-node-fcalc-comparison.mjs",
-    "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs"
+    "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs",
+    "bench:browser-density-structure-impact": "node benchmark/browser-density-structure-impact.mjs",
+    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

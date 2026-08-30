@@ -896,6 +896,40 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(viewer.loadDifferenceDensity).not.toHaveBeenCalled();
     });
 
+    test('reports structure-only load milestones in debug mode', async () => {
+        const viewer = {
+            state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
+            options: {
+                debug: true,
+                fixCifErrors: false,
+                differenceDensity: { autoLoad: false },
+            },
+            cancelScalarFieldLoad: vi.fn(),
+            isosurfaceLayer: { clear: vi.fn() },
+            contourLineLayer: { clear: vi.fn() },
+            notifyScalarFieldUpdate: vi.fn(),
+            loadStructure: vi.fn(async structure => {
+                viewer.state.baseStructure = structure;
+            }),
+        };
+
+        const result = await CrystalViewer.prototype.loadCIF.call(
+            viewer,
+            MINIMAL_CIF_WITH_STRUCTURE,
+        );
+
+        expect(result).toMatchObject({
+            success: true,
+            browserTimings: {
+                loadStartedEpochMs: expect.any(Number),
+                cifParsedMs: expect.any(Number),
+                structureReadyMs: expect.any(Number),
+                structureModelReadyMs: expect.any(Number),
+                structureSceneReadyMs: expect.any(Number),
+            },
+        });
+    });
+
     test('installs the structure before scheduling automatic density work', async () => {
         const order = [];
         const viewer = {

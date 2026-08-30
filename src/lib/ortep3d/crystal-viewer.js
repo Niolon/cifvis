@@ -1200,7 +1200,10 @@ export class CrystalViewer {
             markLoadTime('structureSceneReadyMs');
 
             if (!densityRequest) {
-                return { success: true };
+                return {
+                    success: true,
+                    ...(loadTimings ? { browserTimings: loadTimings } : {}),
+                };
             }
             differenceDensity ??= new Promise(resolve => setTimeout(() => {
                 if (this.state.currentCifContent !== cifText ||
