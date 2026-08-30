@@ -179,6 +179,20 @@ try {
             browserFcalcMs: metric(run => run.density.iam?.calculation?.timeMs),
             browserReflectionPreparationMs:
                 metric(run => run.density.workerReflectionPreparationTimeMs),
+            browserReflectionStages: Object.fromEntries([
+                'reflectionSourceDiscoveryMs', 'reflectionSourceParseMs',
+                'reflectionRowDecodeMs', 'reflectionSymmetrySetupMs',
+                'reflectionAbsenceMs', 'reflectionCanonicalizationMs',
+                'reflectionMergeAccumulationMs', 'reflectionMergeFinalizationMs',
+                'reflectionMergeSortMs', 'reflectionPreparationTotalMs',
+            ].map(name => [name, metric(run => run.density[name])])),
+            browserReflectionCounts: Object.fromEntries([
+                'rawReflectionCount', 'validReflectionCount', 'invalidReflectionCount',
+                'distinctInputHklCount', 'systematicAbsenceCount', 'mergedReflectionCount',
+                'symmetryOperationCount', 'absenceCacheHitCount', 'absenceCacheMissCount',
+                'canonicalCacheHitCount', 'canonicalCacheMissCount',
+                'shelxFallbackDecodeCount',
+            ].map(name => [name, metric(run => run.density[name])])),
             browserWorkerIdleAfterReflectionPreparationMs:
                 metric(run => run.density.workerIdleAfterReflectionPreparationMs),
             browserModelWaitForReflectionPreparationMs:

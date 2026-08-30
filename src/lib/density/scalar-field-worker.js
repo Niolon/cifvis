@@ -27,6 +27,7 @@ function prepareReflectionSource(message) {
         if (reflectionOptions.mergeFriedel === undefined) {
             reflectionOptions.mergeFriedel = iamOptions.includeAnomalous === false;
         }
+        reflectionOptions.debug = debugTimings;
         const observed = readReflectionIntensities(
             message.fcfText,
             message.fcfBlock,
@@ -48,6 +49,8 @@ function prepareReflectionSource(message) {
                 preparationTimeMs: completed - started,
                 startedEpochMs,
                 completedEpochMs,
+                reflectionDiagnostics: observed.diagnostics,
+                ...observed.diagnostics,
             });
         }
     } catch {
@@ -152,6 +155,8 @@ async function calculateDifferenceDensityProgressively(message) {
                     computeTimeMs: mapTimeMs,
                     datasetPreparationTimeMs,
                     reflectionPreparationTimeMs: prepared?.preparationTimeMs ?? 0,
+                    reflectionDiagnostics: prepared?.observed.diagnostics,
+                    ...prepared?.observed.diagnostics,
                     workerIdleAfterReflectionPreparationMs,
                     modelWaitForReflectionPreparationMs,
                     workerWaitForModelMs,

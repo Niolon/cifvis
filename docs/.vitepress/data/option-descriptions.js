@@ -61,6 +61,8 @@ export const descriptions = {
     'renderMode': 'Rendering mode, either <code>constant</code> (render continuously) or ' +
         '<code>onDemand</code> (render only when needed; call <code>viewer.requestRender()</code> ' +
         'after external state changes).',
+    'debug': 'Expose detailed main-thread, density-worker, FFT, and surface performance timings ' +
+        'in scalar-field events and completed density results. Disabled by default.',
     'renderStyle': 'Rendering style: <code>solid-3d</code> (interactive, full ellipsoids), ' +
         '<code>cutout-3d</code> (interactive, camera-facing cutaway octant), or ' +
         '<code>cutout-2d</code> (publication-style, always cutaway). See ' +

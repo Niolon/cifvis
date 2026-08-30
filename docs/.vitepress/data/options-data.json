@@ -152,6 +152,11 @@
       "default": "\"onDemand\""
     },
     {
+      "path": "debug",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "renderStyle",
       "type": "String",
       "default": "\"solid-3d\""

@@ -189,29 +189,33 @@ export class CifLoop {
         this.headers = [...this.headerLines];
         this.data = {};
 
-        const dataArray = this._cif2CellTokenRanges !== undefined
-            ? this._cif2CellTokenRanges.map(([start]) => {
+        let dataArray;
+        if (this._cif2CellTokenRanges !== undefined) {
+            dataArray = this._cif2CellTokenRanges.map(([start]) => {
                 const parsed = parseCif2Value(this._cif2Tokens, start, this.splitSU);
                 return { value: parsed.value, su: parsed.su };
-            })
-            : this.dataLines.reduce((acc, line, i) => {
-                line = line.trim();
+            });
+        } else {
+            dataArray = [];
+            for (let i = 0; i < this.dataLines.length; i++) {
+                const line = this.dataLines[i].trim();
                 if (!line.length) {
-                    return acc;
+                    continue;
                 }
-
                 if (line.startsWith(';')) {
                     const mult = parseMultiLineString(this.dataLines, i);
-                    acc.push({ value: mult.value, su: NaN });
-                    // Skip lines consumed by multiline string
+                    dataArray.push({ value: mult.value, su: NaN });
+                    // Preserve the established consumed-line mutation semantics.
                     for (let j = i; j < mult.endIndex + 1; j++) {
                         this.dataLines[j] = '';
                     }
-                    return acc;
+                    continue;
                 }
-
-                return acc.concat(tokenizeLoopLine(line).map(value => parseValue(value, this.splitSU)));
-            }, []);
+                for (const value of tokenizeLoopLine(line)) {
+                    dataArray.push(parseValue(value, this.splitSU));
+                }
+            }
+        }
 
         const nEntries = this.headers.length;
 
@@ -226,17 +230,24 @@ export class CifLoop {
         } else if (dataArray.length === 0) {
             throw new Error(`Loop ${this.name} has no data values.`);
         }
-        for (let j = 0; j < nEntries; j++) {
-            const header = this.headers[j];
-            const headerValues = dataArray.slice(j).filter((_, index) => index % nEntries === 0);
-            const hasSU = headerValues.some(value => !isNaN(value.su));
-
-            if (hasSU) {
-                this.data[header] = headerValues.map(value => value.value);
-                this.data[header + '_su'] = headerValues.map(value => value.su);
+        const columns = Array.from({ length: nEntries }, () => []);
+        const uncertaintyColumns = Array.from({ length: nEntries }, () => []);
+        const hasUncertainty = new Uint8Array(nEntries);
+        for (let index = 0; index < dataArray.length; index++) {
+            const column = index % nEntries;
+            const entry = dataArray[index];
+            columns[column].push(entry.value);
+            uncertaintyColumns[column].push(entry.su);
+            if (!isNaN(entry.su)) {
+                hasUncertainty[column] = 1;
+            }
+        }
+        for (let column = 0; column < nEntries; column++) {
+            const header = this.headers[column];
+            this.data[header] = columns[column];
+            if (hasUncertainty[column]) {
+                this.data[header + '_su'] = uncertaintyColumns[column];
                 this.headers.push(header + '_su');
-            } else {
-                this.data[header] = headerValues.map(value => value.value);
             }
         }
     }

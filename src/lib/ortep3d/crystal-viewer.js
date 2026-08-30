@@ -1092,6 +1092,7 @@ export class CrystalViewer {
                         type: 'reflection-prepared',
                         preparationId,
                         reflectionPreparationTimeMs: message.preparationTimeMs,
+                        ...message.reflectionDiagnostics,
                     });
                 });
             }
@@ -1472,6 +1473,7 @@ export class CrystalViewer {
                                 workerPayloadPreparationTimeMs:
                                     message.payloadPreparationTimeMs,
                                 workerElapsedTimeMs: message.elapsedTimeMs,
+                                ...message.reflectionDiagnostics,
                             } : {}),
                         };
                         this.notifyScalarFieldUpdate({
