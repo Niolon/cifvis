@@ -23,6 +23,12 @@ regressions in the library:
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.
 
+For a paper campaign, run `../run-paper-campaign.sh` from the workspace root. It writes
+the complete integration logs, timing CSVs, selected COD identifiers, environment
+provenance, per-stage status, and `cod-maintainer-issues.json` into a new dated
+directory. Integration and timing stages are deliberately sequential to avoid
+contaminating wall-time measurements with database-test load.
+
 `speed.mjs` accepts `--render-style`, `--adp-representation`, and
 `--peanut-grid-pole-axis`, allowing direct
 comparison of solid ellipsoids with clean, explanatory, and publication PEANUT modes.

@@ -8,11 +8,13 @@
 // same generated list so COD data-quality problems are identified once, not
 // rediscovered by every consumer.
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const CACHE_FILE = join(scriptDir, '..', 'logs', 'known-bad-cifs.txt');
+const CACHE_FILE = resolve(
+    process.env.CIFVIS_KNOWN_BAD_CACHE_FILE || join(scriptDir, '..', 'logs', 'known-bad-cifs.txt'),
+);
 
 // COD mirrors conventionally keep these under <codDir>/manual-checks/. Not
 // every mirror ships them (e.g. a partial or differently-assembled COD
@@ -90,4 +92,10 @@ export function loadKnownBadCifs({ forceRebuild = false, codDir } = {}) {
 export function filterKnownBad(filePaths, options) {
     const knownBad = loadKnownBadCifs(options);
     return filePaths.filter(p => !knownBad.has(p.split('/').pop()));
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    const codDir = process.argv[2] || process.env.COD_DIR;
+    const excluded = buildKnownBadCifs(codDir);
+    console.log(`Wrote ${excluded.size} known-bad COD filenames to ${CACHE_FILE}`);
 }

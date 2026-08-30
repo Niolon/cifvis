@@ -1,10 +1,11 @@
 import { readFileSync, appendFileSync, writeFileSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { generateSummary, getLogFilenames } from './test-structure-modifiers.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const chunkLogsDir = join(scriptDir, 'logs', 'modifiers-chunked');
+const logsDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || join(scriptDir, 'logs'));
+const chunkLogsDir = join(logsDir, 'modifiers-chunked');
 
 /**
  * Recursively adds matching numeric leaves of two stats objects. Generic on purpose:

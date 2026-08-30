@@ -6,7 +6,8 @@ import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const logsDir = join(scriptDir, 'logs', 'ortep-chunked');
+const baseLogsDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || join(scriptDir, 'logs'));
+const logsDir = join(baseLogsDir, 'ortep-chunked');
 
 /**
  * Generates the log filenames for a specific range of processed files

@@ -1,10 +1,11 @@
 #!/bin/bash
+set -uo pipefail
 
 # Configuration
 CHUNK_SIZE=2000
 COD_DIR=${1:-"../cod"}  # Use first argument as COD directory or default to ../cod
 NODE_ARGS="--expose-gc --max-old-space-size=8192"
-BASE_LOGS_DIR="integration-tests/logs"
+BASE_LOGS_DIR="${CIFVIS_INTEGRATION_LOG_DIR:-integration-tests/logs}"
 CHUNK_LOGS_DIR="$BASE_LOGS_DIR/ortep-chunked"
 FINAL_SUMMARY="$BASE_LOGS_DIR/final-ortep-summary.log"
 FINAL_ERRORS="$BASE_LOGS_DIR/final-ortep-errors.log"
@@ -38,6 +39,7 @@ TOTAL_SUCCESSFUL=0
 TOTAL_STRUCTURE_ERRORS=0
 TOTAL_ORTEP_ERRORS=0
 TOTAL_NAN_ERRORS=0
+FAILED_CHUNKS=0
 
 # Process each chunk
 for ((i=0; i<NUM_CHUNKS; i++)); do
@@ -47,7 +49,11 @@ for ((i=0; i<NUM_CHUNKS; i++)); do
     echo "Processing chunk $((i+1))/$NUM_CHUNKS (files $START to $END)"
     
     # Run test script for this chunk
-    node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_DIR" $START $END
+    if ! node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_DIR" $START $END; then
+        echo "Chunk $START-$END failed." >&2
+        FAILED_CHUNKS=$((FAILED_CHUNKS + 1))
+        continue
+    fi
     
     # Append errors to final error file
     ERROR_FILE="$CHUNK_LOGS_DIR/ortep-test-errors-$START-$END.log"
@@ -102,3 +108,8 @@ echo "Testing completed. Final results:"
 cat "$FINAL_SUMMARY"
 echo -e "\nDetailed errors can be found in $FINAL_ERRORS"
 echo -e "Individual chunk logs can be found in $CHUNK_LOGS_DIR"
+
+if [ "$FAILED_CHUNKS" -gt 0 ]; then
+    echo "$FAILED_CHUNKS ORTEP chunk(s) failed; summary is partial." >&2
+    exit 1
+fi
