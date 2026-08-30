@@ -746,7 +746,7 @@ function Me(e) {
 	if (t.length !== 3) throw Error("det: only 3x3 matrices are supported");
 	return t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1]) - t[0][1] * (t[1][0] * t[2][2] - t[1][2] * t[2][0]) + t[0][2] * (t[1][0] * t[2][1] - t[1][1] * t[2][0]);
 }
-function Ne(e) {
+function z(e) {
 	let t = I(e);
 	if (t.length !== 3) throw Error("inv: only 3x3 matrices are supported");
 	let n = Me(t);
@@ -770,31 +770,31 @@ function Ne(e) {
 	], i = r.map((e, t) => e.map((e, i) => r[i][t] / n));
 	return we([e], i);
 }
-function Pe(e) {
+function Ne(e) {
 	let t = I(e), n = t.length, r = Array.from({ length: n }, (e, r) => Array.from({ length: n }, (e, n) => r === n ? t[r] : 0));
 	return we([e], r);
 }
-function Fe(e) {
+function Pe(e) {
 	let t = I(e);
 	return Math.sqrt(t.reduce((e, t) => e + t * t, 0));
 }
-function Ie(e, t) {
+function Fe(e, t) {
 	if (t !== "deg") throw Error(`unit: unsupported unit '${t}'`);
 	return { toNumber(t) {
 		if (t !== "rad") throw Error(`unit: unsupported conversion to '${t}'`);
 		return e * Math.PI / 180;
 	} };
 }
-function Le(e) {
+function Ie(e) {
 	return Array.from({ length: e }, (t, n) => Array.from({ length: e }, (e, t) => +(n === t)));
 }
-function Re(e) {
+function Le(e) {
 	let t = I(e), n = Array.isArray(t[0]) ? t.map((e) => [...e]) : [...t];
 	return we([e], n);
 }
-var ze = (e) => Math.min(...I(e));
-function Be(e) {
-	let t = e.map((e) => [...e]), n = Le(3);
+var Re = (e) => Math.min(...I(e));
+function ze(e) {
+	let t = e.map((e) => [...e]), n = Ie(3);
 	for (let e = 0; e < 100; e++) {
 		let e = 0;
 		for (let n = 0; n < 3; n++) for (let r = n + 1; r < 3; r++) e += t[n][r] * t[n][r];
@@ -827,8 +827,8 @@ function Be(e) {
 		])
 	};
 }
-function Ve(e) {
-	let { eigenvalues: t, eigenvectors: n } = Be(I(e));
+function Be(e) {
+	let { eigenvalues: t, eigenvectors: n } = ze(I(e));
 	return {
 		values: t,
 		eigenvectors: t.map((e, t) => ({
@@ -839,8 +839,8 @@ function Ve(e) {
 }
 //#endregion
 //#region src/lib/structure/fract-to-cart.js
-function He(e) {
-	let t = Ie(e.alpha, "deg").toNumber("rad"), n = Ie(e.beta, "deg").toNumber("rad"), r = Ie(e.gamma, "deg").toNumber("rad"), i = Math.cos(t), a = Math.cos(n), o = Math.cos(r), s = Math.sin(r), c = Math.sqrt(1 - i * i - a * a - o * o + 2 * i * a * o);
+function Ve(e) {
+	let t = Fe(e.alpha, "deg").toNumber("rad"), n = Fe(e.beta, "deg").toNumber("rad"), r = Fe(e.gamma, "deg").toNumber("rad"), i = Math.cos(t), a = Math.cos(n), o = Math.cos(r), s = Math.sin(r), c = Math.sqrt(1 - i * i - a * a - o * o + 2 * i * a * o);
 	return Ee([
 		[
 			e.a,
@@ -859,7 +859,7 @@ function He(e) {
 		]
 	]);
 }
-function Ue(e) {
+function He(e) {
 	return Ee([
 		[
 			e[0],
@@ -878,7 +878,7 @@ function Ue(e) {
 		]
 	]);
 }
-function We(e) {
+function Ue(e) {
 	let t = Ee(e);
 	return [
 		t.get([0, 0]),
@@ -889,13 +889,13 @@ function We(e) {
 		t.get([1, 2])
 	];
 }
-function Ge(e, t) {
-	let n = Ee(e), r = Pe(Ee(R(R(Ne(n))).toArray().map((e) => Fe(e))));
-	return We(L(L(n, L(L(r, Ue(t)), R(r))), R(n)));
+function We(e, t) {
+	let n = Ee(e), r = Ne(Ee(R(R(z(n))).toArray().map((e) => Pe(e))));
+	return Ue(L(L(n, L(L(r, He(t)), R(r))), R(n)));
 }
 //#endregion
 //#region src/lib/structure/position.js
-var Ke = class e {
+var Ge = class e {
 	#e;
 	constructor(t, n, r) {
 		if (new.target === e) throw TypeError("BasePosition is an abstract class and cannot be instantiated directly, you probably want CartPosition");
@@ -934,55 +934,55 @@ var Ke = class e {
 	toCartesian(e) {
 		throw Error("toCartesian must be implemented by subclass");
 	}
-}, qe = class extends Ke {
+}, Ke = class extends Ge {
 	constructor(e, t, n) {
 		super(e, t, n);
 	}
 	toCartesian(e) {
-		return new tt(...L(e.fractToCartMatrix, Ee([
+		return new et(...L(e.fractToCartMatrix, Ee([
 			this.x,
 			this.y,
 			this.z
 		])).toArray());
 	}
-}, Je = /* @__PURE__ */ new WeakMap(), Ye = .001;
-function Xe(e) {
-	let t = Je.get(e);
-	return t || (t = e.fractToCartMatrix.toArray(), Je.set(e, t)), t;
+}, qe = /* @__PURE__ */ new WeakMap(), Je = .001;
+function Ye(e) {
+	let t = qe.get(e);
+	return t || (t = e.fractToCartMatrix.toArray(), qe.set(e, t)), t;
 }
-function Ze(e) {
+function Xe(e) {
 	return (e % 1 + 1) % 1;
 }
-function Qe(e, t) {
-	let n = Xe(t), r = Ze(e.x), i = Ze(e.y), a = Ze(e.z);
+function Ze(e, t) {
+	let n = Ye(t), r = Xe(e.x), i = Xe(e.y), a = Xe(e.z);
 	return [
 		n[0][0] * r + n[0][1] * i + n[0][2] * a,
 		n[1][0] * r + n[1][1] * i + n[1][2] * a,
 		n[2][0] * r + n[2][1] * i + n[2][2] * a
 	];
 }
-function $e(e, t, n, r = Ye) {
-	let i = Xe(n), a = e.x - t.x - Math.round(e.x - t.x), o = e.y - t.y - Math.round(e.y - t.y), s = e.z - t.z - Math.round(e.z - t.z), c = i[0][0] * a + i[0][1] * o + i[0][2] * s, l = i[1][0] * a + i[1][1] * o + i[1][2] * s, u = i[2][0] * a + i[2][1] * o + i[2][2] * s;
+function Qe(e, t, n, r = Je) {
+	let i = Ye(n), a = e.x - t.x - Math.round(e.x - t.x), o = e.y - t.y - Math.round(e.y - t.y), s = e.z - t.z - Math.round(e.z - t.z), c = i[0][0] * a + i[0][1] * o + i[0][2] * s, l = i[1][0] * a + i[1][1] * o + i[1][2] * s, u = i[2][0] * a + i[2][1] * o + i[2][2] * s;
 	return Math.hypot(c, l, u) < r;
 }
-function et(e, t, n, r = Ye) {
-	let i = Xe(n), a = e.x - t.x, o = e.y - t.y, s = e.z - t.z, c = i[0][0] * a + i[0][1] * o + i[0][2] * s, l = i[1][0] * a + i[1][1] * o + i[1][2] * s, u = i[2][0] * a + i[2][1] * o + i[2][2] * s;
+function $e(e, t, n, r = Je) {
+	let i = Ye(n), a = e.x - t.x, o = e.y - t.y, s = e.z - t.z, c = i[0][0] * a + i[0][1] * o + i[0][2] * s, l = i[1][0] * a + i[1][1] * o + i[1][2] * s, u = i[2][0] * a + i[2][1] * o + i[2][2] * s;
 	return Math.hypot(c, l, u) < r;
 }
-var tt = class extends Ke {
+var et = class extends Ge {
 	constructor(e, t, n) {
 		super(e, t, n);
 	}
 	toCartesian(e) {
 		return this;
 	}
-}, nt = class {
+}, tt = class {
 	static fromCIF(e, t) {
 		let n = !1, r = e.get("_atom_site"), i = [".", "?"];
 		if (String(r.getIndex(["_atom_site.calc_flag", "_atom_site_calc_flag"], t, "")).toLowerCase() === "dum") throw Error("Dummy atom: calc_flag is dum");
 		try {
 			let e = r.getIndex(["_atom_site.fract_x", "_atom_site_fract_x"], t), a = r.getIndex(["_atom_site.fract_y", "_atom_site_fract_y"], t), o = r.getIndex(["_atom_site.fract_z", "_atom_site_fract_z"], t);
-			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new qe(e, a, o);
+			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new Ke(e, a, o);
 			n = !0;
 		} catch {}
 		try {
@@ -999,19 +999,19 @@ var tt = class extends Ke {
 				"_atom_site.cartn_z",
 				"_atom_site_Cartn_z"
 			], t);
-			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new tt(e, a, o);
+			if (!i.includes(e) && !i.includes(a) && !i.includes(o)) return new et(e, a, o);
 			n = !0;
 		} catch {}
 		throw Error(n ? "Dummy atom: Invalid position" : "Invalid position: No valid fractional or Cartesian coordinates found");
 	}
-}, rt = class e {
+}, nt = class e {
 	constructor(e) {
 		this.uiso = e;
 	}
 	static fromBiso(t) {
 		return new e(t / (8 * Math.PI * Math.PI));
 	}
-}, z = class e {
+}, rt = class e {
 	constructor(e, t, n, r, i, a) {
 		this.u11 = e, this.u22 = t, this.u33 = n, this.u12 = r, this.u13 = i, this.u23 = a;
 	}
@@ -1020,7 +1020,7 @@ var tt = class extends Ke {
 		return new e(t * s, n * s, r * s, i * s, a * s, o * s);
 	}
 	getUCart(e) {
-		return Ge(e.fractToCartMatrix, [
+		return We(e.fractToCartMatrix, [
 			this.u11,
 			this.u22,
 			this.u33,
@@ -1031,7 +1031,7 @@ var tt = class extends Ke {
 	}
 	getEllipsoidMatrix(e) {
 		let t = it(this, e);
-		return t.valid ? Ee(L(t.rotation, Pe(t.eigenvalues.map(Math.sqrt)))) : Ee([
+		return t.valid ? Ee(L(t.rotation, Ne(t.eigenvalues.map(Math.sqrt)))) : Ee([
 			[
 				NaN,
 				NaN,
@@ -1078,7 +1078,7 @@ function it(e, t) {
 		tolerance: NaN
 	};
 	try {
-		let { eigenvectors: r } = Ve(Ue(e.getUCart(t))), i = r.map((e) => ({
+		let { eigenvectors: r } = Be(He(e.getUCart(t))), i = r.map((e) => ({
 			value: Number(e.value),
 			vector: (e.vector.toArray?.() || e.vector).map(Number)
 		})).sort((e, t) => t.value - e.value);
@@ -1224,7 +1224,7 @@ var lt = class e {
 			s,
 			c,
 			l
-		].some(isNaN) ? null : new z(i, a, o, s, c, l);
+		].some(isNaN) ? null : new rt(i, a, o, s, c, l);
 	}
 	static createBani(e, t) {
 		let n;
@@ -1243,12 +1243,12 @@ var lt = class e {
 			s,
 			c,
 			l
-		].some(isNaN) ? null : z.fromBani(i, a, o, s, c, l);
+		].some(isNaN) ? null : rt.fromBani(i, a, o, s, c, l);
 	}
 	static createUiso(e, t) {
 		try {
 			let n = e.get("_atom_site").getIndex(["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"], t, NaN);
-			return isNaN(n) ? null : new rt(n);
+			return isNaN(n) ? null : new nt(n);
 		} catch {
 			return null;
 		}
@@ -1256,7 +1256,7 @@ var lt = class e {
 	static createBiso(e, t) {
 		try {
 			let n = e.get("_atom_site").getIndex(["_atom_site.b_iso_or_equiv", "_atom_site_B_iso_or_equiv"], t, NaN);
-			return isNaN(n) ? null : rt.fromBiso(n);
+			return isNaN(n) ? null : nt.fromBiso(n);
 		} catch {
 			return null;
 		}
@@ -1264,10 +1264,13 @@ var lt = class e {
 };
 //#endregion
 //#region src/lib/structure/position-code.js
-function ut(e) {
+function ut(e, t = null) {
 	if (e == null || e === "." || e === "?") return ".";
-	let t = String(e).trim();
-	return t === "" || t === "." || t === "?" ? "." : t.includes("_") ? t : `${t}_555`;
+	let n = String(e).trim();
+	if (n === "" || n === "." || n === "?") return ".";
+	if (n.includes("_")) return n;
+	let r = (e) => (t instanceof Map || t instanceof Set) && t.has(e), i = n.match(/^(\d+)(\d{3})$/);
+	return i && t && !r(n) && r(i[1]) ? `${i[1]}_${i[2]}` : `${n}_555`;
 }
 function dt(e) {
 	if (e == null) throw Error(`Invalid symmetry position code: ${e}`);
@@ -1470,6 +1473,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 1",
 		symbol_hm_short: "P1",
 		hall_symbol: "P 1",
+		universal_h_m: "P 1",
+		setting: "",
+		is_standard: !0,
 		operations: ["x,y,z"]
 	},
 	{
@@ -1477,27 +1483,79 @@ var Et = Object.freeze([
 		symbol_cif: "P -1",
 		symbol_hm_short: "P-1",
 		hall_symbol: "-P 1",
+		universal_h_m: "P -1",
+		setting: "",
+		is_standard: !0,
 		operations: ["x,y,z", "-x,-y,-z"]
 	},
 	{
 		number: 3,
-		symbol_cif: "P 2",
+		symbol_cif: "P 1 2 1",
 		symbol_hm_short: "P2",
 		hall_symbol: "P 2y",
+		universal_h_m: "P 1 2 1",
+		setting: "b",
+		is_standard: !0,
 		operations: ["x,y,z", "-x,y,-z"]
 	},
 	{
+		number: 3,
+		symbol_cif: "P 1 1 2",
+		symbol_hm_short: "P112",
+		hall_symbol: "P 2",
+		universal_h_m: "P 1 1 2",
+		setting: "c",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,-y,z"]
+	},
+	{
+		number: 3,
+		symbol_cif: "P 2 1 1",
+		symbol_hm_short: "P211",
+		hall_symbol: "P 2x",
+		universal_h_m: "P 2 1 1",
+		setting: "a",
+		is_standard: !1,
+		operations: ["x,y,z", "x,-y,-z"]
+	},
+	{
 		number: 4,
-		symbol_cif: "P 21",
+		symbol_cif: "P 1 21 1",
 		symbol_hm_short: "P21",
 		hall_symbol: "P 2yb",
+		universal_h_m: "P 1 21 1",
+		setting: "b",
+		is_standard: !0,
 		operations: ["x,y,z", "-x,y+1/2,-z"]
 	},
 	{
+		number: 4,
+		symbol_cif: "P 1 1 21",
+		symbol_hm_short: "P1121",
+		hall_symbol: "P 2c",
+		universal_h_m: "P 1 1 21",
+		setting: "c",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,-y,z+1/2"]
+	},
+	{
+		number: 4,
+		symbol_cif: "P 21 1 1",
+		symbol_hm_short: "P2111",
+		hall_symbol: "P 2xa",
+		universal_h_m: "P 21 1 1",
+		setting: "a",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,-y,-z"]
+	},
+	{
 		number: 5,
-		symbol_cif: "C 2",
+		symbol_cif: "C 1 2 1",
 		symbol_hm_short: "C2",
 		hall_symbol: "C 2y",
+		universal_h_m: "C 1 2 1",
+		setting: "b1",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,y,-z",
@@ -1506,121 +1564,1521 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 5,
+		symbol_cif: "A 1 2 1",
+		symbol_hm_short: "A2",
+		hall_symbol: "A 2y",
+		universal_h_m: "A 1 2 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "I 1 2 1",
+		symbol_hm_short: "I2",
+		hall_symbol: "I 2y",
+		universal_h_m: "I 1 2 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "A 1 1 2",
+		symbol_hm_short: "A112",
+		hall_symbol: "A 2",
+		universal_h_m: "A 1 1 2",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "B 1 1 2",
+		symbol_hm_short: "B112",
+		hall_symbol: "B 2",
+		universal_h_m: "B 1 1 2",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "I 1 1 2",
+		symbol_hm_short: "I112",
+		hall_symbol: "I 2",
+		universal_h_m: "I 1 1 2",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "B 2 1 1",
+		symbol_hm_short: "B211",
+		hall_symbol: "B 2x",
+		universal_h_m: "B 2 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,-y,-z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "C 2 1 1",
+		symbol_hm_short: "C211",
+		hall_symbol: "C 2x",
+		universal_h_m: "C 2 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,-z"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "I 2 1 1",
+		symbol_hm_short: "I211",
+		hall_symbol: "I 2x",
+		universal_h_m: "I 2 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 6,
-		symbol_cif: "P m",
+		symbol_cif: "P 1 m 1",
 		symbol_hm_short: "Pm",
 		hall_symbol: "P -2y",
+		universal_h_m: "P 1 m 1",
+		setting: "b",
+		is_standard: !0,
 		operations: ["x,y,z", "x,-y,z"]
 	},
 	{
+		number: 6,
+		symbol_cif: "P 1 1 m",
+		symbol_hm_short: "P11m",
+		hall_symbol: "P -2",
+		universal_h_m: "P 1 1 m",
+		setting: "c",
+		is_standard: !1,
+		operations: ["x,y,z", "x,y,-z"]
+	},
+	{
+		number: 6,
+		symbol_cif: "P m 1 1",
+		symbol_hm_short: "Pm11",
+		hall_symbol: "P -2x",
+		universal_h_m: "P m 1 1",
+		setting: "a",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,y,z"]
+	},
+	{
 		number: 7,
-		symbol_cif: "P c",
+		symbol_cif: "P 1 c 1",
 		symbol_hm_short: "Pc",
 		hall_symbol: "P -2yc",
+		universal_h_m: "P 1 c 1",
+		setting: "b1",
+		is_standard: !0,
 		operations: ["x,y,z", "x,-y,z+1/2"]
 	},
 	{
+		number: 7,
+		symbol_cif: "P 1 n 1",
+		symbol_hm_short: "Pn",
+		hall_symbol: "P -2yac",
+		universal_h_m: "P 1 n 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,-y,z+1/2"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P 1 a 1",
+		symbol_hm_short: "Pa",
+		hall_symbol: "P -2ya",
+		universal_h_m: "P 1 a 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,-y,z"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P 1 1 a",
+		symbol_hm_short: "P11a",
+		hall_symbol: "P -2a",
+		universal_h_m: "P 1 1 a",
+		setting: "c1",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,y,-z"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P 1 1 n",
+		symbol_hm_short: "P11n",
+		hall_symbol: "P -2ab",
+		universal_h_m: "P 1 1 n",
+		setting: "c2",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,y+1/2,-z"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P 1 1 b",
+		symbol_hm_short: "P11b",
+		hall_symbol: "P -2b",
+		universal_h_m: "P 1 1 b",
+		setting: "c3",
+		is_standard: !1,
+		operations: ["x,y,z", "x,y+1/2,-z"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P b 1 1",
+		symbol_hm_short: "Pb11",
+		hall_symbol: "P -2xb",
+		universal_h_m: "P b 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,y+1/2,z"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P n 1 1",
+		symbol_hm_short: "Pn11",
+		hall_symbol: "P -2xbc",
+		universal_h_m: "P n 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,y+1/2,z+1/2"]
+	},
+	{
+		number: 7,
+		symbol_cif: "P c 1 1",
+		symbol_hm_short: "Pc11",
+		hall_symbol: "P -2xc",
+		universal_h_m: "P c 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: ["x,y,z", "-x,y,z+1/2"]
+	},
+	{
 		number: 8,
-		symbol_cif: "C m",
+		symbol_cif: "C 1 m 1",
 		symbol_hm_short: "Cm",
 		hall_symbol: "C -2y",
+		universal_h_m: "C 1 m 1",
+		setting: "b1",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x,-y,z",
 			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "A 1 m 1",
+		symbol_hm_short: "Am",
+		hall_symbol: "A -2y",
+		universal_h_m: "A 1 m 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "I 1 m 1",
+		symbol_hm_short: "Im",
+		hall_symbol: "I -2y",
+		universal_h_m: "I 1 m 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "A 1 1 m",
+		symbol_hm_short: "A11m",
+		hall_symbol: "A -2",
+		universal_h_m: "A 1 1 m",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "B 1 1 m",
+		symbol_hm_short: "B11m",
+		hall_symbol: "B -2",
+		universal_h_m: "B 1 1 m",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "I 1 1 m",
+		symbol_hm_short: "I11m",
+		hall_symbol: "I -2",
+		universal_h_m: "I 1 1 m",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "B m 1 1",
+		symbol_hm_short: "Bm11",
+		hall_symbol: "B -2x",
+		universal_h_m: "B m 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y,z+1/2"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "C m 1 1",
+		symbol_hm_short: "Cm11",
+		hall_symbol: "C -2x",
+		universal_h_m: "C m 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "I m 1 1",
+		symbol_hm_short: "Im11",
+		hall_symbol: "I -2x",
+		universal_h_m: "I m 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "C 1 c 1",
+		symbol_hm_short: "Cc",
+		hall_symbol: "C -2yc",
+		universal_h_m: "C 1 c 1",
+		setting: "b1",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "A 1 n 1",
+		symbol_hm_short: "An",
+		hall_symbol: "A -2yab",
+		universal_h_m: "A 1 n 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I 1 a 1",
+		symbol_hm_short: "Ia",
+		hall_symbol: "I -2ya",
+		universal_h_m: "I 1 a 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "A 1 a 1",
+		symbol_hm_short: "Aa",
+		hall_symbol: "A -2ya",
+		universal_h_m: "A 1 a 1",
+		setting: "-b1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "C 1 n 1",
+		symbol_hm_short: "Cn",
+		hall_symbol: "C -2yac",
+		universal_h_m: "C 1 n 1",
+		setting: "-b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I 1 c 1",
+		symbol_hm_short: "Ic",
+		hall_symbol: "I -2yc",
+		universal_h_m: "I 1 c 1",
+		setting: "-b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
 		number: 9,
-		symbol_cif: "C c",
-		symbol_hm_short: "Cc",
-		hall_symbol: "C -2yc",
+		symbol_cif: "A 1 1 a",
+		symbol_hm_short: "A11a",
+		hall_symbol: "A -2a",
+		universal_h_m: "A 1 1 a",
+		setting: "c1",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
-			"x,-y,z+1/2",
+			"x+1/2,y,-z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "B 1 1 n",
+		symbol_hm_short: "B11n",
+		hall_symbol: "B -2ab",
+		universal_h_m: "B 1 1 n",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I 1 1 b",
+		symbol_hm_short: "I11b",
+		hall_symbol: "I -2b",
+		universal_h_m: "I 1 1 b",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "B 1 1 b",
+		symbol_hm_short: "B11b",
+		hall_symbol: "B -2b",
+		universal_h_m: "B 1 1 b",
+		setting: "-c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "A 1 1 n",
+		symbol_hm_short: "A11n",
+		hall_symbol: "A -2ab",
+		universal_h_m: "A 1 1 n",
+		setting: "-c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I 1 1 a",
+		symbol_hm_short: "I11a",
+		hall_symbol: "I -2a",
+		universal_h_m: "I 1 1 a",
+		setting: "-c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "B b 1 1",
+		symbol_hm_short: "Bb11",
+		hall_symbol: "B -2xb",
+		universal_h_m: "B b 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "C n 1 1",
+		symbol_hm_short: "Cn11",
+		hall_symbol: "C -2xac",
+		universal_h_m: "C n 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y,z+1/2",
 			"x+1/2,y+1/2,z",
-			"x+1/2,-y+1/2,z+1/2"
+			"-x,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I c 1 1",
+		symbol_hm_short: "Ic11",
+		hall_symbol: "I -2xc",
+		universal_h_m: "I c 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "C c 1 1",
+		symbol_hm_short: "Cc11",
+		hall_symbol: "C -2xc",
+		universal_h_m: "C c 1 1",
+		setting: "-a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "B n 1 1",
+		symbol_hm_short: "Bn11",
+		hall_symbol: "B -2xab",
+		universal_h_m: "B n 1 1",
+		setting: "-a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "I b 1 1",
+		symbol_hm_short: "Ib11",
+		hall_symbol: "I -2xb",
+		universal_h_m: "I b 1 1",
+		setting: "-a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y,z+1/2"
 		]
 	},
 	{
 		number: 10,
-		symbol_cif: "P 2/m",
+		symbol_cif: "P 1 2/m 1",
 		symbol_hm_short: "P2/m",
 		hall_symbol: "-P 2y",
+		universal_h_m: "P 1 2/m 1",
+		setting: "b",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,y,-z",
+			"-x,-y,-z",
 			"x,-y,z"
 		]
 	},
 	{
-		number: 11,
-		symbol_cif: "P 21/m",
-		symbol_hm_short: "P21/m",
-		hall_symbol: "-P 2yb",
+		number: 10,
+		symbol_cif: "P 1 1 2/m",
+		symbol_hm_short: "P112/m",
+		hall_symbol: "-P 2",
+		universal_h_m: "P 1 1 2/m",
+		setting: "c",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
+			"-x,-y,z",
 			"-x,-y,-z",
+			"x,y,-z"
+		]
+	},
+	{
+		number: 10,
+		symbol_cif: "P 2/m 1 1",
+		symbol_hm_short: "P2/m11",
+		hall_symbol: "-P 2x",
+		universal_h_m: "P 2/m 1 1",
+		setting: "a",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"-x,-y,-z",
+			"-x,y,z"
+		]
+	},
+	{
+		number: 11,
+		symbol_cif: "P 1 21/m 1",
+		symbol_hm_short: "P21/m",
+		hall_symbol: "-P 2yb",
+		universal_h_m: "P 1 21/m 1",
+		setting: "b",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
 			"-x,y+1/2,-z",
+			"-x,-y,-z",
 			"x,-y+1/2,z"
 		]
 	},
 	{
-		number: 12,
-		symbol_cif: "C 2/m",
-		symbol_hm_short: "C2/m",
-		hall_symbol: "-C 2y",
+		number: 11,
+		symbol_cif: "P 1 1 21/m",
+		symbol_hm_short: "P1121/m",
+		hall_symbol: "-P 2c",
+		universal_h_m: "P 1 1 21/m",
+		setting: "c",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
+			"-x,-y,z+1/2",
 			"-x,-y,-z",
+			"x,y,-z+1/2"
+		]
+	},
+	{
+		number: 11,
+		symbol_cif: "P 21/m 1 1",
+		symbol_hm_short: "P21/m11",
+		hall_symbol: "-P 2xa",
+		universal_h_m: "P 21/m 1 1",
+		setting: "a",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,-z",
+			"-x,-y,-z",
+			"-x+1/2,y,z"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "C 1 2/m 1",
+		symbol_hm_short: "C2/m",
+		hall_symbol: "-C 2y",
+		universal_h_m: "C 1 2/m 1",
+		setting: "b1",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
 			"-x,y,-z",
+			"-x,-y,-z",
 			"x,-y,z",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
 			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
-		number: 13,
-		symbol_cif: "P 2/c",
-		symbol_hm_short: "P2/c",
-		hall_symbol: "-P 2yc",
+		number: 12,
+		symbol_cif: "A 1 2/m 1",
+		symbol_hm_short: "A2/m",
+		hall_symbol: "-A 2y",
+		universal_h_m: "A 1 2/m 1",
+		setting: "b2",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
+			"-x,y,-z",
 			"-x,-y,-z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "I 1 2/m 1",
+		symbol_hm_short: "I2/m",
+		hall_symbol: "-I 2y",
+		universal_h_m: "I 1 2/m 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "A 1 1 2/m",
+		symbol_hm_short: "A112/m",
+		hall_symbol: "-A 2",
+		universal_h_m: "A 1 1 2/m",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "B 1 1 2/m",
+		symbol_hm_short: "B112/m",
+		hall_symbol: "-B 2",
+		universal_h_m: "B 1 1 2/m",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "I 1 1 2/m",
+		symbol_hm_short: "I112/m",
+		hall_symbol: "-I 2",
+		universal_h_m: "I 1 1 2/m",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "B 2/m 1 1",
+		symbol_hm_short: "B2/m11",
+		hall_symbol: "-B 2x",
+		universal_h_m: "B 2/m 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"-x,-y,-z",
+			"-x,y,z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"-x+1/2,y,z+1/2"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "C 2/m 1 1",
+		symbol_hm_short: "C2/m11",
+		hall_symbol: "-C 2x",
+		universal_h_m: "C 2/m 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"-x,-y,-z",
+			"-x,y,z",
+			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "I 2/m 1 1",
+		symbol_hm_short: "I2/m11",
+		hall_symbol: "-I 2x",
+		universal_h_m: "I 2/m 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z",
+			"-x,-y,-z",
+			"-x,y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 1 2/c 1",
+		symbol_hm_short: "P2/c",
+		hall_symbol: "-P 2yc",
+		universal_h_m: "P 1 2/c 1",
+		setting: "b1",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
 			"x,-y,z+1/2"
 		]
 	},
 	{
-		number: 14,
-		symbol_cif: "P 21/c",
-		symbol_hm_short: "P21/c",
-		hall_symbol: "-P 2ybc",
+		number: 13,
+		symbol_cif: "P 1 2/n 1",
+		symbol_hm_short: "P2/n",
+		hall_symbol: "-P 2yac",
+		universal_h_m: "P 1 2/n 1",
+		setting: "b2",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
+			"-x+1/2,y,-z+1/2",
 			"-x,-y,-z",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 1 2/a 1",
+		symbol_hm_short: "P2/a",
+		hall_symbol: "-P 2ya",
+		universal_h_m: "P 1 2/a 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 1 1 2/a",
+		symbol_hm_short: "P112/a",
+		hall_symbol: "-P 2a",
+		universal_h_m: "P 1 1 2/a",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"-x,-y,-z",
+			"x+1/2,y,-z"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 1 1 2/n",
+		symbol_hm_short: "P112/n",
+		hall_symbol: "-P 2ab",
+		universal_h_m: "P 1 1 2/n",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 1 1 2/b",
+		symbol_hm_short: "P112/b",
+		hall_symbol: "-P 2b",
+		universal_h_m: "P 1 1 2/b",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"-x,-y,-z",
+			"x,y+1/2,-z"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 2/b 1 1",
+		symbol_hm_short: "P2/b11",
+		hall_symbol: "-P 2xb",
+		universal_h_m: "P 2/b 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y+1/2,-z",
+			"-x,-y,-z",
+			"-x,y+1/2,z"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 2/n 1 1",
+		symbol_hm_short: "P2/n11",
+		hall_symbol: "-P 2xbc",
+		universal_h_m: "P 2/n 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"-x,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 13,
+		symbol_cif: "P 2/c 1 1",
+		symbol_hm_short: "P2/c11",
+		hall_symbol: "-P 2xc",
+		universal_h_m: "P 2/c 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x,y,z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 21/c 1",
+		symbol_hm_short: "P21/c",
+		hall_symbol: "-P 2ybc",
+		universal_h_m: "P 1 21/c 1",
+		setting: "b1",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
 			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 21/n 1",
+		symbol_hm_short: "P21/n",
+		hall_symbol: "-P 2yn",
+		universal_h_m: "P 1 21/n 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 21/a 1",
+		symbol_hm_short: "P21/a",
+		hall_symbol: "-P 2yab",
+		universal_h_m: "P 1 21/a 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 1 21/a",
+		symbol_hm_short: "P1121/a",
+		hall_symbol: "-P 2ac",
+		universal_h_m: "P 1 1 21/a",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 1 21/n",
+		symbol_hm_short: "P1121/n",
+		hall_symbol: "-P 2n",
+		universal_h_m: "P 1 1 21/n",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 1 1 21/b",
+		symbol_hm_short: "P1121/b",
+		hall_symbol: "-P 2bc",
+		universal_h_m: "P 1 1 21/b",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 21/b 1 1",
+		symbol_hm_short: "P21/b11",
+		hall_symbol: "-P 2xab",
+		universal_h_m: "P 21/b 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x,-y,-z",
+			"-x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 21/n 1 1",
+		symbol_hm_short: "P21/n11",
+		hall_symbol: "-P 2xn",
+		universal_h_m: "P 21/n 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 14,
+		symbol_cif: "P 21/c 1 1",
+		symbol_hm_short: "P21/c11",
+		hall_symbol: "-P 2xac",
+		universal_h_m: "P 21/c 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x+1/2,y,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "C 1 2/c 1",
+		symbol_hm_short: "C2/c",
+		hall_symbol: "-C 2yc",
+		universal_h_m: "C 1 2/c 1",
+		setting: "b1",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "A 1 2/n 1",
+		symbol_hm_short: "A2/n",
+		hall_symbol: "-A 2yab",
+		universal_h_m: "A 1 2/n 1",
+		setting: "b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 1 2/a 1",
+		symbol_hm_short: "I2/a",
+		hall_symbol: "-I 2ya",
+		universal_h_m: "I 1 2/a 1",
+		setting: "b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
 			"x,-y+1/2,z+1/2"
 		]
 	},
 	{
 		number: 15,
-		symbol_cif: "C 2/c",
-		symbol_hm_short: "C2/c",
-		hall_symbol: "-C 2yc",
+		symbol_cif: "A 1 2/a 1",
+		symbol_hm_short: "A2/a",
+		hall_symbol: "-A 2ya",
+		universal_h_m: "A 1 2/a 1",
+		setting: "-b1",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
+			"-x+1/2,y,-z",
 			"-x,-y,-z",
-			"-x,y,-z+1/2",
-			"x,-y,z+1/2",
-			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "C 1 2/n 1",
+		symbol_hm_short: "C2/n",
+		hall_symbol: "-C 2yac",
+		universal_h_m: "C 1 2/n 1",
+		setting: "-b2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 1 2/c 1",
+		symbol_hm_short: "I2/c",
+		hall_symbol: "-I 2yc",
+		universal_h_m: "I 1 2/c 1",
+		setting: "-b3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "A 1 1 2/a",
+		symbol_hm_short: "A112/a",
+		hall_symbol: "-A 2a",
+		universal_h_m: "A 1 1 2/a",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "B 1 1 2/n",
+		symbol_hm_short: "B112/n",
+		hall_symbol: "-B 2ab",
+		universal_h_m: "B 1 1 2/n",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 1 1 2/b",
+		symbol_hm_short: "I112/b",
+		hall_symbol: "-I 2b",
+		universal_h_m: "I 1 1 2/b",
+		setting: "c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "B 1 1 2/b",
+		symbol_hm_short: "B112/b",
+		hall_symbol: "-B 2b",
+		universal_h_m: "B 1 1 2/b",
+		setting: "-c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "A 1 1 2/n",
+		symbol_hm_short: "A112/n",
+		hall_symbol: "-A 2ab",
+		universal_h_m: "A 1 1 2/n",
+		setting: "-c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 1 1 2/a",
+		symbol_hm_short: "I112/a",
+		hall_symbol: "-I 2a",
+		universal_h_m: "I 1 1 2/a",
+		setting: "-c3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "B 2/b 1 1",
+		symbol_hm_short: "B2/b11",
+		hall_symbol: "-B 2xb",
+		universal_h_m: "B 2/b 1 1",
+		setting: "a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y+1/2,-z",
+			"-x,-y,-z",
+			"-x,y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "C 2/n 1 1",
+		symbol_hm_short: "C2/n11",
+		hall_symbol: "-C 2xac",
+		universal_h_m: "C 2/n 1 1",
+		setting: "a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"-x,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 2/c 1 1",
+		symbol_hm_short: "I2/c11",
+		hall_symbol: "-I 2xc",
+		universal_h_m: "I 2/c 1 1",
+		setting: "a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x,y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "C 2/c 1 1",
+		symbol_hm_short: "C2/c11",
+		hall_symbol: "-C 2xc",
+		universal_h_m: "C 2/c 1 1",
+		setting: "-a1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x,y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "B 2/n 1 1",
+		symbol_hm_short: "B2/n11",
+		hall_symbol: "-B 2xab",
+		universal_h_m: "B 2/n 1 1",
+		setting: "-a2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x,-y,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"-x,y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 15,
+		symbol_cif: "I 2/b 1 1",
+		symbol_hm_short: "I2/b11",
+		hall_symbol: "-I 2xb",
+		universal_h_m: "I 2/b 1 1",
+		setting: "-a3",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y+1/2,-z",
+			"-x,-y,-z",
+			"-x,y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2"
 		]
 	},
 	{
@@ -1628,6 +3086,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 2 2 2",
 		symbol_hm_short: "P222",
 		hall_symbol: "P 2 2",
+		universal_h_m: "P 2 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1640,6 +3101,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 2 2 21",
 		symbol_hm_short: "P2221",
 		hall_symbol: "P 2c 2",
+		universal_h_m: "P 2 2 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1648,10 +3112,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 17,
+		symbol_cif: "P 21 2 2",
+		symbol_hm_short: "P2122",
+		hall_symbol: "P 2a 2a",
+		universal_h_m: "P 21 2 2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y,-z"
+		]
+	},
+	{
+		number: 17,
+		symbol_cif: "P 2 21 2",
+		symbol_hm_short: "P2212",
+		hall_symbol: "P 2 2b",
+		universal_h_m: "P 2 21 2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
 		number: 18,
 		symbol_cif: "P 21 21 2",
 		symbol_hm_short: "P21212",
 		hall_symbol: "P 2 2ab",
+		universal_h_m: "P 21 21 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1660,10 +3157,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 18,
+		symbol_cif: "P 2 21 21",
+		symbol_hm_short: "P22121",
+		hall_symbol: "P 2bc 2",
+		universal_h_m: "P 2 21 21",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y,-z",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 18,
+		symbol_cif: "P 21 2 21",
+		symbol_hm_short: "P21221",
+		hall_symbol: "P 2ac 2ac",
+		universal_h_m: "P 21 2 21",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 19,
 		symbol_cif: "P 21 21 21",
 		symbol_hm_short: "P212121",
 		hall_symbol: "P 2ac 2ab",
+		universal_h_m: "P 21 21 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+1/2,-y,z+1/2",
@@ -1676,6 +3206,9 @@ var Et = Object.freeze([
 		symbol_cif: "C 2 2 21",
 		symbol_hm_short: "C2221",
 		hall_symbol: "C 2c 2",
+		universal_h_m: "C 2 2 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1688,10 +3221,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 20,
+		symbol_cif: "A 21 2 2",
+		symbol_hm_short: "A2122",
+		hall_symbol: "A 2a 2a",
+		universal_h_m: "A 21 2 2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 20,
+		symbol_cif: "B 2 21 2",
+		symbol_hm_short: "B2212",
+		hall_symbol: "B 2 2b",
+		universal_h_m: "B 2 21 2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 21,
 		symbol_cif: "C 2 2 2",
 		symbol_hm_short: "C222",
 		hall_symbol: "C 2 2",
+		universal_h_m: "C 2 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1704,10 +3278,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 21,
+		symbol_cif: "A 2 2 2",
+		symbol_hm_short: "A222",
+		hall_symbol: "A 2 2",
+		universal_h_m: "A 2 2 2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 21,
+		symbol_cif: "B 2 2 2",
+		symbol_hm_short: "B222",
+		hall_symbol: "B 2 2",
+		universal_h_m: "B 2 2 2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2"
+		]
+	},
+	{
 		number: 22,
 		symbol_cif: "F 2 2 2",
 		symbol_hm_short: "F222",
 		hall_symbol: "F 2 2",
+		universal_h_m: "F 2 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1732,6 +3347,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 2 2 2",
 		symbol_hm_short: "I222",
 		hall_symbol: "I 2 2",
+		universal_h_m: "I 2 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1748,6 +3366,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 21 21 21",
 		symbol_hm_short: "I212121",
 		hall_symbol: "I 2b 2c",
+		universal_h_m: "I 21 21 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y+1/2,z",
@@ -1764,6 +3385,9 @@ var Et = Object.freeze([
 		symbol_cif: "P m m 2",
 		symbol_hm_short: "Pmm2",
 		hall_symbol: "P 2 -2",
+		universal_h_m: "P m m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1772,10 +3396,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 25,
+		symbol_cif: "P 2 m m",
+		symbol_hm_short: "P2mm",
+		hall_symbol: "P -2 2",
+		universal_h_m: "P 2 m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 25,
+		symbol_cif: "P m 2 m",
+		symbol_hm_short: "Pm2m",
+		hall_symbol: "P -2 -2",
+		universal_h_m: "P m 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 26,
 		symbol_cif: "P m c 21",
 		symbol_hm_short: "Pmc21",
 		hall_symbol: "P 2c -2",
+		universal_h_m: "P m c 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1784,10 +3441,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 26,
+		symbol_cif: "P c m 21",
+		symbol_hm_short: "Pcm21",
+		hall_symbol: "P 2c -2c",
+		universal_h_m: "P c m 21",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 26,
+		symbol_cif: "P 21 m a",
+		symbol_hm_short: "P21ma",
+		hall_symbol: "P -2a 2a",
+		universal_h_m: "P 21 m a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x+1/2,-y,-z",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 26,
+		symbol_cif: "P 21 a m",
+		symbol_hm_short: "P21am",
+		hall_symbol: "P -2 2a",
+		universal_h_m: "P 21 a m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x+1/2,-y,-z",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 26,
+		symbol_cif: "P b 21 m",
+		symbol_hm_short: "Pb21m",
+		hall_symbol: "P -2 -2b",
+		universal_h_m: "P b 21 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 26,
+		symbol_cif: "P m 21 b",
+		symbol_hm_short: "Pm21b",
+		hall_symbol: "P -2b -2",
+		universal_h_m: "P m 21 b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y,z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
 		number: 27,
 		symbol_cif: "P c c 2",
 		symbol_hm_short: "Pcc2",
 		hall_symbol: "P 2 -2c",
+		universal_h_m: "P c c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1796,10 +3531,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 27,
+		symbol_cif: "P 2 a a",
+		symbol_hm_short: "P2aa",
+		hall_symbol: "P -2a 2",
+		universal_h_m: "P 2 a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x,-y,-z",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 27,
+		symbol_cif: "P b 2 b",
+		symbol_hm_short: "Pb2b",
+		hall_symbol: "P -2b -2b",
+		universal_h_m: "P b 2 b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 28,
 		symbol_cif: "P m a 2",
 		symbol_hm_short: "Pma2",
 		hall_symbol: "P 2 -2a",
+		universal_h_m: "P m a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1808,10 +3576,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 28,
+		symbol_cif: "P b m 2",
+		symbol_hm_short: "Pbm2",
+		hall_symbol: "P 2 -2b",
+		universal_h_m: "P b m 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 28,
+		symbol_cif: "P 2 m b",
+		symbol_hm_short: "P2mb",
+		hall_symbol: "P -2b 2",
+		universal_h_m: "P 2 m b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x,-y,-z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 28,
+		symbol_cif: "P 2 c m",
+		symbol_hm_short: "P2cm",
+		hall_symbol: "P -2c 2",
+		universal_h_m: "P 2 c m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"x,-y,-z",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 28,
+		symbol_cif: "P c 2 m",
+		symbol_hm_short: "Pc2m",
+		hall_symbol: "P -2c -2c",
+		universal_h_m: "P c 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"-x,y,-z"
+		]
+	},
+	{
+		number: 28,
+		symbol_cif: "P m 2 a",
+		symbol_hm_short: "Pm2a",
+		hall_symbol: "P -2a -2a",
+		universal_h_m: "P m 2 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 29,
 		symbol_cif: "P c a 21",
 		symbol_hm_short: "Pca21",
 		hall_symbol: "P 2c -2ac",
+		universal_h_m: "P c a 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1820,10 +3666,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 29,
+		symbol_cif: "P b c 21",
+		symbol_hm_short: "Pbc21",
+		hall_symbol: "P 2c -2b",
+		universal_h_m: "P b c 21",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 29,
+		symbol_cif: "P 21 a b",
+		symbol_hm_short: "P21ab",
+		hall_symbol: "P -2b 2a",
+		universal_h_m: "P 21 a b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x+1/2,-y,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 29,
+		symbol_cif: "P 21 c a",
+		symbol_hm_short: "P21ca",
+		hall_symbol: "P -2ac 2a",
+		universal_h_m: "P 21 c a",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"x+1/2,-y,-z",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 29,
+		symbol_cif: "P c 21 b",
+		symbol_hm_short: "Pc21b",
+		hall_symbol: "P -2bc -2c",
+		universal_h_m: "P c 21 b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z+1/2",
+			"-x,y,z+1/2",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 29,
+		symbol_cif: "P b 21 a",
+		symbol_hm_short: "Pb21a",
+		hall_symbol: "P -2a -2ab",
+		universal_h_m: "P b 21 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"-x+1/2,y+1/2,z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
 		number: 30,
 		symbol_cif: "P n c 2",
 		symbol_hm_short: "Pnc2",
 		hall_symbol: "P 2 -2bc",
+		universal_h_m: "P n c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1832,10 +3756,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 30,
+		symbol_cif: "P c n 2",
+		symbol_hm_short: "Pcn2",
+		hall_symbol: "P 2 -2ac",
+		universal_h_m: "P c n 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 30,
+		symbol_cif: "P 2 n a",
+		symbol_hm_short: "P2na",
+		hall_symbol: "P -2ac 2",
+		universal_h_m: "P 2 n a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"x,-y,-z",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 30,
+		symbol_cif: "P 2 a n",
+		symbol_hm_short: "P2an",
+		hall_symbol: "P -2ab 2",
+		universal_h_m: "P 2 a n",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"x,-y,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 30,
+		symbol_cif: "P b 2 n",
+		symbol_hm_short: "Pb2n",
+		hall_symbol: "P -2ab -2ab",
+		universal_h_m: "P b 2 n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"-x,y,-z"
+		]
+	},
+	{
+		number: 30,
+		symbol_cif: "P n 2 b",
+		symbol_hm_short: "Pn2b",
+		hall_symbol: "P -2bc -2bc",
+		universal_h_m: "P n 2 b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 31,
 		symbol_cif: "P m n 21",
 		symbol_hm_short: "Pmn21",
 		hall_symbol: "P 2ac -2",
+		universal_h_m: "P m n 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+1/2,-y,z+1/2",
@@ -1844,10 +3846,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 31,
+		symbol_cif: "P n m 21",
+		symbol_hm_short: "Pnm21",
+		hall_symbol: "P 2bc -2bc",
+		universal_h_m: "P n m 21",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 31,
+		symbol_cif: "P 21 m n",
+		symbol_hm_short: "P21mn",
+		hall_symbol: "P -2ab 2ab",
+		universal_h_m: "P 21 m n",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,-y+1/2,-z",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 31,
+		symbol_cif: "P 21 n m",
+		symbol_hm_short: "P21nm",
+		hall_symbol: "P -2 2ac",
+		universal_h_m: "P 21 n m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x+1/2,-y,-z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 31,
+		symbol_cif: "P n 21 m",
+		symbol_hm_short: "Pn21m",
+		hall_symbol: "P -2 -2bc",
+		universal_h_m: "P n 21 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 31,
+		symbol_cif: "P m 21 n",
+		symbol_hm_short: "Pm21n",
+		hall_symbol: "P -2ab -2",
+		universal_h_m: "P m 21 n",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"-x,y,z",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
 		number: 32,
 		symbol_cif: "P b a 2",
 		symbol_hm_short: "Pba2",
 		hall_symbol: "P 2 -2ab",
+		universal_h_m: "P b a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1856,10 +3936,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 32,
+		symbol_cif: "P 2 c b",
+		symbol_hm_short: "P2cb",
+		hall_symbol: "P -2bc 2",
+		universal_h_m: "P 2 c b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z+1/2",
+			"x,-y,-z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 32,
+		symbol_cif: "P c 2 a",
+		symbol_hm_short: "Pc2a",
+		hall_symbol: "P -2ac -2ac",
+		universal_h_m: "P c 2 a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 33,
 		symbol_cif: "P n a 21",
 		symbol_hm_short: "Pna21",
 		hall_symbol: "P 2c -2n",
+		universal_h_m: "P n a 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1868,10 +3981,88 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 33,
+		symbol_cif: "P b n 21",
+		symbol_hm_short: "Pbn21",
+		hall_symbol: "P 2c -2ab",
+		universal_h_m: "P b n 21",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 33,
+		symbol_cif: "P 21 n b",
+		symbol_hm_short: "P21nb",
+		hall_symbol: "P -2bc 2a",
+		universal_h_m: "P 21 n b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z+1/2",
+			"x+1/2,-y,-z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 33,
+		symbol_cif: "P 21 c n",
+		symbol_hm_short: "P21cn",
+		hall_symbol: "P -2n 2a",
+		universal_h_m: "P 21 c n",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"x+1/2,-y,-z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 33,
+		symbol_cif: "P c 21 n",
+		symbol_hm_short: "Pc21n",
+		hall_symbol: "P -2n -2ac",
+		universal_h_m: "P c 21 n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 33,
+		symbol_cif: "P n 21 a",
+		symbol_hm_short: "Pn21a",
+		hall_symbol: "P -2ac -2n",
+		universal_h_m: "P n 21 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
 		number: 34,
 		symbol_cif: "P n n 2",
 		symbol_hm_short: "Pnn2",
 		hall_symbol: "P 2 -2n",
+		universal_h_m: "P n n 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1880,10 +4071,43 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 34,
+		symbol_cif: "P 2 n n",
+		symbol_hm_short: "P2nn",
+		hall_symbol: "P -2n 2",
+		universal_h_m: "P 2 n n",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"x,-y,-z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 34,
+		symbol_cif: "P n 2 n",
+		symbol_hm_short: "Pn2n",
+		hall_symbol: "P -2n -2n",
+		universal_h_m: "P n 2 n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x,y,-z"
+		]
+	},
+	{
 		number: 35,
 		symbol_cif: "C m m 2",
 		symbol_hm_short: "Cmm2",
 		hall_symbol: "C 2 -2",
+		universal_h_m: "C m m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1896,10 +4120,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 35,
+		symbol_cif: "A 2 m m",
+		symbol_hm_short: "A2mm",
+		hall_symbol: "A -2 2",
+		universal_h_m: "A 2 m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 35,
+		symbol_cif: "B m 2 m",
+		symbol_hm_short: "Bm2m",
+		hall_symbol: "B -2 -2",
+		universal_h_m: "B m 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x+1/2,y,-z+1/2"
+		]
+	},
+	{
 		number: 36,
 		symbol_cif: "C m c 21",
 		symbol_hm_short: "Cmc21",
 		hall_symbol: "C 2c -2",
+		universal_h_m: "C m c 21",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z+1/2",
@@ -1912,10 +4177,108 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 36,
+		symbol_cif: "C c m 21",
+		symbol_hm_short: "Ccm21",
+		hall_symbol: "C 2c -2c",
+		universal_h_m: "C c m 21",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 36,
+		symbol_cif: "A 21 m a",
+		symbol_hm_short: "A21ma",
+		hall_symbol: "A -2a 2a",
+		universal_h_m: "A 21 m a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x+1/2,-y,-z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 36,
+		symbol_cif: "A 21 a m",
+		symbol_hm_short: "A21am",
+		hall_symbol: "A -2 2a",
+		universal_h_m: "A 21 a m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x+1/2,-y,-z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 36,
+		symbol_cif: "B b 21 m",
+		symbol_hm_short: "Bb21m",
+		hall_symbol: "B -2 -2b",
+		universal_h_m: "B b 21 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"-x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 36,
+		symbol_cif: "B m 21 b",
+		symbol_hm_short: "Bm21b",
+		hall_symbol: "B -2b -2",
+		universal_h_m: "B m 21 b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y,z",
+			"-x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 37,
 		symbol_cif: "C c c 2",
 		symbol_hm_short: "Ccc2",
 		hall_symbol: "C 2 -2c",
+		universal_h_m: "C c c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1928,10 +4291,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 37,
+		symbol_cif: "A 2 a a",
+		symbol_hm_short: "A2aa",
+		hall_symbol: "A -2a 2",
+		universal_h_m: "A 2 a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x,-y,-z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 37,
+		symbol_cif: "B b 2 b",
+		symbol_hm_short: "Bb2b",
+		hall_symbol: "B -2b -2b",
+		universal_h_m: "B b 2 b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"-x,y,-z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y,-z+1/2"
+		]
+	},
+	{
 		number: 38,
 		symbol_cif: "A m m 2",
 		symbol_hm_short: "Amm2",
 		hall_symbol: "A 2 -2",
+		universal_h_m: "A m m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1944,10 +4348,108 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 38,
+		symbol_cif: "B m m 2",
+		symbol_hm_short: "Bmm2",
+		hall_symbol: "B 2 -2",
+		universal_h_m: "B m m 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,y,z",
+			"x,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 38,
+		symbol_cif: "B 2 m m",
+		symbol_hm_short: "B2mm",
+		hall_symbol: "B -2 2",
+		universal_h_m: "B 2 m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 38,
+		symbol_cif: "C 2 m m",
+		symbol_hm_short: "C2mm",
+		hall_symbol: "C -2 2",
+		universal_h_m: "C 2 m m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,-y+1/2,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 38,
+		symbol_cif: "C m 2 m",
+		symbol_hm_short: "Cm2m",
+		hall_symbol: "C -2 -2",
+		universal_h_m: "C m 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 38,
+		symbol_cif: "A m 2 m",
+		symbol_hm_short: "Am2m",
+		hall_symbol: "A -2 -2",
+		universal_h_m: "A m 2 m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 39,
-		symbol_cif: "A e m 2",
-		symbol_hm_short: "Aem2",
+		symbol_cif: "A b m 2",
+		symbol_hm_short: "Abm2",
 		hall_symbol: "A 2 -2b",
+		universal_h_m: "A b m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1960,10 +4462,108 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 39,
+		symbol_cif: "B m a 2",
+		symbol_hm_short: "Bma2",
+		hall_symbol: "B 2 -2a",
+		universal_h_m: "B m a 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 39,
+		symbol_cif: "B 2 c m",
+		symbol_hm_short: "B2cm",
+		hall_symbol: "B -2a 2",
+		universal_h_m: "B 2 c m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x,-y,-z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"x,y,-z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 39,
+		symbol_cif: "C 2 m b",
+		symbol_hm_short: "C2mb",
+		hall_symbol: "C -2a 2",
+		universal_h_m: "C 2 m b",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x,-y,-z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z",
+			"x,y+1/2,-z",
+			"x+1/2,-y+1/2,-z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 39,
+		symbol_cif: "C m 2 a",
+		symbol_hm_short: "Cm2a",
+		hall_symbol: "C -2a -2a",
+		universal_h_m: "C m 2 a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 39,
+		symbol_cif: "A c 2 m",
+		symbol_hm_short: "Ac2m",
+		hall_symbol: "A -2b -2b",
+		universal_h_m: "A c 2 m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 40,
 		symbol_cif: "A m a 2",
 		symbol_hm_short: "Ama2",
 		hall_symbol: "A 2 -2a",
+		universal_h_m: "A m a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1976,10 +4576,108 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 40,
+		symbol_cif: "B b m 2",
+		symbol_hm_short: "Bbm2",
+		hall_symbol: "B 2 -2b",
+		universal_h_m: "B b m 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 40,
+		symbol_cif: "B 2 m b",
+		symbol_hm_short: "B2mb",
+		hall_symbol: "B -2b 2",
+		universal_h_m: "B 2 m b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x,-y,-z",
+			"x,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 40,
+		symbol_cif: "C 2 c m",
+		symbol_hm_short: "C2cm",
+		hall_symbol: "C -2c 2",
+		universal_h_m: "C 2 c m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"x,-y,-z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 40,
+		symbol_cif: "C c 2 m",
+		symbol_hm_short: "Cc2m",
+		hall_symbol: "C -2c -2c",
+		universal_h_m: "C c 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 40,
+		symbol_cif: "A m 2 a",
+		symbol_hm_short: "Am2a",
+		hall_symbol: "A -2a -2a",
+		universal_h_m: "A m 2 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 41,
-		symbol_cif: "A e a 2",
-		symbol_hm_short: "Aea2",
+		symbol_cif: "A b a 2",
+		symbol_hm_short: "Aba2",
 		hall_symbol: "A 2 -2ab",
+		universal_h_m: "A b a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -1992,10 +4690,108 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 41,
+		symbol_cif: "B b a 2",
+		symbol_hm_short: "Bba2",
+		hall_symbol: "B 2 -2ab",
+		universal_h_m: "B b a 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 41,
+		symbol_cif: "B 2 c b",
+		symbol_hm_short: "B2cb",
+		hall_symbol: "B -2ab 2",
+		universal_h_m: "B 2 c b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"x,-y,-z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 41,
+		symbol_cif: "C 2 c b",
+		symbol_hm_short: "C2cb",
+		hall_symbol: "C -2ac 2",
+		universal_h_m: "C 2 c b",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"x,-y,-z",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 41,
+		symbol_cif: "C c 2 a",
+		symbol_hm_short: "Cc2a",
+		hall_symbol: "C -2ac -2ac",
+		universal_h_m: "C c 2 a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 41,
+		symbol_cif: "A c 2 a",
+		symbol_hm_short: "Ac2a",
+		hall_symbol: "A -2ab -2ab",
+		universal_h_m: "A c 2 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 42,
 		symbol_cif: "F m m 2",
 		symbol_hm_short: "Fmm2",
 		hall_symbol: "F 2 -2",
+		universal_h_m: "F m m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -2016,27 +4812,138 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 42,
+		symbol_cif: "F 2 m m",
+		symbol_hm_short: "F2mm",
+		hall_symbol: "F -2 2",
+		universal_h_m: "F 2 m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,-y+1/2,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 42,
+		symbol_cif: "F m 2 m",
+		symbol_hm_short: "Fm2m",
+		hall_symbol: "F -2 -2",
+		universal_h_m: "F m 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
 		number: 43,
 		symbol_cif: "F d d 2",
 		symbol_hm_short: "Fdd2",
 		hall_symbol: "F 2 -2d",
+		universal_h_m: "F d d 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
-			"-x+1/4,y+3/4,z+3/4",
-			"x+1/4,-y+3/4,z+3/4",
-			"x,y+1/2,z+1/2",
-			"-x,-y+1/2,z+1/2",
 			"-x+1/4,y+1/4,z+1/4",
 			"x+1/4,-y+1/4,z+1/4",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"-x+1/4,y+3/4,z+3/4",
+			"x+1/4,-y+3/4,z+3/4",
 			"x+1/2,y,z+1/2",
 			"-x+1/2,-y,z+1/2",
-			"-x+3/4,y+3/4,z+1/4",
-			"x+3/4,-y+3/4,z+1/4",
+			"-x+3/4,y+1/4,z+3/4",
+			"x+3/4,-y+1/4,z+3/4",
 			"x+1/2,y+1/2,z",
 			"-x+1/2,-y+1/2,z",
-			"-x+3/4,y+1/4,z+3/4",
+			"-x+3/4,y+3/4,z+1/4",
+			"x+3/4,-y+3/4,z+1/4"
+		]
+	},
+	{
+		number: 43,
+		symbol_cif: "F 2 d d",
+		symbol_hm_short: "F2dd",
+		hall_symbol: "F -2d 2",
+		universal_h_m: "F 2 d d",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/4,y+1/4,-z+1/4",
+			"x,-y,-z",
+			"x+1/4,-y+3/4,z+3/4",
+			"x,y+1/2,z+1/2",
+			"x+1/4,y+3/4,-z+3/4",
+			"x,-y+1/2,-z+1/2",
+			"x+1/4,-y+1/4,z+1/4",
+			"x+1/2,y,z+1/2",
+			"x+3/4,y+1/4,-z+3/4",
+			"x+1/2,-y,-z+1/2",
+			"x+3/4,-y+3/4,z+1/4",
+			"x+1/2,y+1/2,z",
+			"x+3/4,y+3/4,-z+1/4",
+			"x+1/2,-y+1/2,-z",
 			"x+3/4,-y+1/4,z+3/4"
+		]
+	},
+	{
+		number: 43,
+		symbol_cif: "F d 2 d",
+		symbol_hm_short: "Fd2d",
+		hall_symbol: "F -2d -2d",
+		universal_h_m: "F d 2 d",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/4,y+1/4,-z+1/4",
+			"-x+1/4,y+1/4,z+1/4",
+			"-x,y+1/2,-z+1/2",
+			"x,y+1/2,z+1/2",
+			"x+1/4,y+3/4,-z+3/4",
+			"-x+1/4,y+3/4,z+3/4",
+			"-x,y,-z",
+			"x+1/2,y,z+1/2",
+			"x+3/4,y+1/4,-z+3/4",
+			"-x+3/4,y+1/4,z+3/4",
+			"-x+1/2,y+1/2,-z",
+			"x+1/2,y+1/2,z",
+			"x+3/4,y+3/4,-z+1/4",
+			"-x+3/4,y+3/4,z+1/4",
+			"-x+1/2,y,-z+1/2"
 		]
 	},
 	{
@@ -2044,6 +4951,9 @@ var Et = Object.freeze([
 		symbol_cif: "I m m 2",
 		symbol_hm_short: "Imm2",
 		hall_symbol: "I 2 -2",
+		universal_h_m: "I m m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -2056,10 +4966,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 44,
+		symbol_cif: "I 2 m m",
+		symbol_hm_short: "I2mm",
+		hall_symbol: "I -2 2",
+		universal_h_m: "I 2 m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"x,-y,-z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 44,
+		symbol_cif: "I m 2 m",
+		symbol_hm_short: "Im2m",
+		hall_symbol: "I -2 -2",
+		universal_h_m: "I m 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z",
+			"-x,y,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 45,
 		symbol_cif: "I b a 2",
 		symbol_hm_short: "Iba2",
 		hall_symbol: "I 2 -2c",
+		universal_h_m: "I b a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -2072,10 +5023,51 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 45,
+		symbol_cif: "I 2 c b",
+		symbol_hm_short: "I2cb",
+		hall_symbol: "I -2a 2",
+		universal_h_m: "I 2 c b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"x,-y,-z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 45,
+		symbol_cif: "I c 2 a",
+		symbol_hm_short: "Ic2a",
+		hall_symbol: "I -2b -2b",
+		universal_h_m: "I c 2 a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 46,
 		symbol_cif: "I m a 2",
 		symbol_hm_short: "Ima2",
 		hall_symbol: "I 2 -2a",
+		universal_h_m: "I m a 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -2088,18 +5080,116 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 46,
+		symbol_cif: "I b m 2",
+		symbol_hm_short: "Ibm2",
+		hall_symbol: "I 2 -2b",
+		universal_h_m: "I b m 2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 46,
+		symbol_cif: "I 2 m b",
+		symbol_hm_short: "I2mb",
+		hall_symbol: "I -2b 2",
+		universal_h_m: "I 2 m b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,-z",
+			"x,-y,-z",
+			"x,-y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y,-z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 46,
+		symbol_cif: "I 2 c m",
+		symbol_hm_short: "I2cm",
+		hall_symbol: "I -2c 2",
+		universal_h_m: "I 2 c m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"x,-y,-z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 46,
+		symbol_cif: "I c 2 m",
+		symbol_hm_short: "Ic2m",
+		hall_symbol: "I -2c -2c",
+		universal_h_m: "I c 2 m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 46,
+		symbol_cif: "I m 2 a",
+		symbol_hm_short: "Im2a",
+		hall_symbol: "I -2a -2a",
+		universal_h_m: "I m 2 a",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"-x,y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
 		number: 47,
 		symbol_cif: "P m m m",
 		symbol_hm_short: "Pmmm",
 		hall_symbol: "-P 2 2",
+		universal_h_m: "P m m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
 			"x,-y,z"
 		]
 	},
@@ -2107,15 +5197,37 @@ var Et = Object.freeze([
 		number: 48,
 		symbol_cif: "P n n n",
 		symbol_hm_short: "Pnnn",
-		hall_symbol: "-P 2ab 2bc",
+		hall_symbol: "P 2 2 -1n",
+		universal_h_m: "P n n n:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 48,
+		symbol_cif: "P n n n",
+		symbol_hm_short: "Pnnn",
+		hall_symbol: "-P 2ab 2bc",
+		universal_h_m: "P n n n:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
 			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y+1/2,z+1/2",
 			"x+1/2,-y,z+1/2"
 		]
 	},
@@ -2124,15 +5236,75 @@ var Et = Object.freeze([
 		symbol_cif: "P c c m",
 		symbol_hm_short: "Pccm",
 		hall_symbol: "-P 2 2c",
+		universal_h_m: "P c c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z+1/2",
 			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 49,
+		symbol_cif: "P m a a",
+		symbol_hm_short: "Pmaa",
+		hall_symbol: "-P 2a 2",
+		universal_h_m: "P m a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 49,
+		symbol_cif: "P b m b",
+		symbol_hm_short: "Pbmb",
+		hall_symbol: "-P 2b 2b",
+		universal_h_m: "P b m b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 50,
+		symbol_cif: "P b a n",
+		symbol_hm_short: "Pban",
+		hall_symbol: "P 2 2 -1ab",
+		universal_h_m: "P b a n:1",
+		setting: "",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
@@ -2140,15 +5312,94 @@ var Et = Object.freeze([
 		symbol_cif: "P b a n",
 		symbol_hm_short: "Pban",
 		hall_symbol: "-P 2ab 2b",
+		universal_h_m: "P b a n:2",
+		setting: "",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x,-y+1/2,-z",
-			"-x,y+1/2,z",
 			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y+1/2,z",
 			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 50,
+		symbol_cif: "P n c b",
+		symbol_hm_short: "Pncb",
+		hall_symbol: "P 2 2 -1bc",
+		universal_h_m: "P n c b:1",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 50,
+		symbol_cif: "P n c b",
+		symbol_hm_short: "Pncb",
+		hall_symbol: "-P 2b 2bc",
+		universal_h_m: "P n c b:2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 50,
+		symbol_cif: "P c n a",
+		symbol_hm_short: "Pcna",
+		hall_symbol: "P 2 2 -1ac",
+		universal_h_m: "P c n a:1",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 50,
+		symbol_cif: "P c n a",
+		symbol_hm_short: "Pcna",
+		hall_symbol: "-P 2a 2c",
+		universal_h_m: "P c n a:2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z+1/2",
+			"x+1/2,-y,z+1/2"
 		]
 	},
 	{
@@ -2156,15 +5407,113 @@ var Et = Object.freeze([
 		symbol_cif: "P m m a",
 		symbol_hm_short: "Pmma",
 		hall_symbol: "-P 2a 2a",
+		universal_h_m: "P m m a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z",
-			"x+1/2,y,-z",
 			"x+1/2,-y,-z",
-			"-x+1/2,y,z",
 			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
 			"x,-y,z"
+		]
+	},
+	{
+		number: 51,
+		symbol_cif: "P m m b",
+		symbol_hm_short: "Pmmb",
+		hall_symbol: "-P 2b 2",
+		universal_h_m: "P m m b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y,z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 51,
+		symbol_cif: "P b m m",
+		symbol_hm_short: "Pbmm",
+		hall_symbol: "-P 2 2b",
+		universal_h_m: "P b m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 51,
+		symbol_cif: "P c m m",
+		symbol_hm_short: "Pcmm",
+		hall_symbol: "-P 2c 2c",
+		universal_h_m: "P c m m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 51,
+		symbol_cif: "P m c m",
+		symbol_hm_short: "Pmcm",
+		hall_symbol: "-P 2c 2",
+		universal_h_m: "P m c m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y,-z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 51,
+		symbol_cif: "P m a m",
+		symbol_hm_short: "Pmam",
+		hall_symbol: "-P 2 2a",
+		universal_h_m: "P m a m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z"
 		]
 	},
 	{
@@ -2172,15 +5521,113 @@ var Et = Object.freeze([
 		symbol_cif: "P n n a",
 		symbol_hm_short: "Pnna",
 		hall_symbol: "-P 2a 2bc",
+		universal_h_m: "P n n a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z",
-			"x+1/2,y,-z",
 			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 52,
+		symbol_cif: "P n n b",
+		symbol_hm_short: "Pnnb",
+		hall_symbol: "-P 2b 2n",
+		universal_h_m: "P n n b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 52,
+		symbol_cif: "P b n n",
+		symbol_hm_short: "Pbnn",
+		hall_symbol: "-P 2n 2b",
+		universal_h_m: "P b n n",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y+1/2,-z",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y+1/2,z",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 52,
+		symbol_cif: "P c n n",
+		symbol_hm_short: "Pcnn",
+		hall_symbol: "-P 2ab 2c",
+		universal_h_m: "P c n n",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 52,
+		symbol_cif: "P n c n",
+		symbol_hm_short: "Pncn",
+		hall_symbol: "-P 2ab 2n",
+		universal_h_m: "P n c n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 52,
+		symbol_cif: "P n a n",
+		symbol_hm_short: "Pnan",
+		hall_symbol: "-P 2n 2bc",
+		universal_h_m: "P n a n",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y,z"
 		]
 	},
 	{
@@ -2188,15 +5635,113 @@ var Et = Object.freeze([
 		symbol_cif: "P m n a",
 		symbol_hm_short: "Pmna",
 		hall_symbol: "-P 2ac 2",
+		universal_h_m: "P m n a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x,y,z",
 			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 53,
+		symbol_cif: "P n m b",
+		symbol_hm_short: "Pnmb",
+		hall_symbol: "-P 2bc 2bc",
+		universal_h_m: "P n m b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 53,
+		symbol_cif: "P b m n",
+		symbol_hm_short: "Pbmn",
+		hall_symbol: "-P 2ab 2ab",
+		universal_h_m: "P b m n",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 53,
+		symbol_cif: "P c n m",
+		symbol_hm_short: "Pcnm",
+		hall_symbol: "-P 2 2ac",
+		universal_h_m: "P c n m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 53,
+		symbol_cif: "P n c m",
+		symbol_hm_short: "Pncm",
+		hall_symbol: "-P 2 2bc",
+		universal_h_m: "P n c m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 53,
+		symbol_cif: "P m a n",
+		symbol_hm_short: "Pman",
+		hall_symbol: "-P 2ab 2",
+		universal_h_m: "P m a n",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y,z",
+			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
@@ -2204,15 +5749,113 @@ var Et = Object.freeze([
 		symbol_cif: "P c c a",
 		symbol_hm_short: "Pcca",
 		hall_symbol: "-P 2a 2ac",
+		universal_h_m: "P c c a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z",
-			"x+1/2,y,-z",
 			"x+1/2,-y,-z+1/2",
-			"-x+1/2,y,z+1/2",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z+1/2",
 			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 54,
+		symbol_cif: "P c c b",
+		symbol_hm_short: "Pccb",
+		hall_symbol: "-P 2b 2c",
+		universal_h_m: "P c c b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 54,
+		symbol_cif: "P b a a",
+		symbol_hm_short: "Pbaa",
+		hall_symbol: "-P 2a 2b",
+		universal_h_m: "P b a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 54,
+		symbol_cif: "P c a a",
+		symbol_hm_short: "Pcaa",
+		hall_symbol: "-P 2ac 2c",
+		universal_h_m: "P c a a",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 54,
+		symbol_cif: "P b c b",
+		symbol_hm_short: "Pbcb",
+		hall_symbol: "-P 2bc 2b",
+		universal_h_m: "P b c b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 54,
+		symbol_cif: "P b a b",
+		symbol_hm_short: "Pbab",
+		hall_symbol: "-P 2b 2ab",
+		universal_h_m: "P b a b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y,z"
 		]
 	},
 	{
@@ -2220,15 +5863,56 @@ var Et = Object.freeze([
 		symbol_cif: "P b a m",
 		symbol_hm_short: "Pbam",
 		hall_symbol: "-P 2 2ab",
+		universal_h_m: "P b a m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y+1/2,z",
 			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 55,
+		symbol_cif: "P m c b",
+		symbol_hm_short: "Pmcb",
+		hall_symbol: "-P 2bc 2",
+		universal_h_m: "P m c b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y,-z",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x,y,z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 55,
+		symbol_cif: "P c m a",
+		symbol_hm_short: "Pcma",
+		hall_symbol: "-P 2ac 2ac",
+		universal_h_m: "P c m a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y,z"
 		]
 	},
 	{
@@ -2236,15 +5920,56 @@ var Et = Object.freeze([
 		symbol_cif: "P c c n",
 		symbol_hm_short: "Pccn",
 		hall_symbol: "-P 2ab 2ac",
+		universal_h_m: "P c c n",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x+1/2,-y,-z+1/2",
-			"-x+1/2,y,z+1/2",
 			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y,z+1/2",
 			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 56,
+		symbol_cif: "P n a a",
+		symbol_hm_short: "Pnaa",
+		hall_symbol: "-P 2ac 2bc",
+		universal_h_m: "P n a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 56,
+		symbol_cif: "P b n b",
+		symbol_hm_short: "Pbnb",
+		hall_symbol: "-P 2bc 2ab",
+		universal_h_m: "P b n b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y,z+1/2"
 		]
 	},
 	{
@@ -2252,15 +5977,113 @@ var Et = Object.freeze([
 		symbol_cif: "P b c m",
 		symbol_hm_short: "Pbcm",
 		hall_symbol: "-P 2c 2b",
+		universal_h_m: "P b c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z+1/2",
-			"x,y,-z+1/2",
 			"x,-y+1/2,-z",
-			"-x,y+1/2,z",
 			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y+1/2,z",
 			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 57,
+		symbol_cif: "P c a m",
+		symbol_hm_short: "Pcam",
+		hall_symbol: "-P 2c 2ac",
+		universal_h_m: "P c a m",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 57,
+		symbol_cif: "P m c a",
+		symbol_hm_short: "Pmca",
+		hall_symbol: "-P 2ac 2a",
+		universal_h_m: "P m c a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 57,
+		symbol_cif: "P m a b",
+		symbol_hm_short: "Pmab",
+		hall_symbol: "-P 2b 2a",
+		universal_h_m: "P m a b",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y,z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 57,
+		symbol_cif: "P b m a",
+		symbol_hm_short: "Pbma",
+		hall_symbol: "-P 2a 2ab",
+		universal_h_m: "P b m a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y+1/2,z",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 57,
+		symbol_cif: "P c m b",
+		symbol_hm_short: "Pcmb",
+		hall_symbol: "-P 2bc 2c",
+		universal_h_m: "P c m b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y+1/2,z"
 		]
 	},
 	{
@@ -2268,15 +6091,75 @@ var Et = Object.freeze([
 		symbol_cif: "P n n m",
 		symbol_hm_short: "Pnnm",
 		hall_symbol: "-P 2 2n",
+		universal_h_m: "P n n m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 58,
+		symbol_cif: "P m n n",
+		symbol_hm_short: "Pmnn",
+		hall_symbol: "-P 2n 2",
+		universal_h_m: "P m n n",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 58,
+		symbol_cif: "P n m n",
+		symbol_hm_short: "Pnmn",
+		hall_symbol: "-P 2n 2n",
+		universal_h_m: "P n m n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 59,
+		symbol_cif: "P m m n",
+		symbol_hm_short: "Pmmn",
+		hall_symbol: "P 2 2ab -1ab",
+		universal_h_m: "P m m n:1",
+		setting: "",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y,z",
+			"x,-y,z"
 		]
 	},
 	{
@@ -2284,15 +6167,94 @@ var Et = Object.freeze([
 		symbol_cif: "P m m n",
 		symbol_hm_short: "Pmmn",
 		hall_symbol: "-P 2ab 2a",
+		universal_h_m: "P m m n:2",
+		setting: "",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x+1/2,-y,-z",
-			"-x+1/2,y,z",
 			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y,z",
 			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 59,
+		symbol_cif: "P n m m",
+		symbol_hm_short: "Pnmm",
+		hall_symbol: "P 2bc 2 -1bc",
+		universal_h_m: "P n m m:1",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y,-z",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y,-z",
+			"-x,y+1/2,z+1/2",
+			"x,-y,z"
+		]
+	},
+	{
+		number: 59,
+		symbol_cif: "P n m m",
+		symbol_hm_short: "Pnmm",
+		hall_symbol: "-P 2c 2bc",
+		universal_h_m: "P n m m:2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 59,
+		symbol_cif: "P m n m",
+		symbol_hm_short: "Pmnm",
+		hall_symbol: "P 2ac 2ac -1ac",
+		universal_h_m: "P m n m:1",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z",
+			"-x+1/2,-y,-z+1/2",
+			"x,y,-z",
+			"-x,y,z",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 59,
+		symbol_cif: "P m n m",
+		symbol_hm_short: "Pmnm",
+		hall_symbol: "-P 2c 2a",
+		universal_h_m: "P m n m:2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z+1/2"
 		]
 	},
 	{
@@ -2300,15 +6262,113 @@ var Et = Object.freeze([
 		symbol_cif: "P b c n",
 		symbol_hm_short: "Pbcn",
 		hall_symbol: "-P 2n 2ab",
+		universal_h_m: "P b c n",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y+1/2,z+1/2",
-			"x+1/2,y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z",
 			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 60,
+		symbol_cif: "P c a n",
+		symbol_hm_short: "Pcan",
+		hall_symbol: "-P 2n 2c",
+		universal_h_m: "P c a n",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y,z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 60,
+		symbol_cif: "P n c a",
+		symbol_hm_short: "Pnca",
+		hall_symbol: "-P 2a 2n",
+		universal_h_m: "P n c a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 60,
+		symbol_cif: "P n a b",
+		symbol_hm_short: "Pnab",
+		hall_symbol: "-P 2bc 2n",
+		universal_h_m: "P n a b",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 60,
+		symbol_cif: "P b n a",
+		symbol_hm_short: "Pbna",
+		hall_symbol: "-P 2ac 2b",
+		universal_h_m: "P b n a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 60,
+		symbol_cif: "P c n b",
+		symbol_hm_short: "Pcnb",
+		hall_symbol: "-P 2b 2ac",
+		universal_h_m: "P c n b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
 		]
 	},
 	{
@@ -2316,15 +6376,37 @@ var Et = Object.freeze([
 		symbol_cif: "P b c a",
 		symbol_hm_short: "Pbca",
 		hall_symbol: "-P 2ac 2ab",
+		universal_h_m: "P b c a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z",
 			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 61,
+		symbol_cif: "P c a b",
+		symbol_hm_short: "Pcab",
+		hall_symbol: "-P 2bc 2ac",
+		universal_h_m: "P c a b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
@@ -2332,15 +6414,113 @@ var Et = Object.freeze([
 		symbol_cif: "P n m a",
 		symbol_hm_short: "Pnma",
 		hall_symbol: "-P 2ac 2n",
+		universal_h_m: "P n m a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
 			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 62,
+		symbol_cif: "P m n b",
+		symbol_hm_short: "Pmnb",
+		hall_symbol: "-P 2bc 2a",
+		universal_h_m: "P m n b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 62,
+		symbol_cif: "P b n m",
+		symbol_hm_short: "Pbnm",
+		hall_symbol: "-P 2c 2ab",
+		universal_h_m: "P b n m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 62,
+		symbol_cif: "P c m n",
+		symbol_hm_short: "Pcmn",
+		hall_symbol: "-P 2n 2ac",
+		universal_h_m: "P c m n",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y+1/2,z"
+		]
+	},
+	{
+		number: 62,
+		symbol_cif: "P m c n",
+		symbol_hm_short: "Pmcn",
+		hall_symbol: "-P 2n 2a",
+		universal_h_m: "P m c n",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y,-z",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 62,
+		symbol_cif: "P n a m",
+		symbol_hm_short: "Pnam",
+		hall_symbol: "-P 2c 2n",
+		universal_h_m: "P n a m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
@@ -2348,46 +6528,322 @@ var Et = Object.freeze([
 		symbol_cif: "C m c m",
 		symbol_hm_short: "Cmcm",
 		hall_symbol: "-C 2c 2",
+		universal_h_m: "C m c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z+1/2",
-			"x,y,-z+1/2",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z",
 			"x,-y,z+1/2",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x+1/2,-y+1/2,z+1/2",
-			"x+1/2,y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 63,
+		symbol_cif: "C c m m",
+		symbol_hm_short: "Ccmm",
+		hall_symbol: "-C 2c 2c",
+		universal_h_m: "C c m m",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 63,
+		symbol_cif: "A m m a",
+		symbol_hm_short: "Amma",
+		hall_symbol: "-A 2a 2a",
+		universal_h_m: "A m m a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 63,
+		symbol_cif: "A m a m",
+		symbol_hm_short: "Amam",
+		hall_symbol: "-A 2 2a",
+		universal_h_m: "A m a m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 63,
+		symbol_cif: "B b m m",
+		symbol_hm_short: "Bbmm",
+		hall_symbol: "-B 2 2b",
+		universal_h_m: "B b m m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 63,
+		symbol_cif: "B m m b",
+		symbol_hm_short: "Bmmb",
+		hall_symbol: "-B 2b 2",
+		universal_h_m: "B m m b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y,z",
+			"x,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
 		]
 	},
 	{
 		number: 64,
-		symbol_cif: "C m c e",
-		symbol_hm_short: "Cmce",
+		symbol_cif: "C m c a",
+		symbol_hm_short: "Cmca",
 		hall_symbol: "-C 2ac 2",
+		universal_h_m: "C m c a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x,y,z",
 			"x+1/2,-y,z+1/2",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x,-y+1/2,z+1/2",
-			"x,y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "C c m b",
+		symbol_hm_short: "Ccmb",
+		hall_symbol: "-C 2ac 2ac",
+		universal_h_m: "C c m b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y,z",
+			"x+1/2,y+1/2,z",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "A b m a",
+		symbol_hm_short: "Abma",
+		hall_symbol: "-A 2ab 2ab",
+		universal_h_m: "A b m a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "A c a m",
+		symbol_hm_short: "Acam",
+		hall_symbol: "-A 2 2ab",
+		universal_h_m: "A c a m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "B b c m",
+		symbol_hm_short: "Bbcm",
+		hall_symbol: "-B 2 2ab",
+		universal_h_m: "B b c m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "B m a b",
+		symbol_hm_short: "Bmab",
+		hall_symbol: "-B 2ab 2",
+		universal_h_m: "B m a b",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
 			"x,-y+1/2,z+1/2"
 		]
 	},
@@ -2396,23 +6852,80 @@ var Et = Object.freeze([
 		symbol_cif: "C m m m",
 		symbol_hm_short: "Cmmm",
 		hall_symbol: "-C 2 2",
+		universal_h_m: "C m m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
 			"x,-y,z",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
 			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 65,
+		symbol_cif: "A m m m",
+		symbol_hm_short: "Ammm",
+		hall_symbol: "-A 2 2",
+		universal_h_m: "A m m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 65,
+		symbol_cif: "B m m m",
+		symbol_hm_short: "Bmmm",
+		hall_symbol: "-B 2 2",
+		universal_h_m: "B m m m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
+			"x,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
 		]
 	},
 	{
@@ -2420,71 +6933,566 @@ var Et = Object.freeze([
 		symbol_cif: "C c c m",
 		symbol_hm_short: "Cccm",
 		hall_symbol: "-C 2 2c",
+		universal_h_m: "C c c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z+1/2",
 			"x,-y,z+1/2",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 66,
+		symbol_cif: "A m a a",
+		symbol_hm_short: "Amaa",
+		hall_symbol: "-A 2a 2",
+		universal_h_m: "A m a a",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 66,
+		symbol_cif: "B b m b",
+		symbol_hm_short: "Bbmb",
+		hall_symbol: "-B 2b 2b",
+		universal_h_m: "B b m b",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y,z+1/2"
 		]
 	},
 	{
 		number: 67,
-		symbol_cif: "C m m e",
-		symbol_hm_short: "Cmme",
+		symbol_cif: "C m m a",
+		symbol_hm_short: "Cmma",
 		hall_symbol: "-C 2a 2",
+		universal_h_m: "C m m a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z",
-			"x+1/2,y,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z",
 			"x+1/2,-y,z",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x,-y+1/2,z",
-			"x,y+1/2,-z",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
 			"x,-y+1/2,z"
 		]
 	},
 	{
-		number: 68,
-		symbol_cif: "C c c e",
-		symbol_hm_short: "Ccce",
-		hall_symbol: "-C 2a 2ac",
+		number: 67,
+		symbol_cif: "C m m b",
+		symbol_hm_short: "Cmmb",
+		hall_symbol: "-C 2a 2a",
+		universal_h_m: "C m m b",
+		setting: "ba-c",
+		is_standard: !1,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
 			"x+1/2,y,-z",
-			"x+1/2,-y,-z+1/2",
-			"-x+1/2,y,z+1/2",
+			"-x+1/2,y,z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 67,
+		symbol_cif: "A b m m",
+		symbol_hm_short: "Abmm",
+		hall_symbol: "-A 2b 2b",
+		universal_h_m: "A b m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 67,
+		symbol_cif: "A c m m",
+		symbol_hm_short: "Acmm",
+		hall_symbol: "-A 2 2b",
+		universal_h_m: "A c m m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y,-z+1/2",
 			"-x,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 67,
+		symbol_cif: "B m c m",
+		symbol_hm_short: "Bmcm",
+		hall_symbol: "-B 2 2a",
+		universal_h_m: "B m c m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 67,
+		symbol_cif: "B m a m",
+		symbol_hm_short: "Bmam",
+		hall_symbol: "-B 2a 2",
+		universal_h_m: "B m a m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "C c c a",
+		symbol_hm_short: "Ccca",
+		hall_symbol: "C 2 2 -1ac",
+		universal_h_m: "C c c a:1",
+		setting: "",
+		is_standard: !0,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "C c c a",
+		symbol_hm_short: "Ccca",
+		hall_symbol: "-C 2a 2ac",
+		universal_h_m: "C c c a:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z+1/2",
 			"x,-y,z+1/2",
 			"x+1/2,y+1/2,z",
-			"-x+1/2,-y+1/2,-z",
 			"-x,-y+1/2,z",
-			"x,y+1/2,-z",
 			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "C c c b",
+		symbol_hm_short: "Cccb",
+		hall_symbol: "C 2 2 -1ac",
+		universal_h_m: "C c c b:1",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "C c c b",
+		symbol_hm_short: "Cccb",
+		hall_symbol: "-C 2a 2c",
+		universal_h_m: "C c c b:2",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "A b a a",
+		symbol_hm_short: "Abaa",
+		hall_symbol: "A 2 2 -1ab",
+		universal_h_m: "A b a a:1",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "A b a a",
+		symbol_hm_short: "Abaa",
+		hall_symbol: "-A 2a 2b",
+		universal_h_m: "A b a a:2",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "A c a a",
+		symbol_hm_short: "Acaa",
+		hall_symbol: "A 2 2 -1ab",
+		universal_h_m: "A c a a:1",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "A c a a",
+		symbol_hm_short: "Acaa",
+		hall_symbol: "-A 2ab 2b",
+		universal_h_m: "A c a a:2",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "B b c b",
+		symbol_hm_short: "Bbcb",
+		hall_symbol: "B 2 2 -1ab",
+		universal_h_m: "B b c b:1",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "B b c b",
+		symbol_hm_short: "Bbcb",
+		hall_symbol: "-B 2ab 2b",
+		universal_h_m: "B b c b:2",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "B b a b",
+		symbol_hm_short: "Bbab",
+		hall_symbol: "B 2 2 -1ab",
+		universal_h_m: "B b a b:1",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 68,
+		symbol_cif: "B b a b",
+		symbol_hm_short: "Bbab",
+		hall_symbol: "-B 2b 2ab",
+		universal_h_m: "B b a b:2",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y,z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y,z+1/2"
 		]
 	},
 	{
@@ -2492,36 +7500,55 @@ var Et = Object.freeze([
 		symbol_cif: "F m m m",
 		symbol_hm_short: "Fmmm",
 		hall_symbol: "-F 2 2",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z".split(".")
+		universal_h_m: "F m m m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.-x,-y,-z.x,y,-z.-x,y,z.x,-y,z.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.-x,-y+1/2,-z+1/2.x,y+1/2,-z+1/2.-x,y+1/2,z+1/2.x,-y+1/2,z+1/2.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.-x+1/2,-y,-z+1/2.x+1/2,y,-z+1/2.-x+1/2,y,z+1/2.x+1/2,-y,z+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.-x+1/2,-y+1/2,-z.x+1/2,y+1/2,-z.-x+1/2,y+1/2,z.x+1/2,-y+1/2,z".split(".")
+	},
+	{
+		number: 70,
+		symbol_cif: "F d d d",
+		symbol_hm_short: "Fddd",
+		hall_symbol: "F 2 2 -1d",
+		universal_h_m: "F d d d:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.-x+1/4,-y+1/4,-z+1/4.x+1/4,y+1/4,-z+1/4.-x+1/4,y+1/4,z+1/4.x+1/4,-y+1/4,z+1/4.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.-x+1/4,-y+3/4,-z+3/4.x+1/4,y+3/4,-z+3/4.-x+1/4,y+3/4,z+3/4.x+1/4,-y+3/4,z+3/4.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.-x+3/4,-y+1/4,-z+3/4.x+3/4,y+1/4,-z+3/4.-x+3/4,y+1/4,z+3/4.x+3/4,-y+1/4,z+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.-x+3/4,-y+3/4,-z+1/4.x+3/4,y+3/4,-z+1/4.-x+3/4,y+3/4,z+1/4.x+3/4,-y+3/4,z+1/4".split(".")
 	},
 	{
 		number: 70,
 		symbol_cif: "F d d d",
 		symbol_hm_short: "Fddd",
 		hall_symbol: "-F 2uv 2vw",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4".split(".")
+		universal_h_m: "F d d d:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-x+1/4,-y+1/4,z.x,-y+1/4,-z+1/4.-x+1/4,y,-z+1/4.-x,-y,-z.x+3/4,y+3/4,-z.-x,y+3/4,z+3/4.x+3/4,-y,z+3/4.x,y+1/2,z+1/2.-x+1/4,-y+3/4,z+1/2.x,-y+3/4,-z+3/4.-x+1/4,y+1/2,-z+3/4.-x,-y+1/2,-z+1/2.x+3/4,y+1/4,-z+1/2.-x,y+1/4,z+1/4.x+3/4,-y+1/2,z+1/4.x+1/2,y,z+1/2.-x+3/4,-y+1/4,z+1/2.x+1/2,-y+1/4,-z+3/4.-x+3/4,y,-z+3/4.-x+1/2,-y,-z+1/2.x+1/4,y+3/4,-z+1/2.-x+1/2,y+3/4,z+1/4.x+1/4,-y,z+1/4.x+1/2,y+1/2,z.-x+3/4,-y+3/4,z.x+1/2,-y+3/4,-z+1/4.-x+3/4,y+1/2,-z+1/4.-x+1/2,-y+1/2,-z.x+1/4,y+1/4,-z.-x+1/2,y+1/4,z+3/4.x+1/4,-y+1/2,z+3/4".split(".")
 	},
 	{
 		number: 71,
 		symbol_cif: "I m m m",
 		symbol_hm_short: "Immm",
 		hall_symbol: "-I 2 2",
+		universal_h_m: "I m m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
 			"x,-y,z",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
 			"-x+1/2,-y+1/2,z+1/2",
-			"x+1/2,y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
 			"x+1/2,-y+1/2,z+1/2"
 		]
 	},
@@ -2530,23 +7557,80 @@ var Et = Object.freeze([
 		symbol_cif: "I b a m",
 		symbol_hm_short: "Ibam",
 		hall_symbol: "-I 2 2c",
+		universal_h_m: "I b a m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z+1/2",
 			"x,-y,z+1/2",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
 			"-x+1/2,-y+1/2,z+1/2",
-			"x+1/2,y+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z",
 			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 72,
+		symbol_cif: "I m c b",
+		symbol_hm_short: "Imcb",
+		hall_symbol: "-I 2a 2",
+		universal_h_m: "I m c b",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 72,
+		symbol_cif: "I c m a",
+		symbol_hm_short: "Icma",
+		hall_symbol: "-I 2b 2b",
+		universal_h_m: "I c m a",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y+1/2,z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
 		]
 	},
 	{
@@ -2554,23 +7638,53 @@ var Et = Object.freeze([
 		symbol_cif: "I b c a",
 		symbol_hm_short: "Ibca",
 		hall_symbol: "-I 2b 2c",
+		universal_h_m: "I b c a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y+1/2,z",
-			"x,y+1/2,-z",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-x,y+1/2,-z+1/2",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y,z+1/2",
 			"x,-y+1/2,z+1/2",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x+1/2,y,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z",
 			"x+1/2,-y,z"
+		]
+	},
+	{
+		number: 73,
+		symbol_cif: "I c a b",
+		symbol_hm_short: "Icab",
+		hall_symbol: "-I 2a 2b",
+		universal_h_m: "I c a b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x,y,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x,-y,z+1/2"
 		]
 	},
 	{
@@ -2578,23 +7692,161 @@ var Et = Object.freeze([
 		symbol_cif: "I m m a",
 		symbol_hm_short: "Imma",
 		hall_symbol: "-I 2b 2",
+		universal_h_m: "I m m a",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y+1/2,z",
-			"x,y+1/2,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y+1/2,-z",
+			"-x,y,z",
 			"x,-y+1/2,z",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-x+1/2,y,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
 			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 74,
+		symbol_cif: "I m m b",
+		symbol_hm_short: "Immb",
+		hall_symbol: "-I 2a 2a",
+		universal_h_m: "I m m b",
+		setting: "ba-c",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x+1/2,y,-z",
+			"-x+1/2,y,z",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 74,
+		symbol_cif: "I b m m",
+		symbol_hm_short: "Ibmm",
+		hall_symbol: "-I 2c 2c",
+		universal_h_m: "I b m m",
+		setting: "cab",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y,-z+1/2",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z+1/2",
+			"x,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 74,
+		symbol_cif: "I c m m",
+		symbol_hm_short: "Icmm",
+		hall_symbol: "-I 2 2b",
+		universal_h_m: "I c m m",
+		setting: "-cba",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y+1/2,z",
+			"x,-y+1/2,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 74,
+		symbol_cif: "I m c m",
+		symbol_hm_short: "Imcm",
+		hall_symbol: "-I 2 2a",
+		universal_h_m: "I m c m",
+		setting: "bca",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y,z",
+			"x+1/2,-y,z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z+1/2",
+			"x,-y+1/2,-z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 74,
+		symbol_cif: "I m a m",
+		symbol_hm_short: "Imam",
+		hall_symbol: "-I 2c 2",
+		universal_h_m: "I m a m",
+		setting: "a-cb",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x,-y,-z",
+			"-x,y,-z+1/2",
+			"-x,-y,-z",
+			"x,y,-z+1/2",
+			"-x,y,z",
+			"x,-y,z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z"
 		]
 	},
 	{
@@ -2602,6 +7854,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4",
 		symbol_hm_short: "P4",
 		hall_symbol: "P 4",
+		universal_h_m: "P 4",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -2614,6 +7869,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 41",
 		symbol_hm_short: "P41",
 		hall_symbol: "P 4w",
+		universal_h_m: "P 41",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/4",
@@ -2626,6 +7884,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42",
 		symbol_hm_short: "P42",
 		hall_symbol: "P 4c",
+		universal_h_m: "P 42",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/2",
@@ -2638,6 +7899,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 43",
 		symbol_hm_short: "P43",
 		hall_symbol: "P 4cw",
+		universal_h_m: "P 43",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+3/4",
@@ -2650,6 +7914,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 4",
 		symbol_hm_short: "I4",
 		hall_symbol: "I 4",
+		universal_h_m: "I 4",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -2666,6 +7933,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 41",
 		symbol_hm_short: "I41",
 		hall_symbol: "I 4bw",
+		universal_h_m: "I 41",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x+1/2,z+1/4",
@@ -2682,6 +7952,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4",
 		symbol_hm_short: "P-4",
 		hall_symbol: "P -4",
+		universal_h_m: "P -4",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -2694,6 +7967,9 @@ var Et = Object.freeze([
 		symbol_cif: "I -4",
 		symbol_hm_short: "I-4",
 		hall_symbol: "I -4",
+		universal_h_m: "I -4",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -2710,14 +7986,17 @@ var Et = Object.freeze([
 		symbol_cif: "P 4/m",
 		symbol_hm_short: "P4/m",
 		hall_symbol: "-P 4",
+		universal_h_m: "P 4/m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
 			"-y,x,-z"
 		]
 	},
@@ -2726,14 +8005,17 @@ var Et = Object.freeze([
 		symbol_cif: "P 42/m",
 		symbol_hm_short: "P42/m",
 		hall_symbol: "-P 4c",
+		universal_h_m: "P 42/m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z+1/2",
-			"y,-x,-z+1/2",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z+1/2",
+			"-x,-y,-z",
+			"y,-x,-z+1/2",
+			"x,y,-z",
 			"-y,x,-z+1/2"
 		]
 	},
@@ -2741,15 +8023,37 @@ var Et = Object.freeze([
 		number: 85,
 		symbol_cif: "P 4/n",
 		symbol_hm_short: "P4/n",
-		hall_symbol: "-P 4a",
+		hall_symbol: "P 4ab -1ab",
+		universal_h_m: "P 4/n:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+1/2,x,z",
-			"y+1/2,-x,-z",
-			"-x+1/2,-y+1/2,z",
+			"-y+1/2,x+1/2,z",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z",
+			"-x+1/2,-y+1/2,-z",
+			"y,-x,-z",
 			"x+1/2,y+1/2,-z",
+			"-y,x,-z"
+		]
+	},
+	{
+		number: 85,
+		symbol_cif: "P 4/n",
+		symbol_hm_short: "P4/n",
+		hall_symbol: "-P 4a",
+		universal_h_m: "P 4/n:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
 			"y,-x+1/2,z",
+			"-x,-y,-z",
+			"y+1/2,-x,-z",
+			"x+1/2,y+1/2,-z",
 			"-y,x+1/2,-z"
 		]
 	},
@@ -2757,15 +8061,37 @@ var Et = Object.freeze([
 		number: 86,
 		symbol_cif: "P 42/n",
 		symbol_hm_short: "P42/n",
-		hall_symbol: "-P 4bc",
+		hall_symbol: "P 4n -1n",
+		universal_h_m: "P 42/n:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-y+1/2,x+1/2,z+1/2",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y,x,-z"
+		]
+	},
+	{
+		number: 86,
+		symbol_cif: "P 42/n",
+		symbol_hm_short: "P42/n",
+		hall_symbol: "-P 4bc",
+		universal_h_m: "P 42/n:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-y,x+1/2,z+1/2",
-			"y,-x+1/2,-z+1/2",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"y+1/2,-x,z+1/2",
+			"-x,-y,-z",
+			"y,-x+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z",
 			"-y+1/2,x,-z+1/2"
 		]
 	},
@@ -2774,22 +8100,25 @@ var Et = Object.freeze([
 		symbol_cif: "I 4/m",
 		symbol_hm_short: "I4/m",
 		hall_symbol: "-I 4",
+		universal_h_m: "I 4/m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
 			"-y,x,-z",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
 			"-y+1/2,x+1/2,z+1/2",
-			"y+1/2,-x+1/2,-z+1/2",
 			"-x+1/2,-y+1/2,z+1/2",
-			"x+1/2,y+1/2,-z+1/2",
 			"y+1/2,-x+1/2,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y+1/2,-x+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
 			"-y+1/2,x+1/2,-z+1/2"
 		]
 	},
@@ -2797,24 +8126,54 @@ var Et = Object.freeze([
 		number: 88,
 		symbol_cif: "I 41/a",
 		symbol_hm_short: "I41/a",
-		hall_symbol: "-I 4ad",
+		hall_symbol: "I 4bw -1bw",
+		universal_h_m: "I 41/a:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+3/4,x+1/4,z+1/4",
-			"y+3/4,-x+1/4,-z+1/4",
-			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
-			"y+3/4,-x+3/4,z+3/4",
-			"-y+3/4,x+3/4,-z+3/4",
+			"-y,x+1/2,z+1/4",
+			"-x+1/2,-y+1/2,z+1/2",
+			"y+1/2,-x,z+3/4",
+			"-x,-y+1/2,-z+1/4",
+			"y,-x,-z",
+			"x+1/2,y,-z+3/4",
+			"-y+1/2,x+1/2,-z+1/2",
 			"x+1/2,y+1/2,z+1/2",
-			"-x+1/2,-y+1/2,-z+1/2",
-			"-y+1/4,x+3/4,z+3/4",
+			"-y+1/2,x,z+3/4",
+			"-x,-y,z",
+			"y,-x+1/2,z+1/4",
+			"-x+1/2,-y,-z+3/4",
+			"y+1/2,-x+1/2,-z+1/2",
+			"x,y+1/2,-z+1/4",
+			"-y,x,-z"
+		]
+	},
+	{
+		number: 88,
+		symbol_cif: "I 41/a",
+		symbol_hm_short: "I41/a",
+		hall_symbol: "-I 4ad",
+		universal_h_m: "I 41/a:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+3/4,x+1/4,z+1/4",
+			"-x+1/2,-y,z+1/2",
+			"y+3/4,-x+3/4,z+3/4",
+			"-x,-y,-z",
 			"y+1/4,-x+3/4,-z+3/4",
+			"x+1/2,y,-z+1/2",
+			"-y+1/4,x+1/4,-z+1/4",
+			"x+1/2,y+1/2,z+1/2",
+			"-y+1/4,x+3/4,z+3/4",
 			"-x,-y+1/2,z",
-			"x,y+1/2,-z",
 			"y+1/4,-x+1/4,z+1/4",
-			"-y+1/4,x+1/4,-z+1/4"
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y+3/4,-x+1/4,-z+1/4",
+			"x,y+1/2,-z",
+			"-y+3/4,x+3/4,-z+3/4"
 		]
 	},
 	{
@@ -2822,6 +8181,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 2 2",
 		symbol_hm_short: "P422",
 		hall_symbol: "P 4 2",
+		universal_h_m: "P 4 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -2838,6 +8200,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 21 2",
 		symbol_hm_short: "P4212",
 		hall_symbol: "P 4ab 2ab",
+		universal_h_m: "P 4 21 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z",
@@ -2854,6 +8219,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 41 2 2",
 		symbol_hm_short: "P4122",
 		hall_symbol: "P 4w 2c",
+		universal_h_m: "P 41 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/4",
@@ -2870,6 +8238,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 41 21 2",
 		symbol_hm_short: "P41212",
 		hall_symbol: "P 4abw 2nw",
+		universal_h_m: "P 41 21 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z+1/4",
@@ -2886,6 +8257,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 2 2",
 		symbol_hm_short: "P4222",
 		hall_symbol: "P 4c 2",
+		universal_h_m: "P 42 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/2",
@@ -2902,6 +8276,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 21 2",
 		symbol_hm_short: "P42212",
 		hall_symbol: "P 4n 2n",
+		universal_h_m: "P 42 21 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z+1/2",
@@ -2918,6 +8295,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 43 2 2",
 		symbol_hm_short: "P4322",
 		hall_symbol: "P 4cw 2c",
+		universal_h_m: "P 43 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+3/4",
@@ -2934,6 +8314,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 43 21 2",
 		symbol_hm_short: "P43212",
 		hall_symbol: "P 4nw 2abw",
+		universal_h_m: "P 43 21 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z+3/4",
@@ -2950,6 +8333,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 4 2 2",
 		symbol_hm_short: "I422",
 		hall_symbol: "I 4 2",
+		universal_h_m: "I 4 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -2974,6 +8360,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 41 2 2",
 		symbol_hm_short: "I4122",
 		hall_symbol: "I 4bw 2bw",
+		universal_h_m: "I 41 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x+1/2,z+1/4",
@@ -2998,6 +8387,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 m m",
 		symbol_hm_short: "P4mm",
 		hall_symbol: "P 4 -2",
+		universal_h_m: "P 4 m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3014,6 +8406,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 b m",
 		symbol_hm_short: "P4bm",
 		hall_symbol: "P 4 -2ab",
+		universal_h_m: "P 4 b m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3030,6 +8425,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 c m",
 		symbol_hm_short: "P42cm",
 		hall_symbol: "P 4c -2c",
+		universal_h_m: "P 42 c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/2",
@@ -3046,6 +8444,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 n m",
 		symbol_hm_short: "P42nm",
 		hall_symbol: "P 4n -2n",
+		universal_h_m: "P 42 n m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z+1/2",
@@ -3062,6 +8463,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 c c",
 		symbol_hm_short: "P4cc",
 		hall_symbol: "P 4 -2c",
+		universal_h_m: "P 4 c c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3078,6 +8482,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 4 n c",
 		symbol_hm_short: "P4nc",
 		hall_symbol: "P 4 -2n",
+		universal_h_m: "P 4 n c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3094,6 +8501,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 m c",
 		symbol_hm_short: "P42mc",
 		hall_symbol: "P 4c -2",
+		universal_h_m: "P 42 m c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/2",
@@ -3110,6 +8520,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 b c",
 		symbol_hm_short: "P42bc",
 		hall_symbol: "P 4c -2ab",
+		universal_h_m: "P 42 b c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z+1/2",
@@ -3126,6 +8539,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 4 m m",
 		symbol_hm_short: "I4mm",
 		hall_symbol: "I 4 -2",
+		universal_h_m: "I 4 m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3150,6 +8566,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 4 c m",
 		symbol_hm_short: "I4cm",
 		hall_symbol: "I 4 -2c",
+		universal_h_m: "I 4 c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -3174,6 +8593,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 41 m d",
 		symbol_hm_short: "I41md",
 		hall_symbol: "I 4bw -2",
+		universal_h_m: "I 41 m d",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x+1/2,z+1/4",
@@ -3198,6 +8620,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 41 c d",
 		symbol_hm_short: "I41cd",
 		hall_symbol: "I 4bw -2c",
+		universal_h_m: "I 41 c d",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x+1/2,z+1/4",
@@ -3222,6 +8647,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 2 m",
 		symbol_hm_short: "P-42m",
 		hall_symbol: "P -4 2",
+		universal_h_m: "P -4 2 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3238,6 +8666,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 2 c",
 		symbol_hm_short: "P-42c",
 		hall_symbol: "P -4 2c",
+		universal_h_m: "P -4 2 c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3254,6 +8685,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 21 m",
 		symbol_hm_short: "P-421m",
 		hall_symbol: "P -4 2ab",
+		universal_h_m: "P -4 21 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3270,6 +8704,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 21 c",
 		symbol_hm_short: "P-421c",
 		hall_symbol: "P -4 2n",
+		universal_h_m: "P -4 21 c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3286,6 +8723,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 m 2",
 		symbol_hm_short: "P-4m2",
 		hall_symbol: "P -4 -2",
+		universal_h_m: "P -4 m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3302,6 +8742,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 c 2",
 		symbol_hm_short: "P-4c2",
 		hall_symbol: "P -4 -2c",
+		universal_h_m: "P -4 c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3318,6 +8761,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 b 2",
 		symbol_hm_short: "P-4b2",
 		hall_symbol: "P -4 -2ab",
+		universal_h_m: "P -4 b 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3334,6 +8780,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -4 n 2",
 		symbol_hm_short: "P-4n2",
 		hall_symbol: "P -4 -2n",
+		universal_h_m: "P -4 n 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3350,6 +8799,9 @@ var Et = Object.freeze([
 		symbol_cif: "I -4 m 2",
 		symbol_hm_short: "I-4m2",
 		hall_symbol: "I -4 -2",
+		universal_h_m: "I -4 m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3374,6 +8826,9 @@ var Et = Object.freeze([
 		symbol_cif: "I -4 c 2",
 		symbol_hm_short: "I-4c2",
 		hall_symbol: "I -4 -2c",
+		universal_h_m: "I -4 c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3398,6 +8853,9 @@ var Et = Object.freeze([
 		symbol_cif: "I -4 2 m",
 		symbol_hm_short: "I-42m",
 		hall_symbol: "I -4 2",
+		universal_h_m: "I -4 2 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3422,6 +8880,9 @@ var Et = Object.freeze([
 		symbol_cif: "I -4 2 d",
 		symbol_hm_short: "I-42d",
 		hall_symbol: "I -4 2bw",
+		universal_h_m: "I -4 2 d",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -3446,22 +8907,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 4/m m m",
 		symbol_hm_short: "P4/mmm",
 		hall_symbol: "-P 4 2",
+		universal_h_m: "P 4/m m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
-			"-y,x,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x,y,-z",
-			"x,-y,z",
 			"y,x,-z",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
+			"-y,x,-z",
+			"-x,y,z",
+			"y,x,z",
+			"x,-y,z",
 			"-y,-x,z"
 		]
 	},
@@ -3470,22 +8934,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 4/m c c",
 		symbol_hm_short: "P4/mcc",
 		hall_symbol: "-P 4 2c",
+		universal_h_m: "P 4/m c c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
-			"-y,x,-z",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x,y,-z+1/2",
-			"x,-y,z+1/2",
 			"y,x,-z+1/2",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
+			"-y,x,-z",
+			"-x,y,z+1/2",
+			"y,x,z+1/2",
+			"x,-y,z+1/2",
 			"-y,-x,z+1/2"
 		]
 	},
@@ -3493,23 +8960,53 @@ var Et = Object.freeze([
 		number: 125,
 		symbol_cif: "P 4/n b m",
 		symbol_hm_short: "P4/nbm",
-		hall_symbol: "-P 4a 2b",
+		hall_symbol: "P 4 2 -1ab",
+		universal_h_m: "P 4/n b m:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+1/2,x,z",
-			"y+1/2,-x,-z",
-			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
-			"y,-x+1/2,z",
-			"-y,x+1/2,-z",
-			"x,-y+1/2,-z",
-			"-x,y+1/2,z",
-			"-y+1/2,-x+1/2,-z",
-			"y+1/2,x+1/2,z",
-			"-x+1/2,y,-z",
-			"x+1/2,-y,z",
+			"-y,x,z",
+			"-x,-y,z",
+			"y,-x,z",
+			"x,-y,-z",
+			"-y,-x,-z",
+			"-x,y,-z",
 			"y,x,-z",
+			"-x+1/2,-y+1/2,-z",
+			"y+1/2,-x+1/2,-z",
+			"x+1/2,y+1/2,-z",
+			"-y+1/2,x+1/2,-z",
+			"-x+1/2,y+1/2,z",
+			"y+1/2,x+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"-y+1/2,-x+1/2,z"
+		]
+	},
+	{
+		number: 125,
+		symbol_cif: "P 4/n b m",
+		symbol_hm_short: "P4/nbm",
+		hall_symbol: "-P 4a 2b",
+		universal_h_m: "P 4/n b m:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
+			"y,-x+1/2,z",
+			"x,-y+1/2,-z",
+			"-y+1/2,-x+1/2,-z",
+			"-x+1/2,y,-z",
+			"y,x,-z",
+			"-x,-y,-z",
+			"y+1/2,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z",
+			"-x,y+1/2,z",
+			"y+1/2,x+1/2,z",
+			"x+1/2,-y,z",
 			"-y,-x,z"
 		]
 	},
@@ -3517,23 +9014,53 @@ var Et = Object.freeze([
 		number: 126,
 		symbol_cif: "P 4/n n c",
 		symbol_hm_short: "P4/nnc",
-		hall_symbol: "-P 4a 2bc",
+		hall_symbol: "P 4 2 -1n",
+		universal_h_m: "P 4/n n c:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+1/2,x,z",
-			"y+1/2,-x,-z",
-			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
-			"y,-x+1/2,z",
-			"-y,x+1/2,-z",
-			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
-			"-y+1/2,-x+1/2,-z+1/2",
+			"-y,x,z",
+			"-x,-y,z",
+			"y,-x,z",
+			"x,-y,-z",
+			"-y,-x,-z",
+			"-x,y,-z",
+			"y,x,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y+1/2,-x+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y+1/2,x+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
 			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2",
+			"-y+1/2,-x+1/2,z+1/2"
+		]
+	},
+	{
+		number: 126,
+		symbol_cif: "P 4/n n c",
+		symbol_hm_short: "P4/nnc",
+		hall_symbol: "-P 4a 2bc",
+		universal_h_m: "P 4/n n c:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
+			"y,-x+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-y+1/2,-x+1/2,-z+1/2",
 			"-x+1/2,y,-z+1/2",
-			"x+1/2,-y,z+1/2",
 			"y,x,-z+1/2",
+			"-x,-y,-z",
+			"y+1/2,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z",
+			"-x,y+1/2,z+1/2",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,-y,z+1/2",
 			"-y,-x,z+1/2"
 		]
 	},
@@ -3542,22 +9069,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 4/m b m",
 		symbol_hm_short: "P4/mbm",
 		hall_symbol: "-P 4 2ab",
+		universal_h_m: "P 4/m b m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
-			"-y,x,-z",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-y+1/2,-x+1/2,-z",
-			"y+1/2,x+1/2,z",
 			"-x+1/2,y+1/2,-z",
-			"x+1/2,-y+1/2,z",
 			"y+1/2,x+1/2,-z",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
+			"-y,x,-z",
+			"-x+1/2,y+1/2,z",
+			"y+1/2,x+1/2,z",
+			"x+1/2,-y+1/2,z",
 			"-y+1/2,-x+1/2,z"
 		]
 	},
@@ -3566,22 +9096,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 4/m n c",
 		symbol_hm_short: "P4/mnc",
 		hall_symbol: "-P 4 2n",
+		universal_h_m: "P 4/m n c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z",
-			"y,-x,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z",
-			"-y,x,-z",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-y+1/2,-x+1/2,-z+1/2",
-			"y+1/2,x+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z+1/2",
-			"x+1/2,-y+1/2,z+1/2",
 			"y+1/2,x+1/2,-z+1/2",
+			"-x,-y,-z",
+			"y,-x,-z",
+			"x,y,-z",
+			"-y,x,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2",
 			"-y+1/2,-x+1/2,z+1/2"
 		]
 	},
@@ -3589,23 +9122,53 @@ var Et = Object.freeze([
 		number: 129,
 		symbol_cif: "P 4/n m m",
 		symbol_hm_short: "P4/nmm",
-		hall_symbol: "-P 4a 2a",
+		hall_symbol: "P 4ab 2ab -1ab",
+		universal_h_m: "P 4/n m m:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+1/2,x,z",
-			"y+1/2,-x,-z",
-			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
-			"y,-x+1/2,z",
-			"-y,x+1/2,-z",
-			"x+1/2,-y,-z",
-			"-x+1/2,y,z",
+			"-y+1/2,x+1/2,z",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z",
+			"x+1/2,-y+1/2,-z",
 			"-y,-x,-z",
-			"y,x,z",
+			"-x+1/2,y+1/2,-z",
+			"y,x,-z",
+			"-x+1/2,-y+1/2,-z",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x,-z",
+			"-x,y,z",
+			"y+1/2,x+1/2,z",
+			"x,-y,z",
+			"-y+1/2,-x+1/2,z"
+		]
+	},
+	{
+		number: 129,
+		symbol_cif: "P 4/n m m",
+		symbol_hm_short: "P4/nmm",
+		hall_symbol: "-P 4a 2a",
+		universal_h_m: "P 4/n m m:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
+			"y,-x+1/2,z",
+			"x+1/2,-y,-z",
+			"-y,-x,-z",
 			"-x,y+1/2,-z",
-			"x,-y+1/2,z",
 			"y+1/2,x+1/2,-z",
+			"-x,-y,-z",
+			"y+1/2,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z",
+			"-x+1/2,y,z",
+			"y,x,z",
+			"x,-y+1/2,z",
 			"-y+1/2,-x+1/2,z"
 		]
 	},
@@ -3613,23 +9176,53 @@ var Et = Object.freeze([
 		number: 130,
 		symbol_cif: "P 4/n c c",
 		symbol_hm_short: "P4/ncc",
-		hall_symbol: "-P 4a 2ac",
+		hall_symbol: "P 4ab 2n -1ab",
+		universal_h_m: "P 4/n c c:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-y+1/2,x,z",
-			"y+1/2,-x,-z",
-			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
-			"y,-x+1/2,z",
-			"-y,x+1/2,-z",
-			"x+1/2,-y,-z+1/2",
-			"-x+1/2,y,z+1/2",
+			"-y+1/2,x+1/2,z",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2",
+			"y,x,-z+1/2",
+			"-x+1/2,-y+1/2,-z",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x,-z",
+			"-x,y,z+1/2",
+			"y+1/2,x+1/2,z+1/2",
+			"x,-y,z+1/2",
+			"-y+1/2,-x+1/2,z+1/2"
+		]
+	},
+	{
+		number: 130,
+		symbol_cif: "P 4/n c c",
+		symbol_hm_short: "P4/ncc",
+		hall_symbol: "-P 4a 2ac",
+		universal_h_m: "P 4/n c c:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
+			"y,-x+1/2,z",
+			"x+1/2,-y,-z+1/2",
+			"-y,-x,-z+1/2",
 			"-x,y+1/2,-z+1/2",
-			"x,-y+1/2,z+1/2",
 			"y+1/2,x+1/2,-z+1/2",
+			"-x,-y,-z",
+			"y+1/2,-x,-z",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z",
+			"-x+1/2,y,z+1/2",
+			"y,x,z+1/2",
+			"x,-y+1/2,z+1/2",
 			"-y+1/2,-x+1/2,z+1/2"
 		]
 	},
@@ -3638,22 +9231,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 42/m m c",
 		symbol_hm_short: "P42/mmc",
 		hall_symbol: "-P 4c 2",
+		universal_h_m: "P 42/m m c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z+1/2",
-			"y,-x,-z+1/2",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z+1/2",
-			"-y,x,-z+1/2",
 			"x,-y,-z",
-			"-x,y,z",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x,y,-z",
-			"x,-y,z",
 			"y,x,-z+1/2",
+			"-x,-y,-z",
+			"y,-x,-z+1/2",
+			"x,y,-z",
+			"-y,x,-z+1/2",
+			"-x,y,z",
+			"y,x,z+1/2",
+			"x,-y,z",
 			"-y,-x,z+1/2"
 		]
 	},
@@ -3662,22 +9258,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 42/m c m",
 		symbol_hm_short: "P42/mcm",
 		hall_symbol: "-P 4c 2c",
+		universal_h_m: "P 42/m c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z+1/2",
-			"y,-x,-z+1/2",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z+1/2",
-			"-y,x,-z+1/2",
 			"x,-y,-z+1/2",
-			"-x,y,z+1/2",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x,y,-z+1/2",
-			"x,-y,z+1/2",
 			"y,x,-z",
+			"-x,-y,-z",
+			"y,-x,-z+1/2",
+			"x,y,-z",
+			"-y,x,-z+1/2",
+			"-x,y,z+1/2",
+			"y,x,z",
+			"x,-y,z+1/2",
 			"-y,-x,z"
 		]
 	},
@@ -3685,23 +9284,53 @@ var Et = Object.freeze([
 		number: 133,
 		symbol_cif: "P 42/n b c",
 		symbol_hm_short: "P42/nbc",
-		hall_symbol: "-P 4ac 2b",
+		hall_symbol: "P 4n 2c -1n",
+		universal_h_m: "P 42/n b c:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-y+1/2,x+1/2,z+1/2",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z+1/2",
+			"x,-y,-z+1/2",
+			"-y+1/2,-x+1/2,-z",
+			"-x,y,-z+1/2",
+			"y+1/2,x+1/2,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y,x,-z",
+			"-x+1/2,y+1/2,z",
+			"y,x,z+1/2",
+			"x+1/2,-y+1/2,z",
+			"-y,-x,z+1/2"
+		]
+	},
+	{
+		number: 133,
+		symbol_cif: "P 42/n b c",
+		symbol_hm_short: "P42/nbc",
+		hall_symbol: "-P 4ac 2b",
+		universal_h_m: "P 42/n b c:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-y+1/2,x,z+1/2",
-			"y+1/2,-x,-z+1/2",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"y,-x+1/2,z+1/2",
-			"-y,x+1/2,-z+1/2",
 			"x,-y+1/2,-z",
-			"-x,y+1/2,z",
 			"-y+1/2,-x+1/2,-z+1/2",
-			"y+1/2,x+1/2,z+1/2",
 			"-x+1/2,y,-z",
-			"x+1/2,-y,z",
 			"y,x,-z+1/2",
+			"-x,-y,-z",
+			"y+1/2,-x,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z+1/2",
+			"-x,y+1/2,z",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,-y,z",
 			"-y,-x,z+1/2"
 		]
 	},
@@ -3709,23 +9338,53 @@ var Et = Object.freeze([
 		number: 134,
 		symbol_cif: "P 42/n n m",
 		symbol_hm_short: "P42/nnm",
-		hall_symbol: "-P 4ac 2bc",
+		hall_symbol: "P 4n 2 -1n",
+		universal_h_m: "P 42/n n m:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-y+1/2,x+1/2,z+1/2",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z+1/2",
+			"x,-y,-z",
+			"-y+1/2,-x+1/2,-z+1/2",
+			"-x,y,-z",
+			"y+1/2,x+1/2,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y,x,-z",
+			"-x+1/2,y+1/2,z+1/2",
+			"y,x,z",
+			"x+1/2,-y+1/2,z+1/2",
+			"-y,-x,z"
+		]
+	},
+	{
+		number: 134,
+		symbol_cif: "P 42/n n m",
+		symbol_hm_short: "P42/nnm",
+		hall_symbol: "-P 4ac 2bc",
+		universal_h_m: "P 42/n n m:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-y+1/2,x,z+1/2",
-			"y+1/2,-x,-z+1/2",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"y,-x+1/2,z+1/2",
-			"-y,x+1/2,-z+1/2",
 			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
 			"-y+1/2,-x+1/2,-z",
-			"y+1/2,x+1/2,z",
 			"-x+1/2,y,-z+1/2",
-			"x+1/2,-y,z+1/2",
 			"y,x,-z",
+			"-x,-y,-z",
+			"y+1/2,-x,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z+1/2",
+			"-x,y+1/2,z+1/2",
+			"y+1/2,x+1/2,z",
+			"x+1/2,-y,z+1/2",
 			"-y,-x,z"
 		]
 	},
@@ -3734,22 +9393,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 42/m b c",
 		symbol_hm_short: "P42/mbc",
 		hall_symbol: "-P 4c 2ab",
+		universal_h_m: "P 42/m b c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x,z+1/2",
-			"y,-x,-z+1/2",
 			"-x,-y,z",
-			"x,y,-z",
 			"y,-x,z+1/2",
-			"-y,x,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-y+1/2,-x+1/2,-z+1/2",
-			"y+1/2,x+1/2,z+1/2",
 			"-x+1/2,y+1/2,-z",
-			"x+1/2,-y+1/2,z",
 			"y+1/2,x+1/2,-z+1/2",
+			"-x,-y,-z",
+			"y,-x,-z+1/2",
+			"x,y,-z",
+			"-y,x,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,-y+1/2,z",
 			"-y+1/2,-x+1/2,z+1/2"
 		]
 	},
@@ -3758,22 +9420,25 @@ var Et = Object.freeze([
 		symbol_cif: "P 42/m n m",
 		symbol_hm_short: "P42/mnm",
 		hall_symbol: "-P 4n 2n",
+		universal_h_m: "P 42/m n m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y+1/2,x+1/2,z+1/2",
-			"y+1/2,-x+1/2,-z+1/2",
 			"-x,-y,z",
-			"x,y,-z",
 			"y+1/2,-x+1/2,z+1/2",
-			"-y+1/2,x+1/2,-z+1/2",
 			"x+1/2,-y+1/2,-z+1/2",
-			"-x+1/2,y+1/2,z+1/2",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x+1/2,y+1/2,-z+1/2",
-			"x+1/2,-y+1/2,z+1/2",
 			"y,x,-z",
+			"-x,-y,-z",
+			"y+1/2,-x+1/2,-z+1/2",
+			"x,y,-z",
+			"-y+1/2,x+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"y,x,z",
+			"x+1/2,-y+1/2,z+1/2",
 			"-y,-x,z"
 		]
 	},
@@ -3781,23 +9446,53 @@ var Et = Object.freeze([
 		number: 137,
 		symbol_cif: "P 42/n m c",
 		symbol_hm_short: "P42/nmc",
-		hall_symbol: "-P 4ac 2a",
+		hall_symbol: "P 4n 2n -1n",
+		universal_h_m: "P 42/n m c:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-y+1/2,x+1/2,z+1/2",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-y,-x,-z",
+			"-x+1/2,y+1/2,-z+1/2",
+			"y,x,-z",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y,x,-z",
+			"-x,y,z",
+			"y+1/2,x+1/2,z+1/2",
+			"x,-y,z",
+			"-y+1/2,-x+1/2,z+1/2"
+		]
+	},
+	{
+		number: 137,
+		symbol_cif: "P 42/n m c",
+		symbol_hm_short: "P42/nmc",
+		hall_symbol: "-P 4ac 2a",
+		universal_h_m: "P 42/n m c:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-y+1/2,x,z+1/2",
-			"y+1/2,-x,-z+1/2",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"y,-x+1/2,z+1/2",
-			"-y,x+1/2,-z+1/2",
 			"x+1/2,-y,-z",
-			"-x+1/2,y,z",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x,y+1/2,-z",
-			"x,-y+1/2,z",
 			"y+1/2,x+1/2,-z+1/2",
+			"-x,-y,-z",
+			"y+1/2,-x,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z+1/2",
+			"-x+1/2,y,z",
+			"y,x,z+1/2",
+			"x,-y+1/2,z",
 			"-y+1/2,-x+1/2,z+1/2"
 		]
 	},
@@ -3805,23 +9500,53 @@ var Et = Object.freeze([
 		number: 138,
 		symbol_cif: "P 42/n c m",
 		symbol_hm_short: "P42/ncm",
-		hall_symbol: "-P 4ac 2ac",
+		hall_symbol: "P 4n 2ab -1n",
+		universal_h_m: "P 42/n c m:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
+			"-y+1/2,x+1/2,z+1/2",
+			"-x,-y,z",
+			"y+1/2,-x+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"-y,-x,-z+1/2",
+			"-x+1/2,y+1/2,-z",
+			"y,x,-z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"y,-x,-z",
+			"x+1/2,y+1/2,-z+1/2",
+			"-y,x,-z",
+			"-x,y,z+1/2",
+			"y+1/2,x+1/2,z",
+			"x,-y,z+1/2",
+			"-y+1/2,-x+1/2,z"
+		]
+	},
+	{
+		number: 138,
+		symbol_cif: "P 42/n c m",
+		symbol_hm_short: "P42/ncm",
+		hall_symbol: "-P 4ac 2ac",
+		universal_h_m: "P 42/n c m:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
 			"-y+1/2,x,z+1/2",
-			"y+1/2,-x,-z+1/2",
 			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
 			"y,-x+1/2,z+1/2",
-			"-y,x+1/2,-z+1/2",
 			"x+1/2,-y,-z+1/2",
-			"-x+1/2,y,z+1/2",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x,y+1/2,-z+1/2",
-			"x,-y+1/2,z+1/2",
 			"y+1/2,x+1/2,-z",
+			"-x,-y,-z",
+			"y+1/2,-x,-z+1/2",
+			"x+1/2,y+1/2,-z",
+			"-y,x+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"y,x,z",
+			"x,-y+1/2,z+1/2",
 			"-y+1/2,-x+1/2,z"
 		]
 	},
@@ -3830,34 +9555,69 @@ var Et = Object.freeze([
 		symbol_cif: "I 4/m m m",
 		symbol_hm_short: "I4/mmm",
 		hall_symbol: "-I 4 2",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2".split(".")
+		universal_h_m: "I 4/m m m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z.y,x,z.x,-y,z.-y,-x,z.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.-x+1/2,-y+1/2,-z+1/2.y+1/2,-x+1/2,-z+1/2.x+1/2,y+1/2,-z+1/2.-y+1/2,x+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.y+1/2,x+1/2,z+1/2.x+1/2,-y+1/2,z+1/2.-y+1/2,-x+1/2,z+1/2".split(".")
 	},
 	{
 		number: 140,
 		symbol_cif: "I 4/m c m",
 		symbol_hm_short: "I4/mcm",
 		hall_symbol: "-I 4 2c",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z+1/2.-x,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y,-z+1/2.x,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z".split(".")
+		universal_h_m: "I 4/m c m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z+1/2.-y,-x,-z+1/2.-x,y,-z+1/2.y,x,-z+1/2.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z+1/2.y,x,z+1/2.x,-y,z+1/2.-y,-x,z+1/2.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.-x+1/2,-y+1/2,-z+1/2.y+1/2,-x+1/2,-z+1/2.x+1/2,y+1/2,-z+1/2.-y+1/2,x+1/2,-z+1/2.-x+1/2,y+1/2,z.y+1/2,x+1/2,z.x+1/2,-y+1/2,z.-y+1/2,-x+1/2,z".split(".")
+	},
+	{
+		number: 141,
+		symbol_cif: "I 41/a m d",
+		symbol_hm_short: "I41/amd",
+		hall_symbol: "I 4bw 2bw -1bw",
+		universal_h_m: "I 41/a m d:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x+1/2,z+1/4.-x+1/2,-y+1/2,z+1/2.y+1/2,-x,z+3/4.x,-y+1/2,-z+1/4.-y,-x,-z.-x+1/2,y,-z+3/4.y+1/2,x+1/2,-z+1/2.-x,-y+1/2,-z+1/4.y,-x,-z.x+1/2,y,-z+3/4.-y+1/2,x+1/2,-z+1/2.-x,y,z.y,x+1/2,z+1/4.x+1/2,-y+1/2,z+1/2.-y+1/2,-x,z+3/4.x+1/2,y+1/2,z+1/2.-y+1/2,x,z+3/4.-x,-y,z.y,-x+1/2,z+1/4.x+1/2,-y,-z+3/4.-y+1/2,-x+1/2,-z+1/2.-x,y+1/2,-z+1/4.y,x,-z.-x+1/2,-y,-z+3/4.y+1/2,-x+1/2,-z+1/2.x,y+1/2,-z+1/4.-y,x,-z.-x+1/2,y+1/2,z+1/2.y+1/2,x,z+3/4.x,-y,z.-y,-x+1/2,z+1/4".split(".")
 	},
 	{
 		number: 141,
 		symbol_cif: "I 41/a m d",
 		symbol_hm_short: "I41/amd",
 		hall_symbol: "-I 4bd 2",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z.-x,y,z.-y+1/4,-x+1/4,-z+3/4.y+1/4,x+1/4,z+3/4.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/4,x+3/4,-z+1/4.-y+1/4,-x+3/4,z+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+3/4,-x+3/4,-z+1/4.y+3/4,x+3/4,z+1/4.-x,y+1/2,-z.x,-y+1/2,z.y+3/4,x+1/4,-z+3/4.-y+3/4,-x+1/4,z+3/4".split(".")
+		universal_h_m: "I 41/a m d:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+3/4,-z+1/4.-x,-y,-z.y+3/4,-x+1/4,-z+3/4.x+1/2,y,-z+1/2.-y+3/4,x+3/4,-z+1/4.-x,y,z.y+3/4,x+3/4,z+1/4.x+1/2,-y,z+1/2.-y+3/4,-x+1/4,z+3/4.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x,y+1/2,-z.y+3/4,x+1/4,-z+3/4.-x+1/2,-y+1/2,-z+1/2.y+1/4,-x+3/4,-z+1/4.x,y+1/2,-z.-y+1/4,x+1/4,-z+3/4.-x+1/2,y+1/2,z+1/2.y+1/4,x+1/4,z+3/4.x,-y+1/2,z.-y+1/4,-x+3/4,z+1/4".split(".")
+	},
+	{
+		number: 142,
+		symbol_cif: "I 41/a c d",
+		symbol_hm_short: "I41/acd",
+		hall_symbol: "I 4bw 2aw -1bw",
+		universal_h_m: "I 41/a c d:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x+1/2,z+1/4.-x+1/2,-y+1/2,z+1/2.y+1/2,-x,z+3/4.x+1/2,-y,-z+1/4.-y+1/2,-x+1/2,-z.-x,y+1/2,-z+3/4.y,x,-z+1/2.-x,-y+1/2,-z+1/4.y,-x,-z.x+1/2,y,-z+3/4.-y+1/2,x+1/2,-z+1/2.-x+1/2,y+1/2,z.y+1/2,x,z+1/4.x,-y,z+1/2.-y,-x+1/2,z+3/4.x+1/2,y+1/2,z+1/2.-y+1/2,x,z+3/4.-x,-y,z.y,-x+1/2,z+1/4.x,-y+1/2,-z+3/4.-y,-x,-z+1/2.-x+1/2,y,-z+1/4.y+1/2,x+1/2,-z.-x+1/2,-y,-z+3/4.y+1/2,-x+1/2,-z+1/2.x,y+1/2,-z+1/4.-y,x,-z.-x,y,z+1/2.y,x+1/2,z+3/4.x+1/2,-y+1/2,z.-y+1/2,-x,z+1/4".split(".")
 	},
 	{
 		number: 142,
 		symbol_cif: "I 41/a c d",
 		symbol_hm_short: "I41/acd",
 		hall_symbol: "-I 4bd 2c",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4".split(".")
+		universal_h_m: "I 41/a c d:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.-x,-y,-z.y+3/4,-x+1/4,-z+3/4.x+1/2,y,-z+1/2.-y+3/4,x+3/4,-z+1/4.-x,y,z+1/2.y+3/4,x+3/4,z+3/4.x+1/2,-y,z.-y+3/4,-x+1/4,z+1/4.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.-x+1/2,-y+1/2,-z+1/2.y+1/4,-x+3/4,-z+1/4.x,y+1/2,-z.-y+1/4,x+1/4,-z+3/4.-x+1/2,y+1/2,z.y+1/4,x+1/4,z+1/4.x,-y+1/2,z+1/2.-y+1/4,-x+3/4,z+3/4".split(".")
 	},
 	{
 		number: 143,
 		symbol_cif: "P 3",
 		symbol_hm_short: "P3",
 		hall_symbol: "P 3",
+		universal_h_m: "P 3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -3869,6 +9629,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 31",
 		symbol_hm_short: "P31",
 		hall_symbol: "P 31",
+		universal_h_m: "P 31",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+1/3",
@@ -3880,6 +9643,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 32",
 		symbol_hm_short: "P32",
 		hall_symbol: "P 32",
+		universal_h_m: "P 32",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+2/3",
@@ -3889,8 +9655,11 @@ var Et = Object.freeze([
 	{
 		number: 146,
 		symbol_cif: "R 3",
-		symbol_hm_short: "R3",
+		symbol_hm_short: "H3",
 		hall_symbol: "R 3",
+		universal_h_m: "R 3:H",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -3904,43 +9673,80 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 146,
+		symbol_cif: "R 3",
+		symbol_hm_short: "R3",
+		hall_symbol: "P 3*",
+		universal_h_m: "R 3:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x"
+		]
+	},
+	{
 		number: 147,
 		symbol_cif: "P -3",
 		symbol_hm_short: "P-3",
 		hall_symbol: "-P 3",
+		universal_h_m: "P -3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
+			"-x,-y,-z",
+			"y,-x+y,-z",
 			"x-y,x,-z"
 		]
 	},
 	{
 		number: 148,
 		symbol_cif: "R -3",
-		symbol_hm_short: "R-3",
+		symbol_hm_short: "H-3",
 		hall_symbol: "-R 3",
+		universal_h_m: "R -3:H",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
+			"-x,-y,-z",
+			"y,-x+y,-z",
 			"x-y,x,-z",
 			"x+2/3,y+1/3,z+1/3",
-			"-x+2/3,-y+1/3,-z+1/3",
 			"-y+2/3,x-y+1/3,z+1/3",
-			"y+2/3,-x+y+1/3,-z+1/3",
 			"-x+y+2/3,-x+1/3,z+1/3",
+			"-x+2/3,-y+1/3,-z+1/3",
+			"y+2/3,-x+y+1/3,-z+1/3",
 			"x-y+2/3,x+1/3,-z+1/3",
 			"x+1/3,y+2/3,z+2/3",
-			"-x+1/3,-y+2/3,-z+2/3",
 			"-y+1/3,x-y+2/3,z+2/3",
-			"y+1/3,-x+y+2/3,-z+2/3",
 			"-x+y+1/3,-x+2/3,z+2/3",
+			"-x+1/3,-y+2/3,-z+2/3",
+			"y+1/3,-x+y+2/3,-z+2/3",
 			"x-y+1/3,x+2/3,-z+2/3"
+		]
+	},
+	{
+		number: 148,
+		symbol_cif: "R -3",
+		symbol_hm_short: "R-3",
+		hall_symbol: "-P 3*",
+		universal_h_m: "R -3:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"-x,-y,-z",
+			"-z,-x,-y",
+			"-y,-z,-x"
 		]
 	},
 	{
@@ -3948,6 +9754,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 3 1 2",
 		symbol_hm_short: "P312",
 		hall_symbol: "P 3 2",
+		universal_h_m: "P 3 1 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -3962,6 +9771,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 3 2 1",
 		symbol_hm_short: "P321",
 		hall_symbol: "P 3 2\"",
+		universal_h_m: "P 3 2 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -3976,6 +9788,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 31 1 2",
 		symbol_hm_short: "P3112",
 		hall_symbol: "P 31 2 (0 0 4)",
+		universal_h_m: "P 31 1 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+1/3",
@@ -3990,6 +9805,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 31 2 1",
 		symbol_hm_short: "P3121",
 		hall_symbol: "P 31 2\"",
+		universal_h_m: "P 31 2 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+1/3",
@@ -4004,6 +9822,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 32 1 2",
 		symbol_hm_short: "P3212",
 		hall_symbol: "P 32 2 (0 0 2)",
+		universal_h_m: "P 32 1 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+2/3",
@@ -4018,6 +9839,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 32 2 1",
 		symbol_hm_short: "P3221",
 		hall_symbol: "P 32 2\"",
+		universal_h_m: "P 32 2 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z+2/3",
@@ -4030,8 +9854,11 @@ var Et = Object.freeze([
 	{
 		number: 155,
 		symbol_cif: "R 3 2",
-		symbol_hm_short: "R32",
+		symbol_hm_short: "H32",
 		hall_symbol: "R 3 2\"",
+		universal_h_m: "R 3 2:H",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4054,10 +9881,30 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 155,
+		symbol_cif: "R 3 2",
+		symbol_hm_short: "R32",
+		hall_symbol: "P 3* 2",
+		universal_h_m: "R 3 2:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"-y,-x,-z",
+			"-x,-z,-y",
+			"-z,-y,-x"
+		]
+	},
+	{
 		number: 156,
 		symbol_cif: "P 3 m 1",
 		symbol_hm_short: "P3m1",
 		hall_symbol: "P 3 -2\"",
+		universal_h_m: "P 3 m 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4072,6 +9919,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 3 1 m",
 		symbol_hm_short: "P31m",
 		hall_symbol: "P 3 -2",
+		universal_h_m: "P 3 1 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4086,6 +9936,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 3 c 1",
 		symbol_hm_short: "P3c1",
 		hall_symbol: "P 3 -2\"c",
+		universal_h_m: "P 3 c 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4100,6 +9953,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 3 1 c",
 		symbol_hm_short: "P31c",
 		hall_symbol: "P 3 -2c",
+		universal_h_m: "P 3 1 c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4112,8 +9968,11 @@ var Et = Object.freeze([
 	{
 		number: 160,
 		symbol_cif: "R 3 m",
-		symbol_hm_short: "R3m",
+		symbol_hm_short: "H3m",
 		hall_symbol: "R 3 -2\"",
+		universal_h_m: "R 3 m:H",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4136,10 +9995,30 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 160,
+		symbol_cif: "R 3 m",
+		symbol_hm_short: "R3m",
+		hall_symbol: "P 3* -2",
+		universal_h_m: "R 3 m:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"y,x,z",
+			"x,z,y",
+			"z,y,x"
+		]
+	},
+	{
 		number: 161,
 		symbol_cif: "R 3 c",
-		symbol_hm_short: "R3c",
+		symbol_hm_short: "H3c",
 		hall_symbol: "R 3 -2\"c",
+		universal_h_m: "R 3 c:H",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x-y,z",
@@ -4162,22 +10041,42 @@ var Et = Object.freeze([
 		]
 	},
 	{
+		number: 161,
+		symbol_cif: "R 3 c",
+		symbol_hm_short: "R3c",
+		hall_symbol: "P 3* -2n",
+		universal_h_m: "R 3 c:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,z+1/2,y+1/2",
+			"z+1/2,y+1/2,x+1/2"
+		]
+	},
+	{
 		number: 162,
 		symbol_cif: "P -3 1 m",
 		symbol_hm_short: "P-31m",
 		hall_symbol: "-P 3 2",
+		universal_h_m: "P -3 1 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x+y,y,-z",
-			"x-y,-y,z",
 			"x,x-y,-z",
+			"-x,-y,-z",
+			"y,-x+y,-z",
+			"x-y,x,-z",
+			"y,x,z",
+			"x-y,-y,z",
 			"-x,-x+y,z"
 		]
 	},
@@ -4186,18 +10085,21 @@ var Et = Object.freeze([
 		symbol_cif: "P -3 1 c",
 		symbol_hm_short: "P-31c",
 		hall_symbol: "-P 3 2c",
+		universal_h_m: "P -3 1 c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x+y,y,-z+1/2",
-			"x-y,-y,z+1/2",
 			"x,x-y,-z+1/2",
+			"-x,-y,-z",
+			"y,-x+y,-z",
+			"x-y,x,-z",
+			"y,x,z+1/2",
+			"x-y,-y,z+1/2",
 			"-x,-x+y,z+1/2"
 		]
 	},
@@ -4206,18 +10108,21 @@ var Et = Object.freeze([
 		symbol_cif: "P -3 m 1",
 		symbol_hm_short: "P-3m1",
 		hall_symbol: "-P 3 2\"",
+		universal_h_m: "P -3 m 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,x,-z",
-			"-y,-x,z",
 			"x-y,-y,-z",
-			"-x+y,y,z",
 			"-x,-x+y,-z",
+			"-x,-y,-z",
+			"y,-x+y,-z",
+			"x-y,x,-z",
+			"-y,-x,z",
+			"-x+y,y,z",
 			"x,x-y,z"
 		]
 	},
@@ -4226,40 +10131,98 @@ var Et = Object.freeze([
 		symbol_cif: "P -3 c 1",
 		symbol_hm_short: "P-3c1",
 		hall_symbol: "-P 3 2\"c",
+		universal_h_m: "P -3 c 1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,x,-z+1/2",
-			"-y,-x,z+1/2",
 			"x-y,-y,-z+1/2",
-			"-x+y,y,z+1/2",
 			"-x,-x+y,-z+1/2",
+			"-x,-y,-z",
+			"y,-x+y,-z",
+			"x-y,x,-z",
+			"-y,-x,z+1/2",
+			"-x+y,y,z+1/2",
 			"x,x-y,z+1/2"
 		]
 	},
 	{
 		number: 166,
 		symbol_cif: "R -3 m",
-		symbol_hm_short: "R-3m",
+		symbol_hm_short: "H-3m",
 		hall_symbol: "-R 3 2\"",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z.-y,-x,z.x-y,-y,-z.-x+y,y,z.-x,-x+y,-z.x,x-y,z.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+1/3.-y+2/3,-x+1/3,z+1/3.x-y+2/3,-y+1/3,-z+1/3.-x+y+2/3,y+1/3,z+1/3.-x+2/3,-x+y+1/3,-z+1/3.x+2/3,x-y+1/3,z+1/3.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+2/3.-y+1/3,-x+2/3,z+2/3.x-y+1/3,-y+2/3,-z+2/3.-x+y+1/3,y+2/3,z+2/3.-x+1/3,-x+y+2/3,-z+2/3.x+1/3,x-y+2/3,z+2/3".split(".")
+		universal_h_m: "R -3 m:H",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x-y,z.-x+y,-x,z.y,x,-z.x-y,-y,-z.-x,-x+y,-z.-x,-y,-z.y,-x+y,-z.x-y,x,-z.-y,-x,z.-x+y,y,z.x,x-y,z.x+2/3,y+1/3,z+1/3.-y+2/3,x-y+1/3,z+1/3.-x+y+2/3,-x+1/3,z+1/3.y+2/3,x+1/3,-z+1/3.x-y+2/3,-y+1/3,-z+1/3.-x+2/3,-x+y+1/3,-z+1/3.-x+2/3,-y+1/3,-z+1/3.y+2/3,-x+y+1/3,-z+1/3.x-y+2/3,x+1/3,-z+1/3.-y+2/3,-x+1/3,z+1/3.-x+y+2/3,y+1/3,z+1/3.x+2/3,x-y+1/3,z+1/3.x+1/3,y+2/3,z+2/3.-y+1/3,x-y+2/3,z+2/3.-x+y+1/3,-x+2/3,z+2/3.y+1/3,x+2/3,-z+2/3.x-y+1/3,-y+2/3,-z+2/3.-x+1/3,-x+y+2/3,-z+2/3.-x+1/3,-y+2/3,-z+2/3.y+1/3,-x+y+2/3,-z+2/3.x-y+1/3,x+2/3,-z+2/3.-y+1/3,-x+2/3,z+2/3.-x+y+1/3,y+2/3,z+2/3.x+1/3,x-y+2/3,z+2/3".split(".")
+	},
+	{
+		number: 166,
+		symbol_cif: "R -3 m",
+		symbol_hm_short: "R-3m",
+		hall_symbol: "-P 3* 2",
+		universal_h_m: "R -3 m:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"-y,-x,-z",
+			"-x,-z,-y",
+			"-z,-y,-x",
+			"-x,-y,-z",
+			"-z,-x,-y",
+			"-y,-z,-x",
+			"y,x,z",
+			"x,z,y",
+			"z,y,x"
+		]
+	},
+	{
+		number: 167,
+		symbol_cif: "R -3 c",
+		symbol_hm_short: "H-3c",
+		hall_symbol: "-R 3 2\"c",
+		universal_h_m: "R -3 c:H",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x-y,z.-x+y,-x,z.y,x,-z+1/2.x-y,-y,-z+1/2.-x,-x+y,-z+1/2.-x,-y,-z.y,-x+y,-z.x-y,x,-z.-y,-x,z+1/2.-x+y,y,z+1/2.x,x-y,z+1/2.x+2/3,y+1/3,z+1/3.-y+2/3,x-y+1/3,z+1/3.-x+y+2/3,-x+1/3,z+1/3.y+2/3,x+1/3,-z+5/6.x-y+2/3,-y+1/3,-z+5/6.-x+2/3,-x+y+1/3,-z+5/6.-x+2/3,-y+1/3,-z+1/3.y+2/3,-x+y+1/3,-z+1/3.x-y+2/3,x+1/3,-z+1/3.-y+2/3,-x+1/3,z+5/6.-x+y+2/3,y+1/3,z+5/6.x+2/3,x-y+1/3,z+5/6.x+1/3,y+2/3,z+2/3.-y+1/3,x-y+2/3,z+2/3.-x+y+1/3,-x+2/3,z+2/3.y+1/3,x+2/3,-z+1/6.x-y+1/3,-y+2/3,-z+1/6.-x+1/3,-x+y+2/3,-z+1/6.-x+1/3,-y+2/3,-z+2/3.y+1/3,-x+y+2/3,-z+2/3.x-y+1/3,x+2/3,-z+2/3.-y+1/3,-x+2/3,z+1/6.-x+y+1/3,y+2/3,z+1/6.x+1/3,x-y+2/3,z+1/6".split(".")
 	},
 	{
 		number: 167,
 		symbol_cif: "R -3 c",
 		symbol_hm_short: "R-3c",
-		hall_symbol: "-R 3 2\"c",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x-y,z.y,-x+y,-z.-x+y,-x,z.x-y,x,-z.y,x,-z+1/2.-y,-x,z+1/2.x-y,-y,-z+1/2.-x+y,y,z+1/2.-x,-x+y,-z+1/2.x,x-y,z+1/2.x+2/3,y+1/3,z+1/3.-x+2/3,-y+1/3,-z+1/3.-y+2/3,x-y+1/3,z+1/3.y+2/3,-x+y+1/3,-z+1/3.-x+y+2/3,-x+1/3,z+1/3.x-y+2/3,x+1/3,-z+1/3.y+2/3,x+1/3,-z+5/6.-y+2/3,-x+1/3,z+5/6.x-y+2/3,-y+1/3,-z+5/6.-x+y+2/3,y+1/3,z+5/6.-x+2/3,-x+y+1/3,-z+5/6.x+2/3,x-y+1/3,z+5/6.x+1/3,y+2/3,z+2/3.-x+1/3,-y+2/3,-z+2/3.-y+1/3,x-y+2/3,z+2/3.y+1/3,-x+y+2/3,-z+2/3.-x+y+1/3,-x+2/3,z+2/3.x-y+1/3,x+2/3,-z+2/3.y+1/3,x+2/3,-z+1/6.-y+1/3,-x+2/3,z+1/6.x-y+1/3,-y+2/3,-z+1/6.-x+y+1/3,y+2/3,z+1/6.-x+1/3,-x+y+2/3,-z+1/6.x+1/3,x-y+2/3,z+1/6".split(".")
+		hall_symbol: "-P 3* 2n",
+		universal_h_m: "R -3 c:R",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"z,x,y",
+			"y,z,x",
+			"-y+1/2,-x+1/2,-z+1/2",
+			"-x+1/2,-z+1/2,-y+1/2",
+			"-z+1/2,-y+1/2,-x+1/2",
+			"-x,-y,-z",
+			"-z,-x,-y",
+			"-y,-z,-x",
+			"y+1/2,x+1/2,z+1/2",
+			"x+1/2,z+1/2,y+1/2",
+			"z+1/2,y+1/2,x+1/2"
+		]
 	},
 	{
 		number: 168,
 		symbol_cif: "P 6",
 		symbol_hm_short: "P6",
 		hall_symbol: "P 6",
+		universal_h_m: "P 6",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z",
@@ -4274,6 +10237,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 61",
 		symbol_hm_short: "P61",
 		hall_symbol: "P 61",
+		universal_h_m: "P 61",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/6",
@@ -4288,6 +10254,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 65",
 		symbol_hm_short: "P65",
 		hall_symbol: "P 65",
+		universal_h_m: "P 65",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+5/6",
@@ -4302,6 +10271,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 62",
 		symbol_hm_short: "P62",
 		hall_symbol: "P 62",
+		universal_h_m: "P 62",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/3",
@@ -4316,6 +10288,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 64",
 		symbol_hm_short: "P64",
 		hall_symbol: "P 64",
+		universal_h_m: "P 64",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+2/3",
@@ -4330,6 +10305,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 63",
 		symbol_hm_short: "P63",
 		hall_symbol: "P 6c",
+		universal_h_m: "P 63",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/2",
@@ -4344,6 +10322,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -6",
 		symbol_hm_short: "P-6",
 		hall_symbol: "P -6",
+		universal_h_m: "P -6",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+y,-x,-z",
@@ -4358,18 +10339,21 @@ var Et = Object.freeze([
 		symbol_cif: "P 6/m",
 		symbol_hm_short: "P6/m",
 		hall_symbol: "-P 6",
+		universal_h_m: "P 6/m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z",
-			"-x+y,-x,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z",
+			"-x,-y,-z",
+			"-x+y,-x,-z",
+			"y,-x+y,-z",
+			"x,y,-z",
+			"x-y,x,-z",
 			"-y,x-y,-z"
 		]
 	},
@@ -4378,18 +10362,21 @@ var Et = Object.freeze([
 		symbol_cif: "P 63/m",
 		symbol_hm_short: "P63/m",
 		hall_symbol: "-P 6c",
+		universal_h_m: "P 63/m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z+1/2",
-			"-x+y,-x,-z+1/2",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z+1/2",
-			"x,y,-z+1/2",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z+1/2",
+			"-x,-y,-z",
+			"-x+y,-x,-z+1/2",
+			"y,-x+y,-z",
+			"x,y,-z+1/2",
+			"x-y,x,-z",
 			"-y,x-y,-z+1/2"
 		]
 	},
@@ -4398,6 +10385,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 6 2 2",
 		symbol_hm_short: "P622",
 		hall_symbol: "P 6 2",
+		universal_h_m: "P 6 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z",
@@ -4418,6 +10408,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 61 2 2",
 		symbol_hm_short: "P6122",
 		hall_symbol: "P 61 2 (0 0 5)",
+		universal_h_m: "P 61 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/6",
@@ -4438,6 +10431,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 65 2 2",
 		symbol_hm_short: "P6522",
 		hall_symbol: "P 65 2 (0 0 1)",
+		universal_h_m: "P 65 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+5/6",
@@ -4458,6 +10454,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 62 2 2",
 		symbol_hm_short: "P6222",
 		hall_symbol: "P 62 2 (0 0 4)",
+		universal_h_m: "P 62 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/3",
@@ -4478,6 +10477,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 64 2 2",
 		symbol_hm_short: "P6422",
 		hall_symbol: "P 64 2 (0 0 2)",
+		universal_h_m: "P 64 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+2/3",
@@ -4498,6 +10500,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 63 2 2",
 		symbol_hm_short: "P6322",
 		hall_symbol: "P 6c 2c",
+		universal_h_m: "P 63 2 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/2",
@@ -4518,6 +10523,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 6 m m",
 		symbol_hm_short: "P6mm",
 		hall_symbol: "P 6 -2",
+		universal_h_m: "P 6 m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z",
@@ -4538,6 +10546,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 6 c c",
 		symbol_hm_short: "P6cc",
 		hall_symbol: "P 6 -2c",
+		universal_h_m: "P 6 c c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z",
@@ -4558,6 +10569,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 63 c m",
 		symbol_hm_short: "P63cm",
 		hall_symbol: "P 6c -2",
+		universal_h_m: "P 63 c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/2",
@@ -4578,6 +10592,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 63 m c",
 		symbol_hm_short: "P63mc",
 		hall_symbol: "P 6c -2c",
+		universal_h_m: "P 63 m c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"x-y,x,z+1/2",
@@ -4598,6 +10615,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -6 m 2",
 		symbol_hm_short: "P-6m2",
 		hall_symbol: "P -6 2",
+		universal_h_m: "P -6 m 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+y,-x,-z",
@@ -4618,6 +10638,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -6 c 2",
 		symbol_hm_short: "P-6c2",
 		hall_symbol: "P -6c 2",
+		universal_h_m: "P -6 c 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+y,-x,-z+1/2",
@@ -4638,6 +10661,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -6 2 m",
 		symbol_hm_short: "P-62m",
 		hall_symbol: "P -6 -2",
+		universal_h_m: "P -6 2 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+y,-x,-z",
@@ -4658,6 +10684,9 @@ var Et = Object.freeze([
 		symbol_cif: "P -6 2 c",
 		symbol_hm_short: "P-62c",
 		hall_symbol: "P -6c -2c",
+		universal_h_m: "P -6 2 c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+y,-x,-z+1/2",
@@ -4678,30 +10707,33 @@ var Et = Object.freeze([
 		symbol_cif: "P 6/m m m",
 		symbol_hm_short: "P6/mmm",
 		hall_symbol: "-P 6 2",
+		universal_h_m: "P 6/m m m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z",
-			"-x+y,-x,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z",
-			"-y,x-y,-z",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x,-x+y,-z",
-			"x,x-y,z",
 			"-x+y,y,-z",
-			"x-y,-y,z",
 			"y,x,-z",
-			"-y,-x,z",
 			"x,x-y,-z",
-			"-x,-x+y,z",
 			"x-y,-y,-z",
+			"-x,-y,-z",
+			"-x+y,-x,-z",
+			"y,-x+y,-z",
+			"x,y,-z",
+			"x-y,x,-z",
+			"-y,x-y,-z",
+			"y,x,z",
+			"x,x-y,z",
+			"x-y,-y,z",
+			"-y,-x,z",
+			"-x,-x+y,z",
 			"-x+y,y,z"
 		]
 	},
@@ -4710,30 +10742,33 @@ var Et = Object.freeze([
 		symbol_cif: "P 6/m c c",
 		symbol_hm_short: "P6/mcc",
 		hall_symbol: "-P 6 2c",
+		universal_h_m: "P 6/m c c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z",
-			"-x+y,-x,-z",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z",
-			"-y,x-y,-z",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x,-x+y,-z+1/2",
-			"x,x-y,z+1/2",
 			"-x+y,y,-z+1/2",
-			"x-y,-y,z+1/2",
 			"y,x,-z+1/2",
-			"-y,-x,z+1/2",
 			"x,x-y,-z+1/2",
-			"-x,-x+y,z+1/2",
 			"x-y,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x+y,-x,-z",
+			"y,-x+y,-z",
+			"x,y,-z",
+			"x-y,x,-z",
+			"-y,x-y,-z",
+			"y,x,z+1/2",
+			"x,x-y,z+1/2",
+			"x-y,-y,z+1/2",
+			"-y,-x,z+1/2",
+			"-x,-x+y,z+1/2",
 			"-x+y,y,z+1/2"
 		]
 	},
@@ -4742,30 +10777,33 @@ var Et = Object.freeze([
 		symbol_cif: "P 63/m c m",
 		symbol_hm_short: "P63/mcm",
 		hall_symbol: "-P 6c 2",
+		universal_h_m: "P 63/m c m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z+1/2",
-			"-x+y,-x,-z+1/2",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z+1/2",
-			"x,y,-z+1/2",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z+1/2",
-			"-y,x-y,-z+1/2",
 			"-y,-x,-z",
-			"y,x,z",
 			"-x,-x+y,-z+1/2",
-			"x,x-y,z+1/2",
 			"-x+y,y,-z",
-			"x-y,-y,z",
 			"y,x,-z+1/2",
-			"-y,-x,z+1/2",
 			"x,x-y,-z",
-			"-x,-x+y,z",
 			"x-y,-y,-z+1/2",
+			"-x,-y,-z",
+			"-x+y,-x,-z+1/2",
+			"y,-x+y,-z",
+			"x,y,-z+1/2",
+			"x-y,x,-z",
+			"-y,x-y,-z+1/2",
+			"y,x,z",
+			"x,x-y,z+1/2",
+			"x-y,-y,z",
+			"-y,-x,z+1/2",
+			"-x,-x+y,z",
 			"-x+y,y,z+1/2"
 		]
 	},
@@ -4774,30 +10812,33 @@ var Et = Object.freeze([
 		symbol_cif: "P 63/m m c",
 		symbol_hm_short: "P63/mmc",
 		hall_symbol: "-P 6c 2c",
+		universal_h_m: "P 63/m m c",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"x-y,x,z+1/2",
-			"-x+y,-x,-z+1/2",
 			"-y,x-y,z",
-			"y,-x+y,-z",
 			"-x,-y,z+1/2",
-			"x,y,-z+1/2",
 			"-x+y,-x,z",
-			"x-y,x,-z",
 			"y,-x+y,z+1/2",
-			"-y,x-y,-z+1/2",
 			"-y,-x,-z+1/2",
-			"y,x,z+1/2",
 			"-x,-x+y,-z",
-			"x,x-y,z",
 			"-x+y,y,-z+1/2",
-			"x-y,-y,z+1/2",
 			"y,x,-z",
-			"-y,-x,z",
 			"x,x-y,-z+1/2",
-			"-x,-x+y,z+1/2",
 			"x-y,-y,-z",
+			"-x,-y,-z",
+			"-x+y,-x,-z+1/2",
+			"y,-x+y,-z",
+			"x,y,-z+1/2",
+			"x-y,x,-z",
+			"-y,x-y,-z+1/2",
+			"y,x,z+1/2",
+			"x,x-y,z",
+			"x-y,-y,z+1/2",
+			"-y,-x,z",
+			"-x,-x+y,z+1/2",
 			"-x+y,y,z"
 		]
 	},
@@ -4806,6 +10847,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 2 3",
 		symbol_hm_short: "P23",
 		hall_symbol: "P 2 2 3",
+		universal_h_m: "P 2 3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -4826,6 +10870,9 @@ var Et = Object.freeze([
 		symbol_cif: "F 2 3",
 		symbol_hm_short: "F23",
 		hall_symbol: "F 2 2 3",
+		universal_h_m: "F 2 3",
+		setting: "",
+		is_standard: !0,
 		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.z,x+1/2,y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,-y+1/2.-z,-x+1/2,y+1/2.y,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y,-z+1/2,x+1/2.y,-z+1/2,-x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.z+1/2,x,y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,-y+1/2.-z+1/2,-x,y+1/2.y+1/2,z,x+1/2.-y+1/2,z,-x+1/2.-y+1/2,-z,x+1/2.y+1/2,-z,-x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.z+1/2,x+1/2,y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,-y.-z+1/2,-x+1/2,y.y+1/2,z+1/2,x.-y+1/2,z+1/2,-x.-y+1/2,-z+1/2,x.y+1/2,-z+1/2,-x".split(".")
 	},
 	{
@@ -4833,6 +10880,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 2 3",
 		symbol_hm_short: "I23",
 		hall_symbol: "I 2 2 3",
+		universal_h_m: "I 2 3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y,z",
@@ -4865,6 +10915,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 21 3",
 		symbol_hm_short: "P213",
 		hall_symbol: "P 2ac 2ab 3",
+		universal_h_m: "P 21 3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x+1/2,-y,z+1/2",
@@ -4885,6 +10938,9 @@ var Et = Object.freeze([
 		symbol_cif: "I 21 3",
 		symbol_hm_short: "I213",
 		hall_symbol: "I 2b 2c 3",
+		universal_h_m: "I 21 3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-x,-y+1/2,z",
@@ -4917,30 +10973,33 @@ var Et = Object.freeze([
 		symbol_cif: "P m -3",
 		symbol_hm_short: "Pm-3",
 		hall_symbol: "-P 2 2 3",
+		universal_h_m: "P m -3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x,-y,z",
-			"x,y,-z",
 			"x,-y,-z",
-			"-x,y,z",
 			"-x,y,-z",
-			"x,-y,z",
 			"z,x,y",
-			"-z,-x,-y",
 			"z,-x,-y",
-			"-z,x,y",
 			"-z,x,-y",
-			"z,-x,y",
 			"-z,-x,y",
-			"z,x,-y",
 			"y,z,x",
-			"-y,-z,-x",
 			"-y,z,-x",
-			"y,-z,x",
 			"-y,-z,x",
-			"y,z,-x",
 			"y,-z,-x",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x,y,z",
+			"x,-y,z",
+			"-z,-x,-y",
+			"-z,x,y",
+			"z,-x,y",
+			"z,x,-y",
+			"-y,-z,-x",
+			"y,-z,x",
+			"y,z,-x",
 			"-y,z,x"
 		]
 	},
@@ -4948,31 +11007,69 @@ var Et = Object.freeze([
 		number: 201,
 		symbol_cif: "P n -3",
 		symbol_hm_short: "Pn-3",
-		hall_symbol: "-P 2ab 2bc 3",
+		hall_symbol: "P 2 2 3 -1n",
+		universal_h_m: "P n -3:1",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
-			"-x+1/2,-y+1/2,z",
-			"x+1/2,y+1/2,-z",
-			"x,-y+1/2,-z+1/2",
-			"-x,y+1/2,z+1/2",
-			"-x+1/2,y,-z+1/2",
-			"x+1/2,-y,z+1/2",
+			"-x,-y,z",
+			"x,-y,-z",
+			"-x,y,-z",
 			"z,x,y",
-			"-z,-x,-y",
-			"z,-x+1/2,-y+1/2",
-			"-z,x+1/2,y+1/2",
-			"-z+1/2,x,-y+1/2",
-			"z+1/2,-x,y+1/2",
-			"-z+1/2,-x+1/2,y",
-			"z+1/2,x+1/2,-y",
+			"z,-x,-y",
+			"-z,x,-y",
+			"-z,-x,y",
 			"y,z,x",
-			"-y,-z,-x",
+			"-y,z,-x",
+			"-y,-z,x",
+			"y,-z,-x",
+			"-x+1/2,-y+1/2,-z+1/2",
+			"x+1/2,y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,z+1/2",
+			"x+1/2,-y+1/2,z+1/2",
+			"-z+1/2,-x+1/2,-y+1/2",
+			"-z+1/2,x+1/2,y+1/2",
+			"z+1/2,-x+1/2,y+1/2",
+			"z+1/2,x+1/2,-y+1/2",
+			"-y+1/2,-z+1/2,-x+1/2",
+			"y+1/2,-z+1/2,x+1/2",
+			"y+1/2,z+1/2,-x+1/2",
+			"-y+1/2,z+1/2,x+1/2"
+		]
+	},
+	{
+		number: 201,
+		symbol_cif: "P n -3",
+		symbol_hm_short: "Pn-3",
+		hall_symbol: "-P 2ab 2bc 3",
+		universal_h_m: "P n -3:2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"z,x,y",
+			"z,-x+1/2,-y+1/2",
+			"-z+1/2,x,-y+1/2",
+			"-z+1/2,-x+1/2,y",
+			"y,z,x",
 			"-y+1/2,z,-x+1/2",
-			"y+1/2,-z,x+1/2",
 			"-y+1/2,-z+1/2,x",
-			"y+1/2,z+1/2,-x",
 			"y,-z+1/2,-x+1/2",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,-z",
+			"-x,y+1/2,z+1/2",
+			"x+1/2,-y,z+1/2",
+			"-z,-x,-y",
+			"-z,x+1/2,y+1/2",
+			"z+1/2,-x,y+1/2",
+			"z+1/2,x+1/2,-y",
+			"-y,-z,-x",
+			"y+1/2,-z,x+1/2",
+			"y+1/2,z+1/2,-x",
 			"-y,z+1/2,x+1/2"
 		]
 	},
@@ -4981,51 +11078,73 @@ var Et = Object.freeze([
 		symbol_cif: "F m -3",
 		symbol_hm_short: "Fm-3",
 		hall_symbol: "-F 2 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x".split(".")
+		universal_h_m: "F m -3",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.-x,-y,-z.x,y,-z.-x,y,z.x,-y,z.-z,-x,-y.-z,x,y.z,-x,y.z,x,-y.-y,-z,-x.y,-z,x.y,z,-x.-y,z,x.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.z,x+1/2,y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,-y+1/2.-z,-x+1/2,y+1/2.y,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y,-z+1/2,x+1/2.y,-z+1/2,-x+1/2.-x,-y+1/2,-z+1/2.x,y+1/2,-z+1/2.-x,y+1/2,z+1/2.x,-y+1/2,z+1/2.-z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-y,-z+1/2,-x+1/2.y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.z+1/2,x,y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,-y+1/2.-z+1/2,-x,y+1/2.y+1/2,z,x+1/2.-y+1/2,z,-x+1/2.-y+1/2,-z,x+1/2.y+1/2,-z,-x+1/2.-x+1/2,-y,-z+1/2.x+1/2,y,-z+1/2.-x+1/2,y,z+1/2.x+1/2,-y,z+1/2.-z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-y+1/2,-z,-x+1/2.y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.z+1/2,x+1/2,y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,-y.-z+1/2,-x+1/2,y.y+1/2,z+1/2,x.-y+1/2,z+1/2,-x.-y+1/2,-z+1/2,x.y+1/2,-z+1/2,-x.-x+1/2,-y+1/2,-z.x+1/2,y+1/2,-z.-x+1/2,y+1/2,z.x+1/2,-y+1/2,z.-z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-y+1/2,-z+1/2,-x.y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-y+1/2,z+1/2,x".split(".")
+	},
+	{
+		number: 203,
+		symbol_cif: "F d -3",
+		symbol_hm_short: "Fd-3",
+		hall_symbol: "F 2 2 3 -1d",
+		universal_h_m: "F d -3:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.-x+1/4,-y+1/4,-z+1/4.x+1/4,y+1/4,-z+1/4.-x+1/4,y+1/4,z+1/4.x+1/4,-y+1/4,z+1/4.-z+1/4,-x+1/4,-y+1/4.-z+1/4,x+1/4,y+1/4.z+1/4,-x+1/4,y+1/4.z+1/4,x+1/4,-y+1/4.-y+1/4,-z+1/4,-x+1/4.y+1/4,-z+1/4,x+1/4.y+1/4,z+1/4,-x+1/4.-y+1/4,z+1/4,x+1/4.x,y+1/2,z+1/2.-x,-y+1/2,z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,-z+1/2.z,x+1/2,y+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,-y+1/2.-z,-x+1/2,y+1/2.y,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y,-z+1/2,x+1/2.y,-z+1/2,-x+1/2.-x+1/4,-y+3/4,-z+3/4.x+1/4,y+3/4,-z+3/4.-x+1/4,y+3/4,z+3/4.x+1/4,-y+3/4,z+3/4.-z+1/4,-x+3/4,-y+3/4.-z+1/4,x+3/4,y+3/4.z+1/4,-x+3/4,y+3/4.z+1/4,x+3/4,-y+3/4.-y+1/4,-z+3/4,-x+3/4.y+1/4,-z+3/4,x+3/4.y+1/4,z+3/4,-x+3/4.-y+1/4,z+3/4,x+3/4.x+1/2,y,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,-z+1/2.z+1/2,x,y+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,-y+1/2.-z+1/2,-x,y+1/2.y+1/2,z,x+1/2.-y+1/2,z,-x+1/2.-y+1/2,-z,x+1/2.y+1/2,-z,-x+1/2.-x+3/4,-y+1/4,-z+3/4.x+3/4,y+1/4,-z+3/4.-x+3/4,y+1/4,z+3/4.x+3/4,-y+1/4,z+3/4.-z+3/4,-x+1/4,-y+3/4.-z+3/4,x+1/4,y+3/4.z+3/4,-x+1/4,y+3/4.z+3/4,x+1/4,-y+3/4.-y+3/4,-z+1/4,-x+3/4.y+3/4,-z+1/4,x+3/4.y+3/4,z+1/4,-x+3/4.-y+3/4,z+1/4,x+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,-z.z+1/2,x+1/2,y.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,-y.-z+1/2,-x+1/2,y.y+1/2,z+1/2,x.-y+1/2,z+1/2,-x.-y+1/2,-z+1/2,x.y+1/2,-z+1/2,-x.-x+3/4,-y+3/4,-z+1/4.x+3/4,y+3/4,-z+1/4.-x+3/4,y+3/4,z+1/4.x+3/4,-y+3/4,z+1/4.-z+3/4,-x+3/4,-y+1/4.-z+3/4,x+3/4,y+1/4.z+3/4,-x+3/4,y+1/4.z+3/4,x+3/4,-y+1/4.-y+3/4,-z+3/4,-x+1/4.y+3/4,-z+3/4,x+1/4.y+3/4,z+3/4,-x+1/4.-y+3/4,z+3/4,x+1/4".split(".")
 	},
 	{
 		number: 203,
 		symbol_cif: "F d -3",
 		symbol_hm_short: "Fd-3",
 		hall_symbol: "-F 2uv 2vw 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.z,x,y.-z,-x,-y.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.y,z,x.-y,-z,-x.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4".split(".")
+		universal_h_m: "F d -3:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-x+1/4,-y+1/4,z.x,-y+1/4,-z+1/4.-x+1/4,y,-z+1/4.z,x,y.z,-x+1/4,-y+1/4.-z+1/4,x,-y+1/4.-z+1/4,-x+1/4,y.y,z,x.-y+1/4,z,-x+1/4.-y+1/4,-z+1/4,x.y,-z+1/4,-x+1/4.-x,-y,-z.x+3/4,y+3/4,-z.-x,y+3/4,z+3/4.x+3/4,-y,z+3/4.-z,-x,-y.-z,x+3/4,y+3/4.z+3/4,-x,y+3/4.z+3/4,x+3/4,-y.-y,-z,-x.y+3/4,-z,x+3/4.y+3/4,z+3/4,-x.-y,z+3/4,x+3/4.x,y+1/2,z+1/2.-x+1/4,-y+3/4,z+1/2.x,-y+3/4,-z+3/4.-x+1/4,y+1/2,-z+3/4.z,x+1/2,y+1/2.z,-x+3/4,-y+3/4.-z+1/4,x+1/2,-y+3/4.-z+1/4,-x+3/4,y+1/2.y,z+1/2,x+1/2.-y+1/4,z+1/2,-x+3/4.-y+1/4,-z+3/4,x+1/2.y,-z+3/4,-x+3/4.-x,-y+1/2,-z+1/2.x+3/4,y+1/4,-z+1/2.-x,y+1/4,z+1/4.x+3/4,-y+1/2,z+1/4.-z,-x+1/2,-y+1/2.-z,x+1/4,y+1/4.z+3/4,-x+1/2,y+1/4.z+3/4,x+1/4,-y+1/2.-y,-z+1/2,-x+1/2.y+3/4,-z+1/2,x+1/4.y+3/4,z+1/4,-x+1/2.-y,z+1/4,x+1/4.x+1/2,y,z+1/2.-x+3/4,-y+1/4,z+1/2.x+1/2,-y+1/4,-z+3/4.-x+3/4,y,-z+3/4.z+1/2,x,y+1/2.z+1/2,-x+1/4,-y+3/4.-z+3/4,x,-y+3/4.-z+3/4,-x+1/4,y+1/2.y+1/2,z,x+1/2.-y+3/4,z,-x+3/4.-y+3/4,-z+1/4,x+1/2.y+1/2,-z+1/4,-x+3/4.-x+1/2,-y,-z+1/2.x+1/4,y+3/4,-z+1/2.-x+1/2,y+3/4,z+1/4.x+1/4,-y,z+1/4.-z+1/2,-x,-y+1/2.-z+1/2,x+3/4,y+1/4.z+1/4,-x,y+1/4.z+1/4,x+3/4,-y+1/2.-y+1/2,-z,-x+1/2.y+1/4,-z,x+1/4.y+1/4,z+3/4,-x+1/2.-y+1/2,z+3/4,x+1/4.x+1/2,y+1/2,z.-x+3/4,-y+3/4,z.x+1/2,-y+3/4,-z+1/4.-x+3/4,y+1/2,-z+1/4.z+1/2,x+1/2,y.z+1/2,-x+3/4,-y+1/4.-z+3/4,x+1/2,-y+1/4.-z+3/4,-x+3/4,y.y+1/2,z+1/2,x.-y+3/4,z+1/2,-x+1/4.-y+3/4,-z+3/4,x.y+1/2,-z+3/4,-x+1/4.-x+1/2,-y+1/2,-z.x+1/4,y+1/4,-z.-x+1/2,y+1/4,z+3/4.x+1/4,-y+1/2,z+3/4.-z+1/2,-x+1/2,-y.-z+1/2,x+1/4,y+3/4.z+1/4,-x+1/2,y+3/4.z+1/4,x+1/4,-y.-y+1/2,-z+1/2,-x.y+1/4,-z+1/2,x+3/4.y+1/4,z+1/4,-x.-y+1/2,z+1/4,x+3/4".split(".")
 	},
 	{
 		number: 204,
 		symbol_cif: "I m -3",
 		symbol_hm_short: "Im-3",
 		hall_symbol: "-I 2 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x,-y,z.x,y,-z.x,-y,-z.-x,y,z.-x,y,-z.x,-y,z.z,x,y.-z,-x,-y.z,-x,-y.-z,x,y.-z,x,-y.z,-x,y.-z,-x,y.z,x,-y.y,z,x.-y,-z,-x.-y,z,-x.y,-z,x.-y,-z,x.y,z,-x.y,-z,-x.-y,z,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2".split(".")
+		universal_h_m: "I m -3",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y,z.x,-y,-z.-x,y,-z.z,x,y.z,-x,-y.-z,x,-y.-z,-x,y.y,z,x.-y,z,-x.-y,-z,x.y,-z,-x.-x,-y,-z.x,y,-z.-x,y,z.x,-y,z.-z,-x,-y.-z,x,y.z,-x,y.z,x,-y.-y,-z,-x.y,-z,x.y,z,-x.-y,z,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-x+1/2,y+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,z+1/2,-x+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,-z+1/2,-x+1/2.-x+1/2,-y+1/2,-z+1/2.x+1/2,y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.x+1/2,-y+1/2,z+1/2.-z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.-y+1/2,-z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2".split(".")
 	},
 	{
 		number: 205,
 		symbol_cif: "P a -3",
 		symbol_hm_short: "Pa-3",
 		hall_symbol: "-P 2ac 2ab 3",
+		universal_h_m: "P a -3",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
-			"-x,-y,-z",
 			"-x+1/2,-y,z+1/2",
-			"x+1/2,y,-z+1/2",
 			"x+1/2,-y+1/2,-z",
-			"-x+1/2,y+1/2,z",
 			"-x,y+1/2,-z+1/2",
-			"x,-y+1/2,z+1/2",
 			"z,x,y",
-			"-z,-x,-y",
 			"z+1/2,-x+1/2,-y",
-			"-z+1/2,x+1/2,y",
 			"-z,x+1/2,-y+1/2",
-			"z,-x+1/2,y+1/2",
 			"-z+1/2,-x,y+1/2",
-			"z+1/2,x,-y+1/2",
 			"y,z,x",
-			"-y,-z,-x",
 			"-y,z+1/2,-x+1/2",
-			"y,-z+1/2,x+1/2",
 			"-y+1/2,-z,x+1/2",
-			"y+1/2,z,-x+1/2",
 			"y+1/2,-z+1/2,-x",
+			"-x,-y,-z",
+			"x+1/2,y,-z+1/2",
+			"-x+1/2,y+1/2,z",
+			"x,-y+1/2,z+1/2",
+			"-z,-x,-y",
+			"-z+1/2,x+1/2,y",
+			"z,-x+1/2,y+1/2",
+			"z+1/2,x,-y+1/2",
+			"-y,-z,-x",
+			"y,-z+1/2,x+1/2",
+			"y+1/2,z,-x+1/2",
 			"-y+1/2,z+1/2,x"
 		]
 	},
@@ -5034,13 +11153,19 @@ var Et = Object.freeze([
 		symbol_cif: "I a -3",
 		symbol_hm_short: "Ia-3",
 		hall_symbol: "-I 2b 2c 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-x,-y+1/2,z.x,y+1/2,-z.x,-y,-z+1/2.-x,y,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.z,x,y.-z,-x,-y.z,-x,-y+1/2.-z,x,y+1/2.-z+1/2,x,-y.z+1/2,-x,y.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.y,z,x.-y,-z,-x.-y+1/2,z,-x.y+1/2,-z,x.-y,-z+1/2,x.y,z+1/2,-x.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-x+1/2,y,-z.x+1/2,-y,z.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-x+1/2,y.z,x+1/2,-y.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.y,-z,-x+1/2.-y,z,x+1/2".split(".")
+		universal_h_m: "I a -3",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-x,-y+1/2,z.x,-y,-z+1/2.-x,y+1/2,-z+1/2.z,x,y.z,-x,-y+1/2.-z+1/2,x,-y.-z+1/2,-x,y+1/2.y,z,x.-y+1/2,z,-x.-y,-z+1/2,x.y+1/2,-z+1/2,-x.-x,-y,-z.x,y+1/2,-z.-x,y,z+1/2.x,-y+1/2,z+1/2.-z,-x,-y.-z,x,y+1/2.z+1/2,-x,y.z+1/2,x,-y+1/2.-y,-z,-x.y+1/2,-z,x.y,z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,y+1/2,z+1/2.-x+1/2,-y,z+1/2.x+1/2,-y+1/2,-z.-x+1/2,y,-z.z+1/2,x+1/2,y+1/2.z+1/2,-x+1/2,-y.-z,x+1/2,-y+1/2.-z,-x+1/2,y.y+1/2,z+1/2,x+1/2.-y,z+1/2,-x+1/2.-y+1/2,-z,x+1/2.y,-z,-x+1/2.-x+1/2,-y+1/2,-z+1/2.x+1/2,y,-z+1/2.-x+1/2,y+1/2,z.x+1/2,-y,z.-z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y.z,-x+1/2,y+1/2.z,x+1/2,-y.-y+1/2,-z+1/2,-x+1/2.y,-z+1/2,x+1/2.y+1/2,z,-x+1/2.-y,z,x+1/2".split(".")
 	},
 	{
 		number: 207,
 		symbol_cif: "P 4 3 2",
 		symbol_hm_short: "P432",
 		hall_symbol: "P 4 2 3",
+		universal_h_m: "P 4 3 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y,x,z",
@@ -5058,14 +11183,14 @@ var Et = Object.freeze([
 			"-z,-y,-x",
 			"-z,-x,y",
 			"-z,y,x",
+			"-x,z,y",
 			"y,z,x",
 			"x,z,-y",
 			"-y,z,-x",
-			"-x,z,y",
-			"-y,-z,x",
 			"-x,-z,-y",
 			"y,-z,-x",
-			"x,-z,y"
+			"x,-z,y",
+			"-y,-z,x"
 		]
 	},
 	{
@@ -5073,6 +11198,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 42 3 2",
 		symbol_hm_short: "P4232",
 		hall_symbol: "P 4n 2 3",
+		universal_h_m: "P 42 3 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/2,x+1/2,z+1/2",
@@ -5090,14 +11218,14 @@ var Et = Object.freeze([
 			"-z+1/2,-y+1/2,-x+1/2",
 			"-z,-x,y",
 			"-z+1/2,y+1/2,x+1/2",
+			"-x+1/2,z+1/2,y+1/2",
 			"y,z,x",
 			"x+1/2,z+1/2,-y+1/2",
 			"-y,z,-x",
-			"-x+1/2,z+1/2,y+1/2",
-			"-y,-z,x",
 			"-x+1/2,-z+1/2,-y+1/2",
 			"y,-z,-x",
-			"x+1/2,-z+1/2,y+1/2"
+			"x+1/2,-z+1/2,y+1/2",
+			"-y,-z,x"
 		]
 	},
 	{
@@ -5105,27 +11233,39 @@ var Et = Object.freeze([
 		symbol_cif: "F 4 3 2",
 		symbol_hm_short: "F432",
 		hall_symbol: "F 4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.z,x+1/2,y+1/2.z,-y+1/2,x+1/2.z,-x+1/2,-y+1/2.z,y+1/2,-x+1/2.-z,x+1/2,-y+1/2.-z,-y+1/2,-x+1/2.-z,-x+1/2,y+1/2.-z,y+1/2,x+1/2.y,z+1/2,x+1/2.x,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,z+1/2,y+1/2.-y,-z+1/2,x+1/2.-x,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y,x+1/2.z+1/2,-x,-y+1/2.z+1/2,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y,-x+1/2.-z+1/2,-x,y+1/2.-z+1/2,y,x+1/2.y+1/2,z,x+1/2.x+1/2,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,z,y+1/2.-y+1/2,-z,x+1/2.-x+1/2,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.z+1/2,x+1/2,y.z+1/2,-y+1/2,x.z+1/2,-x+1/2,-y.z+1/2,y+1/2,-x.-z+1/2,x+1/2,-y.-z+1/2,-y+1/2,-x.-z+1/2,-x+1/2,y.-z+1/2,y+1/2,x.y+1/2,z+1/2,x.x+1/2,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,z+1/2,y.-y+1/2,-z+1/2,x.-x+1/2,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y".split(".")
+		universal_h_m: "F 4 3 2",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.z,x+1/2,y+1/2.z,-y+1/2,x+1/2.z,-x+1/2,-y+1/2.z,y+1/2,-x+1/2.-z,x+1/2,-y+1/2.-z,-y+1/2,-x+1/2.-z,-x+1/2,y+1/2.-z,y+1/2,x+1/2.-x,z+1/2,y+1/2.y,z+1/2,x+1/2.x,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y+1/2.-y,-z+1/2,x+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y,x+1/2.z+1/2,-x,-y+1/2.z+1/2,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y,-x+1/2.-z+1/2,-x,y+1/2.-z+1/2,y,x+1/2.-x+1/2,z,y+1/2.y+1/2,z,x+1/2.x+1/2,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y+1/2.-y+1/2,-z,x+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.z+1/2,x+1/2,y.z+1/2,-y+1/2,x.z+1/2,-x+1/2,-y.z+1/2,y+1/2,-x.-z+1/2,x+1/2,-y.-z+1/2,-y+1/2,-x.-z+1/2,-x+1/2,y.-z+1/2,y+1/2,x.-x+1/2,z+1/2,y.y+1/2,z+1/2,x.x+1/2,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y.-y+1/2,-z+1/2,x".split(".")
 	},
 	{
 		number: 210,
 		symbol_cif: "F 41 3 2",
 		symbol_hm_short: "F4132",
 		hall_symbol: "F 4d 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,z+3/4,y+3/4.-y,-z,x.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,z+1/4,y+1/4.-y,-z+1/2,x+1/2.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,z+3/4,y+1/4.-y+1/2,-z,x+1/2.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4".split(".")
+		universal_h_m: "F 41 3 2",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.-x+1/4,z+1/4,y+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4.-y+1/2,-z+1/2,x.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.-x+1/4,z+3/4,y+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.-y+1/2,-z,x+1/2.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.-x+3/4,z+1/4,y+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.-y,-z+1/2,x+1/2.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.-x+3/4,z+3/4,y+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.-y,-z,x".split(".")
 	},
 	{
 		number: 211,
 		symbol_cif: "I 4 3 2",
 		symbol_hm_short: "I432",
 		hall_symbol: "I 4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.y,z,x.x,z,-y.-y,z,-x.-x,z,y.-y,-z,x.-x,-z,-y.y,-z,-x.x,-z,y.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y+1/2.-z+1/2,y+1/2,x+1/2.y+1/2,z+1/2,x+1/2.x+1/2,z+1/2,-y+1/2.-y+1/2,z+1/2,-x+1/2.-x+1/2,z+1/2,y+1/2.-y+1/2,-z+1/2,x+1/2.-x+1/2,-z+1/2,-y+1/2.y+1/2,-z+1/2,-x+1/2.x+1/2,-z+1/2,y+1/2".split(".")
+		universal_h_m: "I 4 3 2",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y+1/2.-z+1/2,y+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.y+1/2,z+1/2,x+1/2.x+1/2,z+1/2,-y+1/2.-y+1/2,z+1/2,-x+1/2.-x+1/2,-z+1/2,-y+1/2.y+1/2,-z+1/2,-x+1/2.x+1/2,-z+1/2,y+1/2.-y+1/2,-z+1/2,x+1/2".split(".")
 	},
 	{
 		number: 212,
 		symbol_cif: "P 43 3 2",
 		symbol_hm_short: "P4332",
 		hall_symbol: "P 4acd 2ab 3",
+		universal_h_m: "P 43 3 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+3/4,x+1/4,z+3/4",
@@ -5143,14 +11283,14 @@ var Et = Object.freeze([
 			"-z+1/4,-y+1/4,-x+1/4",
 			"-z+1/2,-x,y+1/2",
 			"-z+3/4,y+1/4,x+3/4",
+			"-x+3/4,z+1/4,y+3/4",
 			"y,z,x",
 			"x+1/4,z+3/4,-y+3/4",
 			"-y,z+1/2,-x+1/2",
-			"-x+3/4,z+1/4,y+3/4",
-			"-y+1/2,-z,x+1/2",
 			"-x+1/4,-z+1/4,-y+1/4",
 			"y+1/2,-z+1/2,-x",
-			"x+3/4,-z+3/4,y+1/4"
+			"x+3/4,-z+3/4,y+1/4",
+			"-y+1/2,-z,x+1/2"
 		]
 	},
 	{
@@ -5158,6 +11298,9 @@ var Et = Object.freeze([
 		symbol_cif: "P 41 3 2",
 		symbol_hm_short: "P4132",
 		hall_symbol: "P 4bd 2ab 3",
+		universal_h_m: "P 41 3 2",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"-y+1/4,x+3/4,z+1/4",
@@ -5175,14 +11318,14 @@ var Et = Object.freeze([
 			"-z+3/4,-y+3/4,-x+3/4",
 			"-z+1/2,-x,y+1/2",
 			"-z+1/4,y+3/4,x+1/4",
+			"-x+1/4,z+3/4,y+1/4",
 			"y,z,x",
 			"x+3/4,z+1/4,-y+1/4",
 			"-y,z+1/2,-x+1/2",
-			"-x+1/4,z+3/4,y+1/4",
-			"-y+1/2,-z,x+1/2",
 			"-x+3/4,-z+3/4,-y+3/4",
 			"y+1/2,-z+1/2,-x",
-			"x+1/4,-z+1/4,y+3/4"
+			"x+1/4,-z+1/4,y+3/4",
+			"-y+1/2,-z,x+1/2"
 		]
 	},
 	{
@@ -5190,13 +11333,19 @@ var Et = Object.freeze([
 		symbol_cif: "I 41 3 2",
 		symbol_hm_short: "I4132",
 		hall_symbol: "I 4bd 2c 3",
-		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.z,x,y.z+1/4,-y+1/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+1/4.-z+1/2,x,-y.-z+1/4,-y+1/4,-x+1/4.-z,-x+1/2,y.-z+3/4,y+1/4,x+3/4.y,z,x.x+3/4,z+1/4,-y+1/4.-y,z+1/2,-x+1/2.-x+1/4,z+3/4,y+1/4.-y,-z+1/2,x.-x+1/4,-z+1/4,-y+1/4.y,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.z+1/2,x+1/2,y+1/2.z+3/4,-y+3/4,x+1/4.z,-x,-y+1/2.z+1/4,y+3/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+1/4.y+1/2,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x.-x+3/4,z+1/4,y+3/4.-y+1/2,-z,x+1/2.-x+3/4,-z+3/4,-y+3/4.y+1/2,-z+1/2,-x.x+1/4,-z+1/4,y+3/4".split(".")
+		universal_h_m: "I 41 3 2",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.z,x,y.z+1/4,-y+1/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+1/4.-z+1/2,x,-y.-z+1/4,-y+1/4,-x+1/4.-z,-x+1/2,y.-z+3/4,y+1/4,x+3/4.-x+1/4,z+3/4,y+1/4.y,z,x.x+3/4,z+1/4,-y+1/4.-y,z+1/2,-x+1/2.-x+1/4,-z+1/4,-y+1/4.y,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.-y,-z+1/2,x.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.z+1/2,x+1/2,y+1/2.z+3/4,-y+3/4,x+1/4.z,-x,-y+1/2.z+1/4,y+3/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+1/4.-x+3/4,z+1/4,y+3/4.y+1/2,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x.-x+3/4,-z+3/4,-y+3/4.y+1/2,-z+1/2,-x.x+1/4,-z+1/4,y+3/4.-y+1/2,-z,x+1/2".split(".")
 	},
 	{
 		number: 215,
 		symbol_cif: "P -4 3 m",
 		symbol_hm_short: "P-43m",
 		hall_symbol: "P -4 2 3",
+		universal_h_m: "P -4 3 m",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y,-x,-z",
@@ -5214,14 +11363,14 @@ var Et = Object.freeze([
 			"z,y,x",
 			"-z,-x,y",
 			"z,-y,-x",
+			"x,-z,-y",
 			"y,z,x",
 			"-x,-z,y",
 			"-y,z,-x",
-			"x,-z,-y",
-			"-y,-z,x",
 			"x,z,y",
 			"y,-z,-x",
-			"-x,z,-y"
+			"-x,z,-y",
+			"-y,-z,x"
 		]
 	},
 	{
@@ -5229,20 +11378,29 @@ var Et = Object.freeze([
 		symbol_cif: "F -4 3 m",
 		symbol_hm_short: "F-43m",
 		hall_symbol: "F -4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x,y+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y".split(".")
+		universal_h_m: "F -4 3 m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.x,-z,-y.y,z,x.-x,-z,y.-y,z,-x.x,z,y.y,-z,-x.-x,z,-y.-y,-z,x.x,y+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,-y+1/2,-x+1/2.x,-z+1/2,-y+1/2.y,z+1/2,x+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x+1/2,y,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,-y,-x+1/2.x+1/2,-z,-y+1/2.y+1/2,z,x+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,y+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,-y+1/2,-x.x+1/2,-z+1/2,-y.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y.-y+1/2,-z+1/2,x".split(".")
 	},
 	{
 		number: 217,
 		symbol_cif: "I -4 3 m",
 		symbol_hm_short: "I-43m",
 		hall_symbol: "I -4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.y,z,x.-x,-z,y.-y,z,-x.x,-z,-y.-y,-z,x.x,z,y.y,-z,-x.-x,z,-y.x+1/2,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-x+1/2,z+1/2,-y+1/2".split(".")
+		universal_h_m: "I -4 3 m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.y,-x,-z.-x,-y,z.-y,x,-z.x,-y,-z.y,x,z.-x,y,-z.-y,-x,z.z,x,y.-z,y,-x.z,-x,-y.-z,-y,x.-z,x,-y.z,y,x.-z,-x,y.z,-y,-x.x,-z,-y.y,z,x.-x,-z,y.-y,z,-x.x,z,y.y,-z,-x.-x,z,-y.-y,-z,x.x+1/2,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,-y+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.y+1/2,z+1/2,x+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-x+1/2,z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2".split(".")
 	},
 	{
 		number: 218,
 		symbol_cif: "P -4 3 n",
 		symbol_hm_short: "P-43n",
 		hall_symbol: "P -4n 2 3",
+		universal_h_m: "P -4 3 n",
+		setting: "",
+		is_standard: !0,
 		operations: [
 			"x,y,z",
 			"y+1/2,-x+1/2,-z+1/2",
@@ -5260,14 +11418,14 @@ var Et = Object.freeze([
 			"z+1/2,y+1/2,x+1/2",
 			"-z,-x,y",
 			"z+1/2,-y+1/2,-x+1/2",
+			"x+1/2,-z+1/2,-y+1/2",
 			"y,z,x",
 			"-x+1/2,-z+1/2,y+1/2",
 			"-y,z,-x",
-			"x+1/2,-z+1/2,-y+1/2",
-			"-y,-z,x",
 			"x+1/2,z+1/2,y+1/2",
 			"y,-z,-x",
-			"-x+1/2,z+1/2,-y+1/2"
+			"-x+1/2,z+1/2,-y+1/2",
+			"-y,-z,x"
 		]
 	},
 	{
@@ -5275,84 +11433,776 @@ var Et = Object.freeze([
 		symbol_cif: "F -4 3 c",
 		symbol_hm_short: "F-43c",
 		hall_symbol: "F -4a 2 3",
-		operations: /* @__PURE__ */ "x,y,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.-y,x+1/2,-z.x,-y,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.-y,-x+1/2,z.z,x,y.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,-y,x+1/2.-z,x,-y.z,y+1/2,x.-z,-x+1/2,y+1/2.z,-y,-x+1/2.y,z,x.-x,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,-z,-y.-y,-z,x.x,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y.x,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,y,-x+1/2.z,-x,-y.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,y,x+1/2.-z,-x,y.z,-y+1/2,-x.y,z+1/2,x+1/2.-x,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.x,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,-y,-x.y+1/2,z,x+1/2.-x+1/2,-z,y.-y,z,-x.x,-z,-y+1/2.-y+1/2,-z,x+1/2.x+1/2,z,y.y,-z,-x.-x,z,-y+1/2.x+1/2,y+1/2,z.y,-x+1/2,-z.-x,-y,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.y,x+1/2,z.-x,y,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,-z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y".split(".")
+		universal_h_m: "F -4 3 c",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.-y,x+1/2,-z.x,-y,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.-y,-x+1/2,z.z,x,y.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,-y,x+1/2.-z,x,-y.z,y+1/2,x.-z,-x+1/2,y+1/2.z,-y,-x+1/2.x+1/2,-z,-y.y,z,x.-x,-z,y+1/2.-y+1/2,z,-x+1/2.x+1/2,z,y.y,-z,-x.-x,z,-y+1/2.-y+1/2,-z,x+1/2.x,y+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,y,-x+1/2.z,-x,-y.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,y,x+1/2.-z,-x,y.z,-y+1/2,-x.x+1/2,-z+1/2,-y+1/2.y,z+1/2,x+1/2.-x,-z+1/2,y.-y+1/2,z+1/2,-x.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-x,z+1/2,-y.-y+1/2,-z+1/2,x.x+1/2,y,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,-y,-x.x,-z,-y+1/2.y+1/2,z,x+1/2.-x+1/2,-z,y.-y,z,-x.x,z,y+1/2.y+1/2,-z,-x+1/2.-x+1/2,z,-y.-y,-z,x.x+1/2,y+1/2,z.y,-x+1/2,-z.-x,-y,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.y,x+1/2,z.-x,y,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,-y+1/2,-x+1/2.x,-z+1/2,-y.y+1/2,z+1/2,x.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.x,z+1/2,y.y+1/2,-z+1/2,-x.-x+1/2,z+1/2,-y+1/2.-y,-z+1/2,x+1/2".split(".")
 	},
 	{
 		number: 220,
 		symbol_cif: "I -4 3 d",
 		symbol_hm_short: "I-43d",
 		hall_symbol: "I -4bd 2c 3",
-		operations: /* @__PURE__ */ "x,y,z.y+1/4,-x+3/4,-z+1/4.-x,-y+1/2,z.-y+3/4,x+3/4,-z+1/4.x,-y,-z+1/2.y+1/4,x+1/4,z+1/4.-x,y+1/2,-z+1/2.-y+3/4,-x+1/4,z+1/4.z,x,y.-z+1/4,y+1/4,-x+3/4.z,-x,-y+1/2.-z+1/4,-y+3/4,x+3/4.-z+1/2,x,-y.z+1/4,y+1/4,x+1/4.-z+1/2,-x,y+1/2.z+1/4,-y+3/4,-x+1/4.y,z,x.-x+3/4,-z+1/4,y+1/4.-y+1/2,z,-x.x+3/4,-z+1/4,-y+3/4.-y,-z+1/2,x.x+1/4,z+1/4,y+1/4.y+1/2,-z+1/2,-x.-x+1/4,z+1/4,-y+3/4.x+1/2,y+1/2,z+1/2.y+3/4,-x+1/4,-z+3/4.-x+1/2,-y,z+1/2.-y+1/4,x+1/4,-z+3/4.x+1/2,-y+1/2,-z.y+3/4,x+3/4,z+3/4.-x+1/2,y,-z.-y+1/4,-x+3/4,z+3/4.z+1/2,x+1/2,y+1/2.-z+3/4,y+3/4,-x+1/4.z+1/2,-x+1/2,-y.-z+3/4,-y+1/4,x+1/4.-z,x+1/2,-y+1/2.z+3/4,y+3/4,x+3/4.-z,-x+1/2,y.z+3/4,-y+1/4,-x+3/4.y+1/2,z+1/2,x+1/2.-x+1/4,-z+3/4,y+3/4.-y,z+1/2,-x+1/2.x+1/4,-z+3/4,-y+1/4.-y+1/2,-z,x+1/2.x+3/4,z+3/4,y+3/4.y,-z,-x+1/2.-x+3/4,z+3/4,-y+1/4".split(".")
+		universal_h_m: "I -4 3 d",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.y+1/4,-x+3/4,-z+1/4.-x,-y+1/2,z.-y+3/4,x+3/4,-z+1/4.x,-y,-z+1/2.y+1/4,x+1/4,z+1/4.-x,y+1/2,-z+1/2.-y+3/4,-x+1/4,z+1/4.z,x,y.-z+1/4,y+1/4,-x+3/4.z,-x,-y+1/2.-z+1/4,-y+3/4,x+3/4.-z+1/2,x,-y.z+1/4,y+1/4,x+1/4.-z+1/2,-x,y+1/2.z+1/4,-y+3/4,-x+1/4.x+1/4,-z+3/4,-y+1/4.y+1/2,z+1/2,x+1/2.-x+1/4,-z+3/4,y+3/4.-y,z+1/2,-x+1/2.x+1/4,z+1/4,y+1/4.y+1/2,-z+1/2,-x.-x+1/4,z+1/4,-y+3/4.-y,-z+1/2,x.x+1/2,y+1/2,z+1/2.y+3/4,-x+1/4,-z+3/4.-x+1/2,-y,z+1/2.-y+1/4,x+1/4,-z+3/4.x+1/2,-y+1/2,-z.y+3/4,x+3/4,z+3/4.-x+1/2,y,-z.-y+1/4,-x+3/4,z+3/4.z+1/2,x+1/2,y+1/2.-z+3/4,y+3/4,-x+1/4.z+1/2,-x+1/2,-y.-z+3/4,-y+1/4,x+1/4.-z,x+1/2,-y+1/2.z+3/4,y+3/4,x+3/4.-z,-x+1/2,y.z+3/4,-y+1/4,-x+3/4.x+3/4,-z+1/4,-y+3/4.y,z,x.-x+3/4,-z+1/4,y+1/4.-y+1/2,z,-x.x+3/4,z+3/4,y+3/4.y,-z,-x+1/2.-x+3/4,z+3/4,-y+1/4.-y+1/2,-z,x+1/2".split(".")
 	},
 	{
 		number: 221,
 		symbol_cif: "P m -3 m",
 		symbol_hm_short: "Pm-3m",
 		hall_symbol: "-P 4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y".split(".")
+		universal_h_m: "P m -3 m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z.y,x,z.x,-y,z.-y,-x,z.-z,-x,-y.-z,y,-x.-z,x,y.-z,-y,x.z,-x,y.z,y,x.z,x,-y.z,-y,-x.x,-z,-y.-y,-z,-x.-x,-z,y.y,-z,x.x,z,y.-y,z,x.-x,z,-y.y,z,-x".split(".")
+	},
+	{
+		number: 222,
+		symbol_cif: "P n -3 n",
+		symbol_hm_short: "Pn-3n",
+		hall_symbol: "P 4 2 3 -1n",
+		universal_h_m: "P n -3 n:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.-x+1/2,-y+1/2,-z+1/2.y+1/2,-x+1/2,-z+1/2.x+1/2,y+1/2,-z+1/2.-y+1/2,x+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.y+1/2,x+1/2,z+1/2.x+1/2,-y+1/2,z+1/2.-y+1/2,-x+1/2,z+1/2.-z+1/2,-x+1/2,-y+1/2.-z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,y+1/2.-z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,y+1/2.z+1/2,y+1/2,x+1/2.z+1/2,x+1/2,-y+1/2.z+1/2,-y+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,-x+1/2.-x+1/2,-z+1/2,y+1/2.y+1/2,-z+1/2,x+1/2.x+1/2,z+1/2,y+1/2.-y+1/2,z+1/2,x+1/2.-x+1/2,z+1/2,-y+1/2.y+1/2,z+1/2,-x+1/2".split(".")
 	},
 	{
 		number: 222,
 		symbol_cif: "P n -3 n",
 		symbol_hm_short: "Pn-3n",
 		hall_symbol: "-P 4a 2bc 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y".split(".")
+		universal_h_m: "P n -3 n:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/2,x,z.-x+1/2,-y+1/2,z.y,-x+1/2,z.x,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y,-z+1/2.y,x,-z+1/2.z,x,y.z,-y+1/2,x.z,-x+1/2,-y+1/2.z,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y.-z+1/2,y,x.-x+1/2,z,y.y,z,x.x,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y.-y+1/2,-z+1/2,x.-x,-y,-z.y+1/2,-x,-z.x+1/2,y+1/2,-z.-y,x+1/2,-z.-x,y+1/2,z+1/2.y+1/2,x+1/2,z+1/2.x+1/2,-y,z+1/2.-y,-x,z+1/2.-z,-x,-y.-z,y+1/2,-x.-z,x+1/2,y+1/2.-z,-y,x+1/2.z+1/2,-x,y+1/2.z+1/2,y+1/2,x+1/2.z+1/2,x+1/2,-y.z+1/2,-y,-x.x+1/2,-z,-y.-y,-z,-x.-x,-z,y+1/2.y+1/2,-z,x+1/2.x+1/2,z+1/2,y+1/2.-y,z+1/2,x+1/2.-x,z+1/2,-y.y+1/2,z+1/2,-x".split(".")
 	},
 	{
 		number: 223,
 		symbol_cif: "P m -3 n",
 		symbol_hm_short: "Pm-3n",
 		hall_symbol: "-P 4n 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x,-y,z.x,y,-z.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x,-y,-z.-x,y,z.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x,y,-z.x,-y,z.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z,x,y.-z,-x,-y.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z,-x,-y.-z,x,y.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z,x,-y.z,-x,y.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z,-x,y.z,x,-y.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z,-x.y,-z,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z,x.y,z,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z,-x.-y,z,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2".split(".")
+		universal_h_m: "P m -3 n",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/2,x+1/2,z+1/2.-x,-y,z.y+1/2,-x+1/2,z+1/2.x,-y,-z.-y+1/2,-x+1/2,-z+1/2.-x,y,-z.y+1/2,x+1/2,-z+1/2.z,x,y.z+1/2,-y+1/2,x+1/2.z,-x,-y.z+1/2,y+1/2,-x+1/2.-z,x,-y.-z+1/2,-y+1/2,-x+1/2.-z,-x,y.-z+1/2,y+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.y,z,x.x+1/2,z+1/2,-y+1/2.-y,z,-x.-x+1/2,-z+1/2,-y+1/2.y,-z,-x.x+1/2,-z+1/2,y+1/2.-y,-z,x.-x,-y,-z.y+1/2,-x+1/2,-z+1/2.x,y,-z.-y+1/2,x+1/2,-z+1/2.-x,y,z.y+1/2,x+1/2,z+1/2.x,-y,z.-y+1/2,-x+1/2,z+1/2.-z,-x,-y.-z+1/2,y+1/2,-x+1/2.-z,x,y.-z+1/2,-y+1/2,x+1/2.z,-x,y.z+1/2,y+1/2,x+1/2.z,x,-y.z+1/2,-y+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z,-x.-x+1/2,-z+1/2,y+1/2.y,-z,x.x+1/2,z+1/2,y+1/2.-y,z,x.-x+1/2,z+1/2,-y+1/2.y,z,-x".split(".")
+	},
+	{
+		number: 224,
+		symbol_cif: "P n -3 m",
+		symbol_hm_short: "Pn-3m",
+		hall_symbol: "P 4n 2 3 -1n",
+		universal_h_m: "P n -3 m:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/2,x+1/2,z+1/2.-x,-y,z.y+1/2,-x+1/2,z+1/2.x,-y,-z.-y+1/2,-x+1/2,-z+1/2.-x,y,-z.y+1/2,x+1/2,-z+1/2.z,x,y.z+1/2,-y+1/2,x+1/2.z,-x,-y.z+1/2,y+1/2,-x+1/2.-z,x,-y.-z+1/2,-y+1/2,-x+1/2.-z,-x,y.-z+1/2,y+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.y,z,x.x+1/2,z+1/2,-y+1/2.-y,z,-x.-x+1/2,-z+1/2,-y+1/2.y,-z,-x.x+1/2,-z+1/2,y+1/2.-y,-z,x.-x+1/2,-y+1/2,-z+1/2.y,-x,-z.x+1/2,y+1/2,-z+1/2.-y,x,-z.-x+1/2,y+1/2,z+1/2.y,x,z.x+1/2,-y+1/2,z+1/2.-y,-x,z.-z+1/2,-x+1/2,-y+1/2.-z,y,-x.-z+1/2,x+1/2,y+1/2.-z,-y,x.z+1/2,-x+1/2,y+1/2.z,y,x.z+1/2,x+1/2,-y+1/2.z,-y,-x.x,-z,-y.-y+1/2,-z+1/2,-x+1/2.-x,-z,y.y+1/2,-z+1/2,x+1/2.x,z,y.-y+1/2,z+1/2,x+1/2.-x,z,-y.y+1/2,z+1/2,-x+1/2".split(".")
 	},
 	{
 		number: 224,
 		symbol_cif: "P n -3 m",
 		symbol_hm_short: "Pn-3m",
 		hall_symbol: "-P 4bc 2bc 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x,-z.y,x,z.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z,x,y.-z,-x,-y.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z,-y,-x.z,y,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z,x.-y,-z,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x,-z,-y.x,z,y.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2".split(".")
+		universal_h_m: "P n -3 m:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y,x+1/2,z+1/2.-x+1/2,-y+1/2,z.y+1/2,-x,z+1/2.x,-y+1/2,-z+1/2.-y,-x,-z.-x+1/2,y,-z+1/2.y+1/2,x+1/2,-z.z,x,y.z+1/2,-y,x+1/2.z,-x+1/2,-y+1/2.z+1/2,y+1/2,-x.-z+1/2,x,-y+1/2.-z,-y,-x.-z+1/2,-x+1/2,y.-z,y+1/2,x+1/2.-x,z+1/2,y+1/2.y,z,x.x+1/2,z+1/2,-y.-y+1/2,z,-x+1/2.-x,-z,-y.y,-z+1/2,-x+1/2.x+1/2,-z,y+1/2.-y+1/2,-z+1/2,x.-x,-y,-z.y,-x+1/2,-z+1/2.x+1/2,y+1/2,-z.-y+1/2,x,-z+1/2.-x,y+1/2,z+1/2.y,x,z.x+1/2,-y,z+1/2.-y+1/2,-x+1/2,z.-z,-x,-y.-z+1/2,y,-x+1/2.-z,x+1/2,y+1/2.-z+1/2,-y+1/2,x.z+1/2,-x,y+1/2.z,y,x.z+1/2,x+1/2,-y.z,-y+1/2,-x+1/2.x,-z+1/2,-y+1/2.-y,-z,-x.-x+1/2,-z+1/2,y.y+1/2,-z,x+1/2.x,z,y.-y,z+1/2,x+1/2.-x+1/2,z,-y+1/2.y+1/2,z+1/2,-x".split(".")
 	},
 	{
 		number: 225,
 		symbol_cif: "F m -3 m",
 		symbol_hm_short: "Fm-3m",
 		hall_symbol: "-F 4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+1/2,z+1/2.y,-x+1/2,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y,-x+1/2,z+1/2.-y,x+1/2,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y,x+1/2,-z+1/2.-y,-x+1/2,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y+1/2,x+1/2.-z,y+1/2,-x+1/2.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y+1/2,-x+1/2.-z,-y+1/2,x+1/2.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y+1/2,x+1/2.z,-y+1/2,-x+1/2.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y+1/2.-x,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y+1/2.-x,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x,z+1/2.y+1/2,-x,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/2,-x,z+1/2.-y+1/2,x,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y+1/2,x,-z+1/2.-y+1/2,-x,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y,x+1/2.-z+1/2,y,-x+1/2.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y,-x+1/2.-z+1/2,-y,x+1/2.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y,x+1/2.z+1/2,-y,-x+1/2.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y+1/2.-x+1/2,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y+1/2.-x+1/2,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+1/2,z.y+1/2,-x+1/2,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y+1/2,-x+1/2,z.-y+1/2,x+1/2,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y+1/2,x+1/2,-z.-y+1/2,-x+1/2,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y+1/2,x.-z+1/2,y+1/2,-x.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y+1/2,-x.-z+1/2,-y+1/2,x.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y+1/2,x.z+1/2,-y+1/2,-x.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y.-x+1/2,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y.-x+1/2,z+1/2,-y".split(".")
+		universal_h_m: "F m -3 m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z.y,x,z.x,-y,z.-y,-x,z.-z,-x,-y.-z,y,-x.-z,x,y.-z,-y,x.z,-x,y.z,y,x.z,x,-y.z,-y,-x.x,-z,-y.-y,-z,-x.-x,-z,y.y,-z,x.x,z,y.-y,z,x.-x,z,-y.y,z,-x.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.z,x+1/2,y+1/2.z,-y+1/2,x+1/2.z,-x+1/2,-y+1/2.z,y+1/2,-x+1/2.-z,x+1/2,-y+1/2.-z,-y+1/2,-x+1/2.-z,-x+1/2,y+1/2.-z,y+1/2,x+1/2.-x,z+1/2,y+1/2.y,z+1/2,x+1/2.x,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y+1/2.-y,-z+1/2,x+1/2.-x,-y+1/2,-z+1/2.y,-x+1/2,-z+1/2.x,y+1/2,-z+1/2.-y,x+1/2,-z+1/2.-x,y+1/2,z+1/2.y,x+1/2,z+1/2.x,-y+1/2,z+1/2.-y,-x+1/2,z+1/2.-z,-x+1/2,-y+1/2.-z,y+1/2,-x+1/2.-z,x+1/2,y+1/2.-z,-y+1/2,x+1/2.z,-x+1/2,y+1/2.z,y+1/2,x+1/2.z,x+1/2,-y+1/2.z,-y+1/2,-x+1/2.x,-z+1/2,-y+1/2.-y,-z+1/2,-x+1/2.-x,-z+1/2,y+1/2.y,-z+1/2,x+1/2.x,z+1/2,y+1/2.-y,z+1/2,x+1/2.-x,z+1/2,-y+1/2.y,z+1/2,-x+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y,x+1/2.z+1/2,-x,-y+1/2.z+1/2,y,-x+1/2.-z+1/2,x,-y+1/2.-z+1/2,-y,-x+1/2.-z+1/2,-x,y+1/2.-z+1/2,y,x+1/2.-x+1/2,z,y+1/2.y+1/2,z,x+1/2.x+1/2,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y+1/2.-y+1/2,-z,x+1/2.-x+1/2,-y,-z+1/2.y+1/2,-x,-z+1/2.x+1/2,y,-z+1/2.-y+1/2,x,-z+1/2.-x+1/2,y,z+1/2.y+1/2,x,z+1/2.x+1/2,-y,z+1/2.-y+1/2,-x,z+1/2.-z+1/2,-x,-y+1/2.-z+1/2,y,-x+1/2.-z+1/2,x,y+1/2.-z+1/2,-y,x+1/2.z+1/2,-x,y+1/2.z+1/2,y,x+1/2.z+1/2,x,-y+1/2.z+1/2,-y,-x+1/2.x+1/2,-z,-y+1/2.-y+1/2,-z,-x+1/2.-x+1/2,-z,y+1/2.y+1/2,-z,x+1/2.x+1/2,z,y+1/2.-y+1/2,z,x+1/2.-x+1/2,z,-y+1/2.y+1/2,z,-x+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.z+1/2,x+1/2,y.z+1/2,-y+1/2,x.z+1/2,-x+1/2,-y.z+1/2,y+1/2,-x.-z+1/2,x+1/2,-y.-z+1/2,-y+1/2,-x.-z+1/2,-x+1/2,y.-z+1/2,y+1/2,x.-x+1/2,z+1/2,y.y+1/2,z+1/2,x.x+1/2,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y.-y+1/2,-z+1/2,x.-x+1/2,-y+1/2,-z.y+1/2,-x+1/2,-z.x+1/2,y+1/2,-z.-y+1/2,x+1/2,-z.-x+1/2,y+1/2,z.y+1/2,x+1/2,z.x+1/2,-y+1/2,z.-y+1/2,-x+1/2,z.-z+1/2,-x+1/2,-y.-z+1/2,y+1/2,-x.-z+1/2,x+1/2,y.-z+1/2,-y+1/2,x.z+1/2,-x+1/2,y.z+1/2,y+1/2,x.z+1/2,x+1/2,-y.z+1/2,-y+1/2,-x.x+1/2,-z+1/2,-y.-y+1/2,-z+1/2,-x.-x+1/2,-z+1/2,y.y+1/2,-z+1/2,x.x+1/2,z+1/2,y.-y+1/2,z+1/2,x.-x+1/2,z+1/2,-y.y+1/2,z+1/2,-x".split(".")
 	},
 	{
 		number: 226,
 		symbol_cif: "F m -3 c",
 		symbol_hm_short: "Fm-3c",
 		hall_symbol: "-F 4a 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/2,x,z.y+1/2,-x,-z.-x+1/2,-y+1/2,z.x+1/2,y+1/2,-z.y,-x+1/2,z.-y,x+1/2,-z.x,-y,-z.-x,y,z.-y+1/2,-x,-z.y+1/2,x,z.-x+1/2,y+1/2,-z.x+1/2,-y+1/2,z.y,x+1/2,-z.-y,-x+1/2,z.z,x,y.-z,-x,-y.z,-y+1/2,x.-z,y+1/2,-x.z,-x+1/2,-y+1/2.-z,x+1/2,y+1/2.z,y,-x+1/2.-z,-y,x+1/2.-z,x,-y.z,-x,y.-z,-y+1/2,-x.z,y+1/2,x.-z,-x+1/2,y+1/2.z,x+1/2,-y+1/2.-z,y,x+1/2.z,-y,-x+1/2.y,z,x.-y,-z,-x.x,z,-y+1/2.-x,-z,y+1/2.-y+1/2,z,-x+1/2.y+1/2,-z,x+1/2.-x+1/2,z,y.x+1/2,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z,-x+1/2.-y+1/2,z,x+1/2.x+1/2,-z,y.-x+1/2,z,-y.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y,-x,z+1/2.-y,x,-z+1/2.x,-y+1/2,-z+1/2.-x,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y,-z+1/2.x+1/2,-y,z+1/2.y,x,-z+1/2.-y,-x,z+1/2.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z,-y,x+1/2.-z,y,-x+1/2.z,-x,-y.-z,x,y.z,y+1/2,-x.-z,-y+1/2,x.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z,-y,-x+1/2.z,y,x+1/2.-z,-x,y.z,x,-y.-z,y+1/2,x.z,-y+1/2,-x.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x,z+1/2,-y.-x,-z+1/2,y.-y+1/2,z+1/2,-x.y+1/2,-z+1/2,x.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,x+1/2.y,z+1/2,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x,z+1/2.y,-x,-z+1/2.-x,-y+1/2,z+1/2.x,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y,-z+1/2.-x+1/2,y,z+1/2.-y,-x,-z+1/2.y,x,z+1/2.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+1/2,y,-x.-z+1/2,-y,x.-z+1/2,x,-y+1/2.z+1/2,-x,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y.z+1/2,x+1/2,-y.-z+1/2,y,x.z+1/2,-y,-x.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+1/2,z,-y.-x+1/2,-z,y.-y,z,-x.y,-z,x.-x,z,y+1/2.x,-z,-y+1/2.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z,-x.-y,z,x.x,-z,y+1/2.-x,z,-y+1/2.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+1/2,z.y,-x+1/2,-z.-x,-y,z.x,y,-z.y+1/2,-x,z.-y+1/2,x,-z.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y,-x+1/2,-z.y,x+1/2,z.-x,y,-z.x,-y,z.y+1/2,x,-z.-y+1/2,-x,z.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+1/2,-y,x.-z+1/2,y,-x.z+1/2,-x,-y+1/2.-z+1/2,x,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y.z+1/2,-x+1/2,y.-z+1/2,-y,-x.z+1/2,y,x.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x,z+1/2,y.x,-z+1/2,-y.-y+1/2,-z+1/2,x.y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/2,-x+1/2.-y,z+1/2,x+1/2.x,-z+1/2,y.-x,z+1/2,-y".split(".")
+		universal_h_m: "F m -3 c",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/2,x,z.-x+1/2,-y+1/2,z.y,-x+1/2,z.x,-y,-z.-y+1/2,-x,-z.-x+1/2,y+1/2,-z.y,x+1/2,-z.z,x,y.z,-y+1/2,x.z,-x+1/2,-y+1/2.z,y,-x+1/2.-z,x,-y.-z,-y+1/2,-x.-z,-x+1/2,y+1/2.-z,y,x+1/2.-x+1/2,z,y.y,z,x.x,z,-y+1/2.-y+1/2,z,-x+1/2.-x+1/2,-z,-y.y,-z,-x.x,-z,y+1/2.-y+1/2,-z,x+1/2.-x,-y,-z.y+1/2,-x,-z.x+1/2,y+1/2,-z.-y,x+1/2,-z.-x,y,z.y+1/2,x,z.x+1/2,-y+1/2,z.-y,-x+1/2,z.-z,-x,-y.-z,y+1/2,-x.-z,x+1/2,y+1/2.-z,-y,x+1/2.z,-x,y.z,y+1/2,x.z,x+1/2,-y+1/2.z,-y,-x+1/2.x+1/2,-z,-y.-y,-z,-x.-x,-z,y+1/2.y+1/2,-z,x+1/2.x+1/2,z,y.-y,z,x.-x,z,-y+1/2.y+1/2,z,-x+1/2.x,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y,z+1/2.y,-x,z+1/2.x,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y,-z+1/2.y,x,-z+1/2.z,x+1/2,y+1/2.z,-y,x+1/2.z,-x,-y.z,y+1/2,-x.-z,x+1/2,-y+1/2.-z,-y,-x+1/2.-z,-x,y.-z,y+1/2,x.-x+1/2,z+1/2,y+1/2.y,z+1/2,x+1/2.x,z+1/2,-y.-y+1/2,z+1/2,-x.-x+1/2,-z+1/2,-y+1/2.y,-z+1/2,-x+1/2.x,-z+1/2,y.-y+1/2,-z+1/2,x.-x,-y+1/2,-z+1/2.y+1/2,-x+1/2,-z+1/2.x+1/2,y,-z+1/2.-y,x,-z+1/2.-x,y+1/2,z+1/2.y+1/2,x+1/2,z+1/2.x+1/2,-y,z+1/2.-y,-x,z+1/2.-z,-x+1/2,-y+1/2.-z,y,-x+1/2.-z,x,y.-z,-y+1/2,x.z,-x+1/2,y+1/2.z,y,x+1/2.z,x,-y.z,-y+1/2,-x.x+1/2,-z+1/2,-y+1/2.-y,-z+1/2,-x+1/2.-x,-z+1/2,y.y+1/2,-z+1/2,x.x+1/2,z+1/2,y+1/2.-y,z+1/2,x+1/2.-x,z+1/2,-y.y+1/2,z+1/2,-x.x+1/2,y,z+1/2.-y,x,z+1/2.-x,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y,-z+1/2.-y,-x,-z+1/2.-x,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y.z+1/2,y,-x.-z+1/2,x,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y.-z+1/2,y,x.-x,z,y+1/2.y+1/2,z,x+1/2.x+1/2,z,-y.-y,z,-x.-x,-z,-y+1/2.y+1/2,-z,-x+1/2.x+1/2,-z,y.-y,-z,x.-x+1/2,-y,-z+1/2.y,-x,-z+1/2.x,y+1/2,-z+1/2.-y+1/2,x+1/2,-z+1/2.-x+1/2,y,z+1/2.y,x,z+1/2.x,-y+1/2,z+1/2.-y+1/2,-x+1/2,z+1/2.-z+1/2,-x,-y+1/2.-z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,y.-z+1/2,-y,x.z+1/2,-x,y+1/2.z+1/2,y+1/2,x+1/2.z+1/2,x+1/2,-y.z+1/2,-y,-x.x,-z,-y+1/2.-y+1/2,-z,-x+1/2.-x+1/2,-z,y.y,-z,x.x,z,y+1/2.-y+1/2,z,x+1/2.-x+1/2,z,-y.y,z,-x.x+1/2,y+1/2,z.-y,x+1/2,z.-x,-y,z.y+1/2,-x,z.x+1/2,-y+1/2,-z.-y,-x+1/2,-z.-x,y,-z.y+1/2,x,-z.z+1/2,x+1/2,y.z+1/2,-y,x.z+1/2,-x,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y.-z+1/2,-y,-x.-z+1/2,-x,y+1/2.-z+1/2,y+1/2,x+1/2.-x,z+1/2,y.y+1/2,z+1/2,x.x+1/2,z+1/2,-y+1/2.-y,z+1/2,-x+1/2.-x,-z+1/2,-y.y+1/2,-z+1/2,-x.x+1/2,-z+1/2,y+1/2.-y,-z+1/2,x+1/2.-x+1/2,-y+1/2,-z.y,-x+1/2,-z.x,y,-z.-y+1/2,x,-z.-x+1/2,y+1/2,z.y,x+1/2,z.x,-y,z.-y+1/2,-x,z.-z+1/2,-x+1/2,-y.-z+1/2,y,-x.-z+1/2,x,y+1/2.-z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,y.z+1/2,y,x.z+1/2,x,-y+1/2.z+1/2,-y+1/2,-x+1/2.x,-z+1/2,-y.-y+1/2,-z+1/2,-x.-x+1/2,-z+1/2,y+1/2.y,-z+1/2,x+1/2.x,z+1/2,y.-y+1/2,z+1/2,x.-x+1/2,z+1/2,-y+1/2.y,z+1/2,-x+1/2".split(".")
+	},
+	{
+		number: 227,
+		symbol_cif: "F d -3 m",
+		symbol_hm_short: "Fd-3m",
+		hall_symbol: "F 4d 2 3 -1d",
+		universal_h_m: "F d -3 m:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.-x+1/4,z+1/4,y+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4.-y+1/2,-z+1/2,x.-x+1/4,-y+1/4,-z+1/4.y,-x,-z.x+1/4,y+3/4,-z+3/4.-y+1/2,x,-z+1/2.-x+1/4,y+1/4,z+1/4.y,x+1/2,z+1/2.x+1/4,-y+3/4,z+3/4.-y+1/2,-x+1/2,z.-z+1/4,-x+1/4,-y+1/4.-z,y,-x.-z+3/4,x+1/4,y+3/4.-z+1/2,-y+1/2,x.z+1/4,-x+1/4,y+1/4.z+1/2,y,x+1/2.z+3/4,x+1/4,-y+3/4.z,-y+1/2,-x+1/2.x,-z,-y.-y+1/4,-z+3/4,-x+3/4.-x,-z+1/2,y+1/2.y+3/4,-z+1/4,x+3/4.x,z,y.-y+1/4,z+1/4,x+1/4.-x,z+1/2,-y+1/2.y+3/4,z+3/4,-x+1/4.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.-x+1/4,z+3/4,y+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.-y+1/2,-z,x+1/2.-x+1/4,-y+3/4,-z+3/4.y,-x+1/2,-z+1/2.x+1/4,y+1/4,-z+1/4.-y+1/2,x+1/2,-z.-x+1/4,y+3/4,z+3/4.y,x,z.x+1/4,-y+1/4,z+1/4.-y+1/2,-x,z+1/2.-z+1/4,-x+3/4,-y+3/4.-z,y+1/2,-x+1/2.-z+3/4,x+3/4,y+1/4.-z+1/2,-y,x+1/2.z+1/4,-x+3/4,y+3/4.z+1/2,y+1/2,x.z+3/4,x+3/4,-y+1/4.z,-y,-x.x,-z+1/2,-y+1/2.-y+1/4,-z+1/4,-x+1/4.-x,-z,y.y+3/4,-z+3/4,x+1/4.x,z+1/2,y+1/2.-y+1/4,z+3/4,x+3/4.-x,z,-y.y+3/4,z+1/4,-x+3/4.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.-x+3/4,z+1/4,y+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.-y,-z+1/2,x+1/2.-x+3/4,-y+1/4,-z+3/4.y+1/2,-x,-z+1/2.x+3/4,y+3/4,-z+1/4.-y,x,-z.-x+3/4,y+1/4,z+3/4.y+1/2,x+1/2,z.x+3/4,-y+3/4,z+1/4.-y,-x+1/2,z+1/2.-z+3/4,-x+1/4,-y+3/4.-z+1/2,y,-x+1/2.-z+1/4,x+1/4,y+1/4.-z,-y+1/2,x+1/2.z+3/4,-x+1/4,y+3/4.z,y,x.z+1/4,x+1/4,-y+1/4.z+1/2,-y+1/2,-x.x+1/2,-z,-y+1/2.-y+3/4,-z+3/4,-x+1/4.-x+1/2,-z+1/2,y.y+1/4,-z+1/4,x+1/4.x+1/2,z,y+1/2.-y+3/4,z+1/4,x+3/4.-x+1/2,z+1/2,-y.y+1/4,z+3/4,-x+3/4.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.-x+3/4,z+3/4,y+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.-y,-z,x.-x+3/4,-y+3/4,-z+1/4.y+1/2,-x+1/2,-z.x+3/4,y+1/4,-z+3/4.-y,x+1/2,-z+1/2.-x+3/4,y+3/4,z+1/4.y+1/2,x,z+1/2.x+3/4,-y+1/4,z+3/4.-y,-x,z.-z+3/4,-x+3/4,-y+1/4.-z+1/2,y+1/2,-x.-z+1/4,x+3/4,y+3/4.-z,-y,x.z+3/4,-x+3/4,y+1/4.z,y+1/2,x+1/2.z+1/4,x+3/4,-y+3/4.z+1/2,-y,-x+1/2.x+1/2,-z+1/2,-y.-y+3/4,-z+1/4,-x+3/4.-x+1/2,-z,y+1/2.y+1/4,-z+3/4,x+3/4.x+1/2,z+1/2,y.-y+3/4,z+3/4,x+1/4.-x+1/2,z,-y+1/2.y+1/4,z+1/4,-x+1/4".split(".")
 	},
 	{
 		number: 227,
 		symbol_cif: "F d -3 m",
 		symbol_hm_short: "Fd-3m",
 		hall_symbol: "-F 4vw 2vw 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x+1/4,z+1/4.y,-x+1/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+3/4,-x,z+3/4.-y+3/4,x,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y,-x,-z.y,x,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+3/4,x+1/4,-z+1/2.-y+3/4,-x+1/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y,x+1/4.-z+1/4,y,-x+1/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+3/4,-x.-z+3/4,-y+3/4,x.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y,-x.z,y,x.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+3/4,x+1/4.z+1/2,-y+3/4,-x+1/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y.-x+1/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+3/4.x,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y.x,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+3/4.-x+1/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y,x+3/4,z+3/4.y,-x+3/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+3/4,-x+1/2,z+1/4.-y+3/4,x+1/2,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y,-x+1/2,-z+1/2.y,x+1/2,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+3/4,x+3/4,-z.-y+3/4,-x+3/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y+1/2,x+3/4.-z+1/4,y+1/2,-x+3/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+1/4,-x+1/2.-z+3/4,-y+1/4,x+1/2.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y+1/2,-x+1/2.z,y+1/2,x+1/2.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+1/4,x+3/4.z+1/2,-y+1/4,-x+3/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+1/2.-x+1/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+1/4.x,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y+1/2.x,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+1/4.-x+1/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y+1/2,x+1/4,z+3/4.y+1/2,-x+1/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+1/4,-x,z+1/4.-y+1/4,x,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y+1/2,-x,-z+1/2.y+1/2,x,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+1/4,x+1/4,-z.-y+1/4,-x+1/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y,x+3/4.-z+3/4,y,-x+3/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+3/4,-x+1/2.-z+1/4,-y+3/4,x+1/2.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y,-x+1/2.z+1/2,y,x+1/2.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+3/4,x+3/4.z,-y+3/4,-x+3/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y+1/2.-x+3/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+1/4.x+1/2,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y+1/2.x+1/2,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+1/4.-x+3/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y+1/2,x+3/4,z+1/4.y+1/2,-x+3/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+1/4,-x+1/2,z+3/4.-y+1/4,x+1/2,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y+1/2,-x+1/2,-z.y+1/2,x+1/2,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+1/4,x+3/4,-z+1/2.-y+1/4,-x+3/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y+1/2,x+1/4.-z+3/4,y+1/2,-x+1/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+1/4,-x.-z+1/4,-y+1/4,x.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y+1/2,-x.z+1/2,y+1/2,x.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+1/4,x+1/4.z,-y+1/4,-x+1/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y.-x+3/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+3/4.x+1/2,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y.x+1/2,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+3/4.-x+3/4,z,-y+3/4".split(".")
+		universal_h_m: "F d -3 m:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y,x+1/4,z+1/4.-x+3/4,-y+1/4,z+1/2.y+3/4,-x,z+3/4.x,-y+1/4,-z+1/4.-y,-x,-z.-x+3/4,y,-z+3/4.y+3/4,x+1/4,-z+1/2.z,x,y.z+1/4,-y,x+1/4.z+1/2,-x+3/4,-y+1/4.z+3/4,y+3/4,-x.-z+1/4,x,-y+1/4.-z,-y,-x.-z+3/4,-x+3/4,y.-z+1/2,y+3/4,x+1/4.-x,z+1/4,y+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+1/2.-y+1/4,z,-x+1/4.-x,-z+1/2,-y+1/2.y,-z+1/4,-x+1/4.x+1/4,-z,y+1/4.-y+1/4,-z+3/4,x+1/2.-x,-y,-z.y,-x+3/4,-z+3/4.x+1/4,y+3/4,-z+1/2.-y+1/4,x,-z+1/4.-x,y+3/4,z+3/4.y,x,z.x+1/4,-y,z+1/4.-y+1/4,-x+3/4,z+1/2.-z,-x,-y.-z+3/4,y,-x+3/4.-z+1/2,x+1/4,y+3/4.-z+1/4,-y+1/4,x.z+3/4,-x,y+3/4.z,y,x.z+1/4,x+1/4,-y.z+1/2,-y+1/4,-x+3/4.x,-z+3/4,-y+3/4.-y,-z+1/2,-x+1/2.-x+3/4,-z+1/4,y+1/2.y+3/4,-z,x+3/4.x,z+1/2,y+1/2.-y,z+3/4,x+3/4.-x+3/4,z,-y+3/4.y+3/4,z+1/4,-x+1/2.x,y+1/2,z+1/2.-y,x+3/4,z+3/4.-x+3/4,-y+3/4,z.y+3/4,-x+1/2,z+1/4.x,-y+3/4,-z+3/4.-y,-x+1/2,-z+1/2.-x+3/4,y+1/2,-z+1/4.y+3/4,x+3/4,-z.z,x+1/2,y+1/2.z+1/4,-y+1/2,x+3/4.z+1/2,-x+1/4,-y+3/4.z+3/4,y+1/4,-x+1/2.-z+1/4,x+1/2,-y+3/4.-z,-y+1/2,-x+1/2.-z+3/4,-x+1/4,y+1/2.-z+1/2,y+1/4,x+3/4.-x,z+3/4,y+3/4.y,z,x.x+1/4,z+1/4,-y.-y+1/4,z+1/2,-x+3/4.-x,-z,-y.y,-z+3/4,-x+3/4.x+1/4,-z+1/2,y+3/4.-y+1/4,-z+1/4,x.-x,-y+1/2,-z+1/2.y,-x+1/4,-z+1/4.x+1/4,y+1/4,-z.-y+1/4,x+1/2,-z+3/4.-x,y+1/4,z+1/4.y,x+1/2,z+1/2.x+1/4,-y+1/2,z+3/4.-y+1/4,-x+1/4,z.-z,-x+1/2,-y+1/2.-z+3/4,y+1/2,-x+1/4.-z+1/2,x+3/4,y+1/4.-z+1/4,-y+3/4,x+1/2.z+3/4,-x+1/2,y+1/4.z,y+1/2,x+1/2.z+1/4,x+3/4,-y+1/2.z+1/2,-y+3/4,-x+1/4.x,-z+1/4,-y+1/4.-y,-z,-x.-x+3/4,-z+3/4,y.y+3/4,-z+1/2,x+1/4.x,z,y.-y,z+1/4,x+1/4.-x+3/4,z+1/2,-y+1/4.y+3/4,z+3/4,-x.x+1/2,y,z+1/2.-y+1/2,x+1/4,z+3/4.-x+1/4,-y+1/4,z.y+1/4,-x,z+1/4.x+1/2,-y+1/4,-z+3/4.-y+1/2,-x,-z+1/2.-x+1/4,y,-z+1/4.y+1/4,x+1/4,-z.z+1/2,x,y+1/2.z+3/4,-y,x+3/4.z,-x+3/4,-y+3/4.z+1/4,y+3/4,-x+1/2.-z+3/4,x,-y+3/4.-z+1/2,-y,-x+1/2.-z+1/4,-x+3/4,y+1/2.-z,y+3/4,x+3/4.-x+1/2,z+1/4,y+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y.-y+3/4,z,-x+3/4.-x+1/2,-z+1/2,-y.y+1/2,-z+1/4,-x+3/4.x+3/4,-z,y+3/4.-y+3/4,-z+3/4,x.-x+1/2,-y,-z+1/2.y+1/2,-x+3/4,-z+1/4.x+3/4,y+3/4,-z.-y+3/4,x,-z+3/4.-x+1/2,y+3/4,z+1/4.y+1/2,x,z+1/2.x+3/4,-y,z+3/4.-y+3/4,-x+3/4,z.-z+1/2,-x,-y+1/2.-z+1/4,y,-x+1/4.-z,x+1/4,y+1/4.-z+3/4,-y+1/4,x+1/2.z+1/4,-x,y+1/4.z+1/2,y,x+1/2.z+3/4,x+1/4,-y+1/2.z,-y+1/4,-x+1/4.x+1/2,-z+3/4,-y+1/4.-y+1/2,-z+1/2,-x.-x+1/4,-z+1/4,y.y+1/4,-z,x+1/4.x+1/2,z+1/2,y.-y+1/2,z+3/4,x+1/4.-x+1/4,z,-y+1/4.y+1/4,z+1/4,-x.x+1/2,y+1/2,z.-y+1/2,x+3/4,z+1/4.-x+1/4,-y+3/4,z+1/2.y+1/4,-x+1/2,z+3/4.x+1/2,-y+3/4,-z+1/4.-y+1/2,-x+1/2,-z.-x+1/4,y+1/2,-z+3/4.y+1/4,x+3/4,-z+1/2.z+1/2,x+1/2,y.z+3/4,-y+1/2,x+1/4.z,-x+1/4,-y+1/4.z+1/4,y+1/4,-x.-z+3/4,x+1/2,-y+1/4.-z+1/2,-y+1/2,-x.-z+1/4,-x+1/4,y.-z,y+1/4,x+1/4.-x+1/2,z+3/4,y+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+1/2.-y+3/4,z+1/2,-x+1/4.-x+1/2,-z,-y+1/2.y+1/2,-z+3/4,-x+1/4.x+3/4,-z+1/2,y+1/4.-y+3/4,-z+1/4,x+1/2.-x+1/2,-y+1/2,-z.y+1/2,-x+1/4,-z+3/4.x+3/4,y+1/4,-z+1/2.-y+3/4,x+1/2,-z+1/4.-x+1/2,y+1/4,z+3/4.y+1/2,x+1/2,z.x+3/4,-y+1/2,z+1/4.-y+3/4,-x+1/4,z+1/2.-z+1/2,-x+1/2,-y.-z+1/4,y+1/2,-x+3/4.-z,x+3/4,y+3/4.-z+3/4,-y+3/4,x.z+1/4,-x+1/2,y+3/4.z+1/2,y+1/2,x.z+3/4,x+3/4,-y.z,-y+3/4,-x+3/4.x+1/2,-z+1/4,-y+3/4.-y+1/2,-z,-x+1/2.-x+1/4,-z+3/4,y+1/2.y+1/4,-z+1/2,x+3/4.x+1/2,z,y+1/2.-y+1/2,z+1/4,x+3/4.-x+1/4,z+1/2,-y+3/4.y+1/4,z+3/4,-x+1/2".split(".")
+	},
+	{
+		number: 228,
+		symbol_cif: "F d -3 c",
+		symbol_hm_short: "Fd-3c",
+		hall_symbol: "F 4d 2 3 -1ad",
+		universal_h_m: "F d -3 c:1",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+1/4,z+1/4.-x,-y+1/2,z+1/2.y+3/4,-x+1/4,z+3/4.x,-y,-z.-y+1/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+3/4,-z+1/4.z,x,y.z+1/4,-y+1/4,x+1/4.z+1/2,-x,-y+1/2.z+3/4,y+3/4,-x+1/4.-z,x,-y.-z+3/4,-y+1/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+3/4.-x+1/4,z+1/4,y+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x+1/2.-x+1/4,-z+1/4,-y+1/4.y,-z,-x.x+1/4,-z+3/4,y+3/4.-y+1/2,-z+1/2,x.-x+3/4,-y+1/4,-z+1/4.y+1/2,-x,-z.x+3/4,y+3/4,-z+3/4.-y,x,-z+1/2.-x+3/4,y+1/4,z+1/4.y+1/2,x+1/2,z+1/2.x+3/4,-y+3/4,z+3/4.-y,-x+1/2,z.-z+3/4,-x+1/4,-y+1/4.-z+1/2,y,-x.-z+1/4,x+1/4,y+3/4.-z,-y+1/2,x.z+3/4,-x+1/4,y+1/4.z,y,x+1/2.z+1/4,x+1/4,-y+3/4.z+1/2,-y+1/2,-x+1/2.x+1/2,-z,-y.-y+3/4,-z+3/4,-x+3/4.-x+1/2,-z+1/2,y+1/2.y+1/4,-z+1/4,x+3/4.x+1/2,z,y.-y+3/4,z+1/4,x+1/4.-x+1/2,z+1/2,-y+1/2.y+1/4,z+3/4,-x+1/4.x,y+1/2,z+1/2.-y+1/4,x+3/4,z+3/4.-x,-y,z.y+3/4,-x+3/4,z+1/4.x,-y+1/2,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x,y,-z.y+3/4,x+1/4,-z+3/4.z,x+1/2,y+1/2.z+1/4,-y+3/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+1/4.-z+1/2,-x+1/2,y.-z+1/4,y+1/4,x+1/4.-x+1/4,z+3/4,y+3/4.y,z,x.x+1/4,z+1/4,-y+1/4.-y+1/2,z+1/2,-x.-x+1/4,-z+3/4,-y+3/4.y,-z+1/2,-x+1/2.x+1/4,-z+1/4,y+1/4.-y+1/2,-z,x+1/2.-x+3/4,-y+3/4,-z+3/4.y+1/2,-x+1/2,-z+1/2.x+3/4,y+1/4,-z+1/4.-y,x+1/2,-z.-x+3/4,y+3/4,z+3/4.y+1/2,x,z.x+3/4,-y+1/4,z+1/4.-y,-x,z+1/2.-z+3/4,-x+3/4,-y+3/4.-z+1/2,y+1/2,-x+1/2.-z+1/4,x+3/4,y+1/4.-z,-y,x+1/2.z+3/4,-x+3/4,y+3/4.z,y+1/2,x.z+1/4,x+3/4,-y+1/4.z+1/2,-y,-x.x+1/2,-z+1/2,-y+1/2.-y+3/4,-z+1/4,-x+1/4.-x+1/2,-z,y.y+1/4,-z+3/4,x+1/4.x+1/2,z+1/2,y+1/2.-y+3/4,z+3/4,x+3/4.-x+1/2,z,-y.y+1/4,z+1/4,-x+3/4.x+1/2,y,z+1/2.-y+3/4,x+1/4,z+3/4.-x+1/2,-y+1/2,z.y+1/4,-x+1/4,z+1/4.x+1/2,-y,-z+1/2.-y+3/4,-x+3/4,-z+1/4.-x+1/2,y+1/2,-z.y+1/4,x+3/4,-z+3/4.z+1/2,x,y+1/2.z+3/4,-y+1/4,x+3/4.z,-x,-y.z+1/4,y+3/4,-x+3/4.-z+1/2,x,-y+1/2.-z+1/4,-y+1/4,-x+1/4.-z,-x,y.-z+3/4,y+3/4,x+1/4.-x+3/4,z+1/4,y+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/4.-y,z,-x.-x+3/4,-z+1/4,-y+3/4.y+1/2,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.-y,-z+1/2,x+1/2.-x+1/4,-y+1/4,-z+3/4.y,-x,-z+1/2.x+1/4,y+3/4,-z+1/4.-y+1/2,x,-z.-x+1/4,y+1/4,z+3/4.y,x+1/2,z.x+1/4,-y+3/4,z+1/4.-y+1/2,-x+1/2,z+1/2.-z+1/4,-x+1/4,-y+3/4.-z,y,-x+1/2.-z+3/4,x+1/4,y+1/4.-z+1/2,-y+1/2,x+1/2.z+1/4,-x+1/4,y+3/4.z+1/2,y,x.z+3/4,x+1/4,-y+1/4.z,-y+1/2,-x.x,-z,-y+1/2.-y+1/4,-z+3/4,-x+1/4.-x,-z+1/2,y.y+3/4,-z+1/4,x+1/4.x,z,y+1/2.-y+1/4,z+1/4,x+3/4.-x,z+1/2,-y.y+3/4,z+3/4,-x+3/4.x+1/2,y+1/2,z.-y+3/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+3/4,z+3/4.x+1/2,-y+1/2,-z.-y+3/4,-x+1/4,-z+3/4.-x+1/2,y,-z+1/2.y+1/4,x+1/4,-z+1/4.z+1/2,x+1/2,y.z+3/4,-y+3/4,x+1/4.z,-x+1/2,-y+1/2.z+1/4,y+1/4,-x+1/4.-z+1/2,x+1/2,-y.-z+1/4,-y+3/4,-x+3/4.-z,-x+1/2,y+1/2.-z+3/4,y+1/4,x+3/4.-x+3/4,z+3/4,y+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y+3/4.-y,z+1/2,-x+1/2.-x+3/4,-z+3/4,-y+1/4.y+1/2,-z+1/2,-x.x+3/4,-z+1/4,y+3/4.-y,-z,x.-x+1/4,-y+3/4,-z+1/4.y,-x+1/2,-z.x+1/4,y+1/4,-z+3/4.-y+1/2,x+1/2,-z+1/2.-x+1/4,y+3/4,z+1/4.y,x,z+1/2.x+1/4,-y+1/4,z+3/4.-y+1/2,-x,z.-z+1/4,-x+3/4,-y+1/4.-z,y+1/2,-x.-z+3/4,x+3/4,y+3/4.-z+1/2,-y,x.z+1/4,-x+3/4,y+1/4.z+1/2,y+1/2,x+1/2.z+3/4,x+3/4,-y+3/4.z,-y,-x+1/2.x,-z+1/2,-y.-y+1/4,-z+1/4,-x+3/4.-x,-z,y+1/2.y+3/4,-z+3/4,x+3/4.x,z+1/2,y.-y+1/4,z+3/4,x+1/4.-x,z,-y+1/2.y+3/4,z+1/4,-x+1/4".split(".")
 	},
 	{
 		number: 228,
 		symbol_cif: "F d -3 c",
 		symbol_hm_short: "Fd-3c",
 		hall_symbol: "-F 4ud 2vw 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/2,x+1/4,z+1/4.y+1/2,-x+1/4,-z+1/4.-x+1/4,-y+3/4,z+1/2.x+1/4,y+3/4,-z+1/2.y+3/4,-x+1/2,z+3/4.-y+3/4,x+1/2,-z+3/4.x,-y+1/4,-z+1/4.-x,y+1/4,z+1/4.-y+1/2,-x,-z.y+1/2,x,z.-x+1/4,y+1/2,-z+3/4.x+1/4,-y+1/2,z+3/4.y+3/4,x+3/4,-z+1/2.-y+3/4,-x+3/4,z+1/2.z,x,y.-z,-x,-y.z+1/4,-y+1/2,x+1/4.-z+1/4,y+1/2,-x+1/4.z+1/2,-x+1/4,-y+3/4.-z+1/2,x+1/4,y+3/4.z+3/4,y+3/4,-x+1/2.-z+3/4,-y+3/4,x+1/2.-z+1/4,x,-y+1/4.z+1/4,-x,y+1/4.-z,-y+1/2,-x.z,y+1/2,x.-z+3/4,-x+1/4,y+1/2.z+3/4,x+1/4,-y+1/2.-z+1/2,y+3/4,x+3/4.z+1/2,-y+3/4,-x+3/4.y,z,x.-y,-z,-x.x+1/4,z+1/4,-y+1/2.-x+1/4,-z+1/4,y+1/2.-y+3/4,z+1/2,-x+1/4.y+3/4,-z+1/2,x+1/4.-x+1/2,z+3/4,y+3/4.x+1/2,-z+3/4,-y+3/4.-y+1/4,-z+1/4,x.y+1/4,z+1/4,-x.-x,-z,-y+1/2.x,z,y+1/2.y+1/2,-z+3/4,-x+1/4.-y+1/2,z+3/4,x+1/4.x+3/4,-z+1/2,y+3/4.-x+3/4,z+1/2,-y+3/4.x,y+1/2,z+1/2.-x,-y+1/2,-z+1/2.-y+1/2,x+3/4,z+3/4.y+1/2,-x+3/4,-z+3/4.-x+1/4,-y+1/4,z.x+1/4,y+1/4,-z.y+3/4,-x,z+1/4.-y+3/4,x,-z+1/4.x,-y+3/4,-z+3/4.-x,y+3/4,z+3/4.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/4,y,-z+1/4.x+1/4,-y,z+1/4.y+3/4,x+1/4,-z.-y+3/4,-x+1/4,z.z,x+1/2,y+1/2.-z,-x+1/2,-y+1/2.z+1/4,-y,x+3/4.-z+1/4,y,-x+3/4.z+1/2,-x+3/4,-y+1/4.-z+1/2,x+3/4,y+1/4.z+3/4,y+1/4,-x.-z+3/4,-y+1/4,x.-z+1/4,x+1/2,-y+3/4.z+1/4,-x+1/2,y+3/4.-z,-y,-x+1/2.z,y,x+1/2.-z+3/4,-x+3/4,y.z+3/4,x+3/4,-y.-z+1/2,y+1/4,x+1/4.z+1/2,-y+1/4,-x+1/4.y,z+1/2,x+1/2.-y,-z+1/2,-x+1/2.x+1/4,z+3/4,-y.-x+1/4,-z+3/4,y.-y+3/4,z,-x+3/4.y+3/4,-z,x+3/4.-x+1/2,z+1/4,y+1/4.x+1/2,-z+1/4,-y+1/4.-y+1/4,-z+3/4,x+1/2.y+1/4,z+3/4,-x+1/2.-x,-z+1/2,-y.x,z+1/2,y.y+1/2,-z+1/4,-x+3/4.-y+1/2,z+1/4,x+3/4.x+3/4,-z,y+1/4.-x+3/4,z,-y+1/4.x+1/2,y,z+1/2.-x+1/2,-y,-z+1/2.-y,x+1/4,z+3/4.y,-x+1/4,-z+3/4.-x+3/4,-y+3/4,z.x+3/4,y+3/4,-z.y+1/4,-x+1/2,z+1/4.-y+1/4,x+1/2,-z+1/4.x+1/2,-y+1/4,-z+3/4.-x+1/2,y+1/4,z+3/4.-y,-x,-z+1/2.y,x,z+1/2.-x+3/4,y+1/2,-z+1/4.x+3/4,-y+1/2,z+1/4.y+1/4,x+3/4,-z.-y+1/4,-x+3/4,z.z+1/2,x,y+1/2.-z+1/2,-x,-y+1/2.z+3/4,-y+1/2,x+3/4.-z+3/4,y+1/2,-x+3/4.z,-x+1/4,-y+1/4.-z,x+1/4,y+1/4.z+1/4,y+3/4,-x.-z+1/4,-y+3/4,x.-z+3/4,x,-y+3/4.z+3/4,-x,y+3/4.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/4,-x+1/4,y.z+1/4,x+1/4,-y.-z,y+3/4,x+1/4.z,-y+3/4,-x+1/4.y+1/2,z,x+1/2.-y+1/2,-z,-x+1/2.x+3/4,z+1/4,-y.-x+3/4,-z+1/4,y.-y+1/4,z+1/2,-x+3/4.y+1/4,-z+1/2,x+3/4.-x,z+3/4,y+1/4.x,-z+3/4,-y+1/4.-y+3/4,-z+1/4,x+1/2.y+3/4,z+1/4,-x+1/2.-x+1/2,-z,-y.x+1/2,z,y.y,-z+3/4,-x+3/4.-y,z+3/4,x+3/4.x+1/4,-z+1/2,y+1/4.-x+1/4,z+1/2,-y+1/4.x+1/2,y+1/2,z.-x+1/2,-y+1/2,-z.-y,x+3/4,z+1/4.y,-x+3/4,-z+1/4.-x+3/4,-y+1/4,z+1/2.x+3/4,y+1/4,-z+1/2.y+1/4,-x,z+3/4.-y+1/4,x,-z+3/4.x+1/2,-y+3/4,-z+1/4.-x+1/2,y+3/4,z+1/4.-y,-x+1/2,-z.y,x+1/2,z.-x+3/4,y,-z+3/4.x+3/4,-y,z+3/4.y+1/4,x+1/4,-z+1/2.-y+1/4,-x+1/4,z+1/2.z+1/2,x+1/2,y.-z+1/2,-x+1/2,-y.z+3/4,-y,x+1/4.-z+3/4,y,-x+1/4.z,-x+3/4,-y+3/4.-z,x+3/4,y+3/4.z+1/4,y+1/4,-x+1/2.-z+1/4,-y+1/4,x+1/2.-z+3/4,x+1/2,-y+1/4.z+3/4,-x+1/2,y+1/4.-z+1/2,-y,-x.z+1/2,y,x.-z+1/4,-x+3/4,y+1/2.z+1/4,x+3/4,-y+1/2.-z,y+1/4,x+3/4.z,-y+1/4,-x+3/4.y+1/2,z+1/2,x.-y+1/2,-z+1/2,-x.x+3/4,z+3/4,-y+1/2.-x+3/4,-z+3/4,y+1/2.-y+1/4,z,-x+1/4.y+1/4,-z,x+1/4.-x,z+1/4,y+3/4.x,-z+1/4,-y+3/4.-y+3/4,-z+3/4,x.y+3/4,z+3/4,-x.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y,-z+1/4,-x+1/4.-y,z+1/4,x+1/4.x+1/4,-z,y+3/4.-x+1/4,z,-y+3/4".split(".")
+		universal_h_m: "F d -3 c:2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/2,x+1/4,z+1/4.-x+1/4,-y+3/4,z+1/2.y+3/4,-x+1/2,z+3/4.x,-y+1/4,-z+1/4.-y+1/2,-x,-z.-x+1/4,y+1/2,-z+3/4.y+3/4,x+3/4,-z+1/2.z,x,y.z+1/4,-y+1/2,x+1/4.z+1/2,-x+1/4,-y+3/4.z+3/4,y+3/4,-x+1/2.-z+1/4,x,-y+1/4.-z,-y+1/2,-x.-z+3/4,-x+1/4,y+1/2.-z+1/2,y+3/4,x+3/4.-x+1/2,z+1/4,y+1/4.y,z+1/2,x+1/2.x+1/4,z+3/4,-y.-y+3/4,z,-x+3/4.-x+1/2,-z+1/2,-y+1/2.y,-z+1/4,-x+1/4.x+1/4,-z,y+3/4.-y+3/4,-z+3/4,x.-x,-y,-z.y+1/2,-x+3/4,-z+3/4.x+3/4,y+1/4,-z+1/2.-y+1/4,x+1/2,-z+1/4.-x,y+3/4,z+3/4.y+1/2,x,z.x+3/4,-y+1/2,z+1/4.-y+1/4,-x+1/4,z+1/2.-z,-x,-y.-z+3/4,y+1/2,-x+3/4.-z+1/2,x+3/4,y+1/4.-z+1/4,-y+1/4,x+1/2.z+3/4,-x,y+3/4.z,y+1/2,x.z+1/4,x+3/4,-y+1/2.z+1/2,-y+1/4,-x+1/4.x+1/2,-z+3/4,-y+3/4.-y,-z+1/2,-x+1/2.-x+3/4,-z+1/4,y.y+1/4,-z,x+1/4.x+1/2,z+1/2,y+1/2.-y,z+3/4,x+3/4.-x+3/4,z,-y+1/4.y+1/4,z+1/4,-x.x,y+1/2,z+1/2.-y+1/2,x+3/4,z+3/4.-x+1/4,-y+1/4,z.y+3/4,-x,z+1/4.x,-y+3/4,-z+3/4.-y+1/2,-x+1/2,-z+1/2.-x+1/4,y,-z+1/4.y+3/4,x+1/4,-z.z,x+1/2,y+1/2.z+1/4,-y,x+3/4.z+1/2,-x+3/4,-y+1/4.z+3/4,y+1/4,-x.-z+1/4,x+1/2,-y+3/4.-z,-y,-x+1/2.-z+3/4,-x+3/4,y.-z+1/2,y+1/4,x+1/4.-x+1/2,z+3/4,y+3/4.y,z,x.x+1/4,z+1/4,-y+1/2.-y+3/4,z+1/2,-x+1/4.-x+1/2,-z,-y.y,-z+3/4,-x+3/4.x+1/4,-z+1/2,y+1/4.-y+3/4,-z+1/4,x+1/2.-x,-y+1/2,-z+1/2.y+1/2,-x+1/4,-z+1/4.x+3/4,y+3/4,-z.-y+1/4,x,-z+3/4.-x,y+1/4,z+1/4.y+1/2,x+1/2,z+1/2.x+3/4,-y,z+3/4.-y+1/4,-x+3/4,z.-z,-x+1/2,-y+1/2.-z+3/4,y,-x+1/4.-z+1/2,x+1/4,y+3/4.-z+1/4,-y+3/4,x.z+3/4,-x+1/2,y+1/4.z,y,x+1/2.z+1/4,x+1/4,-y.z+1/2,-y+3/4,-x+3/4.x+1/2,-z+1/4,-y+1/4.-y,-z,-x.-x+3/4,-z+3/4,y+1/2.y+1/4,-z+1/2,x+3/4.x+1/2,z,y.-y,z+1/4,x+1/4.-x+3/4,z+1/2,-y+3/4.y+1/4,z+3/4,-x+1/2.x+1/2,y,z+1/2.-y,x+1/4,z+3/4.-x+3/4,-y+3/4,z.y+1/4,-x+1/2,z+1/4.x+1/2,-y+1/4,-z+3/4.-y,-x,-z+1/2.-x+3/4,y+1/2,-z+1/4.y+1/4,x+3/4,-z.z+1/2,x,y+1/2.z+3/4,-y+1/2,x+3/4.z,-x+1/4,-y+1/4.z+1/4,y+3/4,-x.-z+3/4,x,-y+3/4.-z+1/2,-y+1/2,-x+1/2.-z+1/4,-x+1/4,y.-z,y+3/4,x+1/4.-x,z+1/4,y+3/4.y+1/2,z+1/2,x.x+3/4,z+3/4,-y+1/2.-y+1/4,z,-x+1/4.-x,-z+1/2,-y.y+1/2,-z+1/4,-x+3/4.x+3/4,-z,y+1/4.-y+1/4,-z+3/4,x+1/2.-x+1/2,-y,-z+1/2.y,-x+3/4,-z+1/4.x+1/4,y+1/4,-z.-y+3/4,x+1/2,-z+3/4.-x+1/2,y+3/4,z+1/4.y,x,z+1/2.x+1/4,-y+1/2,z+3/4.-y+3/4,-x+1/4,z.-z+1/2,-x,-y+1/2.-z+1/4,y+1/2,-x+1/4.-z,x+3/4,y+3/4.-z+3/4,-y+1/4,x.z+1/4,-x,y+1/4.z+1/2,y+1/2,x+1/2.z+3/4,x+3/4,-y.z,-y+1/4,-x+3/4.x,-z+3/4,-y+1/4.-y+1/2,-z+1/2,-x.-x+1/4,-z+1/4,y+1/2.y+3/4,-z,x+3/4.x,z+1/2,y.-y+1/2,z+3/4,x+1/4.-x+1/4,z,-y+3/4.y+3/4,z+1/4,-x+1/2.x+1/2,y+1/2,z.-y,x+3/4,z+1/4.-x+3/4,-y+1/4,z+1/2.y+1/4,-x,z+3/4.x+1/2,-y+3/4,-z+1/4.-y,-x+1/2,-z.-x+3/4,y,-z+3/4.y+1/4,x+1/4,-z+1/2.z+1/2,x+1/2,y.z+3/4,-y,x+1/4.z,-x+3/4,-y+3/4.z+1/4,y+1/4,-x+1/2.-z+3/4,x+1/2,-y+1/4.-z+1/2,-y,-x.-z+1/4,-x+3/4,y+1/2.-z,y+1/4,x+3/4.-x,z+3/4,y+1/4.y+1/2,z,x+1/2.x+3/4,z+1/4,-y.-y+1/4,z+1/2,-x+3/4.-x,-z,-y+1/2.y+1/2,-z+3/4,-x+1/4.x+3/4,-z+1/2,y+3/4.-y+1/4,-z+1/4,x.-x+1/2,-y+1/2,-z.y,-x+1/4,-z+3/4.x+1/4,y+3/4,-z+1/2.-y+3/4,x,-z+1/4.-x+1/2,y+1/4,z+3/4.y,x+1/2,z.x+1/4,-y,z+1/4.-y+3/4,-x+3/4,z+1/2.-z+1/2,-x+1/2,-y.-z+1/4,y,-x+3/4.-z,x+1/4,y+1/4.-z+3/4,-y+3/4,x+1/2.z+1/4,-x+1/2,y+3/4.z+1/2,y,x.z+3/4,x+1/4,-y+1/2.z,-y+3/4,-x+1/4.x,-z+1/4,-y+3/4.-y+1/2,-z,-x+1/2.-x+1/4,-z+3/4,y.y+3/4,-z+1/2,x+1/4.x,z,y+1/2.-y+1/2,z+1/4,x+3/4.-x+1/4,z+1/2,-y+1/4.y+3/4,z+3/4,-x".split(".")
 	},
 	{
 		number: 229,
 		symbol_cif: "I m -3 m",
 		symbol_hm_short: "Im-3m",
 		hall_symbol: "-I 4 2 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y,x,z.y,-x,-z.-x,-y,z.x,y,-z.y,-x,z.-y,x,-z.x,-y,-z.-x,y,z.-y,-x,-z.y,x,z.-x,y,-z.x,-y,z.y,x,-z.-y,-x,z.z,x,y.-z,-x,-y.z,-y,x.-z,y,-x.z,-x,-y.-z,x,y.z,y,-x.-z,-y,x.-z,x,-y.z,-x,y.-z,-y,-x.z,y,x.-z,-x,y.z,x,-y.-z,y,x.z,-y,-x.y,z,x.-y,-z,-x.x,z,-y.-x,-z,y.-y,z,-x.y,-z,x.-x,z,y.x,-z,-y.-y,-z,x.y,z,-x.-x,-z,-y.x,z,y.y,-z,-x.-y,z,x.x,-z,y.-x,z,-y.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+1/2,x+1/2,z+1/2.y+1/2,-x+1/2,-z+1/2.-x+1/2,-y+1/2,z+1/2.x+1/2,y+1/2,-z+1/2.y+1/2,-x+1/2,z+1/2.-y+1/2,x+1/2,-z+1/2.x+1/2,-y+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.-y+1/2,-x+1/2,-z+1/2.y+1/2,x+1/2,z+1/2.-x+1/2,y+1/2,-z+1/2.x+1/2,-y+1/2,z+1/2.y+1/2,x+1/2,-z+1/2.-y+1/2,-x+1/2,z+1/2.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+1/2,-y+1/2,x+1/2.-z+1/2,y+1/2,-x+1/2.z+1/2,-x+1/2,-y+1/2.-z+1/2,x+1/2,y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,-y+1/2,x+1/2.-z+1/2,x+1/2,-y+1/2.z+1/2,-x+1/2,y+1/2.-z+1/2,-y+1/2,-x+1/2.z+1/2,y+1/2,x+1/2.-z+1/2,-x+1/2,y+1/2.z+1/2,x+1/2,-y+1/2.-z+1/2,y+1/2,x+1/2.z+1/2,-y+1/2,-x+1/2.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/2,z+1/2,-y+1/2.-x+1/2,-z+1/2,y+1/2.-y+1/2,z+1/2,-x+1/2.y+1/2,-z+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,x+1/2.y+1/2,z+1/2,-x+1/2.-x+1/2,-z+1/2,-y+1/2.x+1/2,z+1/2,y+1/2.y+1/2,-z+1/2,-x+1/2.-y+1/2,z+1/2,x+1/2.x+1/2,-z+1/2,y+1/2.-x+1/2,z+1/2,-y+1/2".split(".")
+		universal_h_m: "I m -3 m",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.z,x,y.z,-y,x.z,-x,-y.z,y,-x.-z,x,-y.-z,-y,-x.-z,-x,y.-z,y,x.-x,z,y.y,z,x.x,z,-y.-y,z,-x.-x,-z,-y.y,-z,-x.x,-z,y.-y,-z,x.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z.y,x,z.x,-y,z.-y,-x,z.-z,-x,-y.-z,y,-x.-z,x,y.-z,-y,x.z,-x,y.z,y,x.z,x,-y.z,-y,-x.x,-z,-y.-y,-z,-x.-x,-z,y.y,-z,x.x,z,y.-y,z,x.-x,z,-y.y,z,-x.x+1/2,y+1/2,z+1/2.-y+1/2,x+1/2,z+1/2.-x+1/2,-y+1/2,z+1/2.y+1/2,-x+1/2,z+1/2.x+1/2,-y+1/2,-z+1/2.-y+1/2,-x+1/2,-z+1/2.-x+1/2,y+1/2,-z+1/2.y+1/2,x+1/2,-z+1/2.z+1/2,x+1/2,y+1/2.z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,-y+1/2.z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,-y+1/2.-z+1/2,-y+1/2,-x+1/2.-z+1/2,-x+1/2,y+1/2.-z+1/2,y+1/2,x+1/2.-x+1/2,z+1/2,y+1/2.y+1/2,z+1/2,x+1/2.x+1/2,z+1/2,-y+1/2.-y+1/2,z+1/2,-x+1/2.-x+1/2,-z+1/2,-y+1/2.y+1/2,-z+1/2,-x+1/2.x+1/2,-z+1/2,y+1/2.-y+1/2,-z+1/2,x+1/2.-x+1/2,-y+1/2,-z+1/2.y+1/2,-x+1/2,-z+1/2.x+1/2,y+1/2,-z+1/2.-y+1/2,x+1/2,-z+1/2.-x+1/2,y+1/2,z+1/2.y+1/2,x+1/2,z+1/2.x+1/2,-y+1/2,z+1/2.-y+1/2,-x+1/2,z+1/2.-z+1/2,-x+1/2,-y+1/2.-z+1/2,y+1/2,-x+1/2.-z+1/2,x+1/2,y+1/2.-z+1/2,-y+1/2,x+1/2.z+1/2,-x+1/2,y+1/2.z+1/2,y+1/2,x+1/2.z+1/2,x+1/2,-y+1/2.z+1/2,-y+1/2,-x+1/2.x+1/2,-z+1/2,-y+1/2.-y+1/2,-z+1/2,-x+1/2.-x+1/2,-z+1/2,y+1/2.y+1/2,-z+1/2,x+1/2.x+1/2,z+1/2,y+1/2.-y+1/2,z+1/2,x+1/2.-x+1/2,z+1/2,-y+1/2.y+1/2,z+1/2,-x+1/2".split(".")
 	},
 	{
 		number: 230,
 		symbol_cif: "I a -3 d",
 		symbol_hm_short: "Ia-3d",
 		hall_symbol: "-I 4bd 2c 3",
-		operations: /* @__PURE__ */ "x,y,z.-x,-y,-z.-y+1/4,x+3/4,z+1/4.y+1/4,-x+3/4,-z+1/4.-x+1/2,-y,z+1/2.x+1/2,y,-z+1/2.y+1/4,-x+1/4,z+3/4.-y+1/4,x+1/4,-z+3/4.x,-y,-z+1/2.-x,y,z+1/2.-y+1/4,-x+1/4,-z+1/4.y+1/4,x+1/4,z+1/4.-x+1/2,y,-z.x+1/2,-y,z.y+1/4,x+3/4,-z+3/4.-y+1/4,-x+3/4,z+3/4.z,x,y.-z,-x,-y.z+1/4,-y+1/4,x+3/4.-z+1/4,y+1/4,-x+3/4.z+1/2,-x+1/2,-y.-z+1/2,x+1/2,y.z+3/4,y+1/4,-x+1/4.-z+3/4,-y+1/4,x+1/4.-z+1/2,x,-y.z+1/2,-x,y.-z+1/4,-y+1/4,-x+1/4.z+1/4,y+1/4,x+1/4.-z,-x+1/2,y.z,x+1/2,-y.-z+3/4,y+1/4,x+3/4.z+3/4,-y+1/4,-x+3/4.y,z,x.-y,-z,-x.x+3/4,z+1/4,-y+1/4.-x+3/4,-z+1/4,y+1/4.-y,z+1/2,-x+1/2.y,-z+1/2,x+1/2.-x+1/4,z+3/4,y+1/4.x+1/4,-z+3/4,-y+1/4.-y,-z+1/2,x.y,z+1/2,-x.-x+1/4,-z+1/4,-y+1/4.x+1/4,z+1/4,y+1/4.y,-z,-x+1/2.-y,z,x+1/2.x+3/4,-z+3/4,y+1/4.-x+3/4,z+3/4,-y+1/4.x+1/2,y+1/2,z+1/2.-x+1/2,-y+1/2,-z+1/2.-y+3/4,x+1/4,z+3/4.y+3/4,-x+1/4,-z+3/4.-x,-y+1/2,z.x,y+1/2,-z.y+3/4,-x+3/4,z+1/4.-y+3/4,x+3/4,-z+1/4.x+1/2,-y+1/2,-z.-x+1/2,y+1/2,z.-y+3/4,-x+3/4,-z+3/4.y+3/4,x+3/4,z+3/4.-x,y+1/2,-z+1/2.x,-y+1/2,z+1/2.y+3/4,x+1/4,-z+1/4.-y+3/4,-x+1/4,z+1/4.z+1/2,x+1/2,y+1/2.-z+1/2,-x+1/2,-y+1/2.z+3/4,-y+3/4,x+1/4.-z+3/4,y+3/4,-x+1/4.z,-x,-y+1/2.-z,x,y+1/2.z+1/4,y+3/4,-x+3/4.-z+1/4,-y+3/4,x+3/4.-z,x+1/2,-y+1/2.z,-x+1/2,y+1/2.-z+3/4,-y+3/4,-x+3/4.z+3/4,y+3/4,x+3/4.-z+1/2,-x,y+1/2.z+1/2,x,-y+1/2.-z+1/4,y+3/4,x+1/4.z+1/4,-y+3/4,-x+1/4.y+1/2,z+1/2,x+1/2.-y+1/2,-z+1/2,-x+1/2.x+1/4,z+3/4,-y+3/4.-x+1/4,-z+3/4,y+3/4.-y+1/2,z,-x.y+1/2,-z,x.-x+3/4,z+1/4,y+3/4.x+3/4,-z+1/4,-y+3/4.-y+1/2,-z,x+1/2.y+1/2,z,-x+1/2.-x+3/4,-z+3/4,-y+3/4.x+3/4,z+3/4,y+3/4.y+1/2,-z+1/2,-x.-y+1/2,z+1/2,x.x+1/4,-z+1/4,y+3/4.-x+1/4,z+1/4,-y+3/4".split(".")
+		universal_h_m: "I a -3 d",
+		setting: "",
+		is_standard: !0,
+		operations: /* @__PURE__ */ "x,y,z.-y+1/4,x+3/4,z+1/4.-x+1/2,-y,z+1/2.y+1/4,-x+1/4,z+3/4.x,-y,-z+1/2.-y+1/4,-x+1/4,-z+1/4.-x+1/2,y,-z.y+1/4,x+3/4,-z+3/4.z,x,y.z+1/4,-y+1/4,x+3/4.z+1/2,-x+1/2,-y.z+3/4,y+1/4,-x+1/4.-z+1/2,x,-y.-z+1/4,-y+1/4,-x+1/4.-z,-x+1/2,y.-z+3/4,y+1/4,x+3/4.-x+1/4,z+3/4,y+1/4.y,z,x.x+3/4,z+1/4,-y+1/4.-y,z+1/2,-x+1/2.-x+1/4,-z+1/4,-y+1/4.y,-z,-x+1/2.x+3/4,-z+3/4,y+1/4.-y,-z+1/2,x.-x,-y,-z.y+3/4,-x+1/4,-z+3/4.x+1/2,y,-z+1/2.-y+3/4,x+3/4,-z+1/4.-x,y,z+1/2.y+3/4,x+3/4,z+3/4.x+1/2,-y,z.-y+3/4,-x+1/4,z+1/4.-z,-x,-y.-z+3/4,y+3/4,-x+1/4.-z+1/2,x+1/2,y.-z+1/4,-y+3/4,x+3/4.z+1/2,-x,y.z+3/4,y+3/4,x+3/4.z,x+1/2,-y.z+1/4,-y+3/4,-x+1/4.x+3/4,-z+1/4,-y+3/4.-y,-z,-x.-x+1/4,-z+3/4,y+3/4.y,-z+1/2,x+1/2.x+3/4,z+3/4,y+3/4.-y,z,x+1/2.-x+1/4,z+1/4,-y+3/4.y,z+1/2,-x.x+1/2,y+1/2,z+1/2.-y+3/4,x+1/4,z+3/4.-x,-y+1/2,z.y+3/4,-x+3/4,z+1/4.x+1/2,-y+1/2,-z.-y+3/4,-x+3/4,-z+3/4.-x,y+1/2,-z+1/2.y+3/4,x+1/4,-z+1/4.z+1/2,x+1/2,y+1/2.z+3/4,-y+3/4,x+1/4.z,-x,-y+1/2.z+1/4,y+3/4,-x+3/4.-z,x+1/2,-y+1/2.-z+3/4,-y+3/4,-x+3/4.-z+1/2,-x,y+1/2.-z+1/4,y+3/4,x+1/4.-x+3/4,z+1/4,y+3/4.y+1/2,z+1/2,x+1/2.x+1/4,z+3/4,-y+3/4.-y+1/2,z,-x.-x+3/4,-z+3/4,-y+3/4.y+1/2,-z+1/2,-x.x+1/4,-z+1/4,y+3/4.-y+1/2,-z,x+1/2.-x+1/2,-y+1/2,-z+1/2.y+1/4,-x+3/4,-z+1/4.x,y+1/2,-z.-y+1/4,x+1/4,-z+3/4.-x+1/2,y+1/2,z.y+1/4,x+1/4,z+1/4.x,-y+1/2,z+1/2.-y+1/4,-x+3/4,z+3/4.-z+1/2,-x+1/2,-y+1/2.-z+1/4,y+1/4,-x+3/4.-z,x,y+1/2.-z+3/4,-y+1/4,x+1/4.z,-x+1/2,y+1/2.z+1/4,y+1/4,x+1/4.z+1/2,x,-y+1/2.z+3/4,-y+1/4,-x+3/4.x+1/4,-z+3/4,-y+1/4.-y+1/2,-z+1/2,-x+1/2.-x+3/4,-z+1/4,y+1/4.y+1/2,-z,x.x+1/4,z+1/4,y+1/4.-y+1/2,z+1/2,x.-x+3/4,z+3/4,-y+1/4.y+1/2,z,-x+1/2".split(".")
+	},
+	{
+		number: 5,
+		symbol_cif: "I 1 21 1",
+		symbol_hm_short: "I21",
+		hall_symbol: "I 2yb",
+		universal_h_m: "I 1 21 1",
+		setting: "b4",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y+1/2,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "C 1 21 1",
+		symbol_hm_short: "C21",
+		hall_symbol: "C 2yb",
+		universal_h_m: "C 1 21 1",
+		setting: "b5",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y+1/2,-z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y,-z"
+		]
+	},
+	{
+		number: 18,
+		symbol_cif: "P 21212(a)",
+		symbol_hm_short: "P21212(a)",
+		hall_symbol: "P 2ab 2a",
+		universal_h_m: "P 21212(a)",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y,-z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 20,
+		symbol_cif: "C 2 2 21a)",
+		symbol_hm_short: "C2221a)",
+		hall_symbol: "C 2ac 2",
+		universal_h_m: "C 2 2 21a)",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y,z+1/2",
+			"x,-y,-z",
+			"-x+1/2,y,-z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y+1/2,-z",
+			"-x,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 21,
+		symbol_cif: "C 2 2 2a",
+		symbol_hm_short: "C222a",
+		hall_symbol: "C 2ab 2b",
+		universal_h_m: "C 2 2 2a",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z",
+			"-x+1/2,y,-z",
+			"x+1/2,y+1/2,z",
+			"-x,-y,z",
+			"x+1/2,-y,-z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 22,
+		symbol_cif: "F 2 2 2a",
+		symbol_hm_short: "F222a",
+		hall_symbol: "F 2 2c",
+		universal_h_m: "F 2 2 2a",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x,-y,-z+1/2",
+			"-x,y,-z+1/2",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x,-y+1/2,-z",
+			"-x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,z+1/2",
+			"x+1/2,-y,-z",
+			"-x+1/2,y,-z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z",
+			"x+1/2,-y+1/2,-z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 23,
+		symbol_cif: "I 2 2 2a",
+		symbol_hm_short: "I222a",
+		hall_symbol: "I 2ab 2bc",
+		universal_h_m: "I 2 2 2a",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y,z+1/2",
+			"x+1/2,-y,-z",
+			"-x,y+1/2,-z"
+		]
+	},
+	{
+		number: 94,
+		symbol_cif: "P 42 21 2a",
+		symbol_hm_short: "P42212a",
+		hall_symbol: "P 4bc 2a",
+		universal_h_m: "P 42 21 2a",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y,x+1/2,z+1/2",
+			"-x+1/2,-y+1/2,z",
+			"y+1/2,-x,z+1/2",
+			"x+1/2,-y,-z",
+			"-y+1/2,-x+1/2,-z+1/2",
+			"-x,y+1/2,-z",
+			"y,x,-z+1/2"
+		]
+	},
+	{
+		number: 197,
+		symbol_cif: "I 2 3a",
+		symbol_hm_short: "I23a",
+		hall_symbol: "I 2ab 2bc 3",
+		universal_h_m: "I 2 3a",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x+1/2,-y+1/2,z",
+			"x,-y+1/2,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"z,x,y",
+			"z,-x+1/2,-y+1/2",
+			"-z+1/2,x,-y+1/2",
+			"-z+1/2,-x+1/2,y",
+			"y,z,x",
+			"-y+1/2,z,-x+1/2",
+			"-y+1/2,-z+1/2,x",
+			"y,-z+1/2,-x+1/2",
+			"x+1/2,y+1/2,z+1/2",
+			"-x,-y,z+1/2",
+			"x+1/2,-y,-z",
+			"-x,y+1/2,-z",
+			"z+1/2,x+1/2,y+1/2",
+			"z+1/2,-x,-y",
+			"-z,x+1/2,-y",
+			"-z,-x,y+1/2",
+			"y+1/2,z+1/2,x+1/2",
+			"-y,z+1/2,-x",
+			"-y,-z,x+1/2",
+			"y+1/2,-z,-x"
+		]
+	},
+	{
+		number: 1,
+		symbol_cif: "A 1",
+		symbol_hm_short: "A1",
+		hall_symbol: "A 1",
+		universal_h_m: "A 1",
+		setting: "",
+		is_standard: !1,
+		operations: ["x,y,z", "x,y+1/2,z+1/2"]
+	},
+	{
+		number: 1,
+		symbol_cif: "B 1",
+		symbol_hm_short: "B1",
+		hall_symbol: "B 1",
+		universal_h_m: "B 1",
+		setting: "",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,y,z+1/2"]
+	},
+	{
+		number: 1,
+		symbol_cif: "C 1",
+		symbol_hm_short: "C1",
+		hall_symbol: "C 1",
+		universal_h_m: "C 1",
+		setting: "",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,y+1/2,z"]
+	},
+	{
+		number: 1,
+		symbol_cif: "F 1",
+		symbol_hm_short: "F1",
+		hall_symbol: "F 1",
+		universal_h_m: "F 1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,y+1/2,z+1/2",
+			"x+1/2,y,z+1/2",
+			"x+1/2,y+1/2,z"
+		]
+	},
+	{
+		number: 1,
+		symbol_cif: "I 1",
+		symbol_hm_short: "I1",
+		hall_symbol: "I 1",
+		universal_h_m: "I 1",
+		setting: "",
+		is_standard: !1,
+		operations: ["x,y,z", "x+1/2,y+1/2,z+1/2"]
+	},
+	{
+		number: 2,
+		symbol_cif: "A -1",
+		symbol_hm_short: "A-1",
+		hall_symbol: "-A 1",
+		universal_h_m: "A -1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 2,
+		symbol_cif: "B -1",
+		symbol_hm_short: "B-1",
+		hall_symbol: "-B 1",
+		universal_h_m: "B -1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,-z+1/2"
+		]
+	},
+	{
+		number: 2,
+		symbol_cif: "C -1",
+		symbol_hm_short: "C-1",
+		hall_symbol: "-C 1",
+		universal_h_m: "C -1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,-z"
+		]
+	},
+	{
+		number: 2,
+		symbol_cif: "F -1",
+		symbol_hm_short: "F-1",
+		hall_symbol: "-F 1",
+		universal_h_m: "F -1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,-z"
+		]
+	},
+	{
+		number: 2,
+		symbol_cif: "I -1",
+		symbol_hm_short: "I-1",
+		hall_symbol: "-I 1",
+		universal_h_m: "I -1",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,-z",
+			"x+1/2,y+1/2,z+1/2",
+			"-x+1/2,-y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 3,
+		symbol_cif: "B 1 2 1",
+		symbol_hm_short: "B2",
+		hall_symbol: "B 2y",
+		universal_h_m: "B 1 2 1",
+		setting: "b1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y,-z+1/2"
+		]
+	},
+	{
+		number: 3,
+		symbol_cif: "C 1 1 2",
+		symbol_hm_short: "C112",
+		hall_symbol: "C 2",
+		universal_h_m: "C 1 1 2",
+		setting: "c1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 4,
+		symbol_cif: "B 1 21 1",
+		symbol_hm_short: "B21",
+		hall_symbol: "B 2yb",
+		universal_h_m: "B 1 21 1",
+		setting: "b1",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y+1/2,-z",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y+1/2,-z+1/2"
+		]
+	},
+	{
+		number: 4,
+		symbol_cif: "C 1 1 21",
+		symbol_hm_short: "C1121",
+		hall_symbol: "C 2c",
+		universal_h_m: "C 1 1 21",
+		setting: "c2",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,-y+1/2,z+1/2"
+		]
+	},
+	{
+		number: 5,
+		symbol_cif: "F 1 2 1",
+		symbol_hm_short: "F2",
+		hall_symbol: "F 2y",
+		universal_h_m: "F 1 2 1",
+		setting: "b6",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z"
+		]
+	},
+	{
+		number: 8,
+		symbol_cif: "F 1 m 1",
+		symbol_hm_short: "Fm",
+		hall_symbol: "F -2y",
+		universal_h_m: "F 1 m 1",
+		setting: "b4",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"x,-y+1/2,z+1/2",
+			"x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 9,
+		symbol_cif: "F 1 d 1",
+		symbol_hm_short: "Fd",
+		hall_symbol: "F -2yuw",
+		universal_h_m: "F 1 d 1",
+		setting: "b4",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"x+1/4,-y,z+1/4",
+			"x,y+1/2,z+1/2",
+			"x+1/4,-y+1/2,z+3/4",
+			"x+1/2,y,z+1/2",
+			"x+3/4,-y,z+3/4",
+			"x+1/2,y+1/2,z",
+			"x+3/4,-y+1/2,z+1/4"
+		]
+	},
+	{
+		number: 12,
+		symbol_cif: "F 1 2/m 1",
+		symbol_hm_short: "F2/m",
+		hall_symbol: "-F 2y",
+		universal_h_m: "F 1 2/m 1",
+		setting: "b4",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,y,-z",
+			"-x,-y,-z",
+			"x,-y,z",
+			"x,y+1/2,z+1/2",
+			"-x,y+1/2,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,-y+1/2,z+1/2",
+			"x+1/2,y,z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x+1/2,-y,-z+1/2",
+			"x+1/2,-y,z+1/2",
+			"x+1/2,y+1/2,z",
+			"-x+1/2,y+1/2,-z",
+			"-x+1/2,-y+1/2,-z",
+			"x+1/2,-y+1/2,z"
+		]
+	},
+	{
+		number: 64,
+		symbol_cif: "A b a m",
+		symbol_hm_short: "Abam",
+		hall_symbol: "-A 2 2ab",
+		universal_h_m: "A b a m",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-x,-y,z",
+			"x+1/2,-y+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"-x,-y,-z",
+			"x,y,-z",
+			"-x+1/2,y+1/2,z",
+			"x+1/2,-y+1/2,z",
+			"x,y+1/2,z+1/2",
+			"-x,-y+1/2,z+1/2",
+			"x+1/2,-y,-z+1/2",
+			"-x+1/2,y,-z+1/2",
+			"-x,-y+1/2,-z+1/2",
+			"x,y+1/2,-z+1/2",
+			"-x+1/2,y,z+1/2",
+			"x+1/2,-y,z+1/2"
+		]
+	},
+	{
+		number: 89,
+		symbol_cif: "C 4 2 2",
+		symbol_hm_short: "C422",
+		hall_symbol: "C 4 2",
+		universal_h_m: "C 4 2 2",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y,x,z",
+			"-x,-y,z",
+			"y,-x,z",
+			"x,-y,-z",
+			"-y,-x,-z",
+			"-x,y,-z",
+			"y,x,-z",
+			"x+1/2,y+1/2,z",
+			"-y+1/2,x+1/2,z",
+			"-x+1/2,-y+1/2,z",
+			"y+1/2,-x+1/2,z",
+			"x+1/2,-y+1/2,-z",
+			"-y+1/2,-x+1/2,-z",
+			"-x+1/2,y+1/2,-z",
+			"y+1/2,x+1/2,-z"
+		]
+	},
+	{
+		number: 90,
+		symbol_cif: "C 4 2 21",
+		symbol_hm_short: "C4221",
+		hall_symbol: "C 4a 2",
+		universal_h_m: "C 4 2 21",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"-y+1/2,x,z",
+			"-x+1/2,-y+1/2,z",
+			"y,-x+1/2,z",
+			"x,-y,-z",
+			"-y+1/2,-x,-z",
+			"-x+1/2,y+1/2,-z",
+			"y,x+1/2,-z",
+			"x+1/2,y+1/2,z",
+			"-y,x+1/2,z",
+			"-x,-y,z",
+			"y+1/2,-x,z",
+			"x+1/2,-y+1/2,-z",
+			"-y,-x+1/2,-z",
+			"-x,y,-z",
+			"y+1/2,x,-z"
+		]
+	},
+	{
+		number: 97,
+		symbol_cif: "F 4 2 2",
+		symbol_hm_short: "F422",
+		hall_symbol: "F 4 2",
+		universal_h_m: "F 4 2 2",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z".split(".")
+	},
+	{
+		number: 115,
+		symbol_cif: "C -4 2 m",
+		symbol_hm_short: "C-42m",
+		hall_symbol: "C -4 2",
+		universal_h_m: "C -4 2 m",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"y,-x,-z",
+			"-x,-y,z",
+			"-y,x,-z",
+			"x,-y,-z",
+			"y,x,z",
+			"-x,y,-z",
+			"-y,-x,z",
+			"x+1/2,y+1/2,z",
+			"y+1/2,-x+1/2,-z",
+			"-x+1/2,-y+1/2,z",
+			"-y+1/2,x+1/2,-z",
+			"x+1/2,-y+1/2,-z",
+			"y+1/2,x+1/2,z",
+			"-x+1/2,y+1/2,-z",
+			"-y+1/2,-x+1/2,z"
+		]
+	},
+	{
+		number: 117,
+		symbol_cif: "C -4 2 b",
+		symbol_hm_short: "C-42b",
+		hall_symbol: "C -4 2ya",
+		universal_h_m: "C -4 2 b",
+		setting: "",
+		is_standard: !1,
+		operations: [
+			"x,y,z",
+			"y,-x,-z",
+			"-x,-y,z",
+			"-y,x,-z",
+			"-x+1/2,y,-z",
+			"-y+1/2,-x,z",
+			"x+1/2,-y,-z",
+			"y+1/2,x,z",
+			"x+1/2,y+1/2,z",
+			"y+1/2,-x+1/2,-z",
+			"-x+1/2,-y+1/2,z",
+			"-y+1/2,x+1/2,-z",
+			"-x,y+1/2,-z",
+			"-y,-x+1/2,z",
+			"x,-y+1/2,-z",
+			"y,x+1/2,z"
+		]
+	},
+	{
+		number: 139,
+		symbol_cif: "F 4/m m m",
+		symbol_hm_short: "F4/mmm",
+		hall_symbol: "-F 4 2",
+		universal_h_m: "F 4/m m m",
+		setting: "",
+		is_standard: !1,
+		operations: /* @__PURE__ */ "x,y,z.-y,x,z.-x,-y,z.y,-x,z.x,-y,-z.-y,-x,-z.-x,y,-z.y,x,-z.-x,-y,-z.y,-x,-z.x,y,-z.-y,x,-z.-x,y,z.y,x,z.x,-y,z.-y,-x,z.x,y+1/2,z+1/2.-y,x+1/2,z+1/2.-x,-y+1/2,z+1/2.y,-x+1/2,z+1/2.x,-y+1/2,-z+1/2.-y,-x+1/2,-z+1/2.-x,y+1/2,-z+1/2.y,x+1/2,-z+1/2.-x,-y+1/2,-z+1/2.y,-x+1/2,-z+1/2.x,y+1/2,-z+1/2.-y,x+1/2,-z+1/2.-x,y+1/2,z+1/2.y,x+1/2,z+1/2.x,-y+1/2,z+1/2.-y,-x+1/2,z+1/2.x+1/2,y,z+1/2.-y+1/2,x,z+1/2.-x+1/2,-y,z+1/2.y+1/2,-x,z+1/2.x+1/2,-y,-z+1/2.-y+1/2,-x,-z+1/2.-x+1/2,y,-z+1/2.y+1/2,x,-z+1/2.-x+1/2,-y,-z+1/2.y+1/2,-x,-z+1/2.x+1/2,y,-z+1/2.-y+1/2,x,-z+1/2.-x+1/2,y,z+1/2.y+1/2,x,z+1/2.x+1/2,-y,z+1/2.-y+1/2,-x,z+1/2.x+1/2,y+1/2,z.-y+1/2,x+1/2,z.-x+1/2,-y+1/2,z.y+1/2,-x+1/2,z.x+1/2,-y+1/2,-z.-y+1/2,-x+1/2,-z.-x+1/2,y+1/2,-z.y+1/2,x+1/2,-z.-x+1/2,-y+1/2,-z.y+1/2,-x+1/2,-z.x+1/2,y+1/2,-z.-y+1/2,x+1/2,-z.-x+1/2,y+1/2,z.y+1/2,x+1/2,z.x+1/2,-y+1/2,z.-y+1/2,-x+1/2,z".split(".")
 	}
 ]);
 //#endregion
@@ -5360,30 +12210,35 @@ var Et = Object.freeze([
 function Dt(e) {
 	return String(e).replace(/[\s_]+/g, "").toLowerCase();
 }
-var Ot = /* @__PURE__ */ new Map(), kt = /* @__PURE__ */ new Map();
+var Ot = /* @__PURE__ */ new Map(), kt = /* @__PURE__ */ new Map(), At = /* @__PURE__ */ new Map();
 for (let e of Et) {
-	Ot.set(e.number, e);
+	(e.is_standard || !Ot.has(e.number)) && Ot.set(e.number, e);
 	for (let t of [
 		e.symbol_cif,
 		e.symbol_hm_short,
-		e.hall_symbol
+		e.hall_symbol,
+		e.universal_h_m
 	]) {
-		let n = Dt(t);
-		kt.has(n) || kt.set(n, e);
+		let n = Dt(t), r = At.get(n) || [];
+		r.includes(e) || (r.push(e), At.set(n, r)), kt.has(n) || kt.set(n, e);
 	}
 }
-function At({ number: e, name: t } = {}) {
-	let n = typeof e == "string" ? parseInt(e, 10) : e;
-	if (Number.isInteger(n) && Ot.has(n)) return Ot.get(n);
-	if (t && t !== "Unknown") {
-		let e = kt.get(Dt(t));
-		if (e) return e;
+function jt({ number: e, name: t, fullName: n, hall: r } = {}) {
+	let i = typeof e == "string" ? e.trim() : e, a = typeof i == "string" && /^\d+$/.test(i) ? Number(i) : i, o = Number.isInteger(a) ? Ot.get(a) : null;
+	for (let e of [
+		r,
+		n,
+		t
+	]) {
+		if (!e || e === "Unknown") continue;
+		let t = kt.get(Dt(e));
+		if (t && (!o || t.number === a)) return t;
 	}
-	return null;
+	return o || null;
 }
 //#endregion
 //#region src/lib/structure/cell-symmetry.js
-function jt(e) {
+function Mt(e) {
 	if (Math.abs(e) < .0021) return "";
 	let t = [
 		2,
@@ -5398,7 +12253,7 @@ function jt(e) {
 	}
 	return n + r.toString();
 }
-var Mt = class e {
+var Nt = class e {
 	constructor(e) {
 		let { matrix: t, vector: n } = this.parseSymmetryInstruction(e);
 		this.rotMatrix = t, this.transVector = n;
@@ -5447,12 +12302,12 @@ var Mt = class e {
 		return Array.isArray(t) ? t : t.toArray();
 	}
 	applyToAtom(e) {
-		let t = new qe(...Ae(L(this.rotMatrix, [
+		let t = new Ke(...Ae(L(this.rotMatrix, [
 			e.position.x,
 			e.position.y,
 			e.position.z
 		]), this.transVector)), n = null;
-		if (e.adp && e.adp instanceof z) {
+		if (e.adp && e.adp instanceof rt) {
 			let t = [
 				[
 					e.adp.u11,
@@ -5470,16 +12325,16 @@ var Mt = class e {
 					e.adp.u33
 				]
 			], r = this.rotMatrix, i = R(r), a = L(L(r, t), i);
-			n = new z(a[0][0], a[1][1], a[2][2], a[0][1], a[0][2], a[1][2]);
-		} else e.adp && e.adp instanceof rt && (n = new rt(e.adp.uiso));
-		return new Gt(e.label, e.atomType, t, n, e.disorderGroup);
+			n = new rt(a[0][0], a[1][1], a[2][2], a[0][1], a[0][2], a[1][2]);
+		} else e.adp && e.adp instanceof nt && (n = new nt(e.adp.uiso));
+		return new qt(e.label, e.atomType, t, n, e.disorderGroup);
 	}
 	applyToAtoms(e) {
 		return e.map((e) => this.applyToAtom(e));
 	}
 	copy() {
 		let t = new e("x,y,z");
-		return t.rotMatrix = Re(this.rotMatrix), t.transVector = Re(this.transVector), t;
+		return t.rotMatrix = Le(this.rotMatrix), t.transVector = Le(this.transVector), t;
 	}
 	toSymmetryString(e = null) {
 		let t = [
@@ -5493,23 +12348,23 @@ var Mt = class e {
 				let r = this.rotMatrix[e][n];
 				if (Math.abs(r) > 1e-10) if (Math.abs(Math.abs(r) - 1) < 1e-10) a.push(r > 0 ? t[n] : `-${t[n]}`);
 				else {
-					let e = jt(Math.abs(r));
+					let e = Mt(Math.abs(r));
 					a.push(r > 0 ? `${e}${t[n]}` : `-${e}${t[n]}`);
 				}
 			}
 			if (i = a.join("+"), i === "" && (i = "0"), Math.abs(r[e]) > 1e-10) {
-				let t = jt(Math.abs(r[e])), n = r[e] < 0 ? `-${t}` : t;
+				let t = Mt(Math.abs(r[e])), n = r[e] < 0 ? `-${t}` : t;
 				i = i === "0" ? n : i.startsWith("-") ? `${n}${i}` : `${n}+${i}`;
 			}
 			n.push(i);
 		}
 		return n.join(",");
 	}
-}, Nt = class e {
+}, Pt = class e {
 	constructor(e, t, n, r = null) {
 		this.spaceGroupName = e, this.spaceGroupNumber = t, this.symmetryOperations = n, this.operationIds = r || new Map(n.map((e, t) => [(t + 1).toString(), t]));
 		let i = (e) => e.rotMatrix.every((e, t) => e.every((e, n) => e === +(t === n))) && e.transVector.every((e) => e === 0);
-		this.identitySymOpId = Array.from(this.operationIds.entries()).find(([e, t]) => i(this.symmetryOperations[t]))?.[0], this._combineSymmetryCodesCache = /* @__PURE__ */ new Map(), this._combineOperationCache = /* @__PURE__ */ new Map(), this._operationIdsByIndex = new Map([...this.operationIds.entries()].map(([e, t]) => [t, e])), this._rotationMatrixIndex = /* @__PURE__ */ new Map(), this._buildRotationIndex();
+		this.identitySymOpId = Array.from(this.operationIds.entries()).find(([e, t]) => i(this.symmetryOperations[t]))?.[0], this._combineSymmetryCodesCache = /* @__PURE__ */ new Map(), this._invertPositionCodeCache = /* @__PURE__ */ new Map(), this._combineOperationCache = /* @__PURE__ */ new Map(), this._operationIdsByIndex = new Map([...this.operationIds.entries()].map(([e, t]) => [t, e])), this._rotationMatrixIndex = /* @__PURE__ */ new Map(), this._buildRotationIndex();
 	}
 	_buildRotationIndex() {
 		this.symmetryOperations.forEach((e, t) => {
@@ -5592,18 +12447,24 @@ var Mt = class e {
 		return this._combineSymmetryCodesCache.set(n, f), f;
 	}
 	invertPositionCode(e) {
-		let { symOp: t, transVector: n } = this.parsePositionCode(e), r = [
-			n[0] + t.transVector[0],
-			n[1] + t.transVector[1],
-			n[2] + t.transVector[2]
-		], i = Ne(t.rotMatrix), a = this._multiplyMatrixVector3x3(i, r.map((e) => -e)), o = this._rotationMatrixIndex.get(this._matrixToKey(i));
-		if (o) for (let e of o) {
-			let t = this.symmetryOperations[e], n = a.map((e, n) => e - t.transVector[n]);
-			if (!n.every((e) => Math.abs(e - Math.round(e)) < 1e-5)) continue;
-			let r = Array.from(this.operationIds.entries()).find(([, t]) => t === e)?.[0];
-			return ft(r, n.map((e) => Math.round(e)));
+		let t = String(e), n = this._invertPositionCodeCache.get(t);
+		if (n !== void 0) {
+			if (n instanceof Error) throw n;
+			return n;
 		}
-		throw Error(`No inverse symmetry operation found for position code: ${e}`);
+		let { symOp: r, transVector: i } = this.parsePositionCode(e), a = [
+			i[0] + r.transVector[0],
+			i[1] + r.transVector[1],
+			i[2] + r.transVector[2]
+		], o = z(r.rotMatrix), s = this._multiplyMatrixVector3x3(o, a.map((e) => -e)), c = this._rotationMatrixIndex.get(this._matrixToKey(o));
+		if (c) for (let e of c) {
+			let n = this.symmetryOperations[e], r = s.map((e, t) => e - n.transVector[t]);
+			if (!r.every((e) => Math.abs(e - Math.round(e)) < 1e-5)) continue;
+			let i = Array.from(this.operationIds.entries()).find(([, t]) => t === e)?.[0], a = ft(i, r.map((e) => Math.round(e)));
+			return this._invertPositionCodeCache.set(t, a), a;
+		}
+		let l = /* @__PURE__ */ Error(`No inverse symmetry operation found for position code: ${e}`);
+		throw this._invertPositionCodeCache.set(t, l), l;
 	}
 	applySymmetry(e, t) {
 		let { symOp: n, transVector: r } = this.parsePositionCode(e), i = n.applyToAtoms(t);
@@ -5614,7 +12475,7 @@ var Mt = class e {
 	applySymmetryNonSpecial(e, t, n) {
 		let r = this.applySymmetry(e, t), i = [], a = [];
 		return r.forEach((e, r) => {
-			$e(e.position, t[r].position, n, .001) ? i.push(e.label) : a.push(e);
+			Qe(e.position, t[r].position, n, .001) ? i.push(e.label) : a.push(e);
 		}), {
 			atoms: a,
 			specialPositions: i
@@ -5623,15 +12484,18 @@ var Mt = class e {
 	static fromCIF(t) {
 		let n = t.get([
 			"_space_group.name_h-m_alt",
-			"_space_group.name_H-M_full",
 			"_symmetry_space_group_name_H-M",
 			"_space_group_name_H-M_alt"
-		], "Unknown"), r = t.get([
+		], !1), r = t.get(["_space_group.name_H-M_full", "_space_group_name_H-M_full"], !1), i = t.get([
+			"_space_group.name_Hall",
+			"_space_group_name_Hall",
+			"_symmetry_space_group_name_Hall"
+		], !1), a = r || n || i || "Unknown", o = t.get([
 			"_space_group.it_number",
 			"_space_group.IT_number",
 			"_symmetry_Int_Tables_number",
 			"_space_group_IT_number"
-		], 0), i = t.get([
+		], 0), s = t.get([
 			"_space_group_symop",
 			"_symmetry_equiv",
 			"_symmetry_equiv_pos",
@@ -5640,91 +12504,130 @@ var Mt = class e {
 			"_symmetry_equiv.pos_as_xyz",
 			"_symmetry_equiv_pos_as_xyz"
 		], !1);
-		if (i && !(i instanceof F)) return new e(n, r, [new Mt(i)]);
-		if (i || console.warn(Object.keys(t).filter((e) => e.includes("sym"))), i) {
-			let t = i.get([
+		if (s && !(s instanceof F)) {
+			let n = t.get([
+				"_space_group_symop.id",
+				"_space_group_symop_id",
+				"_symmetry_equiv.id",
+				"_symmetry_equiv_pos_site_id"
+			], !1);
+			return new e(a, o, [new Nt(s)], n === !1 ? null : /* @__PURE__ */ new Map([[String(n), 0]]));
+		}
+		if (s || console.warn(Object.keys(t).filter((e) => e.includes("sym"))), s) {
+			let t = s.get([
 				"_space_group_symop.operation_xyz",
 				"_space_group_symop_operation_xyz",
 				"_symmetry_equiv.pos_as_xyz",
 				"_symmetry_equiv_pos_as_xyz"
-			]), a = null;
+			]), n = null;
 			try {
-				let e = i.get([
+				let e = s.get([
 					"_space_group_symop.id",
 					"_space_group_symop_id",
 					"_symmetry_equiv.id",
 					"_symmetry_equiv_pos_site_id"
 				]);
-				a = new Map(e.map((e, t) => [e.toString(), t]));
+				n = new Map(e.map((e, t) => [e.toString(), t]));
 			} catch {}
-			let o = t.map((e) => new Mt(e));
-			return new e(n, r, o, a);
+			let r = t.map((e) => new Nt(e));
+			return new e(a, o, r, n);
 		}
-		let a = At({
-			number: r,
-			name: n
+		let c = jt({
+			number: o,
+			name: n,
+			fullName: r,
+			hall: i
 		});
-		if (a) {
-			let i = a.operations, o = "standard International Tables setting";
-			if (a.symbol_cif.trim().startsWith("R")) {
+		if (c) {
+			let n = c.operations, r = "standard International Tables setting";
+			if (c.universal_h_m?.endsWith(":H")) {
 				let e = null;
 				try {
-					e = Wt.fromCIF(t);
+					e = Kt.fromCIF(t);
 				} catch {
 					e = null;
 				}
-				Ct(e) && (i = wt(a.operations), o = "rhombohedral axes, matching the cell given in the file");
+				Ct(e) && (n = wt(c.operations), r = "rhombohedral axes, matching the cell given in the file");
 			}
-			return console.warn(`No symmetry operations found in CIF block; reconstructing them from space group ${a.symbol_cif} (No. ${a.number}) assuming the ${o}.`), new e(n === "Unknown" ? a.symbol_cif : n, r || a.number, i.map((e) => new Mt(e)));
+			return console.warn(`No symmetry operations found in CIF block; reconstructing them from space group ${c.symbol_cif} (No. ${c.number}) assuming the ${r}.`), new e(a === "Unknown" ? c.symbol_cif : a, o || c.number, n.map((e) => new Nt(e)));
 		}
-		return console.warn("No symmetry operations found in CIF block, will use P1"), new e("Unknown", 0, [new Mt("x,y,z")]);
+		return console.warn("No symmetry operations found in CIF block, will use P1"), new e("Unknown", 0, [new Nt("x,y,z")]);
 	}
 };
 //#endregion
 //#region src/lib/structure/bonds.js
-function Pt(e) {
+function Ft(e) {
 	return String(e).split("|")[0];
 }
-function Ft(e, t = "1_555") {
+function It(e, t = "1_555") {
 	let n = String(e);
 	return n.includes("|") ? n : `${n}|${t}`;
+}
+function Lt(e, t, n, r) {
+	if (!e || t === ".") return n;
+	let i = n === "." ? r : n, a = e.invertPositionCode(t), o = e.combineSymmetryCodes(a, i);
+	return o === r ? "." : o;
 }
 var B = class e {
 	constructor(e, t, n = null, r = null, i = null) {
 		let a = ut(i);
-		this.atom1Id = Ft(e), this.atom2Id = Ft(t, a === "." ? "1_555" : a), this.bondLength = n, this.bondLengthSU = r, this.atom2SiteSymmetry = a;
+		this.atom1Id = It(e), this.atom2Id = It(t, a === "." ? "1_555" : a), this.bondLength = n, this.bondLengthSU = r, this.atom2SiteSymmetry = a;
 	}
 	get atom1Label() {
-		return Pt(this.atom1Id);
+		return Ft(this.atom1Id);
 	}
 	get atom2Label() {
-		return Pt(this.atom2Id);
+		return Ft(this.atom2Id);
 	}
 	static fromCIF(t, n, r = "1") {
-		let i = t.get("_geom_bond"), a = i.getIndex(["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], n, "."), o = i.getIndex(["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"], n, !1);
-		o && o === a && (a = "."), a = ut(a);
-		let s = i.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], n), c = `${r}_555`, l = `${s}|${c}`, u = i.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], n), d = a === "?" ? "." : a, f = `${u}|${d === "." ? c : d}`;
-		return new e(l, f, i.getIndex(["_geom_bond.distance", "_geom_bond_distance"], n), i.getIndex(["_geom_bond.distance_su", "_geom_bond_distance_su"], n, NaN), d);
+		let i = t.get("_geom_bond"), a = typeof r == "object" ? r : null, o = a?.identitySymOpId ?? (typeof r == "string" ? r : "1"), s = i.getIndex(["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"], n, "."), c = i.getIndex(["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"], n, !1), l = ut(c === !1 ? "." : c, a?.operationIds);
+		s = ut(s, a?.operationIds);
+		let u = null;
+		if (a && l !== ".") try {
+			s = Lt(a, l, s, `${o}_555`);
+		} catch (e) {
+			u = e;
+		}
+		else l !== "." && l === s && (s = ".");
+		let d = i.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], n), f = `${o}_555`, p = `${d}|${f}`, m = i.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], n), h = s === "?" ? "." : s, g = `${m}|${h === "." ? f : h}`, _ = new e(p, g, i.getIndex(["_geom_bond.distance", "_geom_bond_distance"], n), i.getIndex(["_geom_bond.distance_su", "_geom_bond_distance_su"], n, NaN), h);
+		return _.atom1SiteSymmetry = l, _.symmetryNormalizationError = u, _;
 	}
 }, V = class e {
 	constructor(e, t, n, r, i, a, o, s, c, l, u, d) {
 		let f = ut(d);
-		this.donorAtomId = Ft(e), this.hydrogenAtomId = Ft(t), this.acceptorAtomId = Ft(n, f === "." ? "1_555" : f), this.donorHydrogenDistance = r, this.donorHydrogenDistanceSU = i, this.acceptorHydrogenDistance = a, this.acceptorHydrogenDistanceSU = o, this.donorAcceptorDistance = s, this.donorAcceptorDistanceSU = c, this.hBondAngle = l, this.hBondAngleSU = u, this.acceptorAtomSymmetry = f;
+		this.donorAtomId = It(e), this.hydrogenAtomId = It(t), this.acceptorAtomId = It(n, f === "." ? "1_555" : f), this.donorHydrogenDistance = r, this.donorHydrogenDistanceSU = i, this.acceptorHydrogenDistance = a, this.acceptorHydrogenDistanceSU = o, this.donorAcceptorDistance = s, this.donorAcceptorDistanceSU = c, this.hBondAngle = l, this.hBondAngleSU = u, this.acceptorAtomSymmetry = f;
 	}
 	get donorAtomLabel() {
-		return Pt(this.donorAtomId);
+		return Ft(this.donorAtomId);
 	}
 	get hydrogenAtomLabel() {
-		return Pt(this.hydrogenAtomId);
+		return Ft(this.hydrogenAtomId);
 	}
 	get acceptorAtomLabel() {
-		return Pt(this.acceptorAtomId);
+		return Ft(this.acceptorAtomId);
 	}
 	static fromCIF(t, n, r = "1") {
-		let i = t.get("_geom_hbond"), a = i.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], n, "."), o = i.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], n), s = `${r}_555`, c = `${o}|${s}`, l = `${i.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], n)}|${s}`, u = i.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], n), d = ut(a), f = `${u}|${d === "." ? s : d}`;
-		return new e(c, l, f, i.getIndex(["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], n, NaN), i.getIndex(["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], n, NaN), i.getIndex(["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], n, NaN), i.getIndex(["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], n, NaN), i.getIndex(["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], n, NaN), i.getIndex(["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], n, NaN), i.getIndex(["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], n, NaN), i.getIndex(["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], n, NaN), d);
+		let i = t.get("_geom_hbond"), a = typeof r == "object" ? r : null, o = `${a?.identitySymOpId ?? (typeof r == "string" ? r : "1")}_555`, s = new Set(i.getHeaders().map((e) => e.toLowerCase())), c = ["_geom_hbond.site_symmetry_h", "_geom_hbond_site_symmetry_H"], l = ut(i.getIndex(["_geom_hbond.site_symmetry_d", "_geom_hbond_site_symmetry_D"], n, "."), a?.operationIds), u = c.some((e) => s.has(e.toLowerCase())) ? ut(i.getIndex(c, n, "."), a?.operationIds) : l, d = ut(i.getIndex(["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"], n, "."), a?.operationIds), f = [];
+		try {
+			u = Lt(a, l, u, o);
+		} catch (e) {
+			f.push({
+				endpoint: "hydrogen",
+				error: e
+			});
+		}
+		try {
+			d = Lt(a, l, d, o);
+		} catch (e) {
+			f.push({
+				endpoint: "acceptor",
+				error: e
+			});
+		}
+		let p = `${i.getIndex(["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"], n)}|${o}`, m = `${i.getIndex(["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"], n)}|${u === "." ? o : u}`, h = `${i.getIndex(["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"], n)}|${d === "." ? o : d}`, g = new e(p, m, h, i.getIndex(["_geom_hbond.distance_dh", "_geom_hbond_distance_DH"], n, NaN), i.getIndex(["_geom_hbond.distance_dh_su", "_geom_hbond_distance_DH_su"], n, NaN), i.getIndex(["_geom_hbond.distance_ha", "_geom_hbond_distance_HA"], n, NaN), i.getIndex(["_geom_hbond.distance_ha_su", "_geom_hbond_distance_HA_su"], n, NaN), i.getIndex(["_geom_hbond.distance_da", "_geom_hbond_distance_DA"], n, NaN), i.getIndex(["_geom_hbond.distance_da_su", "_geom_hbond_distance_DA_su"], n, NaN), i.getIndex(["_geom_hbond.angle_dha", "_geom_hbond_angle_DHA"], n, NaN), i.getIndex(["_geom_hbond.angle_dha_su", "_geom_hbond_angle_DHA_su"], n, NaN), d);
+		return g.donorAtomSymmetry = l, g.symmetryNormalizationErrors = f, g;
 	}
-}, It = class {
+}, Rt = class {
 	constructor() {
 		this.atomLabelErrors = [], this.symmetryErrors = [];
 	}
@@ -5741,18 +12644,16 @@ var B = class e {
 		let n = "";
 		return this.atomLabelErrors.length !== 0 && (n += "Unknown atom label(s). Known labels are \n", n += e.map((e) => e.label).join(", "), n += "\n", n += this.atomLabelErrors.join("\n")), this.symmetryErrors.length !== 0 && (n.length !== 0 && (n += "\n"), n += "Unknown symmetry ID(s) or String format. Expected format is <id>_abc. ", n += "Known IDs are:\n", n += Array.from(t.operationIds.keys()).join(", "), n += "\n", n += this.symmetryErrors.join("\n")), n;
 	}
-}, Lt = class e {
+}, zt = class e {
 	static createBonds(t, n, r = "1") {
-		try {
-			let i = t.get("_geom_bond"), a = i.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, o = [];
-			for (let s = 0; s < a; s++) {
-				let a = i.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], s), c = i.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], s);
-				e.isValidBondPair(a, c, n) && o.push(B.fromCIF(t, s, r));
-			}
-			return o;
-		} catch {
-			return [];
+		let i = t.get("_geom_bond", !1);
+		if (!i) return [];
+		let a = i.get(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]).length, o = [];
+		for (let s = 0; s < a; s++) {
+			let a = i.getIndex(["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"], s), c = i.getIndex(["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"], s);
+			e.isValidBondPair(a, c, n) && o.push(B.fromCIF(t, s, r));
 		}
+		return o;
 	}
 	static createHBonds(t, n, r = "1") {
 		let i = t.get("_geom_hbond", !1);
@@ -5765,26 +12666,48 @@ var B = class e {
 		return o;
 	}
 	static validateBonds(e, t, n) {
-		let r = new It(), i = new Set(t.map((e) => e.label));
+		let r = new Rt(), i = new Set(t.map((e) => e.label));
 		for (let t of e) {
 			let e = [], a = t.atom1Id.split("|")[0], o = t.atom2Id.split("|")[0];
-			if (i.has(a) || e.push(a), i.has(o) || e.push(o), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in bond: ${t.atom1Label} - ${t.atom2Label}, non-existent atom(s): ${e.join(", ")}`), t.atom2SiteSymmetry && t.atom2SiteSymmetry !== ".") try {
+			i.has(a) || e.push(a), i.has(o) || e.push(o), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in bond: ${t.atom1Label} - ${t.atom2Label}, non-existent atom(s): ${e.join(", ")}`);
+			let s = !1;
+			if (t.atom1SiteSymmetry && t.atom1SiteSymmetry !== ".") try {
+				n.parsePositionCode(t.atom1SiteSymmetry);
+			} catch {
+				s = !0, r.addSymmetryError(`Invalid symmetry at bond site 1: ${t.atom1Label} - ${t.atom2Label}, invalid symmetry operation: ${t.atom1SiteSymmetry}`);
+			}
+			if (t.atom2SiteSymmetry && t.atom2SiteSymmetry !== ".") try {
 				n.parsePositionCode(t.atom2SiteSymmetry);
 			} catch {
-				r.addSymmetryError(`Invalid symmetry in bond: ${t.atom1Label} - ${t.atom2Label}, invalid symmetry operation: ${t.atom2SiteSymmetry}`);
+				s = !0, r.addSymmetryError(`Invalid symmetry in bond: ${t.atom1Label} - ${t.atom2Label}, invalid symmetry operation: ${t.atom2SiteSymmetry}`);
 			}
+			t.symmetryNormalizationError && !s && r.addSymmetryError(`Could not normalize bond endpoint symmetries: ${t.atom1Label} - ${t.atom2Label}: ${t.symmetryNormalizationError.message}`);
 		}
 		return r;
 	}
 	static validateHBonds(e, t, n) {
-		let r = new It(), i = new Set(t.map((e) => e.label));
+		let r = new Rt(), i = new Set(t.map((e) => e.label));
 		for (let t of e) {
 			let e = [], a = t.donorAtomId.split("|")[0], o = t.hydrogenAtomId.split("|")[0], s = t.acceptorAtomId.split("|")[0];
-			if (i.has(a) || e.push(a), i.has(o) || e.push(o), i.has(s) || e.push(s), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in H-bond: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, non-existent atom(s): ${e.join(", ")}`), t.acceptorAtomSymmetry && t.acceptorAtomSymmetry !== ".") try {
+			i.has(a) || e.push(a), i.has(o) || e.push(o), i.has(s) || e.push(s), e.length > 0 && r.addAtomLabelError(`Non-existent atoms in H-bond: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, non-existent atom(s): ${e.join(", ")}`);
+			let c = !1;
+			if (t.donorAtomSymmetry && t.donorAtomSymmetry !== ".") try {
+				n.parsePositionCode(t.donorAtomSymmetry);
+			} catch {
+				c = !0, r.addSymmetryError(`Invalid symmetry at H-bond donor: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, invalid symmetry operation: ${t.donorAtomSymmetry}`);
+			}
+			let l = t.hydrogenAtomId.split("|")[1];
+			if (l) try {
+				n.parsePositionCode(l);
+			} catch {
+				c = !0, r.addSymmetryError(`Invalid symmetry in H-bond hydrogen: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, invalid symmetry operation: ${l}`);
+			}
+			if (t.acceptorAtomSymmetry && t.acceptorAtomSymmetry !== ".") try {
 				n.parsePositionCode(t.acceptorAtomSymmetry);
 			} catch {
-				r.addSymmetryError(`Invalid symmetry in H-bond: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, invalid symmetry operation: ${t.acceptorAtomSymmetry}`);
+				c = !0, r.addSymmetryError(`Invalid symmetry in H-bond: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}, invalid symmetry operation: ${t.acceptorAtomSymmetry}`);
 			}
+			if (t.symmetryNormalizationErrors?.length && !c) for (let { endpoint: e, error: n } of t.symmetryNormalizationErrors) r.addSymmetryError(`Could not normalize H-bond ${e} symmetry: ${t.donorAtomLabel} - ${t.hydrogenAtomLabel} - ${t.acceptorAtomLabel}: ${n.message}`);
 		}
 		return r;
 	}
@@ -5799,8 +12722,8 @@ var B = class e {
 		let a = e.isValidLabel(t), o = e.isValidLabel(n), s = e.isValidLabel(r);
 		return t === "?" || n === "?" || r === "?" ? !1 : (!a || i.has(t)) && (!o || i.has(n)) && (!s || i.has(r));
 	}
-}, Rt = 1e-4;
-function zt(e) {
+}, Bt = 1e-4;
+function Vt(e) {
 	let t = (e) => e * Math.PI / 180, { a: n, b: r, c: i } = e, a = Math.cos(t(e.alpha)), o = Math.cos(t(e.beta)), s = Math.cos(t(e.gamma));
 	return [
 		[
@@ -5820,15 +12743,15 @@ function zt(e) {
 		]
 	];
 }
-function Bt(e, t, n) {
+function Ht(e, t, n) {
 	for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) {
 		let a = 0;
 		for (let n = 0; n < 3; n++) for (let o = 0; o < 3; o++) a += e[n][r] * t[n][o] * e[o][i];
-		if (Math.abs(a - t[r][i]) > Rt * n) return !1;
+		if (Math.abs(a - t[r][i]) > Bt * n) return !1;
 	}
 	return !0;
 }
-function Vt(e, t) {
+function Ut(e, t) {
 	if (!t || !Array.isArray(e)) return [];
 	let { a: n, b: r, c: i, alpha: a, beta: o, gamma: s } = t;
 	if (![
@@ -5839,10 +12762,10 @@ function Vt(e, t) {
 		o,
 		s
 	].every(Number.isFinite)) return [];
-	let c = zt(t), l = Math.max(...c.flat().map(Math.abs)), u = [];
+	let c = Vt(t), l = Math.max(...c.flat().map(Math.abs)), u = [];
 	return e.forEach((e, t) => {
 		let n = Array.isArray(e.rotMatrix) ? e.rotMatrix : e.rotMatrix?.toArray?.();
-		n && (Bt(n, c, l) || u.push(t));
+		n && (Ht(n, c, l) || u.push(t));
 	}), u;
 }
 //#endregion
@@ -5876,25 +12799,25 @@ var H = class e {
 };
 //#endregion
 //#region src/lib/structure/crystal.js
-function Ht(e) {
+function Wt(e) {
 	if (!e || typeof e != "string") throw Error(`Invalid atom label: ${e}`);
 	let t = e.toUpperCase(), n = RegExp(`^(${(/* @__PURE__ */ "HE.LI.BE.NE.NA.MG.AL.SI.CL.AR.CA.SC.TI.CR.MN.FE.CO.NI.CU.ZN.GA.GE.AS.SE.BR.KR.RB.SR.ZR.NB.MO.TC.RU.RH.PD.AG.CD.IN.SN.SB.TE.XE.CS.BA.LA.CE.PR.ND.PM.SM.EU.GD.TB.DY.HO.ER.TM.YB.LU.HF.TA.RE.OS.IR.PT.AU.HG.TL.PB.BI.PO.AT.RN.FR.RA.AC.TH.PA.NP.PU.AM.CM".split(".")).join("|")})`), r = t.match(n);
-	if (r) return Ut(r[1]);
+	if (r) return Gt(r[1]);
 	let i = t.match(/^(H|B|C|N|O|F|P|S|K|V|Y|I|W|U|D)/);
-	if (i) return Ut(i[1]);
+	if (i) return Gt(i[1]);
 	throw Error(`Could not infer element type from atom label: ${e}`);
 }
-function Ut(e) {
+function Gt(e) {
 	return e.length === 1 ? e : e[0] + e[1].toLowerCase();
 }
 var U = class e {
 	constructor(e, t, n = [], r = [], i = null) {
-		this.cell = e, this.atoms = t, this.bonds = n, this.hBonds = r, this.symmetry = i || new Nt("None", 0, [new Mt("x,y,z")]);
+		this.cell = e, this.atoms = t, this.bonds = n, this.hBonds = r, this.symmetry = i || new Pt("None", 0, [new Nt("x,y,z")]);
 	}
 	static fromCIF(t) {
-		let n = Wt.fromCIF(t), r = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), i = Array.from({ length: r.length }, (e, n) => {
+		let n = Kt.fromCIF(t), r = t.get("_atom_site").get(["_atom_site.label", "_atom_site_label"]), i = Array.from({ length: r.length }, (e, n) => {
 			try {
-				return Gt.fromCIF(t, n);
+				return qt.fromCIF(t, n);
 			} catch (e) {
 				if (e.message.includes("Dummy atom")) return null;
 				throw e;
@@ -5904,7 +12827,7 @@ var U = class e {
 		let a = [], o = /* @__PURE__ */ new Set();
 		for (let e of i) o.has(e.label) && (a.includes(e.label) || a.push(e.label)), o.add(e.label);
 		if (a.length > 0) throw Error(`Duplicate atom site labels: ${a.slice(0, 10).join(", ")}${a.length > 10 ? ", ..." : ""}. Every _atom_site_label must name exactly one site, otherwise bonds and H-bonds referring to it cannot be resolved.`);
-		let s = Nt.fromCIF(t), c = s.identitySymOpId ?? "1";
+		let s = Pt.fromCIF(t), c = s.identitySymOpId ?? "1";
 		i.forEach((e) => {
 			e.appliedSymmetry = new H(c, [
 				0,
@@ -5912,12 +12835,12 @@ var U = class e {
 				0
 			]);
 		});
-		let l = new Set(i.map((e) => e.label)), u = Lt.createBonds(t, l, c), d = Lt.createHBonds(t, l, c), f = Vt(s.symmetryOperations, n);
+		let l = new Set(i.map((e) => e.label)), u = zt.createBonds(t, l, s), d = zt.createHBonds(t, l, s), f = Ut(s.symmetryOperations, n);
 		if (f.length > 0) {
 			let e = f.slice(0, 5).map((e) => s.symmetryOperations[e].toSymmetryString()).join(", ");
 			throw Error(`Symmetry operations incompatible with the unit cell: ${f.length} of ${s.symmetryOperations.length} do not preserve distances in a cell with alpha=${n.alpha}, beta=${n.beta}, gamma=${n.gamma} (${e}). The symmetry and the cell cannot both be right.`);
 		}
-		let p = Lt.validateBonds(u, i, s), m = Lt.validateHBonds(d, i, s);
+		let p = zt.validateBonds(u, i, s), m = zt.validateHBonds(d, i, s);
 		if (!p.isValid() || !m.isValid()) {
 			let e = "There were errors in the bond or H-bond creation\n", t = p.report(i, s), n = m.report(i, s);
 			throw t.length !== 0 && n.length !== 0 ? Error(e + t + "\n" + n) : Error(e + t + n);
@@ -6000,9 +12923,9 @@ var U = class e {
 			hBonds: Array.from(e.hBonds)
 		}));
 	}
-}, Wt = class e {
+}, Kt = class e {
 	constructor(e, t, n, r, i, a) {
-		this._a = e, this._b = t, this._c = n, this._alpha = r, this._beta = i, this._gamma = a, this.fractToCartMatrix = He(this);
+		this._a = e, this._b = t, this._c = n, this._alpha = r, this._beta = i, this._gamma = a, this.fractToCartMatrix = Ve(this);
 	}
 	static fromCIF(t) {
 		let n = [
@@ -6050,44 +12973,44 @@ var U = class e {
 	}
 	set a(e) {
 		if (e <= 0) throw Error("Cell parameter 'a' must be positive");
-		this._a = e, this.fractToCartMatrix = He(this);
+		this._a = e, this.fractToCartMatrix = Ve(this);
 	}
 	get b() {
 		return this._b;
 	}
 	set b(e) {
 		if (e <= 0) throw Error("Cell parameter 'b' must be positive");
-		this._b = e, this.fractToCartMatrix = He(this);
+		this._b = e, this.fractToCartMatrix = Ve(this);
 	}
 	get c() {
 		return this._c;
 	}
 	set c(e) {
 		if (e <= 0) throw Error("Cell parameter 'c' must be positive");
-		this._c = e, this.fractToCartMatrix = He(this);
+		this._c = e, this.fractToCartMatrix = Ve(this);
 	}
 	get alpha() {
 		return this._alpha;
 	}
 	set alpha(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle alpha must be between 0 and 180 degrees");
-		this._alpha = e, this.fractToCartMatrix = He(this);
+		this._alpha = e, this.fractToCartMatrix = Ve(this);
 	}
 	get beta() {
 		return this._beta;
 	}
 	set beta(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle beta must be between 0 and 180 degrees");
-		this._beta = e, this.fractToCartMatrix = He(this);
+		this._beta = e, this.fractToCartMatrix = Ve(this);
 	}
 	get gamma() {
 		return this._gamma;
 	}
 	set gamma(e) {
 		if (e <= 0 || e >= 180) throw Error("Angle gamma must be between 0 and 180 degrees");
-		this._gamma = e, this.fractToCartMatrix = He(this);
+		this._gamma = e, this.fractToCartMatrix = Ve(this);
 	}
-}, Gt = class e {
+}, qt = class e {
 	constructor(e, t, n, r = null, i = 0, a = null) {
 		this.label = String(e), this.atomType = t, this.position = n, this.adp = r, this.disorderGroup = i, this.appliedSymmetry = a;
 	}
@@ -6107,17 +13030,17 @@ var U = class e {
 		if (c.includes(s)) throw Error("Dummy atom: Invalid label");
 		if (String(i.getIndex(["_atom_site.calc_flag", "_atom_site_calc_flag"], o, "")).toLowerCase() === "dum") throw Error("Dummy atom: calc_flag is dum");
 		let l = i.getIndex(["_atom_site.type_symbol", "_atom_site_type_symbol"], o, !1);
-		if (l ||= Ht(s), c.includes(l)) throw Error("Dummy atom: Invalid atom type");
-		let u = nt.fromCIF(t, o), d = lt.fromCIF(t, o), f = i.getIndex(["_atom_site.disorder_group", "_atom_site_disorder_group"], o, ".");
+		if (l ||= Wt(s), c.includes(l)) throw Error("Dummy atom: Invalid atom type");
+		let u = tt.fromCIF(t, o), d = lt.fromCIF(t, o), f = i.getIndex(["_atom_site.disorder_group", "_atom_site_disorder_group"], o, ".");
 		return new e(s, l, u, d, f === "." ? 0 : f);
 	}
 };
-function Kt(e, t) {
+function Jt(e, t) {
 	return e.disorderGroup === t.disorderGroup || e.disorderGroup === 0 || t.disorderGroup === 0;
 }
 //#endregion
 //#region node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
-function qt(e, t = !1) {
+function Yt(e, t = !1) {
 	let n = e[0].index !== null, i = new Set(Object.keys(e[0].attributes)), a = new Set(Object.keys(e[0].morphAttributes)), o = {}, s = {}, c = e[0].morphTargetsRelative, l = new r(), u = 0;
 	for (let r = 0; r < e.length; ++r) {
 		let d = e[r], f = 0;
@@ -6150,7 +13073,7 @@ function qt(e, t = !1) {
 		l.setIndex(n);
 	}
 	for (let e in o) {
-		let t = Jt(o[e]);
+		let t = Xt(o[e]);
 		if (!t) return console.error("THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the " + e + " attribute."), null;
 		l.setAttribute(e, t);
 	}
@@ -6161,7 +13084,7 @@ function qt(e, t = !1) {
 			for (let n = 0; n < t; ++n) {
 				let t = [];
 				for (let r = 0; r < s[e].length; ++r) t.push(s[e][r][n]);
-				let r = Jt(t);
+				let r = Xt(t);
 				if (!r) return console.error("THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the " + e + " morphAttribute."), null;
 				l.morphAttributes[e].push(r);
 			}
@@ -6169,7 +13092,7 @@ function qt(e, t = !1) {
 	}
 	return l;
 }
-function Jt(e) {
+function Xt(e) {
 	let t, r, i, a = -1, o = 0;
 	for (let n = 0; n < e.length; ++n) {
 		let s = e[n];
@@ -6195,7 +13118,7 @@ function Jt(e) {
 }
 //#endregion
 //#region src/lib/structure/covalent-radii.js
-var Yt = Object.freeze({
+var Zt = Object.freeze({
 	H: .31,
 	D: .31,
 	He: .28,
@@ -6293,7 +13216,7 @@ var Yt = Object.freeze({
 	Pu: 1.87,
 	Am: 1.8,
 	Cm: 1.69
-}), Xt = Object.freeze(/* @__PURE__ */ new Set([
+}), Qt = Object.freeze(/* @__PURE__ */ new Set([
 	"Li",
 	"Na",
 	"K",
@@ -6306,10 +13229,220 @@ var Yt = Object.freeze({
 	"Sr",
 	"Ba",
 	"Ra"
-])), Zt = Object.freeze({
+])), $t = Object.freeze({
 	Bk: 1.65,
 	Cf: 1.81
-}), Qt = Object.freeze({
+}), en = /* @__PURE__ */ new Set([
+	"H",
+	"D",
+	"B",
+	"C",
+	"N",
+	"O",
+	"F",
+	"Si",
+	"P",
+	"S",
+	"Cl",
+	"As",
+	"Se",
+	"Br",
+	"Te",
+	"I"
+]), tn = 4, nn = 1.6;
+function rn(e) {
+	return en.has(e) ? Zt[e] : void 0;
+}
+function an(e, t = e.bonds) {
+	let n = /* @__PURE__ */ new Map();
+	for (let t of e.atoms) n.has(t.label) || n.set(t.label, t.atomType);
+	return t.filter((e) => {
+		if (!Number.isFinite(e.bondLength)) return !0;
+		if (e.bondLength > tn) return !1;
+		let t = n.get(e.atom1Label), r = n.get(e.atom2Label);
+		if (t === void 0 || r === void 0) return !0;
+		let i = rn(t), a = rn(r);
+		return i === void 0 || a === void 0 || e.bondLength <= nn * (i + a);
+	});
+}
+var on = {
+	centreElements: /* @__PURE__ */ "Li.Be.Na.Mg.Al.K.Ca.Sc.Ti.V.Cr.Mn.Fe.Co.Ni.Cu.Zn.Ga.Rb.Sr.Y.Zr.Nb.Mo.Tc.Ru.Rh.Pd.Ag.Cd.In.Sn.Cs.Ba.La.Ce.Pr.Nd.Pm.Sm.Eu.Gd.Tb.Dy.Ho.Er.Tm.Yb.Lu.Hf.Ta.W.Re.Os.Ir.Pt.Au.Hg.Tl.Pb.Bi.Po.Fr.Ra.Ac.Th.Pa.U.Np.Pu.Am.Cm.Bk.Cf".split("."),
+	ringElements: [
+		"B",
+		"C",
+		"N",
+		"O",
+		"P",
+		"S"
+	],
+	minRingSize: 5,
+	maxRingSize: 8,
+	minBondedAtoms: 3,
+	minRingCoverage: .5,
+	requireGeometryCheck: !0,
+	maxRingPlanarityRatio: .15,
+	maxLateralDisplacementRatio: .75,
+	maxDistanceSpreadRatio: .35,
+	dashSegmentLength: .3,
+	dashFraction: .6
+};
+function sn(e) {
+	for (let t of ["centreElements", "ringElements"]) if (!Array.isArray(e[t]) || e[t].length === 0 || e[t].some((e) => typeof e != "string" || e.length === 0)) throw TypeError(`metalRingCentroidOptions.${t} must be a non-empty string array`);
+	for (let t of [
+		"minRingSize",
+		"maxRingSize",
+		"minBondedAtoms"
+	]) if (!Number.isInteger(e[t]) || e[t] < 1) throw TypeError(`metalRingCentroidOptions.${t} must be a positive integer`);
+	if (e.minRingSize > e.maxRingSize) throw TypeError("metalRingCentroidOptions.minRingSize must not exceed maxRingSize");
+	if (e.minBondedAtoms > e.maxRingSize) throw TypeError("metalRingCentroidOptions.minBondedAtoms must not exceed maxRingSize");
+	if (typeof e.requireGeometryCheck != "boolean") throw TypeError("metalRingCentroidOptions.requireGeometryCheck must be boolean");
+	for (let t of ["minRingCoverage", "dashFraction"]) if (!(Number.isFinite(e[t]) && e[t] > 0 && e[t] <= 1)) throw TypeError(`metalRingCentroidOptions.${t} must be greater than 0 and at most 1`);
+	for (let t of [
+		"maxRingPlanarityRatio",
+		"maxLateralDisplacementRatio",
+		"maxDistanceSpreadRatio"
+	]) if (!(Number.isFinite(e[t]) && e[t] >= 0)) throw TypeError(`metalRingCentroidOptions.${t} must be a non-negative finite number`);
+	if (!(Number.isFinite(e.dashSegmentLength) && e.dashSegmentLength > 0)) throw TypeError("metalRingCentroidOptions.dashSegmentLength must be a positive finite number");
+}
+function cn(e) {
+	let t = [];
+	for (let n of [e, [...e].reverse()]) for (let e = 0; e < n.length; e++) t.push([...n.slice(e), ...n.slice(0, e)].join("\0"));
+	return t.sort(), t[0];
+}
+function ln(e, t) {
+	let n = e.length;
+	for (let r = 0; r < n; r++) for (let i = r + 1; i < n; i++) if (!(i === r + 1 || r === 0 && i === n - 1) && t.get(e[r])?.has(e[i])) return !1;
+	return !0;
+}
+function un(e, t, n, r, i = /* @__PURE__ */ new Set()) {
+	let a = /* @__PURE__ */ new Map();
+	for (let o of t) {
+		if (!e.has(o) || i.has(o)) continue;
+		let t = (s, c, l) => {
+			for (let u of e.get(s) || []) i.has(u) || (u === o ? c.length >= n && ln(c, e) && a.set(cn(c), [...c]) : !l.has(u) && c.length < r && (l.add(u), t(u, [...c, u], l), l.delete(u)));
+		};
+		t(o, [o], /* @__PURE__ */ new Set([o]));
+	}
+	return [...a.entries()].map(([e, t]) => ({
+		key: e,
+		atoms: t
+	}));
+}
+function dn(e, t) {
+	let n = e.position.toCartesian(t);
+	return [
+		n.x,
+		n.y,
+		n.z
+	];
+}
+var fn = (e, t) => Math.hypot(e[0] - t[0], e[1] - t[1], e[2] - t[2]);
+function pn(e, t, n) {
+	let r = dn(e, n), i = t.map((e) => dn(e, n));
+	if ([...r, ...i.flat()].some((e) => !Number.isFinite(e))) return null;
+	let a = [
+		0,
+		1,
+		2
+	].map((e) => i.reduce((t, n) => t + n[e], 0) / i.length), o = i.map((e) => e.map((e, t) => e - a[t])), s = Be([
+		0,
+		1,
+		2
+	].map((e) => [
+		0,
+		1,
+		2
+	].map((t) => o.reduce((n, r) => n + r[e] * r[t], 0) / o.length)));
+	if (s.values.some((e) => !Number.isFinite(e))) return null;
+	let c = Math.max(1, Math.abs(s.values[2]));
+	if (!(s.values[1] > c * 1e-12)) return null;
+	let l = s.eigenvectors[0].vector.toArray();
+	if (l.some((e) => !Number.isFinite(e))) return null;
+	let u = r.map((e, t) => e - a[t]), d = u.reduce((e, t, n) => e + t * l[n], 0), f = Math.hypot(...u.map((e, t) => e - d * l[t])), p = o.reduce((e, t) => e + Math.hypot(...t), 0) / o.length;
+	if (!(p > 0)) return null;
+	let m = i.map((e) => fn(r, e)), h = m.reduce((e, t) => e + t, 0) / m.length;
+	return h > 0 ? {
+		centroid: a,
+		ringPlanarityRatio: Math.sqrt(Math.max(0, s.values[0])) / p,
+		lateralDisplacementRatio: f / p,
+		distanceSpreadRatio: (Math.max(...m) - Math.min(...m)) / h
+	} : null;
+}
+function mn(e) {
+	return [e.atom1Id, e.atom2Id].sort().join("\0");
+}
+function hn(e, t, n) {
+	let r = new Map(e.atoms.map((e) => [e.uniqueId, e])), i = new Set(n.centreElements), a = new Set(n.ringElements), o = /* @__PURE__ */ new Map(), s = (e, t) => {
+		o.has(e) || o.set(e, /* @__PURE__ */ new Set()), o.has(t) || o.set(t, /* @__PURE__ */ new Set()), o.get(e).add(t), o.get(t).add(e);
+	};
+	for (let n of an(e, t)) {
+		let e = r.get(n.atom1Id), t = r.get(n.atom2Id);
+		e && t && a.has(e.atomType) && a.has(t.atomType) && s(e.uniqueId, t.uniqueId);
+	}
+	let c = /* @__PURE__ */ new Map(), l = (e, t, n) => {
+		!i.has(e.atomType) || !a.has(t.atomType) || (c.has(e.uniqueId) || c.set(e.uniqueId, []), c.get(e.uniqueId).push({
+			ligandId: t.uniqueId,
+			bond: n
+		}));
+	};
+	for (let e of t) {
+		let t = r.get(e.atom1Id), n = r.get(e.atom2Id);
+		!t || !n || (l(t, n, e), l(n, t, e));
+	}
+	let u = [];
+	for (let [t, i] of c) {
+		let a = r.get(t), s = new Set(i.map((e) => e.ligandId));
+		for (let c of un(o, s, n.minRingSize, n.maxRingSize, /* @__PURE__ */ new Set([t]))) {
+			let t = new Set(c.atoms), o = i.filter((e) => t.has(e.ligandId)), s = [...new Set(o.map((e) => e.ligandId))], l = s.length / c.atoms.length;
+			if (s.length < n.minBondedAtoms || l < n.minRingCoverage) continue;
+			let d = new Set(s);
+			if (!c.atoms.some((e, t) => d.has(e) && d.has(c.atoms[(t + 1) % c.atoms.length]))) continue;
+			let f = c.atoms.map((e) => r.get(e)), p = pn(a, f, e.cell);
+			p && (n.requireGeometryCheck && (p.ringPlanarityRatio > n.maxRingPlanarityRatio || p.lateralDisplacementRatio > n.maxLateralDisplacementRatio || p.distanceSpreadRatio > n.maxDistanceSpreadRatio) || u.push({
+				type: "ring-centroid-bond",
+				centreAtom: a,
+				ringAtoms: f,
+				originalBondedAtoms: s.map((e) => r.get(e)),
+				originalBonds: o.map((e) => e.bond),
+				centroid: p.centroid,
+				coverage: l,
+				bondedAtomCount: s.length,
+				ringPlanarityRatio: p.ringPlanarityRatio,
+				lateralDisplacementRatio: p.lateralDisplacementRatio,
+				distanceSpreadRatio: p.distanceSpreadRatio,
+				canonicalRingId: c.key
+			}));
+		}
+	}
+	u.sort((e, t) => t.coverage - e.coverage || t.bondedAtomCount - e.bondedAtomCount || e.lateralDisplacementRatio - t.lateralDisplacementRatio || e.ringAtoms.length - t.ringAtoms.length || e.canonicalRingId.localeCompare(t.canonicalRingId));
+	let d = /* @__PURE__ */ new Set(), f = /* @__PURE__ */ new Map(), p = [];
+	for (let e of u) {
+		let t = e.originalBonds.map(mn), n = e.centreAtom.uniqueId, r = f.get(n) || [], i = new Set(e.ringAtoms.map((e) => e.uniqueId)), a = r.some((e) => {
+			let t = 0;
+			for (let n of i) if (e.has(n) && ++t >= 2) return !0;
+			return !1;
+		});
+		t.some((e) => d.has(e)) || a || (t.forEach((e) => d.add(e)), r.push(i), f.set(n, r), p.push(e));
+	}
+	return {
+		interactions: p,
+		suppressedBonds: new Set(p.flatMap((e) => e.originalBonds))
+	};
+}
+function gn(e, t, n) {
+	if (!(e > 0)) return [];
+	let r = Math.max(1, Math.round(e / t)), i = e / r, a = i * n, o = i - a;
+	return Array.from({ length: r }, (t, n) => {
+		let s = o + n * i;
+		return {
+			start: s,
+			end: n === r - 1 ? e : s + a
+		};
+	});
+}
+//#endregion
+//#region src/lib/density/difference-density-options.js
+var _n = Object.freeze({
 	autoLoad: !1,
 	inputMode: "auto",
 	reflections: Object.freeze({}),
@@ -6321,7 +13454,7 @@ var Yt = Object.freeze({
 	reciprocalResolution: 1,
 	initialGridOversampling: 1,
 	gridOversampling: 2
-}), $t = Object.freeze({ useWorker: !0 }), en = Object.freeze({
+}), vn = Object.freeze({ useWorker: !0 }), yn = Object.freeze({
 	useSymmetry: !0,
 	progressiveSteps: Object.freeze([1]),
 	visible: !0,
@@ -6339,7 +13472,7 @@ var Yt = Object.freeze({
 	wireframe: !0,
 	maxPolyCount: 1e5,
 	surfaceCacheMaxBytes: 64 * 1024 * 1024
-}), tn = Object.freeze({
+}), bn = Object.freeze({
 	enabled: !1,
 	plane: Object.freeze({ mode: "best-fit" }),
 	padding: 1.5,
@@ -6361,7 +13494,7 @@ var Yt = Object.freeze({
 	haloWidth: 1,
 	opacity: 1,
 	depthOffset: .02
-}), nn = Object.fromEntries(Object.entries({
+}), xn = Object.fromEntries(Object.entries({
 	H: {
 		atomColor: "#ffffff",
 		ringColor: "#000000"
@@ -6759,7 +13892,7 @@ var Yt = Object.freeze({
 		ringColor: "#ffffff"
 	}
 }).map(([e, t]) => [e, {
-	radius: Yt[e] ?? Zt[e],
+	radius: Zt[e] ?? $t[e],
 	...t
 }])), W = {
 	camera: {
@@ -6844,10 +13977,10 @@ var Yt = Object.freeze({
 	disorderMode: "all",
 	symmetryMode: "none",
 	packingCutoff: 1,
-	differenceDensity: { ...Qt },
-	scalarField: { ...$t },
-	isosurface: { ...en },
-	contourLines: { ...tn },
+	differenceDensity: { ..._n },
+	scalarField: { ...vn },
+	isosurface: { ...yn },
+	contourLines: { ...bn },
 	bondGrowTolerance: .45,
 	fixCifErrors: !1,
 	atomLabels: {
@@ -6921,6 +14054,12 @@ var Yt = Object.freeze({
 	bondColor: "#666666",
 	bondColorRoughness: .3,
 	bondColorMetalness: .1,
+	collapseMetalRingBonds: !1,
+	metalRingCentroidOptions: {
+		...on,
+		centreElements: [...on.centreElements],
+		ringElements: [...on.ringElements]
+	},
 	hbondRadius: .04,
 	hbondColor: "#AAAAAA",
 	hbondColorRoughness: .3,
@@ -6938,31 +14077,31 @@ var Yt = Object.freeze({
 		arrowHeadWidthMult: .25,
 		arrowCylinderRadius: .04
 	},
-	elementProperties: nn
+	elementProperties: xn
 };
 //#endregion
 //#region src/lib/ortep3d/color-utils.js
-function rn(t) {
+function Sn(t) {
 	let n = t?.isColor ? t : new e.Color(t);
 	return .2126 * n.r + .7152 * n.g + .0722 * n.b;
 }
-function an(t, n = 1) {
-	let r = e.MathUtils.clamp(n, 0, 1), i = t.reduce((e, t) => Math.max(e, rn(t)), 0);
+function Cn(t, n = 1) {
+	let r = e.MathUtils.clamp(n, 0, 1), i = t.reduce((e, t) => Math.max(e, Sn(t)), 0);
 	return i > r && i > 0 ? r / i : 1;
 }
-function on(t, n) {
+function wn(t, n) {
 	return new e.Color().set(t).multiplyScalar(e.MathUtils.clamp(n, 0, 1));
 }
-function sn(t, n = 0) {
-	let r = e.MathUtils.clamp(n, 0, 1), i = t.reduce((e, t) => Math.min(e, rn(t)), 1);
+function Tn(t, n = 0) {
+	let r = e.MathUtils.clamp(n, 0, 1), i = t.reduce((e, t) => Math.min(e, Sn(t)), 1);
 	return i >= r ? 0 : i < 1 ? (r - i) / (1 - i) : 0;
 }
-function cn(t, n) {
+function En(t, n) {
 	return new e.Color().set(t).lerp(new e.Color(1, 1, 1), e.MathUtils.clamp(n, 0, 1));
 }
 //#endregion
 //#region src/lib/ortep3d/ortep.js
-var ln = [
+var Dn = [
 	[
 		-1,
 		-1,
@@ -7003,16 +14142,16 @@ var ln = [
 		1,
 		1
 	]
-], un = [
+], On = [
 	-1,
 	1,
 	1
 ];
-function dn(e) {
+function kn(e) {
 	return e === "cutout-3d" ? "explanatory-3d" : e === "cutout-2d" ? "publication-2d" : "clean-3d";
 }
-var fn = "\n    attribute vec3 peanutShape;\n    uniform vec3 peanutUniformShape;\n    uniform mat3 peanutGridRotation;\n    uniform mat3 peanutGridBasis;\n    uniform float uPeanutOutlinePx;\n    uniform vec2 uPeanutOutlineViewport;\n    varying vec3 vPeanutGridDirection;\n    varying vec3 vPeanutWorldPosition;\n    varying vec3 vPeanutViewNormal;\n    varying vec3 vPeanutViewDirection;\n", pn = "\n    vec3 peanutDirection = normalize( position );\n    #ifdef PEANUT_UNIFORM_SHAPE\n        vec3 activePeanutShape = peanutUniformShape;\n    #else\n        vec3 activePeanutShape = peanutShape;\n    #endif\n    float peanutQ = dot( activePeanutShape, peanutDirection * peanutDirection );\n    vec3 transformed = position * sqrt( max( peanutQ, 0.0 ) );\n", mn = "\n    vec3 peanutNormalDirection = normalize( position );\n    #ifdef PEANUT_UNIFORM_SHAPE\n        vec3 peanutNormalShape = peanutUniformShape;\n    #else\n        vec3 peanutNormalShape = peanutShape;\n    #endif\n    float peanutNormalQ = dot(\n        peanutNormalShape,\n        peanutNormalDirection * peanutNormalDirection\n    );\n    vec3 objectNormal = normalize(\n        2.0 * peanutNormalQ * peanutNormalDirection -\n        peanutNormalShape * peanutNormalDirection\n    );\n", hn = "\n    varying vec3 vPeanutGridDirection;\n    varying vec3 vPeanutWorldPosition;\n    varying vec3 vPeanutViewNormal;\n    varying vec3 vPeanutViewDirection;\n    uniform vec3 peanutGridColor;\n    uniform float peanutGridLineWidth;\n    uniform float peanutMeridianCount;\n    uniform float peanutLatitudeIntervals;\n\n    float peanutPeriodicLine( float coordinate, vec3 surfacePosition ) {\n        float distanceToLine = abs( fract( coordinate + 0.5 ) - 0.5 );\n        vec2 coordinateGradient = vec2( dFdx( coordinate ), dFdy( coordinate ) );\n        float coordinatePerPixel = max( length( coordinateGradient ), 0.0001 );\n        vec2 screenNormal = coordinateGradient / coordinatePerPixel;\n        float worldPerPixel = max( length(\n            dFdx( surfacePosition ) * screenNormal.x +\n            dFdy( surfacePosition ) * screenNormal.y\n        ), 0.000001 );\n        float halfWidth = 0.5 * peanutGridLineWidth *\n            coordinatePerPixel / worldPerPixel;\n        float antialias = 0.5 * coordinatePerPixel;\n        return 1.0 - smoothstep(\n            max( halfWidth - antialias, 0.0 ),\n            halfWidth + antialias,\n            distanceToLine\n        );\n    }\n\n    float peanutSurfaceGrid( vec3 rawDirection, vec3 surfacePosition ) {\n        vec3 direction = normalize( rawDirection );\n        float longitude = atan( direction.z, direction.x ) / ( 2.0 * PI ) + 0.5;\n        float latitude = asin( clamp( direction.y, -1.0, 1.0 ) ) / PI + 0.5;\n        float meridians = peanutPeriodicLine(\n            longitude * peanutMeridianCount, surfacePosition\n        );\n        float latitudes = peanutPeriodicLine(\n            latitude * peanutLatitudeIntervals, surfacePosition\n        );\n        // Longitude is undefined exactly at a pole. Suppress only a very small\n        // cap there; a broader fade leaves an obvious hole when viewed down\n        // the grid axis.\n        float awayFromPoles = smoothstep( 0.001, 0.015, 1.0 - abs( direction.y ) );\n        return max( meridians * awayFromPoles, latitudes * awayFromPoles );\n    }\n";
-function gn(t, n) {
+var An = "\n    attribute vec3 peanutShape;\n    uniform vec3 peanutUniformShape;\n    uniform mat3 peanutGridRotation;\n    uniform mat3 peanutGridBasis;\n    uniform float uPeanutOutlinePx;\n    uniform vec2 uPeanutOutlineViewport;\n    varying vec3 vPeanutGridDirection;\n    varying vec3 vPeanutWorldPosition;\n    varying vec3 vPeanutViewNormal;\n    varying vec3 vPeanutViewDirection;\n", jn = "\n    vec3 peanutDirection = normalize( position );\n    #ifdef PEANUT_UNIFORM_SHAPE\n        vec3 activePeanutShape = peanutUniformShape;\n    #else\n        vec3 activePeanutShape = peanutShape;\n    #endif\n    float peanutQ = dot( activePeanutShape, peanutDirection * peanutDirection );\n    vec3 transformed = position * sqrt( max( peanutQ, 0.0 ) );\n", Mn = "\n    vec3 peanutNormalDirection = normalize( position );\n    #ifdef PEANUT_UNIFORM_SHAPE\n        vec3 peanutNormalShape = peanutUniformShape;\n    #else\n        vec3 peanutNormalShape = peanutShape;\n    #endif\n    float peanutNormalQ = dot(\n        peanutNormalShape,\n        peanutNormalDirection * peanutNormalDirection\n    );\n    vec3 objectNormal = normalize(\n        2.0 * peanutNormalQ * peanutNormalDirection -\n        peanutNormalShape * peanutNormalDirection\n    );\n", Nn = "\n    varying vec3 vPeanutGridDirection;\n    varying vec3 vPeanutWorldPosition;\n    varying vec3 vPeanutViewNormal;\n    varying vec3 vPeanutViewDirection;\n    uniform vec3 peanutGridColor;\n    uniform float peanutGridLineWidth;\n    uniform float peanutMeridianCount;\n    uniform float peanutLatitudeIntervals;\n\n    float peanutPeriodicLine( float coordinate, vec3 surfacePosition ) {\n        float distanceToLine = abs( fract( coordinate + 0.5 ) - 0.5 );\n        vec2 coordinateGradient = vec2( dFdx( coordinate ), dFdy( coordinate ) );\n        float coordinatePerPixel = max( length( coordinateGradient ), 0.0001 );\n        vec2 screenNormal = coordinateGradient / coordinatePerPixel;\n        float worldPerPixel = max( length(\n            dFdx( surfacePosition ) * screenNormal.x +\n            dFdy( surfacePosition ) * screenNormal.y\n        ), 0.000001 );\n        float halfWidth = 0.5 * peanutGridLineWidth *\n            coordinatePerPixel / worldPerPixel;\n        float antialias = 0.5 * coordinatePerPixel;\n        return 1.0 - smoothstep(\n            max( halfWidth - antialias, 0.0 ),\n            halfWidth + antialias,\n            distanceToLine\n        );\n    }\n\n    float peanutSurfaceGrid( vec3 rawDirection, vec3 surfacePosition ) {\n        vec3 direction = normalize( rawDirection );\n        float longitude = atan( direction.z, direction.x ) / ( 2.0 * PI ) + 0.5;\n        float latitude = asin( clamp( direction.y, -1.0, 1.0 ) ) / PI + 0.5;\n        float meridians = peanutPeriodicLine(\n            longitude * peanutMeridianCount, surfacePosition\n        );\n        float latitudes = peanutPeriodicLine(\n            latitude * peanutLatitudeIntervals, surfacePosition\n        );\n        // Longitude is undefined exactly at a pole. Suppress only a very small\n        // cap there; a broader fade leaves an obvious hole when viewed down\n        // the grid axis.\n        float awayFromPoles = smoothstep( 0.001, 0.015, 1.0 - abs( direction.y ) );\n        return max( meridians * awayFromPoles, latitudes * awayFromPoles );\n    }\n";
+function Pn(t, n) {
 	let r = n.presentation, i = n.uniformShape || null, a = new e.Color(n.gridColor ?? 0), o = n.gridRotation ? new e.Matrix3().set(n.gridRotation[0][0], n.gridRotation[0][1], n.gridRotation[0][2], n.gridRotation[1][0], n.gridRotation[1][1], n.gridRotation[1][2], n.gridRotation[2][0], n.gridRotation[2][1], n.gridRotation[2][2]) : new e.Matrix3(), s = n.gridPoleAxis ?? "structure-y", c = new e.Matrix3();
 	return s === "principal-maximum" ? c.set(0, -1, 0, 1, 0, 0, 0, 0, 1) : s === "principal-minimum" && c.set(1, 0, 0, 0, 0, 1, 0, -1, 0), t.defines = { ...t.defines }, i ? t.defines.PEANUT_UNIFORM_SHAPE = 1 : delete t.defines.PEANUT_UNIFORM_SHAPE, s === "structure-y" ? delete t.defines.PEANUT_PRINCIPAL_GRID : t.defines.PEANUT_PRINCIPAL_GRID = 1, t.userData.peanut = {
 		presentation: r,
@@ -7029,12 +14168,12 @@ function gn(t, n) {
 			1,
 			1,
 			1
-		]) }, t.uniforms.peanutGridRotation = { value: o }, t.uniforms.peanutGridBasis = { value: c }, t.vertexShader = t.vertexShader.replace("#include <common>", `#include <common>\n${fn}`).replace("#include <begin_vertex>", pn).replace("#include <beginnormal_vertex>", mn), r === "outline") {
+		]) }, t.uniforms.peanutGridRotation = { value: o }, t.uniforms.peanutGridBasis = { value: c }, t.vertexShader = t.vertexShader.replace("#include <common>", `#include <common>\n${An}`).replace("#include <begin_vertex>", jn).replace("#include <beginnormal_vertex>", Mn), r === "outline") {
 			t.uniforms.uPeanutOutlinePx = n.outlinePixelUniform, t.uniforms.uPeanutOutlineViewport = n.outlineViewport, t.vertexShader = t.vertexShader.replace("#include <project_vertex>", "\n                vec3 peanutOutlineNormal = normalize(\n                    2.0 * peanutQ * peanutDirection -\n                    activePeanutShape * peanutDirection\n                );\n                vec4 mvPosition = vec4( transformed, 1.0 );\n                #ifdef USE_INSTANCING\n                    mvPosition = instanceMatrix * mvPosition;\n                    peanutOutlineNormal = mat3( instanceMatrix ) * peanutOutlineNormal;\n                #endif\n                mvPosition = modelViewMatrix * mvPosition;\n                peanutOutlineNormal = normalize(\n                    mat3( modelViewMatrix ) * peanutOutlineNormal\n                );\n                vec4 peanutClipPosition = projectionMatrix * mvPosition;\n                vec3 peanutClipNormal = (\n                    projectionMatrix * vec4( peanutOutlineNormal, 0.0 )\n                ).xyz;\n                vec2 peanutOutlineDirection = length( peanutClipNormal.xy ) > 1e-6\n                    ? normalize( peanutClipNormal.xy ) : vec2( 0.0 );\n                peanutClipPosition.xy += peanutOutlineDirection *\n                    uPeanutOutlinePx * 2.0 * peanutClipPosition.w /\n                    uPeanutOutlineViewport;\n                gl_Position = peanutClipPosition;\n                ");
 			return;
 		}
 		if (r !== "clean-3d" && r !== "depth") {
-			t.uniforms.peanutGridColor = { value: a }, t.uniforms.peanutGridLineWidth = { value: n.gridLineWidth ?? .01 }, t.uniforms.peanutMeridianCount = { value: n.meridianCount ?? 10 }, t.uniforms.peanutLatitudeIntervals = { value: n.latitudeIntervals ?? 6 }, t.vertexShader = t.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n                #ifdef PEANUT_PRINCIPAL_GRID\n                    vPeanutGridDirection = normalize( peanutGridBasis * peanutDirection );\n                #else\n                    #ifdef USE_INSTANCING\n                        vPeanutGridDirection = normalize(\n                            mat3( instanceMatrix ) * peanutDirection\n                        );\n                    #else\n                        vPeanutGridDirection = normalize(\n                            peanutGridRotation * peanutDirection\n                        );\n                    #endif\n                #endif\n                #ifdef USE_INSTANCING\n                    vPeanutWorldPosition = (\n                        modelMatrix * instanceMatrix * vec4( transformed, 1.0 )\n                    ).xyz;\n                    vec3 peanutViewNormal = mat3( modelViewMatrix ) * mat3( instanceMatrix ) *\n                        normalize( 2.0 * peanutQ * peanutDirection -\n                            activePeanutShape * peanutDirection );\n                #else\n                    vPeanutWorldPosition = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\n                    vec3 peanutViewNormal = mat3( modelViewMatrix ) *\n                        normalize( 2.0 * peanutQ * peanutDirection -\n                            activePeanutShape * peanutDirection );\n                #endif\n                vPeanutViewNormal = normalize( peanutViewNormal );\n                vPeanutViewDirection = normalize( -mvPosition.xyz );"), t.fragmentShader = t.fragmentShader.replace("#include <common>", `#include <common>\n${hn}`);
+			t.uniforms.peanutGridColor = { value: a }, t.uniforms.peanutGridLineWidth = { value: n.gridLineWidth ?? .01 }, t.uniforms.peanutMeridianCount = { value: n.meridianCount ?? 10 }, t.uniforms.peanutLatitudeIntervals = { value: n.latitudeIntervals ?? 6 }, t.vertexShader = t.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n                #ifdef PEANUT_PRINCIPAL_GRID\n                    vPeanutGridDirection = normalize( peanutGridBasis * peanutDirection );\n                #else\n                    #ifdef USE_INSTANCING\n                        vPeanutGridDirection = normalize(\n                            mat3( instanceMatrix ) * peanutDirection\n                        );\n                    #else\n                        vPeanutGridDirection = normalize(\n                            peanutGridRotation * peanutDirection\n                        );\n                    #endif\n                #endif\n                #ifdef USE_INSTANCING\n                    vPeanutWorldPosition = (\n                        modelMatrix * instanceMatrix * vec4( transformed, 1.0 )\n                    ).xyz;\n                    vec3 peanutViewNormal = mat3( modelViewMatrix ) * mat3( instanceMatrix ) *\n                        normalize( 2.0 * peanutQ * peanutDirection -\n                            activePeanutShape * peanutDirection );\n                #else\n                    vPeanutWorldPosition = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\n                    vec3 peanutViewNormal = mat3( modelViewMatrix ) *\n                        normalize( 2.0 * peanutQ * peanutDirection -\n                            activePeanutShape * peanutDirection );\n                #endif\n                vPeanutViewNormal = normalize( peanutViewNormal );\n                vPeanutViewDirection = normalize( -mvPosition.xyz );"), t.fragmentShader = t.fragmentShader.replace("#include <common>", `#include <common>\n${Nn}`);
 			let e = r === "publication-2d" ? "\n                    float peanutGridMask = peanutSurfaceGrid(\n                        vPeanutGridDirection, vPeanutWorldPosition\n                    );\n                    if ( peanutGridMask < 0.01 ) discard;\n                    diffuseColor.rgb = peanutGridColor;\n                " : "\n                    float peanutGridMask = peanutSurfaceGrid(\n                        vPeanutGridDirection, vPeanutWorldPosition\n                    );\n                    diffuseColor.rgb = mix(\n                        diffuseColor.rgb, peanutGridColor, peanutGridMask\n                    );\n                ";
 			t.fragmentShader = t.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>\n${e}`);
 		}
@@ -7044,16 +14183,16 @@ function gn(t, n) {
 		i ? "uniform" : "instanced"
 	].join("-"), t.needsUpdate = !0, t;
 }
-var _n = "\n    vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );\n    vec4 clipPosition = projectionMatrix * mvPosition;\n    vec3 clipNormal = ( projectionMatrix * vec4( normalize( normalMatrix * normal ), 0.0 ) ).xyz;\n    vec2 outlineDir = length( clipNormal.xy ) > 1e-6 ? normalize( clipNormal.xy ) : vec2( 0.0 );\n    clipPosition.xy += outlineDir * uOutlinePx * 2.0 * clipPosition.w / uOutlineViewport;\n    gl_Position = clipPosition;\n";
-function vn(e, t, n) {
+var Fn = "\n    vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );\n    vec4 clipPosition = projectionMatrix * mvPosition;\n    vec3 clipNormal = ( projectionMatrix * vec4( normalize( normalMatrix * normal ), 0.0 ) ).xyz;\n    vec2 outlineDir = length( clipNormal.xy ) > 1e-6 ? normalize( clipNormal.xy ) : vec2( 0.0 );\n    clipPosition.xy += outlineDir * uOutlinePx * 2.0 * clipPosition.w / uOutlineViewport;\n    gl_Position = clipPosition;\n";
+function In(e, t, n) {
 	e.onBeforeCompile = (e) => {
-		e.uniforms.uOutlinePx = t, e.uniforms.uOutlineViewport = n, e.vertexShader = "uniform float uOutlinePx;\nuniform vec2 uOutlineViewport;\n" + e.vertexShader.replace("#include <project_vertex>", _n);
+		e.uniforms.uOutlinePx = t, e.uniforms.uOutlineViewport = n, e.vertexShader = "uniform float uOutlinePx;\nuniform vec2 uOutlineViewport;\n" + e.vertexShader.replace("#include <project_vertex>", Fn);
 	}, e.customProgramCacheKey = () => "screen-space-outline-v1";
 }
-function yn(t) {
+function Ln(t) {
 	t.stencilWrite = !0, t.stencilRef = 0, t.stencilFunc = e.EqualStencilFunc, t.stencilFail = e.KeepStencilOp, t.stencilZFail = e.KeepStencilOp, t.stencilZPass = e.KeepStencilOp;
 }
-function bn(t, n) {
+function Rn(t, n) {
 	let r = new e.ShaderMaterial({
 		uniforms: {
 			uOutlinePx: t,
@@ -7074,12 +14213,12 @@ function bn(t, n) {
 	});
 	return r.name = "cutaway-ellipsoid-occlusion-mask", r;
 }
-var xn = 1, Sn = 2, Cn = 3, wn = 1e6, Tn = [
+var zn = 1, Bn = 2, Vn = 3, Hn = 1e6, Un = [
 	new e.Matrix4().set(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
 	new e.Matrix4().set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1),
 	new e.Matrix4().set(0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
 ];
-function En(t, n) {
+function Wn(t, n) {
 	let r = new e.Color(t.atomColor), i = Math.max(1, n.atomCutawayStripeCount), a = e.MathUtils.clamp(n.atomCutawayStripeWidth, .01, 1) / 2, o = new e.MeshStandardMaterial({
 		color: t.ringColor,
 		roughness: n.atomColorRoughness,
@@ -7094,7 +14233,7 @@ function En(t, n) {
 		e.uniforms.cutawayStripeColor = { value: r }, e.uniforms.cutawayStripeCount = { value: i }, e.uniforms.cutawayStripeHalfWidth = { value: a }, e.vertexShader = e.vertexShader.replace("#include <uv_pars_vertex>", "#include <uv_pars_vertex>\nvarying vec2 vCutawayUv;").replace("#include <uv_vertex>", "#include <uv_vertex>\nvCutawayUv = uv;"), e.fragmentShader = e.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 vCutawayUv;\nuniform vec3 cutawayStripeColor;\nuniform float cutawayStripeCount;\nuniform float cutawayStripeHalfWidth;").replace("#include <color_fragment>", "#include <color_fragment>\nfloat cutawayStripeCoordinate = vCutawayUv.y * cutawayStripeCount;\nfloat cutawayStripePhase = fract(cutawayStripeCoordinate);\nfloat cutawayStripeDistance = abs(cutawayStripePhase - 0.5);\nfloat cutawayStripeEdge = max(fwidth(cutawayStripeCoordinate), 0.001);\nfloat cutawayStripeMask = 1.0 - smoothstep(\n    cutawayStripeHalfWidth - cutawayStripeEdge,\n    cutawayStripeHalfWidth + cutawayStripeEdge,\n    cutawayStripeDistance\n);\ndiffuseColor.rgb = mix(\n    diffuseColor.rgb, cutawayStripeColor, cutawayStripeMask\n);");
 	}, o.customProgramCacheKey = () => "cutaway-horizontal-stripes-v1", o;
 }
-function Dn(t, n = t.plot2DLineColor) {
+function Gn(t, n = t.plot2DLineColor) {
 	let r = new e.Color(n), i = Math.max(1, t.plot2DStripeCount), a = e.MathUtils.clamp(t.plot2DStripeWidth, .01, 1) / 2, o = new e.MeshBasicMaterial({
 		color: t.plot2DAtomColor,
 		side: e.DoubleSide
@@ -7107,10 +14246,10 @@ function Dn(t, n = t.plot2DLineColor) {
 		e.uniforms.plot2DStripeColor = { value: r }, e.uniforms.plot2DStripeCount = { value: i }, e.uniforms.plot2DStripeHalfWidth = { value: a }, e.vertexShader = e.vertexShader.replace("#include <uv_pars_vertex>", "#include <uv_pars_vertex>\nvarying vec2 vPlot2DUv;").replace("#include <uv_vertex>", "#include <uv_vertex>\nvPlot2DUv = uv;"), e.fragmentShader = e.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 vPlot2DUv;\nuniform vec3 plot2DStripeColor;\nuniform float plot2DStripeCount;\nuniform float plot2DStripeHalfWidth;").replace("#include <color_fragment>", "#include <color_fragment>\nfloat plot2DStripeCoordinate = vPlot2DUv.y * plot2DStripeCount;\nfloat plot2DStripePhase = fract(plot2DStripeCoordinate);\nfloat plot2DStripeDistance = abs(plot2DStripePhase - 0.5);\nfloat plot2DStripeEdge = max(fwidth(plot2DStripeCoordinate), 0.001);\nfloat plot2DStripeMask = 1.0 - smoothstep(\n    plot2DStripeHalfWidth - plot2DStripeEdge,\n    plot2DStripeHalfWidth + plot2DStripeEdge,\n    plot2DStripeDistance\n);\ndiffuseColor.rgb = mix(\n    diffuseColor.rgb, plot2DStripeColor, plot2DStripeMask\n);");
 	}, o.customProgramCacheKey = () => "2d-plot-curved-octant-hatch-v1", o;
 }
-function On(e, t) {
-	e.scale.set(t[0] / un[0], t[1] / un[1], t[2] / un[2]);
+function Kn(e, t) {
+	e.scale.set(t[0] / On[0], t[1] / On[1], t[2] / On[2]);
 }
-function kn(e, t) {
+function qn(e, t) {
 	let n = e.getAttribute("uv"), r = Math.cos(t), i = Math.sin(t);
 	for (let e = 0; e < n.count; e++) {
 		let t = n.getX(e) - .5, a = n.getY(e) - .5;
@@ -7118,7 +14257,7 @@ function kn(e, t) {
 	}
 	n.needsUpdate = !0;
 }
-function An(t) {
+function Jn(t) {
 	let n = {
 		position: 0,
 		rotation: 0,
@@ -7147,7 +14286,7 @@ function An(t) {
 	}
 	return r(t), n;
 }
-var jn = class {
+var Yn = class {
 	constructor(t, n, r) {
 		this.mesh = new e.InstancedMesh(t, n, r), this.mesh.userData = { selectable: !1 }, this.nextIndex = 0;
 	}
@@ -7164,7 +14303,14 @@ var jn = class {
 	restoreInstance(e, t) {
 		this.mesh.setMatrixAt(e, t), this.mesh.instanceMatrix.needsUpdate = !0;
 	}
-}, Mn = class extends jn {
+}, Xn = class {
+	constructor(t, n) {
+		this.sourcePool = t, this.mesh = new e.InstancedMesh(t.mesh.geometry, n, t.mesh.count), this.mesh.instanceMatrix = t.mesh.instanceMatrix, this.mesh.userData = { selectable: !1 };
+	}
+	finalize() {
+		this.mesh.boundingSphere = this.sourcePool.mesh.boundingSphere, this.mesh.boundingBox = this.sourcePool.mesh.boundingBox;
+	}
+}, Zn = class extends Yn {
 	constructor(t, n, r, i = null, a = null) {
 		t.boundingSphere || t.computeBoundingSphere();
 		let o = new e.InstancedBufferGeometry();
@@ -7196,17 +14342,52 @@ var jn = class {
 		this.mesh.geometry.dispose();
 	}
 };
-function Nn(t, n) {
+function Qn(t, n) {
 	let r = t.getEllipsoidMatrix(n).toArray();
 	return new e.Matrix4(r[0][0], r[0][1], r[0][2], 0, r[1][0], r[1][1], r[1][2], 0, r[2][0], r[2][1], r[2][2], 0, 0, 0, 0, 1);
 }
-function Pn(t, n) {
+function $n(t, n) {
 	let r = n.clone().sub(t), i = r.length();
 	if (i === 0) throw Error("Error in ORTEP Bond Creation. Trying to create a zero length bond.");
 	let a = r.divideScalar(i), o = new e.Vector3(0, 1, 0), s = new e.Vector3().crossVectors(a, o), c = -Math.acos(a.dot(o));
 	return new e.Matrix4().makeScale(1, i, 1).premultiply(new e.Matrix4().makeRotationAxis(s.normalize(), c)).setPosition(t.clone().add(n).multiplyScalar(.5));
 }
-function Fn(e, t, n, r) {
+function er(t, n, r, i) {
+	let a = n.clone().sub(t), o = a.length();
+	if (!(o > 0)) return {
+		bodies: [],
+		caps: []
+	};
+	a.divideScalar(o);
+	let s = [], c = [];
+	for (let n of gn(o, r.dashSegmentLength, r.dashFraction)) {
+		let r = n.end - n.start, l = (n.start + n.end) / (2 * o);
+		if (r <= 2 * i) {
+			let o = t.clone().addScaledVector(a, (n.start + n.end) / 2), s = r / (2 * i);
+			c.push({
+				matrix: new e.Matrix4().makeScale(s, s, s).setPosition(o),
+				midpointFraction: l
+			});
+			continue;
+		}
+		let u = t.clone().addScaledVector(a, n.start + i), d = t.clone().addScaledVector(a, n.end - i);
+		s.push({
+			matrix: $n(u, d),
+			midpointFraction: l
+		}), c.push({
+			matrix: new e.Matrix4().makeTranslation(...u),
+			midpointFraction: l
+		}, {
+			matrix: new e.Matrix4().makeTranslation(...d),
+			midpointFraction: l
+		});
+	}
+	return {
+		bodies: s,
+		caps: c
+	};
+}
+function tr(e, t, n, r) {
 	let i = e.clone(), a = t.clone(), o = a.clone().sub(i), s = o.length();
 	if (s === 0 || !n || !r) return [i, a];
 	o.divideScalar(s);
@@ -7219,7 +14400,7 @@ function Fn(e, t, n, r) {
 	}
 	return i.addScaledVector(o, c), a.addScaledVector(o, -l), [i, a];
 }
-var In = class {
+var nr = class {
 	constructor(t = {}) {
 		let n = t || {};
 		this.options = {
@@ -7234,7 +14415,7 @@ var In = class {
 			bond: { value: this.options.plot2DBondOutlineWidth ?? 0 }
 		};
 		let r = Object.values(this.options.elementProperties).map((e) => e.atomColor).filter(Boolean), i = this.options.plot2DColorLuminanceFloor;
-		this.plot2DElementColorScale = i == null ? an(r, this.options.plot2DColorLuminanceCeiling) : 1, this.plot2DElementColorLift = i == null ? 0 : sn(r, i), this.initializeGeometries(), this.initializeMaterials();
+		this.plot2DElementColorScale = i == null ? Cn(r, this.options.plot2DColorLuminanceCeiling) : 1, this.plot2DElementColorLift = i == null ? 0 : Tn(r, i), this.initializeGeometries(), this.initializeMaterials();
 	}
 	initializeGeometries() {
 		if (this.geometries.atom = new e.IcosahedronGeometry(this.scaling, this.options.atomDetail), this.options.adpRepresentation === "rmsd-peanut" && (this.geometries.peanut = new e.IcosahedronGeometry(this.options.peanutScale, this.options.peanutDetail)), this.options.adpRepresentation === "ellipsoid" && this.options.renderStyle !== "solid-3d") {
@@ -7243,9 +14424,9 @@ var In = class {
 				colorWrite: !1,
 				depthWrite: !0,
 				depthTest: !0
-			}), this.options.sealCutoutCavity && (yn(this.materials.cutawayDepthCap), this.materials.cutawayOcclusion = bn(this.options.renderStyle === "cutout-2d" ? this.outlinePixels.atom : { value: 0 }, this.outlineViewport));
+			}), this.options.sealCutoutCavity && (Ln(this.materials.cutawayDepthCap), this.materials.cutawayOcclusion = Rn(this.options.renderStyle === "cutout-2d" ? this.outlinePixels.atom : { value: 0 }, this.outlineViewport));
 		}
-		this.options.adpRepresentation === "ellipsoid" && (this.geometries.adpRing = this.createADPHalfTorus(), this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing)), this.geometries.bond = new e.CylinderGeometry(this.options.bondRadius, this.options.bondRadius, 1, this.options.bondSections, 1, !0), this.geometries.hbond = new e.CylinderGeometry(this.options.hbondRadius, this.options.hbondRadius, .98, this.options.bondSections, 1, !0);
+		this.options.adpRepresentation === "ellipsoid" && (this.geometries.adpRing = this.createADPHalfTorus(), this.geometries.adpRingSet = this.createMergedADPRingSet(this.geometries.adpRing)), this.geometries.bond = new e.CylinderGeometry(this.options.bondRadius, this.options.bondRadius, 1, this.options.bondSections, 1, !0), this.options.collapseMetalRingBonds && (this.geometries.centroidCap = new e.SphereGeometry(this.options.bondRadius, this.options.bondSections, Math.max(6, Math.ceil(this.options.bondSections / 2)))), this.geometries.hbond = new e.CylinderGeometry(this.options.hbondRadius, this.options.hbondRadius, .98, this.options.bondSections, 1, !0);
 	}
 	initializeMaterials() {
 		if (this.options.renderStyle === "cutout-2d") {
@@ -7257,7 +14438,7 @@ var In = class {
 				side: e.BackSide,
 				depthTest: !0,
 				depthWrite: !0
-			}), vn(this.materials.bondDepthOutline, this.outlinePixels.bond, this.outlineViewport), this.materials.hbond = new e.MeshBasicMaterial({ color: this.options.plot2DLineColor });
+			}), In(this.materials.bondDepthOutline, this.outlinePixels.bond, this.outlineViewport), this.materials.hbond = new e.MeshBasicMaterial({ color: this.options.plot2DLineColor });
 			return;
 		}
 		this.materials.bond = new e.MeshStandardMaterial({
@@ -7275,23 +14456,23 @@ var In = class {
 	}
 	getAtomMaterials(t, n = !1) {
 		let r = t;
-		if (this.options.elementProperties[r] || (r = Ht(t)), this.validateElementType(r), this.options.renderStyle === "cutout-2d") {
+		if (this.options.elementProperties[r] || (r = Wt(t)), this.validateElementType(r), this.options.renderStyle === "cutout-2d") {
 			let t = `${r}_2d_materials${n ? "_ellipsoid" : ""}`;
 			if (!this.elementMaterials[t]) {
-				let i = this.options.elementProperties[r].atomColor, a = cn(on(i, this.plot2DElementColorScale), this.plot2DElementColorLift), o = new e.MeshBasicMaterial({
+				let i = this.options.elementProperties[r].atomColor, a = En(wn(i, this.plot2DElementColorScale), this.plot2DElementColorLift), o = new e.MeshBasicMaterial({
 					color: a,
 					side: e.BackSide
 				});
-				vn(o, this.outlinePixels.atom, this.outlineViewport);
+				In(o, this.outlinePixels.atom, this.outlineViewport);
 				let s = new e.MeshBasicMaterial({ color: this.options.plot2DAtomColor });
 				s.userData.plot2DOutlineMaterial = o;
-				let c = new e.MeshBasicMaterial({ color: a }), l = Dn(this.options, a);
+				let c = new e.MeshBasicMaterial({ color: a }), l = Gn(this.options, a);
 				n && [
 					s,
 					c,
 					l,
 					o
-				].forEach(yn), this.elementMaterials[t] = [
+				].forEach(Ln), this.elementMaterials[t] = [
 					s,
 					c,
 					l,
@@ -7311,25 +14492,25 @@ var In = class {
 				roughness: this.options.atomColorRoughness,
 				metalness: this.options.atomColorMetalness
 			});
-			this.elementMaterials[i] = [a, o], this.options.renderStyle === "cutout-3d" && this.elementMaterials[i].push(En(t, this.options)), n && this.elementMaterials[i].forEach(yn);
+			this.elementMaterials[i] = [a, o], this.options.renderStyle === "cutout-3d" && this.elementMaterials[i].push(Wn(t, this.options)), n && this.elementMaterials[i].forEach(Ln);
 		}
 		return this.elementMaterials[i];
 	}
 	getPlot2DElementLineColor(e, t = "atomColor") {
 		let n = e;
-		this.options.elementProperties[n] || (n = Ht(e)), this.validateElementType(n);
+		this.options.elementProperties[n] || (n = Wt(e)), this.validateElementType(n);
 		let r = this.options.elementProperties[n][t];
-		return cn(on(r, this.plot2DElementColorScale), this.plot2DElementColorLift);
+		return En(wn(r, this.plot2DElementColorScale), this.plot2DElementColorLift);
 	}
 	getPeanutMaterials(t, n = !1) {
 		let r = t;
-		this.options.elementProperties[r] || (r = Ht(t)), this.validateElementType(r);
-		let i = dn(this.options.renderStyle), a = `${r}_peanut_${n ? "negative" : "positive"}_${i}_${this.options.peanutMeridianCount}_${this.options.peanutLatitudeIntervals}_${this.options.peanutGridPoleAxis}_${this.options.peanutGridLineWidth}`;
+		this.options.elementProperties[r] || (r = Wt(t)), this.validateElementType(r);
+		let i = kn(this.options.renderStyle), a = `${r}_peanut_${n ? "negative" : "positive"}_${i}_${this.options.peanutMeridianCount}_${this.options.peanutLatitudeIntervals}_${this.options.peanutGridPoleAxis}_${this.options.peanutGridLineWidth}`;
 		if (!this.elementMaterials[a]) {
 			let t = this.options.elementProperties[r], o, s = null, c = null;
 			if (i === "publication-2d") {
 				let t = this.getPlot2DElementLineColor(r, n ? "ringColor" : "atomColor");
-				o = gn(new e.MeshBasicMaterial({
+				o = Pn(new e.MeshBasicMaterial({
 					color: t,
 					depthWrite: !1,
 					depthTest: !0,
@@ -7342,12 +14523,12 @@ var In = class {
 					latitudeIntervals: this.options.peanutLatitudeIntervals,
 					gridPoleAxis: this.options.peanutGridPoleAxis,
 					gridLineWidth: this.options.peanutGridLineWidth
-				}), s = gn(new e.MeshBasicMaterial({
+				}), s = Pn(new e.MeshBasicMaterial({
 					colorWrite: !1,
 					depthWrite: !0,
 					depthTest: !0,
 					side: e.DoubleSide
-				}), { presentation: "depth" }), c = gn(new e.MeshBasicMaterial({
+				}), { presentation: "depth" }), c = Pn(new e.MeshBasicMaterial({
 					color: t,
 					side: e.BackSide,
 					depthWrite: !0,
@@ -7357,7 +14538,7 @@ var In = class {
 					outlinePixelUniform: this.outlinePixels.atom,
 					outlineViewport: this.outlineViewport
 				}), o.userData.peanutDepthMaterial = s, o.userData.peanutOutlineMaterial = c;
-			} else o = gn(new e.MeshStandardMaterial({
+			} else o = Pn(new e.MeshStandardMaterial({
 				color: n ? t.ringColor : t.atomColor,
 				roughness: this.options.atomColorRoughness,
 				metalness: this.options.atomColorMetalness
@@ -7407,8 +14588,8 @@ var In = class {
 	}
 	createCutawayPlanes(t) {
 		let n = new e.CircleGeometry(this.scaling, t), r = new e.CircleGeometry(this.scaling, t), i = new e.CircleGeometry(this.scaling, t);
-		kn(r, Math.PI / 2), kn(i, Math.PI / 2), r.rotateX(Math.PI / 2), i.rotateY(Math.PI / 2);
-		let a = qt([
+		qn(r, Math.PI / 2), qn(i, Math.PI / 2), r.rotateX(Math.PI / 2), i.rotateY(Math.PI / 2);
+		let a = Yt([
 			n,
 			r,
 			i
@@ -7416,10 +14597,10 @@ var In = class {
 		return n.dispose(), r.dispose(), i.dispose(), a;
 	}
 	createMergedADPRingSet(e) {
-		let t = Tn.map((t) => {
+		let t = Un.map((t) => {
 			let n = e.clone();
 			return n.applyMatrix4(t), n;
-		}), n = qt(t);
+		}), n = Yt(t);
 		return t.forEach((e) => e.dispose()), n;
 	}
 	setOutlineViewport(e, t) {
@@ -7430,10 +14611,10 @@ var In = class {
 			e.forEach((e) => e.dispose());
 		});
 	}
-}, Ln = class {
+}, rr = class {
 	constructor(e, t = {}) {
 		let n = performance.now(), r = t || {}, i = { ...W.elementProperties };
-		r.elementProperties && Object.entries(r.elementProperties).forEach(([e, t]) => {
+		if (r.elementProperties && Object.entries(r.elementProperties).forEach(([e, t]) => {
 			i[e] = {
 				...i[e],
 				...t
@@ -7441,16 +14622,21 @@ var In = class {
 		}), this.options = {
 			...W,
 			...r,
+			metalRingCentroidOptions: {
+				...W.metalRingCentroidOptions,
+				...r.metalRingCentroidOptions || {}
+			},
 			elementProperties: i
-		}, this.crystalStructure = e;
+		}, typeof this.options.collapseMetalRingBonds != "boolean") throw TypeError("collapseMetalRingBonds must be boolean");
+		sn(this.options.metalRingCentroidOptions), this.crystalStructure = e;
 		let a = performance.now();
-		this.cache = new In(this.options);
+		this.cache = new nr(this.options);
 		let o = performance.now() - a;
 		this.createStructure(), this.timings.optionsSetupTimeMs = a - n, this.timings.cacheSetupTimeMs = o, this.timings.constructorTimeMs = performance.now() - n;
 	}
 	createStructure() {
 		let t = performance.now();
-		this.atoms3D = [], this.bonds3D = [], this.hBonds3D = [];
+		this.atoms3D = [], this.bonds3D = [], this.hBonds3D = [], this.centroidInteractions = [];
 		let n = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Map();
 		for (let e of this.crystalStructure.atoms) {
 			let t = e.uniqueId;
@@ -7465,8 +14651,8 @@ var In = class {
 			return n;
 		}, s = this.options.adpRepresentation === "ellipsoid" && this.options.renderStyle !== "solid-3d", c = performance.now();
 		if (s) for (let e of this.crystalStructure.atoms) {
-			let t = e.adp instanceof z, [n, r, i] = this.cache.getAtomMaterials(e.atomType, t), o;
-			o = e.adp instanceof z ? new Bn(e, this.crystalStructure.cell, this.cache.geometries.atom, n, this.cache.geometries.adpRingSet, r, {
+			let t = e.adp instanceof rt, [n, r, i] = this.cache.getAtomMaterials(e.atomType, t), o;
+			o = e.adp instanceof rt ? new or(e, this.crystalStructure.cell, this.cache.geometries.atom, n, this.cache.geometries.adpRingSet, r, {
 				octantGeometry: this.cache.geometries.atomOctant,
 				emptyGeometry: this.cache.geometries.emptyAtom,
 				planeGeometry: this.cache.geometries.cutawayPlanes,
@@ -7475,7 +14661,7 @@ var In = class {
 				occlusionGeometry: this.cache.geometries.atom,
 				occlusionMaterial: this.cache.materials.cutawayOcclusion ?? null,
 				hysteresis: this.options.atomCutawayHysteresis
-			}) : e.adp instanceof rt ? new Vn(e, this.crystalStructure.cell, this.cache.geometries.atom, n) : new Hn(e, this.crystalStructure.cell, this.cache.geometries.atom, n, this.options), this.atoms3D.push(o), a.has(e.uniqueId) || a.set(e.uniqueId, o);
+			}) : e.adp instanceof nt ? new sr(e, this.crystalStructure.cell, this.cache.geometries.atom, n) : new cr(e, this.crystalStructure.cell, this.cache.geometries.atom, n, this.options), this.atoms3D.push(o), a.has(e.uniqueId) || a.set(e.uniqueId, o);
 		}
 		else {
 			this.cache.geometries.atom.boundingSphere || this.cache.geometries.atom.computeBoundingSphere();
@@ -7483,8 +14669,8 @@ var In = class {
 			this.cache.geometries.peanut && !this.cache.geometries.peanut.boundingSphere && this.cache.geometries.peanut.computeBoundingSphere();
 			let t = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Map(), i = [];
 			for (let e of this.crystalStructure.atoms) {
-				if (e.adp instanceof z && this.options.adpRepresentation === "rmsd-peanut") {
-					let n = Un(e, this.crystalStructure.cell, this.options.peanutScale);
+				if (e.adp instanceof rt && this.options.adpRepresentation === "rmsd-peanut") {
+					let n = lr(e, this.crystalStructure.cell, this.options.peanutScale);
 					if (n.valid) {
 						let a = n.surface.components.map((n) => {
 							let i = this.cache.getPeanutMaterials(e.atomType, n.sign === "negative");
@@ -7512,8 +14698,8 @@ var In = class {
 					continue;
 				}
 				let [a, o] = this.cache.getAtomMaterials(e.atomType);
-				if (e.adp instanceof z) {
-					let { matrix: r, valid: s } = Wn(e, this.crystalStructure.cell);
+				if (e.adp instanceof rt) {
+					let { matrix: r, valid: s } = ur(e, this.crystalStructure.cell);
 					s ? (t.set(a, (t.get(a) || 0) + 1), n.set(o, (n.get(o) || 0) + 1), i.push({
 						atom: e,
 						kind: "ani",
@@ -7526,7 +14712,7 @@ var In = class {
 						atomMaterial: a,
 						ringMaterial: o
 					});
-				} else if (e.adp instanceof rt) {
+				} else if (e.adp instanceof nt) {
 					if (this.options.renderStyle !== "solid-3d") {
 						i.push({
 							atom: e,
@@ -7535,7 +14721,7 @@ var In = class {
 						});
 						continue;
 					}
-					let { matrix: n, valid: r } = Gn(e, this.crystalStructure.cell);
+					let { matrix: n, valid: r } = dr(e, this.crystalStructure.cell);
 					r ? (t.set(a, (t.get(a) || 0) + 1), i.push({
 						atom: e,
 						kind: "iso",
@@ -7555,7 +14741,7 @@ var In = class {
 						});
 						continue;
 					}
-					let n = Kn(e, this.crystalStructure.cell, this.options);
+					let n = fr(e, this.crystalStructure.cell, this.options);
 					t.set(a, (t.get(a) || 0) + 1), i.push({
 						atom: e,
 						kind: "constant",
@@ -7567,16 +14753,16 @@ var In = class {
 			let o = /* @__PURE__ */ new Map();
 			for (let [e, n] of t) {
 				let t = r.get(e);
-				o.set(e, t ? new Mn(this.cache.geometries.peanut, e, n, t.depth, t.outline) : new jn(this.cache.geometries.atom, e, n));
+				o.set(e, t ? new Zn(this.cache.geometries.peanut, e, n, t.depth, t.outline) : new Yn(this.cache.geometries.atom, e, n));
 			}
 			let s = /* @__PURE__ */ new Map();
-			for (let [e, t] of n) s.set(e, new jn(this.cache.geometries.adpRingSet, e, t));
+			for (let [e, t] of n) s.set(e, new Yn(this.cache.geometries.adpRingSet, e, t));
 			for (let t of i) {
 				let n;
-				n = t.kind === "ani" ? new Yn(t.atom, o.get(t.atomMaterial), t.matrix, e, s.get(t.ringMaterial)) : t.kind === "peanut" ? new Xn(t.atom, t.components.map((e) => ({
+				n = t.kind === "ani" ? new hr(t.atom, o.get(t.atomMaterial), t.matrix, e, s.get(t.ringMaterial)) : t.kind === "peanut" ? new gr(t.atom, t.components.map((e) => ({
 					...e,
 					pool: o.get(e.materials.body)
-				})), t.matrix, t.surface, t.presentation) : t.kind === "iso" || t.kind === "constant" ? new Jn(t.atom, o.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new Bn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : t.kind === "iso-individual" ? new Vn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial) : t.kind === "constant-individual" ? new Hn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.options) : new Vn(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), a.has(t.atom.uniqueId) || a.set(t.atom.uniqueId, n);
+				})), t.matrix, t.surface, t.presentation) : t.kind === "iso" || t.kind === "constant" ? new mr(t.atom, o.get(t.atomMaterial), t.matrix, e) : t.kind === "ani-fallback" ? new or(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.cache.geometries.adpRingSet, t.ringMaterial, null) : t.kind === "iso-individual" ? new sr(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial) : t.kind === "constant-individual" ? new cr(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial, this.options) : new sr(t.atom, this.crystalStructure.cell, this.cache.geometries.atom, t.atomMaterial), this.atoms3D.push(n), a.has(t.atom.uniqueId) || a.set(t.atom.uniqueId, n);
 			}
 			o.forEach((e) => e.finalize()), s.forEach((e) => e.finalize()), this.atomPools = o, this.ringPools = s;
 		}
@@ -7584,9 +14770,28 @@ var In = class {
 			let t = n.has(e.atom1Id), r = n.has(e.atom2Id);
 			return t && r;
 		});
+		if (this.options.collapseMetalRingBonds) {
+			let e = hn(this.crystalStructure, f, this.options.metalRingCentroidOptions);
+			this.centroidInteractions = e.interactions, f = f.filter((t) => !e.suppressedBonds.has(t));
+		}
+		let p = [];
+		for (let t of this.centroidInteractions) {
+			let n = o(t.centreAtom.uniqueId).clone(), r = new e.Vector3(...t.centroid), i = r.clone().sub(n), s = a.get(t.centreAtom.uniqueId);
+			if (s && i.lengthSq() > 0) {
+				let e = i.clone().normalize(), t = s.getSurfaceDistanceAlong(e);
+				Number.isFinite(t) && t > 0 && t < i.length() && n.addScaledVector(e, t);
+			}
+			let c = er(n, r, this.options.metalRingCentroidOptions, this.options.bondRadius), l = t.ringAtoms.reduce((e, t) => e.add(this.cache.getAtomMaterials(t.atomType)[0].color), new e.Color(0, 0, 0)).multiplyScalar(1 / t.ringAtoms.length), u = this.cache.getAtomMaterials(t.centreAtom.atomType)[0].color;
+			p.push({
+				interaction: t,
+				transforms: c,
+				colourFor: (e) => this.options.bondColorMode === "split" && this.options.renderStyle !== "cutout-2d" ? e.midpointFraction <= .5 ? u : l : null
+			});
+		}
+		let m = p.reduce((e, t) => e + t.transforms.bodies.length, 0), h = p.reduce((e, t) => e + t.transforms.caps.length, 0);
 		if (this.options.renderStyle === "cutout-2d") for (let e of f) try {
 			let t = [r.get(e.atom1Id), r.get(e.atom2Id)].some((e) => Number(e.disorderGroup) > 1);
-			this.bonds3D.push(new Zn(e, this.crystalStructure, this.cache.geometries.bond, t ? this.cache.materials.openBond : this.cache.materials.bond, o, d, t ? {
+			this.bonds3D.push(new _r(e, this.crystalStructure, this.cache.geometries.bond, t ? this.cache.materials.openBond : this.cache.materials.bond, o, d, t ? {
 				outlineMaterial: this.cache.materials.openBondOutline,
 				innerScale: this.options.plot2DOpenBondInnerScale
 			} : null, {
@@ -7601,7 +14806,7 @@ var In = class {
 			let e = [], t = this.options.bondColorMode === "split", n = t ? /* @__PURE__ */ new Map() : null;
 			if (n) for (let [e, t] of r) n.set(e, this.cache.getAtomMaterials(t.atomType)[0].color);
 			for (let t of f) try {
-				let r = Qn.computeMatrix(t, this.crystalStructure, o, d), i = n ? [n.get(t.atom1Id), n.get(t.atom2Id)] : null;
+				let r = vr.computeMatrix(t, this.crystalStructure, o, d), i = n ? [n.get(t.atom1Id), n.get(t.atom2Id)] : null;
 				e.push([
 					t,
 					r,
@@ -7610,24 +14815,44 @@ var In = class {
 			} catch (e) {
 				if (e.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.") throw e;
 			}
-			this.bondPool = e.length > 0 ? new jn(this.cache.geometries.bond, this.cache.materials.bond, e.length * (t ? 2 : 1)) : null;
-			for (let [t, n, r] of e) this.bonds3D.push(new Qn(t, this.bondPool, n, r));
-			this.bondPool?.finalize();
+			let i = e.length * (t ? 2 : 1) + m;
+			this.bondPool = i > 0 ? new Yn(this.cache.geometries.bond, this.cache.materials.bond, i) : null;
+			for (let [t, n, r] of e) this.bonds3D.push(new vr(t, this.bondPool, n, r));
+			for (let e of p) e.transforms.bodies.forEach((t) => this.bondPool.register(t.matrix, e.colourFor(t)));
+			this.centroidBodyPool = m ? this.bondPool : null, this.centroidBodiesShareBondPool = m > 0, this.bondPool?.finalize();
 		}
-		let p = performance.now() - u, m = performance.now(), h = this.crystalStructure.hBonds.filter((e) => n.has(e.donorAtomId) && n.has(e.acceptorAtomId) && (!e.hydrogenAtomId || n.has(e.hydrogenAtomId))), g = [], _ = 0;
-		for (let e of h) try {
-			let t = $n.computeSegmentMatrices(e, this.crystalStructure, this.options.hbondDashSegmentLength, this.options.hbondDashFraction, o, d);
-			g.push([e, t]), _ += t.length;
+		if (this.options.renderStyle === "cutout-2d" && m) {
+			this.centroidBodyPool = new Yn(this.cache.geometries.bond, this.cache.materials.bond, m);
+			for (let e of p) e.transforms.bodies.forEach((e) => this.centroidBodyPool.register(e.matrix));
+		}
+		this.centroidCapPool = h ? new Yn(this.cache.geometries.centroidCap, this.cache.materials.bond, h) : null;
+		for (let e of p) e.transforms.caps.forEach((t) => this.centroidCapPool.register(t.matrix, e.colourFor(t)));
+		let g = this.options.renderStyle === "cutout-2d" && this.options.plot2DBondOutlineWidth > 0 ? this.cache.materials.bondDepthOutline : null;
+		this.centroidOutlineBodyPool = g && this.centroidBodyPool ? new Xn(this.centroidBodyPool, g) : null, this.centroidOutlineCapPool = g && this.centroidCapPool ? new Xn(this.centroidCapPool, g) : null;
+		for (let e of [
+			this.centroidBodyPool,
+			this.centroidCapPool,
+			this.centroidOutlineBodyPool,
+			this.centroidOutlineCapPool
+		]) !e || e === this.bondPool || (e.mesh.userData = {
+			selectable: !1,
+			type: "ring-centroid-interactions",
+			interactions: this.centroidInteractions
+		}, e.finalize?.());
+		let _ = performance.now() - u, v = performance.now(), y = this.crystalStructure.hBonds.filter((e) => n.has(e.donorAtomId) && n.has(e.acceptorAtomId) && (!e.hydrogenAtomId || n.has(e.hydrogenAtomId))), b = [], x = 0;
+		for (let e of y) try {
+			let t = yr.computeSegmentMatrices(e, this.crystalStructure, this.options.hbondDashSegmentLength, this.options.hbondDashFraction, o, d);
+			b.push([e, t]), x += t.length;
 		} catch (e) {
 			if (e.message !== "Error in ORTEP Bond Creation. Trying to create a zero length bond.") throw e;
 		}
-		this.hbondPool = _ > 0 ? new jn(this.cache.geometries.hbond, this.cache.materials.hbond, _) : null;
-		for (let [e, t] of g) this.hBonds3D.push(new $n(e, this.hbondPool, t));
+		this.hbondPool = x > 0 ? new Yn(this.cache.geometries.hbond, this.cache.materials.hbond, x) : null;
+		for (let [e, t] of b) this.hBonds3D.push(new yr(e, this.hbondPool, t));
 		this.hbondPool?.finalize(), this.timings = {
 			structurePreparationTimeMs: c - t,
 			atomCreationTimeMs: l,
-			bondCreationTimeMs: p,
-			hydrogenBondCreationTimeMs: performance.now() - m,
+			bondCreationTimeMs: _,
+			hydrogenBondCreationTimeMs: performance.now() - v,
 			structureCreationTimeMs: performance.now() - t,
 			groupAssemblyTimeMs: 0
 		};
@@ -7638,13 +14863,19 @@ var In = class {
 		if (this.ringPools) for (let e of this.ringPools.values()) n.add(e.mesh);
 		for (let e of this.atoms3D) n.add(e);
 		let r = (e) => e.traverse((e) => {
-			e.renderOrder = wn;
+			e.renderOrder = Hn;
 		});
-		this.bondPool && (this.bondPool.mesh.renderOrder = wn, n.add(this.bondPool.mesh));
+		this.bondPool && (this.bondPool.mesh.renderOrder = Hn, n.add(this.bondPool.mesh));
 		for (let e of this.bonds3D) r(e), n.add(e);
-		this.hbondPool && (this.hbondPool.mesh.renderOrder = wn, n.add(this.hbondPool.mesh));
+		for (let e of [
+			this.centroidBodyPool,
+			this.centroidCapPool,
+			this.centroidOutlineBodyPool,
+			this.centroidOutlineCapPool
+		]) !e || e === this.bondPool || (e.mesh.renderOrder = Hn, n.add(e.mesh));
+		this.hbondPool && (this.hbondPool.mesh.renderOrder = Hn, n.add(this.hbondPool.mesh));
 		for (let e of this.hBonds3D) r(e), n.add(e);
-		return An(n), n.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), n.cameraFacingAtoms = n.cutawayAtoms, n.orderableAtoms = this.atoms3D, n.setOutlineViewport = (e, t) => this.cache.setOutlineViewport(e, t), n.atomLabelAnchors = this.atoms3D.map((t) => {
+		return Jn(n), n.cutawayAtoms = this.atoms3D.filter((e) => e.isCutaway), n.cameraFacingAtoms = n.cutawayAtoms, n.orderableAtoms = this.atoms3D, n.setOutlineViewport = (e, t) => this.cache.setOutlineViewport(e, t), n.atomLabelAnchors = this.atoms3D.map((t) => {
 			let n;
 			t.segments?.[0]?.matrix ? n = t.segments[0].matrix.clone() : (t.updateMatrix(), n = t.matrix.clone());
 			let r = new e.Vector3().setFromMatrixPosition(n), i = new e.Vector3();
@@ -7661,7 +14892,7 @@ var In = class {
 		if (this.atomPools) for (let e of this.atomPools.values()) e.dispose?.();
 		this.cache.dispose();
 	}
-}, Rn = class t extends e.Mesh {
+}, ir = class t extends e.Mesh {
 	constructor(e, n) {
 		if (new.target === t) throw TypeError("ORTEPObject is an abstract class and cannot be instantiated directly.");
 		super(e, n), this._selectionColor = null, this.marker = null;
@@ -7696,7 +14927,7 @@ var In = class {
 	dispose() {
 		this.deselect(), this.geometry?.dispose(), this.material?.dispose();
 	}
-}, zn = class extends Rn {
+}, ar = class extends ir {
 	constructor(t, n, r, i) {
 		super(r, i), this.updateSurfaceRadius();
 		let a = i.userData.plot2DOutlineMaterial;
@@ -7727,7 +14958,7 @@ var In = class {
 		let r = new e.Mesh(this.geometry, this.createSelectionMaterial(t));
 		return r.scale.multiplyScalar(n.selection.markerMult), r.userData.selectable = !1, r;
 	}
-}, Bn = class extends zn {
+}, or = class extends ar {
 	constructor(t, n, r, i, a, o, s = null) {
 		if (super(t, n, r, i), [
 			t.adp.u11,
@@ -7735,7 +14966,7 @@ var In = class {
 			t.adp.u33
 		].some((e) => e <= 0)) this.isSolidFallback = !0, this.geometry = new e.TetrahedronGeometry(.8), this.plot2DOutline && (this.plot2DOutline.geometry = this.geometry), this.updateSurfaceRadius();
 		else {
-			let r = Nn(t.adp, n);
+			let r = Qn(t.adp, n);
 			if (r.toArray().includes(NaN)) this.isSolidFallback = !0, this.geometry = new e.TetrahedronGeometry(.8), this.plot2DOutline && (this.plot2DOutline.geometry = this.geometry), this.updateSurfaceRadius();
 			else {
 				s && this.setupCutaway(s, i);
@@ -7755,9 +14986,9 @@ var In = class {
 			1,
 			1,
 			1
-		], this.cutawayViewDirection = new e.Vector3(), this.cutawayWorldPosition = new e.Vector3(), this.cutawayInverseRotation = new e.Matrix4(), this.cutawayOctants = ln.map((r, i) => {
+		], this.cutawayViewDirection = new e.Vector3(), this.cutawayWorldPosition = new e.Vector3(), this.cutawayInverseRotation = new e.Matrix4(), this.cutawayOctants = Dn.map((r, i) => {
 			let a = new e.Mesh(t.octantGeometry, n);
-			return On(a, r), a.userData = {
+			return Kn(a, r), a.userData = {
 				selectable: !1,
 				type: "ellipsoid-octant",
 				octantIndex: i
@@ -7765,9 +14996,9 @@ var In = class {
 		}), this.plot2DOutline) {
 			this.remove(this.plot2DOutline);
 			let r = n.userData.plot2DOutlineMaterial;
-			this.cutawayOutlines = ln.map((n, i) => {
+			this.cutawayOutlines = Dn.map((n, i) => {
 				let a = new e.Mesh(t.octantGeometry, r);
-				return On(a, n), a.userData = {
+				return Kn(a, n), a.userData = {
 					selectable: !1,
 					type: "2d-ellipsoid-outline",
 					octantIndex: i
@@ -7778,16 +15009,16 @@ var In = class {
 		if (r.userData = {
 			selectable: !1,
 			type: "ellipsoid-cutaway-planes"
-		}, r.renderOrder = xn, this.add(r), this.cutawayPlanes = r, t.depthCapMaterial) {
+		}, r.renderOrder = zn, this.add(r), this.cutawayPlanes = r, t.depthCapMaterial) {
 			let n = new e.Mesh(t.octantGeometry, t.depthCapMaterial);
-			n.renderOrder = Sn, n.userData = {
+			n.renderOrder = Bn, n.userData = {
 				selectable: !1,
 				type: "ellipsoid-cutaway-depth-cap"
 			}, this.add(n), this.cutawayDepthCap = n;
 		}
 		if (t.occlusionMaterial) {
 			let n = new e.Mesh(t.occlusionGeometry, t.occlusionMaterial);
-			n.renderOrder = Cn, n.userData = {
+			n.renderOrder = Vn, n.userData = {
 				selectable: !1,
 				type: "ellipsoid-publication-occlusion-mask"
 			}, this.add(n), this.cutawayOcclusionMask = n;
@@ -7810,7 +15041,7 @@ var In = class {
 	setMissingOctant(e) {
 		e !== this.missingOctantIndex && (this.missingOctantIndex = e, this.cutawayOctants.forEach((t, n) => {
 			t.visible = n !== e;
-		}), this.cutawayDepthCap && On(this.cutawayDepthCap, ln[e]), this.cutawayOutlines?.forEach((t, n) => {
+		}), this.cutawayDepthCap && Kn(this.cutawayDepthCap, Dn[e]), this.cutawayOutlines?.forEach((t, n) => {
 			t.visible = n !== e;
 		}), this.marker?.cutawayOctants?.forEach((t, n) => {
 			t.visible = n !== e;
@@ -7819,9 +15050,9 @@ var In = class {
 	createSelectionMarker(t, n) {
 		if (!this.isCutaway) return super.createSelectionMarker(t, n);
 		let r = new e.Group(), i = this.createSelectionMaterial(t);
-		return r.cutawayOctants = ln.map((t, n) => {
+		return r.cutawayOctants = Dn.map((t, n) => {
 			let a = new e.Mesh(this.cutawayOctants[0].geometry, i);
-			return On(a, t), a.visible = n !== this.missingOctantIndex, a.userData.selectable = !1, r.add(a), a;
+			return Kn(a, t), a.visible = n !== this.missingOctantIndex, a.userData.selectable = !1, r.add(a), a;
 		}), r.material = i, r.scale.multiplyScalar(n.selection.markerMult), r.userData.selectable = !1, r;
 	}
 	select(e, t) {
@@ -7847,26 +15078,26 @@ var In = class {
 		}), !1;
 	}
 	get adpRingMatrices() {
-		return Tn.map((e) => e.clone());
+		return Un.map((e) => e.clone());
 	}
-}, Vn = class extends zn {
+}, sr = class extends ar {
 	constructor(t, n, r, i) {
 		if (super(t, n, r, i), !t.adp || !("uiso" in t.adp)) throw Error("Atom must have isotropic displacement parameters (UIsoADP)");
 		t.adp.uiso <= 0 ? (this.isSolidFallback = !0, this.geometry = new e.TetrahedronGeometry(1), this.updateSurfaceRadius()) : this.scale.multiplyScalar(Math.sqrt(t.adp.uiso));
 	}
-}, Hn = class extends zn {
+}, cr = class extends ar {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r);
 		let a = e.atomType;
 		try {
-			i.elementProperties[a] || (a = Ht(e.atomType));
+			i.elementProperties[a] || (a = Wt(e.atomType));
 		} catch {
 			throw Error(`Element properties not found for atom type: '${e.atomType}'`);
 		}
 		this.scale.multiplyScalar(i.atomConstantRadiusMultiplier * i.elementProperties[a].radius);
 	}
 };
-function Un(t, n, r) {
+function lr(t, n, r) {
 	let i = at(t.adp, n, r);
 	if (!i.valid) return {
 		matrix: null,
@@ -7880,7 +15111,7 @@ function Un(t, n, r) {
 		valid: !0
 	};
 }
-function Wn(t, n) {
+function ur(t, n) {
 	if ([
 		t.adp.u11,
 		t.adp.u3,
@@ -7889,7 +15120,7 @@ function Wn(t, n) {
 		matrix: null,
 		valid: !1
 	};
-	let r = Nn(t.adp, n);
+	let r = Qn(t.adp, n);
 	if (r.toArray().includes(NaN)) return {
 		matrix: null,
 		valid: !1
@@ -7900,7 +15131,7 @@ function Wn(t, n) {
 		valid: !0
 	};
 }
-function Gn(t, n) {
+function dr(t, n) {
 	if (t.adp.uiso <= 0) return {
 		matrix: null,
 		valid: !1
@@ -7911,17 +15142,17 @@ function Gn(t, n) {
 		valid: !0
 	};
 }
-function Kn(t, n, r) {
+function fr(t, n, r) {
 	let i = t.atomType;
 	try {
-		r.elementProperties[i] || (i = Ht(t.atomType));
+		r.elementProperties[i] || (i = Wt(t.atomType));
 	} catch {
 		throw Error(`Element properties not found for atom type: '${t.atomType}'`);
 	}
 	let a = r.atomConstantRadiusMultiplier * r.elementProperties[i].radius, o = new e.Vector3(...t.position.toCartesian(n));
 	return new e.Matrix4().makeScale(a, a, a).setPosition(o);
 }
-var qn = class t extends e.Object3D {
+var pr = class t extends e.Object3D {
 	constructor() {
 		if (new.target === t) throw TypeError("PooledSelectableObject is an abstract class and cannot be instantiated directly.");
 		super(), this._selectionColor = null, this.marker = null, this.matrixAutoUpdate = !1, this.segments = [];
@@ -7972,7 +15203,7 @@ var qn = class t extends e.Object3D {
 	dispose() {
 		this.marker && this.deselect();
 	}
-}, Jn = class extends qn {
+}, mr = class extends pr {
 	constructor(e, t, n, r) {
 		super(), this.userData = {
 			type: "atom",
@@ -7993,11 +15224,11 @@ var qn = class t extends e.Object3D {
 		let r = this.segments[0], i = new e.Mesh(r.pool.mesh.geometry, this.createSelectionMaterial(t));
 		return i.applyMatrix4(r.matrix), i.scale.multiplyScalar(n.selection.markerMult), i.userData.selectable = !1, i;
 	}
-}, Yn = class extends Jn {
+}, hr = class extends mr {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r), i && (this.ringPool = i, this.ringIndex = i.register(n));
 	}
-}, Xn = class extends Jn {
+}, gr = class extends mr {
 	constructor(e, t, n, r, i) {
 		let a = t[0];
 		super(e, a.pool, n, a.pool.mesh.geometry.boundingSphere?.radius || 0), this.segments[0].sign = a.sign, this.segments[0].normalizedShape = a.normalizedShape, a.pool.shapeAttribute.setXYZ(this.segments[0].index, ...a.normalizedShape);
@@ -8041,7 +15272,7 @@ var qn = class t extends e.Object3D {
 	}
 	createStandalonePeanutMaterial(e, t) {
 		let n = e.clone(), r = e.userData.peanut;
-		return gn(n, {
+		return Pn(n, {
 			presentation: r.presentation,
 			gridColor: r.gridColor,
 			silhouetteWidth: r.silhouetteWidth,
@@ -8072,7 +15303,7 @@ var qn = class t extends e.Object3D {
 			let i;
 			if (this.presentation === "publication-2d") {
 				let a = r.pool.outlineMesh.material.userData.peanut, o = n.plot2DOutlineWidth ?? 1.2, s = n.selection.haloWidth ?? 4;
-				i = gn(new e.MeshBasicMaterial({
+				i = Pn(new e.MeshBasicMaterial({
 					color: t,
 					transparent: !0,
 					opacity: .9,
@@ -8086,7 +15317,7 @@ var qn = class t extends e.Object3D {
 					outlinePixelUniform: { value: o + s },
 					outlineViewport: a.outlineViewport
 				});
-			} else i = gn(this.createSelectionMaterial(t), {
+			} else i = Pn(this.createSelectionMaterial(t), {
 				presentation: "clean-3d",
 				uniformShape: r.normalizedShape,
 				gridRotation: this.surfaceDescriptor.rotation
@@ -8098,7 +15329,7 @@ var qn = class t extends e.Object3D {
 		let i = new e.Group();
 		return i.add(...r), i.userData.selectable = !1, i;
 	}
-}, Zn = class extends Rn {
+}, _r = class extends ir {
 	constructor(t, n, r, i, a = null, o = null, s = null, c = null) {
 		super(r, i);
 		let l, u;
@@ -8107,8 +15338,8 @@ var qn = class t extends e.Object3D {
 			let r = n.getAtomById(t.atom1Id), i = n.getAtomById(t.atom2Id);
 			l = new e.Vector3(...r.position.toCartesian(n.cell)), u = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		o && ([l, u] = Fn(l, u, o(t.atom1Id), o(t.atom2Id)));
-		let d = Pn(l, u), f = l.distanceTo(u);
+		o && ([l, u] = tr(l, u, o(t.atom1Id), o(t.atom2Id)));
+		let d = $n(l, u), f = l.distanceTo(u);
 		this.applyMatrix4(d);
 		let p = 1;
 		if (s) {
@@ -8140,7 +15371,7 @@ var qn = class t extends e.Object3D {
 	}
 };
 e.Group;
-var Qn = class t extends qn {
+var vr = class t extends pr {
 	static computeSplitMatrices(t) {
 		let n = new e.Matrix4().makeScale(1, .5, 1);
 		return [-.25, .25].map((r) => t.clone().multiply(new e.Matrix4().makeTranslation(0, r, 0)).multiply(n));
@@ -8152,7 +15383,7 @@ var Qn = class t extends qn {
 			let r = n.getAtomById(t.atom1Id), i = n.getAtomById(t.atom2Id);
 			a = new e.Vector3(...r.position.toCartesian(n.cell)), o = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		return i && ([a, o] = Fn(a, o, i(t.atom1Id), i(t.atom2Id))), Pn(a, o);
+		return i && ([a, o] = tr(a, o, i(t.atom1Id), i(t.atom2Id))), $n(a, o);
 	}
 	constructor(e, n, r, i = null) {
 		super(), this.userData = {
@@ -8176,7 +15407,7 @@ var Qn = class t extends qn {
 		let r = this.segments[0], i = new e.Mesh(r.pool.mesh.geometry, this.createSelectionMaterial(t));
 		return i.applyMatrix4(this.fullMatrix), i.scale.x *= n.selection.bondMarkerMult, i.scale.z *= n.selection.bondMarkerMult, i.userData.selectable = !1, i;
 	}
-}, $n = class extends qn {
+}, yr = class extends pr {
 	static computeSegmentMatrices(t, n, r, i, a = null, o = null) {
 		let s, c;
 		if (a) s = a(t.hydrogenAtomId), c = a(t.acceptorAtomId);
@@ -8184,11 +15415,11 @@ var Qn = class t extends qn {
 			let r = n.getAtomById(t.hydrogenAtomId), i = n.getAtomById(t.acceptorAtomId);
 			s = new e.Vector3(...r.position.toCartesian(n.cell)), c = new e.Vector3(...i.position.toCartesian(n.cell));
 		}
-		o && ([s, c] = Fn(s, c, o(t.hydrogenAtomId), o(t.acceptorAtomId)));
+		o && ([s, c] = tr(s, c, o(t.hydrogenAtomId), o(t.acceptorAtomId)));
 		let l = s.distanceTo(c), u = Math.max(1, Math.floor(l / r)), d = l / u * i, f = [];
 		for (let t = 0; t < u; t++) {
 			let n = t / u, r = n + d / l, i = new e.Vector3().lerpVectors(s, c, n), a = new e.Vector3().lerpVectors(s, c, r);
-			f.push(Pn(i, a));
+			f.push($n(i, a));
 		}
 		return f;
 	}
@@ -8213,23 +15444,23 @@ var Qn = class t extends qn {
 };
 //#endregion
 //#region src/lib/formatting.js
-function er(e, t, n = 4) {
-	if (!isFinite(1 / t)) return tr(e, n).toFixed(n);
+function br(e, t, n = 4) {
+	if (!isFinite(1 / t)) return xr(e, n).toFixed(n);
 	let r = Math.floor(Math.log10(t));
 	t * 10 ** -r < 2 && --r;
-	let i = tr(e, -r);
+	let i = xr(e, -r);
 	if (r < 0) {
 		let e = Math.round(t / 10 ** r);
 		return `${i.toFixed(-r)}(${e})`;
 	}
-	return `${i}(${tr(t, r)})`;
+	return `${i}(${xr(t, r)})`;
 }
-function tr(e, t) {
+function xr(e, t) {
 	let n = 10 ** t;
 	return Math.round(e * n) / n;
 }
-var nr = "₀₁₂₃₄₅₆₇₈₉";
-function rr(e, t = !1) {
+var Sr = "₀₁₂₃₄₅₆₇₈₉";
+function Cr(e, t = !1) {
 	let n = String(e ?? "");
 	if (!t) return {
 		element: n,
@@ -8246,29 +15477,29 @@ function rr(e, t = !1) {
 		nonElement: i
 	};
 }
-function ir(e, t = !1) {
+function wr(e, t = !1) {
 	let n = String(e ?? "");
 	if (!t) return n;
-	let r = rr(n, !0);
-	return r.element + r.nonElement.replace(/\d/g, (e) => nr[Number(e)]);
+	let r = Cr(n, !0);
+	return r.element + r.nonElement.replace(/\d/g, (e) => Sr[Number(e)]);
 }
 //#endregion
 //#region src/lib/structure/measurements.js
-var ar = 180 / Math.PI, or = (e, t) => [
+var Tr = 180 / Math.PI, Er = (e, t) => [
 	e.x - t.x,
 	e.y - t.y,
 	e.z - t.z
-], sr = (e, t) => e[0] * t[0] + e[1] * t[1] + e[2] * t[2], cr = (e, t) => [
+], Dr = (e, t) => e[0] * t[0] + e[1] * t[1] + e[2] * t[2], Or = (e, t) => [
 	e[1] * t[2] - e[2] * t[1],
 	e[2] * t[0] - e[0] * t[2],
 	e[0] * t[1] - e[1] * t[0]
-], lr = (e) => Math.hypot(...e);
-function ur(e) {
-	let t = lr(e);
+], kr = (e) => Math.hypot(...e);
+function Ar(e) {
+	let t = kr(e);
 	if (t === 0) throw Error("Cannot measure coincident atoms");
 	return e.map((e) => e / t);
 }
-function dr(e, t) {
+function jr(e, t) {
 	if (e.length < 2) throw Error("Select at least two atoms to measure");
 	let n = e.map((e) => e.position.toCartesian(t)), r = n.map((e) => [
 		e.x,
@@ -8277,17 +15508,17 @@ function dr(e, t) {
 	]), i = e.map((e) => e.label), a = e.map((e) => e.uniqueId);
 	if (n.length === 2) return {
 		type: "distance",
-		value: lr(or(n[1], n[0])),
+		value: kr(Er(n[1], n[0])),
 		unit: "Å",
 		labels: i,
 		points: r,
 		atomIds: a
 	};
 	if (n.length === 3) {
-		let e = ur(or(n[0], n[1])), t = ur(or(n[2], n[1])), o = Math.max(-1, Math.min(1, sr(e, t)));
+		let e = Ar(Er(n[0], n[1])), t = Ar(Er(n[2], n[1])), o = Math.max(-1, Math.min(1, Dr(e, t)));
 		return {
 			type: "angle",
-			value: Math.acos(o) * ar,
+			value: Math.acos(o) * Tr,
 			unit: "°",
 			labels: i,
 			points: r,
@@ -8295,10 +15526,10 @@ function dr(e, t) {
 		};
 	}
 	if (n.length === 4) {
-		let e = ur(or(n[2], n[1])), t = or(n[0], n[1]), o = or(n[3], n[2]), s = ur(t.map((n, r) => n - sr(t, e) * e[r])), c = ur(o.map((t, n) => t - sr(o, e) * e[n]));
+		let e = Ar(Er(n[2], n[1])), t = Er(n[0], n[1]), o = Er(n[3], n[2]), s = Ar(t.map((n, r) => n - Dr(t, e) * e[r])), c = Ar(o.map((t, n) => t - Dr(o, e) * e[n]));
 		return {
 			type: "torsion",
-			value: Math.atan2(sr(cr(e, s), c), sr(s, c)) * ar,
+			value: Math.atan2(Dr(Or(e, s), c), Dr(s, c)) * Tr,
 			unit: "°",
 			labels: i,
 			points: r,
@@ -8333,19 +15564,19 @@ function dr(e, t) {
 		]
 	];
 	for (let e of o) {
-		let t = or(e, c);
+		let t = Er(e, c);
 		for (let e = 0; e < 3; e++) for (let n = 0; n < 3; n++) l[e][n] += t[e] * t[n];
 	}
-	let u = Ve(l), d = Math.max(1, Math.abs(u.values.at(-1)));
+	let u = Be(l), d = Math.max(1, Math.abs(u.values.at(-1)));
 	if (Math.abs(u.values[1]) <= d * 1e-12) throw Error("Cannot define a mean plane from collinear atoms");
-	let f = ur(u.eigenvectors[0].vector.toArray()), p = sr(or(s, c), f), m = [
+	let f = Ar(u.eigenvectors[0].vector.toArray()), p = Dr(Er(s, c), f), m = [
 		s.x - p * f[0],
 		s.y - p * f[1],
 		s.z - p * f[2]
 	];
 	return {
 		type: "plane-distance",
-		value: Math.abs(sr(or(s, c), f)),
+		value: Math.abs(Dr(Er(s, c), f)),
 		unit: "Å",
 		labels: i,
 		planeLabels: i.slice(0, -1),
@@ -8363,13 +15594,13 @@ function dr(e, t) {
 		}
 	};
 }
-function fr(e, t = {}) {
+function Mr(e, t = {}) {
 	let n = e.value.toFixed(e.unit === "°" ? 2 : 3);
-	if (e.type === "plane-distance") return `${ir(e.probeLabel, t.subscriptNonElement)} to mean plane (${e.planeLabels.map((e) => ir(e, t.subscriptNonElement)).join(", ")}): ${n} ${e.unit}`;
+	if (e.type === "plane-distance") return `${wr(e.probeLabel, t.subscriptNonElement)} to mean plane (${e.planeLabels.map((e) => wr(e, t.subscriptNonElement)).join(", ")}): ${n} ${e.unit}`;
 	let r = e.type === "distance" ? "Distance" : e.type === "angle" ? "Angle" : "Torsion", i = e.unit === "°" ? "" : " ";
-	return `${r} ${e.labels.map((e) => ir(e, t.subscriptNonElement)).join("–")}: ${n}${i}${e.unit}`;
+	return `${r} ${e.labels.map((e) => wr(e, t.subscriptNonElement)).join("–")}: ${n}${i}${e.unit}`;
 }
-function pr(e) {
+function Nr(e) {
 	if (e < 2) {
 		let t = 2 - e;
 		return {
@@ -8398,11 +15629,11 @@ function pr(e) {
 }
 //#endregion
 //#region src/lib/density/cell-matching.js
-var mr = Object.freeze({
+var Pr = Object.freeze({
 	relativeLength: .001,
 	angleDegrees: .05
 });
-function hr(e, t, n = mr) {
+function Fr(e, t, n = Pr) {
 	for (let r of [
 		"a",
 		"b",
@@ -8418,20 +15649,20 @@ function hr(e, t, n = mr) {
 	]) if (Math.abs(e[r] - t[r]) > n.angleDegrees) return !1;
 	return !0;
 }
-function gr(e, t, n = "Reflection") {
+function Ir(e, t, n = "Reflection") {
 	for (let r of [
 		"a",
 		"b",
 		"c"
 	]) {
 		let i = Math.max(Math.abs(t[r]), 1);
-		if (Math.abs(e[r] - t[r]) / i > mr.relativeLength) throw Error(`${n} unit cell does not match the structure (${r})`);
+		if (Math.abs(e[r] - t[r]) / i > Pr.relativeLength) throw Error(`${n} unit cell does not match the structure (${r})`);
 	}
 	for (let r of [
 		"alpha",
 		"beta",
 		"gamma"
-	]) if (Math.abs(e[r] - t[r]) > mr.angleDegrees) throw Error(`${n} unit cell does not match the structure (${r})`);
+	]) if (Math.abs(e[r] - t[r]) > Pr.angleDegrees) throw Error(`${n} unit cell does not match the structure (${r})`);
 }
 //#endregion
 //#region src/lib/density/cif-values.js
@@ -8440,7 +15671,7 @@ function G(e) {
 	let t = Number(e);
 	return Number.isFinite(t) ? t : null;
 }
-function _r(e, t) {
+function Lr(e, t) {
 	for (let n of typeof t == "string" ? [t] : t) try {
 		let t = e.get(n, !1);
 		if (t && typeof t.get == "function") return t;
@@ -8455,14 +15686,14 @@ function K(e, t, n = null) {
 		return n;
 	}
 }
-function vr(e, t) {
+function Rr(e, t) {
 	for (let n of t) try {
 		let t = G(e.get(n));
 		if (t !== null) return t;
 	} catch {}
 	return null;
 }
-function yr(e, t) {
+function zr(e, t) {
 	for (let n of t) try {
 		let t = e.get(n);
 		if (typeof t == "string" && t.trim()) return t;
@@ -8471,10 +15702,10 @@ function yr(e, t) {
 }
 //#endregion
 //#region src/lib/density/structure-factor-model.js
-var br = 2 * Math.PI, xr = -2 * Math.PI ** 2;
-function Sr(e, t, n, r) {
-	if (e.adp instanceof rt) return { isotropic: e.adp.uiso };
-	if (e.adp instanceof z) {
+var Br = 2 * Math.PI, Vr = -2 * Math.PI ** 2;
+function Hr(e, t, n, r) {
+	if (e.adp instanceof nt) return { isotropic: e.adp.uiso };
+	if (e.adp instanceof rt) {
 		let [i, a, o, s, c, l] = e.adp.getUCart(t), u = L(L(n, [
 			[
 				i,
@@ -8513,39 +15744,39 @@ function Sr(e, t, n, r) {
 	}
 	return null;
 }
-function Cr(e, t, n) {
+function Ur(e, t, n) {
 	if (!e) return 1;
-	if (e.isotropic !== void 0) return Math.exp(xr * e.isotropic * t.reciprocalLengthSquared[n]);
+	if (e.isotropic !== void 0) return Math.exp(Vr * e.isotropic * t.reciprocalLengthSquared[n]);
 	let [r, i, a, o, s, c] = e.reciprocalQuadratic;
-	return Math.exp(xr * (r * t.hSquared[n] + i * t.kSquared[n] + a * t.lSquared[n] + 2 * o * t.hk[n] + 2 * s * t.hl[n] + 2 * c * t.kl[n]));
+	return Math.exp(Vr * (r * t.hSquared[n] + i * t.kSquared[n] + a * t.lSquared[n] + 2 * o * t.hk[n] + 2 * s * t.hl[n] + 2 * c * t.kl[n]));
 }
-function wr(e, t, n) {
+function Wr(e, t, n) {
 	if (!e) return 1;
 	if (e.isotropic !== void 0) return Math.exp(-2 * Math.PI ** 2 * e.isotropic * n);
 	let [r, i, a, o, s, c] = e.anisotropic, [l, u, d] = t, f = r * l * l + i * u * u + a * d * d + 2 * o * l * u + 2 * s * l * d + 2 * c * u * d;
 	return Math.exp(-2 * Math.PI ** 2 * f);
 }
-function Tr(e) {
+function Gr(e) {
 	return e.map((e) => {
 		let t = (e % 1 + 1) % 1, n = Math.abs(t - 1) < 1e-8 ? 0 : t;
 		return Math.round(n * 1e8);
 	}).join(",");
 }
-function Er(e) {
+function Kr(e) {
 	return Array.isArray(e) ? e : [
 		e.h,
 		e.k,
 		e.l
 	];
 }
-function Dr(e, t) {
+function qr(e, t) {
 	let n = e.length, r = new Int32Array(n), i = new Int32Array(n), a = new Int32Array(n), o = new Float64Array(n), s = new Float64Array(n), c = new Float64Array(n), l = new Float64Array(n), u = new Float64Array(n), d = new Float64Array(n), f = new Float64Array(n), p = new Float64Array(n), m = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map(), g = /* @__PURE__ */ new Map(), _ = new Int32Array(n), v = new Int32Array(n), y = new Int32Array(n);
 	for (let b = 0; b < n; b++) {
-		let n = Er(e[b]);
+		let n = Kr(e[b]);
 		if (n.length < 3 || n.some((e) => !Number.isInteger(e) || e < -2147483648 || e > 2147483647)) throw Error("Structure-factor reflection indices must be 32-bit integers");
 		[r[b], i[b], a[b]] = n, o[b] = r[b] ** 2, s[b] = i[b] ** 2, c[b] = a[b] ** 2, l[b] = r[b] * i[b], u[b] = r[b] * a[b], d[b] = i[b] * a[b];
 		let x = t[0][0] * r[b] + t[0][1] * i[b] + t[0][2] * a[b], S = t[1][0] * r[b] + t[1][1] * i[b] + t[1][2] * a[b], C = t[2][0] * r[b] + t[2][1] * i[b] + t[2][2] * a[b];
-		f[b] = x ** 2 + S ** 2 + C ** 2, p[b] = f[b] / 4, _[b] = Or(m, r[b]), v[b] = Or(h, i[b]), y[b] = Or(g, a[b]);
+		f[b] = x ** 2 + S ** 2 + C ** 2, p[b] = f[b] / 4, _[b] = Jr(m, r[b]), v[b] = Jr(h, i[b]), y[b] = Jr(g, a[b]);
 	}
 	return {
 		h: r,
@@ -8567,23 +15798,23 @@ function Dr(e, t) {
 		lTableIndex: y
 	};
 }
-function Or(e, t) {
+function Jr(e, t) {
 	let n = e.get(t);
 	return n === void 0 && (n = e.size, e.set(t, n)), n;
 }
-function kr(e, t) {
+function Yr(e, t) {
 	let n = new Float64Array(2 * t.length);
 	for (let r = 0; r < t.length; r++) {
-		let i = br * t[r] * e;
+		let i = Br * t[r] * e;
 		n[2 * r] = Math.cos(i), n[2 * r + 1] = Math.sin(i);
 	}
 	return n;
 }
-function Ar(e) {
-	return e instanceof rt ? {
+function Xr(e) {
+	return e instanceof nt ? {
 		type: "Uiso",
 		values: [e.uiso]
-	} : e instanceof z ? {
+	} : e instanceof rt ? {
 		type: "Uani",
 		values: [
 			e.u11,
@@ -8595,14 +15826,14 @@ function Ar(e) {
 		]
 	} : null;
 }
-function jr(e) {
-	return e?.type === "Uiso" ? new rt(e.values[0]) : e?.type === "Uani" ? new z(...e.values) : null;
+function Zr(e) {
+	return e?.type === "Uiso" ? new nt(e.values[0]) : e?.type === "Uani" ? new rt(...e.values) : null;
 }
-function Mr(e, t) {
-	if (e instanceof rt) return e.uiso < -1e-10;
-	if (!(e instanceof z)) return !1;
+function Qr(e, t) {
+	if (e instanceof nt) return e.uiso < -1e-10;
+	if (!(e instanceof rt)) return !1;
 	let n = e.getUCart(t);
-	return Ve([
+	return Be([
 		[
 			n[0],
 			n[3],
@@ -8620,9 +15851,9 @@ function Mr(e, t) {
 		]
 	]).eigenvectors.some((e) => e.value < -1e-10);
 }
-function Nr(e, t) {
-	let n = t.get("_atom_site"), r = n.get(["_atom_site.label", "_atom_site_label"]), i = n.get(["_atom_site.occupancy", "_atom_site_occupancy"], Array(r.length).fill(1)), a = new Map(r.map((e, t) => [String(e), G(i[t]) ?? 1])), o = Ne(e.cell.fractToCartMatrix), s = e.atoms.map((e) => {
-		let t = e.position instanceof qe ? [
+function $r(e, t) {
+	let n = t.get("_atom_site"), r = n.get(["_atom_site.label", "_atom_site_label"]), i = n.get(["_atom_site.occupancy", "_atom_site_occupancy"], Array(r.length).fill(1)), a = new Map(r.map((e, t) => [String(e), G(i[t]) ?? 1])), o = z(e.cell.fractToCartMatrix), s = e.atoms.map((e) => {
+		let t = e.position instanceof Ke ? [
 			e.position.x,
 			e.position.y,
 			e.position.z
@@ -8635,7 +15866,7 @@ function Nr(e, t) {
 			label: e.label,
 			atomType: e.atomType,
 			position: Array.isArray(t) ? t : t.toArray(),
-			adp: Ar(e.adp),
+			adp: Xr(e.adp),
 			occupancy: a.get(String(e.label)) ?? 1
 		};
 	});
@@ -8653,19 +15884,19 @@ function Nr(e, t) {
 			rotation: e.rotMatrix.map((e) => [...e]),
 			translation: [...e.transVector]
 		})),
-		wavelength: vr(t, [
+		wavelength: Rr(t, [
 			"_diffrn_radiation_wavelength.wavelength",
 			"_diffrn_radiation.wavelength",
 			"_diffrn_radiation_wavelength"
 		])
 	};
 }
-function Pr(e, t = 0, n = {}) {
+function ei(e, t = 0, n = {}) {
 	if (typeof e != "string" || e.length === 0) throw Error("Structure-factor calculation requires the coordinate CIF text");
 	if (typeof n.resolveAtom != "function") throw Error("Structure-factor calculation requires an atom factor resolver");
-	let r = new xe(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = n.structureModel ?? null, o = a ? new Wt(a.cell.a, a.cell.b, a.cell.c, a.cell.alpha, a.cell.beta, a.cell.gamma) : Wt.fromCIF(i);
-	if (n.expectedCell && !hr(o, n.expectedCell)) throw Error("Structure-factor coordinate CIF cell does not match the reflection cell");
-	let s = a?.wavelength ?? vr(i, [
+	let r = new xe(e), i = typeof t == "number" ? r.getBlock(t) : r.getBlockByName(t), a = n.structureModel ?? null, o = a ? new Kt(a.cell.a, a.cell.b, a.cell.c, a.cell.alpha, a.cell.beta, a.cell.gamma) : Kt.fromCIF(i);
+	if (n.expectedCell && !Fr(o, n.expectedCell)) throw Error("Structure-factor coordinate CIF cell does not match the reflection cell");
+	let s = a?.wavelength ?? Rr(i, [
 		"_diffrn_radiation_wavelength.wavelength",
 		"_diffrn_radiation.wavelength",
 		"_diffrn_radiation_wavelength"
@@ -8679,9 +15910,9 @@ function Pr(e, t = 0, n = {}) {
 	})(), l = [], u = {}, d = [], f = /* @__PURE__ */ new Map();
 	for (let e = 0; e < c.length; e++) {
 		let t = c[e], r, o = t.index ?? e;
-		if (a) r = new Gt(t.label, t.atomType, new qe(...t.position), jr(t.adp));
+		if (a) r = new qt(t.label, t.atomType, new Ke(...t.position), Zr(t.adp));
 		else try {
-			r = Gt.fromCIF(i, o);
+			r = qt.fromCIF(i, o);
 		} catch (e) {
 			if (e.message.includes("Dummy atom")) continue;
 			throw e;
@@ -8706,7 +15937,7 @@ function Pr(e, t = 0, n = {}) {
 			scatteringModelIndex: g
 		});
 	}
-	let p = o.fractToCartMatrix.toArray(), m = Ne(p), h = R(m), g = Array.isArray(h) ? h : h.toArray(), _ = (a?.symmetryOperations ?? Nt.fromCIF(i).symmetryOperations.map((e) => ({
+	let p = o.fractToCartMatrix.toArray(), m = z(p), h = R(m), g = Array.isArray(h) ? h : h.toArray(), _ = (a?.symmetryOperations ?? Pt.fromCIF(i).symmetryOperations.map((e) => ({
 		rotation: e.rotMatrix,
 		translation: e.transVector
 	}))).map((e) => ({
@@ -8717,7 +15948,7 @@ function Pr(e, t = 0, n = {}) {
 		cartesianRotation: L(L(p, e.rotation), m)
 	})), v = 0;
 	for (let e of l) {
-		let t = /* @__PURE__ */ new Set(), n = e.atom.position instanceof qe ? [
+		let t = /* @__PURE__ */ new Set(), n = e.atom.position instanceof Ke ? [
 			e.atom.position.x,
 			e.atom.position.y,
 			e.atom.position.z
@@ -8727,18 +15958,18 @@ function Pr(e, t = 0, n = {}) {
 			e.atom.position.z
 		]);
 		for (let r of _) {
-			let i = Ae(L(r.operation.rotation, n), r.operation.translation), a = Array.isArray(i) ? i : i.toArray(), s = Tr(a);
+			let i = Ae(L(r.operation.rotation, n), r.operation.translation), a = Array.isArray(i) ? i : i.toArray(), s = Gr(a);
 			if (t.has(s)) continue;
 			t.add(s);
 			let c = {
 				position: a,
 				occupancy: e.occupancy,
-				displacement: Sr(e.atom, o, r.cartesianRotation, g)
+				displacement: Hr(e.atom, o, r.cartesianRotation, g)
 			};
 			v++, d[e.scatteringModelIndex].atoms.push(c);
 		}
 	}
-	let y = l.filter((e) => Mr(e.atom.adp, o)).map((e) => e.atom.label), b = /* @__PURE__ */ new Set(), x = /* @__PURE__ */ new Map(), S = /* @__PURE__ */ new Set(), C = 0, w = 0, T = 0;
+	let y = l.filter((e) => Qr(e.atom.adp, o)).map((e) => e.atom.label), b = /* @__PURE__ */ new Set(), x = /* @__PURE__ */ new Map(), S = /* @__PURE__ */ new Set(), C = 0, w = 0, T = 0;
 	for (let e of d) for (let t of e.atoms) if (b.add(JSON.stringify(t.displacement)), !t.displacement) C++;
 	else if (t.displacement.isotropic !== void 0) {
 		w++;
@@ -8753,7 +15984,7 @@ function Pr(e, t = 0, n = {}) {
 		for (let c = 0; c < d.length; c++) {
 			let l = d[c], u = l.scatteringAt(a);
 			for (let a of l.atoms) {
-				let c = br * (e * a.position[0] + t * a.position[1] + n * a.position[2]), l = a.occupancy * wr(a.displacement, r, i), d = Math.cos(c), f = Math.sin(c);
+				let c = Br * (e * a.position[0] + t * a.position[1] + n * a.position[2]), l = a.occupancy * Wr(a.displacement, r, i), d = Math.cos(c), f = Math.sin(c);
 				o += l * (u.real * d - u.imaginary * f), s += l * (u.real * f + u.imaginary * d);
 			}
 		}
@@ -8763,7 +15994,7 @@ function Pr(e, t = 0, n = {}) {
 		};
 	}
 	function D(e) {
-		let t = performance.now(), n = Dr(e, g), r = performance.now() - t, i = e.length, a = performance.now(), o = d.map((e) => {
+		let t = performance.now(), n = qr(e, g), r = performance.now() - t, i = e.length, a = performance.now(), o = d.map((e) => {
 			let t = new Float64Array(i), r = new Float64Array(i), a = !0;
 			for (let o = 0; o < i; o++) {
 				let i = e.scatteringAt(n.sSquared[o]);
@@ -8777,21 +16008,21 @@ function Pr(e, t = 0, n = {}) {
 		}), s = performance.now() - a, c = new Float64Array(i), l = new Float64Array(i), u = performance.now(), f = [...x.values()].filter((e) => e.atomCount > 1).length, p = [...x.values()].filter((e) => e.atomCount === 1).length, m = f > 0, h = m ? [...x].map(([e, t]) => {
 			if (t.atomCount === 1) return null;
 			let r = new Float64Array(i);
-			for (let t = 0; t < i; t++) r[t] = Math.exp(xr * e * n.reciprocalLengthSquared[t]);
+			for (let t = 0; t < i; t++) r[t] = Math.exp(Vr * e * n.reciprocalLengthSquared[t]);
 			return r;
 		}) : null, _ = performance.now() - u, y = 0, E = 0, D = 0, O = m ? f * i : 0;
 		for (let e = 0; e < d.length; e++) {
 			let t = d[e], r = o[e];
 			for (let e of t.atoms) {
 				let t = h && e.displacement?.isotropicModelIndex !== void 0 ? h[e.displacement.isotropicModelIndex] : null, a = performance.now(), o = {
-					x: kr(e.position[0], n.uniqueH),
-					y: kr(e.position[1], n.uniqueK),
-					z: kr(e.position[2], n.uniqueL)
+					x: Yr(e.position[0], n.uniqueH),
+					y: Yr(e.position[1], n.uniqueK),
+					z: Yr(e.position[2], n.uniqueL)
 				};
 				y += performance.now() - a, D += 2 * (n.uniqueH.length + n.uniqueK.length + n.uniqueL.length), e.displacement && (O += t ? 0 : i);
 				let s = performance.now();
 				for (let a = 0; a < i; a++) {
-					let i = 2 * n.hTableIndex[a], s = 2 * n.kTableIndex[a], u = 2 * n.lTableIndex[a], d = o.x[i] * o.y[s] - o.x[i + 1] * o.y[s + 1], f = o.x[i] * o.y[s + 1] + o.x[i + 1] * o.y[s], p = d * o.z[u] - f * o.z[u + 1], m = d * o.z[u + 1] + f * o.z[u], h = e.occupancy * (t ? t[a] : Cr(e.displacement, n, a));
+					let i = 2 * n.hTableIndex[a], s = 2 * n.kTableIndex[a], u = 2 * n.lTableIndex[a], d = o.x[i] * o.y[s] - o.x[i + 1] * o.y[s + 1], f = o.x[i] * o.y[s + 1] + o.x[i + 1] * o.y[s], p = d * o.z[u] - f * o.z[u + 1], m = d * o.z[u + 1] + f * o.z[u], h = e.occupancy * (t ? t[a] : Ur(e.displacement, n, a));
 					if (r.realOnly) {
 						let e = h * r.real[a];
 						c[a] += e * p, l[a] += e * m;
@@ -8860,7 +16091,7 @@ function Pr(e, t = 0, n = {}) {
 		calculatePrepared: D,
 		calculate(e) {
 			return e.map((e) => {
-				let [t, n, r] = Er(e), i = E(t, n, r);
+				let [t, n, r] = Kr(e), i = E(t, n, r);
 				return {
 					h: t,
 					k: n,
@@ -8891,7 +16122,7 @@ function Pr(e, t = 0, n = {}) {
 }
 //#endregion
 //#region src/lib/density/anomalous-dispersion.js
-var Fr = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Ir = Object.fromEntries(Object.entries({
+var ti = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), ni = Object.fromEntries(Object.entries({
 	mo: {
 		wavelength: .71073,
 		real: "0 0 0 0 0 .002 .004 .008 .014 .021 .03 .042 .056 .072 .09 .11 .132 .155 .179 .203 .226 .248 .267 .284 .295 .301 .299 .285 .263 .222 .163 .081 -.03 -.178 -.374 -.652 -1.044 -1.657 -2.951 -2.965 -2.197 -1.825 -1.59 -1.42 -1.287 -1.177 -1.085 -1.005 -.936 -.873 -.816 -.772 -.726 -.684 -.644 -.613 -.588 -.564 -.53 -.535 -.53 -.533 -.542 -.564 -.591 -.619 -.666 -.723 -.795 -.884 -.988 -1.118 -1.258 -1.421 -1.598 -1.816 -2.066 -2.352 -2.688 -3.084 -3.556 -4.133 -4.861 -5.924 -7.444 -8.862 -7.912 -7.62 -7.725 -8.127 -8.96 -10.673 -11.158 -9.725 -8.926 -8.416 -7.99 -7.683",
@@ -8904,25 +16135,25 @@ var Fr = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co
 	}
 }).map(([e, t]) => {
 	let n = t.real.trim().split(/\s+/).map(Number), r = t.imaginary.trim().split(/\s+/).map(Number);
-	if (n.length !== Fr.length || r.length !== Fr.length) throw Error(`Invalid internal anomalous-dispersion table: ${e}`);
+	if (n.length !== ti.length || r.length !== ti.length) throw Error(`Invalid internal anomalous-dispersion table: ${e}`);
 	return [e, {
 		wavelength: t.wavelength,
-		values: new Map(Fr.map((e, t) => [e, {
+		values: new Map(ti.map((e, t) => [e, {
 			real: n[t],
 			imaginary: r[t]
 		}]))
 	}];
 }));
-function Lr(e) {
+function ri(e) {
 	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
 	if (!t) return null;
 	if (t[1].toUpperCase() === "D") return "H";
 	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
-	return Fr.includes(n) ? n : null;
+	return ti.includes(n) ? n : null;
 }
-function Rr(e, t) {
+function ii(e, t) {
 	if (e.table !== void 0) {
-		let t = String(e.table).toLowerCase().replace(/[^a-z]/g, "").slice(0, 2), n = Ir[t];
+		let t = String(e.table).toLowerCase().replace(/[^a-z]/g, "").slice(0, 2), n = ni[t];
 		if (!n) throw Error("Anomalous-dispersion table must be \"Cu\" or \"Mo\"");
 		return {
 			key: t,
@@ -8930,22 +16161,22 @@ function Rr(e, t) {
 		};
 	}
 	if (!Number.isFinite(t)) return null;
-	let n = G(e.wavelengthTolerance) ?? .005, r = Object.entries(Ir).find(([, e]) => Math.abs(e.wavelength - t) <= n);
+	let n = G(e.wavelengthTolerance) ?? .005, r = Object.entries(ni).find(([, e]) => Math.abs(e.wavelength - t) <= n);
 	return r ? {
 		key: r[0],
 		...r[1]
 	} : null;
 }
-function zr(e, t, n = {}) {
-	let r = Lr(e), i = Rr(n, G(t)), a = r && i?.values.get(r);
+function ai(e, t, n = {}) {
+	let r = ri(e), i = ii(n, G(t)), a = r && i?.values.get(r);
 	return a ? {
 		...a,
 		table: i.key,
 		wavelength: i.wavelength
 	} : null;
 }
-function Br(e, t, n) {
-	let r = _r(e, t), i = K(r, n), a = K(r, [
+function oi(e, t, n) {
+	let r = Lr(e, t), i = K(r, n), a = K(r, [
 		"_atom_site_dispersion.real",
 		"_atom_site_dispersion_real",
 		"_atom_type_scat.dispersion_real",
@@ -8963,7 +16194,7 @@ function Br(e, t, n) {
 	});
 	return s;
 }
-function Vr(e, t, n) {
+function si(e, t, n) {
 	let r = e.values ?? e.fallbackValues;
 	if (!r) return null;
 	let i = r[t] ?? r[n];
@@ -8975,14 +16206,14 @@ function Vr(e, t, n) {
 		imaginary: G(i.imaginary ?? i.fDoublePrime)
 	} : null;
 }
-function Hr(e, t) {
+function ci(e, t) {
 	return !e && !t ? null : {
 		real: e?.real ?? t?.real ?? null,
 		imaginary: e?.imaginary ?? t?.imaginary ?? null
 	};
 }
-function Ur(e, t, n, r, i, a) {
-	let o = Lr(e), s = Vr(a, e, o), c = Hr(s, o ? i?.values.get(o) : null), l = r.get(String(e)) ?? r.get(o), u = Hr(n.get(String(t)), Hr(l, c));
+function li(e, t, n, r, i, a) {
+	let o = ri(e), s = si(a, e, o), c = ci(s, o ? i?.values.get(o) : null), l = r.get(String(e)) ?? r.get(o), u = ci(n.get(String(t)), ci(l, c));
 	if (!u || u.real === null || u.imaginary === null) throw Error(`No complete anomalous-dispersion factors for atom ${t} (${e}); provide them in the CIF or select a supported internal table`);
 	let d = n.has(String(t)) ? "site-cif" : l ? "type-cif" : s ? "configured" : "internal";
 	return {
@@ -8991,14 +16222,14 @@ function Ur(e, t, n, r, i, a) {
 		source: d
 	};
 }
-function Wr(e, t = 0, n = {}, r = null) {
-	let i, a, o, s = Pr(e, t, {
+function ui(e, t = 0, n = {}, r = null) {
+	let i, a, o, s = ei(e, t, {
 		expectedCell: r,
 		wavelength: n.wavelength,
 		structureModel: n.structureModel,
 		resolveAtom({ atom: e, block: t, wavelength: r }) {
-			i ??= Rr(n, r), a ??= Br(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]), o ??= Br(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]);
-			let s = Ur(e.atomType, e.label, a, o, i, n);
+			i ??= ii(n, r), a ??= oi(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]), o ??= oi(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]);
+			let s = li(e.atomType, e.label, a, o, i, n);
 			return {
 				source: s.source,
 				scatteringKey: `${s.real},${s.imaginary}`,
@@ -9022,23 +16253,23 @@ function Wr(e, t = 0, n = {}, r = null) {
 }
 //#endregion
 //#region src/lib/density/cromer-mann.js
-var Gr = new Map("H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674".split("\n").map((e) => {
+var di = new Map("H 0.493002 0.322912 0.140191 0.04081 10.5109 26.1257 3.14236 57.7997 0.003038\nHe 0.8734 0.6309 0.3112 0.178 9.1037 3.3568 22.9276 0.9821 0.0064\nLi 1.1282 0.7508 0.6175 0.4653 3.9546 1.0524 85.3905 168.261 0.0377\nBe 1.5919 1.1278 0.5391 0.7029 43.6427 1.8623 103.483 0.542 0.0385\nB 2.0545 1.3326 1.0979 0.7068 23.2185 1.021 60.3498 0.1403 -0.1932\nC 2.31 1.02 1.5886 0.865 20.8439 10.2075 0.5687 51.6512 0.2156\nN 12.2126 3.1322 2.0125 1.1663 0.0057 9.8933 28.9975 0.5826 -11.529\nO 3.0485 2.2868 1.5463 0.867 13.2771 5.7011 0.3239 32.9089 0.2508\nF 3.5392 2.6412 1.517 1.0243 10.2825 4.2944 0.2615 26.1476 0.2776\nNe 3.9553 3.1125 1.4546 1.1251 8.4042 3.4262 0.2306 21.7184 0.3515\nNa 4.7626 3.1736 1.2674 1.1128 3.285 8.8422 0.3136 129.424 0.676\nMg 5.4204 2.1735 1.2269 2.3073 2.8275 79.2611 0.3808 7.1937 0.8584\nAl 6.4202 1.9002 1.5936 1.9646 3.0387 0.7426 31.5472 85.0886 1.1151\nSi 6.2915 3.0353 1.9891 1.541 2.4386 32.3337 0.6785 81.6937 1.1407\nP 6.4345 4.1791 1.78 1.4908 1.9067 27.157 0.526 68.1645 1.1149\nS 6.9053 5.2034 1.4379 1.5863 1.4679 22.2151 0.2536 56.172 0.8669\nCl 11.4604 7.1964 6.2556 1.6455 0.0104 1.1662 18.5194 47.7784 -9.5574\nAr 7.4845 6.7723 0.6539 1.6442 0.9072 14.8407 43.8983 33.3929 1.4445\nK 8.2186 7.4398 1.0519 0.8659 12.7949 0.7748 213.187 41.6841 1.4228\nCa 8.6266 7.3873 1.5899 1.0211 10.4421 0.6599 85.7484 178.437 1.3751\nSc 9.189 7.3679 1.6409 1.468 9.0213 0.5729 136.108 51.3531 1.3329\nTi 9.7595 7.3558 1.6991 1.9021 7.8508 0.5 35.6338 116.105 1.2807\nV 10.2971 7.3511 2.0703 2.0571 6.8657 0.4385 26.8938 102.478 1.2199\nCr 10.6406 7.3537 3.324 1.4922 6.1038 0.392 20.2626 98.7399 1.1832\nMn 11.2819 7.3573 3.0193 2.2441 5.3409 0.3432 17.8674 83.7543 1.0896\nFe 11.7695 7.3573 3.5222 2.3045 4.7611 0.3072 15.3535 76.8805 1.0369\nCo 12.2841 7.3409 4.0034 2.3488 4.2791 0.2784 13.5359 71.1692 1.0118\nNi 12.8376 7.292 4.4438 2.38 3.8785 0.2565 12.1763 66.3421 1.0341\nCu 13.338 7.1676 5.6158 1.6735 3.5828 0.247 11.3966 64.8126 1.191\nZn 14.0743 7.0318 5.1652 2.41 3.2655 0.2333 10.3163 58.7097 1.3041\nGa 15.2354 6.7006 4.3591 2.9623 3.0669 0.2412 10.7805 61.4135 1.7189\nGe 16.0816 6.3747 3.7068 3.683 2.8509 0.2516 11.4468 54.7625 2.1313\nAs 16.6723 6.0701 3.4313 4.2779 2.6345 0.2647 12.9479 47.7972 2.531\nSe 17.0006 5.8196 3.9731 4.3543 2.4098 0.2726 15.2372 43.8163 2.8409\nBr 17.1789 5.2358 5.6377 3.9851 2.1723 16.5796 0.2609 41.4328 2.9557\nKr 17.3555 6.7286 5.5493 3.5375 1.9384 16.5623 0.2261 39.3972 2.825\nRb 17.1784 9.6435 5.1399 1.5292 1.7888 17.3151 0.2748 164.934 3.4873\nSr 17.5663 9.8184 5.422 2.6694 1.5564 14.0988 0.1664 132.376 2.5064\nY 17.776 10.2946 5.72629 3.26588 1.4029 12.8006 0.125599 104.354 1.91213\nZr 17.8765 10.948 5.41732 3.65721 1.27618 11.916 0.117622 87.6627 2.06929\nNb 17.6142 12.0144 4.04183 3.53346 1.18865 11.766 0.204785 69.7957 3.75591\nMo 3.7025 17.2356 12.8876 3.7429 0.2772 1.0958 11.004 61.6584 4.3875\nTc 19.1301 11.0948 4.64901 2.71263 0.864132 8.14487 21.5707 86.8472 5.40428\nRu 19.2674 12.9182 4.86337 1.56756 0.80852 8.43467 24.7997 94.2928 5.37874\nRh 19.2957 14.3501 4.73425 1.28918 0.751536 8.21758 25.8749 98.6062 5.328\nPd 19.3319 15.5017 5.29537 0.605844 0.698655 7.98929 25.2052 76.8986 5.26593\nAg 19.2808 16.6885 4.8045 1.0463 0.6446 7.4726 24.6605 99.8156 5.179\nCd 19.2214 17.6444 4.461 1.6029 0.5946 6.9089 24.7008 87.4825 5.0694\nIn 19.1624 18.5596 4.2948 2.0396 0.5476 6.3776 25.8499 92.8029 4.9391\nSn 19.1889 19.1005 4.4585 2.4663 5.8303 0.5031 26.8909 83.9571 4.7821\nSb 19.6418 19.0455 5.0371 2.6827 5.3034 0.4607 27.9074 75.2825 4.5909\nTe 19.9644 19.0138 6.14487 2.5239 4.81742 0.420885 28.5284 70.8403 4.352\nI 20.1472 18.9949 7.5138 2.2735 4.347 0.3814 27.766 66.8776 4.0712\nXe 20.2933 19.0298 8.9767 1.99 3.9282 0.344 26.4659 64.2658 3.7118\nCs 20.3892 19.1062 10.662 1.4953 3.569 0.3107 24.3879 213.904 3.3352\nBa 20.3361 19.297 10.888 2.6959 3.216 0.2756 20.2073 167.202 2.7731\nLa 20.578 19.599 11.3727 3.28719 2.94817 0.244475 18.7726 133.124 2.14678\nCe 21.1671 19.7695 11.8513 3.33049 2.81219 0.226836 17.6083 127.113 1.86264\nPr 22.044 19.6697 12.3856 2.82428 2.77393 0.222087 16.7669 143.644 2.0583\nNd 22.6845 19.6847 12.774 2.85137 2.66248 0.210628 15.885 137.903 1.98486\nPm 23.3405 19.6095 13.1235 2.87516 2.5627 0.202088 15.1009 132.721 2.02876\nSm 24.0042 19.4258 13.4396 2.89604 2.47274 0.196451 14.3996 128.007 2.20963\nEu 24.6274 19.0886 13.7603 2.9227 2.3879 0.1942 13.7546 123.174 2.5745\nGd 25.0709 19.0798 13.8518 3.54545 2.25341 0.181951 12.9331 101.398 2.4196\nTb 25.8976 18.2185 14.3167 2.95354 2.24256 0.196143 12.6648 115.362 3.58324\nDy 26.507 17.6383 14.5596 2.96577 2.1802 0.202172 12.1899 111.874 4.29728\nHo 26.9049 17.294 14.5583 3.63837 2.07051 0.19794 11.4407 92.6566 4.56796\nEr 27.6563 16.4285 14.9779 2.98233 2.07356 0.223545 11.3604 105.703 5.92046\nTm 28.1819 15.8851 15.1542 2.98706 2.02859 0.238849 10.9975 102.961 6.75621\nYb 28.6641 15.4345 15.3087 2.98963 1.9889 0.257119 10.6647 100.417 7.56672\nLu 28.9476 15.2208 15.1 3.71601 1.90182 9.98519 0.261033 84.3298 7.97628\nHf 29.144 15.1726 14.7586 4.30013 1.83262 9.5999 0.275116 72.029 8.58154\nTa 29.2024 15.2293 14.5135 4.76492 1.77333 9.37046 0.295977 63.3644 9.24354\nW 29.0818 15.43 14.4327 5.11982 1.72029 9.2259 0.321703 57.056 9.8875\nRe 28.7621 15.7189 14.5564 5.44174 1.67191 9.09227 0.3505 52.0861 10.472\nOs 28.1894 16.155 14.9305 5.67589 1.62903 8.97948 0.382661 48.1647 11.0005\nIr 27.3049 16.7296 15.6115 5.83377 1.59279 8.86553 0.417916 45.0011 11.4722\nPt 27.0059 17.7639 15.7131 5.7837 1.51293 8.81174 0.424593 38.6103 11.6883\nAu 16.8819 18.5913 25.5582 5.86 0.4611 8.6216 1.4826 36.3956 12.0658\nHg 20.6809 19.0417 21.6575 5.9676 0.545 8.4484 1.5729 38.3246 12.6089\nTl 27.5446 19.1584 15.538 5.52593 0.65515 8.70751 1.96347 45.8149 13.1746\nPb 31.0617 13.0637 18.442 5.9696 0.6902 2.3576 8.618 47.2579 13.4118\nBi 33.3689 12.951 16.5877 6.4692 0.704 2.9238 8.7937 48.0093 13.5782\nPo 34.6726 15.4733 13.1138 7.02588 0.700999 3.55078 9.55642 47.0045 13.677\nAt 35.3163 19.0211 9.49887 7.42518 0.68587 3.97458 11.3824 45.4715 13.7108\nRn 35.5631 21.2816 8.0037 7.4433 0.6631 4.0691 14.0422 44.2473 13.6905\nFr 35.9299 23.0547 12.1439 2.11253 0.646453 4.17619 23.1052 150.645 13.7247\nRa 35.763 22.9064 12.4739 3.21097 0.616341 3.87135 19.9887 142.325 13.6211\nAc 35.6597 23.1032 12.5977 4.08655 0.589092 3.65155 18.599 117.02 13.5266\nTh 35.5645 23.4219 12.7473 4.80703 0.563359 3.46204 17.8309 99.1722 13.4314\nPa 35.8847 23.2948 14.1891 4.17287 0.547751 3.41519 16.9235 105.251 13.4287\nU 36.0228 23.4128 14.9491 4.188 0.5293 3.3253 16.0927 100.613 13.3966\nNp 36.1874 23.5964 15.6402 4.1855 0.511929 3.25396 15.3622 97.4908 13.3573\nPu 36.5254 23.8083 16.7707 3.47947 0.499384 3.26371 14.9455 105.98 13.3812\nAm 36.6706 24.0992 17.3415 3.49331 0.483629 3.20647 14.3136 102.273 13.3592\nCm 36.6488 24.4096 17.399 4.21665 0.465154 3.08997 13.4346 88.4834 13.2887\nBk 36.7881 24.7736 17.8919 4.23284 0.451018 3.04619 12.8946 86.003 13.2754\nCf 36.9185 25.1995 18.3317 4.24391 0.437533 3.00775 12.4044 83.7881 13.2674".split("\n").map((e) => {
 	let [t, ...n] = e.trim().split(/\s+/);
 	if (n.length !== 9 || n.some((e) => !Number.isFinite(Number(e)))) throw Error(`Invalid internal Cromer-Mann coefficients for ${t}`);
 	return [t, n.map(Number)];
 }));
-function Kr(e) {
-	let t = Gr.get(e === "D" ? "H" : e);
+function fi(e) {
+	let t = di.get(e === "D" ? "H" : e);
 	return t ? [...t] : null;
 }
-function qr(e, t) {
+function pi(e, t) {
 	let n = e[8];
 	for (let r = 0; r < 4; r++) n += e[r] * Math.exp(-e[r + 4] * t);
 	return n;
 }
 //#endregion
 //#region src/lib/density/iam-structure-factors.js
-var Jr = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), Yr = [
+var mi = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf".split(" "), hi = [
 	"a1",
 	"a2",
 	"a3",
@@ -9049,15 +16280,15 @@ var Jr = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co
 	"b4",
 	"c"
 ];
-function Xr(e) {
+function gi(e) {
 	let t = String(e).trim().match(/^([A-Za-z]{1,2})/);
 	if (!t) return null;
 	if (t[1].toUpperCase() === "D") return "H";
 	let n = t[1][0].toUpperCase() + t[1].slice(1).toLowerCase();
-	return Jr.includes(n) ? n : null;
+	return mi.includes(n) ? n : null;
 }
-function Zr(e) {
-	let t = _r(e, ["_atom_type", "_atom_type_scat"]), n = K(t, ["_atom_type.symbol", "_atom_type_symbol"]), r = Yr.map((e) => K(t, [
+function _i(e) {
+	let t = Lr(e, ["_atom_type", "_atom_type_scat"]), n = K(t, ["_atom_type.symbol", "_atom_type_symbol"]), r = hi.map((e) => K(t, [
 		`_atom_type_scat.Cromer_Mann_${e}`,
 		`_atom_type_scat_Cromer_Mann_${e}`,
 		`_atom_type.scat_Cromer_Mann_${e}`
@@ -9068,14 +16299,14 @@ function Zr(e) {
 		if (t.every((e) => e !== null)) {
 			let r = String(n[e]);
 			i.set(r, t);
-			let a = Xr(r);
+			let a = gi(r);
 			a && !i.has(a) && i.set(a, t);
 		}
 	}
 	return i;
 }
-function Qr(e, t, n) {
-	let r = _r(e, t), i = K(r, n), a = K(r, [
+function vi(e, t, n) {
+	let r = Lr(e, t), i = K(r, n), a = K(r, [
 		"_atom_site_dispersion.real",
 		"_atom_site_dispersion_real",
 		"_atom_type_scat.dispersion_real",
@@ -9093,13 +16324,13 @@ function Qr(e, t, n) {
 	});
 	return s;
 }
-function $r(e, t, n) {
+function yi(e, t, n) {
 	let r = e.cromerMann?.[t] ?? e.cromerMann?.[n];
 	if (!Array.isArray(r) || r.length !== 9) return null;
 	let i = r.map(G);
 	return i.every((e) => e !== null) ? i : null;
 }
-function ei(e, t, n) {
+function bi(e, t, n) {
 	let r = e.dispersionValues?.[t] ?? e.dispersionValues?.[n];
 	return Array.isArray(r) ? {
 		real: G(r[0]),
@@ -9109,31 +16340,31 @@ function ei(e, t, n) {
 		imaginary: G(r.imaginary ?? r.fDoublePrime)
 	} : null;
 }
-function ti(e) {
+function xi(e) {
 	return e?.real !== null && e?.real !== void 0 && e?.imaginary !== null && e?.imaginary !== void 0;
 }
-function ni(e, t) {
+function Si(e, t) {
 	return {
 		real: e?.real ?? t?.real ?? null,
 		imaginary: e?.imaginary ?? t?.imaginary ?? null
 	};
 }
-function ri(e, t = 0, n = {}) {
-	let r, i, a, o = n.includeAnomalous !== !1, s = Pr(e, t, {
+function Ci(e, t = 0, n = {}) {
+	let r, i, a, o = n.includeAnomalous !== !1, s = ei(e, t, {
 		expectedCell: n.expectedCell,
 		wavelength: n.wavelength,
 		structureModel: n.structureModel,
 		resolveAtom({ atom: e, block: t, wavelength: s }) {
-			r ??= Zr(t), i ??= Qr(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]), a ??= Qr(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]);
-			let c = Xr(e.atomType), l = r.get(e.atomType) ?? r.get(c), u = $r(n, e.atomType, c), d = l ?? u ?? Kr(c);
+			r ??= _i(t), i ??= vi(t, ["_atom_type", "_atom_type_scat"], ["_atom_type.symbol", "_atom_type_symbol"]), a ??= vi(t, ["_atom_site_dispersion"], ["_atom_site_dispersion.label", "_atom_site_dispersion_label"]);
+			let c = gi(e.atomType), l = r.get(e.atomType) ?? r.get(c), u = yi(n, e.atomType, c), d = l ?? u ?? fi(c);
 			if (!d) throw Error(`No Cromer-Mann coefficients for atom ${e.label} (${e.atomType})`);
 			let f = {
 				real: 0,
 				imaginary: 0
 			}, p = "disabled";
 			if (o) {
-				let t = a.get(e.label), r = i.get(e.atomType) ?? i.get(c), o = ei(n, e.atomType, c), l = ni(t, ni(r, ni(o, zr(c, s, n.anomalous ?? {}))));
-				ti(l) ? (f = l, p = t ? "site-cif" : r ? "type-cif" : o ? "configured" : "internal") : p = "zero";
+				let t = a.get(e.label), r = i.get(e.atomType) ?? i.get(c), o = bi(n, e.atomType, c), l = Si(t, Si(r, Si(o, ai(c, s, n.anomalous ?? {}))));
+				xi(l) ? (f = l, p = t ? "site-cif" : r ? "type-cif" : o ? "configured" : "internal") : p = "zero";
 			}
 			return {
 				source: `${l ? "cif" : u ? "configured" : "internal"}/${p}`,
@@ -9145,7 +16376,7 @@ function ri(e, t = 0, n = {}) {
 				]),
 				scatteringAt(e) {
 					return {
-						real: qr(d, e) + f.real,
+						real: pi(d, e) + f.real,
 						imaginary: f.imaginary
 					};
 				}
@@ -9161,38 +16392,38 @@ function ri(e, t = 0, n = {}) {
 		}
 	};
 }
-function ii(e, t, n = {}) {
-	return ri(e, n.cifBlock ?? 0, n).calculate(t);
+function wi(e, t, n = {}) {
+	return Ci(e, n.cifBlock ?? 0, n).calculate(t);
 }
 //#endregion
 //#region src/lib/density/reciprocal-symmetry.js
-var ai = 2 * Math.PI, oi = /* @__PURE__ */ new WeakMap(), si = /* @__PURE__ */ new WeakMap();
-function ci(e, t, n = 1e-6) {
+var Ti = 2 * Math.PI, Ei = /* @__PURE__ */ new WeakMap(), Di = /* @__PURE__ */ new WeakMap();
+function Oi(e, t, n = 1e-6) {
 	return e.map((e) => {
 		let r = e[0] * t[0] + e[1] * t[1] + e[2] * t[2], i = Math.round(r);
 		if (Math.abs(r - i) > n) throw Error(`Symmetry operation produced a non-integral reflection index: ${r}`);
 		return Object.is(i, -0) ? 0 : i;
 	});
 }
-function li(e) {
-	let t = oi.get(e);
+function ki(e) {
+	let t = Ei.get(e);
 	return t || (t = e.symmetryOperations.map((e) => ({
 		operation: e,
-		reciprocalRotation: R(Ne(e.rotMatrix)),
+		reciprocalRotation: R(z(e.rotMatrix)),
 		positionReciprocalRotation: R(e.rotMatrix),
 		translation: e.transVector
-	})), oi.set(e, t)), t;
+	})), Ei.set(e, t)), t;
 }
-function ui(e, t = 1e-6) {
+function Ai(e, t = 1e-6) {
 	let n = Math.round(e);
 	if (Math.abs(e - n) > t) throw Error(`Symmetry operation contains a non-integral reciprocal rotation: ${e}`);
 	return Object.is(n, -0) ? 0 : n;
 }
-function di(e, t) {
+function ji(e, t) {
 	for (; t !== 0;) [e, t] = [t, e % t];
 	return e;
 }
-function fi(e, t = 1e-8, n = 192) {
+function Mi(e, t = 1e-8, n = 192) {
 	for (let r = 1; r <= n; r++) {
 		let n = Math.round(e * r);
 		if (Math.abs(e - n / r) <= t) return {
@@ -9202,11 +16433,11 @@ function fi(e, t = 1e-8, n = 192) {
 	}
 	return null;
 }
-function pi(e) {
+function Ni(e) {
 	let t = [], n = 1;
 	for (let r of e) for (let e of r.translation) {
-		let r = fi(e);
-		if (!r || (t.push(r), n = n * r.denominator / di(n, r.denominator), !Number.isSafeInteger(n) || n > 4096)) return null;
+		let r = Mi(e);
+		if (!r || (t.push(r), n = n * r.denominator / ji(n, r.denominator), !Number.isSafeInteger(n) || n > 4096)) return null;
 	}
 	let r = new Int32Array(t.length);
 	t.forEach((e, t) => {
@@ -9214,7 +16445,7 @@ function pi(e) {
 	});
 	let i = new Float64Array(n), a = new Float64Array(n);
 	for (let e = 0; e < n; e++) {
-		let t = ai * e / n;
+		let t = Ti * e / n;
 		i[e] = Math.cos(t), a[e] = Math.sin(t);
 	}
 	return {
@@ -9224,16 +16455,16 @@ function pi(e) {
 		rootImaginary: a
 	};
 }
-function mi(e) {
-	let t = si.get(e);
+function Pi(e) {
+	let t = Di.get(e);
 	if (t) return t;
-	let n = li(e), r = new Int32Array(n.length * 9), i = new Int32Array(n.length * 9), a = new Float64Array(n.length * 3);
+	let n = ki(e), r = new Int32Array(n.length * 9), i = new Int32Array(n.length * 9), a = new Float64Array(n.length * 3);
 	return n.forEach((e, t) => {
 		let n = t * 9, o = t * 3;
 		for (let t = 0; t < 3; t++) {
 			for (let a = 0; a < 3; a++) {
 				let o = n + t * 3 + a;
-				r[o] = ui(e.reciprocalRotation[t][a]), i[o] = ui(e.positionReciprocalRotation[t][a]);
+				r[o] = Ai(e.reciprocalRotation[t][a]), i[o] = Ai(e.positionReciprocalRotation[t][a]);
 			}
 			a[o + t] = e.translation[t];
 		}
@@ -9242,7 +16473,7 @@ function mi(e) {
 		reciprocalRotations: r,
 		positionReciprocalRotations: i,
 		translations: a,
-		absencePhases: pi(n),
+		absencePhases: Ni(n),
 		absenceScratch: {
 			h: new Int32Array(n.length),
 			k: new Int32Array(n.length),
@@ -9250,10 +16481,10 @@ function mi(e) {
 			real: new Float64Array(n.length),
 			imaginary: new Float64Array(n.length)
 		}
-	}, si.set(e, t), t;
+	}, Di.set(e, t), t;
 }
-function hi(e, t, n, r, i = !0) {
-	let a = mi(r), o = a.reciprocalRotations, s = Infinity, c = Infinity, l = Infinity;
+function Fi(e, t, n, r, i = !0) {
+	let a = Pi(r), o = a.reciprocalRotations, s = Infinity, c = Infinity, l = Infinity;
 	for (let r = 0; r < a.operationCount; r++) {
 		let a = r * 9, u = o[a] * e + o[a + 1] * t + o[a + 2] * n, d = o[a + 3] * e + o[a + 4] * t + o[a + 5] * n, f = o[a + 6] * e + o[a + 7] * t + o[a + 8] * n;
 		i && (u > 0 || u === 0 && (d > 0 || d === 0 && f > 0)) && (u = -u, d = -d, f = -f), (u < s || u === s && (d < c || d === c && f < l)) && (s = u, c = d, l = f);
@@ -9264,15 +16495,15 @@ function hi(e, t, n, r, i = !0) {
 		l === 0 ? 0 : l
 	];
 }
-function gi(e, t, n, r, i = 1e-8) {
+function Ii(e, t, n, r, i = 1e-8) {
 	if (e === 0 && t === 0 && n === 0) return !1;
 	let a = /* @__PURE__ */ new Map();
-	for (let i of li(r)) {
-		let r = ci(i.positionReciprocalRotation, [
+	for (let i of ki(r)) {
+		let r = Oi(i.positionReciprocalRotation, [
 			e,
 			t,
 			n
-		]).join(","), o = ai * (e * i.translation[0] + t * i.translation[1] + n * i.translation[2]), s = a.get(r) ?? {
+		]).join(","), o = Ti * (e * i.translation[0] + t * i.translation[1] + n * i.translation[2]), s = a.get(r) ?? {
 			real: 0,
 			imaginary: 0
 		};
@@ -9280,10 +16511,10 @@ function gi(e, t, n, r, i = 1e-8) {
 	}
 	return [...a.values()].every((e) => Math.hypot(e.real, e.imaginary) <= i);
 }
-function _i(e, t, n, r, i = 1e-8) {
+function Li(e, t, n, r, i = 1e-8) {
 	if (e === 0 && t === 0 && n === 0) return !1;
-	let a = mi(r), o = a.absencePhases;
-	if (!o) return gi(e, t, n, r, i);
+	let a = Pi(r), o = a.absencePhases;
+	if (!o) return Ii(e, t, n, r, i);
 	let s = a.positionReciprocalRotations, c = a.absenceScratch, l = 0;
 	for (let r = 0; r < a.operationCount; r++) {
 		let i = r * 9, a = r * 3, u = s[i] * e + s[i + 1] * t + s[i + 2] * n, d = s[i + 3] * e + s[i + 4] * t + s[i + 5] * n, f = s[i + 6] * e + s[i + 7] * t + s[i + 8] * n, p = 0;
@@ -9298,7 +16529,7 @@ function _i(e, t, n, r, i = 1e-8) {
 //#endregion
 //#region src/lib/density/reflection-intensities.js
 var q = () => performance.now();
-function vi() {
+function Ri() {
 	return {
 		reflectionSourceDiscoveryMs: 0,
 		reflectionSourceParseMs: 0,
@@ -9326,7 +16557,7 @@ function vi() {
 		shelxFallbackDecodeCount: 0
 	};
 }
-function yi(e, t, n, r, i, a, o, s) {
+function zi(e, t, n, r, i, a, o, s) {
 	return {
 		h: e,
 		k: t,
@@ -9339,7 +16570,7 @@ function yi(e, t, n, r, i, a, o, s) {
 		rawCount: s
 	};
 }
-function bi(e, t = !1) {
+function Bi(e, t = !1) {
 	let n = Array(e.count);
 	for (let r = 0; r < e.count; r++) n[r] = {
 		h: e.h[r],
@@ -9352,17 +16583,17 @@ function bi(e, t = !1) {
 	};
 	return n;
 }
-function xi(e, t) {
+function Vi(e, t) {
 	return [t, ...e.getAllBlocks().filter((e) => e !== t)];
 }
-function Si(e, t, n) {
+function Hi(e, t, n) {
 	return [
 		e,
 		t,
 		n
 	].every((e) => Number.isInteger(e));
 }
-function Ci(e, t, n, r, i = null) {
+function Ui(e, t, n, r, i = null) {
 	let a = [
 		e,
 		t,
@@ -9374,18 +16605,18 @@ function Ci(e, t, n, r, i = null) {
 	let o = [], s = [], c = [], l = [], u = [], d = [], f = 0;
 	for (let p = 0; p < a[0]; p++) {
 		let a = G(e[p]), m = G(t[p]), h = G(n[p]), g = G(r[p]), _ = i ? G(i[p]) : null;
-		if (!Si(a, m, h) || g === null || i && _ === null) {
+		if (!Hi(a, m, h) || g === null || i && _ === null) {
 			f++;
 			continue;
 		}
 		o.push(a), s.push(m), c.push(h), l.push(g), u.push(_ ?? NaN), d.push(p);
 	}
-	return yi(Int32Array.from(o), Int32Array.from(s), Int32Array.from(c), Float64Array.from(l), Float64Array.from(u), Uint32Array.from(d), f, a[0]);
+	return zi(Int32Array.from(o), Int32Array.from(s), Int32Array.from(c), Float64Array.from(l), Float64Array.from(u), Uint32Array.from(d), f, a[0]);
 }
-function wi(e) {
+function Wi(e) {
 	let t = K(e, ["_refln.index_h", "_refln_index_h"]), n = K(e, ["_refln.index_k", "_refln_index_k"]), r = K(e, ["_refln.index_l", "_refln_index_l"]), i = K(e, ["_refln.intensity_meas", "_refln_intensity_meas"]);
 	if (i) return {
-		...Ci(t, n, r, i, K(e, [
+		...Ui(t, n, r, i, K(e, [
 			"_refln.intensity_sigma",
 			"_refln_intensity_sigma",
 			"_refln.intensity_meas_su",
@@ -9395,7 +16626,7 @@ function wi(e) {
 	};
 	let a = K(e, ["_refln.F_squared_meas", "_refln_F_squared_meas"]);
 	if (a) return {
-		...Ci(t, n, r, a, K(e, [
+		...Ui(t, n, r, a, K(e, [
 			"_refln.F_squared_sigma",
 			"_refln_F_squared_sigma",
 			"_refln.F_squared_meas_su",
@@ -9407,7 +16638,7 @@ function wi(e) {
 	if (o) {
 		let i = K(e, ["_refln.F_sigma", "_refln_F_sigma"]);
 		return {
-			...Ci(t, n, r, o.map((e) => {
+			...Ui(t, n, r, o.map((e) => {
 				let t = G(e);
 				return t === null ? null : t ** 2;
 			}), i?.map((e, t) => {
@@ -9419,7 +16650,7 @@ function wi(e) {
 	}
 	throw Error("The _refln loop contains no measured intensity, F-squared, or F columns");
 }
-function Ti(e) {
+function Gi(e) {
 	let t = K(e, ["_diffrn_refln.index_h", "_diffrn_refln_index_h"]), n = K(e, ["_diffrn_refln.index_k", "_diffrn_refln_index_k"]), r = K(e, ["_diffrn_refln.index_l", "_diffrn_refln_index_l"]), i = K(e, [
 		"_diffrn_refln.intensity_net",
 		"_diffrn_refln_intensity_net",
@@ -9434,9 +16665,9 @@ function Ti(e) {
 		"_diffrn_refln_intensity_net_su"
 	]);
 	if (!i) throw Error("The _diffrn_refln loop contains no net measured intensity column");
-	return Ci(t, n, r, i, a);
+	return Ui(t, n, r, i, a);
 }
-function Ei(e, t = null) {
+function Ki(e, t = null) {
 	let n = [], r = [], i = [], a = [], o = [], s = [], c = 0, l = 0, u = String(e).split(/\r?\n/), d = t ? q() : 0;
 	for (let [e, d] of u.entries()) {
 		if (d.trim().length === 0) continue;
@@ -9448,11 +16679,11 @@ function Ei(e, t = null) {
 			d.slice(12, 20).trim(),
 			d.slice(20, 28).trim()
 		], [f, p, m, h, g] = u.map(Number);
-		if (!(d.length >= 28 && u.every(Boolean) && Si(f, p, m) && Number.isFinite(h) && Number.isFinite(g))) {
+		if (!(d.length >= 28 && u.every(Boolean) && Hi(f, p, m) && Number.isFinite(h) && Number.isFinite(g))) {
 			let e = d.trim().split(/\s+/);
 			[f, p, m, h, g] = e.slice(0, 5).map(G), t && t.shelxFallbackDecodeCount++;
 		}
-		if (!Si(f, p, m) || !Number.isFinite(h) || !Number.isFinite(g)) {
+		if (!Hi(f, p, m) || !Number.isFinite(h) || !Number.isFinite(g)) {
 			c++;
 			continue;
 		}
@@ -9462,14 +16693,14 @@ function Ei(e, t = null) {
 		}
 		n.push(f), r.push(p), i.push(m), a.push(h), o.push(g), s.push(e);
 	}
-	return t && (t.shelxFixedWidthDecodeMs += q() - d), yi(Int32Array.from(n), Int32Array.from(r), Int32Array.from(i), Float64Array.from(a), Float64Array.from(o), Uint32Array.from(s), c, l);
+	return t && (t.shelxFixedWidthDecodeMs += q() - d), zi(Int32Array.from(n), Int32Array.from(r), Int32Array.from(i), Float64Array.from(a), Float64Array.from(o), Uint32Array.from(s), c, l);
 }
-function Di(e) {
+function qi(e) {
 	e.parse();
 	let t = Object.keys(e.data).find((e) => /shelx.*hkl_file/i.test(e));
 	return t ? e.data[t] : null;
 }
-function Oi(e) {
+function Ji(e) {
 	let t = [];
 	for (let n of ["_iucr_refine_fcf_details"]) {
 		let r;
@@ -9480,14 +16711,14 @@ function Oi(e) {
 		}
 		if (!(typeof r != "string" || !r.includes("data_"))) try {
 			for (let e of new xe(r).getAllBlocks()) {
-				let n = _r(e, "_refln");
+				let n = Lr(e, "_refln");
 				n && t.push(n);
 			}
 		} catch {}
 	}
 	return t;
 }
-function ki(e, t) {
+function Yi(e, t) {
 	let n = t.differenceDensityInputMode ?? "auto";
 	if (n !== "auto") return n;
 	if (t.differenceDensityCoefficientColumns || [
@@ -9498,7 +16729,7 @@ function ki(e, t) {
 		"_cifvis_difference_density_a",
 		"_cifvis_difference_density_b"
 	].map((t) => e.get(t, !1)).every((e) => typeof e == "string" && e.length > 0)) return "fcf";
-	let r = _r(e, "_refln");
+	let r = Lr(e, "_refln");
 	if (!r) return "cif-iam";
 	let i = (e) => K(r, e, null) !== null, a = i(["_refln.phase_calc", "_refln_phase_calc"]), o = i([
 		"_refln.F_squared_meas",
@@ -9513,48 +16744,48 @@ function ki(e, t) {
 	]);
 	return a && o && s ? "fcf" : "cif-iam";
 }
-function Ai(e, t, n, r, i = 1e-8) {
-	return _i(e, t, n, r, i);
+function Xi(e, t, n, r, i = 1e-8) {
+	return Li(e, t, n, r, i);
 }
-function ji(e) {
+function Zi(e) {
 	let t = e.length, n = new Int32Array(t), r = new Int32Array(t), i = new Int32Array(t), a = new Float64Array(t), o = new Float64Array(t), s = new Uint32Array(t);
 	for (let c = 0; c < t; c++) {
 		let t = e[c];
 		n[c] = t.h, r[c] = t.k, i[c] = t.l, a[c] = t.intensity, o[c] = t.sigma === null || t.sigma === void 0 ? NaN : t.sigma, s[c] = t.sourceIndex ?? c;
 	}
-	return yi(n, r, i, a, o, s, 0, t);
+	return zi(n, r, i, a, o, s, 0, t);
 }
-function Mi(e, t, n, r, i, a) {
+function Qi(e, t, n, r, i, a) {
 	let o = r - n + 1, s = a - i + 1, c = (t - e + 1) * o * s;
 	return Number.isSafeInteger(c) ? (t, r, a) => ((t - e) * o + (r - n)) * s + (a - i) : (e, t, n) => `${e},${t},${n}`;
 }
-function Ni(e) {
+function $i(e) {
 	let t = Infinity, n = -Infinity, r = Infinity, i = -Infinity, a = Infinity, o = -Infinity;
 	for (let s = 0; s < e.count; s++) t = Math.min(t, e.h[s]), n = Math.max(n, e.h[s]), r = Math.min(r, e.k[s]), i = Math.max(i, e.k[s]), a = Math.min(a, e.l[s]), o = Math.max(o, e.l[s]);
-	return e.count === 0 ? () => 0 : Mi(t, n, r, i, a, o);
+	return e.count === 0 ? () => 0 : Qi(t, n, r, i, a, o);
 }
-function Pi(e, t) {
+function ea(e, t) {
 	return e.h - t.h || e.k - t.k || e.l - t.l;
 }
-function Fi(e, t, n = {}) {
-	let r = n.debug === !0, i = r ? n.diagnostics ?? vi() : null, a = e?.h instanceof Int32Array ? e : ji(e), o = n.mergeFriedel !== !1, s = n.removeSystematicAbsences !== !1, c = a.count, l = Ni(a), u = new Uint8Array(c), d = /* @__PURE__ */ new Map(), f = 0, p = r ? q() : 0, m = mi(t);
+function ta(e, t, n = {}) {
+	let r = n.debug === !0, i = r ? n.diagnostics ?? Ri() : null, a = e?.h instanceof Int32Array ? e : Zi(e), o = n.mergeFriedel !== !1, s = n.removeSystematicAbsences !== !1, c = a.count, l = $i(a), u = new Uint8Array(c), d = /* @__PURE__ */ new Map(), f = 0, p = r ? q() : 0, m = Pi(t);
 	r && (i.reflectionSymmetrySetupMs += q() - p, i.symmetryOperationCount = m.operationCount);
 	let h = r ? q() : 0;
 	for (let e = 0; e < c; e++) {
 		let o = a.h[e], c = a.k[e], p = a.l[e], m = l(o, c, p), h = d.get(m);
-		h === void 0 ? (h = s && Ai(o, c, p, t, n.absenceTolerance), d.set(m, h), r && i.absenceCacheMissCount++) : r && i.absenceCacheHitCount++, h && (u[e] = 1, f++);
+		h === void 0 ? (h = s && Xi(o, c, p, t, n.absenceTolerance), d.set(m, h), r && i.absenceCacheMissCount++) : r && i.absenceCacheHitCount++, h && (u[e] = 1, f++);
 	}
 	r && (i.reflectionAbsenceMs += q() - h);
 	let g = new Int32Array(c), _ = new Int32Array(c), v = new Int32Array(c), y = /* @__PURE__ */ new Map(), b = Infinity, x = -Infinity, S = Infinity, C = -Infinity, w = Infinity, T = -Infinity, E = r ? q() : 0;
 	for (let e = 0; e < c; e++) {
 		if (u[e]) continue;
 		let n = a.h[e], s = a.k[e], c = a.l[e], d = l(n, s, c), f = y.get(d);
-		f === void 0 ? (f = hi(n, s, c, t, o), y.set(d, f), r && i.canonicalCacheMissCount++) : r && i.canonicalCacheHitCount++;
+		f === void 0 ? (f = Fi(n, s, c, t, o), y.set(d, f), r && i.canonicalCacheMissCount++) : r && i.canonicalCacheHitCount++;
 		let [p, m, h] = f;
 		g[e] = p, _[e] = m, v[e] = h, b = Math.min(b, p), x = Math.max(x, p), S = Math.min(S, m), C = Math.max(C, m), w = Math.min(w, h), T = Math.max(T, h);
 	}
 	r && (i.reflectionCanonicalizationMs += q() - E);
-	let D = y.size === 0 ? () => 0 : Mi(b, x, S, C, w, T), O = /* @__PURE__ */ new Map(), k = r ? q() : 0;
+	let D = y.size === 0 ? () => 0 : Qi(b, x, S, C, w, T), O = /* @__PURE__ */ new Map(), k = r ? q() : 0;
 	for (let e = 0; e < c; e++) {
 		if (u[e]) continue;
 		let t = g[e], n = _[e], r = v[e], i = D(t, n, r), o = O.get(i);
@@ -9589,20 +16820,20 @@ function Fi(e, t, n = {}) {
 	};
 	r && (i.reflectionMergeFinalizationMs += q() - A);
 	let N = r ? q() : 0;
-	return j.sort(Pi), r && (i.reflectionMergeSortMs += q() - N, i.distinctInputHklCount = d.size, i.systematicAbsenceCount = f, i.mergedReflectionCount = j.length), {
+	return j.sort(ea), r && (i.reflectionMergeSortMs += q() - N, i.distinctInputHklCount = d.size, i.systematicAbsenceCount = f, i.mergedReflectionCount = j.length), {
 		reflections: j,
 		systematicAbsenceCount: f,
 		...r ? { diagnostics: i } : {}
 	};
 }
-function Ii(e, t, n = {}) {
-	return Fi(e, t, n);
+function na(e, t, n = {}) {
+	return ta(e, t, n);
 }
-function Li(e, t = 0, n = {}) {
-	let r = n.debug === !0, i = r ? q() : 0, a = r ? vi() : null, o = r ? q() : 0, s = new xe(e), c = typeof t == "number" ? s.getBlock(t) : s.getBlockByName(t), l = xi(s, c), u = n.resolveDifferenceDensityInputMode === !0 ? ki(c, n) : null;
+function ra(e, t = 0, n = {}) {
+	let r = n.debug === !0, i = r ? q() : 0, a = r ? Ri() : null, o = r ? q() : 0, s = new xe(e), c = typeof t == "number" ? s.getBlock(t) : s.getBlockByName(t), l = Vi(s, c), u = n.resolveDifferenceDensityInputMode === !0 ? Yi(c, n) : null;
 	r && (a.reflectionSourceParseMs += q() - o);
 	let d = n.source ?? "auto", f = (e) => d === "auto" || d === e, p = (e, t) => {
-		let n = bi(t, !0);
+		let n = Bi(t, !0);
 		return r && (a.rawReflectionCount = t.rawCount, a.validReflectionCount = t.count, a.invalidReflectionCount = t.invalidCount, a.distinctInputHklCount = new Set(n.map((e) => `${e.h},${e.k},${e.l}`)).size, a.mergedReflectionCount = n.length, a.reflectionPreparationTotalMs = q() - i), {
 			reflections: n,
 			metadata: {
@@ -9620,7 +16851,7 @@ function Li(e, t = 0, n = {}) {
 		};
 	}, m = r ? q() : 0;
 	if (f("refln")) {
-		let e = l.map((e) => _r(e, "_refln")).filter(Boolean).map((e) => ({
+		let e = l.map((e) => Lr(e, "_refln")).filter(Boolean).map((e) => ({
 			loop: e,
 			source: "refln"
 		}));
@@ -9630,13 +16861,13 @@ function Li(e, t = 0, n = {}) {
 			let i = e;
 			if (n === 1) {
 				let e = r ? q() : 0;
-				i = l.flatMap(Oi).map((e) => ({
+				i = l.flatMap(Ji).map((e) => ({
 					loop: e,
 					source: "embedded-refln"
 				})), r && (a.reflectionSourceDiscoveryMs += q() - e);
 			}
 			for (let e of i) try {
-				let t = r ? q() : 0, n = wi(e.loop);
+				let t = r ? q() : 0, n = Wi(e.loop);
 				return r && (a.reflectionRowDecodeMs += q() - t), p(e, n);
 			} catch (e) {
 				if (!e.message.includes("contains no measured")) throw e;
@@ -9647,23 +16878,23 @@ function Li(e, t = 0, n = {}) {
 	} else r && (a.reflectionSourceDiscoveryMs += q() - m);
 	let h, g, _ = r ? q() : 0;
 	if (f("diffrn_refln")) {
-		let e = l.map((e) => _r(e, "_diffrn_refln")).find(Boolean);
+		let e = l.map((e) => Lr(e, "_diffrn_refln")).find(Boolean);
 		if (e) {
 			let t = r ? q() : 0;
-			h = Ti(e), r && (a.reflectionRowDecodeMs += q() - t), g = "diffrn_refln";
+			h = Gi(e), r && (a.reflectionRowDecodeMs += q() - t), g = "diffrn_refln";
 		}
 	}
 	if (!h && f("shelx_hkl_file")) {
-		let e = r ? q() : 0, t = l.map(Di).find((e) => typeof e == "string");
+		let e = r ? q() : 0, t = l.map(qi).find((e) => typeof e == "string");
 		if (r && (a.shelxContainerExtractionMs += q() - e), t) {
 			let e = r ? q() : 0;
-			h = Ei(t, a), r && (a.reflectionRowDecodeMs += q() - e), g = "shelx_hkl_file";
+			h = Ki(t, a), r && (a.reflectionRowDecodeMs += q() - e), g = "shelx_hkl_file";
 		}
 	}
 	if (r && (a.reflectionSourceDiscoveryMs += q() - _), !h) throw Error(`No usable reflection intensities found for source "${d}"`);
-	let v = r ? q() : 0, y = Nt.fromCIF(c);
+	let v = r ? q() : 0, y = Pt.fromCIF(c);
 	r && (a.reflectionSymmetrySetupMs += q() - v);
-	let b = Ii(h, y, {
+	let b = na(h, y, {
 		...n,
 		...r ? { diagnostics: a } : {}
 	});
@@ -9685,14 +16916,14 @@ function Li(e, t = 0, n = {}) {
 }
 //#endregion
 //#region src/lib/density/extinction-correction.js
-function Ri(e, t, n, r) {
+function ia(e, t, n, r) {
 	if (!(e > 0) || !(t > 0) || n === 0) return 1;
 	let i = r * t / 2;
 	if (!(i > 0 && i < 1)) throw Error(`Cannot apply SHELXL extinction at sin(theta)=${i}; check the radiation wavelength and reflection indices`);
 	let a = 2 * i * Math.sqrt(1 - i ** 2);
 	return (1 + .001 * n * e * r ** 3 / a) ** -.25;
 }
-function zi(e, t, n, r, i, a = !0) {
+function aa(e, t, n, r, i, a = !0) {
 	let o = (e, t = {}) => ({
 		factors: Array(r.length).fill(1),
 		metadata: {
@@ -9704,14 +16935,14 @@ function zi(e, t, n, r, i, a = !0) {
 	});
 	if (a === !1) return o("disabled");
 	if (a !== !0 && typeof a != "number" && (typeof a != "object" || !a || Array.isArray(a))) throw Error("extinctionCorrection must be true, false, a coefficient, or an object");
-	let s = G(typeof a == "number" ? a : a?.coefficient), c = vr(e, ["_refine_ls.extinction_coef", "_refine_ls_extinction_coef"]), l = s ?? c, u = s === null ? "cif" : "configured";
+	let s = G(typeof a == "number" ? a : a?.coefficient), c = Rr(e, ["_refine_ls.extinction_coef", "_refine_ls_extinction_coef"]), l = s ?? c, u = s === null ? "cif" : "configured";
 	if (l === null) return o("not-reported");
 	if (l < 0) throw Error("SHELXL extinction coefficient must not be negative");
 	if (l === 0) return o("zero-coefficient", {
 		coefficient: l,
 		source: u
 	});
-	let d = yr(e, ["_refine_ls.extinction_method", "_refine_ls_extinction_method"]), f = yr(e, ["_refine_ls.extinction_expression", "_refine_ls_extinction_expression"]);
+	let d = zr(e, ["_refine_ls.extinction_method", "_refine_ls_extinction_method"]), f = zr(e, ["_refine_ls.extinction_expression", "_refine_ls_extinction_expression"]);
 	if (!(/shelxl/i.test(d ?? "") || /0\.001/i.test(f ?? "") && /sin\s*\(?\s*2/i.test(f ?? "")) && s === null) return o("unsupported-model", {
 		coefficient: l,
 		source: u,
@@ -9722,13 +16953,13 @@ function zi(e, t, n, r, i, a = !0) {
 	if (!(p > 0)) throw Error("SHELXL extinction correction requires a positive radiation wavelength");
 	let m = i.fSquared?.length ?? i.length;
 	if (r.length !== m) throw Error("Extinction correction requires matching observed and calculated reflections");
-	let h = R(Ne(t.fractToCartMatrix)), g = r.map((e, t) => {
-		let n = Fe(L(h, [
+	let h = R(z(t.fractToCartMatrix)), g = r.map((e, t) => {
+		let n = Pe(L(h, [
 			e.h,
 			e.k,
 			e.l
 		]));
-		return Ri(i.fSquared?.[t] ?? i[t].amplitude ** 2, n, l, p);
+		return ia(i.fSquared?.[t] ?? i[t].amplitude ** 2, n, l, p);
 	}), _ = g.reduce((e, t) => Math.min(e, t), 1);
 	return {
 		factors: g,
@@ -9748,16 +16979,16 @@ function zi(e, t, n, r, i, a = !0) {
 }
 //#endregion
 //#region src/lib/density/scalar-field.js
-function Bi(e, t) {
+function oa(e, t) {
 	return (e % t + t) % t;
 }
-function Vi(e, t, n, r, i) {
+function sa(e, t, n, r, i) {
 	let a = t - e, o = n - t, s = r - n;
 	if (o === 0) return t;
 	let c = a * o <= 0 ? 0 : 2 * a * o / (a + o), l = o * s <= 0 ? 0 : 2 * o * s / (o + s), u = i * i, d = u * i;
 	return (2 * d - 3 * u + 1) * t + (d - 2 * u + i) * c + (-2 * d + 3 * u) * n + (d - u) * l;
 }
-var Hi = class e {
+var ca = class e {
 	constructor(e, t, n, r = {}) {
 		this.cell = e, this.dimensions = t, this.values = n, Object.assign(this, r);
 	}
@@ -9778,12 +17009,12 @@ var Hi = class e {
 		};
 	}
 	static fromPayload(t) {
-		let n = new Wt(t.cell.a, t.cell.b, t.cell.c, t.cell.alpha, t.cell.beta, t.cell.gamma), { cell: r, dimensions: i, values: a, ...o } = t;
+		let n = new Kt(t.cell.a, t.cell.b, t.cell.c, t.cell.alpha, t.cell.beta, t.cell.gamma), { cell: r, dimensions: i, values: a, ...o } = t;
 		return new e(n, i, a, o);
 	}
 	valueAtIndex(e, t, n) {
 		let [r, i, a] = this.dimensions;
-		return this.values[(Bi(n, a) * i + Bi(t, i)) * r + Bi(e, r)];
+		return this.values[(oa(n, a) * i + oa(t, i)) * r + oa(e, r)];
 	}
 	sample(e, t, n) {
 		let [r, i, a] = this.dimensions, o = this.originFractional ?? [
@@ -9797,7 +17028,7 @@ var Hi = class e {
 		], c = this.boundaryMode !== "zero";
 		if (!c && s.some((e, t) => e < 0 || e > this.dimensions[t] - 1)) return 0;
 		let l = s.map(Math.floor), u = s.map((e, t) => !c && l[t] >= this.dimensions[t] - 1 ? (l[t] = this.dimensions[t] - 1, 0) : e - l[t]), d = (e, t, n) => {
-			let o = c ? Bi(e, r) : Math.min(r - 1, e), s = c ? Bi(t, i) : Math.min(i - 1, t), l = c ? Bi(n, a) : Math.min(a - 1, n);
+			let o = c ? oa(e, r) : Math.min(r - 1, e), s = c ? oa(t, i) : Math.min(i - 1, t), l = c ? oa(n, a) : Math.min(a - 1, n);
 			return this.valueAtIndex(o, s, l);
 		}, f = (e, t, n) => e + (t - e) * n, p = f(d(l[0], l[1], l[2]), d(l[0] + 1, l[1], l[2]), u[0]), m = f(d(l[0], l[1] + 1, l[2]), d(l[0] + 1, l[1] + 1, l[2]), u[0]), h = f(d(l[0], l[1], l[2] + 1), d(l[0] + 1, l[1], l[2] + 1), u[0]), g = f(d(l[0], l[1] + 1, l[2] + 1), d(l[0] + 1, l[1] + 1, l[2] + 1), u[0]);
 		return f(f(p, m, u[1]), f(h, g, u[1]), u[2]);
@@ -9809,20 +17040,20 @@ var Hi = class e {
 			0
 		], s = (e - o[0]) * r, c = (t - o[1]) * i, l = (n - o[2]) * a, u = this.boundaryMode !== "zero";
 		if (!u && (s < 0 || s > r - 1 || c < 0 || c > i - 1 || l < 0 || l > a - 1)) return 0;
-		let d = u ? Math.floor(s) : Math.min(Math.floor(s), r - 1), f = u ? Math.floor(c) : Math.min(Math.floor(c), i - 1), p = u ? Math.floor(l) : Math.min(Math.floor(l), a - 1), m = d === r - 1 && !u ? 0 : s - d, h = f === i - 1 && !u ? 0 : c - f, g = p === a - 1 && !u ? 0 : l - p, _ = (e, t) => u ? Bi(e, t) : e < 0 || e >= t ? -1 : e, v = _(d - 1, r), y = _(d, r), b = _(d + 1, r), x = _(d + 2, r), S = _(f - 1, i), C = _(f, i), w = _(f + 1, i), T = _(f + 2, i), E = _(p - 1, a), D = _(p, a), O = _(p + 1, a), k = _(p + 2, a), A = (e, t) => e < 0 || t < 0 ? 0 : Vi(v < 0 ? 0 : this.valueAtIndex(v, e, t), y < 0 ? 0 : this.valueAtIndex(y, e, t), b < 0 ? 0 : this.valueAtIndex(b, e, t), x < 0 ? 0 : this.valueAtIndex(x, e, t), m), j = (e) => Vi(A(S, e), A(C, e), A(w, e), A(T, e), h);
-		return Vi(j(E), j(D), j(O), j(k), g);
+		let d = u ? Math.floor(s) : Math.min(Math.floor(s), r - 1), f = u ? Math.floor(c) : Math.min(Math.floor(c), i - 1), p = u ? Math.floor(l) : Math.min(Math.floor(l), a - 1), m = d === r - 1 && !u ? 0 : s - d, h = f === i - 1 && !u ? 0 : c - f, g = p === a - 1 && !u ? 0 : l - p, _ = (e, t) => u ? oa(e, t) : e < 0 || e >= t ? -1 : e, v = _(d - 1, r), y = _(d, r), b = _(d + 1, r), x = _(d + 2, r), S = _(f - 1, i), C = _(f, i), w = _(f + 1, i), T = _(f + 2, i), E = _(p - 1, a), D = _(p, a), O = _(p + 1, a), k = _(p + 2, a), A = (e, t) => e < 0 || t < 0 ? 0 : sa(v < 0 ? 0 : this.valueAtIndex(v, e, t), y < 0 ? 0 : this.valueAtIndex(y, e, t), b < 0 ? 0 : this.valueAtIndex(b, e, t), x < 0 ? 0 : this.valueAtIndex(x, e, t), m), j = (e) => sa(A(S, e), A(C, e), A(w, e), A(T, e), h);
+		return sa(j(E), j(D), j(O), j(k), g);
 	}
-}, Ui = [
+}, la = [
 	0,
 	1,
 	2
 ];
-function Wi(e) {
+function ua(e) {
 	let t = 1;
 	for (; t < e;) t *= 2;
 	return Math.max(2, t);
 }
-function Gi(e) {
+function da(e) {
 	let t = Math.max(1, Math.round(e));
 	for (let e of [
 		2,
@@ -9831,32 +17062,32 @@ function Gi(e) {
 	]) for (; t % e === 0;) t /= e;
 	return t === 1;
 }
-function Ki(e, t = 1) {
+function fa(e, t = 1) {
 	let n = Math.max(2, Math.ceil(e)), r = Math.max(1, Math.round(t));
-	for (let e = n;; e++) if (e % r === 0 && Gi(e)) return e;
+	for (let e = n;; e++) if (e % r === 0 && da(e)) return e;
 }
-function qi(e, t) {
+function pa(e, t) {
 	let n = Math.abs(Math.round(e)), r = Math.abs(Math.round(t));
 	for (; r;) [n, r] = [r, n % r];
 	return n;
 }
-function Ji(e, t) {
-	return Math.abs(e * t) / Math.max(1, qi(e, t));
+function ma(e, t) {
+	return Math.abs(e * t) / Math.max(1, pa(e, t));
 }
-function Yi(e, t = 1e-6, n = 12) {
+function ha(e, t = 1e-6, n = 12) {
 	let r = (Number(e) % 1 + 1) % 1;
 	if (r < t || Math.abs(r - 1) < t) return 1;
 	for (let e = 2; e <= n; e++) if (Math.abs(r * e - Math.round(r * e)) <= t) return e;
 	return null;
 }
-function Xi(e, t, n) {
+function ga(e, t, n) {
 	let r = (t) => {
 		for (; e[t] !== t;) e[t] = e[e[t]], t = e[t];
 		return t;
 	}, i = r(t), a = r(n);
 	i !== a && (e[a] = i);
 }
-function Zi(e, t = []) {
+function _a(e, t = []) {
 	let n = e.map((e) => Math.max(2, Math.ceil(e))), r = [
 		1,
 		1,
@@ -9872,21 +17103,21 @@ function Zi(e, t = []) {
 			0,
 			0
 		];
-		if (!(!Array.isArray(t) || t.length !== 3)) for (let e of Ui) {
-			for (let n of Ui) {
+		if (!(!Array.isArray(t) || t.length !== 3)) for (let e of la) {
+			for (let n of la) {
 				let r = Number(t[e]?.[n]);
 				if (!Number.isFinite(r) || Math.abs(r - Math.round(r)) > 1e-6) {
 					o = !1, a.push("non-integral-symmetry-rotation");
 					continue;
 				}
-				e !== n && Math.round(r) !== 0 && Xi(i, e, n);
+				e !== n && Math.round(r) !== 0 && ga(i, e, n);
 			}
-			let s = Yi(n[e]);
-			s === null || !Gi(s) ? (o = !1, a.push("non-crystallographic-translation")) : r[e] = Ji(r[e], s);
+			let s = ha(n[e]);
+			s === null || !da(s) ? (o = !1, a.push("non-crystallographic-translation")) : r[e] = ma(r[e], s);
 		}
 	}
 	if (!o) return {
-		dimensions: n.map((e) => Ki(e)),
+		dimensions: n.map((e) => fa(e)),
 		symmetryCompatible: !1,
 		fallbackReason: [...new Set(a)].join(",")
 	};
@@ -9894,13 +17125,13 @@ function Zi(e, t = []) {
 		for (; i[e] !== e;) e = i[e];
 		return e;
 	};
-	for (let e of Ui) {
+	for (let e of la) {
 		let t = c(e), n = s.get(t) ?? [];
 		n.push(e), s.set(t, n);
 	}
 	let l = [...n];
 	for (let e of s.values()) {
-		let t = Ki(Math.max(...e.map((e) => n[e])), e.reduce((e, t) => Ji(e, r[t]), 1));
+		let t = fa(Math.max(...e.map((e) => n[e])), e.reduce((e, t) => ma(e, r[t]), 1));
 		e.forEach((e) => {
 			l[e] = t;
 		});
@@ -9911,7 +17142,7 @@ function Zi(e, t = []) {
 		fallbackReason: null
 	};
 }
-function Qi(e, t = 1, n = {}) {
+function va(e, t = 1, n = {}) {
 	let r = [
 		0,
 		0,
@@ -9920,28 +17151,28 @@ function Qi(e, t = 1, n = {}) {
 	for (let { h: t, k: n, l: i } of e.values()) r[0] = Math.max(r[0], Math.abs(t)), r[1] = Math.max(r[1], Math.abs(n)), r[2] = Math.max(r[2], Math.abs(i));
 	let i = Math.max(1, Number(t) || 1);
 	if (n.backend === "radix-2") return {
-		dimensions: r.map((e) => Wi(Wi(2 * e + 1) * i)),
+		dimensions: r.map((e) => ua(ua(2 * e + 1) * i)),
 		maxima: r,
 		symmetryCompatible: !1,
 		fallbackReason: "legacy-radix-2-grid"
 	};
 	let a = r.map((e) => Math.ceil(i * (2 * e + 1)));
 	return {
-		...Zi(a, n.symmetryOperations),
+		..._a(a, n.symmetryOperations),
 		maxima: r,
 		minimumDimensions: a
 	};
 }
 //#endregion
 //#region src/lib/density/fft.js
-var $i = /* @__PURE__ */ new Map(), ea = /* @__PURE__ */ new Map(), ta = Math.sqrt(3) / 2, na = (Math.sqrt(5) - 1) / 4, ra = -(Math.sqrt(5) + 1) / 4, ia = Math.sin(2 * Math.PI / 5), aa = Math.sin(Math.PI / 5);
-function oa() {
+var ya = /* @__PURE__ */ new Map(), ba = /* @__PURE__ */ new Map(), xa = Math.sqrt(3) / 2, Sa = (Math.sqrt(5) - 1) / 4, Ca = -(Math.sqrt(5) + 1) / 4, wa = Math.sin(2 * Math.PI / 5), Ta = Math.sin(Math.PI / 5);
+function Ea() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function sa(e) {
+function Da(e) {
 	return Number.isInteger(e) && e > 0 && (e & e - 1) == 0;
 }
-function ca(e) {
+function Oa(e) {
 	let t = e, n = {
 		2: 0,
 		3: 0,
@@ -9957,7 +17188,7 @@ function ca(e) {
 		remaining: t
 	};
 }
-function la(e) {
+function ka(e) {
 	for (let t of [
 		2,
 		3,
@@ -9965,19 +17196,19 @@ function la(e) {
 	]) if (e % t === 0) return t;
 	return e;
 }
-function ua(e, t, n, r, i, a, o, s, c, l, u, d, f) {
+function Aa(e, t, n, r, i, a, o, s, c, l, u, d, f) {
 	if (i === 1) {
 		a[s] = e[n], o[s] = t[n];
 		return;
 	}
-	let p = la(i);
+	let p = ka(i);
 	if (p === i && ![
 		2,
 		3,
 		5
 	].includes(p)) throw Error(`Mixed-radix FFT length contains an unsupported factor: ${i}`);
 	let m = i / p;
-	for (let i = 0; i < p; i++) ua(e, t, n + i * r, r * p, m, a, o, s + i * m, c, l, u + i * m, d, f);
+	for (let i = 0; i < p; i++) Aa(e, t, n + i * r, r * p, m, a, o, s + i * m, c, l, u + i * m, d, f);
 	let h = f.get(i);
 	for (let e = 0; e < m; e++) {
 		let t = s + e, n = a[t], r = o[t], i = s + m + e, f = d < 0 ? h.imaginary[m + e] : -h.imaginary[m + e], g = a[i] * h.real[m + e] - o[i] * f, _ = a[i] * f + o[i] * h.real[m + e];
@@ -9987,16 +17218,16 @@ function ua(e, t, n, r, i, a, o, s, c, l, u, d, f) {
 		}
 		let v = s + 2 * m + e, y = d < 0 ? h.imaginary[2 * m + e] : -h.imaginary[2 * m + e], b = a[v] * h.real[2 * m + e] - o[v] * y, x = a[v] * y + o[v] * h.real[2 * m + e];
 		if (p === 3) {
-			let t = d < 0 ? ta : -ta, i = n - .5 * (g + b), a = r - .5 * (_ + x), o = t * (_ - x), s = t * (b - g);
+			let t = d < 0 ? xa : -xa, i = n - .5 * (g + b), a = r - .5 * (_ + x), o = t * (_ - x), s = t * (b - g);
 			c[u + e] = n + g + b, l[u + e] = r + _ + x, c[u + m + e] = i + o, l[u + m + e] = a + s, c[u + 2 * m + e] = i - o, l[u + 2 * m + e] = a - s;
 			continue;
 		}
-		let S = s + 3 * m + e, C = d < 0 ? h.imaginary[3 * m + e] : -h.imaginary[3 * m + e], w = a[S] * h.real[3 * m + e] - o[S] * C, T = a[S] * C + o[S] * h.real[3 * m + e], E = s + 4 * m + e, D = d < 0 ? h.imaginary[4 * m + e] : -h.imaginary[4 * m + e], O = a[E] * h.real[4 * m + e] - o[E] * D, k = a[E] * D + o[E] * h.real[4 * m + e], A = g + O, j = _ + k, M = b + w, N = x + T, P = g - O, ee = _ - k, te = b - w, ne = x - T, re = d < 0 ? ia : -ia, F = d < 0 ? aa : -aa, ie = n + na * A + ra * M, ae = r + na * j + ra * N, oe = re * ee + F * ne, se = -re * P - F * te, ce = n + ra * A + na * M, le = r + ra * j + na * N, ue = F * ee - re * ne, de = -F * P + re * te;
+		let S = s + 3 * m + e, C = d < 0 ? h.imaginary[3 * m + e] : -h.imaginary[3 * m + e], w = a[S] * h.real[3 * m + e] - o[S] * C, T = a[S] * C + o[S] * h.real[3 * m + e], E = s + 4 * m + e, D = d < 0 ? h.imaginary[4 * m + e] : -h.imaginary[4 * m + e], O = a[E] * h.real[4 * m + e] - o[E] * D, k = a[E] * D + o[E] * h.real[4 * m + e], A = g + O, j = _ + k, M = b + w, N = x + T, P = g - O, ee = _ - k, te = b - w, ne = x - T, re = d < 0 ? wa : -wa, F = d < 0 ? Ta : -Ta, ie = n + Sa * A + Ca * M, ae = r + Sa * j + Ca * N, oe = re * ee + F * ne, se = -re * P - F * te, ce = n + Ca * A + Sa * M, le = r + Ca * j + Sa * N, ue = F * ee - re * ne, de = -F * P + re * te;
 		c[u + e] = n + A + M, l[u + e] = r + j + N, c[u + m + e] = ie + oe, l[u + m + e] = ae + se, c[u + 2 * m + e] = ce + ue, l[u + 2 * m + e] = le + de, c[u + 3 * m + e] = ce - ue, l[u + 3 * m + e] = le - de, c[u + 4 * m + e] = ie - oe, l[u + 4 * m + e] = ae - se;
 	}
 	for (let e = 0; e < i; e++) a[s + e] = c[u + e], o[s + e] = l[u + e];
 }
-function da(e) {
+function ja(e) {
 	let t = e;
 	for (let e of [
 		2,
@@ -10006,7 +17237,7 @@ function da(e) {
 	if (t !== 1 || e < 2) throw Error(`Mixed-radix FFT length must be a 2/3/5-smooth integer: ${e}`);
 	let n = /* @__PURE__ */ new Map();
 	for (let t = e; t > 1;) {
-		let e = la(t), r = t / e, i = new Float64Array(e * r), a = new Float64Array(e * r);
+		let e = ka(t), r = t / e, i = new Float64Array(e * r), a = new Float64Array(e * r);
 		for (let n = 0; n < e; n++) for (let e = 0; e < r; e++) {
 			let o = -2 * Math.PI * n * e / t;
 			i[n * r + e] = Math.cos(o), a[n * r + e] = Math.sin(o);
@@ -10025,8 +17256,8 @@ function da(e) {
 		twiddleTables: n
 	};
 }
-function fa(e) {
-	if (!sa(e) || e < 2) throw Error(`Radix-2 FFT length must be a power of two: ${e}`);
+function Ma(e) {
+	if (!Da(e) || e < 2) throw Error(`Radix-2 FFT length must be a power of two: ${e}`);
 	let t = new Uint32Array(e);
 	for (let n = 1, r = 0; n < e; n++) {
 		let i = e >> 1;
@@ -10048,25 +17279,25 @@ function fa(e) {
 		stages: n
 	};
 }
-function pa(e, t = "auto") {
+function Na(e, t = "auto") {
 	if (![
 		"auto",
 		"mixed-radix",
 		"radix-2"
 	].includes(t)) throw Error("FFT axis kernel must be \"auto\", \"mixed-radix\", or \"radix-2\"");
-	if (t === "auto") return sa(e) ? "radix-2" : "mixed-radix";
-	if (t === "radix-2" && !sa(e)) throw Error(`Radix-2 axis kernel cannot transform length ${e}`);
+	if (t === "auto") return Da(e) ? "radix-2" : "mixed-radix";
+	if (t === "radix-2" && !Da(e)) throw Error(`Radix-2 axis kernel cannot transform length ${e}`);
 	return t;
 }
-function ma(e, t = "auto") {
-	let n = pa(e, t), r = n === "radix-2" ? ea : $i, i = r.get(e);
+function Pa(e, t = "auto") {
+	let n = Na(e, t), r = n === "radix-2" ? ba : ya, i = r.get(e);
 	if (i) return {
 		kernel: n,
 		plan: i,
 		cacheHit: !0,
 		setupTimeMs: 0
 	};
-	let a = oa(), o = n === "radix-2" ? fa(e) : da(e), s = oa() - a;
+	let a = Ea(), o = n === "radix-2" ? Ma(e) : ja(e), s = Ea() - a;
 	return r.set(e, o), {
 		kernel: n,
 		plan: o,
@@ -10074,24 +17305,24 @@ function ma(e, t = "auto") {
 		setupTimeMs: s
 	};
 }
-function ha(e, t = "mixed-radix") {
+function Fa(e, t = "mixed-radix") {
 	let n = 2 * e * Float64Array.BYTES_PER_ELEMENT;
-	if (pa(e, t) === "radix-2") return n + e * Uint32Array.BYTES_PER_ELEMENT + Math.log2(e) * 3 * Float64Array.BYTES_PER_ELEMENT;
+	if (Na(e, t) === "radix-2") return n + e * Uint32Array.BYTES_PER_ELEMENT + Math.log2(e) * 3 * Float64Array.BYTES_PER_ELEMENT;
 	let r = 0;
 	for (let t = e; t > 1;) {
-		let e = la(t);
+		let e = ka(t);
 		r += 2 * t, t /= e;
 	}
 	return n + (4 * e + r) * Float64Array.BYTES_PER_ELEMENT;
 }
-function ga(e, t, n, r = !1) {
+function Ia(e, t, n, r = !1) {
 	if (e.length !== n.length || t.length !== n.length) throw Error("FFT line and plan lengths must match");
-	ua(e, t, 0, 1, n.length, n.outputReal, n.outputImaginary, 0, n.scratchReal, n.scratchImaginary, 0, r ? 1 : -1, n.twiddleTables);
+	Aa(e, t, 0, 1, n.length, n.outputReal, n.outputImaginary, 0, n.scratchReal, n.scratchImaginary, 0, r ? 1 : -1, n.twiddleTables);
 	let i = r ? 1 / n.length : 1;
 	for (let r = 0; r < n.length; r++) e[r] = n.outputReal[r] * i, t[r] = n.outputImaginary[r] * i;
 }
-function _a(e, t, n = !1, r = null) {
-	let i = e.length, a = r ?? ma(i, "radix-2").plan;
+function La(e, t, n = !1, r = null) {
+	let i = e.length, a = r ?? Pa(i, "radix-2").plan;
 	for (let n = 1; n < i; n++) {
 		let r = a.bitReversal[n];
 		n < r && ([e[n], e[r]] = [e[r], e[n]], [t[n], t[r]] = [t[r], t[n]]);
@@ -10110,13 +17341,13 @@ function _a(e, t, n = !1, r = null) {
 	}
 	if (n) for (let n = 0; n < i; n++) e[n] /= i, t[n] /= i;
 }
-function va(e, t, n, r, i = "mixed-radix") {
-	let a = oa(), [o, s, c] = n, l = n[r], u = new Float64Array(l), d = new Float64Array(l), f = ma(l, i), p = oa(), m = (n, r) => {
+function Ra(e, t, n, r, i = "mixed-radix") {
+	let a = Ea(), [o, s, c] = n, l = n[r], u = new Float64Array(l), d = new Float64Array(l), f = Pa(l, i), p = Ea(), m = (n, r) => {
 		for (let i = 0; i < l; i++) {
 			let a = n + i * r;
 			u[i] = e[a], d[i] = t[a];
 		}
-		f.kernel === "mixed-radix" ? ga(u, d, f.plan) : _a(u, d, !1, f.plan);
+		f.kernel === "mixed-radix" ? Ia(u, d, f.plan) : La(u, d, !1, f.plan);
 		for (let i = 0; i < l; i++) {
 			let a = n + i * r;
 			e[a] = u[i], t[a] = d[i];
@@ -10132,21 +17363,21 @@ function va(e, t, n, r, i = "mixed-radix") {
 		kernel: f.kernel,
 		planCacheHit: f.cacheHit,
 		planSetupTimeMs: f.setupTimeMs,
-		kernelTimeMs: oa() - p,
-		totalTimeMs: oa() - a
+		kernelTimeMs: Ea() - p,
+		totalTimeMs: Ea() - a
 	};
 }
 //#endregion
 //#region src/lib/density/difference-density.js
-var ya = 2 * Math.PI, J = () => globalThis.performance?.now?.() ?? Date.now(), ba = class extends Error {
+var za = 2 * Math.PI, J = () => globalThis.performance?.now?.() ?? Date.now(), Ba = class extends Error {
 	constructor(e) {
 		super(e), this.name = "UnsupportedCoefficientSourceError";
 	}
 };
-function xa(e, t) {
+function Va(e, t) {
 	return (e % t + t) % t;
 }
-function Sa(e, t, ...n) {
+function Ha(e, t, ...n) {
 	try {
 		return e.get(t);
 	} catch (e) {
@@ -10154,17 +17385,17 @@ function Sa(e, t, ...n) {
 		throw e;
 	}
 }
-function Ca(e) {
+function Ua(e) {
 	let t = e.map((e) => e.length);
 	if (t.some((e) => e !== t[0])) throw Error(`Reflection columns have inconsistent lengths: ${t.join(", ")}`);
 }
-function wa(e, t) {
+function Wa(e, t) {
 	let n = typeof e == "string" ? [e] : e;
 	if (!Array.isArray(n) || n.length < 1 || n.length > 2 || n.some((e) => typeof e != "string" || e.length === 0)) throw Error(`${t} must name one or two CIF columns`);
 	return n;
 }
-function Ta(e, t, n) {
-	return wa(t, n).map((t) => {
+function Ga(e, t, n) {
+	return Wa(t, n).map((t) => {
 		try {
 			return e.get(t);
 		} catch {
@@ -10172,14 +17403,14 @@ function Ta(e, t, n) {
 		}
 	});
 }
-function Ea(e, t) {
+function Ka(e, t) {
 	let n = t.amplitudes ?? t.amplitudeColumns ?? t.amplitude, r = t.phases ?? t.phaseColumns ?? t.phase, i = t.aValues ?? t.a ?? t.A, a = t.bValues ?? t.b ?? t.B, o = n !== void 0 || r !== void 0, s = i !== void 0 || a !== void 0;
 	if (o === s) throw Error("Custom density columns must specify either amplitudes/phases or A/B values");
 	if (s) {
 		if (i === void 0 || a === void 0) throw Error("Custom density A and B columns must both be specified");
-		let t = Ta(e, i, "a"), n = Ta(e, a, "b");
+		let t = Ga(e, i, "a"), n = Ga(e, a, "b");
 		if (t.length !== n.length) throw Error("Custom density A and B column counts must match");
-		return Ca([...t, ...n]), {
+		return Ua([...t, ...n]), {
 			mode: t.length === 1 ? "a-b" : "a-b-difference",
 			componentCount: t.length,
 			valueColumns: [...t, ...n],
@@ -10192,9 +17423,9 @@ function Ea(e, t) {
 		};
 	}
 	if (n === void 0 || r === void 0) throw Error("Custom density amplitude and phase columns must both be specified");
-	let c = Ta(e, n, "amplitudes"), l = Ta(e, r, "phases");
+	let c = Ga(e, n, "amplitudes"), l = Ga(e, r, "phases");
 	if (l.length !== 1 && l.length !== c.length) throw Error("Use one common phase column or one phase column per amplitude");
-	Ca([...c, ...l]);
+	Ua([...c, ...l]);
 	let u = t.phaseUnit === "radians" ? 1 : Math.PI / 180;
 	if (t.phaseUnit !== void 0 && !["degrees", "radians"].includes(t.phaseUnit)) throw Error("Custom density phaseUnit must be \"degrees\" or \"radians\"");
 	let d = l.length === c.length && l.length === 2;
@@ -10218,13 +17449,13 @@ function Ea(e, t) {
 		}
 	};
 }
-function Da(e) {
+function qa(e) {
 	e.parse();
 	let t = Object.keys(e.data).find((e) => /shelx.*fab_file/i.test(e));
 	return t ? e.data[t] : null;
 }
-function Oa(e) {
-	let t = Da(e);
+function Ja(e) {
+	let t = qa(e);
 	if (typeof t != "string") return null;
 	let n = [], r = [], i = [], a = [], o = [];
 	for (let e of t.split("\n")) {
@@ -10241,8 +17472,8 @@ function Oa(e) {
 		imaginary: o
 	} : null;
 }
-function ka(e) {
-	let t = K(_r(e, "_smtbx_masks_void"), ["_smtbx_masks_void.count_electrons", "_smtbx_masks_void_count_electrons"]);
+function Ya(e) {
+	let t = K(Lr(e, "_smtbx_masks_void"), ["_smtbx_masks_void.count_electrons", "_smtbx_masks_void_count_electrons"]);
 	if (!t) return null;
 	let n = t.reduce((e, t) => e + (G(t) ?? 0), 0);
 	return {
@@ -10250,7 +17481,7 @@ function ka(e) {
 		totalElectrons: n
 	};
 }
-function Aa(e, t) {
+function Xa(e, t) {
 	let n = e ?? "first";
 	if (![
 		"first",
@@ -10264,7 +17495,7 @@ function Aa(e, t) {
 	}
 	return n === "both" && t > 1 ? 0 : -1;
 }
-function ja(e, t) {
+function Za(e, t) {
 	if (t.generator !== void 0 && t.generator !== "auto") {
 		let e = String(t.generator).toLowerCase();
 		if (!["olex", "shelxl"].includes(e)) throw Error("Anomalous-dispersion generator must be \"auto\", \"olex\", or \"shelxl\"");
@@ -10282,7 +17513,7 @@ function ja(e, t) {
 	let i = n("_audit_creation_method");
 	return i.includes("olex2.refine") || i.includes("olex2_refine") ? "olex" : i.includes("shelxl") ? "shelxl" : "unknown";
 }
-function Ma(e, t, n, r, i, a = .05) {
+function Qa(e, t, n, r, i, a = .05) {
 	let o = e.symmetryOperations.find((e) => e.rotMatrix.every((e, t) => e.every((e, n) => Math.abs(e - (t === n ? -1 : 0)) < 1e-8)));
 	if (!o) return {
 		centrosymmetric: !1,
@@ -10314,7 +17545,7 @@ function Ma(e, t, n, r, i, a = .05) {
 		needsCorrection: s > 0 && c > a
 	};
 }
-function Na(e, t, n, r, i, a = .05, o = 1e-4) {
+function $a(e, t, n, r, i, a = .05, o = 1e-4) {
 	if (!r) return {
 		centrosymmetric: !1,
 		method: "friedel-pair-phases",
@@ -10355,7 +17586,7 @@ function Na(e, t, n, r, i, a = .05, o = 1e-4) {
 		needsCorrection: u > 0 && !m
 	};
 }
-function Pa(e, t, n, r, i, a) {
+function eo(e, t, n, r, i, a) {
 	let o = `${t},${n},${r}`, s = e.get(o);
 	s ? (s.real += i, s.imaginary += a, s.count++) : e.set(o, {
 		h: t,
@@ -10366,11 +17597,11 @@ function Pa(e, t, n, r, i, a) {
 		count: 1
 	});
 }
-function Fa(e, t, n, r, i, a) {
+function to(e, t, n, r, i, a) {
 	let o = t > 0 || t === 0 && (n > 0 || n === 0 && r >= 0);
-	Pa(e, o ? t : -t, o ? n : -n, o ? r : -r, i, o ? a : -a);
+	eo(e, o ? t : -t, o ? n : -n, o ? r : -r, i, o ? a : -a);
 }
-function Ia(e, t, n, r, i, a, o = !1) {
+function no(e, t, n, r, i, a, o = !1) {
 	let s = /* @__PURE__ */ new Map();
 	for (let a = 0; a < e.length; a++) {
 		let c = Number(e[a]), l = Number(t[a]), u = Number(n[a]), { real: d, imaginary: f } = r(a);
@@ -10380,23 +17611,23 @@ function Ia(e, t, n, r, i, a, o = !1) {
 			u,
 			d,
 			f
-		].every(Number.isFinite)) for (let e of li(i)) {
-			let t = e.operation, [n, r, i] = ci(e.reciprocalRotation, [
+		].every(Number.isFinite)) for (let e of ki(i)) {
+			let t = e.operation, [n, r, i] = Oi(e.reciprocalRotation, [
 				c,
 				l,
 				u
-			]), a = ya * (n * t.transVector[0] + r * t.transVector[1] + i * t.transVector[2]), p = Math.cos(a), m = Math.sin(a), h = d * p - f * m, g = d * m + f * p;
-			o ? Fa(s, n, r, i, h, g) : Pa(s, n, r, i, h, g), !o && (n !== 0 || r !== 0 || i !== 0) && Pa(s, -n, -r, -i, h, -g);
+			]), a = za * (n * t.transVector[0] + r * t.transVector[1] + i * t.transVector[2]), p = Math.cos(a), m = Math.sin(a), h = d * p - f * m, g = d * m + f * p;
+			o ? to(s, n, r, i, h, g) : eo(s, n, r, i, h, g), !o && (n !== 0 || r !== 0 || i !== 0) && eo(s, -n, -r, -i, h, -g);
 		}
 	}
 	a && s.delete("0,0,0");
 	for (let e of s.values()) e.real /= e.count, e.imaginary /= e.count;
 	return s;
 }
-function La(e, t) {
+function ro(e, t) {
 	if (e.coefficients.size === 0) throw Error("Reflection source contains no usable difference-map coefficients");
-	let n = R(Ne(e.cell.fractToCartMatrix)), r = 0;
-	for (let t of e.coefficients.values()) t.reciprocalLength = Fe(L(n, [
+	let n = R(z(e.cell.fractToCartMatrix)), r = 0;
+	for (let t of e.coefficients.values()) t.reciprocalLength = Pe(L(n, [
 		t.h,
 		t.k,
 		t.l
@@ -10410,7 +17641,7 @@ function La(e, t) {
 		}))
 	};
 }
-function Ra(e, t, n, r) {
+function io(e, t, n, r) {
 	let i = Number(n);
 	if (Number.isFinite(i) && i > 0) return {
 		scale: i,
@@ -10432,17 +17663,17 @@ function Ra(e, t, n, r) {
 		explicit: !1
 	};
 }
-function za(e, t = 0, n = {}) {
+function ao(e, t = 0, n = {}) {
 	let r = n.debugTimings === !0, i = r ? J() : null, a = i, o = () => {
 		if (!r) return null;
 		let e = J(), t = e - a;
 		return a = e, t;
-	}, s = new xe(e), c = typeof t == "number" ? s.getBlock(t) : s.getBlockByName(t), l = o(), u = Wt.fromCIF(c), d = Nt.fromCIF(c), f = o(), p = {
+	}, s = new xe(e), c = typeof t == "number" ? s.getBlock(t) : s.getBlockByName(t), l = o(), u = Kt.fromCIF(c), d = Pt.fromCIF(c), f = o(), p = {
 		includeAnomalous: !1,
 		...n.iam
 	}, m = { ...n.reflections };
 	m.mergeFriedel === void 0 && (m.mergeFriedel = p.includeAnomalous === !1);
-	let h = n.preparedObservations ?? Li(e, t, m), g = o(), _ = n.coordinateCifText ?? e, v = n.coordinateCifBlock ?? t, y = J(), b = ri(_, v, {
+	let h = n.preparedObservations ?? ra(e, t, m), g = o(), _ = n.coordinateCifText ?? e, v = n.coordinateCifBlock ?? t, y = J(), b = Ci(_, v, {
 		...p,
 		expectedCell: u,
 		structureModel: n.structureModel
@@ -10452,9 +17683,9 @@ function za(e, t = 0, n = {}) {
 		!1,
 		"auto"
 	].includes(A)) throw Error("solventMaskCorrection must be \"auto\", true, or false");
-	let j = A === !1 ? null : Oa(O), M = o(), N = w, P = 0, ee = 0, te = 0;
+	let j = A === !1 ? null : Ja(O), M = o(), N = w, P = 0, ee = 0, te = 0;
 	if (j) {
-		let e = Ia(j.h, j.k, j.l, (e) => ({
+		let e = no(j.h, j.k, j.l, (e) => ({
 			real: j.real[e],
 			imaginary: j.imaginary[e]
 		}), d, !1), t = o();
@@ -10479,16 +17710,16 @@ function za(e, t = 0, n = {}) {
 		source: "shelx-fab-file",
 		fabReflectionCount: j?.h.length ?? 0,
 		appliedReflectionCount: P,
-		...ka(O)
+		...Ya(O)
 	}, re = o(), F = n.extinctionCorrection ?? "auto";
 	if (![
 		"auto",
 		!0,
 		!1
 	].includes(F) && typeof F != "number" && (typeof F != "object" || !F || Array.isArray(F))) throw Error("extinctionCorrection must be \"auto\", true, false, a coefficient, or an object");
-	let ie = F === "auto" && h.metadata.source === "embedded-refln", ae = zi(O, u, b.metadata.wavelength, h.reflections, N, ie ? !1 : F === "auto" || F);
+	let ie = F === "auto" && h.metadata.source === "embedded-refln", ae = aa(O, u, b.metadata.wavelength, h.reflections, N, ie ? !1 : F === "auto" || F);
 	ie && (ae.metadata.reason = "embedded-fcf-already-corrected");
-	let oe = o(), se = Ra(h.reflections, N, n.intensityScale, ae.factors), ce = o(), le = 0, ue = 0, de = 0, fe = (e) => {
+	let oe = o(), se = io(h.reflections, N, n.intensityScale, ae.factors), ce = o(), le = 0, ue = 0, de = 0, fe = (e) => {
 		let t = h.reflections[e], n = N.real[e], r = N.imaginary[e], i = N.fSquared[e], a = Math.sqrt(i), o = se.scale * t.intensity / ae.factors[e] ** 2;
 		o < 0 && le++;
 		let s = Math.sqrt(Math.max(0, o)) - a;
@@ -10499,7 +17730,7 @@ function za(e, t = 0, n = {}) {
 			real: s * n / a,
 			imaginary: s * r / a
 		};
-	}, pe = h.reflections.map((e) => e.h), me = h.reflections.map((e) => e.k), he = h.reflections.map((e) => e.l), ge = o(), _e = Ia(pe, me, he, fe, d, !0, !0), ve = o(), ye = r ? {
+	}, pe = h.reflections.map((e) => e.h), me = h.reflections.map((e) => e.k), he = h.reflections.map((e) => e.l), ge = o(), _e = no(pe, me, he, fe, d, !0, !0), ve = o(), ye = r ? {
 		datasetSourceSetupMs: l,
 		datasetCellSymmetrySetupMs: f,
 		datasetObservationSetupMs: g,
@@ -10514,7 +17745,7 @@ function za(e, t = 0, n = {}) {
 		datasetScaleFitMs: ce,
 		datasetCoefficientInputSetupMs: ge,
 		datasetCoefficientExpansionMs: ve
-	} : void 0, be = La({
+	} : void 0, be = ro({
 		cell: u,
 		coefficients: _e,
 		reflectionCount: h.reflections.length,
@@ -10552,7 +17783,7 @@ function za(e, t = 0, n = {}) {
 	}, d);
 	return r && (be.datasetPreparationTimings.datasetFinalizationMs = o(), be.datasetPreparationTimings.datasetInstrumentedTotalMs = J() - i), be;
 }
-function Ba(e, t) {
+function oo(e, t) {
 	try {
 		let n = new xe(e), r = typeof t == "number" ? n.getBlock(t) : n.getBlockByName(t), i = (e) => r.get(e, null), a = i("_cifvis_difference_density_loop"), o = i("_cifvis_difference_density_h"), s = i("_cifvis_difference_density_k"), c = i("_cifvis_difference_density_l"), l = i("_cifvis_difference_density_a"), u = i("_cifvis_difference_density_b");
 		if ([
@@ -10575,7 +17806,7 @@ function Ba(e, t) {
 	} catch {}
 	return null;
 }
-function Va(e, t = 0, n = {}) {
+function so(e, t = 0, n = {}) {
 	let r = n.debugTimings === !0, i = r ? J() : null, a = n.inputMode ?? "auto";
 	if (![
 		"auto",
@@ -10583,7 +17814,7 @@ function Va(e, t = 0, n = {}) {
 		"cif-iam"
 	].includes(a)) throw Error("Difference-density inputMode must be \"auto\", \"fcf\", or \"cif-iam\"");
 	if (n.preparedSource?.mode === "cif-iam") {
-		let a = za(e, t, {
+		let a = ao(e, t, {
 			...n,
 			preparedObservations: n.preparedSource.observations
 		});
@@ -10593,26 +17824,26 @@ function Va(e, t = 0, n = {}) {
 			datasetSourceDispatchTotalMs: J() - i
 		}), a;
 	}
-	let o = n.coefficientColumns ?? Ba(e, t), s = r ? J() - i : null, c = 0;
+	let o = n.coefficientColumns ?? oo(e, t), s = r ? J() - i : null, c = 0;
 	if (a !== "cif-iam") {
 		let i = r ? J() : null;
 		try {
-			return Ya(e, t, o, n.anomalousDispersion ?? null);
+			return go(e, t, o, n.anomalousDispersion ?? null);
 		} catch (e) {
-			if (r && (c = J() - i), a === "fcf" || o || !(e instanceof ba)) throw e;
+			if (r && (c = J() - i), a === "fcf" || o || !(e instanceof Ba)) throw e;
 		}
 	}
-	let l = za(e, t, n);
+	let l = ao(e, t, n);
 	return r && Object.assign(l.datasetPreparationTimings, {
 		datasetSelfDescriptionDetectionMs: s,
 		datasetExplicitCoefficientAttemptMs: c,
 		datasetSourceDispatchTotalMs: J() - i
 	}), l;
 }
-function Ha(e) {
+function co(e) {
 	return Math.abs(Me(e.fractToCartMatrix));
 }
-function Ua(e, t, n = 0) {
+function lo(e, t, n = 0) {
 	let r = new Float32Array(e.length), i = 0, a = 0, o = Infinity, s = -Infinity;
 	for (let n = 0; n < e.length; n++) {
 		let c = e[n] / t;
@@ -10628,7 +17859,7 @@ function Ua(e, t, n = 0) {
 		maxImaginary: n
 	};
 }
-function Wa(e, t = 0, n = null) {
+function uo(e, t = 0, n = null) {
 	let r = n?.sum ?? 0, i = n?.sumSquared ?? 0, a = n?.minimum ?? Infinity, o = n?.maximum ?? -Infinity;
 	if (!n) for (let t of e) r += t, i += t * t, a = Math.min(a, t), o = Math.max(o, t);
 	let s = r / e.length, c = Math.max(0, i / e.length - s * s);
@@ -10641,7 +17872,7 @@ function Wa(e, t = 0, n = null) {
 		maxImaginary: t
 	};
 }
-function Ga(e, t = !1) {
+function fo(e, t = !1) {
 	if (t) return {
 		absolute: 0,
 		relative: 0
@@ -10660,12 +17891,12 @@ function Ga(e, t = !1) {
 		relative: n / Math.max(r, 2 ** -52)
 	};
 }
-function Ka(e, t, n, r, i) {
+function po(e, t, n, r, i) {
 	let a = J(), [o, s] = n, c = n[0] * n[1] * n[2], l = new Float64Array(c), u = new Float64Array(c), d = J() - a, f = J();
 	for (let { h: t, k: r, l: a, real: c, imaginary: d } of e.values()) {
-		let e = (xa(a, n[2]) * s + xa(r, s)) * o + xa(t, o);
+		let e = (Va(a, n[2]) * s + Va(r, s)) * o + Va(t, o);
 		if (l[e] = c, u[e] = d, i.friedelImplicit && (t !== 0 || r !== 0 || a !== 0)) {
-			let e = (xa(-a, n[2]) * s + xa(-r, s)) * o + xa(-t, o);
+			let e = (Va(-a, n[2]) * s + Va(-r, s)) * o + Va(-t, o);
 			l[e] = c, u[e] = -d;
 		}
 	}
@@ -10673,13 +17904,13 @@ function Ka(e, t, n, r, i) {
 		0,
 		1,
 		2
-	].map((e) => va(l, u, n, e, r)), g = J() - m, _ = J(), v = Ha(t), y = 0;
+	].map((e) => Ra(l, u, n, e, r)), g = J() - m, _ = J(), v = co(t), y = 0;
 	for (let e of u) y = Math.max(y, Math.abs(e / v));
-	let b = Math.max(...n.map((e) => ha(e, r)));
+	let b = Math.max(...n.map((e) => Fa(e, r)));
 	h.forEach((e) => {
-		e.factorization = ca(e.length);
+		e.factorization = Oa(e.length);
 	});
-	let x = [...new Set(h.map((e) => e.kernel))], S = Ua(l, v, y), C = J() - _;
+	let x = [...new Set(h.map((e) => e.kernel))], S = lo(l, v, y), C = J() - _;
 	return {
 		dimensions: n,
 		...S,
@@ -10701,7 +17932,7 @@ function Ka(e, t, n, r, i) {
 		gridFallbackReason: i.fallbackReason
 	};
 }
-function qa(e, t, n, r, i, a) {
+function mo(e, t, n, r, i, a) {
 	let [o, s, c] = n, l = Math.floor(o / 2) + 1, u = [
 		l,
 		s,
@@ -10709,18 +17940,18 @@ function qa(e, t, n, r, i, a) {
 	], d = l * s * c, f = J(), p = new Float64Array(d), m = new Float64Array(d), h = new Float32Array(o * s * c), g = J() - f, _ = 0, v = J();
 	for (let { h: t, k: n, l: r, real: a, imaginary: o } of e.values()) {
 		if (t < 0) continue;
-		let e = (xa(r, c) * s + xa(n, s)) * l + t;
+		let e = (Va(r, c) * s + Va(n, s)) * l + t;
 		if (p[e] = a, m[e] = o, _++, i.friedelImplicit && t === 0 && (n !== 0 || r !== 0)) {
-			let e = (xa(-r, c) * s + xa(-n, s)) * l;
+			let e = (Va(-r, c) * s + Va(-n, s)) * l;
 			p[e] = a, m[e] = -o;
 		}
 	}
-	let y = J() - v, b = J(), x = [1, 2].map((e) => va(p, m, u, e, r)), S = new Float64Array(o), C = new Float64Array(o), w = J(), T = ma(o, r), E = J(), D = Ha(t), O = 1 / D, k = 0, A = 0, j = 0, M = Infinity, N = -Infinity;
+	let y = J() - v, b = J(), x = [1, 2].map((e) => Ra(p, m, u, e, r)), S = new Float64Array(o), C = new Float64Array(o), w = J(), T = Pa(o, r), E = J(), D = co(t), O = 1 / D, k = 0, A = 0, j = 0, M = Infinity, N = -Infinity;
 	for (let e = 0; e < c; e++) for (let t = 0; t < s; t++) {
 		let n = (e * s + t) * l;
 		for (let e = 0; e < l; e++) S[e] = p[n + e], C[e] = m[n + e];
 		for (let e = l; e < o; e++) S[e] = S[o - e], C[e] = -C[o - e];
-		T.kernel === "mixed-radix" ? ga(S, C, T.plan) : _a(S, C, !1, T.plan);
+		T.kernel === "mixed-radix" ? Ia(S, C, T.plan) : La(S, C, !1, T.plan);
 		let r = (e * s + t) * o;
 		for (let e = 0; e < o; e++) {
 			let t = Math.fround(S[e] * O);
@@ -10738,9 +17969,9 @@ function qa(e, t, n, r, i, a) {
 		kernelTimeMs: P - E,
 		totalTimeMs: P - w
 	}), x.forEach((e) => {
-		e.factorization = ca(e.length);
+		e.factorization = Oa(e.length);
 	});
-	let te = Math.max(...n.map((e) => ha(e, r))), ne = [...new Set(x.map((e) => e.kernel))], re = J(), F = Wa(h, k * O, {
+	let te = Math.max(...n.map((e) => Fa(e, r))), ne = [...new Set(x.map((e) => e.kernel))], re = J(), F = uo(h, k * O, {
 		sum: A,
 		sumSquared: j,
 		minimum: M,
@@ -10768,29 +17999,29 @@ function qa(e, t, n, r, i, a) {
 		gridFallbackReason: i.fallbackReason
 	};
 }
-function Ja(e, t, n = 1, r = {}) {
-	let i = J(), a = "auto", o = J(), s = Qi(e, n, {
+function ho(e, t, n = 1, r = {}) {
+	let i = J(), a = "auto", o = J(), s = va(e, n, {
 		backend: "mixed-radix",
 		symmetryOperations: r.symmetryOperations
 	}), c = J() - o;
 	s.gridPlanner = "smooth", s.friedelImplicit = r.friedelImplicit === !0;
-	let l = J(), u = Ga(e, s.friedelImplicit), d = J() - l, f;
-	return u.relative <= 1e-10 ? f = qa(e, t, s.dimensions, a, s, u) : (f = Ka(e, t, s.dimensions, a, s), f.fftFallbackReason = "non-hermitian-coefficients", f.hermitianResidual = u.relative), f.fftGridPlanningTimeMs = c, f.fftHermitianValidationTimeMs = d, f.fftTotalTimeMs = J() - i, f;
+	let l = J(), u = fo(e, s.friedelImplicit), d = J() - l, f;
+	return u.relative <= 1e-10 ? f = mo(e, t, s.dimensions, a, s, u) : (f = po(e, t, s.dimensions, a, s), f.fftFallbackReason = "non-hermitian-coefficients", f.hermitianResidual = u.relative), f.fftGridPlanningTimeMs = c, f.fftHermitianValidationTimeMs = d, f.fftTotalTimeMs = J() - i, f;
 }
-function Ya(e, t = 0, n = null, r = null) {
-	let i = new xe(e), a = typeof t == "number" ? i.getBlock(t) : i.getBlockByName(t), o = Wt.fromCIF(a), s = Nt.fromCIF(a), c;
+function go(e, t = 0, n = null, r = null) {
+	let i = new xe(e), a = typeof t == "number" ? i.getBlock(t) : i.getBlockByName(t), o = Kt.fromCIF(a), s = Pt.fromCIF(a), c;
 	try {
 		c = a.get(n?.loop ?? "_refln");
 	} catch (e) {
-		throw n ? e : new ba(e.message);
+		throw n ? e : new Ba(e.message);
 	}
-	let l = Sa(c, n?.h ?? ["_refln.index_h", "_refln_index_h"]), u = Sa(c, n?.k ?? ["_refln.index_k", "_refln_index_k"]), d = Sa(c, n?.l ?? ["_refln.index_l", "_refln_index_l"]), f = Sa(c, ["_refln.phase_calc", "_refln_phase_calc"], null), p = Sa(c, ["_refln.F_calc", "_refln_F_calc"], null), m = p === null ? Sa(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null, h = p ?? m?.map((e) => Math.sqrt(Math.max(0, Number(e)))), g, _;
-	if (n) g = Ea(c, n), _ = n.omitF000 ?? !1;
+	let l = Ha(c, n?.h ?? ["_refln.index_h", "_refln_index_h"]), u = Ha(c, n?.k ?? ["_refln.index_k", "_refln_index_k"]), d = Ha(c, n?.l ?? ["_refln.index_l", "_refln_index_l"]), f = Ha(c, ["_refln.phase_calc", "_refln_phase_calc"], null), p = Ha(c, ["_refln.F_calc", "_refln_F_calc"], null), m = p === null ? Ha(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null, h = p ?? m?.map((e) => Math.sqrt(Math.max(0, Number(e)))), g, _;
+	if (n) g = Ka(c, n), _ = n.omitF000 ?? !1;
 	else {
-		if (f === null) throw new ba("None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop");
-		let e = f, t = Sa(c, ["_refln.F_squared_meas", "_refln_F_squared_meas"], null), n = t === null ? Sa(c, ["_refln.F_meas", "_refln_F_meas"], null) : null, r = Sa(c, ["_refln.F_calc", "_refln_F_calc"], null), i = r === null ? Sa(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null;
-		if (t === null && n === null) throw new ba("FCF contains neither measured F nor measured F-squared values");
-		if (r === null && i === null) throw new ba("FCF contains neither calculated F nor calculated F-squared values");
+		if (f === null) throw new Ba("None of the keys [_refln.phase_calc, _refln_phase_calc] found in CIF loop");
+		let e = f, t = Ha(c, ["_refln.F_squared_meas", "_refln_F_squared_meas"], null), n = t === null ? Ha(c, ["_refln.F_meas", "_refln_F_meas"], null) : null, r = Ha(c, ["_refln.F_calc", "_refln_F_calc"], null), i = r === null ? Ha(c, ["_refln.F_squared_calc", "_refln_F_squared_calc"], null) : null;
+		if (t === null && n === null) throw new Ba("FCF contains neither measured F nor measured F-squared values");
+		if (r === null && i === null) throw new Ba("FCF contains neither calculated F nor calculated F-squared values");
 		g = {
 			mode: "fo-fc-common-phase",
 			componentCount: 2,
@@ -10809,7 +18040,7 @@ function Ya(e, t = 0, n = null, r = null) {
 			}
 		}, _ = !0;
 	}
-	Ca([
+	Ua([
 		l,
 		u,
 		d,
@@ -10822,14 +18053,14 @@ function Ya(e, t = 0, n = null, r = null) {
 	if (r) {
 		let e = r === !0 ? {} : r;
 		if (typeof e != "object") throw Error("Anomalous-dispersion options must be true or an object");
-		let t = ja(a, e), n;
+		let t = Za(a, e), n;
 		if (e.phaseDetection === !1) n = {
 			available: !1,
 			disabled: !0
 		};
 		else {
-			let t = Ma(s, l, u, d, f, Number(e.phaseToleranceDegrees) || .05);
-			n = t.centrosymmetric ? t : Na(l, u, d, f, h, Number(e.phaseToleranceDegrees) || .05, Number(e.friedelAmplitudeToleranceRelative) || 1e-4);
+			let t = Qa(s, l, u, d, f, Number(e.phaseToleranceDegrees) || .05);
+			n = t.centrosymmetric ? t : $a(l, u, d, f, h, Number(e.phaseToleranceDegrees) || .05, Number(e.friedelAmplitudeToleranceRelative) || 1e-4);
 		}
 		let i = n.disabled ? "phase-detection-disabled" : n.alreadyCorrected ? "phases-already-corrected" : !n.available && t !== "olex" ? "exact-test-unavailable" : null;
 		if (i) y = {
@@ -10840,7 +18071,7 @@ function Ya(e, t = 0, n = null, r = null) {
 			phaseCheck: n
 		};
 		else {
-			let r = e.target ?? g.defaultAnomalousTarget ?? "first", i = Wr(e.cifText, e.cifBlock ?? 0, e, o), a = Aa(r, g.componentCount);
+			let r = e.target ?? g.defaultAnomalousTarget ?? "first", i = ui(e.cifText, e.cifBlock ?? 0, e, o), a = Xa(r, g.componentCount);
 			v = (e) => {
 				let t = g.coefficientAt(e), n = i.coefficientAt(Number(l[e]), Number(u[e]), Number(d[e]));
 				return {
@@ -10857,9 +18088,9 @@ function Ya(e, t = 0, n = null, r = null) {
 			};
 		}
 	}
-	return La({
+	return ro({
 		cell: o,
-		coefficients: Ia(l, u, d, v, s, _, !0),
+		coefficients: no(l, u, d, v, s, _, !0),
 		reflectionCount: l.length,
 		coefficientMode: g.mode,
 		omitF000: _,
@@ -10869,7 +18100,7 @@ function Ya(e, t = 0, n = null, r = null) {
 		friedelImplicit: !0
 	}, s);
 }
-function Xa(e, t = 1, n = 1) {
+function _o(e, t = 1, n = 1) {
 	let r = J();
 	if (!(Number.isFinite(t) && t > 0 && t <= 1)) throw Error("Difference-density resolution fraction must be in the interval (0, 1]");
 	let i = J(), a = e.maximumReciprocalLength * t, o = t === 1 ? e.coefficients : new Map(Array.from(e.coefficients.entries()).filter(([, e]) => e.reciprocalLength <= a + 1e-12));
@@ -10881,12 +18112,12 @@ function Xa(e, t = 1, n = 1) {
 	}
 	let s = J() - i;
 	if (!(Number.isFinite(n) && n >= 1)) throw Error("Difference-density grid oversampling must be at least 1");
-	let c = Ja(o, e.cell, n, {
+	let c = ho(o, e.cell, n, {
 		symmetryOperations: e.symmetryOperations,
 		friedelImplicit: e.friedelImplicit
 	}), l = J(), u = 0;
 	for (let e of o.values()) (e.h !== 0 || e.k !== 0 || e.l !== 0) && u++;
-	let d = o.size + u, f = new Hi(e.cell, c.dimensions, c.values, {
+	let d = o.size + u, f = new ca(e.cell, c.dimensions, c.values, {
 		reflectionCount: e.reflectionCount,
 		coefficientCount: e.friedelImplicit ? d : o.size,
 		fullCoefficientCount: e.friedelImplicit ? e.coefficients.size * 2 - !!e.coefficients.has("0,0,0") : e.coefficients.size,
@@ -10945,35 +18176,35 @@ function Xa(e, t = 1, n = 1) {
 }
 //#endregion
 //#region src/lib/density/cube.js
-var Za = .529177210903, Qa = /* @__PURE__ */ new Set([
+var vo = .529177210903, yo = /* @__PURE__ */ new Set([
 	"density",
 	"signed-density",
 	"orbital",
 	"potential",
 	"generic"
 ]);
-function $a(e, t) {
+function bo(e, t) {
 	return e[0] * t[0] + e[1] * t[1] + e[2] * t[2];
 }
-function eo(e) {
+function xo(e) {
 	return Math.hypot(...e);
 }
-function to(e, t) {
-	let n = Math.max(-1, Math.min(1, $a(e, t) / (eo(e) * eo(t))));
+function So(e, t) {
+	let n = Math.max(-1, Math.min(1, bo(e, t) / (xo(e) * xo(t))));
 	return Math.acos(n) * 180 / Math.PI;
 }
-function no(e) {
+function Co(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function ro(e, t, n) {
+function wo(e, t, n) {
 	let r = e.trim().split(/\s+/).map(Number);
 	if (r.length < t || r.some((e) => !Number.isFinite(e))) throw Error(`Invalid Gaussian Cube ${n} line`);
 	return r;
 }
-function io(e, t, n) {
-	if (!Qa.has(e)) throw Error(`Cube property must be one of: ${Array.from(Qa).join(", ")}`);
+function To(e, t, n) {
+	if (!yo.has(e)) throw Error(`Cube property must be one of: ${Array.from(yo).join(", ")}`);
 	let r = e === "density" || e === "signed-density", i = n.valueScale;
-	if (i === void 0 && (i = r && t === "bohr" ? 1 / Za ** 3 : 1), !(Number.isFinite(i) && i !== 0)) throw Error("Cube valueScale must be a finite non-zero number");
+	if (i === void 0 && (i = r && t === "bohr" ? 1 / vo ** 3 : 1), !(Number.isFinite(i) && i !== 0)) throw Error("Cube valueScale must be a finite non-zero number");
 	if (e === "density") return {
 		valueScale: i,
 		valueUnit: "e/angstrom^3",
@@ -11004,7 +18235,7 @@ function io(e, t, n) {
 		defaultLevel: n.level ?? null
 	};
 }
-function ao(e) {
+function Eo(e) {
 	let t = 0, n = 0, r = Infinity, i = -Infinity;
 	for (let a of e) t += a, n += a * a, r = Math.min(r, a), i = Math.max(i, a);
 	let a = t / e.length;
@@ -11015,24 +18246,24 @@ function ao(e) {
 		maximum: i
 	};
 }
-function oo(e, t = {}) {
+function Do(e, t = {}) {
 	if (typeof e != "string" || e.trim().length === 0) throw Error("Cannot parse an empty Gaussian Cube file");
 	let n = e.replace(/\r\n?/g, "\n").split("\n");
 	if (n.length < 6) throw Error("Gaussian Cube file is missing its header");
-	let r = [n[0], n[1]], i = ro(n[2], 4, "atom/origin"), a = Math.trunc(i[0]), o = Math.abs(a), s = i.slice(1, 4), c = i.length >= 5 ? Math.trunc(i[4]) : 1;
+	let r = [n[0], n[1]], i = wo(n[2], 4, "atom/origin"), a = Math.trunc(i[0]), o = Math.abs(a), s = i.slice(1, 4), c = i.length >= 5 ? Math.trunc(i[4]) : 1;
 	if (c < 1) throw Error("Gaussian Cube dataset count must be positive");
 	let l = [], u = [];
 	for (let e = 0; e < 3; e++) {
-		let t = ro(n[3 + e], 4, `axis ${e + 1}`);
+		let t = wo(n[3 + e], 4, `axis ${e + 1}`);
 		u.push(Math.trunc(t[0])), l.push(t.slice(1, 4));
 	}
 	if (u.some((e) => e === 0)) throw Error("Gaussian Cube grid dimensions must be non-zero");
 	let d = u.every((e) => e > 0), f = u.every((e) => e < 0);
 	if (!d && !f) throw Error("Gaussian Cube grid dimensions must use one consistent unit sign");
-	let p = d ? "bohr" : "angstrom", m = d ? Za : 1, h = u.map(Math.abs), g = s.map((e) => e * m), _ = l.map((e) => e.map((e) => e * m)), v = [];
+	let p = d ? "bohr" : "angstrom", m = d ? vo : 1, h = u.map(Math.abs), g = s.map((e) => e * m), _ = l.map((e) => e.map((e) => e * m)), v = [];
 	if (n.length < 6 + o) throw Error("Gaussian Cube file ends inside its atom list");
 	for (let e = 0; e < o; e++) {
-		let t = ro(n[6 + e], 5, `atom ${e + 1}`);
+		let t = wo(n[6 + e], 5, `atom ${e + 1}`);
 		v.push({
 			atomicNumber: Math.trunc(t[0]),
 			charge: t[1],
@@ -11049,7 +18280,7 @@ function oo(e, t = {}) {
 	if (!(Number.isInteger(C) && C >= 0 && C < x)) throw Error(`Cube datasetIndex must be between 0 and ${x - 1}`);
 	let w = h[0] * h[1] * h[2], T = w * x;
 	if (y.length - b !== T) throw Error(`Gaussian Cube grid contains ${y.length - b} values; expected ${T}`);
-	let E = t.property ?? "density", D = io(E, p, t), O = new Float32Array(w);
+	let E = t.property ?? "density", D = To(E, p, t), O = new Float32Array(w);
 	for (let e = 0; e < w; e++) {
 		let t = Number(y[b + e * x + C]);
 		if (!Number.isFinite(t)) throw Error(`Gaussian Cube grid value ${e + 1} is not finite`);
@@ -11057,8 +18288,8 @@ function oo(e, t = {}) {
 		O[a] = t * D.valueScale;
 	}
 	let k = _.map((e, t) => e.map((e) => e * h[t]));
-	if (k.some((e) => eo(e) === 0)) throw Error("Gaussian Cube lattice vectors must be non-zero");
-	let A = new Wt(eo(k[0]), eo(k[1]), eo(k[2]), to(k[1], k[2]), to(k[0], k[2]), to(k[0], k[1])), j = no(L(Ne([
+	if (k.some((e) => xo(e) === 0)) throw Error("Gaussian Cube lattice vectors must be non-zero");
+	let A = new Kt(xo(k[0]), xo(k[1]), xo(k[2]), So(k[1], k[2]), So(k[0], k[2]), So(k[0], k[1])), j = Co(L(z([
 		[
 			k[0][0],
 			k[1][0],
@@ -11074,8 +18305,8 @@ function oo(e, t = {}) {
 			k[1][2],
 			k[2][2]
 		]
-	]), g)), M = ao(O), N = D.defaultLevel ?? 3 * M.sigma;
-	return new Hi(A, h, O, {
+	]), g)), M = Eo(O), N = D.defaultLevel ?? 3 * M.sigma;
+	return new ca(A, h, O, {
 		...M,
 		comments: r,
 		atoms: v,
@@ -11105,47 +18336,47 @@ function oo(e, t = {}) {
 }
 //#endregion
 //#region src/lib/density/plane-contours.js
-function so() {
+function Oo() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function co(e, t) {
+function ko(e, t) {
 	return e[0] * t[0] + e[1] * t[1] + e[2] * t[2];
 }
-function lo(e, t) {
+function Ao(e, t) {
 	return [
 		e[1] * t[2] - e[2] * t[1],
 		e[2] * t[0] - e[0] * t[2],
 		e[0] * t[1] - e[1] * t[0]
 	];
 }
-function uo(e, t) {
+function jo(e, t) {
 	let n = Math.hypot(...e);
 	if (!(Number.isFinite(n) && n > 1e-12)) throw Error(`${t} must be a finite non-zero vector`);
 	return e.map((e) => e / n);
 }
-function fo(e, t) {
+function Mo(e, t) {
 	return e.map((e, n) => e + t[n]);
 }
-function po(e, t) {
+function No(e, t) {
 	return e.map((e, n) => e - t[n]);
 }
-function mo(e, t) {
+function Po(e, t) {
 	return e.map((e) => e * t);
 }
-function ho(e) {
+function Fo(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function go(e, t) {
-	return ho(L(e, t));
+function Io(e, t) {
+	return Fo(L(e, t));
 }
-function _o(e) {
-	return mo(e.reduce(fo, [
+function Lo(e) {
+	return Po(e.reduce(Mo, [
 		0,
 		0,
 		0
 	]), 1 / e.length);
 }
-function vo(e, t) {
+function Ro(e, t) {
 	if (e.length < 3) throw Error("A best-fit contour plane requires at least three atoms");
 	let n = [
 		[
@@ -11165,22 +18396,22 @@ function vo(e, t) {
 		]
 	];
 	for (let r of e) {
-		let e = po(r, t);
+		let e = No(r, t);
 		for (let t = 0; t < 3; t++) for (let r = 0; r < 3; r++) n[t][r] += e[t] * e[r];
 	}
-	let r = Ve(n), i = r.values.map(Number).sort((e, t) => e - t), a = Math.max(1, i[2]);
+	let r = Be(n), i = r.values.map(Number).sort((e, t) => e - t), a = Math.max(1, i[2]);
 	if (!(i[1] > a * 1e-12)) throw Error("Contour plane atoms must not all be collinear");
 	let o = i[0];
-	return uo(ho(r.eigenvectors.find((e) => Math.abs(Number(e.value) - o) <= a * 1e-12).vector), "Best-fit plane normal");
+	return jo(Fo(r.eigenvectors.find((e) => Math.abs(Number(e.value) - o) <= a * 1e-12).vector), "Best-fit plane normal");
 }
-function yo(e, t) {
-	if (e.length === 1) return uo(ho(L(R(Ne(t)), [
+function zo(e, t) {
+	if (e.length === 1) return jo(Fo(L(R(z(t)), [
 		0,
 		0,
 		1
 	])), "Sparse-structure contour plane normal");
-	let n = uo(po(e[1], e[0]), "Sparse atom separation");
-	return uo(lo(n, [
+	let n = jo(No(e[1], e[0]), "Sparse atom separation");
+	return jo(Ao(n, [
 		[
 			1,
 			0,
@@ -11196,10 +18427,10 @@ function yo(e, t) {
 			0,
 			1
 		]
-	].reduce((e, t) => Math.abs(co(n, t)) < Math.abs(co(n, e)) ? t : e)), "Sparse-structure contour plane normal");
+	].reduce((e, t) => Math.abs(ko(n, t)) < Math.abs(ko(n, e)) ? t : e)), "Sparse-structure contour plane normal");
 }
-function bo(e) {
-	let t = uo(lo(Math.abs(e[2]) < .9 ? [
+function Bo(e) {
+	let t = jo(Ao(Math.abs(e[2]) < .9 ? [
 		0,
 		0,
 		1
@@ -11210,29 +18441,29 @@ function bo(e) {
 	], e), "Contour plane basis");
 	return {
 		u: t,
-		v: uo(lo(e, t), "Contour plane basis")
+		v: jo(Ao(e, t), "Contour plane basis")
 	};
 }
-function xo(e, t, n) {
+function Vo(e, t, n) {
 	for (let r of t) {
 		let t = e[0] - r[0], i = e[1] - r[1], a = e[2] - r[2];
 		if (t * t + i * i + a * a <= n) return !0;
 	}
 	return !1;
 }
-function So(e) {
+function Ho(e) {
 	let t = e.cell.fractToCartMatrix.toArray();
-	return e.atoms.map((e) => go(t, [
+	return e.atoms.map((e) => Io(t, [
 		e.position.x,
 		e.position.y,
 		e.position.z
 	]));
 }
-function Co(e, t = { mode: "best-fit" }, n = 1.5) {
+function Uo(e, t = { mode: "best-fit" }, n = 1.5) {
 	if (!e?.atoms?.length) throw Error("A contour plane requires a displayed structure");
 	let r = typeof t == "string" ? { mode: t } : Array.isArray(t) ? { atoms: t } : t ?? { mode: "best-fit" };
 	if (r.mode !== void 0 && r.mode !== "best-fit") throw Error("Contour plane mode must be \"best-fit\"");
-	let i = e.cell.fractToCartMatrix.toArray(), a = So(e), o = a;
+	let i = e.cell.fractToCartMatrix.toArray(), a = Ho(e), o = a;
 	if (r.atoms) {
 		if (!Array.isArray(r.atoms) || r.atoms.length < 3) throw Error("A contour plane atom definition requires at least three labels");
 		o = r.atoms.map((t) => {
@@ -11249,13 +18480,13 @@ function Co(e, t = { mode: "best-fit" }, n = 1.5) {
 		if (r.coordinateSystem !== void 0 && !["cartesian", "fractional"].includes(r.coordinateSystem)) throw Error("Contour plane coordinateSystem must be \"cartesian\" or \"fractional\"");
 		if (r.coordinateSystem === "fractional") {
 			let r = e.cell.fractToCartMatrix.toArray();
-			s = go(r, t), c = ho(L(R(Ne(r)), n));
+			s = Io(r, t), c = Fo(L(R(z(r)), n));
 		} else s = t, c = n;
-		c = uo(c, "Contour plane normal");
-	} else s = _o(o), c = o.length >= 3 ? vo(o, s) : yo(o, i);
-	let { u: l, v: u } = bo(c), d = Infinity, f = -Infinity, p = Infinity, m = -Infinity;
+		c = jo(c, "Contour plane normal");
+	} else s = Lo(o), c = o.length >= 3 ? Ro(o, s) : zo(o, i);
+	let { u: l, v: u } = Bo(c), d = Infinity, f = -Infinity, p = Infinity, m = -Infinity;
 	for (let e of a) {
-		let t = po(e, s), n = co(t, l), r = co(t, u);
+		let t = No(e, s), n = ko(t, l), r = ko(t, u);
 		d = Math.min(d, n), f = Math.max(f, n), p = Math.min(p, r), m = Math.max(m, r);
 	}
 	let h = Number(n);
@@ -11273,14 +18504,14 @@ function Co(e, t = { mode: "best-fit" }, n = 1.5) {
 		bounds: g
 	};
 }
-function wo(e, t, n, r = 0) {
-	return fo(fo(e.origin, mo(e.u, t)), fo(mo(e.v, n), mo(e.normal, r)));
+function Wo(e, t, n, r = 0) {
+	return Mo(Mo(e.origin, Po(e.u, t)), Mo(Po(e.v, n), Po(e.normal, r)));
 }
-function To(e, t, n, r, i) {
+function Go(e, t, n, r, i) {
 	let a = n === r ? .5 : Math.max(0, Math.min(1, (i - n) / (r - n)));
 	return [e[0] + (t[0] - e[0]) * a, e[1] + (t[1] - e[1]) * a];
 }
-function Eo(e, t, n, r, i) {
+function Ko(e, t, n, r, i) {
 	let [a, o] = t, s = (n.bounds.u[1] - n.bounds.u[0]) / (a - 1), c = (n.bounds.v[1] - n.bounds.v[0]) / (o - 1), l = [];
 	for (let t = 0; t < o - 1; t++) for (let o = 0; o < a - 1; o++) {
 		let u = n.bounds.u[0] + o * s, d = u + s, f = n.bounds.v[0] + t * c, p = f + c, m = [
@@ -11306,17 +18537,17 @@ function Eo(e, t, n, r, i) {
 				let [i, a] = t[n];
 				(_[i] < e && _[a] >= e || _[a] < e && _[i] >= e) && r.push({
 					edge: n,
-					point: To(m[i], m[a], _[i], _[a], e)
+					point: Go(m[i], m[a], _[i], _[a], e)
 				});
 			}
 			let a = [];
 			r.length === 2 ? a = [[r[0], r[1]]] : r.length === 4 && (a = _.reduce((e, t) => e + t, 0) / 4 >= e ? [[r[0], r[1]], [r[2], r[3]]] : [[r[0], r[3]], [r[1], r[2]]]);
-			for (let [e, t] of a) l.push([wo(n, e.point[0], e.point[1], i), wo(n, t.point[0], t.point[1], i)]);
+			for (let [e, t] of a) l.push([Wo(n, e.point[0], e.point[1], i), Wo(n, t.point[0], t.point[1], i)]);
 		}
 	}
 	return l;
 }
-function Do(e, t) {
+function qo(e, t) {
 	if (Array.isArray(t.levels)) {
 		let e = [...new Set(t.levels.map((e) => Math.abs(Number(e))))].filter((e) => Number.isFinite(e) && e > 0).sort((e, t) => e - t);
 		if (e.length === 0) throw Error("Contour line levels must contain positive finite values");
@@ -11329,30 +18560,30 @@ function Do(e, t) {
 	if (!Number.isFinite(a)) throw Error("Contour line count must be a positive integer");
 	return Array.from({ length: a }, (e, t) => i * (t + 1));
 }
-function Oo(e, t, n = {}) {
-	let r = so(), i = {
-		...tn,
+function Jo(e, t, n = {}) {
+	let r = Oo(), i = {
+		...bn,
 		...n
-	}, a = Co(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
+	}, a = Uo(t, i.plane, i.padding), o = a.bounds.u[1] - a.bounds.u[0], s = a.bounds.v[1] - a.bounds.v[0], c = Math.max(8, Math.round(Number(i.resolution))), l = Math.max(c, Math.round(Number(i.maxResolution))), u = Number(i.gridSpacing);
 	if (!(Number.isFinite(u) && u > 0)) throw Error("Contour line grid spacing must be a positive number");
 	if (!(Number.isFinite(c) && Number.isFinite(l))) throw Error("Contour line resolutions must be finite numbers");
-	let d = [o, s].map((e) => Math.min(l, Math.max(c, Math.ceil(e / u) + 1))), f = new Float32Array(d[0] * d[1]), p = Ne(t.cell.fractToCartMatrix), m = ho(L(p, a.origin)), h = ho(L(p, a.u)), g = ho(L(p, a.v)), _ = i.interpolation;
+	let d = [o, s].map((e) => Math.min(l, Math.max(c, Math.ceil(e / u) + 1))), f = new Float32Array(d[0] * d[1]), p = z(t.cell.fractToCartMatrix), m = Fo(L(p, a.origin)), h = Fo(L(p, a.u)), g = Fo(L(p, a.v)), _ = i.interpolation;
 	if (!["linear", "tricubic"].includes(_)) throw Error("Contour line interpolation must be \"linear\" or \"tricubic\"");
 	let v = _ === "tricubic" && typeof e.sampleCubic == "function" ? (...t) => e.sampleCubic(...t) : (...t) => e.sample(...t), y = i.maxAtomDistance, b = y !== null && Number(y) >= 0;
 	if (y !== null && !Number.isFinite(Number(y))) throw Error("Contour line maxAtomDistance must be null or a finite number");
-	let x = b ? So(t) : null, S = b ? Number(y) ** 2 : 0, C = so();
+	let x = b ? Ho(t) : null, S = b ? Number(y) ** 2 : 0, C = Oo();
 	for (let e = 0; e < d[1]; e++) {
 		let t = a.bounds.v[0] + e / (d[1] - 1) * s;
 		for (let n = 0; n < d[0]; n++) {
 			let r = a.bounds.u[0] + n / (d[0] - 1) * o, i = e * d[0] + n;
-			if (b && !xo(wo(a, r, t), x, S)) {
+			if (b && !Vo(Wo(a, r, t), x, S)) {
 				f[i] = NaN;
 				continue;
 			}
 			f[i] = v(...m.map((e, n) => e + h[n] * r + g[n] * t));
 		}
 	}
-	let w = so(), T = Do(e, i), E = i.sign ?? e.surfaceSign ?? "both";
+	let w = Oo(), T = qo(e, i), E = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
@@ -11360,7 +18591,7 @@ function Oo(e, t, n = {}) {
 	].includes(E)) throw Error("Contour line sign must be \"positive\", \"negative\", or \"both\"");
 	let D = Number(i.depthOffset);
 	if (!Number.isFinite(D)) throw Error("Contour line depth offset must be a finite number");
-	let O = E === "negative" ? [] : Eo(f, d, a, T, D), k = E === "positive" ? [] : Eo(f, d, a, T.map((e) => -e), D), A = i.zeroLine ? Eo(f, d, a, [0], D) : [], j = so();
+	let O = E === "negative" ? [] : Ko(f, d, a, T, D), k = E === "positive" ? [] : Ko(f, d, a, T.map((e) => -e), D), A = i.zeroLine ? Ko(f, d, a, [0], D) : [], j = Oo();
 	return {
 		plane: a,
 		dimensions: d,
@@ -11380,7 +18611,7 @@ function Oo(e, t, n = {}) {
 }
 //#endregion
 //#region node_modules/three/examples/jsm/objects/MarchingCubes.js
-var ko = new Int32Array([
+var Yo = new Int32Array([
 	0,
 	265,
 	515,
@@ -11637,7 +18868,7 @@ var ko = new Int32Array([
 	515,
 	265,
 	0
-]), Ao = new Int32Array([
+]), Xo = new Int32Array([
 	-1,
 	-1,
 	-1,
@@ -15734,7 +22965,7 @@ var ko = new Int32Array([
 	-1,
 	-1,
 	-1
-]), jo = [
+]), Zo = [
 	[
 		0,
 		0,
@@ -15775,7 +23006,7 @@ var ko = new Int32Array([
 		1,
 		1
 	]
-], Mo = [
+], Qo = [
 	[0, 1],
 	[1, 2],
 	[2, 3],
@@ -15788,22 +23019,22 @@ var ko = new Int32Array([
 	[1, 5],
 	[2, 6],
 	[3, 7]
-], No = /* @__PURE__ */ new Uint8Array(256);
+], $o = /* @__PURE__ */ new Uint8Array(256);
 for (let e = 0; e < 256; e++) {
 	let t = e * 16;
-	for (; Ao[t + No[e] * 3] !== -1;) No[e]++;
+	for (; Xo[t + $o[e] * 3] !== -1;) $o[e]++;
 }
-function Po() {
+function es() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function Fo(e, t, n, r) {
+function ts(e, t, n, r) {
 	let i = t * n, a = Math.floor(e / i), o = e - a * i, s = Math.floor(o / t);
 	r[0] = o - s * t, r[1] = s, r[2] = a;
 }
-function Io(e, t, n, r) {
+function ns(e, t, n, r) {
 	return (n * r[1] + t) * r[0] + e;
 }
-function Lo(e, t, n) {
+function rs(e, t, n) {
 	let r = t.dimensions[n], i = e.dimensions[n], a = e.originFractional?.[n] ?? 0, o = e.boundaryMode !== "zero", s = new Int32Array(r), c = new Int32Array(r), l = new Float64Array(r), u = new Uint8Array(r);
 	for (let e = 0; e < r; e++) {
 		let r = (t.bounds.minimum[n] + e * t.fractionalStep[n] - a) * i;
@@ -15818,7 +23049,7 @@ function Lo(e, t, n) {
 		valid: u
 	};
 }
-function Ro(e, t) {
+function is(e, t) {
 	let n = Object.getOwnPropertyDescriptor(e, "values")?.value;
 	return !ArrayBuffer.isView(n) || n instanceof DataView || !Array.isArray(e.dimensions) || e.dimensions.length !== 3 || n.length !== e.dimensions[0] * e.dimensions[1] * e.dimensions[2] ? null : {
 		values: n,
@@ -15827,10 +23058,10 @@ function Ro(e, t) {
 			0,
 			1,
 			2
-		].map((n) => Lo(e, t, n))
+		].map((n) => rs(e, t, n))
 	};
 }
-function zo(e, t, n, r, i) {
+function as(e, t, n, r, i) {
 	let [a, o] = t.dimensions, s = a * o, [c, l] = e.dimensions, u = c * l, [d, f, p] = e.axes, m = e.values;
 	for (let e = 0; e < r; e++) {
 		let t = n[e], r = Math.floor(t / s), o = t - r * s, l = Math.floor(o / a), h = o - l * a;
@@ -15842,11 +23073,11 @@ function zo(e, t, n, r, i) {
 		i[t] = ne + w * (ee + C * (te - ee) - ne);
 	}
 }
-function Bo(e, t, n, r = null, i = {}) {
-	let a = Po(), o = r ?? t.reduce((e, t) => e + t, 0), s = new Uint32Array(o), c = new Uint8Array(e.nodeCount), l = new Float32Array(e.nodeCount), u = new Uint32Array(e.nodeCount), d = 0, f = 0, [p, m] = e.cellDimensions, [h, g] = e.dimensions, _ = h * g, v = /* @__PURE__ */ new Int32Array(3), y = /* @__PURE__ */ new Int32Array(8);
+function os(e, t, n, r = null, i = {}) {
+	let a = es(), o = r ?? t.reduce((e, t) => e + t, 0), s = new Uint32Array(o), c = new Uint8Array(e.nodeCount), l = new Float32Array(e.nodeCount), u = new Uint32Array(e.nodeCount), d = 0, f = 0, [p, m] = e.cellDimensions, [h, g] = e.dimensions, _ = h * g, v = /* @__PURE__ */ new Int32Array(3), y = /* @__PURE__ */ new Int32Array(8);
 	for (let e = 0; e < t.length; e++) {
 		if (!t[e]) continue;
-		s[d++] = e, Fo(e, p, m, v);
+		s[d++] = e, ts(e, p, m, v);
 		let n = (v[2] * g + v[1]) * h + v[0];
 		y[0] = n, y[1] = n + 1, y[2] = n + h, y[3] = n + h + 1, y[4] = n + _, y[5] = n + _ + 1, y[6] = n + _ + h, y[7] = n + _ + h + 1;
 		for (let e = 0; e < 8; e++) {
@@ -15854,14 +23085,14 @@ function Bo(e, t, n, r = null, i = {}) {
 			!c[t] && (!i.allowedNodeMask || i.allowedNodeMask[t]) && (c[t] = 1, u[f++] = t);
 		}
 	}
-	let b = i.nodeTraversal ?? "active-list", x = i.samplingMode ?? "auto", S = x === "generic" ? null : Ro(n, e);
+	let b = i.nodeTraversal ?? "active-list", x = i.samplingMode ?? "auto", S = x === "generic" ? null : is(n, e);
 	if (x === "prepared" && !S) throw Error("Prepared surface sampling requires an ordinary regular scalar grid");
 	let C = b === "full-scan" ? new Uint32Array(e.nodeCount) : u, w = f;
 	if (b === "full-scan") {
 		w = 0;
 		for (let e = 0; e < c.length; e++) c[e] && (C[w++] = e);
 	}
-	if (S) zo(S, e, C, w, l);
+	if (S) as(S, e, C, w, l);
 	else {
 		let t = h * g;
 		for (let r = 0; r < w; r++) {
@@ -15878,14 +23109,14 @@ function Bo(e, t, n, r = null, i = {}) {
 		fieldSampleCount: w,
 		samplingBackend: S ? "prepared-trilinear" : "generic-sample",
 		nodeTraversal: b,
-		samplingTimeMs: Po() - a
+		samplingTimeMs: es() - a
 	};
 }
-function Vo(e, t, n, r) {
-	let i = Po(), a = t.activeCellIndices.length, o = new Uint32Array(a), s = new Uint16Array(a), c = 0, l = 0, u = 0, d = 0, f = 0, p = r !== "negative", m = r !== "positive", [h, g] = e.dimensions, [_, v] = e.cellDimensions, y = h * g, b = /* @__PURE__ */ new Int32Array(3), x = /* @__PURE__ */ new Int32Array(8);
+function ss(e, t, n, r) {
+	let i = es(), a = t.activeCellIndices.length, o = new Uint32Array(a), s = new Uint16Array(a), c = 0, l = 0, u = 0, d = 0, f = 0, p = r !== "negative", m = r !== "positive", [h, g] = e.dimensions, [_, v] = e.cellDimensions, y = h * g, b = /* @__PURE__ */ new Int32Array(3), x = /* @__PURE__ */ new Int32Array(8);
 	for (let e = 0; e < t.activeCellIndices.length; e++) {
 		let r = t.activeCellIndices[e];
-		Fo(r, _, v, b);
+		ts(r, _, v, b);
 		let i = (b[2] * g + b[1]) * h + b[0];
 		x[0] = i, x[1] = i + 1, x[2] = i + h + 1, x[3] = i + h, x[4] = i + y, x[5] = i + y + 1, x[6] = i + y + h + 1, x[7] = i + y + h;
 		let a = 0, S = 0;
@@ -15893,8 +23124,8 @@ function Vo(e, t, n, r) {
 			let r = t.nodeValues[x[e]];
 			p && r < n && (a |= 1 << e), m && -r < n && (S |= 1 << e);
 		}
-		let C = ko[a] !== 0, w = ko[S] !== 0;
-		!C && !w || (o[c] = r, s[c] = a | S << 8, c++, C && (l++, d += No[a]), w && (u++, f += No[S]));
+		let C = Yo[a] !== 0, w = Yo[S] !== 0;
+		!C && !w || (o[c] = r, s[c] = a | S << 8, c++, C && (l++, d += $o[a]), w && (u++, f += $o[S]));
 	}
 	return {
 		cellIndices: o.subarray(0, c),
@@ -15904,44 +23135,44 @@ function Vo(e, t, n, r) {
 		negativeSurfaceCellCount: u,
 		positiveTriangleCount: d,
 		negativeTriangleCount: f,
-		classificationTimeMs: Po() - i
+		classificationTimeMs: es() - i
 	};
 }
-function Ho(e, t, n, r, i, a) {
+function cs(e, t, n, r, i, a) {
 	let o = i === "positive" ? 1 : -1, s = i === "positive" ? 0 : 8, c = /* @__PURE__ */ new Float32Array(8), l = /* @__PURE__ */ new Float64Array(36), u = /* @__PURE__ */ new Int32Array(3), [d, f] = e.cellDimensions, p = 0;
 	for (let i = 0; i < n.activeSurfaceCellCount; i++) {
-		let m = n.cellCases[i] >> s & 255, h = ko[m];
+		let m = n.cellCases[i] >> s & 255, h = Yo[m];
 		if (h === 0) continue;
-		Fo(n.cellIndices[i], d, f, u);
+		ts(n.cellIndices[i], d, f, u);
 		let g = u[0], _ = u[1], v = u[2];
 		for (let n = 0; n < 8; n++) {
-			let r = jo[n];
-			c[n] = o * t.nodeValues[Io(g + r[0], _ + r[1], v + r[2], e.dimensions)];
+			let r = Zo[n];
+			c[n] = o * t.nodeValues[ns(g + r[0], _ + r[1], v + r[2], e.dimensions)];
 		}
 		for (let t = 0; t < 12; t++) {
 			if (!(h & 1 << t)) continue;
-			let [n, i] = Mo[t], a = c[i] - c[n], o = Math.abs(a) < 1e-20 ? .5 : (r - c[n]) / a;
+			let [n, i] = Qo[t], a = c[i] - c[n], o = Math.abs(a) < 1e-20 ? .5 : (r - c[n]) / a;
 			for (let r = 0; r < 3; r++) {
-				let a = (r === 0 ? g : r === 1 ? _ : v) + jo[n][r] + o * (jo[i][r] - jo[n][r]);
+				let a = (r === 0 ? g : r === 1 ? _ : v) + Zo[n][r] + o * (Zo[i][r] - Zo[n][r]);
 				l[t * 3 + r] = e.bounds.minimum[r] + a * e.fractionalStep[r];
 			}
 		}
 		let y = m * 16;
-		for (let e = 0; Ao[y + e] !== -1; e++) {
-			let t = Ao[y + e] * 3;
+		for (let e = 0; Xo[y + e] !== -1; e++) {
+			let t = Xo[y + e] * 3;
 			a[p++] = l[t], a[p++] = l[t + 1], a[p++] = l[t + 2];
 		}
 	}
 }
-function Uo(e) {
-	let { lattice: t, activeCellMask: n, activeCellCount: r, field: i, level: a, signs: o = "both", samplingMode: s = "auto", nodeTraversal: c = "active-list", allowedNodeMask: l = null } = e, u = Po(), d = Bo(t, n, i, r, {
+function ls(e) {
+	let { lattice: t, activeCellMask: n, activeCellCount: r, field: i, level: a, signs: o = "both", samplingMode: s = "auto", nodeTraversal: c = "active-list", allowedNodeMask: l = null } = e, u = es(), d = os(t, n, i, r, {
 		samplingMode: s,
 		nodeTraversal: c,
 		allowedNodeMask: l
-	}), f = Vo(t, d, a, o), p = Po(), m = new Float32Array(f.positiveTriangleCount * 9), h = new Float32Array(f.negativeTriangleCount * 9), g = Po() - p, _ = Po();
-	m.length && Ho(t, d, f, a, "positive", m), h.length && Ho(t, d, f, a, "negative", h);
-	let v = Po() - _, y = new Uint8Array(t.cellDimensions[1] * t.cellDimensions[2]), b = /* @__PURE__ */ new Int32Array(3);
-	for (let e of d.activeCellIndices) Fo(e, t.cellDimensions[0], t.cellDimensions[1], b), y[b[2] * t.cellDimensions[1] + b[1]] = 1;
+	}), f = ss(t, d, a, o), p = es(), m = new Float32Array(f.positiveTriangleCount * 9), h = new Float32Array(f.negativeTriangleCount * 9), g = es() - p, _ = es();
+	m.length && cs(t, d, f, a, "positive", m), h.length && cs(t, d, f, a, "negative", h);
+	let v = es() - _, y = new Uint8Array(t.cellDimensions[1] * t.cellDimensions[2]), b = /* @__PURE__ */ new Int32Array(3);
+	for (let e of d.activeCellIndices) ts(e, t.cellDimensions[0], t.cellDimensions[1], b), y[b[2] * t.cellDimensions[1] + b[1]] = 1;
 	let x = 0;
 	for (let e of y) x += e;
 	return {
@@ -15973,26 +23204,26 @@ function Uo(e) {
 			negativeTriangleCount: f.negativeTriangleCount,
 			generatedVertexCount: (m.length + h.length) / 3,
 			allocatedGeometryBytes: m.byteLength + h.byteLength,
-			extractorTimeMs: Po() - u
+			extractorTimeMs: es() - u
 		}
 	};
 }
 //#endregion
 //#region src/lib/density/surface-lattice.js
-function Wo(e, t) {
+function us(e, t) {
 	return [
 		e[1] * t[2] - e[2] * t[1],
 		e[2] * t[0] - e[0] * t[2],
 		e[0] * t[1] - e[1] * t[0]
 	];
 }
-function Go(e, t) {
+function ds(e, t) {
 	return e[0] * t[0] + e[1] * t[1] + e[2] * t[2];
 }
-function Ko(e) {
+function fs(e) {
 	return Math.hypot(...e);
 }
-function qo(e, t, n) {
+function ps(e, t, n) {
 	let r = (Array.isArray(n) ? n : [
 		n,
 		n,
@@ -16022,7 +23253,7 @@ function qo(e, t, n) {
 			1,
 			1
 		]
-	].map((e) => Ko([
+	].map((e) => fs([
 		0,
 		1,
 		2
@@ -16041,21 +23272,21 @@ function qo(e, t, n) {
 		cellCount: c[0] * c[1] * c[2]
 	};
 }
-function Jo(e, t) {
-	let n = e.cartesianStepVectors, r = Go(n[0], Wo(n[1], n[2]));
+function ms(e, t) {
+	let n = e.cartesianStepVectors, r = ds(n[0], us(n[1], n[2]));
 	if (!Number.isFinite(r) || Math.abs(r) < 1e-15) throw Error("Surface lattice step vectors must span a finite volume");
 	let i = t + e.cellDiagonal, a = [
-		Wo(n[1], n[2]),
-		Wo(n[2], n[0]),
-		Wo(n[0], n[1])
-	].map((e) => e.map((e) => e / r)).map((e) => Math.ceil(i * Ko(e))), o = [], s = i ** 2;
+		us(n[1], n[2]),
+		us(n[2], n[0]),
+		us(n[0], n[1])
+	].map((e) => e.map((e) => e / r)).map((e) => Math.ceil(i * fs(e))), o = [], s = i ** 2;
 	for (let e = -a[2]; e <= a[2]; e++) for (let t = -a[1]; t <= a[1]; t++) for (let r = -a[0]; r <= a[0]; r++) {
 		let i = [
 			0,
 			1,
 			2
 		].map((i) => r * n[0][i] + t * n[1][i] + e * n[2][i]);
-		Go(i, i) <= s * 1.000000000001 && o.push(r, t, e);
+		ds(i, i) <= s * 1.000000000001 && o.push(r, t, e);
 	}
 	let c = Math.max(...a) <= 32767 ? Int16Array : Int32Array, l = o.length / 3, u = new c(l), d = new c(l), f = new c(l);
 	for (let e = 0; e < l; e++) u[e] = o[3 * e], d[e] = o[3 * e + 1], f[e] = o[3 * e + 2];
@@ -16067,10 +23298,10 @@ function Jo(e, t) {
 		radius: i
 	};
 }
-function Yo(e, t) {
-	return Jo(e, t);
+function hs(e, t) {
+	return ms(e, t);
 }
-function Xo(e, t, n) {
+function gs(e, t, n) {
 	let [r, i, a] = e.cellDimensions, o = new Uint8Array(e.cellCount), s = 0;
 	for (let c of t) {
 		let t = c.position, l = Math.floor((t.x - e.bounds.minimum[0]) / e.fractionalStep[0]), u = Math.floor((t.y - e.bounds.minimum[1]) / e.fractionalStep[1]), d = Math.floor((t.z - e.bounds.minimum[2]) / e.fractionalStep[2]);
@@ -16087,7 +23318,7 @@ function Xo(e, t, n) {
 		activeCellCount: c
 	};
 }
-function Zo(e, t, n) {
+function _s(e, t, n) {
 	let [r, i, a] = e.cellDimensions, [o, s, c] = e.dimensions, l = new Uint8Array(e.cellCount), u = new Uint8Array(e.nodeCount), d = 0, f = 0, p = 0, m = 0;
 	for (let h of t) {
 		let t = h.position, g = Math.floor((t.x - e.bounds.minimum[0]) / e.fractionalStep[0]), _ = Math.floor((t.y - e.bounds.minimum[1]) / e.fractionalStep[1]), v = Math.floor((t.z - e.bounds.minimum[2]) / e.fractionalStep[2]);
@@ -16117,7 +23348,7 @@ function Zo(e, t, n) {
 }
 //#endregion
 //#region src/lib/density/isosurface.js
-function Qo(e, t) {
+function vs(e, t) {
 	if (!e?.atoms?.length) return {
 		minimum: [
 			0,
@@ -16130,7 +23361,7 @@ function Qo(e, t) {
 			1
 		]
 	};
-	let n = Ne(e.cell.fractToCartMatrix).toArray().map((e) => t * Math.sqrt(e[0] ** 2 + e[1] ** 2 + e[2] ** 2)), r = [
+	let n = z(e.cell.fractToCartMatrix).toArray().map((e) => t * Math.sqrt(e[0] ** 2 + e[1] ** 2 + e[2] ** 2)), r = [
 		Infinity,
 		Infinity,
 		Infinity
@@ -16152,21 +23383,21 @@ function Qo(e, t) {
 		maximum: i
 	};
 }
-function $o(e, t = {}) {
+function ys(e, t = {}) {
 	let n = {
-		...en,
+		...yn,
 		...t
 	}, r = Math.max(8, Math.round(Number(n.resolution))), i = Math.max(r, Math.round(Number(n.maxResolution))), a = Number(n.gridSpacing);
 	if (!(Number.isFinite(a) && a > 0)) throw Error("Isosurface grid spacing must be a positive number");
 	if (!(Number.isFinite(i) && i >= 8)) throw Error("Maximum isosurface resolution must be at least 8");
-	let o = Qo(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
+	let o = vs(e, n.radius), s = e.cell.fractToCartMatrix.toArray(), c = o.maximum.map((e, t) => (e - o.minimum[t]) * Math.hypot(s[0][t], s[1][t], s[2][t])), l = Math.ceil(Math.max(...c) / a) + 1;
 	return Math.min(i, Math.max(r, l));
 }
-function es(t) {
+function bs(t) {
 	let n = t.fractToCartMatrix.toArray();
 	return new e.Matrix4().set(n[0][0], n[0][1], n[0][2], 0, n[1][0], n[1][1], n[1][2], 0, n[2][0], n[2][1], n[2][2], 0, 0, 0, 0, 1);
 }
-function ts(t, n) {
+function xs(t, n) {
 	let r = t.wireframe ? e.MeshBasicMaterial : e.MeshStandardMaterial, i = {
 		color: n,
 		transparent: t.opacity < 1,
@@ -16177,7 +23408,7 @@ function ts(t, n) {
 	};
 	return t.wireframe || (i.roughness = .35, i.metalness = 0), new r(i);
 }
-function ns(t, n, r, i) {
+function Ss(t, n, r, i) {
 	let a = new e.BufferGeometry();
 	a.setAttribute("position", new e.BufferAttribute(t.positions, 3)), a.setDrawRange(0, t.positions.length / 3), a.computeVertexNormals(), a.computeBoundingBox(), a.computeBoundingSphere();
 	let o = new e.Mesh(a, n);
@@ -16187,8 +23418,8 @@ function ns(t, n, r, i) {
 		sign: r.includes("Positive") ? "positive" : "negative"
 	}, o.matrix.copy(i), o.matrixAutoUpdate = !1, o;
 }
-function rs(t, n, r) {
-	let i = t.geometry.index ? t.geometry : is(t.geometry), a = new e.EdgesGeometry(i);
+function Cs(t, n, r) {
+	let i = t.geometry.index ? t.geometry : ws(t.geometry), a = new e.EdgesGeometry(i);
 	i !== t.geometry && i.dispose();
 	let o = new e.LineSegments(a, new e.LineBasicMaterial({
 		color: n,
@@ -16197,21 +23428,21 @@ function rs(t, n, r) {
 	}));
 	return o.name = t.name, o.userData = t.userData, o.matrix.copy(t.matrix), o.matrixAutoUpdate = t.matrixAutoUpdate, o;
 }
-function is(t) {
+function ws(t) {
 	let { start: n, count: r } = t.drawRange, i = new e.BufferGeometry();
 	for (let [a, o] of Object.entries(t.attributes)) i.setAttribute(a, new e.BufferAttribute(o.array.slice(n * o.itemSize, (n + r) * o.itemSize), o.itemSize, o.normalized));
 	return i;
 }
-function as(t, n, r, i, a, o, s, c) {
-	let l = performance.now(), u = Math.max(8, Math.round(r.resolution)), d = qo(n.cell, i, u), f = Yo(d, r.radius), p = Zo(d, n.atoms ?? [], f), m = p ? {
+function Ts(t, n, r, i, a, o, s, c) {
+	let l = performance.now(), u = Math.max(8, Math.round(r.resolution)), d = ps(n.cell, i, u), f = hs(d, r.radius), p = _s(d, n.atoms ?? [], f), m = p ? {
 		mask: p.cellMask,
 		candidateCellCount: p.candidateCellCount,
 		activeCellCount: p.activeCellCount
-	} : Xo(d, n.atoms ?? [], f), h = p ? {
+	} : gs(d, n.atoms ?? [], f), h = p ? {
 		mask: p.nodeMask,
 		candidateNodeCount: p.candidateNodeCount,
 		allowedNodeCount: p.allowedNodeCount
-	} : null, g = performance.now() - l, _ = Uo({
+	} : null, g = performance.now() - l, _ = ls({
 		lattice: d,
 		activeCellMask: m.mask,
 		activeCellCount: m.activeCellCount,
@@ -16221,10 +23452,10 @@ function as(t, n, r, i, a, o, s, c) {
 		samplingMode: "auto",
 		nodeTraversal: "active-list",
 		allowedNodeMask: h?.mask ?? null
-	}), v = performance.now(), y = ts(r, r.positiveColor), b = ts(r, r.negativeColor), x = es(n.cell), S = o !== "negative", C = o !== "positive", w = S ? ns(_.positive, y, "PositiveIsosurface", x) : null, T = C ? ns(_.negative, b, "NegativeIsosurface", x) : null;
+	}), v = performance.now(), y = xs(r, r.positiveColor), b = xs(r, r.negativeColor), x = bs(n.cell), S = o !== "negative", C = o !== "positive", w = S ? Ss(_.positive, y, "PositiveIsosurface", x) : null, T = C ? Ss(_.negative, b, "NegativeIsosurface", x) : null;
 	w || y.dispose(), T || b.dispose();
 	let E = [w, T].filter(Boolean), D = performance.now() - v, O = E.reduce((e, t) => e + Object.values(t.geometry.attributes).reduce((e, t) => e + t.array.byteLength, 0), 0), k = performance.now(), A = 0, j = r.wireframe && !r.keepTriangles ? E.map((e) => {
-		let t = rs(e, e.material.color, r.opacity);
+		let t = Cs(e, e.material.color, r.opacity);
 		return A += t.geometry.getAttribute("position")?.count / 2 || 0, e.geometry.dispose(), e.material.dispose(), t;
 	}) : E, M = performance.now() - k, N = new e.Group();
 	N.name = "Isosurface", N.visible = r.visible, N.add(...j);
@@ -16287,24 +23518,24 @@ function as(t, n, r, i, a, o, s, c) {
 		clippingConservativeVoxelPadding: d.cellDiagonal
 	}, N;
 }
-function os(e, t, n = {}) {
+function Es(e, t, n = {}) {
 	let r = performance.now(), i = {
-		...en,
+		...yn,
 		...n
 	}, a = i.level ?? e.defaultLevel ?? i.sigmaLevel * e.sigma;
 	if (!(Number.isFinite(a) && a > 0)) throw Error("Isosurface level must be a positive finite number");
 	if (!(Number.isFinite(i.radius) && i.radius > 0)) throw Error("Isosurface radius must be a positive finite number");
-	let o = performance.now(), s = Qo(t, i.radius), c = performance.now() - o, l = i.sign ?? e.surfaceSign ?? "both";
+	let o = performance.now(), s = vs(t, i.radius), c = performance.now() - o, l = i.sign ?? e.surfaceSign ?? "both";
 	if (![
 		"positive",
 		"negative",
 		"both"
 	].includes(l)) throw Error("Isosurface sign must be \"positive\", \"negative\", or \"both\"");
-	return as(e, t, i, s, a, l, c, r);
+	return Ts(e, t, i, s, a, l, c, r);
 }
 //#endregion
 //#region src/lib/density/symmetry-isosurface.js
-var ss = 1e-4, cs = class {
+var Ds = 1e-4, Os = class {
 	constructor(e = 64 * 1024 * 1024) {
 		this.maxBytes = Math.max(0, Number(e) || 0), this.entries = /* @__PURE__ */ new Map(), this.bytes = 0, this.evictions = 0;
 	}
@@ -16336,24 +23567,24 @@ var ss = 1e-4, cs = class {
 		this.entries.clear(), this.bytes = 0, this.evictions = 0;
 	}
 };
-function ls(e, t) {
+function ks(e, t) {
 	return [
 		e[0][0] * t[0] + e[0][1] * t[1] + e[0][2] * t[2],
 		e[1][0] * t[0] + e[1][1] * t[1] + e[1][2] * t[2],
 		e[2][0] * t[0] + e[2][1] * t[1] + e[2][2] * t[2]
 	];
 }
-function us(e, t) {
+function As(e, t) {
 	return e.reduce((e, n, r) => e + (n - t[r]) ** 2, 0);
 }
-function ds(e) {
+function js(e) {
 	return Array.isArray(e) ? e : e.toArray();
 }
-function fs(e, t) {
+function Ms(e, t) {
 	let n = e.fractToCartMatrix.toArray();
 	return Math.max(...t.maximum.map((e, r) => (e - t.minimum[r]) * Math.hypot(n[0][r], n[1][r], n[2][r])));
 }
-function ps(e, t) {
+function Ns(e, t) {
 	let n = t;
 	for (; e[n] !== n;) n = e[n];
 	for (; e[t] !== t;) {
@@ -16362,33 +23593,33 @@ function ps(e, t) {
 	}
 	return n;
 }
-function ms(e, t, n) {
-	let r = ps(e, t), i = ps(e, n);
+function Ps(e, t, n) {
+	let r = Ns(e, t), i = Ns(e, n);
 	r !== i && (e[i] = r);
 }
-function hs(e, t, n = 0) {
+function Fs(e, t, n = 0) {
 	let r = e?.atoms ?? [];
 	if (r.length === 0) return [];
-	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => ls(i, [
+	let i = e.cell.fractToCartMatrix.toArray(), a = r.map((e) => ks(i, [
 		e.position.x,
 		e.position.y,
 		e.position.z
 	])), o = r.map((e, t) => t), s = (2 * t + n) ** 2;
-	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) us(a[e], a[t]) <= s && ms(o, e, t);
+	for (let e = 0; e < r.length; e++) for (let t = e + 1; t < r.length; t++) As(a[e], a[t]) <= s && Ps(o, e, t);
 	let c = /* @__PURE__ */ new Map();
 	for (let e = 0; e < r.length; e++) {
-		let t = ps(o, e);
+		let t = Ns(o, e);
 		c.has(t) || c.set(t, { atoms: [] }), c.get(t).atoms.push(r[e]);
 	}
 	return Array.from(c.values());
 }
-function gs(e, t, n, r, i = "both") {
-	return hs(e, t);
+function Is(e, t, n, r, i = "both") {
+	return Fs(e, t);
 }
-function _s(e) {
+function Ls(e) {
 	return e.atoms.map((e) => `${e.label}\u0000${e.atomType}\u0000${e.disorderGroup}`).sort().join("");
 }
-function vs(e, t, n, r, i) {
+function Rs(e, t, n, r, i) {
 	let a = e.atoms.map((e) => [
 		e.label,
 		e.atomType,
@@ -16406,7 +23637,7 @@ function vs(e, t, n, r, i) {
 		a
 	].join(";");
 }
-function ys(t, n) {
+function zs(t, n) {
 	let r = n.wireframe ? e.MeshBasicMaterial : e.MeshStandardMaterial, i = {
 		color: t === "positive" ? n.positiveColor : n.negativeColor,
 		transparent: n.opacity < 1,
@@ -16419,14 +23650,14 @@ function ys(t, n) {
 		metalness: 0
 	}), new r(i);
 }
-function bs(e, t) {
+function Bs(e, t) {
 	return e.label === t.label && e.atomType === t.atomType && Number(e.disorderGroup) === Number(t.disorderGroup);
 }
-function xs(e, t, n) {
-	return ds(L(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
+function Vs(e, t, n) {
+	return js(L(e.rotation, n)).map((n, r) => n + e.translation[r] + t[r]);
 }
-function Ss(e, t, n, r) {
-	let i = e.atoms[0], a = xs(n, [
+function Hs(e, t, n, r) {
+	let i = e.atoms[0], a = Vs(n, [
 		0,
 		0,
 		0
@@ -16434,7 +23665,7 @@ function Ss(e, t, n, r) {
 		i.position.x,
 		i.position.y,
 		i.position.z
-	]), o = t.atoms.filter((e) => bs(i, e));
+	]), o = t.atoms.filter((e) => Bs(i, e));
 	for (let i of o) {
 		let o = [
 			i.position.x - a[0],
@@ -16442,18 +23673,18 @@ function Ss(e, t, n, r) {
 			i.position.z - a[2]
 		].map(Math.round), s = new Set(t.atoms.map((e, t) => t)), c = !0;
 		for (let i of e.atoms) {
-			let e = ls(r, xs(n, o, [
+			let e = ks(r, Vs(n, o, [
 				i.position.x,
 				i.position.y,
 				i.position.z
 			])), a = -1;
 			for (let n of s) {
 				let o = t.atoms[n];
-				if (bs(i, o) && us(e, ls(r, [
+				if (Bs(i, o) && As(e, ks(r, [
 					o.position.x,
 					o.position.y,
 					o.position.z
-				])) <= ss ** 2) {
+				])) <= Ds ** 2) {
 					a = n;
 					break;
 				}
@@ -16471,8 +23702,8 @@ function Ss(e, t, n, r) {
 	}
 	return null;
 }
-function Cs(e, t, n, r) {
-	if (e.atoms.length !== t.atoms.length || _s(e) !== _s(t)) return null;
+function Us(e, t, n, r) {
+	if (e.atoms.length !== t.atoms.length || Ls(e) !== Ls(t)) return null;
 	let i = n.symmetryOperations ?? [{
 		rotation: [
 			[
@@ -16498,19 +23729,19 @@ function Cs(e, t, n, r) {
 		]
 	}];
 	for (let n of i) {
-		let i = Ss(e, t, n, r);
+		let i = Hs(e, t, n, r);
 		if (i) return i;
 	}
 	return null;
 }
-function ws(t, n) {
-	let r = t.fractToCartMatrix.toArray(), i = ds(Ne(r)), a = ds(L(r, L(n.rotation, i))), o = ls(r, n.translation);
+function Ws(t, n) {
+	let r = t.fractToCartMatrix.toArray(), i = js(z(r)), a = js(L(r, L(n.rotation, i))), o = ks(r, n.translation);
 	return {
 		determinant: Me(a),
 		matrix: new e.Matrix4().set(a[0][0], a[0][1], a[0][2], o[0], a[1][0], a[1][1], a[1][2], o[1], a[2][0], a[2][1], a[2][2], o[2], 0, 0, 0, 1)
 	};
 }
-function Ts(t, n = !1) {
+function Gs(t, n = !1) {
 	let r = new e.BufferGeometry(), i = t.drawRange.count;
 	for (let [a, o] of Object.entries(t.attributes)) {
 		let t = o.array.slice(0, i * o.itemSize);
@@ -16522,7 +23753,7 @@ function Ts(t, n = !1) {
 	}
 	return r.setDrawRange(0, i), r.computeBoundingBox(), r.computeBoundingSphere(), r;
 }
-function Es(t, n) {
+function Ks(t, n) {
 	let r = [], i = [], a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Set(), s = 1 / Math.max(n, 2 ** -52), c = 0;
 	for (let e of t) {
 		let t = e.getAttribute("position");
@@ -16557,18 +23788,18 @@ function Es(t, n) {
 		removedTriangles: c
 	};
 }
-function Ds(e, t) {
+function qs(e, t) {
 	return {
 		cell: e.cell,
 		atoms: t.atoms
 	};
 }
-function Os(e, t, n) {
+function Js(e, t, n) {
 	let r = [];
 	for (let i of e) {
 		let e = null, a = null;
 		for (let o of r) {
-			let r = Cs(o.representative, i, t, n);
+			let r = Us(o.representative, i, t, n);
 			if (r) {
 				e = o, a = r;
 				break;
@@ -16610,40 +23841,40 @@ function Os(e, t, n) {
 	}
 	return r;
 }
-var ks = .7;
-function As(e, t, n, r, i) {
-	let a = Qo(Ds(e, t), n);
-	return Math.max(8, Math.min(r, Math.ceil(fs(e.cell, a) / i) + 1));
+var Ys = .7;
+function Xs(e, t, n, r, i) {
+	let a = vs(qs(e, t), n);
+	return Math.max(8, Math.min(r, Math.ceil(Ms(e.cell, a) / i) + 1));
 }
-function js(t, n, r = {}, i = null) {
+function Zs(t, n, r = {}, i = null) {
 	let a = {
-		...en,
+		...yn,
 		...r
 	};
-	if (a.useSymmetry === !1 || !n?.atoms?.length) return os(t, n, a);
-	let o = performance.now(), s = Qo(n, a.radius), c = Math.max(8, Math.round(a.resolution)), l = fs(n.cell, s) / Math.max(1, c - 1), u = a.level ?? t.defaultLevel ?? a.sigmaLevel * t.sigma, d = n.cell.fractToCartMatrix.toArray(), f = ["positive", "negative"].map((e) => {
-		let r = gs(n, a.radius, t, u, e);
+	if (a.useSymmetry === !1 || !n?.atoms?.length) return Es(t, n, a);
+	let o = performance.now(), s = vs(n, a.radius), c = Math.max(8, Math.round(a.resolution)), l = Ms(n.cell, s) / Math.max(1, c - 1), u = a.level ?? t.defaultLevel ?? a.sigmaLevel * t.sigma, d = n.cell.fractToCartMatrix.toArray(), f = ["positive", "negative"].map((e) => {
+		let r = Is(n, a.radius, t, u, e);
 		return {
 			sign: e,
 			regions: r,
-			classes: Os(r, t, d)
+			classes: Js(r, t, d)
 		};
 	}), p = f.reduce((e, t) => e + t.regions.length, 0), m = f.reduce((e, t) => e + t.classes.length, 0), h = p - m;
 	if (h === 0 && !i) {
-		let e = os(t, n, a);
+		let e = Es(t, n, a);
 		for (let t of f) e.userData[`${t.sign}DisplayedRegionCount`] = t.regions.length;
 		return e;
 	}
 	let g = 0, _ = 0;
 	for (let e of f) for (let t of e.classes) {
-		let r = As(n, t.representative, a.radius, c, l), o = r ** 3;
+		let r = Xs(n, t.representative, a.radius, c, l), o = r ** 3;
 		g += o;
-		let s = vs(t.representative, e.sign, u, r, a);
+		let s = Rs(t.representative, e.sign, u, r, a);
 		i?.has(s) || (_ += o);
 	}
 	let v = c ** 3;
-	if (_ > v * ks) {
-		let e = os(t, n, a);
+	if (_ > v * Ys) {
+		let e = Es(t, n, a);
 		for (let t of f) e.userData[`${t.sign}DisplayedRegionCount`] = t.regions.length;
 		return e.userData.symmetryDeclinedForCost = !0, e.userData.symmetryRegionSampleCost = g, e.userData.symmetryUncachedRegionSampleCost = _, e.userData.symmetryDirectSampleCost = v, e;
 	}
@@ -16680,16 +23911,16 @@ function js(t, n, r = {}, i = null) {
 	};
 	f.forEach((e) => {
 		e.classes.forEach((r) => {
-			let o = Ds(n, r.representative), s = As(n, r.representative, a.radius, c, l), d = Math.max(2e3, Math.min(a.maxPolyCount, Math.ceil(a.maxPolyCount * (s / c) ** 2 * 2))), f = vs(r.representative, e.sign, u, s, a), p = i?.get(f), m;
+			let o = qs(n, r.representative), s = Xs(n, r.representative, a.radius, c, l), d = Math.max(2e3, Math.min(a.maxPolyCount, Math.ceil(a.maxPolyCount * (s / c) ** 2 * 2))), f = Rs(r.representative, e.sign, u, s, a), p = i?.get(f), m;
 			if (p) E++, m = {
 				regular: p.geometry.clone(),
 				mirrored: null,
-				material: ys(e.sign, a),
+				material: zs(e.sign, a),
 				matrix: p.matrix.clone()
 			};
 			else {
 				D++;
-				let n = performance.now(), r = os(t, o, {
+				let n = performance.now(), r = Es(t, o, {
 					...a,
 					resolution: s,
 					maxPolyCount: d,
@@ -16700,7 +23931,7 @@ function js(t, n, r = {}, i = null) {
 				for (let e of Object.keys(k)) k[e] += r.userData[e] ?? 0;
 				let c = r.children[0];
 				m = {
-					regular: Ts(c.geometry),
+					regular: Gs(c.geometry),
 					mirrored: null,
 					material: c.material,
 					matrix: c.matrix.clone()
@@ -16710,8 +23941,8 @@ function js(t, n, r = {}, i = null) {
 				});
 			}
 			P[e.sign].push(m.material), r.copies.forEach((t) => {
-				let r = ws(n.cell, t.transform), i = m.regular;
-				r.determinant < 0 && (T++, m.mirrored ??= Ts(m.regular, !0), i = m.mirrored);
+				let r = Ws(n.cell, t.transform), i = m.regular;
+				r.determinant < 0 && (T++, m.mirrored ??= Gs(m.regular, !0), i = m.mirrored);
 				let a = i.clone();
 				a.applyMatrix4(r.matrix.clone().multiply(m.matrix)), a.deleteAttribute("normal"), N[e.sign].push(a);
 			}), m.regular.dispose(), m.mirrored?.dispose();
@@ -16719,7 +23950,7 @@ function js(t, n, r = {}, i = null) {
 	});
 	let ee = performance.now(), te = 0;
 	for (let t of ["positive", "negative"]) {
-		let n = Es(N[t], a.stitchTolerance ?? 1e-4);
+		let n = Ks(N[t], a.stitchTolerance ?? 1e-4);
 		te += n.removedTriangles;
 		let r = P[t][0];
 		P[t].slice(1).forEach((e) => e.dispose());
@@ -16729,7 +23960,7 @@ function js(t, n, r = {}, i = null) {
 			type: "isosurface",
 			sign: t
 		}, a.wireframe) {
-			let e = performance.now(), t = rs(o, r.color, a.opacity);
+			let e = performance.now(), t = Cs(o, r.color, a.opacity);
 			O += performance.now() - e, k.generatedLineSegmentCount += t.geometry.getAttribute("position")?.count / 2 || 0, o.geometry.dispose(), r.dispose(), b.add(t);
 		} else b.add(o);
 		t === "positive" ? x = i : S = i;
@@ -16781,17 +24012,17 @@ function js(t, n, r = {}, i = null) {
 }
 //#endregion
 //#region src/lib/fix-cif/reconcile-labels.js
-function Ms(e, t = !0) {
+function Qs(e, t = !0) {
 	if (!e || typeof e != "string") throw Error("Empty atom label");
 	let n = e.toUpperCase().replace(/[()[\]{}]/g, "");
 	if (t && (n = n.replace(/\^[a-zA-Z1-9]+$/, "").replace(/_[a-zA-Z1-9]+$/, "").replace(/_\$\d+$/, "")), n === "") throw Error(`Label "${e}" normalizes to empty string`);
 	return n;
 }
-function Ns(e, t = !0) {
+function $s(e, t = !0) {
 	let n = /* @__PURE__ */ new Map();
 	e.forEach((e) => {
 		try {
-			let r = Ms(e, t);
+			let r = Qs(e, t);
 			n.has(r) || n.set(r, []), n.get(r).push(e);
 		} catch (e) {
 			console.warn(`Skipping invalid label: ${e.message}`);
@@ -16801,16 +24032,16 @@ function Ns(e, t = !0) {
 	for (let [e, t] of n.entries()) t.length === 1 ? r.set(e, t[0]) : console.warn(`Multiple labels map to ${e}: ${t.join(", ")}. Skipping mapping.`);
 	return r;
 }
-function Ps(e, t, n, r = !0) {
-	let i = Ns(n, r), a = e.get(t).map((e) => {
-		let t = Ms(e, r);
+function ec(e, t, n, r = !0) {
+	let i = $s(n, r), a = e.get(t).map((e) => {
+		let t = Qs(e, r);
 		return i.has(t) ? i.get(t) : e;
 	});
 	e.data[t] = a;
 }
 //#endregion
 //#region src/lib/fix-cif/guess-symmetry.js
-function Fs(e) {
+function tc(e) {
 	if (!e || e === ".") return ".";
 	let t = String(e).trim();
 	if (/^\d+_\d{3}$/.test(t)) return t;
@@ -16825,19 +24056,19 @@ function Fs(e) {
 	}
 	return e;
 }
-function Is(e, t) {
-	let n = e.get(t).map((e) => Fs(e));
+function nc(e, t) {
+	let n = e.get(t).map((e) => tc(e));
 	e.data[t] = n;
 }
 //#endregion
 //#region src/lib/fix-cif/base.js
-function Ls(e, t) {
+function rc(e, t) {
 	for (let n of t) if (e.headerLines.includes(n)) return n;
 	return null;
 }
-function Rs(e, t) {
-	if (Ls(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
-	let n = Ls(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = Ls(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
+function ic(e, t) {
+	if (rc(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"])) return;
+	let n = rc(e, ["_atom_site.adp_type", "_atom_site_adp_type"]), r = rc(e, ["_atom_site.u_iso_or_equiv", "_atom_site_U_iso_or_equiv"]);
 	if (!n || !r) return;
 	let i = e.get(n), a = e.get(r);
 	e.data[n] = i.map((e, t) => {
@@ -16845,52 +24076,52 @@ function Rs(e, t) {
 		return /^uani$/i.test(String(e)) && n ? "Uiso" : e;
 	});
 }
-function zs(e, t = !0, n = !0, r = !0) {
+function ac(e, t = !0, n = !0, r = !0) {
 	let i, a;
 	if ((t || n) && (i = e.get("_atom_site"), a = i.get(["_atom_site.label", "_atom_site_label"])), t) {
 		let t = e.get("_atom_site_aniso", !1);
 		if (t) {
-			let e = Ls(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
-			e ? Ps(t, e, a) : Rs(i, t);
+			let e = rc(t, ["_atom_site_aniso.label", "_atom_site_aniso_label"]);
+			e ? ec(t, e, a) : ic(i, t);
 		}
 	}
 	if (n || r) {
 		let t = e.get("_geom_bond", !1);
-		if (t && (n && (Ps(t, Ls(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), Ps(t, Ls(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
-			let e = Ls(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
-			e && Is(t, e);
-			let n = Ls(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
-			n && Is(t, n);
+		if (t && (n && (ec(t, rc(t, ["_geom_bond.atom_site_label_1", "_geom_bond_atom_site_label_1"]), a), ec(t, rc(t, ["_geom_bond.atom_site_label_2", "_geom_bond_atom_site_label_2"]), a)), r)) {
+			let e = rc(t, ["_geom_bond.site_symmetry_1", "_geom_bond_site_symmetry_1"]);
+			e && nc(t, e);
+			let n = rc(t, ["_geom_bond.site_symmetry_2", "_geom_bond_site_symmetry_2"]);
+			n && nc(t, n);
 		}
 		let i = e.get("_geom_hbond", !1);
 		if (i) {
 			if (n) {
-				Ps(i, Ls(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
-				let e = Ls(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
-				e && Ps(i, e, a), Ps(i, Ls(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
+				ec(i, rc(i, ["_geom_hbond.atom_site_label_d", "_geom_hbond_atom_site_label_D"]), a);
+				let e = rc(i, ["_geom_hbond.atom_site_label_h", "_geom_hbond_atom_site_label_H"]);
+				e && ec(i, e, a), ec(i, rc(i, ["_geom_hbond.atom_site_label_a", "_geom_hbond_atom_site_label_A"]), a);
 			}
 			if (r) {
-				let e = Ls(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
-				e && Is(i, e);
+				let e = rc(i, ["_geom_hbond.site_symmetry_a", "_geom_hbond_site_symmetry_A"]);
+				e && nc(i, e);
 			}
 		}
 	}
 }
 //#endregion
 //#region src/lib/disorder-icons.js
-function Bs(e, t) {
+function oc(e, t) {
 	if (t === "all") return e.all;
 	if (e[t]) return e[t];
 	let n = /^group(\d+)of\d+$/.exec(t)?.[1];
-	return n ? Vs(e, n) : "";
+	return n ? sc(e, n) : "";
 }
-function Vs(e, t) {
+function sc(e, t) {
 	let n = e.all.replace(/#000000/g, "#8f8f8f"), r = String(t).length, i = `<text x="8.925192" y="8.925193" text-anchor="middle" dominant-baseline="central" font-size="${r <= 1 ? 9 : Math.max(9 - (r - 1) * 1.5, 5)}" font-family="system-ui, sans-serif" font-weight="bold" fill="#000000">${t}</text>`;
 	return n.replace("</svg>", `${i}</svg>`);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/base.js
-var Hs = class e {
+var cc = class e {
 	constructor(t, n, r, i = []) {
 		if (new.target === e) throw TypeError("Cannot instantiate BaseFilter directly");
 		this.MODES = Object.freeze(t), this.PREFERRED_FALLBACK_ORDER = Object.freeze(i), this.filterName = r, this._mode = null, this.mode = n;
@@ -16936,49 +24167,14 @@ function X(e, t, n) {
 	return r.length === 2 && (a = r[1]), Y(i, n.combineSymmetryCodes(t, a));
 }
 //#endregion
-//#region src/lib/structure/bond-classification.js
-var Us = /* @__PURE__ */ new Set([
-	"H",
-	"D",
-	"B",
-	"C",
-	"N",
-	"O",
-	"F",
-	"Si",
-	"P",
-	"S",
-	"Cl",
-	"As",
-	"Se",
-	"Br",
-	"Te",
-	"I"
-]), Ws = 4, Gs = 1.6;
-function Ks(e) {
-	return Us.has(e) ? Yt[e] : void 0;
-}
-function qs(e, t = e.bonds) {
-	let n = /* @__PURE__ */ new Map();
-	for (let t of e.atoms) n.has(t.label) || n.set(t.label, t.atomType);
-	return t.filter((e) => {
-		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > Ws) return !1;
-		let t = n.get(e.atom1Label), r = n.get(e.atom2Label);
-		if (t === void 0 || r === void 0) return !0;
-		let i = Ks(t), a = Ks(r);
-		return i === void 0 || a === void 0 || e.bondLength <= Gs * (i + a);
-	});
-}
-//#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-fragment.js
-function Js(e, t) {
+function lc(e, t) {
 	return e < t ? `${e}->${t}` : `${t}->${e}`;
 }
-function Ys(e, t, n) {
+function uc(e, t, n) {
 	return `${e}-${t}...${n}`;
 }
-var Xs = class {
+var dc = class {
 	constructor(e, t) {
 		this.groupIndex = e, this.appliedSymmetry = typeof t == "string" ? H.fromString(t) : t;
 	}
@@ -16989,37 +24185,37 @@ var Xs = class {
 		return this.appliedSymmetry.toString();
 	}
 };
-function Zs(e, t) {
+function fc(e, t) {
 	return e.groupIndex === t.groupIndex && e.appliedSymmetry.id === t.appliedSymmetry.id && e.appliedSymmetry.translation.every((e, n) => e === t.appliedSymmetry.translation[n]);
 }
-var Qs = /* @__PURE__ */ new WeakMap();
-function $s(e, t, n) {
-	let r = Qs.get(t);
-	r || (r = /* @__PURE__ */ new Map(), Qs.set(t, r));
+var pc = /* @__PURE__ */ new WeakMap();
+function mc(e, t, n) {
+	let r = pc.get(t);
+	r || (r = /* @__PURE__ */ new Map(), pc.set(t, r));
 	let i = `${n.groupIndex}@${n.appliedSymmetry.id}`;
 	return r.has(i) || r.set(i, e.symmetry.applySymmetry(n.appliedSymmetry.id, t[n.groupIndex].atoms)), r.get(i);
 }
-function ec(e, t, n, r) {
+function hc(e, t, n, r) {
 	if (n.groupIndex !== r.groupIndex || t[n.groupIndex].atoms.length === 0) return !1;
-	let i = $s(e, t, n), a = $s(e, t, r);
-	return i.every((t, n) => $e(t.position, a[n].position, e.cell));
+	let i = mc(e, t, n), a = mc(e, t, r);
+	return i.every((t, n) => Qe(t.position, a[n].position, e.cell));
 }
-function tc(e, t) {
+function gc(e, t) {
 	let n = Array.from(e.symmetry.operationIds.keys());
 	return t.map((r, i) => {
 		let a = /* @__PURE__ */ new Map(), o = [];
 		for (let r of n) {
-			let n = new Xs(i, `${r}_555`), s = o.find((r) => ec(e, t, n, r));
+			let n = new dc(i, `${r}_555`), s = o.find((r) => hc(e, t, n, r));
 			s ? a.set(r, s.appliedSymmetry.id) : (o.push(n), a.set(r, r));
 		}
 		return a;
 	});
 }
-var nc = class {
+var _c = class {
 	constructor(e, t, n, r) {
 		this.originAtom = e.includes("|") ? e : Y(e, "1_555"), this.targetAtom = t.includes("|") ? t : Y(t, "1_555"), this.bondLength = n, this.bondLengthSU = r;
 	}
-}, rc = class {
+}, vc = class {
 	constructor(e, t, n, r, i, a) {
 		this.originIndex = e, this.originSymmetry = typeof t == "string" ? H.fromString(t) : t, this.targetIndex = n, this.targetSymmetry = typeof r == "string" ? H.fromString(r) : r, this.connectingBonds = i, this.creationOriginIndex = a;
 	}
@@ -17028,7 +24224,7 @@ var nc = class {
 		return this.originIndex === this.targetIndex ? e < t ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}` : this.originIndex < this.targetIndex ? `${this.originIndex}_${e}_${this.targetIndex}_${t}` : `${this.targetIndex}_${t}_${this.originIndex}_${e}`;
 	}
 };
-function ic(e, t, n) {
+function yc(e, t, n) {
 	let r = t.map(() => /* @__PURE__ */ new Map()), i = t.map(() => []);
 	return e.bonds.filter((e) => e.atom2SiteSymmetry !== ".").forEach((e) => {
 		let t = n.get(e.atom1Id) ?? n.get(e.atom1Label), a = e.atom2Id.split("|")[0], o = `${a}|1_555`, s = n.get(o) ?? n.get(a);
@@ -17036,15 +24232,15 @@ function ic(e, t, n) {
 		let c = `${t}->${s}@.@${e.atom2SiteSymmetry}`;
 		if (r[t].has(c)) {
 			let n = r[t].get(c);
-			i[t][n].bonds.push(new nc(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
+			i[t][n].bonds.push(new _c(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU));
 		} else r[t].set(c, i[t].length), i[t].push({
 			targetIndex: s,
 			targetSymmetry: H.fromString(e.atom2SiteSymmetry),
-			bonds: [new nc(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
+			bonds: [new _c(e.atom1Id, e.atom2Id, e.bondLength, e.bondLengthSU)]
 		});
 	}), i;
 }
-function ac(e) {
+function bc(e) {
 	let t = e.map((e, t) => t), n = (e) => {
 		let n = e;
 		for (; t[n] !== n;) n = t[n];
@@ -17071,11 +24267,11 @@ function ac(e) {
 		groupsByComponent: o
 	};
 }
-function oc(e, t, n = null) {
+function xc(e, t, n = null) {
 	let r = [], i = /* @__PURE__ */ new Set();
 	return e.forEach((e, a) => {
 		for (let o of e) {
-			let e = new rc(a, t, o.targetIndex, o.targetSymmetry, o.bonds, n?.[a] ?? a), s = e.getKey();
+			let e = new vc(a, t, o.targetIndex, o.targetSymmetry, o.bonds, n?.[a] ?? a), s = e.getKey();
 			i.has(s) || (r.push(e), i.add(s));
 		}
 	}), {
@@ -17083,13 +24279,13 @@ function oc(e, t, n = null) {
 		processedConnections: i
 	};
 }
-function sc(e, t, n, r, i, a, o = null, s = null, c = null) {
-	let l = [], u = [], d = new Xs(e.targetIndex, e.targetSymmetry), f = r[e.targetIndex];
+function Sc(e, t, n, r, i, a, o = null, s = null, c = null) {
+	let l = [], u = [], d = new dc(e.targetIndex, e.targetSymmetry), f = r[e.targetIndex];
 	for (let r of f) {
-		let d = (typeof r.targetSymmetry == "string" ? H.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), f = new rc(e.targetIndex, e.targetSymmetry, r.targetIndex, d, r.bonds, e.creationOriginIndex), p = f.getKey();
+		let d = (typeof r.targetSymmetry == "string" ? H.fromString(r.targetSymmetry) : r.targetSymmetry).combine(e.targetSymmetry, t.symmetry), f = new vc(e.targetIndex, e.targetSymmetry, r.targetIndex, d, r.bonds, e.creationOriginIndex), p = f.getKey();
 		if (i.has(p)) continue;
 		i.add(p);
-		let m = new Xs(r.targetIndex, d), h = e.creationOriginIndex, g = n[h], _ = o?.[h] || [], v = (e) => g.some(e) || _.some(e), y = c?.[m.groupIndex]?.get(m.appliedSymmetry.id) || m.appliedSymmetry.id, b = `${m.groupIndex}|${y}`, x = s?.[h]?.get(b), S = x ? m.isTranslationalDuplicateOf(x) : v((e) => m.isTranslationalDuplicateOf(e)), C = !S && (x ? ec(t, a, m, x) : v((e) => ec(t, a, m, e)));
+		let m = new dc(r.targetIndex, d), h = e.creationOriginIndex, g = n[h], _ = o?.[h] || [], v = (e) => g.some(e) || _.some(e), y = c?.[m.groupIndex]?.get(m.appliedSymmetry.id) || m.appliedSymmetry.id, b = `${m.groupIndex}|${y}`, x = s?.[h]?.get(b), S = x ? m.isTranslationalDuplicateOf(x) : v((e) => m.isTranslationalDuplicateOf(e)), C = !S && (x ? hc(t, a, m, x) : v((e) => hc(t, a, m, e)));
 		S ? u.push(f) : C || (l.push(f), o?.[h].push(m), s?.[h].set(b, m));
 	}
 	return {
@@ -17098,21 +24294,21 @@ function sc(e, t, n, r, i, a, o = null, s = null, c = null) {
 		foundTranslations: u
 	};
 }
-function cc(e, t) {
+function Cc(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	t.forEach((e, t) => {
 		e.atoms.forEach((e) => n.set(e.uniqueId, t));
 	});
-	let r = H.fromString(e.symmetry.identitySymOpId + "_555"), i = ic(e, t, n), { componentByGroup: a, groupsByComponent: o } = ac(i), s = tc(e, t), { danglingConnections: c, processedConnections: l } = oc(i, r, a), u = c.length, d = [], f = [], p = o.map(() => []), m = o.map(() => []), h = o.map(() => /* @__PURE__ */ new Map());
+	let r = H.fromString(e.symmetry.identitySymOpId + "_555"), i = yc(e, t, n), { componentByGroup: a, groupsByComponent: o } = bc(i), s = gc(e, t), { danglingConnections: c, processedConnections: l } = xc(i, r, a), u = c.length, d = [], f = [], p = o.map(() => []), m = o.map(() => []), h = o.map(() => /* @__PURE__ */ new Map());
 	t.forEach((e, t) => {
-		let n = a[t], i = new Xs(t, r);
+		let n = a[t], i = new dc(t, r);
 		p[n].push(i);
 		let o = s[t].get(r.id) || r.id;
 		h[n].set(`${t}|${o}`, i);
 	});
 	let g = 0;
 	for (; g < c.length;) {
-		let n = c[g++], r = new Xs(n.targetIndex, n.targetSymmetry), a = n.creationOriginIndex, o = m[a], _ = o.findIndex((e) => Zs(e, r));
+		let n = c[g++], r = new dc(n.targetIndex, n.targetSymmetry), a = n.creationOriginIndex, o = m[a], _ = o.findIndex((e) => fc(e, r));
 		_ !== -1 && o.splice(_, 1);
 		let v = p[a], y = s[r.groupIndex].get(r.appliedSymmetry.id) || r.appliedSymmetry.id, b = `${r.groupIndex}|${y}`, x = h[a].get(b);
 		if (x && r.isTranslationalDuplicateOf(x)) {
@@ -17120,11 +24316,11 @@ function cc(e, t) {
 			continue;
 		}
 		if (!x) v.push(r), h[a].set(b, r);
-		else if (!Zs(r, x) && ec(e, t, r, x)) {
+		else if (!fc(r, x) && hc(e, t, r, x)) {
 			g <= u && d.push(n);
 			continue;
 		}
-		let S = sc(n, e, p, i, l, t, m, h, s);
+		let S = Sc(n, e, p, i, l, t, m, h, s);
 		c.push(...S.newDanglingConnections), f.push(...S.foundTranslations), d.push(n);
 	}
 	return {
@@ -17133,7 +24329,7 @@ function cc(e, t) {
 		discoveredGroups: p
 	};
 }
-function lc(e) {
+function wc(e) {
 	let t = /* @__PURE__ */ new Set(), n = [];
 	return e.forEach((e) => {
 		t.add(`${e.originIndex}@.@${e.originSymmetry.key}`), t.add(`${e.targetIndex}@.@${e.targetSymmetry.key}`), e.connectingBonds.forEach((t) => {
@@ -17151,9 +24347,9 @@ function lc(e) {
 		interGroupBonds: n
 	};
 }
-var uc = /* @__PURE__ */ new WeakMap();
-function dc(e) {
-	let t = uc.get(e);
+var Tc = /* @__PURE__ */ new WeakMap();
+function Ec(e) {
+	let t = Tc.get(e);
 	if (!t) {
 		let n = e.fractToCartMatrix.toArray();
 		t = [];
@@ -17162,17 +24358,17 @@ function dc(e) {
 			n[1][0] * e + n[1][1] * r + n[1][2] * i,
 			n[2][0] * e + n[2][1] * r + n[2][2] * i
 		]);
-		uc.set(e, t);
+		Tc.set(e, t);
 	}
 	return t;
 }
-function fc(e, t, n, r) {
-	let i = Qe(t.position, n), a = i.map((e) => Math.floor(e / r));
+function Dc(e, t, n, r) {
+	let i = Ze(t.position, n), a = i.map((e) => Math.floor(e / r));
 	for (let t = -1; t <= 1; t += 1) for (let n = -1; n <= 1; n += 1) for (let o = -1; o <= 1; o += 1) {
 		let s = `${a[0] + t},${a[1] + n},${a[2] + o}`;
 		for (let t of e.get(s) || []) if (Math.hypot(t.coordinates[0] - i[0], t.coordinates[1] - i[1], t.coordinates[2] - i[2]) < r) return t.atom;
 	}
-	for (let a of dc(n)) {
+	for (let a of Ec(n)) {
 		let n = i.map((e, t) => e + a[t]), o = n.map((e) => Math.floor(e / r)).join(","), s = e.get(o) || [];
 		s.push({
 			atom: t,
@@ -17181,18 +24377,18 @@ function fc(e, t, n, r) {
 	}
 	return null;
 }
-function pc(e, t, n, r) {
-	let i = $s(e, t, new Xs(n, r));
+function Oc(e, t, n, r) {
+	let i = mc(e, t, new dc(n, r));
 	if (i.length === 0) return 0;
 	let a = 0, o = 0, s = 0;
 	for (let e of i) a += e.position.x, o += e.position.y, s += e.position.z;
 	let c = i.length, [l, u, d] = r.translation;
 	return Math.abs(a / c + l - .5) + Math.abs(o / c + u - .5) + Math.abs(s / c + d - .5);
 }
-function mc(e, t = null, n = null) {
+function kc(e, t = null, n = null) {
 	let r = !!(t && n), i = /* @__PURE__ */ new Map();
 	for (let a of e) {
-		let [e, o] = a.split("@.@"), s = H.fromString(o), c = `${e}|${s.id}`, l = r ? pc(t, n, Number(e), s) : s.translation.reduce((e, t) => e + Math.abs(t), 0), u = i.get(c);
+		let [e, o] = a.split("@.@"), s = H.fromString(o), c = `${e}|${s.id}`, l = r ? Oc(t, n, Number(e), s) : s.translation.reduce((e, t) => e + Math.abs(t), 0), u = i.get(c);
 		(!u || l < u.magnitude - 1e-9 || Math.abs(l - u.magnitude) <= 1e-9 && a < u.instance) && i.set(c, {
 			instance: a,
 			magnitude: l
@@ -17200,7 +24396,7 @@ function mc(e, t = null, n = null) {
 	}
 	return new Set([...i.values()].map((e) => e.instance));
 }
-function hc(e, t, n, r) {
+function Ac(e, t, n, r) {
 	let i = t.map((e) => [[...e.atoms]]), a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Set(), s = [];
 	return e.forEach((e) => {
 		let [a, o] = e.split("@.@");
@@ -17215,8 +24411,8 @@ function hc(e, t, n, r) {
 			for (let r = 0; r < t; ++r) {
 				let t = e.map((e) => e[r]), i = /* @__PURE__ */ new Map();
 				for (let e = 0; e < t.length; e++) {
-					let r = t[e], c = e === 0, l = fc(i, r, n.cell, Ye);
-					l ? et(r.position, l.position, n.cell, .001) ? a.set(r.uniqueId, l.uniqueId) : o.add(r.uniqueId) : c || s.push(r);
+					let r = t[e], c = e === 0, l = Dc(i, r, n.cell, Je);
+					l ? $e(r.position, l.position, n.cell, .001) ? a.set(r.uniqueId, l.uniqueId) : o.add(r.uniqueId) : c || s.push(r);
 				}
 			}
 		}
@@ -17226,24 +24422,24 @@ function hc(e, t, n, r) {
 		newAtoms: s
 	};
 }
-function gc(e, t, n, r, i, a, o = null) {
+function jc(e, t, n, r, i, a, o = null) {
 	let s = [];
 	e.forEach((e) => {
 		s.push(...e.bonds);
 	});
 	let c = /* @__PURE__ */ new Set();
 	if (s.forEach((e) => {
-		c.add(Js(e.atom1Id, e.atom2Id));
+		c.add(lc(e.atom1Id, e.atom2Id));
 	}), t.forEach((t) => {
 		let [n, i] = t.split("@.@");
 		i !== a && e[Number(n)].bonds.forEach((e) => {
-			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = Y(t, i), o = Y(n, i), l = r.get(a) || a, u = r.get(o) || o, d = Js(l, u);
+			let t = e.atom1Id.split("|")[0], n = e.atom2Id.split("|")[0], a = Y(t, i), o = Y(n, i), l = r.get(a) || a, u = r.get(o) || o, d = lc(l, u);
 			c.has(d) || (c.add(d), s.push(new B(l, u, e.bondLength, e.bondLengthSU, ".")));
 		});
 	}), n.forEach((e) => {
 		let t = e.originAtomId || e.originSymmAtom, n = e.targetAtomId || e.targetSymmAtom, i = t.split(/[|@]/)[0], o = n.split(/[|@]/)[0], l = e.originSymmetry || H.fromString(t.split(/[|@]/)[1] || a), u = e.targetSymmetry || H.fromString(n.split(/[|@]/)[1] || a), d = l.key === a ? Y(i, a) : Y(i, l.key), f = u.key === a ? Y(o, a) : Y(o, u.key), p = r.get(d) || d, m = r.get(f) || f, h = p.includes("|") ? p : Y(p, a), g = m.includes("|") ? m : Y(m, a);
 		if (h === g) return;
-		let _ = Js(h, g);
+		let _ = lc(h, g);
 		c.has(_) || (c.add(_), s.push(new B(h, g, e.bondLength, e.bondLengthSU, ".")));
 	}), o) {
 		let n = /* @__PURE__ */ new Map(), l = e.map(() => /* @__PURE__ */ new Set([a])), u = new Set(i.map((e) => e.uniqueId).filter(Boolean));
@@ -17261,7 +24457,7 @@ function gc(e, t, n, r, i, a, o = null) {
 			for (let n of l[t]) {
 				let t = H.fromString(n), a = i.combine(t, o.symmetry), l = Y(e.atom1Label, n), d = Y(e.atom2Label, a.key), f = r.get(l) || l, p = r.get(d) || d;
 				if (f === p || !u.has(f) || !u.has(p)) continue;
-				let m = Js(f, p);
+				let m = lc(f, p);
 				c.has(m) || (c.add(m), s.push(new B(f, p, e.bondLength, e.bondLengthSU, ".")));
 			}
 		});
@@ -17271,11 +24467,11 @@ function gc(e, t, n, r, i, a, o = null) {
 		atomLabels: new Set(i.map((e) => e.uniqueId))
 	};
 }
-function _c(e, t, n, r, i, a, o) {
+function Mc(e, t, n, r, i, a, o) {
 	let s = [], c = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((e) => {
 		let t;
-		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? Ys(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${Ys(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
+		t = e.acceptorAtomSymmetry === "." || e.acceptorAtomSymmetry === o ? uc(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId) : `${uc(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId)}@${e.acceptorAtomSymmetry}`, c.has(t) || (c.add(t), s.push(e));
 	});
 	let l = t.map(() => []);
 	return e.hBonds.filter((e) => e.acceptorAtomSymmetry !== ".").forEach((e) => {
@@ -17286,31 +24482,31 @@ function _c(e, t, n, r, i, a, o) {
 		if (u === o) return;
 		let d = Number(r);
 		t[d].hBonds.forEach((e) => {
-			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = Y(t, u), o = Y(n, u), l = Y(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = Ys(d, f, p);
+			let t = e.donorAtomId.split("|")[0], n = e.hydrogenAtomId.split("|")[0], r = e.acceptorAtomId.split("|")[0], a = Y(t, u), o = Y(n, u), l = Y(r, u), d = i.get(a) || a, f = i.get(o) || o, p = i.get(l) || l, m = uc(d, f, p);
 			c.has(m) || (c.add(m), s.push(new V(d, f, p, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, ".")));
 		}), l[d].forEach((t) => {
 			let n = t.donorAtomId.split("|")[0], r = t.hydrogenAtomId.split("|")[0], o = Y(n, u), l = Y(r, u), d = i.get(o) || o, f = i.get(l) || l, p = e.symmetry.combineSymmetryCodes(u, t.acceptorAtomSymmetry), m = t.acceptorAtomId.split("|")[0], h = Y(m, p), g = i.get(h) || h, _, v;
-			a.has(g) ? (_ = new V(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = Ys(d, f, g)) : (_ = new V(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${Ys(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
+			a.has(g) ? (_ = new V(d, f, g, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."), v = uc(d, f, g)) : (_ = new V(d, f, m, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, p), v = `${uc(d, f, m)}@${p}`), c.has(v) || (c.add(v), s.push(_));
 		});
 	}), s;
 }
-function vc(e, t, n, r) {
+function Nc(e, t, n, r) {
 	let i = [];
 	return e.forEach((e) => {
 		for (let t of e.connectingBonds) {
-			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = Y(a, e.originSymmetry.key), c = Y(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = Js(l, u);
+			let a = t.originAtom.split("|")[0], o = t.targetAtom.split("|")[0], s = Y(a, e.originSymmetry.key), c = Y(o, e.targetSymmetry.key), l = n.get(s) || s, u = n.get(c) || c, d = u.split("|")[1] || e.targetSymmetry.key, f = lc(l, u);
 			r.has(f) || (r.add(f), i.push(new B(l, u, t.bondLength, t.bondLengthSU, d)));
 		}
 	}), i;
 }
-function yc(e) {
-	let t = new U(e.cell, e.atoms, qs(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
+function Pc(e) {
+	let t = new U(e.cell, e.atoms, an(e), e.hBonds, e.symmetry), n = t.calculateConnectedGroups(), r = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
 			r.set(e.uniqueId, t);
 		});
 	});
-	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = cc(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = lc(a, e, i), l = mc(s, t, n), { specialPositionAtoms: u, periodicDuplicateAtoms: d, newAtoms: f } = hc(l, n, t, i), p = o.length > 0 || l.size < s.size || d.size > 0, { newBonds: m, atomLabels: h } = gc(n, l, c, u, f, i, t), g = _c(t, n, r, l, u, h, i), _ = p ? [] : vc(o, t, u, new Set(m.map((e) => Js(e.atom1Id, e.atom2Id))));
+	let i = e.symmetry.identitySymOpId + "_555", { networkConnections: a, translationLinks: o } = Cc(t, n), { requiredSymmetryInstances: s, interGroupBonds: c } = wc(a, e, i), l = kc(s, t, n), { specialPositionAtoms: u, periodicDuplicateAtoms: d, newAtoms: f } = Ac(l, n, t, i), p = o.length > 0 || l.size < s.size || d.size > 0, { newBonds: m, atomLabels: h } = jc(n, l, c, u, f, i, t), g = Mc(t, n, r, l, u, h, i), _ = p ? [] : Nc(o, t, u, new Set(m.map((e) => lc(e.atom1Id, e.atom2Id))));
 	for (let e of _) m.push(e);
 	let v = [...t.atoms, ...f], y = m, b = g;
 	if (p) {
@@ -17324,8 +24520,8 @@ function yc(e) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-cell.js
-var bc = 4;
-function xc(e, t) {
+var Fc = 4;
+function Ic(e, t) {
 	let n = /* @__PURE__ */ new Set([e.identitySymOpId]), r = /* @__PURE__ */ new Set();
 	for (let n of t) {
 		let t = e.combineSymmetryCodes(n + "_555", e.identitySymOpId + "_555");
@@ -17334,7 +24530,7 @@ function xc(e, t) {
 	for (let [t] of e.operationIds) n.has(t) || r.has(t) || n.add(t);
 	return n;
 }
-function Sc(e) {
+function Lc(e) {
 	if (e.length === 0) return {
 		minX: 0,
 		maxX: 1,
@@ -17357,15 +24553,15 @@ function Sc(e) {
 		maxZ: o
 	};
 }
-function Cc(e) {
-	let t = Sc(e);
+function Rc(e) {
+	let t = Lc(e);
 	return Ee([
 		(t.minX + t.maxX) / 2,
 		(t.minY + t.maxY) / 2,
 		(t.minZ + t.maxZ) / 2
 	]);
 }
-function wc(e, t, n) {
+function zc(e, t, n) {
 	let r = t.symmetry.identitySymOpId, i = /* @__PURE__ */ new Set();
 	for (let t of e.atoms) t.appliedSymmetry ? i.add(t.appliedSymmetry.id) : i.add(r);
 	let a = new Set(e.atoms.map((e) => e.uniqueId));
@@ -17375,24 +24571,24 @@ function wc(e, t, n) {
 	}
 	return Array.from(i);
 }
-function Tc(e, t = 1e-6) {
+function Bc(e, t = 1e-6) {
 	let { x: n, y: r, z: i } = e.position;
 	return n >= -t && n < 1 - t && r >= -t && r < 1 - t && i >= -t && i < 1 - t;
 }
-function Ec(e, t = null) {
-	let n = Dc(t), r = e.position.x.toFixed(n), i = e.position.y.toFixed(n), a = e.position.z.toFixed(n);
+function Vc(e, t = null) {
+	let n = Hc(t), r = e.position.x.toFixed(n), i = e.position.y.toFixed(n), a = e.position.z.toFixed(n);
 	return `${e.label}_x${r}_y${i}_z${a}`;
 }
-function Dc(e) {
+function Hc(e) {
 	if (!e || ![
 		e.a,
 		e.b,
 		e.c
 	].every(Number.isFinite)) return 3;
-	let t = Math.max(e.a, e.b, e.c), n = Math.ceil(Math.log10(t / Ye));
+	let t = Math.max(e.a, e.b, e.c), n = Math.ceil(Math.log10(t / Je));
 	return Math.min(Math.max(n, 3), 12);
 }
-function Oc(e, t, n) {
+function Uc(e, t, n) {
 	let { symOp: r, transVector: i } = e.parsePositionCode(t), a = Ae(Ae(L(r.rotMatrix, Ee(n)), r.transVector), i), o = Math.floor(a.get([0])), s = Math.floor(a.get([1])), c = Math.floor(a.get([2])), { id: l, translation: u } = dt(t), d = [
 		u[0] - o,
 		u[1] - s,
@@ -17407,13 +24603,13 @@ function Oc(e, t, n) {
 		newString: ft(l, d)
 	};
 }
-function kc(e, t, n, r, i, a = null) {
+function Wc(e, t, n, r, i, a = null) {
 	let o = [], s = t.applySymmetry(n, e.atoms);
 	for (let c = 0; c < s.length; c++) {
 		let l = s[c], u = e.atoms[c], d = n;
 		u.appliedSymmetry && u.appliedSymmetry.key !== `${t.identitySymOpId}_555` && (d = t.combineSymmetryCodes(n, u.appliedSymmetry.key)), l.appliedSymmetry = H.fromString(d);
 		let f = l.uniqueId;
-		if (i && !Tc(l)) {
+		if (i && !Bc(l)) {
 			let e = Math.floor(l.position.x), n = Math.floor(l.position.y), i = Math.floor(l.position.z);
 			l.position.x -= e, l.position.y -= n, l.position.z -= i, l.appliedSymmetry.translation[0] -= e, l.appliedSymmetry.translation[1] -= n, l.appliedSymmetry.translation[2] -= i, l.appliedSymmetry._updateKey();
 			let a = l.uniqueId, o = `${t.identitySymOpId}_${5 - e}${5 - n}${5 - i}`;
@@ -17421,26 +24617,26 @@ function kc(e, t, n, r, i, a = null) {
 		}
 		let p = l.uniqueId, m, h = !1;
 		if (a && r.periodicAtomMap) {
-			let e = `${l.label}|${l.disorderGroup}`, t = r.periodicAtomMap.get(e) || [], n = t.find((e) => $e(l.position, e.atom.position, a, Ye));
-			n ? et(l.position, n.atom.position, a, .001) ? m = n.id : h = !0 : (t.push({
+			let e = `${l.label}|${l.disorderGroup}`, t = r.periodicAtomMap.get(e) || [], n = t.find((e) => Qe(l.position, e.atom.position, a, Je));
+			n ? $e(l.position, n.atom.position, a, .001) ? m = n.id : h = !0 : (t.push({
 				atom: l,
 				id: p
 			}), r.periodicAtomMap.set(e, t));
 		} else {
-			let e = Ec(l, a);
+			let e = Vc(l, a);
 			m = r.atomMap.get(e), m || r.atomMap.set(e, p);
 		}
 		m ? r.specialPositionMap.set(p, m) : h || o.push(l);
 	}
 	return o;
 }
-function Ac(e, t, n, r) {
+function Gc(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalBonds) {
 		let e = X(a.atom1Id, n, t), o = r.specialPositionMap.get(e) || e, s = X(a.atom2Id, n, t), c = r.specialPositionMap.get(s) || s;
 		if (o !== c) {
 			if (!r.atomTranslations.has(o) && !r.atomTranslations.has(c)) {
-				let e = Js(o, c);
+				let e = lc(o, c);
 				if (!r.createdBonds.has(e)) {
 					let t = new B(o, c, a.bondLength, a.bondLengthSU, ".");
 					i.push(t), r.createdBonds.add(e);
@@ -17448,7 +24644,7 @@ function Ac(e, t, n, r) {
 			} else if (r.atomTranslations.has(o) && r.atomTranslations.has(c)) {
 				let [e, t] = r.atomTranslations.get(o), [n, s] = r.atomTranslations.get(c);
 				if (t === s) {
-					let t = Js(e, n);
+					let t = lc(e, n);
 					if (!r.createdBonds.has(t)) {
 						let o = new B(e, n, a.bondLength, a.bondLengthSU, ".");
 						i.push(o), r.createdBonds.add(t);
@@ -17459,7 +24655,7 @@ function Ac(e, t, n, r) {
 	}
 	return i;
 }
-function jc(e, t, n, r) {
+function Kc(e, t, n, r) {
 	let i = [];
 	for (let a of e.internalHBonds) {
 		let e = r.specialPositionMap.get(X(a.donorAtomId, n, t)) || X(a.donorAtomId, n, t), o = r.specialPositionMap.get(X(a.hydrogenAtomId, n, t)) || X(a.hydrogenAtomId, n, t), s;
@@ -17468,7 +24664,7 @@ function jc(e, t, n, r) {
 			s = r.specialPositionMap.get(e) || e;
 		} else s = r.specialPositionMap.get(X(a.acceptorAtomId, n, t)) || X(a.acceptorAtomId, n, t);
 		if (!r.atomTranslations.has(e) && !r.atomTranslations.has(o) && !r.atomTranslations.has(s)) {
-			let t = Ys(e, o, s);
+			let t = uc(e, o, s);
 			if (!r.createdHBonds.has(t)) {
 				let n = new V(e, o, s, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 				r.createdHBonds.add(t), i.push(n);
@@ -17476,7 +24672,7 @@ function jc(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) && r.atomTranslations.has(o) && r.atomTranslations.has(s)) {
 			let [t, n] = r.atomTranslations.get(e), [c, l] = r.atomTranslations.get(o), [u, d] = r.atomTranslations.get(s);
 			if (n === l && l === d) {
-				let e = Ys(t, c, u);
+				let e = uc(t, c, u);
 				if (!r.createdHBonds.has(e)) {
 					let n = new V(t, c, u, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, ".");
 					r.createdHBonds.add(e), i.push(n);
@@ -17486,7 +24682,7 @@ function jc(e, t, n, r) {
 	}
 	return i;
 }
-function Mc(e, t, n, r) {
+function qc(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalBonds) {
 		let e = r.specialPositionMap.get(X(a.atom1Id, n, t)) || X(a.atom1Id, n, t), o = t.combineSymmetryCodes(n, a.atom2SiteSymmetry), s = a.atom2Id.split("|")[0];
@@ -17496,7 +24692,7 @@ function Mc(e, t, n, r) {
 		}
 		let c = `${s}|${o}`;
 		c = r.specialPositionMap.get(c) || c;
-		let l = Js(e, c);
+		let l = lc(e, c);
 		if (!r.createdBonds.has(l)) {
 			let t = new B(e, c, a.bondLength, a.bondLengthSU, o);
 			i.push(t), r.createdBonds.add(l);
@@ -17504,7 +24700,7 @@ function Mc(e, t, n, r) {
 	}
 	return i;
 }
-function Nc(e, t, n, r) {
+function Jc(e, t, n, r) {
 	let i = [];
 	for (let a of e.externalHBonds) {
 		let e = r.specialPositionMap.get(X(a.donorAtomId, n, t)) || X(a.donorAtomId, n, t), o = r.specialPositionMap.get(X(a.hydrogenAtomId, n, t)) || X(a.hydrogenAtomId, n, t), s = t.combineSymmetryCodes(n, a.acceptorAtomSymmetry);
@@ -17517,7 +24713,7 @@ function Nc(e, t, n, r) {
 		} else if (r.atomTranslations.has(e) || r.atomTranslations.has(o)) continue;
 		let c = `${a.acceptorAtomId.split("|")[0]}|${s}`;
 		if (e.split("|")[1] === s) continue;
-		let l = Ys(e, o, c);
+		let l = uc(e, o, c);
 		if (!r.createdHBonds.has(l)) {
 			let t = new V(e, o, c, a.donorHydrogenDistance, a.donorHydrogenDistanceSU, a.acceptorHydrogenDistance, a.acceptorHydrogenDistanceSU, a.donorAcceptorDistance, a.donorAcceptorDistanceSU, a.hBondAngle, a.hBondAngleSU, s);
 			i.push(t), r.createdHBonds.add(l);
@@ -17525,24 +24721,24 @@ function Nc(e, t, n, r) {
 	}
 	return i;
 }
-function Pc(e, t, n, r, i, a = null) {
-	let { newCentre: o, newString: s } = Oc(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
+function Yc(e, t, n, r, i, a = null) {
+	let { newCentre: o, newString: s } = Uc(t, t.combineSymmetryCodes(n, e.symmString), e.groupCentre);
 	return {
-		atoms: kc(e, t, s, r, i, a),
-		internalBonds: Ac(e, t, s, r),
-		internalHBonds: jc(e, t, s, r),
-		externalBonds: Mc(e, t, s, r),
-		externalHBonds: Nc(e, t, s, r),
+		atoms: Wc(e, t, s, r, i, a),
+		internalBonds: Gc(e, t, s, r),
+		internalHBonds: Kc(e, t, s, r),
+		externalBonds: qc(e, t, s, r),
+		externalHBonds: Jc(e, t, s, r),
 		symmString: s,
 		groupCentre: o
 	};
 }
-function Fc(e, t = !0, n = null, r = 1) {
+function Xc(e, t = !0, n = null, r = 1) {
 	let i;
 	if (i = n === null ? /* @__PURE__ */ new Map() : n, e.atoms.length === 0) return new U(e.cell, [], [], [], e.symmetry);
 	let a = e.calculateConnectedGroups(), o = a.map((t) => {
-		let n = wc(t, e, i);
-		return Array.from(xc(e.symmetry, n));
+		let n = zc(t, e, i);
+		return Array.from(Ic(e.symmetry, n));
 	}), s = a.map((t) => e.bonds.filter((e) => e.atom2SiteSymmetry && e.atom2SiteSymmetry !== "." && t.atoms.some((t) => t.label === e.atom1Id.split("|")[0]))), c = a.map((t) => e.hBonds.filter((e) => e.acceptorAtomSymmetry && e.acceptorAtomSymmetry !== "." && t.atoms.some((t) => t.label === e.donorAtomId.split("|")[0]))), l = {
 		atomMap: /* @__PURE__ */ new Map(),
 		periodicAtomMap: /* @__PURE__ */ new Map(),
@@ -17552,7 +24748,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 		atomTranslations: /* @__PURE__ */ new Map()
 	}, u = [];
 	for (let n = 0; n < a.length; n++) {
-		let r = a[n], i = o[n], d = Cc(r.atoms), f = i[0], p = {
+		let r = a[n], i = o[n], d = Rc(r.atoms), f = i[0], p = {
 			atoms: r.atoms,
 			internalBonds: r.bonds,
 			internalHBonds: r.hBonds,
@@ -17562,7 +24758,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 			externalHBonds: c[n]
 		};
 		for (let n of i) {
-			let r = `${n}_555`, i = Pc(p, e.symmetry, r, l, t, e.cell);
+			let r = `${n}_555`, i = Yc(p, e.symmetry, r, l, t, e.cell);
 			u.push(i);
 		}
 	}
@@ -17615,7 +24811,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 			}
 		});
 	}), t && r > 1) {
-		let t = Ic(new U(e.cell, p, m, h, e.symmetry), r, e.bonds);
+		let t = Zc(new U(e.cell, p, m, h, e.symmetry), r, e.bonds);
 		p = t.atoms, m = t.bonds, g = new Set(p.map((e) => e.uniqueId));
 	}
 	let v = new Map(p.map((e) => [e.uniqueId, e])), y = /* @__PURE__ */ new Map(), b = (t) => {
@@ -17623,7 +24819,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 		return n || (n = t.position.toCartesian(e.cell), y.set(t.uniqueId, n)), n;
 	}, x = (e) => {
 		if (!Number.isFinite(e.bondLength)) return !0;
-		if (e.bondLength > bc) return !1;
+		if (e.bondLength > Fc) return !1;
 		let t = v.get(e.atom1Id), n = v.get(e.atom2Id);
 		if (!t || !n) return e.atom2SiteSymmetry && e.atom2SiteSymmetry !== ".";
 		let r = b(t), i = b(n), a = Math.hypot(r.x - i.x, r.y - i.y, r.z - i.z), o = Math.max(.15, e.bondLength * .1);
@@ -17633,7 +24829,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 		return t && (g.has(e.atom2Id) || n) && x(e);
 	}), C = h.filter((e) => g.has(e.donorAtomId) && g.has(e.hydrogenAtomId)), w = S, T = new U(e.cell, p, w, [], e.symmetry), E = /* @__PURE__ */ new Map();
 	for (let t of T.calculateConnectedGroups()) {
-		let n = Cc(t.atoms).toArray().map((e) => Math.floor(e)), r = n.some((e) => e !== 0);
+		let n = Rc(t.atoms).toArray().map((e) => Math.floor(e)), r = n.some((e) => e !== 0);
 		for (let i of t.atoms) {
 			let t = i.uniqueId;
 			if (r) {
@@ -17650,7 +24846,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 	}
 	let D = [], O = /* @__PURE__ */ new Map(), k = /* @__PURE__ */ new Map(), A = /* @__PURE__ */ new Map();
 	for (let t of p) {
-		let n = Ec(t, e.cell), r = k.get(t.uniqueId) || O.get(n);
+		let n = Vc(t, e.cell), r = k.get(t.uniqueId) || O.get(n);
 		r ? A.set(t.uniqueId, r) : (O.set(n, t.uniqueId), k.set(t.uniqueId, t.uniqueId), D.push(t));
 	}
 	for (let [e, t] of E) E.set(e, A.get(t) || t);
@@ -17658,17 +24854,17 @@ function Fc(e, t = !0, n = null, r = 1) {
 	for (let e of S) {
 		let t = E.get(e.atom1Id) || e.atom1Id, n = E.get(e.atom2Id) || e.atom2Id;
 		if (t === n) continue;
-		let r = Js(t, n);
+		let r = lc(t, n);
 		M.has(r) || (e.atom1Id = t, e.atom2Id = n, j.push(e), M.add(r));
 	}
 	let N = [], P = /* @__PURE__ */ new Set();
 	for (let e of C) {
 		e.donorAtomId = E.get(e.donorAtomId) || e.donorAtomId, e.hydrogenAtomId = E.get(e.hydrogenAtomId) || e.hydrogenAtomId, e.acceptorAtomId = E.get(e.acceptorAtomId) || e.acceptorAtomId;
-		let t = Ys(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
+		let t = uc(e.donorAtomId, e.hydrogenAtomId, e.acceptorAtomId);
 		P.has(t) || (N.push(e), P.add(t));
 	}
 	let ee = t && r > 1 ? new Map(D.map((e) => [e.uniqueId, e])) : null, te = t && r > 1 ? j.filter((t) => {
-		if (!Number.isFinite(t.bondLength) || t.bondLength > bc) return !1;
+		if (!Number.isFinite(t.bondLength) || t.bondLength > Fc) return !1;
 		let n = ee.get(t.atom1Id), r = ee.get(t.atom2Id);
 		if (!n || !r) return !1;
 		let i = n.position.toCartesian(e.cell), a = r.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
@@ -17676,7 +24872,7 @@ function Fc(e, t = !0, n = null, r = 1) {
 	}) : j;
 	return new U(e.cell, D, te, N, e.symmetry);
 }
-function Ic(e, t, n = []) {
+function Zc(e, t, n = []) {
 	let r = t - 1;
 	if (!(r > 0)) return e;
 	let i = [], a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Set();
@@ -17695,20 +24891,20 @@ function Ic(e, t, n = []) {
 				0
 			];
 			for (let e = 0; e < u.length; e++) r & 1 << e && (d[u[e]] = 1);
-			let f = new qe(n + d[0], c + d[1], l + d[2]), p = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new H(e.symmetry.identitySymOpId, [
+			let f = new Ke(n + d[0], c + d[1], l + d[2]), p = (t.appliedSymmetry ? t.appliedSymmetry.copy() : null) || new H(e.symmetry.identitySymOpId, [
 				0,
 				0,
 				0
 			]);
 			p.translation[0] += d[0], p.translation[1] += d[1], p.translation[2] += d[2], p._updateKey();
-			let m = new Gt(t.label, t.atomType, f, t.adp, t.disorderGroup, p);
+			let m = new qt(t.label, t.atomType, f, t.adp, t.disorderGroup, p);
 			i.push(m), a.get(t.uniqueId).push(m), o.get(t.label).push(m), s.add(m.uniqueId);
 		}
 	}
 	let c = /* @__PURE__ */ new Set();
-	for (let t of e.bonds) c.add(Js(t.atom1Id, t.atom2Id));
+	for (let t of e.bonds) c.add(lc(t.atom1Id, t.atom2Id));
 	let l = [], u = (t, n, r) => {
-		if (!Number.isFinite(r.bondLength) || r.bondLength > bc) return !1;
+		if (!Number.isFinite(r.bondLength) || r.bondLength > Fc) return !1;
 		let i = t.position.toCartesian(e.cell), a = n.position.toCartesian(e.cell), o = Math.hypot(i.x - a.x, i.y - a.y, i.z - a.z);
 		return Math.abs(o - r.bondLength) <= Math.max(.15, r.bondLength * .1);
 	};
@@ -17716,18 +24912,18 @@ function Ic(e, t, n = []) {
 		let e = a.get(t.atom1Id) || o.get(t.atom1Label), n = a.get(t.atom2Id) || o.get(t.atom2Label);
 		if (!(!e || !n)) for (let r of e) for (let e of n) {
 			if (r.uniqueId === e.uniqueId || !s.has(r.uniqueId) && !s.has(e.uniqueId) || !u(r, e, t)) continue;
-			let n = Js(r.uniqueId, e.uniqueId);
+			let n = lc(r.uniqueId, e.uniqueId);
 			c.has(n) || (l.push(new B(r.uniqueId, e.uniqueId, t.bondLength, t.bondLengthSU, ".")), c.add(n));
 		}
 	}
 	return new U(e.cell, [...e.atoms, ...i], [...e.bonds, ...l], e.hBonds, e.symmetry);
 }
-function Lc(e, t) {
+function Qc(e, t) {
 	let n = t - 1;
 	if (!(n > 0)) return e;
-	let r = [...e.bonds, ...e.hBonds.map((e) => new B(e.donorAtomId, e.hydrogenAtomId, null, null, "."))], i = new U(e.cell, e.atoms, r, [], e.symmetry), a = [], o = [], s = new Set(e.bonds.map((e) => Js(e.atom1Id, e.atom2Id)));
+	let r = [...e.bonds, ...e.hBonds.map((e) => new B(e.donorAtomId, e.hydrogenAtomId, null, null, "."))], i = new U(e.cell, e.atoms, r, [], e.symmetry), a = [], o = [], s = new Set(e.bonds.map((e) => lc(e.atom1Id, e.atom2Id)));
 	for (let t of i.calculateConnectedGroups()) {
-		let r = Cc(t.atoms).toArray(), i = [];
+		let r = Rc(t.atoms).toArray(), i = [];
 		for (let e = 0; e < 3; e++) r[e] < n && i.push(e);
 		if (i.length !== 0) for (let n = 1; n < 1 << i.length; n++) {
 			let r = [
@@ -17738,19 +24934,19 @@ function Lc(e, t) {
 			for (let e = 0; e < i.length; e++) n & 1 << e && (r[i[e]] = 1);
 			let c = /* @__PURE__ */ new Map();
 			for (let n of t.atoms) {
-				let t = new qe(n.position.x + r[0], n.position.y + r[1], n.position.z + r[2]), i = (n.appliedSymmetry ? n.appliedSymmetry.copy() : null) || new H(e.symmetry.identitySymOpId, [
+				let t = new Ke(n.position.x + r[0], n.position.y + r[1], n.position.z + r[2]), i = (n.appliedSymmetry ? n.appliedSymmetry.copy() : null) || new H(e.symmetry.identitySymOpId, [
 					0,
 					0,
 					0
 				]);
 				i.translation[0] += r[0], i.translation[1] += r[1], i.translation[2] += r[2], i._updateKey();
-				let o = new Gt(n.label, n.atomType, t, n.adp, n.disorderGroup, i);
+				let o = new qt(n.label, n.atomType, t, n.adp, n.disorderGroup, i);
 				c.set(n.uniqueId, o.uniqueId), a.push(o);
 			}
 			for (let t of e.bonds) {
 				let e = c.get(t.atom1Id), n = c.get(t.atom2Id);
 				if (!e || !n || e === n) continue;
-				let r = Js(e, n);
+				let r = lc(e, n);
 				s.has(r) || (o.push(new B(e, n, t.bondLength, t.bondLengthSU, ".")), s.add(r));
 			}
 		}
@@ -17759,20 +24955,20 @@ function Lc(e, t) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/growing/grow-hbonds.js
-var Rc = /* @__PURE__ */ new WeakMap(), zc = /* @__PURE__ */ new WeakMap(), Bc = /* @__PURE__ */ new WeakMap();
-function Vc(e) {
+var $c = /* @__PURE__ */ new WeakMap(), el = /* @__PURE__ */ new WeakMap(), tl = /* @__PURE__ */ new WeakMap();
+function nl(e) {
 	return `${Math.round(e.x * 1e8)},${Math.round(e.y * 1e8)},${Math.round(e.z * 1e8)}`;
 }
-function Hc(e, t) {
-	let n = zc.get(e);
-	return n || (n = /* @__PURE__ */ new Map(), zc.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
+function rl(e, t) {
+	let n = el.get(e);
+	return n || (n = /* @__PURE__ */ new Map(), el.set(e, n)), n.has(t) || n.set(t, e.invertPositionCode(t)), n.get(t);
 }
-function Uc(e, t, n) {
-	let r = Rc.get(e.symmetry);
-	r || (r = /* @__PURE__ */ new Map(), Rc.set(e.symmetry, r));
-	let i = Vc(t.position), a = `code|${i}|${n}`;
+function il(e, t, n) {
+	let r = $c.get(e.symmetry);
+	r || (r = /* @__PURE__ */ new Map(), $c.set(e.symmetry, r));
+	let i = nl(t.position), a = `code|${i}|${n}`;
 	if (r.has(a)) return r.get(a);
-	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${Vc(o)}`;
+	let o = e.symmetry.applySymmetry(n, [t])[0].position, s = `position|${i}|${nl(o)}`;
 	if (r.has(s)) {
 		let e = r.get(s);
 		return r.set(a, e), e;
@@ -17792,21 +24988,21 @@ function Uc(e, t, n) {
 	}
 	return r.set(s, u), r.set(a, u), u;
 }
-function Wc(e, t, n, r, i) {
-	let a = Bc.get(e.symmetry);
-	a || (a = /* @__PURE__ */ new Map(), Bc.set(e.symmetry, a));
+function al(e, t, n, r, i) {
+	let a = tl.get(e.symmetry);
+	a || (a = /* @__PURE__ */ new Map(), tl.set(e.symmetry, a));
 	let o = [
 		t.donorAtomLabel,
 		t.hydrogenAtomLabel,
 		t.acceptorAtomLabel,
-		Vc(n.position),
-		Vc(r.position),
+		nl(n.position),
+		nl(r.position),
 		i.join(",")
 	].join("|");
 	if (a.has(o)) return a.get(o);
 	let s = [], c = /* @__PURE__ */ new Set();
 	for (let t of i) {
-		let i = Hc(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${Vc(a.position)},${Vc(o.position)}`;
+		let i = rl(e.symmetry, t), [a, o] = e.symmetry.applySymmetry(i, [n, r]), l = `${nl(a.position)},${nl(o.position)}`;
 		c.has(l) || (c.add(l), s.push({
 			inverseSymmetry: i,
 			positionKey: l
@@ -17814,7 +25010,7 @@ function Wc(e, t, n, r, i) {
 	}
 	return a.set(o, s), s;
 }
-function Gc(e, t) {
+function ol(e, t) {
 	let n = new Map(e.atoms.map((e) => [e.uniqueId, e])), r = /* @__PURE__ */ new Map();
 	for (let i of t) {
 		let t = n.get(i.atom1Id), a = n.get(i.atom2Id);
@@ -17831,7 +25027,7 @@ function Gc(e, t) {
 	}
 	return Array.from(r.values());
 }
-function Kc(e) {
+function sl(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e.atoms) t.has(n.label) || t.set(n.label, []), t.get(n.label).push(n);
 	let n = /* @__PURE__ */ new Map();
@@ -17875,19 +25071,19 @@ function Kc(e) {
 	}
 	return new U(e.cell, e.atoms, e.bonds, f, e.symmetry);
 }
-function qc(e, t = /* @__PURE__ */ new Map()) {
+function cl(e, t = /* @__PURE__ */ new Map()) {
 	let n = e.calculateConnectedGroups(), r = /* @__PURE__ */ new Map(), i = (e) => {
 		let n = t.get(e) || e;
 		return r.get(n) || r.get(e) || n;
-	}, a = new Map(e.atoms.map((e) => [e.uniqueId, e])), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Map();
+	}, a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map();
 	n.forEach((e, t) => {
 		e.atoms.forEach((e) => {
-			s.set(e.uniqueId, t), c.has(e.label) || c.set(e.label, t), o.has(e.label) || o.set(e.label, e);
+			o.set(e.uniqueId, t), s.has(e.label) || s.set(e.label, t), a.has(e.label) || a.set(e.label, e);
 		});
 	});
-	let l = [], u = [], d = /* @__PURE__ */ new Set();
+	let c = [], l = [], u = /* @__PURE__ */ new Set();
 	e.hBonds.forEach((t) => {
-		if (t.acceptorAtomSymmetry === ".") u.push(t);
+		if (t.acceptorAtomSymmetry === ".") l.push(t);
 		else {
 			let n = t.donorAtomId.includes("|") ? t.donorAtomId.split("|")[1].split("_")[0] : e.symmetry.identitySymOpId, r = [
 				t.donorAtomLabel,
@@ -17899,68 +25095,80 @@ function qc(e, t = /* @__PURE__ */ new Map()) {
 				t.donorAcceptorDistance,
 				t.hBondAngle
 			].join("|");
-			d.has(r) || (d.add(r), l.push(t));
+			u.has(r) || (u.add(r), c.push(t));
 		}
 	});
-	let f = n.map(() => []);
-	for (let e of l) {
-		let t = s.get(e.donorAtomId);
-		t !== void 0 && f[t].push(e);
+	let d = n.map(() => []);
+	for (let e of c) {
+		let t = o.get(e.donorAtomId);
+		t !== void 0 && d[t].push(e);
 	}
-	let p = /* @__PURE__ */ new Set(), m = [...e.atoms], h = [...e.bonds], g = new Set(m.map((e) => e.uniqueId)), _ = new Map(m.map((e) => [`${e.label}|${Vc(e.position)}`, e.uniqueId])), v = new Set(h.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), y = new Set(u.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), b = /* @__PURE__ */ new Set(), x = [], S = (e) => {
-		let t = `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`;
-		y.has(t) || (u.push(e), y.add(t));
-	}, C = (e) => {
+	let f = /* @__PURE__ */ new Set(), p = [...e.atoms], m = [...e.bonds], h = new Set(p.map((e) => e.uniqueId)), g = new Map(p.map((e) => [`${e.label}|${nl(e.position)}`, e.uniqueId])), _ = new Map(e.atoms.map((e) => [e.uniqueId, e])), v = (t) => {
+		if (_.has(t)) return _.get(t);
+		let [n, r] = t.split("|"), i = a.get(n);
+		if (!i || !r) return null;
+		let o = e.symmetry.applySymmetry(r, [i])[0];
+		return o.appliedSymmetry = H.fromString(r), _.set(t, o), o;
+	}, y = (e) => {
+		if (h.has(e)) return i(e);
+		let t = v(e);
+		if (!t) return null;
+		let n = `${t.label}|${nl(t.position)}`, a = g.get(n);
+		return a ? (a !== e && r.set(e, a), a) : (p.push(t), h.add(e), g.set(n, e), e);
+	}, b = new Set(m.map((e) => [i(e.atom1Id), i(e.atom2Id)].sort().join("|"))), x = new Set(l.map((e) => `${e.donorAtomId}|${e.hydrogenAtomId}|${e.acceptorAtomId}`)), S = /* @__PURE__ */ new Set(), C = [], w = (e) => {
+		let t = y(e.donorAtomId) || e.donorAtomId, n = y(e.hydrogenAtomId) || e.hydrogenAtomId, r = y(e.acceptorAtomId) || e.acceptorAtomId, i = t === e.donorAtomId && n === e.hydrogenAtomId && r === e.acceptorAtomId ? e : new V(t, n, r, e.donorHydrogenDistance, e.donorHydrogenDistanceSU, e.acceptorHydrogenDistance, e.acceptorHydrogenDistanceSU, e.donorAcceptorDistance, e.donorAcceptorDistanceSU, e.hBondAngle, e.hBondAngleSU, "."), a = `${t}|${n}|${r}`;
+		x.has(a) || (l.push(i), x.add(a));
+	}, T = (e) => {
 		let t = [e.atom1Id, e.atom2Id].sort().join("|");
-		v.has(t) || (h.push(e), v.add(t));
-	}, w = (t, a) => {
+		b.has(t) || (m.push(e), b.add(t));
+	}, E = (t, a) => {
 		let o = `${t}@${a}`;
-		if (p.has(o)) return;
-		p.add(o);
+		if (f.has(o)) return;
+		f.add(o);
 		let s = n[t], c = e.symmetry.applySymmetry(a, s.atoms), l = /* @__PURE__ */ new Map();
 		for (let t = 0; t < c.length; t++) {
 			let n = c[t], i = s.atoms[t], o = a;
 			i.appliedSymmetry && i.appliedSymmetry.key !== `${e.symmetry.identitySymOpId}_555` && (o = e.symmetry.combineSymmetryCodes(a, i.appliedSymmetry.key)), n.appliedSymmetry = H.fromString(o);
-			let u = `${n.label}|${Vc(n.position)}`, d = _.get(u);
-			d ? (d !== n.uniqueId && r.set(n.uniqueId, d), l.set(i.uniqueId, d)) : (g.has(n.uniqueId) || (m.push(n), g.add(n.uniqueId), _.set(u, n.uniqueId)), l.set(i.uniqueId, n.uniqueId));
+			let u = `${n.label}|${nl(n.position)}`, d = g.get(u);
+			d ? (d !== n.uniqueId && r.set(n.uniqueId, d), l.set(i.uniqueId, d)) : (h.has(n.uniqueId) || (p.push(n), h.add(n.uniqueId), g.set(u, n.uniqueId)), l.set(i.uniqueId, n.uniqueId));
 		}
 		s.bonds.filter(({ atom2SiteSymmetry: e }) => e === ".").forEach((e) => {
 			let t = l.get(e.atom1Id), n = l.get(e.atom2Id);
-			!t || !n || C(new B(i(t), i(n), e.bondLength, e.bondLengthSU, "."));
-		}), [...s.hBonds, ...f[t]].forEach((t) => {
+			!t || !n || T(new B(i(t), i(n), e.bondLength, e.bondLengthSU, "."));
+		}), [...s.hBonds, ...d[t]].forEach((t) => {
 			if (t.acceptorAtomSymmetry === ".") {
-				S(new V(i(X(t.donorAtomId, a, e.symmetry)), i(X(t.hydrogenAtomId, a, e.symmetry)), i(X(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+				w(new V(i(X(t.donorAtomId, a, e.symmetry)), i(X(t.hydrogenAtomId, a, e.symmetry)), i(X(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 				return;
 			}
-			x.push(new V(i(X(t.donorAtomId, a, e.symmetry)), i(X(t.hydrogenAtomId, a, e.symmetry)), i(X(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+			C.push(new V(i(X(t.donorAtomId, a, e.symmetry)), i(X(t.hydrogenAtomId, a, e.symmetry)), i(X(t.acceptorAtomId, a, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
 		});
 	};
-	for (let t of l) {
-		let n = t.acceptorAtomId.split("|")[0], r = t.acceptorAtomId.split("|")[0], l = c.get(r);
-		if (l === void 0) throw Error(`Cannot grow H-bond: acceptor atom ${r} is not in the structure`);
-		let u = t.acceptorAtomSymmetry;
-		w(l, u), S(new V(i(t.donorAtomId), i(t.hydrogenAtomId), i(X(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
-		let d = s.get(t.donorAtomId);
-		if (d === void 0) throw Error(`Cannot grow reciprocal H-bond: donor atom ${t.donorAtomId} is not in the structure`);
-		let f = Uc(e, o.get(n), u), p = a.get(t.donorAtomId), m = a.get(t.hydrogenAtomId);
-		if (!p || !m) throw Error(`Cannot grow reciprocal H-bond: donor or hydrogen atom of ${t.donorAtomId}-${t.hydrogenAtomId} is not in the structure`);
-		let h = Wc(e, t, p, m, f);
-		for (let { inverseSymmetry: r, positionKey: a } of h) {
+	for (let t of c) {
+		let n = t.acceptorAtomId.split("|")[0], r = t.acceptorAtomId.split("|")[0], c = s.get(r);
+		if (c === void 0) throw Error(`Cannot grow H-bond: acceptor atom ${r} is not in the structure`);
+		let l = t.acceptorAtomSymmetry;
+		E(c, l), w(new V(i(t.donorAtomId), i(t.hydrogenAtomId), i(X(n, t.acceptorAtomSymmetry, e.symmetry)), t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, "."));
+		let u = o.get(t.donorAtomId);
+		if (u === void 0) throw Error(`Cannot grow reciprocal H-bond: donor atom ${t.donorAtomId} is not in the structure`);
+		let d = il(e, a.get(n), l), f = v(t.donorAtomId), p = v(t.hydrogenAtomId);
+		if (!f || !p) throw Error(`Cannot grow reciprocal H-bond: donor or hydrogen atom of ${t.donorAtomId}-${t.hydrogenAtomId} is not in the structure`);
+		let m = al(e, t, f, p, d);
+		for (let { inverseSymmetry: r, positionKey: a } of m) {
 			let o = [
 				t.donorAtomLabel,
 				t.hydrogenAtomLabel,
 				n,
 				a
 			].join("|");
-			b.has(o) || (b.add(o), w(d, r), S(new V(i(X(t.donorAtomId, r, e.symmetry)), i(X(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
+			S.has(o) || (S.add(o), E(u, r), w(new V(i(X(t.donorAtomId, r, e.symmetry)), i(X(t.hydrogenAtomId, r, e.symmetry)), `${n}|${e.symmetry.identitySymOpId}_555`, t.donorHydrogenDistance, t.donorHydrogenDistanceSU, t.acceptorHydrogenDistance, t.acceptorHydrogenDistanceSU, t.donorAcceptorDistance, t.donorAcceptorDistanceSU, t.hBondAngle, t.hBondAngleSU, ".")));
 		}
 	}
-	for (let e of x) g.has(e.donorAtomId) && g.has(e.hydrogenAtomId) && g.has(e.acceptorAtomId) && S(e);
-	return new U(e.cell, m, h, u, e.symmetry);
+	for (let e of C) h.has(e.donorAtomId) && h.has(e.hydrogenAtomId) && h.has(e.acceptorAtomId) && w(e);
+	return new U(e.cell, p, m, l, e.symmetry);
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/modes.js
-var Jc = class e extends Hs {
+var ll = class e extends cc {
 	static MODES = Object.freeze({
 		NONE: "none",
 		CONSTANT: "constant",
@@ -17976,7 +25184,7 @@ var Jc = class e extends Hs {
 	}
 	apply(t) {
 		if (this.ensureValidMode(t), this.mode === e.MODES.ANISOTROPIC) return t;
-		let n = t.atoms.filter((t) => t.atomType !== "H" || this.mode !== e.MODES.NONE).map((t) => new Gt(t.label, t.atomType, t.position, t.atomType === "H" && this.mode === e.MODES.CONSTANT ? null : t.adp, t.disorderGroup, t.appliedSymmetry)), r = t.bonds.filter((n) => {
+		let n = t.atoms.filter((t) => t.atomType !== "H" || this.mode !== e.MODES.NONE).map((t) => new qt(t.label, t.atomType, t.position, t.atomType === "H" && this.mode === e.MODES.CONSTANT ? null : t.adp, t.disorderGroup, t.appliedSymmetry)), r = t.bonds.filter((n) => {
 			if (this.mode === e.MODES.NONE) {
 				if (n.atom2SiteSymmetry !== ".") try {
 					let e = t.getAtomById(n.atom1Id), r = t.getAtomById(n.atom2Id);
@@ -17997,9 +25205,9 @@ var Jc = class e extends Hs {
 	}
 	getApplicableModes(t) {
 		let n = [e.MODES.NONE];
-		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof z) && n.push(e.MODES.ANISOTROPIC), n) : n;
+		return t.atoms.some((e) => e.atomType === "H") ? (n.push(e.MODES.CONSTANT), t.atoms.some((e) => e.atomType === "H" && e.adp instanceof rt) && n.push(e.MODES.ANISOTROPIC), n) : n;
 	}
-}, Yc = class e extends Hs {
+}, ul = class e extends cc {
 	static MODES = Object.freeze({ ALL: "all" });
 	static PREFERRED_FALLBACK_ORDER = [e.MODES.ALL];
 	static modeForGroup(e, t) {
@@ -18050,7 +25258,7 @@ var Jc = class e extends Hs {
 			r[`GROUP${i + 1}`] = e.modeForGroup(i + 1, n.length);
 		}), this.MODES = Object.freeze(r), Object.values(this.MODES);
 	}
-}, Xc = class e extends Hs {
+}, dl = class e extends cc {
 	static MODES = Object.freeze({
 		NONE: "none",
 		HBONDS: "hbonds",
@@ -18071,17 +25279,17 @@ var Jc = class e extends Hs {
 	}
 	apply(t) {
 		this.ensureValidMode(t);
-		let n = this.mode === e.MODES.NONE ? t : new U(t.cell, t.atoms, qs(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
+		let n = this.mode === e.MODES.NONE ? t : new U(t.cell, t.atoms, an(t), t.hBonds, t.symmetry), r = /* @__PURE__ */ new Map();
 		if (this.mode === e.MODES.FRAGMENT || this.mode === e.MODES.FRAGMENT_HBONDS) {
-			let e = yc(n);
+			let e = Pc(n);
 			n = e.grownStructure, r = e.specialPositionAtoms;
 		}
-		if (this.mode === e.MODES.CELL) n = Fc(n, !0, null, this.packingCutoff);
+		if (this.mode === e.MODES.CELL) n = Xc(n, !0, null, this.packingCutoff);
 		else if (this.mode === e.MODES.FRAGMENT_CELL) {
-			let e = yc(n);
-			r = e.specialPositionAtoms, n = Lc(Fc(e.grownStructure, !1, r), this.packingCutoff), n = Kc(n);
+			let e = Pc(n);
+			r = e.specialPositionAtoms, n = Qc(Xc(e.grownStructure, !1, r), this.packingCutoff), n = sl(n);
 		}
-		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, Gc(n, n.bonds), n.hBonds, n.symmetry)), n = qc(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, Gc(n, n.bonds), n.hBonds, n.symmetry), n = Kc(n))), n;
+		return (this.mode === e.MODES.HBONDS || this.mode === e.MODES.FRAGMENT_HBONDS) && (this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, ol(n, n.bonds), n.hBonds, n.symmetry)), n = cl(n, r), this.mode === e.MODES.FRAGMENT_HBONDS && (n = new U(n.cell, n.atoms, ol(n, n.bonds), n.hBonds, n.symmetry), n = sl(n))), n;
 	}
 	getApplicableModes(t) {
 		let n = [e.MODES.NONE];
@@ -18089,8 +25297,8 @@ var Jc = class e extends Hs {
 		let r = t.bonds.some((e) => e.atom2SiteSymmetry !== ".");
 		return r && n.push(e.MODES.FRAGMENT), t.hBonds.some((e) => e.acceptorAtomSymmetry !== ".") && (r ? n.push(e.MODES.FRAGMENT_HBONDS) : n.push(e.MODES.HBONDS)), n.push(e.MODES.CELL), n.push(e.MODES.FRAGMENT_CELL), n;
 	}
-}, Zc = 2;
-function Qc(e, t = {}) {
+}, fl = 2;
+function pl(e, t = {}) {
 	let n = t.tolerance ?? .05, r = t.maxPlausibleBond ?? 4, i = /* @__PURE__ */ new Map();
 	for (let t of e.atoms) {
 		let e = i.get(t.label);
@@ -18135,7 +25343,7 @@ function Qc(e, t = {}) {
 					d.position.y,
 					d.position.z
 				]);
-				for (let e = -2; e <= Zc; e++) for (let c = -2; c <= Zc; c++) for (let d = -2; d <= Zc; d++) {
+				for (let e = -2; e <= fl; e++) for (let c = -2; c <= fl; c++) for (let d = -2; d <= fl; d++) {
 					let f = s(t, o([
 						r[0] + e,
 						r[1] + c,
@@ -18209,7 +25417,7 @@ function Qc(e, t = {}) {
 }
 //#endregion
 //#region src/lib/structure/structure-modifiers/fixers.js
-var $c = class e extends Hs {
+var ml = class e extends cc {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -18251,7 +25459,7 @@ var $c = class e extends Hs {
 	getApplicableModes() {
 		return Object.values(e.MODES);
 	}
-}, el = class e extends Hs {
+}, hl = class e extends cc {
 	static MODES = Object.freeze({
 		KEEP: "keep",
 		ADD: "add",
@@ -18270,7 +25478,7 @@ var $c = class e extends Hs {
 		super(e.MODES, r, "BondGenerator", e.PREFERRED_FALLBACK_ORDER), this.elementProperties = t, this.tolerance = n;
 	}
 	getTolerance(e, t) {
-		return Xt.has(e) || Xt.has(t) ? Math.min(this.tolerance, .4) : this.tolerance;
+		return Qt.has(e) || Qt.has(t) ? Math.min(this.tolerance, .4) : this.tolerance;
 	}
 	getMaxBondDistance(e, t, n) {
 		let r = n[e]?.radius, i = n[t]?.radius;
@@ -18288,7 +25496,7 @@ var $c = class e extends Hs {
 				n.z
 			]), Object.prototype.hasOwnProperty.call(t, e.atomType) && !o.has(e.atomType)) o.set(e.atomType, e.atomType);
 			else if (!o.has(e.atomType)) try {
-				o.set(e.atomType, Ht(e.atomType));
+				o.set(e.atomType, Wt(e.atomType));
 			} catch {
 				throw Error(`Missing radius for element ${e.atomType}`);
 			}
@@ -18307,10 +25515,10 @@ var $c = class e extends Hs {
 				if (_) for (let l of _) {
 					if (l <= e) continue;
 					let u = i[l];
-					if ((r.atomType === "H" || u.atomType === "H") && (s.has(r.uniqueId) || s.has(u.uniqueId)) || !Kt(r, u)) continue;
+					if ((r.atomType === "H" || u.atomType === "H") && (s.has(r.uniqueId) || s.has(u.uniqueId)) || !Jt(r, u)) continue;
 					let d = a.get(u.uniqueId), f = c[0] - d[0], p = c[1] - d[1], m = c[2] - d[2], h = this.getMaxBondDistance(o.get(r.atomType), o.get(u.atomType), t);
 					if (Math.abs(f) > h || Math.abs(p) > h || Math.abs(m) > h) continue;
-					let g = Fe([
+					let g = Pe([
 						f,
 						p,
 						m
@@ -18342,7 +25550,7 @@ var $c = class e extends Hs {
 			0,
 			0,
 			1
-		]), _ = Ne(a.fractToCartMatrix).toArray(), v = [
+		]), _ = z(a.fractToCartMatrix).toArray(), v = [
 			0,
 			1,
 			2
@@ -18442,7 +25650,7 @@ var $c = class e extends Hs {
 					let f = d.atomIndex;
 					if (e > f) continue;
 					let p = o[f];
-					if (!Kt(m, p)) continue;
+					if (!Jt(m, p)) continue;
 					let g = this.getMaxBondDistance(h, n.get(p.atomType), t), _ = c[0] - d.cartX, v = c[1] - d.cartY, y = c[2] - d.cartZ;
 					if (Math.abs(_) > g || Math.abs(v) > g || Math.abs(y) > g) continue;
 					let b = _ * _ + v * v + y * y;
@@ -18465,7 +25673,7 @@ var $c = class e extends Hs {
 			let r = o[e], a = n.get(r.atomType), s = p(C[e]);
 			for (let c = e; c < o.length; c++) {
 				let d = o[c];
-				if (!Kt(r, d)) continue;
+				if (!Jt(r, d)) continue;
 				let f = this.getMaxBondDistance(a, n.get(d.atomType), t);
 				for (let { opIndex: t, image: n } of O[c]) {
 					let a = l[t], o = Math.round(C[e][0] - n[0]), _ = Math.round(C[e][1] - n[1]), v = Math.round(C[e][2] - n[2]), y = p([
@@ -18524,7 +25732,7 @@ var $c = class e extends Hs {
 			e.MODES.REPLACE
 		] : [e.MODES.CREATE, e.MODES.IGNORE];
 	}
-}, tl = class e extends Hs {
+}, gl = class e extends cc {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -18563,8 +25771,8 @@ var $c = class e extends Hs {
 			];
 			if (r > 0) {
 				let i = e.atoms[r - 1];
-				if (i.atomType !== "H" && Kt(i, t)) {
-					let r = i.position.toCartesian(e.cell), o = Fe(je(a, [
+				if (i.atomType !== "H" && Jt(i, t)) {
+					let r = i.position.toCartesian(e.cell), o = Pe(je(a, [
 						r.x,
 						r.y,
 						r.z
@@ -18578,8 +25786,8 @@ var $c = class e extends Hs {
 			let o = !1;
 			for (let i = r - 1; i >= 0 && !o; i--) {
 				let r = e.atoms[i];
-				if (r.atomType === "H" || !Kt(r, t)) continue;
-				let s = r.position.toCartesian(e.cell), c = Fe(je(a, [
+				if (r.atomType === "H" || !Jt(r, t)) continue;
+				let s = r.position.toCartesian(e.cell), c = Pe(je(a, [
 					s.x,
 					s.y,
 					s.z
@@ -18589,7 +25797,7 @@ var $c = class e extends Hs {
 			if (!o && r < e.atoms.length - 1) for (let i = r + 1; i < e.atoms.length && !o; i++) {
 				let r = e.atoms[i];
 				if (r.atomType === "H" || !(r.disorderGroup === t.disorderGroup || r.disorderGroup === 0 || t.disorderGroup === 0)) continue;
-				let s = r.position.toCartesian(e.cell), c = Fe(je(a, [
+				let s = r.position.toCartesian(e.cell), c = Pe(je(a, [
 					s.x,
 					s.y,
 					s.z
@@ -18601,7 +25809,7 @@ var $c = class e extends Hs {
 	getApplicableModes(t) {
 		return t.bonds.length === 0 ? [e.MODES.OFF] : this.findIsolatedHydrogenAtoms(t).length > 0 ? [e.MODES.ON] : [e.MODES.OFF];
 	}
-}, nl = class e extends Hs {
+}, _l = class e extends cc {
 	static MODES = Object.freeze({
 		ON: "on",
 		OFF: "off"
@@ -18612,15 +25820,15 @@ var $c = class e extends Hs {
 	}
 	apply(t) {
 		if (this.ensureValidMode(t), this.mode === e.MODES.OFF) return this.lastRepairs = null, t;
-		let { structure: n, repairs: r } = Qc(t, this.options);
+		let { structure: n, repairs: r } = pl(t, this.options);
 		return this.lastRepairs = r, r.recoded === 0 && r.lengthCorrected === 0 && r.dropped === 0 ? t : n;
 	}
 	getApplicableModes(t) {
 		if (!t?.bonds?.length) return [e.MODES.OFF];
-		let { repairs: n } = Qc(t, this.options);
+		let { repairs: n } = pl(t, this.options);
 		return this.lastRepairs = n, n.recoded > 0 || n.lengthCorrected > 0 || n.dropped > 0 ? [e.MODES.ON, e.MODES.OFF] : [e.MODES.OFF];
 	}
-}, rl = class {
+}, vl = class {
 	static init() {
 		let e = [
 			1,
@@ -51406,32 +58614,32 @@ var $c = class e extends Hs {
 		return p.needsUpdate = !0, h.needsUpdate = !0, this.LTC_HALF_1 = p, this.LTC_HALF_2 = h, this.LTC_FLOAT_1 = s, this.LTC_FLOAT_2 = u, this;
 	}
 };
-rl.LTC_HALF_1 = null, rl.LTC_HALF_2 = null, rl.LTC_FLOAT_1 = null, rl.LTC_FLOAT_2 = null;
+vl.LTC_HALF_1 = null, vl.LTC_HALF_2 = null, vl.LTC_FLOAT_1 = null, vl.LTC_FLOAT_2 = null;
 //#endregion
 //#region node_modules/three/examples/jsm/lights/RectAreaLightUniformsLib.js
-var il = class {
+var yl = class {
 	static init() {
-		rl.init();
-		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = rl;
+		vl.init();
+		let { LTC_FLOAT_1: e, LTC_FLOAT_2: t, LTC_HALF_1: n, LTC_HALF_2: r } = vl;
 		w.LTC_FLOAT_1 = e, w.LTC_FLOAT_2 = t, w.LTC_HALF_1 = n, w.LTC_HALF_2 = r;
 	}
-}, al = !1;
-function ol() {
-	al ||= (il.init(), !0);
+}, bl = !1;
+function xl() {
+	bl ||= (yl.init(), !0);
 }
-function sl(t) {
+function Sl(t) {
 	let n = new e.Vector3();
 	t.forEach((e) => n.add(e)), n.divideScalar(t.length);
 	let r = new e.Matrix3(), i = new e.Vector3();
 	t.forEach((e) => {
 		i.copy(e).sub(n), r.elements[0] += i.x * i.x, r.elements[1] += i.x * i.y, r.elements[2] += i.x * i.z, r.elements[3] += i.y * i.x, r.elements[4] += i.y * i.y, r.elements[5] += i.y * i.z, r.elements[6] += i.z * i.x, r.elements[7] += i.z * i.y, r.elements[8] += i.z * i.z;
 	});
-	let { values: a, eigenvectors: o } = Ve(cl(r)), s = ze(a);
+	let { values: a, eigenvectors: o } = Be(Cl(r)), s = Re(a);
 	if (s <= 0) return console.warn("Could not find a mean plane, expected?"), new e.Vector3(0, 1, 0);
 	let c = o.filter((e) => e.value === s)[0].vector, l = new e.Vector3(...c.toArray());
 	return l.normalize(), l;
 }
-function cl(e) {
+function Cl(e) {
 	let t = e.elements;
 	return Ee([
 		[
@@ -51451,7 +58659,7 @@ function cl(e) {
 		]
 	]);
 }
-function ll(t) {
+function wl(t) {
 	let n = [], r = new e.Vector3();
 	if (t.traverse((t) => {
 		if (t.userData?.type === "atom") {
@@ -51460,7 +58668,7 @@ function ll(t) {
 		}
 	}), n.length === 0) return null;
 	r.divideScalar(n.length);
-	let i = n.map((e) => e.sub(r)), a = sl(i), o = new e.Vector3(0, 0, 1), s = new e.Quaternion();
+	let i = n.map((e) => e.sub(r)), a = Sl(i), o = new e.Vector3(0, 0, 1), s = new e.Quaternion();
 	s.setFromUnitVectors(a, o);
 	let c = new e.Matrix4();
 	c.makeRotationFromQuaternion(s);
@@ -51474,21 +58682,21 @@ function ll(t) {
 	let p = -Math.atan2(f.y, f.x), m = new e.Matrix4().makeRotationZ(p);
 	return c.premultiply(m), c.premultiply(new e.Matrix4().makeRotationX(Math.PI / 8)), c.premultiply(new e.Matrix4().makeRotationY(Math.PI / 48)), c;
 }
-var ul = 16384;
-function dl(e, t, n = {}) {
+var Tl = 16384;
+function El(e, t, n = {}) {
 	let r = Math.max(1, Math.floor(e)), i = Math.max(1, Math.floor(t)), a = Number.isFinite(n.scale) && n.scale > 0 ? n.scale : 1;
 	Number.isFinite(n.longEdge) && n.longEdge > 0 && (a = n.longEdge / Math.max(r, i));
-	let o = ul / Math.max(r, i);
+	let o = Tl / Math.max(r, i);
 	return a = Math.min(a, o), {
 		width: Math.max(1, Math.round(r * a)),
 		height: Math.max(1, Math.round(i * a)),
 		scale: a
 	};
 }
-function fl(t, n, r) {
+function Dl(t, n, r) {
 	t.children = t.children.filter((t) => !(t instanceof e.Light));
 	let i = (r || new e.Box3().setFromObject(n)).getSize(new e.Vector3()), a = Math.max(i.length() * .5, 6), o = a * 2.5, s = new e.AmbientLight(16777215, .45);
-	t.add(s), ol();
+	t.add(s), xl();
 	let c = a * 2.25, l = new e.RectAreaLight(16777215, 5, c, c);
 	l.position.set(-o * .6, -o * .5, o), l.lookAt(new e.Vector3(0, 0, 0)), t.add(l), [{
 		pos: [
@@ -51511,7 +58719,7 @@ function fl(t, n, r) {
 }
 //#endregion
 //#region src/lib/ortep3d/viewer-controls.js
-var pl = class {
+var Ol = class {
 	constructor(t) {
 		this.viewer = t, this.state = {
 			isDragging: !1,
@@ -51732,7 +58940,7 @@ var pl = class {
 		let e = this.renderer.domElement, { wheel: t, mouseDown: n, mouseMove: r, mouseUp: i, click: a, contextMenu: o, touchStart: s, touchMove: c, touchEnd: l, resize: u } = this.boundHandlers;
 		e.removeEventListener("wheel", t), e.removeEventListener("mousedown", n), e.removeEventListener("mousemove", r), e.removeEventListener("mouseup", i), e.removeEventListener("mouseleave", i), e.removeEventListener("click", a), e.removeEventListener("contextmenu", o), e.removeEventListener("touchstart", s), e.removeEventListener("touchmove", c), e.removeEventListener("touchend", l), window.removeEventListener("resize", u), this.interactionCallbacks.clear(), this.coupledInteractionStates.clear();
 	}
-}, ml = class t {
+}, kl = class t {
 	constructor(n, r) {
 		if (new.target === t) throw Error("AbstractCamera is an abstract class and cannot be instantiated directly");
 		this.container = n, this.options = r, this.cameraTarget = new e.Vector3(0, 0, 0), this.createCamera();
@@ -51761,7 +58969,7 @@ var pl = class {
 	applyCoupledViewState(e) {
 		throw Error("applyCoupledViewState() must be implemented by subclass");
 	}
-}, hl = class extends ml {
+}, Al = class extends kl {
 	createCamera() {
 		return this.camera = new e.PerspectiveCamera(this.options.fov, this.container.clientWidth / this.container.clientHeight, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
 	}
@@ -51800,7 +59008,7 @@ var pl = class {
 		let t = this.options.fov;
 		this.container.clientWidth < this.container.clientHeight ? this.camera.fov = 2 * Math.atan(Math.tan(t * Math.PI / 360) / e) * 180 / Math.PI : this.camera.fov = t, this.camera.updateProjectionMatrix();
 	}
-}, gl = class extends ml {
+}, jl = class extends kl {
 	createCamera() {
 		let t = this.container.clientWidth / this.container.clientHeight, n = this.options.orthoSize || 5;
 		return this.camera = new e.OrthographicCamera(-n * t, n * t, n, -n, this.options.near, this.options.far), this.camera.position.copy(this.options.initialPosition), this.camera.lookAt(this.cameraTarget), this.camera;
@@ -51850,21 +59058,21 @@ var pl = class {
 		this.camera.top = e, this.camera.bottom = -e, this.camera.left = -e * t, this.camera.right = e * t;
 	}
 };
-function _l(e, t) {
+function Ml(e, t) {
 	switch ((t.camera?.type || "perspective").toLowerCase()) {
-		case "orthographic": return new gl(e, t.camera);
-		default: return new hl(e, t.camera);
+		case "orthographic": return new jl(e, t.camera);
+		default: return new Al(e, t.camera);
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/cell3d.js
-function vl(t, n, r, i, a) {
+function Nl(t, n, r, i, a) {
 	let o = t.clone().normalize(), s = t.length() - r, c = new e.CylinderGeometry(a, a, s, 8), l = new e.MeshBasicMaterial({ color: n }), u = new e.Mesh(c, l), d = new e.ConeGeometry(i, r, 8), f = new e.MeshBasicMaterial({ color: n }), p = new e.Mesh(d, f), m = new e.Vector3(0, 1, 0), h = new e.Quaternion();
 	h.setFromUnitVectors(m, o), u.applyQuaternion(h), p.applyQuaternion(h), u.position.copy(o.clone().multiplyScalar(s / 2)), p.position.copy(o.clone().multiplyScalar(s + r / 2));
 	let g = new e.Group();
 	return g.add(u), g.add(p), g;
 }
-function yl(t, n, r, i) {
+function Pl(t, n, r, i) {
 	let a = new e.Group(), o = [
 		new e.Vector3(0, 0, 0),
 		new e.Vector3(1, 0, 0),
@@ -51898,12 +59106,12 @@ function yl(t, n, r, i) {
 		a.add(i);
 	}), a;
 }
-function bl(t, n) {
-	let { boxColor: r, boxOpacity: i, boxLineWidth: a, arrowColorA: o, arrowColorB: s, arrowColorC: c, arrowHeadLengthMult: l, arrowHeadWidthMult: u, arrowCylinderRadius: d } = n, f = new e.Group(), p = t.fractToCartMatrix.toArray(), m = new e.Matrix4(p[0][0], p[0][1], p[0][2], 0, p[1][0], p[1][1], p[1][2], 0, p[2][0], p[2][1], p[2][2], 0, 0, 0, 0, 1), h = yl(m, r, i, a);
+function Fl(t, n) {
+	let { boxColor: r, boxOpacity: i, boxLineWidth: a, arrowColorA: o, arrowColorB: s, arrowColorC: c, arrowHeadLengthMult: l, arrowHeadWidthMult: u, arrowCylinderRadius: d } = n, f = new e.Group(), p = t.fractToCartMatrix.toArray(), m = new e.Matrix4(p[0][0], p[0][1], p[0][2], 0, p[1][0], p[1][1], p[1][2], 0, p[2][0], p[2][1], p[2][2], 0, 0, 0, 0, 1), h = Pl(m, r, i, a);
 	f.add(h);
 	let g = new e.Vector3(), _ = new e.Vector3(), v = new e.Vector3();
 	m.extractBasis(g, _, v);
-	let { a: y, b, c: x } = t, S = Math.max(y, b, x) * l, C = S * u, w = vl(g, o, S, C, d), T = vl(_, s, S, C, d), E = vl(v, c, S, C, d);
+	let { a: y, b, c: x } = t, S = Math.max(y, b, x) * l, C = S * u, w = Nl(g, o, S, C, d), T = Nl(_, s, S, C, d), E = Nl(v, c, S, C, d);
 	return f.add(w), f.add(T), f.add(E), f.name = "UnitCell", f.userData = {
 		selectable: !1,
 		cellParameters: {
@@ -51919,14 +59127,14 @@ function bl(t, n) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-layout.js
-function xl(e, t) {
+function Il(e, t) {
 	return e.left < t.right && e.right > t.left && e.top < t.bottom && e.bottom > t.top;
 }
-function Sl(e, t) {
+function Ll(e, t) {
 	let n = Math.max(e.left, Math.min(t.x, e.right)), r = Math.max(e.top, Math.min(t.y, e.bottom)), i = t.x - n, a = t.y - r;
 	return i * i + a * a < t.radius * t.radius;
 }
-function Cl(e, t) {
+function Rl(e, t) {
 	let n = e.radius || 0, r = {
 		left: t.left - n,
 		right: t.right + n,
@@ -51953,16 +59161,16 @@ function Cl(e, t) {
 	}
 	return !0;
 }
-function wl(e, t) {
+function zl(e, t) {
 	let n = t.x2 - t.x1, r = t.y2 - t.y1, i = n * n + r * r;
 	if (i === 0) return (e.x - t.x1) ** 2 + (e.y - t.y1) ** 2;
 	let a = Math.max(0, Math.min(1, ((e.x - t.x1) * n + (e.y - t.y1) * r) / i)), o = t.x1 + a * n, s = t.y1 + a * r;
 	return (e.x - o) ** 2 + (e.y - s) ** 2;
 }
-function Tl(e, t, n) {
+function Bl(e, t, n) {
 	return (t.x - e.x) * (n.y - e.y) - (t.y - e.y) * (n.x - e.x);
 }
-function El(e, t) {
+function Vl(e, t) {
 	let n = {
 		x: e.x1,
 		y: e.y1
@@ -51975,7 +59183,7 @@ function El(e, t) {
 	}, a = {
 		x: t.x2,
 		y: t.y2
-	}, o = Tl(n, r, i), s = Tl(n, r, a), c = Tl(i, a, n), l = Tl(i, a, r);
+	}, o = Bl(n, r, i), s = Bl(n, r, a), c = Bl(i, a, n), l = Bl(i, a, r);
 	return [
 		o,
 		s,
@@ -51983,24 +59191,24 @@ function El(e, t) {
 		l
 	].every((e) => Math.abs(e) < 1e-9) ? Math.max(Math.min(e.x1, e.x2), Math.min(t.x1, t.x2)) <= Math.min(Math.max(e.x1, e.x2), Math.max(t.x1, t.x2)) && Math.max(Math.min(e.y1, e.y2), Math.min(t.y1, t.y2)) <= Math.min(Math.max(e.y1, e.y2), Math.max(t.y1, t.y2)) : o * s <= 0 && c * l <= 0;
 }
-function Dl(e, t) {
-	if (El(e, t)) return !0;
+function Hl(e, t) {
+	if (Vl(e, t)) return !0;
 	let n = (e.radius || 0) + (t.radius || 0);
-	return Math.min(wl({
+	return Math.min(zl({
 		x: e.x1,
 		y: e.y1
-	}, t), wl({
+	}, t), zl({
 		x: e.x2,
 		y: e.y2
-	}, t), wl({
+	}, t), zl({
 		x: t.x1,
 		y: t.y1
-	}, e), wl({
+	}, e), zl({
 		x: t.x2,
 		y: t.y2
 	}, e)) <= n * n;
 }
-function Ol(e) {
+function Ul(e) {
 	let t = e.radius || 0;
 	return {
 		left: Math.min(e.x1, e.x2) - t,
@@ -52009,7 +59217,7 @@ function Ol(e) {
 		bottom: Math.max(e.y1, e.y2) + t
 	};
 }
-function kl(e) {
+function Wl(e) {
 	return {
 		left: e.x - e.radius,
 		right: e.x + e.radius,
@@ -52017,7 +59225,7 @@ function kl(e) {
 		bottom: e.y + e.radius
 	};
 }
-function Al(e) {
+function Gl(e) {
 	return {
 		left: Math.min(...e.map((e) => e.x)),
 		right: Math.max(...e.map((e) => e.x)),
@@ -52025,8 +59233,8 @@ function Al(e) {
 		bottom: Math.max(...e.map((e) => e.y))
 	};
 }
-function jl(e, t) {
-	let n = [...e.map(kl), ...t.map(Ol)];
+function Kl(e, t) {
+	let n = [...e.map(Wl), ...t.map(Ul)];
 	return n.length === 0 ? null : n.reduce((e, t) => ({
 		left: Math.min(e.left, t.left),
 		right: Math.max(e.right, t.right),
@@ -52034,7 +59242,7 @@ function jl(e, t) {
 		bottom: Math.max(e.bottom, t.bottom)
 	}));
 }
-var Ml = class {
+var ql = class {
 	constructor(e = 64) {
 		this.cellSize = e, this.cells = /* @__PURE__ */ new Map();
 	}
@@ -52059,7 +59267,7 @@ var Ml = class {
 		return [...t];
 	}
 };
-function Nl(e, t) {
+function Jl(e, t) {
 	let n = !1;
 	for (let r = 0, i = t.length - 1; r < t.length; i = r++) {
 		let a = t[r], o = t[i];
@@ -52067,14 +59275,14 @@ function Nl(e, t) {
 	}
 	return n;
 }
-var Pl = Array.from({ length: 16 }, (e, t) => {
+var Yl = Array.from({ length: 16 }, (e, t) => {
 	let n = t * Math.PI / 8;
 	return {
 		x: Math.cos(n),
 		y: Math.sin(n)
 	};
 });
-function Fl(e, t, n, r) {
+function Xl(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = Math.abs(t.x) * i + Math.abs(t.y) * a, s = e.radius + r.atomPadding + o + (n - 1) * r.fallbackDistance, c = e.x + t.x * s, l = e.y + t.y * s, u = r.labelPadding, d = n > 1 ? {
 		x1: e.x + t.x * (e.radius + r.atomPadding),
 		y1: e.y + t.y * (e.radius + r.atomPadding),
@@ -52099,18 +59307,18 @@ function Fl(e, t, n, r) {
 		}
 	};
 }
-function Il(e, t, n, r, i) {
+function Zl(e, t, n, r, i) {
 	let a = t.preferredDirection || {
 		x: 1,
 		y: -1
 	}, o = (1 - (e.direction.x * a.x + e.direction.y * a.y)) * 50;
-	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Nl(e, t)) && (o += i.ringPenalty), r) {
+	if (e.leaderLine && (o += 150 + (e.distanceMultiplier - 1) * 75), n.some((t) => Jl(e, t)) && (o += i.ringPenalty), r) {
 		let t = e.direction.x * r.direction.x + e.direction.y * r.direction.y;
 		o += (1 - t) * i.movementPenalty;
 	}
 	return o;
 }
-function Ll(e, t, n, r) {
+function Ql(e, t, n, r) {
 	let i = e.width / 2, a = e.height / 2, o = t - e.x, s = n - e.y, c = Math.hypot(o, s) || 1, l = {
 		x: o / c,
 		y: s / c
@@ -52139,42 +59347,42 @@ function Ll(e, t, n, r) {
 		}
 	};
 }
-function Rl(e) {
+function $l(e) {
 	return e.leaderSegment ? Math.hypot(e.leaderSegment.x2 - e.leaderSegment.x1, e.leaderSegment.y2 - e.leaderSegment.y1) : 0;
 }
-function zl(e, t) {
+function eu(e, t) {
 	if (!Number.isFinite(e.z)) return null;
 	let n = Math.max(1, t.performanceNoSpaceCellSize ?? 24);
 	return [Math.floor(e.x / n), Math.floor(e.y / n)].join(":");
 }
-function Bl(e, t, n) {
+function tu(e, t, n) {
 	return e.left >= n && e.top >= n && e.right <= t.width - n && e.bottom <= t.height - n;
 }
-function Vl(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
-	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new Ml(u), f = new Ml(u), p = new Ml(u), m = new Ml(u), h = new Ml(u);
-	t.forEach((e) => d.insert(e, kl(e))), n.forEach((e) => f.insert(e, Ol(e))), r.forEach((e) => p.insert(e, Al(e)));
-	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = jl(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
+function nu(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
+	let s = [], c = [], l = [], u = a.spatialCellSize || 64, d = new ql(u), f = new ql(u), p = new ql(u), m = new ql(u), h = new ql(u);
+	t.forEach((e) => d.insert(e, Wl(e))), n.forEach((e) => f.insert(e, Ul(e))), r.forEach((e) => p.insert(e, Gl(e)));
+	let g = Math.min(e.length, a.maxVisible ?? Infinity), _ = a.placementMode === "performance-omit" || a.placementMode === "auto-omit" && g > (a.autoPerformanceLabelThreshold ?? 500), v = [...e].sort((e, t) => (t.priority || 0) - (e.priority || 0) || (_ ? (Number.isFinite(e.z) ? e.z : Infinity) - (Number.isFinite(t.z) ? t.z : Infinity) : 0) || e.id.localeCompare(t.id)), y = v.slice(0, a.maxVisible), b = a.placementMode === "maximum-coverage", x = Kl(t, n), S = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new WeakMap(), w = /* @__PURE__ */ new Map(), T = (e, t) => {
 		if (C.has(e)) return C.get(e);
 		let n = !0;
-		if (Rl(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !Bl(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => Sl(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => Cl(t, e.rect)) && (n = !1), n && e.leaderSegment) {
-			let r = Ol(e.leaderSegment);
-			!b && f.query(r).some((t) => Dl(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && wl(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
+		if ($l(e) > (a.maxConnectorLength ?? Infinity) && (n = !1), n && !tu(e.rect, i, a.viewportPadding) && (n = !1), n && d.query(e.rect).some((t) => Ll(e.rect, t)) && (n = !1), n && f.query(e.rect).some((t) => Rl(t, e.rect)) && (n = !1), n && e.leaderSegment) {
+			let r = Ul(e.leaderSegment);
+			!b && f.query(r).some((t) => Hl(e.leaderSegment, t)) && (n = !1), n && d.query(r).some((n) => n.id !== t.id && zl(n, e.leaderSegment) < n.radius ** 2) && (n = !1);
 		}
 		return C.set(e, n), n;
 	}, E = (e, t) => {
 		if (!T(e, t)) return null;
-		let n = new Set(m.query(e.rect).filter((t) => xl(e.rect, t.rect)));
-		if (h.query(e.rect).filter((t) => Cl(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
-		let r = Ol(e.leaderSegment);
-		return m.query(r).filter((t) => Cl(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Dl(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
+		let n = new Set(m.query(e.rect).filter((t) => Il(e.rect, t.rect)));
+		if (h.query(e.rect).filter((t) => Rl(t.leaderSegment, e.rect)).forEach((e) => n.add(e)), !e.leaderSegment) return n;
+		let r = Ul(e.leaderSegment);
+		return m.query(r).filter((t) => Rl(e.leaderSegment, t.rect)).forEach((e) => n.add(e)), b || h.query(r).filter((t) => Hl(e.leaderSegment, t.leaderSegment)).forEach((e) => n.add(e)), n;
 	}, D = (e, t) => E(e, t)?.size === 0, O = (e, t) => {
 		let n = {
 			...e,
 			...t
 		};
-		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, Ol(n.leaderSegment)), n;
+		return s.push(n), m.insert(n, n.rect), n.leaderSegment && h.insert(n, Ul(n.leaderSegment)), n;
 	}, k = (e) => {
-		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, Ol(e.leaderSegment));
+		s.splice(s.indexOf(e), 1), m.remove(e, e.rect), e.leaderSegment && h.remove(e, Ul(e.leaderSegment));
 	}, A = (e, t, n, r, i) => {
 		for (let a of t) {
 			if (i.remaining-- <= 0) return !1;
@@ -52196,7 +59404,7 @@ function Vl(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 		return !1;
 	}, j = (e, t) => A(e, t, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) });
 	for (let e of y) {
-		let t = _ ? zl(e, a) : null, n = t === null ? void 0 : w.get(t);
+		let t = _ ? eu(e, a) : null, n = t === null ? void 0 : w.get(t);
 		if (n !== void 0 && n < e.z - 1e-6) {
 			c.push({
 				id: e.id,
@@ -52206,9 +59414,9 @@ function Vl(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			continue;
 		}
 		let r = [], i = b ? Array.from({ length: Math.max(2, a.maximumCoverageDistanceSteps ?? 6) }, (e, t) => t + 1) : [1, 2];
-		for (let t of i) for (let n of Pl) {
-			let i = Fl(e, n, t, a);
-			i.score = Il(i, e, p.query({
+		for (let t of i) for (let n of Yl) {
+			let i = Xl(e, n, t, a);
+			i.score = Zl(i, e, p.query({
 				left: i.x,
 				right: i.x,
 				top: i.y,
@@ -52233,14 +59441,14 @@ function Vl(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 			calloutSearch: for (let t of g) for (let c = 0; c < e; c++) for (let e of v) {
 				if (l >= a.calloutSearchLimit || s.length >= a.calloutChoiceLimit) break calloutSearch;
 				l++;
-				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Ll(o, m, t, a);
+				let u = o.width / 2 + a.labelPadding + c * (o.width + a.calloutColumnGap), d = e === "left" ? a.viewportPadding + u : i.width - a.viewportPadding - u, p = e === "left" ? x?.left - r - u : x?.right + r + u, m = n ? p : d, h = Ql(o, m, t, a);
 				if (E(h, o) !== null) {
 					h.score = Math.hypot(m - o.x, t - o.y);
-					let e = Ol(h.leaderSegment);
-					h.score += f.query(e).filter((e) => Dl(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
+					let e = Ul(h.leaderSegment);
+					h.score += f.query(e).filter((e) => Hl(h.leaderSegment, e)).length * a.leaderBondCrossingPenalty, s.push(h);
 				}
 			}
-			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => Rl(e) - Rl(t) || e.score - t.score);
+			let y = [...(S.get(o.id) || []).filter((e) => E(e, o) !== null), ...s].sort((e, t) => $l(e) - $l(t) || e.score - t.score);
 			S.set(o.id, y), A(o, y, Math.max(0, a.repairDepth ?? 2), /* @__PURE__ */ new Set(), { remaining: Math.max(0, a.repairSearchLimit ?? 48) }) || c.push({
 				id: o.id,
 				text: o.text,
@@ -52265,22 +59473,22 @@ function Vl(e, t, n, r, i, a, o = /* @__PURE__ */ new Map()) {
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-worker.js?worker&inline
-var Hl = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", Ul = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", Hl], { type: "text/javascript;charset=utf-8" });
-function Wl(e) {
+var ru = "(function(){function e(e,t){return e.left<t.right&&e.right>t.left&&e.top<t.bottom&&e.bottom>t.top}function t(e,t){let n=Math.max(e.left,Math.min(t.x,e.right)),r=Math.max(e.top,Math.min(t.y,e.bottom)),i=t.x-n,a=t.y-r;return i*i+a*a<t.radius*t.radius}function n(e,t){let n=e.radius||0,r={left:t.left-n,right:t.right+n,top:t.top-n,bottom:t.bottom+n},i=e.x2-e.x1,a=e.y2-e.y1,o=0,s=1;for(let[t,n,c,l]of[[e.x1,i,r.left,r.right],[e.y1,a,r.top,r.bottom]]){if(Math.abs(n)<1e-9){if(t<c||t>l)return!1;continue}let e=(c-t)/n,r=(l-t)/n;if(o=Math.max(o,Math.min(e,r)),s=Math.min(s,Math.max(e,r)),o>s)return!1}return!0}function r(e,t){let n=t.x2-t.x1,r=t.y2-t.y1,i=n*n+r*r;if(i===0)return(e.x-t.x1)**2+(e.y-t.y1)**2;let a=Math.max(0,Math.min(1,((e.x-t.x1)*n+(e.y-t.y1)*r)/i)),o=t.x1+a*n,s=t.y1+a*r;return(e.x-o)**2+(e.y-s)**2}function i(e,t,n){return(t.x-e.x)*(n.y-e.y)-(t.y-e.y)*(n.x-e.x)}function a(e,t){let n={x:e.x1,y:e.y1},r={x:e.x2,y:e.y2},a={x:t.x1,y:t.y1},o={x:t.x2,y:t.y2},s=i(n,r,a),c=i(n,r,o),l=i(a,o,n),u=i(a,o,r);return[s,c,l,u].every(e=>Math.abs(e)<1e-9)?Math.max(Math.min(e.x1,e.x2),Math.min(t.x1,t.x2))<=Math.min(Math.max(e.x1,e.x2),Math.max(t.x1,t.x2))&&Math.max(Math.min(e.y1,e.y2),Math.min(t.y1,t.y2))<=Math.min(Math.max(e.y1,e.y2),Math.max(t.y1,t.y2)):s*c<=0&&l*u<=0}function o(e,t){if(a(e,t))return!0;let n=(e.radius||0)+(t.radius||0);return Math.min(r({x:e.x1,y:e.y1},t),r({x:e.x2,y:e.y2},t),r({x:t.x1,y:t.y1},e),r({x:t.x2,y:t.y2},e))<=n*n}function s(e){let t=e.radius||0;return{left:Math.min(e.x1,e.x2)-t,right:Math.max(e.x1,e.x2)+t,top:Math.min(e.y1,e.y2)-t,bottom:Math.max(e.y1,e.y2)+t}}function c(e){return{left:e.x-e.radius,right:e.x+e.radius,top:e.y-e.radius,bottom:e.y+e.radius}}function l(e){return{left:Math.min(...e.map(e=>e.x)),right:Math.max(...e.map(e=>e.x)),top:Math.min(...e.map(e=>e.y)),bottom:Math.max(...e.map(e=>e.y))}}function u(e,t){let n=[...e.map(c),...t.map(s)];return n.length===0?null:n.reduce((e,t)=>({left:Math.min(e.left,t.left),right:Math.max(e.right,t.right),top:Math.min(e.top,t.top),bottom:Math.max(e.bottom,t.bottom)}))}var d=class{constructor(e=64){this.cellSize=e,this.cells=new Map}insert(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`;this.cells.has(t)||this.cells.set(t,new Set),this.cells.get(t).add(e)}}remove(e,t){for(let n=Math.floor(t.left/this.cellSize);n<=Math.floor(t.right/this.cellSize);n++)for(let r=Math.floor(t.top/this.cellSize);r<=Math.floor(t.bottom/this.cellSize);r++){let t=`${n},${r}`,i=this.cells.get(t);i&&(i.delete(e),i.size===0&&this.cells.delete(t))}}query(e){let t=new Set;for(let n=Math.floor(e.left/this.cellSize);n<=Math.floor(e.right/this.cellSize);n++)for(let r=Math.floor(e.top/this.cellSize);r<=Math.floor(e.bottom/this.cellSize);r++){let e=this.cells.get(`${n},${r}`);e&&e.forEach(e=>t.add(e))}return[...t]}};function f(e,t){let n=!1;for(let r=0,i=t.length-1;r<t.length;i=r++){let a=t[r],o=t[i];a.y>e.y!=o.y>e.y&&e.x<(o.x-a.x)*(e.y-a.y)/(o.y-a.y)+a.x&&(n=!n)}return n}let p=Array.from({length:16},(e,t)=>{let n=t*Math.PI/8;return{x:Math.cos(n),y:Math.sin(n)}});function m(e,t,n,r){let i=e.width/2,a=e.height/2,o=Math.abs(t.x)*i+Math.abs(t.y)*a,s=e.radius+r.atomPadding+o+(n-1)*r.fallbackDistance,c=e.x+t.x*s,l=e.y+t.y*s,u=r.labelPadding,d=n>1?{x1:e.x+t.x*(e.radius+r.atomPadding),y1:e.y+t.y*(e.radius+r.atomPadding),x2:c-t.x*(o+u),y2:l-t.y*(o+u),radius:r.leaderWidth/2}:null;return{x:c,y:l,anchorX:e.x,anchorY:e.y,direction:t,distanceMultiplier:n,leaderLine:n>1,leaderSegment:d,rect:{left:c-i-u,right:c+i+u,top:l-a-u,bottom:l+a+u}}}function h(e,t,n,r,i){let a=t.preferredDirection||{x:1,y:-1},o=(1-(e.direction.x*a.x+e.direction.y*a.y))*50;if(e.leaderLine&&(o+=150+(e.distanceMultiplier-1)*75),n.some(t=>f(e,t))&&(o+=i.ringPenalty),r){let t=e.direction.x*r.direction.x+e.direction.y*r.direction.y;o+=(1-t)*i.movementPenalty}return o}function g(e,t,n,r){let i=e.width/2,a=e.height/2,o=t-e.x,s=n-e.y,c=Math.hypot(o,s)||1,l={x:o/c,y:s/c},u=Math.abs(l.x)*i+Math.abs(l.y)*a,d=r.labelPadding;return{x:t,y:n,anchorX:e.x,anchorY:e.y,direction:l,distanceMultiplier:1+c/r.fallbackDistance,leaderLine:!0,isCallout:!0,leaderSegment:{x1:e.x+l.x*(e.radius+r.atomPadding),y1:e.y+l.y*(e.radius+r.atomPadding),x2:t-l.x*(u+d),y2:n-l.y*(u+d),radius:r.leaderWidth/2},rect:{left:t-i-d,right:t+i+d,top:n-a-d,bottom:n+a+d}}}function _(e){return e.leaderSegment?Math.hypot(e.leaderSegment.x2-e.leaderSegment.x1,e.leaderSegment.y2-e.leaderSegment.y1):0}function v(e,t){if(!Number.isFinite(e.z))return null;let n=Math.max(1,t.performanceNoSpaceCellSize??24);return[Math.floor(e.x/n),Math.floor(e.y/n)].join(`:`)}function y(e,t,n){return e.left>=n&&e.top>=n&&e.right<=t.width-n&&e.bottom<=t.height-n}function b(i,a,f,b,x,S,C=new Map){let w=[],T=[],E=[],D=S.spatialCellSize||64,O=new d(D),k=new d(D),A=new d(D),j=new d(D),M=new d(D);a.forEach(e=>O.insert(e,c(e))),f.forEach(e=>k.insert(e,s(e))),b.forEach(e=>A.insert(e,l(e)));let N=Math.min(i.length,S.maxVisible??1/0),P=S.placementMode===`performance-omit`||S.placementMode===`auto-omit`&&N>(S.autoPerformanceLabelThreshold??500),F=[...i].sort((e,t)=>(t.priority||0)-(e.priority||0)||(P?(Number.isFinite(e.z)?e.z:1/0)-(Number.isFinite(t.z)?t.z:1/0):0)||e.id.localeCompare(t.id)),I=F.slice(0,S.maxVisible),L=S.placementMode===`maximum-coverage`,R=u(a,f),z=new Map,B=new WeakMap,V=new Map,H=(e,i)=>{if(B.has(e))return B.get(e);let a=!0;if(_(e)>(S.maxConnectorLength??1/0)&&(a=!1),a&&!y(e.rect,x,S.viewportPadding)&&(a=!1),a&&O.query(e.rect).some(n=>t(e.rect,n))&&(a=!1),a&&k.query(e.rect).some(t=>n(t,e.rect))&&(a=!1),a&&e.leaderSegment){let t=s(e.leaderSegment);!L&&k.query(t).some(t=>o(e.leaderSegment,t))&&(a=!1),a&&O.query(t).some(t=>t.id!==i.id&&r(t,e.leaderSegment)<t.radius**2)&&(a=!1)}return B.set(e,a),a},U=(t,r)=>{if(!H(t,r))return null;let i=new Set(j.query(t.rect).filter(n=>e(t.rect,n.rect)));if(M.query(t.rect).filter(e=>n(e.leaderSegment,t.rect)).forEach(e=>i.add(e)),!t.leaderSegment)return i;let a=s(t.leaderSegment);return j.query(a).filter(e=>n(t.leaderSegment,e.rect)).forEach(e=>i.add(e)),L||M.query(a).filter(e=>o(t.leaderSegment,e.leaderSegment)).forEach(e=>i.add(e)),i},W=(e,t)=>U(e,t)?.size===0,G=(e,t)=>{let n={...e,...t};return w.push(n),j.insert(n,n.rect),n.leaderSegment&&M.insert(n,s(n.leaderSegment)),n},K=e=>{w.splice(w.indexOf(e),1),j.remove(e,e.rect),e.leaderSegment&&M.remove(e,s(e.leaderSegment))},q=(e,t,n,r,i)=>{for(let a of t){if(i.remaining--<=0)return!1;let t=U(a,e);if(!t)continue;if(t.size===0)return G(e,a),!0;if(n<=0||t.size!==1)continue;let o=[...t][0];if(r.has(o.id)||(o.priority||0)>(e.priority||0))continue;let s=z.get(o.id)||[];if(K(o),!W(a,e)){G(o,o);continue}let c=G(e,a),l=new Set(r);if(l.add(e.id),q(o,s,n-1,l,i))return!0;K(c),G(o,o)}return!1},J=(e,t)=>q(e,t,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)});for(let e of I){let t=P?v(e,S):null,n=t===null?void 0:V.get(t);if(n!==void 0&&n<e.z-1e-6){T.push({id:e.id,text:e.text,reason:`static-no-space`});continue}let r=[],i=L?Array.from({length:Math.max(2,S.maximumCoverageDistanceSteps??6)},(e,t)=>t+1):[1,2];for(let t of i)for(let n of p){let i=m(e,n,t,S);i.score=h(i,e,A.query({left:i.x,right:i.x,top:i.y,bottom:i.y}),C.get(e.id),S),r.push(i)}r.sort((e,t)=>e.score-t.score),z.set(e.id,r);let a=r.find(t=>W(t,e));if(a)G(e,a);else if(P&&t!==null&&r.every(t=>!H(t,e))){let n=V.get(t);(n===void 0||e.z<n)&&V.set(t,e.z),E.push(e)}else if(!P&&J(e,r))continue;else E.push(e)}if(L&&E.length>0){let e=Math.max(1,S.calloutColumns||3),t=S.calloutRowGap||4,n=S.calloutPlacement!==`viewport`&&R!==null,r=S.calloutGap??12,i=n?R.left-r:S.viewportPadding,a=n?R.right+r:x.width-S.viewportPadding,c=[...E].sort((e,t)=>(t.priority||0)-(e.priority||0)||Math.min(Math.abs(t.x-i),Math.abs(a-t.x))-Math.min(Math.abs(e.x-i),Math.abs(a-e.x))||e.id.localeCompare(t.id));for(let i of c){let a=[],c=0,l=i.height+S.labelPadding*2+t,u=n?Math.max(S.viewportPadding,R.top):S.viewportPadding,d=n?Math.min(x.height-S.viewportPadding,R.bottom):x.height-S.viewportPadding,f=Math.max(1,Math.floor(Math.max(l,d-u)/l)),p=u+i.height/2+S.labelPadding,m=Array.from({length:f},(e,t)=>p+t*l).filter(e=>e+i.height/2+S.labelPadding<=d);m.length===0&&m.push(Math.max(S.viewportPadding+i.height/2+S.labelPadding,Math.min(x.height-S.viewportPadding-i.height/2-S.labelPadding,(u+d)/2))),m.sort((e,t)=>Math.abs(e-i.y)-Math.abs(t-i.y));let h=i.x<x.width/2?`left`:`right`,v=[h,h===`left`?`right`:`left`];calloutSearch:for(let t of m)for(let l=0;l<e;l++)for(let e of v){if(c>=S.calloutSearchLimit||a.length>=S.calloutChoiceLimit)break calloutSearch;c++;let u=i.width/2+S.labelPadding+l*(i.width+S.calloutColumnGap),d=e===`left`?S.viewportPadding+u:x.width-S.viewportPadding-u,f=e===`left`?R?.left-r-u:R?.right+r+u,p=n?f:d,m=g(i,p,t,S);if(U(m,i)!==null){m.score=Math.hypot(p-i.x,t-i.y);let e=s(m.leaderSegment);m.score+=k.query(e).filter(e=>o(m.leaderSegment,e)).length*S.leaderBondCrossingPenalty,a.push(m)}}let y=[...(z.get(i.id)||[]).filter(e=>U(e,i)!==null),...a].sort((e,t)=>_(e)-_(t)||e.score-t.score);z.set(i.id,y),q(i,y,Math.max(0,S.repairDepth??2),new Set,{remaining:Math.max(0,S.repairSearchLimit??48)})||T.push({id:i.id,text:i.text,reason:`viewport-capacity`})}}else E.forEach(e=>T.push({id:e.id,text:e.text,reason:`no-space`}));for(let e of F.slice(S.maxVisible))T.push({id:e.id,text:e.text,reason:`max-visible`});return{placed:w,hidden:T,placementPolicy:L?`maximum-coverage`:P?`performance-omit`:`quality-omit`}}self.onmessage=e=>{let{id:t,labels:n,atoms:r,bonds:i,rings:a,viewport:o,options:s,previousPlacements:c}=e.data;try{let e=b(n,r,i,a,o,s,new Map(c));self.postMessage({id:t,layout:e})}catch(e){self.postMessage({id:t,error:e instanceof Error?e.message:String(e)})}}})();", iu = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", ru], { type: "text/javascript;charset=utf-8" });
+function au(e) {
 	let t;
 	try {
-		if (t = Ul && (self.URL || self.webkitURL).createObjectURL(Ul), !t) throw "";
+		if (t = iu && (self.URL || self.webkitURL).createObjectURL(iu), !t) throw "";
 		let n = new Worker(t, { name: e?.name });
 		return n.addEventListener("error", () => {
 			(self.URL || self.webkitURL).revokeObjectURL(t);
 		}), n;
 	} catch {
-		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(Hl), { name: e?.name });
+		return new Worker("data:text/javascript;charset=utf-8," + encodeURIComponent(ru), { name: e?.name });
 	}
 }
 //#endregion
 //#region src/lib/ortep3d/atom-label-manager.js
-var Gl = [
+var ou = [
 	"atomPadding",
 	"autoPerformanceLabelThreshold",
 	"calloutChoiceLimit",
@@ -52306,38 +59514,38 @@ var Gl = [
 	"spatialCellSize",
 	"viewportPadding"
 ];
-function Kl(e) {
-	return Object.fromEntries(Gl.map((t) => [t, e[t]]));
+function su(e) {
+	return Object.fromEntries(ou.map((t) => [t, e[t]]));
 }
-function ql(e) {
+function cu(e) {
 	return Array.isArray(e) || e === "all" || e === "non-hydrogen" || e === "none" ? e : "none";
 }
-function Jl(e) {
+function lu(e) {
 	return Array.isArray(e) ? e.map((e) => typeof e == "string" ? { id: e } : e).filter((e) => e && typeof e.id == "string") : [];
 }
-function Yl(e, t) {
-	return an(Zl(e), t);
+function uu(e, t) {
+	return Cn(fu(e), t);
 }
-function Xl(e, t) {
-	return sn(Zl(e), t);
+function du(e, t) {
+	return Tn(fu(e), t);
 }
-function Zl(e) {
+function fu(e) {
 	let t = e || {};
 	return [.../* @__PURE__ */ new Set([...Object.keys(W.elementProperties), ...Object.keys(t)])].map((e) => t[e]?.atomColor ?? W.elementProperties[e]?.atomColor).filter(Boolean);
 }
-function Ql(t, n, r, i = null) {
+function pu(t, n, r, i = null) {
 	if (n.colorMode !== "atom") return n.color;
 	let a = r || {}, o = t.atomType;
-	!a[o] && !W.elementProperties[o] && (o = Ht(t.atomType));
+	!a[o] && !W.elementProperties[o] && (o = Wt(t.atomType));
 	let s = a[o]?.atomColor ?? W.elementProperties[o]?.atomColor;
 	if (!s) return n.color;
 	let c = n.atomColorLuminanceFloor, l, u;
 	if (c != null) {
-		let e = i ?? Xl(a, c);
-		l = cn(s, e), u = e === 0;
+		let e = i ?? du(a, c);
+		l = En(s, e), u = e === 0;
 	} else {
-		let e = i ?? Yl(a, n.atomColorLuminanceCeiling);
-		l = on(s, e), u = e === 1;
+		let e = i ?? uu(a, n.atomColorLuminanceCeiling);
+		l = wn(s, e), u = e === 1;
 	}
 	if (u) return `#${l.getHexString(e.SRGBColorSpace)}`;
 	let d = l.clone().convertLinearToSRGB();
@@ -52347,10 +59555,10 @@ function Ql(t, n, r, i = null) {
 		d.b
 	].map((t) => Math.floor(e.MathUtils.clamp(t, 0, 1) * 255)).map((e) => e.toString(16).padStart(2, "0")).join("")}`;
 }
-function $l(e, t) {
+function mu(e, t) {
 	return e.includes("|") ? e === t.uniqueId : e === t.label;
 }
-function eu(e) {
+function hu(e) {
 	let t = 0;
 	for (let n = 0; n < e.length; n++) {
 		let r = (n + 1) % e.length;
@@ -52358,13 +59566,13 @@ function eu(e) {
 	}
 	return Math.abs(t) / 2;
 }
-function tu(e, t) {
+function gu(e, t) {
 	return e.z >= -1 && e.z <= 1 && e.x + e.radius >= 0 && e.x - e.radius <= t.width && e.y + e.radius >= 0 && e.y - e.radius <= t.height;
 }
-function nu(e) {
+function _u(e) {
 	if (!e) return [];
 	let t = [...new Map(e.atoms.map((e) => [e.uniqueId, e])).keys()].sort(), n = new Map(t.map((e, t) => [e, t])), r = new Map(t.map((e) => [e, /* @__PURE__ */ new Set()]));
-	for (let t of qs(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
+	for (let t of an(e)) r.has(t.atom1Id) && r.has(t.atom2Id) && (r.get(t.atom1Id).add(t.atom2Id), r.get(t.atom2Id).add(t.atom1Id));
 	let i = [], a = /* @__PURE__ */ new Set();
 	for (let e of t) {
 		let t = [e], o = new Set(t), s = (c) => {
@@ -52380,7 +59588,7 @@ function nu(e) {
 	}
 	return i;
 }
-var ru = class {
+var vu = class {
 	constructor(e) {
 		this.viewer = e, this.options = e.options.atomLabels, this.previousPlacements = /* @__PURE__ */ new Map(), this.layout = {
 			placed: [],
@@ -52414,14 +59622,14 @@ var ru = class {
 		}), this.loadingIndicator.append(t, document.createTextNode("Laying out labels…")), e.container.appendChild(this.loadingIndicator);
 	}
 	setOptions(e) {
-		this.options = e, (!e.showLoadingIndicator || ql(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
+		this.options = e, (!e.showLoadingIndicator || cu(e.show) === "none") && this.endLoadingIndicator(), this.previousPlacements.clear(), this.measurementCache.clear(), this.atomLabelColorCache.clear(), this.atomLabelColorScale = null, this.invalidateLayout();
 	}
 	setStructure(e) {
 		this.endLoadingIndicator(), this.displayStructure = e, this.rings = null, this.bondNeighbours.clear(), this.previousPlacements.clear(), this.invalidateLayout();
 	}
 	prepareTopology() {
 		if (this.rings === null) {
-			this.rings = nu(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
+			this.rings = _u(this.displayStructure), this.bondNeighbours = new Map(this.displayStructure.atoms.map((e) => [e.uniqueId, /* @__PURE__ */ new Set()]));
 			for (let e of this.displayStructure.bonds) this.bondNeighbours.has(e.atom1Id) && this.bondNeighbours.has(e.atom2Id) && (this.bondNeighbours.get(e.atom1Id).add(e.atom2Id), this.bondNeighbours.get(e.atom2Id).add(e.atom1Id));
 		}
 	}
@@ -52483,7 +59691,7 @@ var ru = class {
 		if (this.options.useWorker === !1 || this.workerUnavailable || typeof Worker > "u") return null;
 		if (this.worker) return this.worker;
 		try {
-			return this.worker = new Wl({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
+			return this.worker = new au({ name: "cifvis-atom-label-layout" }), this.worker.onmessage = (e) => this.handleWorkerMessage(e.data), this.worker.onerror = (e) => {
 				e.preventDefault?.(), this.handleWorkerFailure(Error(e.message || "Atom-label worker failed"));
 			}, this.worker;
 		} catch (e) {
@@ -52495,7 +59703,7 @@ var ru = class {
 		(this.canvas.width !== r || this.canvas.height !== i) && (this.canvas.width = r, this.canvas.height = i, this.canvas.style.width = `${t}px`, this.canvas.style.height = `${n}px`);
 	}
 	resolveRequests() {
-		let e = this.displayStructure, t = ql(this.options.show);
+		let e = this.displayStructure, t = cu(this.options.show);
 		if (!e || t === "none") return [];
 		if (t === "all" || t === "non-hydrogen") return e.atoms.filter((e) => t === "all" || !["H", "D"].includes(e.atomType)).map((e) => ({
 			atom: e,
@@ -52505,9 +59713,9 @@ var ru = class {
 			...e,
 			text: String(e.text).slice(0, 200)
 		}));
-		let n = Jl(t), r = [];
+		let n = lu(t), r = [];
 		for (let t of e.atoms) {
-			let e = n.find((e) => $l(e.id, t));
+			let e = n.find((e) => mu(e.id, t));
 			if (!e) continue;
 			let i = e.text ?? this.options.text?.[t.uniqueId] ?? this.options.text?.[t.label] ?? t.label;
 			i !== null && String(i).length > 0 && r.push({
@@ -52585,14 +59793,14 @@ var ru = class {
 		};
 	}
 	projectRings(e) {
-		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && eu(e) >= 25);
+		return this.rings.map((t) => t.map((t) => e.get(t))).filter((e) => e.every(Boolean) && hu(e) >= 25);
 	}
 	getAtomLabelColor(e) {
 		if (this.options.colorMode !== "atom") return this.options.color;
 		let t = e.atomType;
 		this.atomLabelColorCache ||= /* @__PURE__ */ new Map();
 		let n = this.options.atomColorLuminanceFloor;
-		return this.atomLabelColorScale ??= n == null ? Yl(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : Xl(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, Ql(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
+		return this.atomLabelColorScale ??= n == null ? uu(this.viewer.options.elementProperties, this.options.atomColorLuminanceCeiling) : du(this.viewer.options.elementProperties, n), this.atomLabelColorCache.has(t) || this.atomLabelColorCache.set(t, pu(e, this.options, this.viewer.options.elementProperties, this.atomLabelColorScale)), this.atomLabelColorCache.get(t);
 	}
 	update() {
 		if (!this.context) return this.completeUpdate(this.layout);
@@ -52612,7 +59820,7 @@ var ru = class {
 		}, this.context.clearRect(0, 0, e, t), this.rememberTransforms(e, t), this.completeUpdate(this.layout);
 		let o = this.projectAnchors(), s = i.filter((n) => {
 			let r = o.get(n.atom.uniqueId);
-			return r && tu(r, {
+			return r && gu(r, {
 				width: e,
 				height: t
 			});
@@ -52627,7 +59835,7 @@ var ru = class {
 		this.context.font = c, this.context.textAlign = "center", this.context.textBaseline = "middle";
 		let l = {
 			labels: s.map((e) => {
-				let t = o.get(e.atom.uniqueId), n = rr(e.text, this.options.subscriptNonElement), r = this.options.fontSize * .7, i = `${this.options.fontWeight} ${r}px ${this.options.fontFamily}`, a = `${c}\u0000${i}\u0000${n.element}\u0000${n.nonElement}`, s = this.measurementCache.get(a);
+				let t = o.get(e.atom.uniqueId), n = Cr(e.text, this.options.subscriptNonElement), r = this.options.fontSize * .7, i = `${this.options.fontWeight} ${r}px ${this.options.fontFamily}`, a = `${c}\u0000${i}\u0000${n.element}\u0000${n.nonElement}`, s = this.measurementCache.get(a);
 				return s === void 0 && (this.context.font = c, s = this.context.measureText(n.element).width, n.nonElement && (this.context.font = i, s += this.context.measureText(n.nonElement).width, this.context.font = c), this.measurementCache.set(a, s)), {
 					id: e.atom.uniqueId,
 					text: e.text,
@@ -52659,7 +59867,7 @@ var ru = class {
 				width: e,
 				height: t
 			},
-			options: Kl(this.options),
+			options: su(this.options),
 			previousPlacements: [...this.previousPlacements.entries()]
 		}, u = this.captureLayoutState(e, t), d = this.getWorker();
 		if (!d) {
@@ -52679,7 +59887,7 @@ var ru = class {
 		}), p;
 	}
 	calculateLayout(e) {
-		return Vl(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
+		return nu(e.labels, e.atoms, e.bonds, e.rings, e.viewport, e.options, new Map(e.previousPlacements));
 	}
 	handleWorkerMessage(e) {
 		if (!this.pendingLayout || e.id !== this.pendingLayout.id) return;
@@ -52749,24 +59957,24 @@ var ru = class {
 };
 //#endregion
 //#region src/lib/density/scalar-field-worker.js?worker
-function iu(e) {
-	return new Worker("/assets/scalar-field-worker-DZ2mnhCF.js", { name: e?.name });
+function yu(e) {
+	return new Worker("/assets/scalar-field-worker-BeDpOe9U.js", { name: e?.name });
 }
 //#endregion
 //#region src/lib/density/isosurface-progress.js
-function au(e) {
+function bu(e) {
 	let t = (Array.isArray(e) ? e : [1]).map(Number).filter((e) => Number.isFinite(e) && e > 0 && e <= 1).sort((e, t) => e - t);
 	return t.includes(1) || t.push(1), [...new Set(t)];
 }
 //#endregion
 //#region src/lib/density/difference-density-progress.js
-function ou(e, t = {}) {
-	let n = au(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
+function xu(e, t = {}) {
+	let n = bu(t.steps), r = Number(t.reciprocalResolution) || 1, i = Math.max(1, Number(t.gridOversampling) || 1), a = n.length === 1 ? i : Math.min(i, Math.max(1, Number(t.initialGridOversampling) || 1)), o = null;
 	return {
 		steps: n,
 		mapAt(t) {
 			let n = t === 0 ? a : t === 1 && a !== i ? i : null;
-			return n !== null && (o = Xa(e, r, n)), {
+			return n !== null && (o = _o(e, r, n)), {
 				map: o,
 				changed: n !== null
 			};
@@ -52775,16 +59983,16 @@ function ou(e, t = {}) {
 }
 //#endregion
 //#region src/lib/ortep3d/three-isosurface-layer.js
-var su = /* @__PURE__ */ new Set([
+var Su = /* @__PURE__ */ new Set([
 	"positiveColor",
 	"negativeColor",
 	"deformationPositiveColor",
 	"deformationNegativeColor",
 	"opacity",
 	"visible"
-]), cu = class {
+]), Cu = class {
 	constructor(e, t = {}) {
-		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null, this.resolutionFraction = 1, this.regionCache = new cs(t.surfaceCacheMaxBytes), this.appearanceOnlyUpdate = !1;
+		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null, this.resolutionFraction = 1, this.regionCache = new Os(t.surfaceCacheMaxBytes), this.appearanceOnlyUpdate = !1;
 	}
 	setField(e, t = 1) {
 		e !== this.field && (this.regionCache.clear(), this.appearanceOnlyUpdate = !1), this.field = e, this.resolutionFraction = t;
@@ -52794,7 +60002,7 @@ var su = /* @__PURE__ */ new Set([
 	}
 	setOptions(e = {}) {
 		let t = Object.entries(e).filter(([e, t]) => this.options[e] !== t);
-		this.appearanceOnlyUpdate = !!this.group && t.length > 0 && t.every(([e]) => su.has(e)), this.options = {
+		this.appearanceOnlyUpdate = !!this.group && t.length > 0 && t.every(([e]) => Su.has(e)), this.options = {
 			...this.options,
 			...e
 		}, e.surfaceCacheMaxBytes !== void 0 && (this.regionCache.maxBytes = Math.max(0, Number(e.surfaceCacheMaxBytes) || 0));
@@ -52806,7 +60014,7 @@ var su = /* @__PURE__ */ new Set([
 			generationTimeMs: 0
 		};
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let e = $o(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
+		let e = ys(this.structure, this.options), t = this.field.fieldKind === "deformation-density" ? {
 			positiveColor: this.options.deformationPositiveColor,
 			negativeColor: this.options.deformationNegativeColor
 		} : {}, n = {
@@ -52815,7 +60023,7 @@ var su = /* @__PURE__ */ new Set([
 			gridSpacing: this.options.gridSpacing / this.resolutionFraction,
 			resolution: Math.max(8, Math.round(e * this.resolutionFraction))
 		};
-		return this.group = js(this.field, this.structure, n, this.regionCache), this.group.visible = this.options.visible !== !1, this.parent.add(this.group), this.group.userData;
+		return this.group = Zs(this.field, this.structure, n, this.regionCache), this.group.visible = this.options.visible !== !1, this.parent.add(this.group), this.group.userData;
 	}
 	updateAppearance() {
 		let e = this.field?.fieldKind === "deformation-density";
@@ -52859,7 +60067,7 @@ var su = /* @__PURE__ */ new Set([
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, lu = new t(), uu = new D(), du = class extends u {
+}, wu = new t(), Tu = new D(), Eu = class extends u {
 	constructor() {
 		super(), this.isLineSegmentsGeometry = !0, this.type = "LineSegmentsGeometry", this.setIndex([
 			0,
@@ -52956,7 +60164,7 @@ var su = /* @__PURE__ */ new Set([
 	computeBoundingBox() {
 		this.boundingBox === null && (this.boundingBox = new t());
 		let e = this.attributes.instanceStart, n = this.attributes.instanceEnd;
-		e !== void 0 && n !== void 0 && (this.boundingBox.setFromBufferAttribute(e), lu.setFromBufferAttribute(n), this.boundingBox.union(lu));
+		e !== void 0 && n !== void 0 && (this.boundingBox.setFromBufferAttribute(e), wu.setFromBufferAttribute(n), this.boundingBox.union(wu));
 	}
 	computeBoundingSphere() {
 		this.boundingSphere === null && (this.boundingSphere = new S()), this.boundingBox === null && this.computeBoundingBox();
@@ -52965,7 +60173,7 @@ var su = /* @__PURE__ */ new Set([
 			let n = this.boundingSphere.center;
 			this.boundingBox.getCenter(n);
 			let r = 0;
-			for (let i = 0, a = e.count; i < a; i++) uu.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(uu)), uu.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(uu));
+			for (let i = 0, a = e.count; i < a; i++) Tu.fromBufferAttribute(e, i), r = Math.max(r, n.distanceToSquared(Tu)), Tu.fromBufferAttribute(t, i), r = Math.max(r, n.distanceToSquared(Tu));
 			this.boundingSphere.radius = Math.sqrt(r), isNaN(this.boundingSphere.radius) && console.error("THREE.LineSegmentsGeometry.computeBoundingSphere(): Computed radius is NaN. The instanced position data is likely to have NaN values.", this);
 		}
 	}
@@ -52988,7 +60196,7 @@ w.line = {
 	vertexShader: "\n		#include <common>\n		#include <color_pars_vertex>\n		#include <fog_pars_vertex>\n		#include <logdepthbuf_pars_vertex>\n		#include <clipping_planes_pars_vertex>\n\n		uniform float linewidth;\n		uniform vec2 resolution;\n\n		attribute vec3 instanceStart;\n		attribute vec3 instanceEnd;\n\n		attribute vec3 instanceColorStart;\n		attribute vec3 instanceColorEnd;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#ifdef USE_DASH\n\n			uniform float dashScale;\n			attribute float instanceDistanceStart;\n			attribute float instanceDistanceEnd;\n			varying float vLineDistance;\n\n		#endif\n\n		float trimSegmentAlpha( const in vec4 start, const in vec4 end ) {\n\n			// compute the interpolation factor needed to trim the segment so it terminates\n			// between the camera plane and the near plane\n\n			// conservative estimate of the near plane\n			float a = projectionMatrix[ 2 ][ 2 ]; // 3nd entry in 3th column\n			float b = projectionMatrix[ 3 ][ 2 ]; // 3nd entry in 4th column\n\n			// we need different nearEstimate formula for reversed and default depth buffer\n			// a is positive with a reversed depth buffer so it can be used for controlling the code flow\n			float nearEstimate = ( a > 0.0 ) ? ( - b / ( a + 1.0 ) ) : ( - 0.5 * b / a );\n\n			return ( nearEstimate - start.z ) / ( end.z - start.z );\n\n		}\n\n		void main() {\n\n			#ifdef USE_COLOR\n\n				vColor.xyz = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;\n\n			#endif\n\n			float aspect = resolution.x / resolution.y;\n\n			// camera space\n			vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );\n			vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );\n\n			#ifdef USE_DASH\n\n				float lineDistanceStart = dashScale * instanceDistanceStart;\n				float lineDistanceEnd = dashScale * instanceDistanceEnd;\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				worldStart = start.xyz;\n				worldEnd = end.xyz;\n\n			#else\n\n				vUv = uv;\n\n			#endif\n\n			// special case for perspective projection, and segments that terminate either in, or behind, the camera plane\n			// clearly the gpu firmware has a way of addressing this issue when projecting into ndc space\n			// but we need to perform ndc-space calculations in the shader, so we must address this issue directly\n			// perhaps there is a more elegant solution -- WestLangley\n\n			bool perspective = ( projectionMatrix[ 2 ][ 3 ] == - 1.0 ); // 4th entry in the 3rd column\n\n			if ( perspective ) {\n\n				if ( start.z < 0.0 && end.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( start, end );\n					end.xyz = mix( start.xyz, end.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceEnd = mix( lineDistanceStart, lineDistanceEnd, alpha );\n\n					#endif\n\n				} else if ( end.z < 0.0 && start.z >= 0.0 ) {\n\n					float alpha = trimSegmentAlpha( end, start );\n					start.xyz = mix( end.xyz, start.xyz, alpha );\n\n					#ifdef USE_DASH\n\n						lineDistanceStart = mix( lineDistanceEnd, lineDistanceStart, alpha );\n\n					#endif\n\n				}\n\n			}\n\n			#ifdef USE_DASH\n\n				vLineDistance = ( position.y < 0.5 ) ? lineDistanceStart : lineDistanceEnd;\n				vUv = uv;\n\n			#endif\n\n			// clip space\n			vec4 clipStart = projectionMatrix * start;\n			vec4 clipEnd = projectionMatrix * end;\n\n			// ndc space\n			vec3 ndcStart = clipStart.xyz / clipStart.w;\n			vec3 ndcEnd = clipEnd.xyz / clipEnd.w;\n\n			// direction\n			vec2 dir = ndcEnd.xy - ndcStart.xy;\n\n			// account for clip-space aspect ratio\n			dir.x *= aspect;\n			dir = normalize( dir );\n\n			#ifdef WORLD_UNITS\n\n				vec3 worldDir = normalize( end.xyz - start.xyz );\n				vec3 tmpFwd = normalize( mix( start.xyz, end.xyz, 0.5 ) );\n				vec3 worldUp = normalize( cross( worldDir, tmpFwd ) );\n				vec3 worldFwd = cross( worldDir, worldUp );\n				worldPos = position.y < 0.5 ? start: end;\n\n				// height offset\n				float hw = linewidth * 0.5;\n				worldPos.xyz += position.x < 0.0 ? hw * worldUp : - hw * worldUp;\n\n				// don't extend the line if we're rendering dashes because we\n				// won't be rendering the endcaps\n				#ifndef USE_DASH\n\n					// cap extension\n					worldPos.xyz += position.y < 0.5 ? - hw * worldDir : hw * worldDir;\n\n					// add width to the box\n					worldPos.xyz += worldFwd * hw;\n\n					// endcaps\n					if ( position.y > 1.0 || position.y < 0.0 ) {\n\n						worldPos.xyz -= worldFwd * 2.0 * hw;\n\n					}\n\n				#endif\n\n				// project the worldpos\n				vec4 clip = projectionMatrix * worldPos;\n\n				// shift the depth of the projected points so the line\n				// segments overlap neatly\n				vec3 clipPose = ( position.y < 0.5 ) ? ndcStart : ndcEnd;\n				clip.z = clipPose.z * clip.w;\n\n			#else\n\n				vec2 offset = vec2( dir.y, - dir.x );\n				// undo aspect ratio adjustment\n				dir.x /= aspect;\n				offset.x /= aspect;\n\n				// sign flip\n				if ( position.x < 0.0 ) offset *= - 1.0;\n\n				// endcaps\n				if ( position.y < 0.0 ) {\n\n					offset += - dir;\n\n				} else if ( position.y > 1.0 ) {\n\n					offset += dir;\n\n				}\n\n				// adjust for linewidth\n				offset *= linewidth;\n\n				// adjust for clip-space to screen-space conversion // maybe resolution should be based on viewport ...\n				offset /= resolution.y;\n\n				// select end\n				vec4 clip = ( position.y < 0.5 ) ? clipStart : clipEnd;\n\n				// back to clip space\n				offset *= clip.w;\n\n				clip.xy += offset;\n\n			#endif\n\n			gl_Position = clip;\n\n			vec4 mvPosition = ( position.y < 0.5 ) ? start : end; // this is an approximation\n\n			#include <logdepthbuf_vertex>\n			#include <clipping_planes_vertex>\n			#include <fog_vertex>\n\n		}\n		",
 	fragmentShader: "\n		uniform vec3 diffuse;\n		uniform float opacity;\n		uniform float linewidth;\n\n		#ifdef USE_DASH\n\n			uniform float dashOffset;\n			uniform float dashSize;\n			uniform float gapSize;\n\n		#endif\n\n		varying float vLineDistance;\n\n		#ifdef WORLD_UNITS\n\n			varying vec4 worldPos;\n			varying vec3 worldStart;\n			varying vec3 worldEnd;\n\n			#ifdef USE_DASH\n\n				varying vec2 vUv;\n\n			#endif\n\n		#else\n\n			varying vec2 vUv;\n\n		#endif\n\n		#include <common>\n		#include <color_pars_fragment>\n		#include <fog_pars_fragment>\n		#include <logdepthbuf_pars_fragment>\n		#include <clipping_planes_pars_fragment>\n\n		vec2 closestLineToLine(vec3 p1, vec3 p2, vec3 p3, vec3 p4) {\n\n			float mua;\n			float mub;\n\n			vec3 p13 = p1 - p3;\n			vec3 p43 = p4 - p3;\n\n			vec3 p21 = p2 - p1;\n\n			float d1343 = dot( p13, p43 );\n			float d4321 = dot( p43, p21 );\n			float d1321 = dot( p13, p21 );\n			float d4343 = dot( p43, p43 );\n			float d2121 = dot( p21, p21 );\n\n			float denom = d2121 * d4343 - d4321 * d4321;\n\n			float numer = d1343 * d4321 - d1321 * d4343;\n\n			mua = numer / denom;\n			mua = clamp( mua, 0.0, 1.0 );\n			mub = ( d1343 + d4321 * ( mua ) ) / d4343;\n			mub = clamp( mub, 0.0, 1.0 );\n\n			return vec2( mua, mub );\n\n		}\n\n		void main() {\n\n			float alpha = opacity;\n			vec4 diffuseColor = vec4( diffuse, alpha );\n\n			#include <clipping_planes_fragment>\n\n			#ifdef USE_DASH\n\n				if ( vUv.y < - 1.0 || vUv.y > 1.0 ) discard; // discard endcaps\n\n				if ( mod( vLineDistance + dashOffset, dashSize + gapSize ) > dashSize ) discard; // todo - FIX\n\n			#endif\n\n			#ifdef WORLD_UNITS\n\n				// Find the closest points on the view ray and the line segment\n				vec3 rayEnd = normalize( worldPos.xyz ) * 1e5;\n				vec3 lineDir = worldEnd - worldStart;\n				vec2 params = closestLineToLine( worldStart, worldEnd, vec3( 0.0, 0.0, 0.0 ), rayEnd );\n\n				vec3 p1 = worldStart + lineDir * params.x;\n				vec3 p2 = rayEnd * params.y;\n				vec3 delta = p1 - p2;\n				float len = length( delta );\n				float norm = len / linewidth;\n\n				#ifndef USE_DASH\n\n					#ifdef USE_ALPHA_TO_COVERAGE\n\n						float dnorm = fwidth( norm );\n						alpha = 1.0 - smoothstep( 0.5 - dnorm, 0.5 + dnorm, norm );\n\n					#else\n\n						if ( norm > 0.5 ) {\n\n							discard;\n\n						}\n\n					#endif\n\n				#endif\n\n			#else\n\n				#ifdef USE_ALPHA_TO_COVERAGE\n\n					// artifacts appear on some hardware if a derivative is taken within a conditional\n					float a = vUv.x;\n					float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n					float len2 = a * a + b * b;\n					float dlen = fwidth( len2 );\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						alpha = 1.0 - smoothstep( 1.0 - dlen, 1.0 + dlen, len2 );\n\n					}\n\n				#else\n\n					if ( abs( vUv.y ) > 1.0 ) {\n\n						float a = vUv.x;\n						float b = ( vUv.y > 0.0 ) ? vUv.y - 1.0 : vUv.y + 1.0;\n						float len2 = a * a + b * b;\n\n						if ( len2 > 1.0 ) discard;\n\n					}\n\n				#endif\n\n			#endif\n\n			#include <logdepthbuf_fragment>\n			#include <color_fragment>\n\n			gl_FragColor = vec4( diffuseColor.rgb, alpha );\n\n			#include <tonemapping_fragment>\n			#include <colorspace_fragment>\n			#include <fog_fragment>\n			#include <premultiplied_alpha_fragment>\n\n		}\n		"
 };
-var fu = class extends x {
+var Du = class extends x {
 	constructor(e) {
 		super({
 			type: "LineMaterial",
@@ -53064,19 +60272,19 @@ var fu = class extends x {
 	set alphaToCoverage(e) {
 		this.defines && (e === !0 !== this.alphaToCoverage && (this.needsUpdate = !0), e === !0 ? this.defines.USE_ALPHA_TO_COVERAGE = "" : delete this.defines.USE_ALPHA_TO_COVERAGE);
 	}
-}, pu = new O(), mu = new D(), hu = new D(), Z = new O(), Q = new O(), gu = new O(), _u = new D(), vu = new g(), $ = new p(), yu = new D(), bu = new t(), xu = new S(), Su = new O(), Cu, wu;
-function Tu(e, t, n) {
-	return Su.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), Su.multiplyScalar(1 / Su.w), Su.x = wu / n.width, Su.y = wu / n.height, Su.applyMatrix4(e.projectionMatrixInverse), Su.multiplyScalar(1 / Su.w), Math.abs(Math.max(Su.x, Su.y));
+}, Ou = new O(), ku = new D(), Au = new D(), Z = new O(), Q = new O(), ju = new O(), Mu = new D(), Nu = new g(), $ = new p(), Pu = new D(), Fu = new t(), Iu = new S(), Lu = new O(), Ru, zu;
+function Bu(e, t, n) {
+	return Lu.set(0, 0, -t, 1).applyMatrix4(e.projectionMatrix), Lu.multiplyScalar(1 / Lu.w), Lu.x = zu / n.width, Lu.y = zu / n.height, Lu.applyMatrix4(e.projectionMatrixInverse), Lu.multiplyScalar(1 / Lu.w), Math.abs(Math.max(Lu.x, Lu.y));
 }
-function Eu(e, t) {
+function Vu(e, t) {
 	let n = e.matrixWorld, r = e.geometry, i = r.attributes.instanceStart, a = r.attributes.instanceEnd, o = Math.min(r.instanceCount, i.count);
 	for (let r = 0, s = o; r < s; r++) {
 		$.start.fromBufferAttribute(i, r), $.end.fromBufferAttribute(a, r), $.applyMatrix4(n);
 		let o = new D(), s = new D();
-		Cu.distanceSqToSegment($.start, $.end, s, o), s.distanceTo(o) < wu * .5 && t.push({
+		Ru.distanceSqToSegment($.start, $.end, s, o), s.distanceTo(o) < zu * .5 && t.push({
 			point: s,
 			pointOnLine: o,
-			distance: Cu.origin.distanceTo(s),
+			distance: Ru.origin.distanceTo(s),
 			object: e,
 			face: null,
 			faceIndex: r,
@@ -53085,11 +60293,11 @@ function Eu(e, t) {
 		});
 	}
 }
-function Du(e, t, n) {
+function Hu(e, t, n) {
 	let r = t.projectionMatrix, i = e.material.resolution, a = e.matrixWorld, o = e.geometry, s = o.attributes.instanceStart, c = o.attributes.instanceEnd, l = Math.min(o.instanceCount, s.count), u = -t.near;
-	Cu.at(1, gu), gu.w = 1, gu.applyMatrix4(t.matrixWorldInverse), gu.applyMatrix4(r), gu.multiplyScalar(1 / gu.w), gu.x *= i.x / 2, gu.y *= i.y / 2, gu.z = 0, _u.copy(gu), vu.multiplyMatrices(t.matrixWorldInverse, a);
+	Ru.at(1, ju), ju.w = 1, ju.applyMatrix4(t.matrixWorldInverse), ju.applyMatrix4(r), ju.multiplyScalar(1 / ju.w), ju.x *= i.x / 2, ju.y *= i.y / 2, ju.z = 0, Mu.copy(ju), Nu.multiplyMatrices(t.matrixWorldInverse, a);
 	for (let t = 0, o = l; t < o; t++) {
-		if (Z.fromBufferAttribute(s, t), Q.fromBufferAttribute(c, t), Z.w = 1, Q.w = 1, Z.applyMatrix4(vu), Q.applyMatrix4(vu), Z.z > u && Q.z > u) continue;
+		if (Z.fromBufferAttribute(s, t), Q.fromBufferAttribute(c, t), Z.w = 1, Q.w = 1, Z.applyMatrix4(Nu), Q.applyMatrix4(Nu), Z.z > u && Q.z > u) continue;
 		if (Z.z > u) {
 			let e = Z.z - Q.z, t = (Z.z - u) / e;
 			Z.lerp(Q, t);
@@ -53098,16 +60306,16 @@ function Du(e, t, n) {
 			Q.lerp(Z, t);
 		}
 		Z.applyMatrix4(r), Q.applyMatrix4(r), Z.multiplyScalar(1 / Z.w), Q.multiplyScalar(1 / Q.w), Z.x *= i.x / 2, Z.y *= i.y / 2, Q.x *= i.x / 2, Q.y *= i.y / 2, $.start.copy(Z), $.start.z = 0, $.end.copy(Q), $.end.z = 0;
-		let o = $.closestPointToPointParameter(_u, !0);
-		$.at(o, yu);
-		let l = h.lerp(Z.z, Q.z, o), d = l >= -1 && l <= 1, f = _u.distanceTo(yu) < wu * .5;
+		let o = $.closestPointToPointParameter(Mu, !0);
+		$.at(o, Pu);
+		let l = h.lerp(Z.z, Q.z, o), d = l >= -1 && l <= 1, f = Mu.distanceTo(Pu) < zu * .5;
 		if (d && f) {
 			$.start.fromBufferAttribute(s, t), $.end.fromBufferAttribute(c, t), $.start.applyMatrix4(a), $.end.applyMatrix4(a);
 			let r = new D(), i = new D();
-			Cu.distanceSqToSegment($.start, $.end, i, r), n.push({
+			Ru.distanceSqToSegment($.start, $.end, i, r), n.push({
 				point: i,
 				pointOnLine: r,
-				distance: Cu.origin.distanceTo(i),
+				distance: Ru.origin.distanceTo(i),
 				object: e,
 				face: null,
 				faceIndex: t,
@@ -53117,13 +60325,13 @@ function Du(e, t, n) {
 		}
 	}
 }
-var Ou = class extends _ {
-	constructor(e = new du(), t = new fu({ color: Math.random() * 16777215 })) {
+var Uu = class extends _ {
+	constructor(e = new Eu(), t = new Du({ color: Math.random() * 16777215 })) {
 		super(e, t), this.isLineSegments2 = !0, this.type = "LineSegments2";
 	}
 	computeLineDistances() {
 		let e = this.geometry, t = e.attributes.instanceStart, n = e.attributes.instanceEnd, r = new Float32Array(2 * t.count);
-		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) mu.fromBufferAttribute(t, e), hu.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + mu.distanceTo(hu);
+		for (let e = 0, i = 0, a = t.count; e < a; e++, i += 2) ku.fromBufferAttribute(t, e), Au.fromBufferAttribute(n, e), r[i] = i === 0 ? 0 : r[i - 1], r[i + 1] = r[i] + ku.distanceTo(Au);
 		let i = new d(r, 2, 1);
 		return e.setAttribute("instanceDistanceStart", new f(i, 1, 0)), e.setAttribute("instanceDistanceEnd", new f(i, 1, 1)), this;
 	}
@@ -53131,30 +60339,30 @@ var Ou = class extends _ {
 		let n = this.material.worldUnits, r = e.camera;
 		if (r === null && !n && console.error("LineSegments2: \"Raycaster.camera\" needs to be set in order to raycast against LineSegments2 while worldUnits is set to false."), n === !1 && (this.material.resolution.x === 0 || this.material.resolution.y === 0)) return;
 		let i = e.params.Line2 === void 0 ? 0 : e.params.Line2.threshold || 0;
-		Cu = e.ray;
+		Ru = e.ray;
 		let a = this.matrixWorld, o = this.geometry, s = this.material;
-		wu = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), xu.copy(o.boundingSphere).applyMatrix4(a);
+		zu = s.linewidth + i, o.boundingSphere === null && o.computeBoundingSphere(), Iu.copy(o.boundingSphere).applyMatrix4(a);
 		let c;
-		if (c = n ? wu * .5 : Tu(r, Math.max(r.near, xu.distanceToPoint(Cu.origin)), s.resolution), xu.radius += c, Cu.intersectsSphere(xu) === !1) return;
-		o.boundingBox === null && o.computeBoundingBox(), bu.copy(o.boundingBox).applyMatrix4(a);
+		if (c = n ? zu * .5 : Bu(r, Math.max(r.near, Iu.distanceToPoint(Ru.origin)), s.resolution), Iu.radius += c, Ru.intersectsSphere(Iu) === !1) return;
+		o.boundingBox === null && o.computeBoundingBox(), Fu.copy(o.boundingBox).applyMatrix4(a);
 		let l;
-		l = n ? wu * .5 : Tu(r, Math.max(r.near, bu.distanceToPoint(Cu.origin)), s.resolution), bu.expandByScalar(l), Cu.intersectsBox(bu) !== !1 && (n ? Eu(this, t) : Du(this, r, t));
+		l = n ? zu * .5 : Bu(r, Math.max(r.near, Fu.distanceToPoint(Ru.origin)), s.resolution), Fu.expandByScalar(l), Ru.intersectsBox(Fu) !== !1 && (n ? Vu(this, t) : Hu(this, r, t));
 	}
 	onBeforeRender(e) {
 		let t = this.material.uniforms;
-		t && t.resolution && (e.getViewport(pu), this.material.uniforms.resolution.value.set(pu.z, pu.w));
+		t && t.resolution && (e.getViewport(Ou), this.material.uniforms.resolution.value.set(Ou.z, Ou.w));
 	}
-}, ku = 0, Au = 1;
-function ju() {
+}, Wu = 0, Gu = 1;
+function Ku() {
 	return globalThis.performance?.now?.() ?? Date.now();
 }
-function Mu(e) {
+function qu(e) {
 	return ArrayBuffer.isView(e) ? e : new Float32Array(e.flat(2));
 }
-function Nu(e) {
+function Ju(e) {
 	return ArrayBuffer.isView(e) ? e.length / 6 : e.length;
 }
-var Pu = class {
+var Yu = class {
 	constructor(e, t = {}) {
 		this.parent = e, this.options = { ...t }, this.field = null, this.structure = null, this.group = null;
 	}
@@ -53171,13 +60379,13 @@ var Pu = class {
 		};
 	}
 	addSegments(e, t, n, r) {
-		let i = Nu(t);
+		let i = Ju(t);
 		if (i === 0) return;
-		let a = Mu(t);
+		let a = qu(t);
 		if (this.options.haloWidth > 0) {
-			let t = new du();
+			let t = new Eu();
 			t.setPositions(a);
-			let r = new Ou(t, new fu({
+			let r = new Uu(t, new Du({
 				color: this.options.haloColor,
 				linewidth: this.options.lineWidth + 2 * this.options.haloWidth,
 				opacity: this.options.opacity,
@@ -53186,14 +60394,14 @@ var Pu = class {
 				worldUnits: !1,
 				alphaToCoverage: this.options.opacity >= 1,
 				polygonOffset: !0,
-				polygonOffsetFactor: ku,
-				polygonOffsetUnits: Au
+				polygonOffsetFactor: Wu,
+				polygonOffsetUnits: Gu
 			}));
 			r.name = `${n[0].toUpperCase()}${n.slice(1)} contour halo`, r.renderOrder = -1, e.add(r);
 		}
-		let o = new du();
+		let o = new Eu();
 		o.setPositions(a);
-		let s = new Ou(o, new fu({
+		let s = new Uu(o, new Du({
 			color: r,
 			linewidth: this.options.lineWidth,
 			opacity: this.options.opacity,
@@ -53202,25 +60410,25 @@ var Pu = class {
 			worldUnits: !1,
 			alphaToCoverage: this.options.opacity >= 1,
 			polygonOffset: !0,
-			polygonOffsetFactor: ku,
-			polygonOffsetUnits: Au
+			polygonOffsetFactor: Wu,
+			polygonOffsetUnits: Gu
 		}));
 		s.name = `${n[0].toUpperCase()}${n.slice(1)} contour lines`, s.userData.sign = n, s.userData.segmentCount = i, e.add(s);
 	}
 	rebuild() {
-		let e = ju();
+		let e = Ku();
 		if (this.clearMesh(), !this.field || !this.structure) return null;
-		let t = Oo(this.field, this.structure, this.options);
+		let t = Jo(this.field, this.structure, this.options);
 		return this.buildContours(t, e);
 	}
 	rebuildFromContours(e) {
-		let t = ju();
+		let t = Ku();
 		return this.clearMesh(), !this.field || !e ? null : this.buildContours(e, t);
 	}
 	buildContours(t, n) {
-		let r = this.field.fieldKind === "deformation-density", i = this.options.lineColor ?? (r ? this.options.deformationPositiveColor : this.options.positiveColor), a = this.options.lineColor ?? (r ? this.options.deformationNegativeColor : this.options.negativeColor), o = ju(), s = new e.Group();
+		let r = this.field.fieldKind === "deformation-density", i = this.options.lineColor ?? (r ? this.options.deformationPositiveColor : this.options.positiveColor), a = this.options.lineColor ?? (r ? this.options.deformationNegativeColor : this.options.negativeColor), o = Ku(), s = new e.Group();
 		s.name = "Planar contour lines", this.addSegments(s, t.positiveSegments, "positive", i), this.addSegments(s, t.negativeSegments, "negative", a), this.addSegments(s, t.zeroSegments, "zero", this.options.zeroColor);
-		let c = ju();
+		let c = Ku();
 		return s.userData = {
 			displayMode: "contour-lines",
 			level: t.level,
@@ -53229,9 +60437,9 @@ var Pu = class {
 			dimensions: t.dimensions,
 			plane: t.plane,
 			segmentCount: t.segmentCount,
-			positiveSegmentCount: Nu(t.positiveSegments),
-			negativeSegmentCount: Nu(t.negativeSegments),
-			zeroSegmentCount: Nu(t.zeroSegments),
+			positiveSegmentCount: Ju(t.positiveSegments),
+			negativeSegmentCount: Ju(t.negativeSegments),
+			zeroSegmentCount: Ju(t.zeroSegments),
 			polygonCount: 0,
 			resolution: Math.max(...t.dimensions),
 			planeSetupTimeMs: t.timings.planeSetupTimeMs,
@@ -53277,21 +60485,21 @@ var Pu = class {
 	dispose() {
 		this.clear(), this.structure = null, this.parent = null;
 	}
-}, Fu = Object.freeze(["constant", "onDemand"]), Iu = Object.freeze([
+}, Xu = Object.freeze(["constant", "onDemand"]), Zu = Object.freeze([
 	"solid-3d",
 	"cutout-3d",
 	"cutout-2d"
-]), Lu = Object.freeze(["ellipsoid", "rmsd-peanut"]), Ru = Object.freeze([
+]), Qu = Object.freeze(["ellipsoid", "rmsd-peanut"]), $u = Object.freeze([
 	"structure-y",
 	"principal-maximum",
 	"principal-intermediate",
 	"principal-minimum"
-]), zu = Object.freeze(["uniform", "split"]), Bu = Object.freeze([
+]), ed = Object.freeze(["uniform", "split"]), td = Object.freeze([
 	"auto-omit",
 	"quality-omit",
 	"performance-omit",
 	"maximum-coverage"
-]), Vu = Object.freeze(["structure", "viewport"]), Hu = Object.freeze(["uniform", "atom"]), Uu = Object.freeze(["single", "multiple"]);
+]), nd = Object.freeze(["structure", "viewport"]), rd = Object.freeze(["uniform", "atom"]), id = Object.freeze(["single", "multiple"]);
 Object.freeze(["orthographic", "perspective"]), Object.freeze([
 	"none",
 	"constant",
@@ -53306,50 +60514,50 @@ Object.freeze(["orthographic", "perspective"]), Object.freeze([
 ]);
 //#endregion
 //#region src/lib/ortep3d/crystal-viewer.js
-var Wu = 16777215, Gu = 2e6, Ku = 2000001, qu = 2000002, Ju = /* @__PURE__ */ "surfaceBoundsTimeMs.surfaceMaskTimeMs.surfaceSamplingTimeMs.surfaceClassificationTimeMs.surfaceAllocationTimeMs.surfaceInterpolationTimeMs.surfaceGeometryTimeMs.surfaceWireframeTimeMs.surfaceSymmetryAssemblyTimeMs.surfaceTotalTimeMs.surfacePatchPlanningTimeMs.surfacePatchMaskTimeMs.surfacePatchCellSelectionTimeMs.surfacePatchExtractionTimeMs.surfaceLatticeNodeCount.surfaceLatticeCellCount.candidateCellCount.activeCellCount.activeRowCount.activeSurfaceCellCount.fieldSampleCount.activeNodeCount.allowedNodeCount.candidateNodeCount.positiveTriangleCount.negativeTriangleCount.generatedVertexCount.generatedLineSegmentCount.allocatedGeometryBytes.atomDistanceTestCount.threeMarchingCubesTimeMs".split("."), Yu = /(?:[Tt]imeMs|ElapsedMs|Timings|timings)$/;
-function Xu(e) {
-	let t = Object.fromEntries(Object.entries(e).filter(([e]) => !Yu.test(e)));
+var ad = 16777215, od = 2e6, sd = 2000001, cd = 2000002, ld = /* @__PURE__ */ "surfaceBoundsTimeMs.surfaceMaskTimeMs.surfaceSamplingTimeMs.surfaceClassificationTimeMs.surfaceAllocationTimeMs.surfaceInterpolationTimeMs.surfaceGeometryTimeMs.surfaceWireframeTimeMs.surfaceSymmetryAssemblyTimeMs.surfaceTotalTimeMs.surfacePatchPlanningTimeMs.surfacePatchMaskTimeMs.surfacePatchCellSelectionTimeMs.surfacePatchExtractionTimeMs.surfaceLatticeNodeCount.surfaceLatticeCellCount.candidateCellCount.activeCellCount.activeRowCount.activeSurfaceCellCount.fieldSampleCount.activeNodeCount.allowedNodeCount.candidateNodeCount.positiveTriangleCount.negativeTriangleCount.generatedVertexCount.generatedLineSegmentCount.allocatedGeometryBytes.atomDistanceTestCount.threeMarchingCubesTimeMs".split("."), ud = /(?:[Tt]imeMs|ElapsedMs|Timings|timings)$/;
+function dd(e) {
+	let t = Object.fromEntries(Object.entries(e).filter(([e]) => !ud.test(e)));
 	for (let e of ["iam", "map"]) {
 		let n = t[e];
-		n && typeof n == "object" && !Array.isArray(n) && (t[e] = Object.fromEntries(Object.entries(n).filter(([e]) => !Yu.test(e))), e === "iam" && t[e].calculation && (t[e].calculation = Object.fromEntries(Object.entries(t[e].calculation).filter(([e]) => !Yu.test(e)))));
+		n && typeof n == "object" && !Array.isArray(n) && (t[e] = Object.fromEntries(Object.entries(n).filter(([e]) => !ud.test(e))), e === "iam" && t[e].calculation && (t[e].calculation = Object.fromEntries(Object.entries(t[e].calculation).filter(([e]) => !ud.test(e)))));
 	}
-	return Array.isArray(t.fftAxisStatistics) && (t.fftAxisStatistics = t.fftAxisStatistics.map((e) => Object.fromEntries(Object.entries(e).filter(([e]) => !Yu.test(e))))), t;
+	return Array.isArray(t.fftAxisStatistics) && (t.fftAxisStatistics = t.fftAxisStatistics.map((e) => Object.fromEntries(Object.entries(e).filter(([e]) => !ud.test(e))))), t;
 }
-function Zu(e) {
+function fd(e) {
 	return {
 		surfaceExtractor: e.surfaceExtractor ?? null,
 		surfaceSamplingBackend: e.surfaceSamplingBackend ?? null,
 		surfaceNodeTraversal: e.surfaceNodeTraversal ?? null,
 		surfaceNodeStencil: e.surfaceNodeStencil ?? !1,
-		...Object.fromEntries(Ju.map((t) => [t, e[t] ?? 0]))
+		...Object.fromEntries(ld.map((t) => [t, e[t] ?? 0]))
 	};
 }
-function Qu(e, t) {
+function pd(e, t) {
 	if (!Array.isArray(e) || e.length === 0 || e.some((e) => !Number.isInteger(e) || e < 0 || e > 16777215)) throw Error(`${t} must be a non-empty array of numeric hex colours`);
 }
-function $u(e) {
+function md(e) {
 	return e === "none" || e === "all" || e === "non-hydrogen" || Array.isArray(e) && e.every((e) => typeof e == "string" || typeof e == "object" && !!e && typeof e.id == "string");
 }
-function ed(e) {
+function hd(e) {
 	if (e.subscriptNonElement !== void 0 && typeof e.subscriptNonElement != "boolean") throw Error("atomLabels.subscriptNonElement must be a boolean");
-	if (e.placementMode !== void 0 && !Bu.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${Bu.join(", ")}`);
-	if (e.calloutPlacement !== void 0 && !Vu.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${Vu.join(", ")}`);
-	if (e.colorMode !== void 0 && !Hu.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${Hu.join(", ")}`);
+	if (e.placementMode !== void 0 && !td.includes(e.placementMode)) throw Error(`Invalid atom label placement mode: "${e.placementMode}". Must be one of: ${td.join(", ")}`);
+	if (e.calloutPlacement !== void 0 && !nd.includes(e.calloutPlacement)) throw Error(`Invalid atom label callout placement: "${e.calloutPlacement}". Must be one of: ${nd.join(", ")}`);
+	if (e.colorMode !== void 0 && !rd.includes(e.colorMode)) throw Error(`Invalid atom label color mode: "${e.colorMode}". Must be one of: ${rd.join(", ")}`);
 	if (e.atomColorLuminanceCeiling !== void 0 && !(typeof e.atomColorLuminanceCeiling == "number" && e.atomColorLuminanceCeiling >= 0 && e.atomColorLuminanceCeiling <= 1)) throw Error("atomLabels.atomColorLuminanceCeiling must be a number from 0 to 1");
 	if (e.atomColorLuminanceFloor !== void 0 && e.atomColorLuminanceFloor !== null && !(typeof e.atomColorLuminanceFloor == "number" && e.atomColorLuminanceFloor >= 0 && e.atomColorLuminanceFloor <= 1)) throw Error("atomLabels.atomColorLuminanceFloor must be null or a number from 0 to 1");
-	if (e.show !== void 0 && !$u(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+	if (e.show !== void 0 && !md(e.show)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 	if (e.maxConnectorLength !== void 0 && !(typeof e.maxConnectorLength == "number" && e.maxConnectorLength > 0)) throw Error("atomLabels.maxConnectorLength must be a positive number");
 	if (e.performanceNoSpaceCellSize !== void 0 && !(typeof e.performanceNoSpaceCellSize == "number" && e.performanceNoSpaceCellSize > 0)) throw Error("atomLabels.performanceNoSpaceCellSize must be a positive number");
 	if (e.autoPerformanceLabelThreshold !== void 0 && !(Number.isInteger(e.autoPerformanceLabelThreshold) && e.autoPerformanceLabelThreshold >= 0)) throw Error("atomLabels.autoPerformanceLabelThreshold must be a non-negative integer");
 }
-function td(e) {
+function gd(e) {
 	return Object.fromEntries(Object.entries(e).filter(([, e]) => e !== void 0));
 }
-function nd(e, t, n = []) {
+function _d(e, t, n = []) {
 	let r = /* @__PURE__ */ new Set([...Object.keys(t), ...n]);
-	return Object.fromEntries(Object.entries(td(e)).filter(([e]) => r.has(e)));
+	return Object.fromEntries(Object.entries(gd(e)).filter(([e]) => r.has(e)));
 }
-var rd = class {
+var vd = class {
 	constructor(e) {
 		this.options = e, this.selectedObjects = /* @__PURE__ */ new Set(), this.selectionCallbacks = /* @__PURE__ */ new Set(), this.selectedData = /* @__PURE__ */ new Set();
 	}
@@ -53493,36 +60701,41 @@ var rd = class {
 			}
 		}), this.notifyCallbacks();
 	}
-}, id = class {
+}, yd = class {
 	constructor(t, n = {}) {
-		if (n.debug !== void 0 && typeof n.debug != "boolean") throw Error("debug must be a boolean");
-		if (n.renderMode && !Fu.includes(n.renderMode)) throw Error(`Invalid render mode: "${n.renderMode}". Must be one of: ${Fu.join(", ")}`);
-		if (n.renderStyle && !Iu.includes(n.renderStyle)) throw Error(`Invalid render style: "${n.renderStyle}". Must be one of: ${Iu.join(", ")}`);
-		if (n.adpRepresentation && !Lu.includes(n.adpRepresentation)) throw Error(`Invalid ADP representation: "${n.adpRepresentation}". Must be one of: ${Lu.join(", ")}`);
-		if (n.peanutGridPoleAxis !== void 0 && !Ru.includes(n.peanutGridPoleAxis)) throw Error(`Invalid PEANUT grid pole axis: "${n.peanutGridPoleAxis}". Must be one of: ${Ru.join(", ")}`);
+		if (n.collapseMetalRingBonds !== void 0 && typeof n.collapseMetalRingBonds != "boolean") throw Error("collapseMetalRingBonds must be a boolean");
+		let r = {
+			...W.metalRingCentroidOptions,
+			...n.metalRingCentroidOptions || {}
+		};
+		if (sn(r), n.debug !== void 0 && typeof n.debug != "boolean") throw Error("debug must be a boolean");
+		if (n.renderMode && !Xu.includes(n.renderMode)) throw Error(`Invalid render mode: "${n.renderMode}". Must be one of: ${Xu.join(", ")}`);
+		if (n.renderStyle && !Zu.includes(n.renderStyle)) throw Error(`Invalid render style: "${n.renderStyle}". Must be one of: ${Zu.join(", ")}`);
+		if (n.adpRepresentation && !Qu.includes(n.adpRepresentation)) throw Error(`Invalid ADP representation: "${n.adpRepresentation}". Must be one of: ${Qu.join(", ")}`);
+		if (n.peanutGridPoleAxis !== void 0 && !$u.includes(n.peanutGridPoleAxis)) throw Error(`Invalid PEANUT grid pole axis: "${n.peanutGridPoleAxis}". Must be one of: ${$u.join(", ")}`);
 		if (n.peanutScale !== void 0 && !(typeof n.peanutScale == "number" && Number.isFinite(n.peanutScale) && n.peanutScale > 0)) throw Error("peanutScale must be a finite number greater than 0");
 		if (n.peanutDetail !== void 0 && !(Number.isInteger(n.peanutDetail) && n.peanutDetail >= 1 && n.peanutDetail <= 5)) throw Error("peanutDetail must be an integer from 1 to 5");
 		for (let [e, t] of [["peanutMeridianCount", 1], ["peanutLatitudeIntervals", 2]]) if (n[e] !== void 0 && !(Number.isInteger(n[e]) && n[e] >= t)) throw Error(`${e} must be an integer greater than or equal to ${t}`);
 		if (n.peanutGridLineWidth !== void 0 && !(typeof n.peanutGridLineWidth == "number" && Number.isFinite(n.peanutGridLineWidth) && n.peanutGridLineWidth > 0)) throw Error("peanutGridLineWidth must be a finite number greater than 0");
-		if (n.bondColorMode !== void 0 && !zu.includes(n.bondColorMode)) throw Error(`Invalid bond color mode: "${n.bondColorMode}". Must be one of: ${zu.join(", ")}`);
+		if (n.bondColorMode !== void 0 && !ed.includes(n.bondColorMode)) throw Error(`Invalid bond color mode: "${n.bondColorMode}". Must be one of: ${ed.join(", ")}`);
 		if (n.plot2DColorLuminanceCeiling !== void 0 && !(typeof n.plot2DColorLuminanceCeiling == "number" && n.plot2DColorLuminanceCeiling >= 0 && n.plot2DColorLuminanceCeiling <= 1)) throw Error("plot2DColorLuminanceCeiling must be a number from 0 to 1");
 		if (n.plot2DColorLuminanceFloor !== void 0 && n.plot2DColorLuminanceFloor !== null && !(typeof n.plot2DColorLuminanceFloor == "number" && n.plot2DColorLuminanceFloor >= 0 && n.plot2DColorLuminanceFloor <= 1)) throw Error("plot2DColorLuminanceFloor must be null or a number from 0 to 1");
 		for (let e of ["plot2DBondOutlineWidth", "plot2DOutlineWidth"]) if (n[e] !== void 0 && !(typeof n[e] == "number" && Number.isFinite(n[e]) && n[e] >= 0)) throw Error(`${e} must be a finite number greater than or equal to 0`);
 		if (n.selection?.haloWidth !== void 0 && !(typeof n.selection.haloWidth == "number" && Number.isFinite(n.selection.haloWidth) && n.selection.haloWidth >= 0)) throw Error("selection.haloWidth must be a finite number greater than or equal to 0");
-		n.measurement?.markerColors !== void 0 && Qu(n.measurement.markerColors, "measurement.markerColors");
+		n.measurement?.markerColors !== void 0 && pd(n.measurement.markerColors, "measurement.markerColors");
 		for (let e of ["lineRadius", "markerRadius"]) {
 			let t = n.measurement?.[e];
 			if (t !== void 0 && !(typeof t == "number" && Number.isFinite(t) && t > 0)) throw Error(`measurement.${e} must be a finite number greater than 0`);
 		}
-		ed(n.atomLabels || {});
-		let r = td(n.atomLabels || {});
+		hd(n.atomLabels || {});
+		let i = gd(n.atomLabels || {});
 		this.container = t;
-		let i = n.camera?.initialPosition ?? W.camera.initialPosition;
+		let a = n.camera?.initialPosition ?? W.camera.initialPosition;
 		this.options = {
 			camera: {
 				...W.camera,
 				...n.camera || {},
-				initialPosition: i.isVector3 ? i.clone() : new e.Vector3(...i)
+				initialPosition: a.isVector3 ? a.clone() : new e.Vector3(...a)
 			},
 			selection: {
 				...W.selection,
@@ -53538,10 +60751,10 @@ var rd = class {
 			},
 			atomLabels: {
 				...W.atomLabels,
-				...r,
+				...i,
 				text: {
 					...W.atomLabels.text,
-					...r.text || {}
+					...i.text || {}
 				}
 			},
 			ellipsoidProbability: n.ellipsoidProbability ?? W.ellipsoidProbability,
@@ -53566,6 +60779,8 @@ var rd = class {
 			bondColor: n.bondColor || W.bondColor,
 			bondColorRoughness: n.bondColorRoughness || W.bondColorRoughness,
 			bondColorMetalness: n.bondColorMetalness || W.bondColorMetalness,
+			collapseMetalRingBonds: n.collapseMetalRingBonds ?? W.collapseMetalRingBonds,
+			metalRingCentroidOptions: r,
 			bondGrowTolerance: n.bondGrowTolerance ?? W.bondGrowTolerance,
 			hbondRadius: n.hbondRadius ?? W.hbondRadius,
 			hbondColor: n.hbondColor || W.hbondColor,
@@ -53604,19 +60819,19 @@ var rd = class {
 			},
 			differenceDensity: {
 				...W.differenceDensity,
-				...td(n.differenceDensity || {})
+				...gd(n.differenceDensity || {})
 			},
 			scalarField: {
 				...W.scalarField,
-				...td(n.scalarField || {})
+				...gd(n.scalarField || {})
 			},
 			isosurface: {
 				...W.isosurface,
-				...td(n.isosurface || {})
+				...gd(n.isosurface || {})
 			},
 			contourLines: {
 				...W.contourLines,
-				...td(n.contourLines || {})
+				...gd(n.contourLines || {})
 			}
 		}, this.state = {
 			isDragging: !1,
@@ -53635,19 +60850,19 @@ var rd = class {
 			contourDisplayVersion: 0,
 			currentStructureFactorModel: null
 		}, this.scalarFieldUpdateCallbacks = /* @__PURE__ */ new Set(), this.modifierModeCallbacks = /* @__PURE__ */ new Set(), this.measurementCallbacks = /* @__PURE__ */ new Set(), this.measurementGroups = /* @__PURE__ */ new Map(), this.measurements = /* @__PURE__ */ new Map(), this.measurementSequence = 0, this.currentMeasurement = null, this.hoveredAtomObjects = /* @__PURE__ */ new Map(), this.scalarFieldLoadSequence = 0, this.scalarFieldPreparationSequence = 0, this.scalarFieldPreparationId = null, this.scalarFieldLoadTimings = null, this.scalarFieldWorker = null, this.scalarFieldWorkerConstructedEpochMs = null, this.scalarFieldWorkerReadyEpochMs = null, this.scalarFieldPendingResolve = null, this.scalarFieldMainThreadLoadId = null, this.scalarFieldLoadTarget = null, this.scalarFieldIdSequence = 0, this.defaultDifferenceDensityOptions = { ...this.options.differenceDensity }, this.defaultScalarFieldOptions = { ...this.options.scalarField }, this.defaultIsosurfaceOptions = { ...this.options.isosurface }, this.options.scalarField.useWorker && this.options.differenceDensity.autoLoad && typeof Worker < "u" && this.ensureScalarFieldWorker(), this.modifiers = {
-			removeatoms: new $c(),
-			addhydrogen: new tl(),
-			missingbonds: new el(this.options.elementProperties, this.options.bondGrowTolerance),
-			disorder: new Yc(this.options.disorderMode),
-			symmetry: new Xc(this.options.symmetryMode, this.options.packingCutoff),
-			hydrogen: new Jc(this.options.hydrogenMode)
-		}, this.selections = new rd(this.options), this.setupScene(), this.isosurfaceLayer = new cu(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new Pu(this.moleculeContainer, {
+			removeatoms: new ml(),
+			addhydrogen: new gl(),
+			missingbonds: new hl(this.options.elementProperties, this.options.bondGrowTolerance),
+			disorder: new ul(this.options.disorderMode),
+			symmetry: new dl(this.options.symmetryMode, this.options.packingCutoff),
+			hydrogen: new ll(this.options.hydrogenMode)
+		}, this.selections = new vd(this.options), this.setupScene(), this.isosurfaceLayer = new Cu(this.moleculeContainer, this.options.isosurface), this.contourLineLayer = new Yu(this.moleculeContainer, {
 			...this.options.isosurface,
 			...this.options.contourLines
-		}), this.atomLabelManager = new ru(this), this.controls = new pl(this), this.animate(), this.needsRender = !0;
+		}), this.atomLabelManager = new vu(this), this.controls = new Ol(this), this.animate(), this.needsRender = !0;
 	}
 	setupScene() {
-		this.scene = new e.Scene(), this.cameraController = _l(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new e.WebGLRenderer({
+		this.scene = new e.Scene(), this.cameraController = Ml(this.container, this.options), this.camera = this.cameraController.camera, this.renderer = new e.WebGLRenderer({
 			antialias: !0,
 			alpha: !0,
 			stencil: !0,
@@ -53677,10 +60892,10 @@ var rd = class {
 		};
 		let l = s ? {
 			...this.defaultDifferenceDensityOptions,
-			...nd(c, W.differenceDensity)
+			..._d(c, W.differenceDensity)
 		} : null, u = s ? {
 			...this.defaultScalarFieldOptions,
-			...nd(c, W.scalarField)
+			..._d(c, W.scalarField)
 		} : null;
 		this.cancelScalarFieldLoad("Coordinate structure changed");
 		let d = null, f = s && u.useWorker && typeof Worker < "u" ? ++this.scalarFieldPreparationSequence : null;
@@ -53726,14 +60941,14 @@ var rd = class {
 			} catch (e) {
 				if (this.options.fixCifErrors) throw e;
 				try {
-					zs(r), i = U.fromCIF(r);
+					ac(r), i = U.fromCIF(r);
 				} catch {
 					throw e;
 				}
 			}
 			o("structureReadyMs");
 			let l = this.state.scalarFields.length > 0;
-			this.isosurfaceLayer.clear(), this.contourLineLayer.clear(), this.state.scalarField = null, this.state.scalarFields = [], this.state.activeScalarFieldIndex = -1, this.scalarFieldLoadTarget = null, l && this.notifyScalarFieldUpdate({ type: "cleared" }), this.state.currentCifContent = e, this.state.currentCifBlock = t, this.state.currentStructureFactorModel = Nr(i, r), o("structureModelReadyMs"), this.scalarFieldLoadTimings = a;
+			this.isosurfaceLayer.clear(), this.contourLineLayer.clear(), this.state.scalarField = null, this.state.scalarFields = [], this.state.activeScalarFieldIndex = -1, this.scalarFieldLoadTarget = null, l && this.notifyScalarFieldUpdate({ type: "cleared" }), this.state.currentCifContent = e, this.state.currentCifBlock = t, this.state.currentStructureFactorModel = $r(i, r), o("structureModelReadyMs"), this.scalarFieldLoadTimings = a;
 			let u = null;
 			return s && d && !this.options.contourLines.enabled && (this.state.baseStructure = i, u = this.loadDifferenceDensity(e, t, c), o("densityLoadStartedMs")), await this.loadStructure(i), o("structureSceneReadyMs"), s ? (u ??= new Promise((n) => setTimeout(() => {
 				if (this.state.currentCifContent !== e || this.state.currentCifBlock !== t) {
@@ -53776,15 +60991,15 @@ var rd = class {
 		};
 		this.scalarFieldPreparationId === null && this.cancelScalarFieldLoad("Superseded by a new FCF load"), this.options.differenceDensity = {
 			...this.defaultDifferenceDensityOptions,
-			...nd(n, W.differenceDensity)
+			..._d(n, W.differenceDensity)
 		};
 		let r = {
 			...this.defaultIsosurfaceOptions,
-			...nd(n, W.isosurface, ["level", "sign"])
+			..._d(n, W.isosurface, ["level", "sign"])
 		};
 		this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...nd(n, W.scalarField)
+			..._d(n, W.scalarField)
 		};
 		let i = ++this.scalarFieldLoadSequence, a = this.prepareScalarFieldLoad(i, n, r, "Difference density");
 		return this.notifyScalarFieldUpdate({
@@ -53824,15 +61039,15 @@ var rd = class {
 			"periodic",
 			"level",
 			"sign"
-		]), r = nd(t, W.isosurface, ["level", "sign"]), i = {
+		]), r = _d(t, W.isosurface, ["level", "sign"]), i = {
 			...this.defaultIsosurfaceOptions,
 			...r
 		};
 		delete i.level, delete i.sign, this.options.scalarField = {
 			...this.defaultScalarFieldOptions,
-			...nd(t, W.scalarField)
+			..._d(t, W.scalarField)
 		};
-		let a = Object.fromEntries(Object.entries(td(t)).filter(([e]) => n.has(e))), o = {
+		let a = Object.fromEntries(Object.entries(gd(t)).filter(([e]) => n.has(e))), o = {
 			density: {
 				displayLabel: "ρ/eÅ⁻³",
 				quantityName: "electron density",
@@ -53882,7 +61097,7 @@ var rd = class {
 		return this.scalarFieldUpdateCallbacks.add(e), () => this.scalarFieldUpdateCallbacks.delete(e);
 	}
 	notifyScalarFieldUpdate(e) {
-		let t = this.options?.debug === !1 ? Xu(e) : e;
+		let t = this.options?.debug === !1 ? dd(e) : e;
 		for (let e of this.scalarFieldUpdateCallbacks) try {
 			e(t);
 		} catch (e) {
@@ -54029,7 +61244,7 @@ var rd = class {
 	async loadDifferenceDensityOnMainThread(e, t, n) {
 		this.scalarFieldMainThreadLoadId = n;
 		try {
-			let r = ou(Va(e, t, this.differenceDensityDatasetOptions()), {
+			let r = xu(so(e, t, this.differenceDensityDatasetOptions()), {
 				steps: this.scalarFieldLoadTarget.isosurfaceOptions.progressiveSteps,
 				reciprocalResolution: this.options.differenceDensity.reciprocalResolution,
 				initialGridOversampling: this.options.differenceDensity.initialGridOversampling,
@@ -54078,7 +61293,7 @@ var rd = class {
 	async loadCubeOnMainThread(e, t, n) {
 		this.scalarFieldMainThreadLoadId = n;
 		try {
-			let r = oo(e, t), i = this.normalizedIsosurfaceSteps();
+			let r = Do(e, t), i = this.normalizedIsosurfaceSteps();
 			for (let e = 0; e < i.length; e++) {
 				if (n !== this.scalarFieldLoadSequence) return {
 					success: !1,
@@ -54144,7 +61359,7 @@ var rd = class {
 		};
 	}
 	normalizedIsosurfaceSteps() {
-		return au(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
+		return bu(this.scalarFieldLoadTarget?.isosurfaceOptions.progressiveSteps ?? this.defaultIsosurfaceOptions.progressiveSteps);
 	}
 	prepareScalarFieldLoad(e, t, n, r) {
 		let i = t.fieldId, a = i == null ? `scalar-field-${++this.scalarFieldIdSequence}` : String(i);
@@ -54239,7 +61454,7 @@ var rd = class {
 		};
 	}
 	scalarFieldFromPayload(e) {
-		return Hi.fromPayload(e);
+		return ca.fromPayload(e);
 	}
 	applyProgressiveScalarField(e, t) {
 		let n = this.options.debug === !0, r = n ? performance.now() : null, i = n ? performance.now() : null;
@@ -54335,7 +61550,7 @@ var rd = class {
 			regionCacheBytes: u.regionCacheBytes ?? 0,
 			regionCacheEvictionCount: u.regionCacheEvictionCount ?? 0,
 			surfaceAssemblyTimeMs: u.surfaceAssemblyTimeMs ?? 0,
-			...Zu(u),
+			...fd(u),
 			removedDuplicateTriangleCount: u.removedDuplicateTriangleCount ?? 0,
 			loadedFieldIndex: l,
 			...p
@@ -54433,11 +61648,11 @@ var rd = class {
 			regionCacheBytes: t.regionCacheBytes ?? 0,
 			regionCacheEvictionCount: t.regionCacheEvictionCount ?? 0,
 			surfaceAssemblyTimeMs: t.surfaceAssemblyTimeMs ?? 0,
-			...Zu(t),
+			...fd(t),
 			removedDuplicateTriangleCount: t.removedDuplicateTriangleCount ?? 0,
 			...this.scalarFieldDisplayState()
 		};
-		return this.options?.debug === !1 ? Xu(n) : n;
+		return this.options?.debug === !1 ? dd(n) : n;
 	}
 	scalarFieldDisplayState() {
 		return {
@@ -54447,7 +61662,7 @@ var rd = class {
 	}
 	ensureScalarFieldWorker() {
 		if (this.scalarFieldWorker) return this.scalarFieldWorker;
-		let e = new iu();
+		let e = new yu();
 		return this.scalarFieldWorker = e, this.scalarFieldWorkerConstructedEpochMs = performance.timeOrigin + performance.now(), this.scalarFieldWorkerReadyEpochMs = null, e.addEventListener("message", (t) => {
 			t.data?.type !== "ready" || e !== this.scalarFieldWorker || (this.scalarFieldWorkerReadyEpochMs = t.data.epochMs, this.scalarFieldLoadTimings && (this.scalarFieldLoadTimings.workerReadyMs = t.data.epochMs - this.scalarFieldLoadTimings.loadStartedEpochMs));
 		}), e.addEventListener("error", () => {
@@ -54490,7 +61705,7 @@ var rd = class {
 			this.cancelScalarFieldLoad("Superseded by a direct scalar field");
 			let n = {
 				...this.defaultIsosurfaceOptions,
-				...nd(t, W.isosurface, ["level", "sign"])
+				..._d(t, W.isosurface, ["level", "sign"])
 			};
 			this.prepareScalarFieldLoad(null, t, n, e.quantityName ?? "Scalar field"), this.applyProgressiveScalarField(e, {
 				loadId: null,
@@ -54590,7 +61805,7 @@ var rd = class {
 		};
 	}
 	updateIsosurfaceOptions(e = {}) {
-		let t = td(e);
+		let t = gd(e);
 		if (Object.keys(t).length === 1 && Object.hasOwn(t, "visible")) return this.setIsosurfaceVisibility(t.visible);
 		this.options.isosurface = {
 			...this.options.isosurface,
@@ -54605,7 +61820,7 @@ var rd = class {
 	updateContourLineOptions(e = {}) {
 		return this.options.contourLines = {
 			...this.options.contourLines,
-			...td(e)
+			...gd(e)
 		}, this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1, this.state.scalarField && this.state.displayStructure && (this.rebuildScalarFieldDisplay(), this.requestRender(), this.notifyScalarFieldUpdate({
 			type: "display",
 			...this.scalarFieldDisplayState()
@@ -54661,14 +61876,14 @@ var rd = class {
 		};
 	}
 	validateScalarFieldCell(e, t, n = "scalar field") {
-		gr(e, t, n);
+		Ir(e, t, n);
 	}
 	async loadStructure(t = this.state.baseStructure) {
 		this.state.baseStructure = t, this.clearMeasurement?.(), this.setHoveredAtom?.(null), this.selections.clear(), this.moleculeContainer.position.set(0, 0, 0), this.moleculeContainer.rotation.set(0, 0, 0), this.moleculeContainer.scale.set(1, 1, 1), this.moleculeContainer.updateMatrix(), this.moleculeContainer.matrixAutoUpdate = !0, this.moleculeContainer.updateMatrixWorld(!0), this.cameraTarget.set(0, 0, 0), this.camera.position.copy(this.options.camera.initialPosition), this.camera.lookAt(this.cameraTarget), this.state.structureCenter.set(0, 0, 0), this.update3DOrtep();
-		let n = ll(this.state.currentStructure);
+		let n = wl(this.state.currentStructure);
 		n && (this.container.clientHeight > this.container.clientWidth && n.premultiply(new e.Matrix4().makeRotationZ(Math.PI / 2)), this.moleculeContainer.setRotationFromMatrix(n), this.moleculeContainer.updateMatrix()), this.moleculeContainer.updateMatrixWorld(!0);
 		let r = new e.Box3().setFromObject(this.state.currentStructure);
-		return r.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), fl(this.scene, this.state.currentStructure, r), this.requestRender(), { success: !0 };
+		return r.getCenter(this.state.structureCenter), this.moleculeContainer.position.sub(this.state.structureCenter), this.updateCamera(), Dl(this.scene, this.state.currentStructure, r), this.requestRender(), { success: !0 };
 	}
 	async updateStructure() {
 		try {
@@ -54687,10 +61902,10 @@ var rd = class {
 		let e = this.state.baseStructure, t = !1;
 		for (let n of Object.values(this.modifiers)) e = n.apply(e), t ||= n.drawCell;
 		if (t) {
-			let t = bl(e.cell, this.options.cell);
+			let t = Fl(e.cell, this.options.cell);
 			this.moleculeContainer.add(t);
 		}
-		let n = new Ln(e, this.options).getGroup();
+		let n = new rr(e, this.options).getGroup();
 		this.moleculeContainer.add(n), n.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight), this.state.currentStructure = n, this.state.displayStructure = e, this.state.contourDisplayVersion = (this.state.contourDisplayVersion ?? 0) + 1, this.rebuildScalarFieldDisplay(), this.atomLabelManager.setStructure(e), this.selections.pruneInvalidSelections(this.moleculeContainer);
 	}
 	updateCamera() {
@@ -54897,7 +62112,7 @@ var rd = class {
 		return i && (this.renderer.setSize(n, r, !1), e.style.width = `${this.container.clientWidth}px`, e.style.height = `${this.container.clientHeight}px`, this.renderer.setViewport(0, 0, n, r), this.state?.currentStructure?.setOutlineViewport?.(this.container.clientWidth, this.container.clientHeight)), i;
 	}
 	captureImage({ scale: e = 2, longEdge: t = null, background: n = "transparent", includeLabels: r = !0 } = {}) {
-		let i = this.container.clientWidth, a = this.container.clientHeight, o = dl(i, a, {
+		let i = this.container.clientWidth, a = this.container.clientHeight, o = El(i, a, {
 			scale: e,
 			longEdge: t
 		}), s = this.renderer.domElement, c = s.width, l = s.height, u = s.style.width, d = s.style.height;
@@ -54914,7 +62129,7 @@ var rd = class {
 		});
 	}
 	updateSelectionOptions(e = {}) {
-		if (e.mode !== void 0 && !Uu.includes(e.mode)) throw Error(`Invalid selection mode: "${e.mode}". Must be one of: ${Uu.join(", ")}`);
+		if (e.mode !== void 0 && !id.includes(e.mode)) throw Error(`Invalid selection mode: "${e.mode}". Must be one of: ${id.join(", ")}`);
 		if (e.haloWidth !== void 0 && !(typeof e.haloWidth == "number" && Number.isFinite(e.haloWidth) && e.haloWidth >= 0)) throw Error("selection.haloWidth must be a finite number greater than or equal to 0");
 		this.options.selection = {
 			...this.options.selection,
@@ -54927,7 +62142,7 @@ var rd = class {
 		this.requestRender();
 	}
 	updateMeasurementOptions(e = {}) {
-		e.markerColors !== void 0 && Qu(e.markerColors, "measurement.markerColors");
+		e.markerColors !== void 0 && pd(e.markerColors, "measurement.markerColors");
 		for (let t of ["lineRadius", "markerRadius"]) {
 			let n = e[t];
 			if (n !== void 0 && !(typeof n == "number" && Number.isFinite(n) && n > 0)) throw Error(`measurement.${t} must be a finite number greater than 0`);
@@ -54955,14 +62170,14 @@ var rd = class {
 		this.selections.selectAtoms(e, this.moleculeContainer);
 	}
 	measureSelectedAtoms() {
-		let e = dr(Array.from(this.selections.selectedObjects).filter((e) => e.userData?.type === "atom").map((e) => e.userData.atomData), this.state.baseStructure?.cell);
+		let e = jr(Array.from(this.selections.selectedObjects).filter((e) => e.userData?.type === "atom").map((e) => e.userData.atomData), this.state.baseStructure?.cell);
 		return this.displayMeasurement(e), e;
 	}
 	measureAtomsById(e) {
 		if (!Array.isArray(e)) throw Error("Measurement atoms must be an array of atom IDs or labels");
 		let t = this.state.displayStructure?.atoms ?? [], n = e.map((e) => t.find((t) => t.uniqueId === e) ?? t.find((t) => t.label === e)), r = n.findIndex((e) => e === void 0);
 		if (r >= 0) throw Error(`Could not find displayed atom "${e[r]}"`);
-		let i = dr(n, this.state.displayStructure?.cell);
+		let i = jr(n, this.state.displayStructure?.cell);
 		return this.displayMeasurement(i), i;
 	}
 	displayMeasurement(t) {
@@ -54980,12 +62195,12 @@ var rd = class {
 			let c = new e.Vector3(...t), l = new e.Vector3(...n), u = l.clone().sub(c);
 			if (u.lengthSq() < 1e-12) return;
 			let d = new e.Mesh(new e.CylinderGeometry(i, i, u.length(), 12), o.clone());
-			d.position.copy(c).add(l).multiplyScalar(.5), d.quaternion.setFromUnitVectors(new e.Vector3(0, 1, 0), u.normalize()), d.renderOrder = Ku, a && (d.userData.measurementLineRadius = s), r.add(d);
+			d.position.copy(c).add(l).multiplyScalar(.5), d.quaternion.setFromUnitVectors(new e.Vector3(0, 1, 0), u.normalize()), d.renderOrder = sd, a && (d.userData.measurementLineRadius = s), r.add(d);
 		}, u = t.type === "plane-distance" ? [t.points.at(-1), t.plane.projection] : t.points;
 		for (let e = 1; e < u.length; e++) l(u[e - 1], u[e]);
 		for (let t of u) {
 			let n = new e.Mesh(new e.SphereGeometry(c, 12, 8), o.clone());
-			n.position.set(...t), n.renderOrder = qu, n.userData.measurementMarkerRadius = c, r.add(n);
+			n.position.set(...t), n.renderOrder = cd, n.userData.measurementMarkerRadius = c, r.add(n);
 		}
 		if (t.type === "plane-distance") {
 			let n = new e.Vector3(...t.plane.centroid), i = new e.Vector3(...t.plane.normal), o = Math.abs(i.z) < .9 ? new e.Vector3(0, 0, 1) : new e.Vector3(0, 1, 0), s = new e.Vector3().crossVectors(i, o).normalize(), c = new e.Vector3().crossVectors(i, s).normalize(), u = new e.Vector3(...t.plane.projection), d = [...t.points.slice(0, -1).map((t) => new e.Vector3(...t)), u], f = (e) => {
@@ -55016,7 +62231,7 @@ var rd = class {
 				depthWrite: !1,
 				side: e.DoubleSide
 			}));
-			_.renderOrder = Gu, r.add(_);
+			_.renderOrder = od, r.add(_);
 			for (let e = 0; e < h.length; e++) l(h[e].toArray(), h[(e + 1) % h.length].toArray(), .04, !1);
 		}
 		o.dispose(), this.measurementGroups.set(n, r), this.measurements.set(n, t), this.currentMeasurement = t, r.visible = !1, this.moleculeContainer.add(r), this.notifyMeasurementCallbacks(), this.requestRender();
@@ -55045,7 +62260,7 @@ var rd = class {
 		for (let [t, n] of this.measurementGroups) n.visible = t === e;
 		this.requestRender();
 	}
-	setHoveredAtom(e, t = Wu) {
+	setHoveredAtom(e, t = ad) {
 		for (let [e, t] of this.hoveredAtomObjects) e.deselect(), t !== null && e.select(t, this.options);
 		this.hoveredAtomObjects.clear(), e !== null && this.moleculeContainer.traverse((n) => {
 			if (n.userData?.type === "atom" && n.userData.atomData.uniqueId === e && typeof n.select == "function" && typeof n.deselect == "function") {
@@ -55055,12 +62270,12 @@ var rd = class {
 		}), this.requestRender();
 	}
 	setAtomLabels(e) {
-		if (!$u(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
+		if (!md(e)) throw Error("atomLabels.show must be \"none\", \"all\", \"non-hydrogen\", or an array of label requests");
 		this.options.atomLabels.show = e, this.atomLabelManager.setOptions(this.options.atomLabels), this.requestRender();
 	}
 	updateAtomLabelOptions(e) {
-		ed(e);
-		let t = td(e), n = t.subscriptNonElement !== void 0 && t.subscriptNonElement !== this.options.atomLabels.subscriptNonElement;
+		hd(e);
+		let t = gd(e), n = t.subscriptNonElement !== void 0 && t.subscriptNonElement !== this.options.atomLabels.subscriptNonElement;
 		this.options.atomLabels = {
 			...this.options.atomLabels,
 			...t,
@@ -55084,27 +62299,27 @@ var rd = class {
 };
 //#endregion
 //#region src/lib/ortep3d/viewer-interaction-coupling.js
-function ad(e) {
+function bd(e) {
 	let t = e?.viewer || e;
 	if (!t?.controls?.onInteraction || typeof t.controls.applyCoupledInteraction != "function" || typeof t.requestRender != "function") throw Error("Coupled participants must be CrystalViewer or initialized cifview-widget instances");
 	return t;
 }
-function od(e) {
+function xd(e) {
 	return typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 0);
 }
-function sd(e) {
+function Sd(e) {
 	typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e);
 }
-var cd = [
+var Cd = [
 	"hydrogen",
 	"disorder",
 	"symmetry"
-], ld = class {
+], wd = class {
 	constructor(e = [], t = {}) {
 		this.coupleModes = t.coupleModes !== !1, this.viewers = /* @__PURE__ */ new Map(), this.pendingInteractions = [], this.pendingFrame = null, this.pendingModeUpdate = Promise.resolve(), e.forEach((e) => this.add(e));
 	}
 	add(e) {
-		let t = ad(e);
+		let t = bd(e);
 		if (this.viewers.has(t)) return this;
 		let n = t.controls.onInteraction((e) => {
 			this.enqueue(t, e);
@@ -55117,14 +62332,14 @@ var cd = [
 		}), this;
 	}
 	async synchronizeFrom(e, t = {}) {
-		let n = ad(e);
+		let n = bd(e);
 		if (!this.viewers.has(n)) throw Error("The synchronization source must belong to this coupling");
 		if (!(t.modes ?? this.coupleModes)) return this.#e(n), this;
-		let r = Object.fromEntries(cd.map((e) => [e, n.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
+		let r = Object.fromEntries(Cd.map((e) => [e, n.modifiers[e]?.mode]).filter(([, e]) => e !== void 0));
 		return await Promise.all([...this.viewers.keys()].filter((e) => e !== n).map((e) => e.setModifierModes?.(r, { broadcast: !1 }))), this.#e(n), this;
 	}
 	synchronizeViewFrom(e) {
-		let t = ad(e);
+		let t = bd(e);
 		if (!this.viewers.has(t)) throw Error("The synchronization source must belong to this coupling");
 		return this.#e(t), this;
 	}
@@ -55147,17 +62362,17 @@ var cd = [
 				this.pendingInteractions[n] = {
 					source: e,
 					interaction: t
-				}, this.pendingFrame === null && (this.pendingFrame = od(() => this.flush()));
+				}, this.pendingFrame === null && (this.pendingFrame = xd(() => this.flush()));
 				return;
 			}
 		}
 		this.pendingInteractions.push({
 			source: e,
 			interaction: t
-		}), this.pendingFrame === null && (this.pendingFrame = od(() => this.flush()));
+		}), this.pendingFrame === null && (this.pendingFrame = xd(() => this.flush()));
 	}
 	enqueueModeChange(e, t) {
-		t.coupled || !cd.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
+		t.coupled || !Cd.includes(t.modifierName) || (this.pendingModeUpdate = this.pendingModeUpdate.then(async () => {
 			this.viewers.has(e) && (await Promise.all([...this.viewers.keys()].filter((t) => t !== e).map((e) => e.setModifierModes?.({ [t.modifierName]: t.mode }, { broadcast: !1 }))), this.viewers.has(e) && this.#e(e));
 		}).catch((e) => {
 			console.error("Coupled modifier mode update failed:", e);
@@ -55167,7 +62382,7 @@ var cd = [
 		this.flush(), await this.pendingModeUpdate;
 	}
 	flush() {
-		if (this.pendingFrame !== null && (sd(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
+		if (this.pendingFrame !== null && (Sd(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions.length === 0) return;
 		let e = this.pendingInteractions;
 		this.pendingInteractions = [];
 		let t = /* @__PURE__ */ new Set();
@@ -55175,7 +62390,7 @@ var cd = [
 		t.forEach((e) => e.requestRender());
 	}
 	dispose() {
-		this.pendingFrame !== null && (sd(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
+		this.pendingFrame !== null && (Sd(this.pendingFrame), this.pendingFrame = null), this.pendingInteractions = [];
 		let e = [...this.viewers.keys()];
 		this.viewers.forEach(({ stopInteraction: e, stopMode: t }) => {
 			e(), t();
@@ -55184,54 +62399,54 @@ var cd = [
 		});
 	}
 };
-function ud(...e) {
+function Td(...e) {
 	let t = {};
 	if (e.length > 1) {
 		let n = e[e.length - 1];
 		n && typeof n == "object" && !Array.isArray(n) && !n.viewer && !n.controls && (t = e.pop());
 	}
-	return new ld(e.length === 1 && Array.isArray(e[0]) ? e[0] : e, t);
+	return new wd(e.length === 1 && Array.isArray(e[0]) ? e[0] : e, t);
 }
 //#endregion
 //#region src/lib/measurement-controls.js
-var dd = "cifvis-measurement-controls-styles", fd = "\n  .cifvis-measurement-action {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    gap: 0.35rem;\n    min-height: 2.25rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.4rem 0.7rem;\n    background: var(--cifvis-measurement-button-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-action:disabled { cursor: default; opacity: 0.5; }\n  .cifvis-measurement-results {\n    display: flex;\n    flex-wrap: wrap;\n    gap: var(--cifvis-measurement-gap, 0.45rem);\n    align-items: center;\n  }\n  .cifvis-measurement-result {\n    display: inline-flex;\n    align-items: center;\n    gap: 0.3rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-bottom: 3px solid var(--cifvis-measurement-color, #3a7bd5);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.3rem 0.45rem;\n    background: var(--cifvis-measurement-result-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n  }\n  .cifvis-measurement-atom,\n  .cifvis-measurement-dismiss {\n    border: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-atom {\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n  .cifvis-measurement-dismiss { padding-inline: 0.15rem; font-size: 1.1em; }\n";
-function pd() {
-	if (typeof document > "u" || document.getElementById(dd)) return;
+var Ed = "cifvis-measurement-controls-styles", Dd = "\n  .cifvis-measurement-action {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    gap: 0.35rem;\n    min-height: 2.25rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.4rem 0.7rem;\n    background: var(--cifvis-measurement-button-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-action:disabled { cursor: default; opacity: 0.5; }\n  .cifvis-measurement-results {\n    display: flex;\n    flex-wrap: wrap;\n    gap: var(--cifvis-measurement-gap, 0.45rem);\n    align-items: center;\n  }\n  .cifvis-measurement-result {\n    display: inline-flex;\n    align-items: center;\n    gap: 0.3rem;\n    border: 1px solid var(--cifvis-measurement-border, #d6d9df);\n    border-bottom: 3px solid var(--cifvis-measurement-color, #3a7bd5);\n    border-radius: var(--cifvis-measurement-radius, 0.55rem);\n    padding: 0.3rem 0.45rem;\n    background: var(--cifvis-measurement-result-bg, #fff);\n    color: var(--cifvis-measurement-text, #24262b);\n    font: inherit;\n  }\n  .cifvis-measurement-atom,\n  .cifvis-measurement-dismiss {\n    border: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    cursor: pointer;\n  }\n  .cifvis-measurement-atom {\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n  .cifvis-measurement-dismiss { padding-inline: 0.15rem; font-size: 1.1em; }\n";
+function Od() {
+	if (typeof document > "u" || document.getElementById(Ed)) return;
 	let e = document.createElement("style");
-	e.id = dd, e.textContent = fd, document.head.appendChild(e);
+	e.id = Ed, e.textContent = Dd, document.head.appendChild(e);
 }
-function md(e) {
+function kd(e) {
 	return `#${Number(e).toString(16).padStart(6, "0").slice(-6)}`;
 }
-function hd(e, t, n) {
+function Ad(e, t, n) {
 	let r = document.createElement("button");
 	r.type = "button", r.className = "cifvis-measurement-atom", r.dataset.cifvisAtomId = t ?? "";
-	let i = ir(e, n), a = rr(e, n);
+	let i = wr(e, n), a = Cr(e, n);
 	if (r.append(a.element), a.nonElement) {
 		let e = document.createElement("sub");
 		e.textContent = a.nonElement, r.append(e);
 	}
 	return r.title = `Highlight ${i}`, r;
 }
-function gd(e, t, n, r, i) {
+function jd(e, t, n, r, i) {
 	t.forEach((t, a) => {
-		a > 0 && e.append(r), e.append(hd(t, n[a], i));
+		a > 0 && e.append(r), e.append(Ad(t, n[a], i));
 	});
 }
-function _d(e, t = {}) {
+function Md(e, t = {}) {
 	let n = document.createElement("span"), r = document.createElement("strong"), i = e.value.toFixed(e.unit === "°" ? 2 : 3);
-	if (e.type === "plane-distance") r.append(hd(e.probeLabel, e.atomIds.at(-1), t.subscriptNonElement)), r.append(" to mean plane ("), gd(r, e.planeLabels, e.atomIds, ", ", t.subscriptNonElement), r.append(`): ${i} Å`);
+	if (e.type === "plane-distance") r.append(Ad(e.probeLabel, e.atomIds.at(-1), t.subscriptNonElement)), r.append(" to mean plane ("), jd(r, e.planeLabels, e.atomIds, ", ", t.subscriptNonElement), r.append(`): ${i} Å`);
 	else {
 		let n = e.type === "distance" ? "Distance " : e.type === "angle" ? "Angle " : "Torsion ";
-		r.append(n), gd(r, e.labels, e.atomIds, "–", t.subscriptNonElement), r.append(`: ${i}${e.unit === "°" ? "" : " "}${e.unit}`);
+		r.append(n), jd(r, e.labels, e.atomIds, "–", t.subscriptNonElement), r.append(`: ${i}${e.unit === "°" ? "" : " "}${e.unit}`);
 	}
 	let a = document.createElement("button");
 	return a.type = "button", a.className = "cifvis-measurement-dismiss", a.dataset.cifvisDismiss = "", a.setAttribute("aria-label", "Remove measurement"), a.title = "Remove measurement", a.textContent = "×", n.append(r, a), n;
 }
-var vd = class {
+var Nd = class {
 	constructor(e, t = {}) {
 		if (!e?.selections?.onChange || !e?.onMeasurementChange) throw TypeError("MeasurementControls requires a CrystalViewer instance");
-		pd(), this.viewer = e, this.onError = t.onError ?? ((e) => console.warn("Measurement controls:", e)), this.subscribers = /* @__PURE__ */ new Set(), this.unbinders = /* @__PURE__ */ new Set(), this.disposed = !1, this.selections = e.selections.getSelections?.() ?? [], this.measurements = e.getMeasurements?.() ?? [];
+		Od(), this.viewer = e, this.onError = t.onError ?? ((e) => console.warn("Measurement controls:", e)), this.subscribers = /* @__PURE__ */ new Set(), this.unbinders = /* @__PURE__ */ new Set(), this.disposed = !1, this.selections = e.selections.getSelections?.() ?? [], this.measurements = e.getMeasurements?.() ?? [];
 		let n = t.measurements ?? [];
 		if (!Array.isArray(n)) throw TypeError("measurements must be an array of atom-ID arrays");
 		this.stopSelectionUpdates = e.selections.onChange((e) => {
@@ -55257,7 +62472,7 @@ var vd = class {
 		return {
 			measurements: [...this.measurements],
 			selectedAtomCount: e,
-			action: { ...pr(e) }
+			action: { ...Nr(e) }
 		};
 	}
 	subscribe(e) {
@@ -55311,7 +62526,7 @@ var vd = class {
 	bindResults(e, t = {}) {
 		if (this.assertActive(), !(e instanceof HTMLElement)) throw TypeError("bindResults requires an HTMLElement");
 		e.classList.add("cifvis-measurement-results");
-		let n = t.renderItem ?? ((e) => _d(e, { subscriptNonElement: this.viewer.options?.atomLabels?.subscriptNonElement })), r = [], i = this.subscribe(({ measurements: t }) => {
+		let n = t.renderItem ?? ((e) => Md(e, { subscriptNonElement: this.viewer.options?.atomLabels?.subscriptNonElement })), r = [], i = this.subscribe(({ measurements: t }) => {
 			r.forEach((e) => e()), r = [];
 			let i = [];
 			for (let e of t) try {
@@ -55331,7 +62546,7 @@ var vd = class {
 		let n = [], r = (e, t, r) => {
 			e.addEventListener(t, r), n.push(() => e.removeEventListener(t, r));
 		};
-		e.classList.add("cifvis-measurement-result"), e.dataset.cifvisMeasurementId = t.id, e.style.setProperty("--cifvis-measurement-color", md(t.color));
+		e.classList.add("cifvis-measurement-result"), e.dataset.cifvisMeasurementId = t.id, e.style.setProperty("--cifvis-measurement-color", kd(t.color));
 		let i = () => this.preview(t.id), a = () => this.preview(null);
 		r(e, "pointerenter", i), r(e, "pointerleave", a), r(e, "mouseenter", i), r(e, "mouseleave", a), r(e, "focusin", i), r(e, "focusout", (t) => {
 			e.contains(t.relatedTarget) || a();
@@ -55362,7 +62577,7 @@ var vd = class {
 	dispose() {
 		this.disposed ||= (this.preview(null), this.viewer.setHoveredAtom?.(null), [...this.unbinders].forEach((e) => e()), this.stopSelectionUpdates(), this.stopMeasurementUpdates(), this.subscribers.clear(), !0);
 	}
-}, yd = {
+}, Pd = {
 	disorder: {
 		all: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 28.684508,10.729386 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 A 2.6075482,2.6075482 0 0 0 31.2921,13.336979 2.6075482,2.6075482 0 0 0 28.684508,10.729386 Z\" /><path id=\"path8-7\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.328762,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 33.918297,11.972721 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 30.92003,19.636335 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></svg>",
 		group1of2: "<svg width=\"17.850384mm\" height=\"17.850386mm\" viewBox=\"0 0 17.850384 17.850386\" version=\"1.1\" id=\"svg1\" (0e150ed6c4, 2023-07-21)\"xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><id=\"namedview1\" pagecolor=\"#ffffff\" bordercolor=\"#000000\" borderopacity=\"0.25\" showguides=\"false\" /><defs id=\"defs1\" /><g 1\" id=\"layer1\" transform=\"translate(-19.728827,-10.394623)\"><g id=\"g1\" transform=\"translate(-0.54705812,0.13474933)\"><path id=\"path4-5\" style=\"color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1\" d=\"m 29.231566,10.594637 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607593 2.6075482,2.6075482 0 0 0 1.079004,2.104776 l -2.987415,6.12935 a 2.6075482,2.6075482 0 0 0 -0.778764,-0.11938 2.6075482,2.6075482 0 0 0 -2.607592,2.6076 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -0.948262,-2.01125 l 3.013252,-6.18464 a 2.6075482,2.6075482 0 0 0 0.622185,0.08114 2.6075482,2.6075482 0 0 0 0.624251,-0.07648 l 3.01377,6.18308 a 2.6075482,2.6075482 0 0 0 -0.950847,2.00815 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.6076 2.6075482,2.6075482 0 0 0 -0.777214,0.12196 l -2.985347,-6.12727 a 2.6075482,2.6075482 0 0 0 1.075386,-2.109436 2.6075482,2.6075482 0 0 0 -2.607592,-2.607593 z\" /><path id=\"path8-7\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 23.87582,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607592,2.607594 2.6075482,2.6075482 0 0 0 2.607592,2.60759 2.6075482,2.6075482 0 0 0 0.70435,-0.0987 l 1.051099,2.16473 0.556038,-1.14205 -0.720886,-1.4733 a 2.6075482,2.6075482 0 0 0 1.016992,-2.05827 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path8-0-5\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 34.465355,11.837972 a 2.6075482,2.6075482 0 0 0 -2.607593,2.607594 2.6075482,2.6075482 0 0 0 1.0604,2.09083 l -0.673344,1.37666 0.556039,1.14205 1.014408,-2.08876 a 2.6075482,2.6075482 0 0 0 0.65009,0.08681 2.6075482,2.6075482 0 0 0 2.607593,-2.60759 2.6075482,2.6075482 0 0 0 -2.607593,-2.607594 z\" /><path id=\"path9-8\" style=\"fill:#8f8f8f;fill-opacity:1;stroke:none;stroke-width:0;stroke-dashoffset:0.0831496\" d=\"m 31.467088,19.501586 -1.539441,3.15433 a 2.6075482,2.6075482 0 0 0 -0.696081,-0.0956 2.6075482,2.6075482 0 0 0 -0.750342,0.1142 l -1.51412,-3.10265 -0.557071,1.13998 1.187007,2.43345 a 2.6075482,2.6075482 0 0 0 -0.973067,2.02261 2.6075482,2.6075482 0 0 0 2.607593,2.60759 2.6075482,2.6075482 0 0 0 2.607592,-2.60759 2.6075482,2.6075482 0 0 0 -1.015958,-2.06447 l 1.20096,-2.46187 z\" /></g></g></svg>",
@@ -55386,7 +62601,7 @@ var vd = class {
 };
 //#endregion
 //#region src/lib/density/scalar-field-display-state.js
-function bd() {
+function Fd() {
 	return {
 		loading: !1,
 		available: !1,
@@ -55405,9 +62620,9 @@ function bd() {
 		pendingFieldName: null
 	};
 }
-function xd(e, t) {
+function Id(e, t) {
 	if (t.type === "started") return {
-		...bd(),
+		...Fd(),
 		loading: !0,
 		visible: t.visible ?? !0,
 		sigmaLevel: t.sigmaLevel ?? null,
@@ -55422,7 +62637,7 @@ function xd(e, t) {
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: t.pendingFieldName ?? null
 	};
-	if (t.type === "cleared") return bd();
+	if (t.type === "cleared") return Fd();
 	if (["error", "cancelled"].includes(t.type)) return e.fieldCount > 0 ? {
 		...e,
 		loading: !1,
@@ -55438,7 +62653,7 @@ function xd(e, t) {
 		activeFieldId: t.activeFieldId ?? e.activeFieldId,
 		activeFieldName: t.activeFieldName ?? e.activeFieldName,
 		pendingFieldName: null
-	} : bd();
+	} : Fd();
 	if (t.type === "visibility") return {
 		...e,
 		visible: !!t.visible,
@@ -55474,7 +62689,7 @@ function xd(e, t) {
 }
 //#endregion
 //#region src/lib/widget.js
-var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button.measurement-button {\n    position: relative;\n    flex-direction: column;\n    gap: 0;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n  }\n\n  cifview-widget .measurement-button:disabled {\n    cursor: default;\n    opacity: 0.45;\n  }\n\n  cifview-widget .measurement-symbol {\n    font-size: 19px;\n    line-height: 17px;\n  }\n\n  cifview-widget .measurement-count {\n    font-size: 9px;\n    font-weight: 700;\n    line-height: 10px;\n  }\n\n  cifview-widget .atom-name {\n    cursor: default;\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n\n  cifview-widget .measurement-caption {\n    display: inline-flex;\n    align-items: baseline;\n    gap: 4px;\n    margin-left: 4px;\n    border: 0;\n    border-bottom: 3px solid var(--cifvis-measurement-color);\n    border-radius: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n  }\n\n  cifview-widget .widget-measurement-results {\n    display: inline;\n  }\n\n  cifview-widget .measurement-dismiss {\n    border: 0;\n    padding: 0 2px;\n    background: transparent;\n    color: inherit;\n    cursor: pointer;\n    font-size: 17px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", Cd = class extends HTMLElement {
+var Ld = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\n    font-family: system-ui, -apple-system, sans-serif;\n    height: 100%;\n    position: relative;\n    background: var(--cifvis-bg, #fafafa);\n    border-radius: var(--cifvis-radius, 8px);\n    overflow: hidden;\n    /* Contain all internal z-indexes (buttons, overlays) in the widget's own\n       stacking context so they can never paint over the host page's sticky\n       headers, menus, or modals. */\n    isolation: isolate;\n  }\n\n  cifview-widget .crystal-container {\n    flex: 1;\n    min-height: 0;\n    position: relative;\n  }\n\n  cifview-widget .crystal-caption {\n    padding: 12px 16px;\n    background: var(--cifvis-caption-bg, #ffffff);\n    border-top: 1px solid var(--cifvis-caption-border, #eaeaea);\n    color: var(--cifvis-caption-color, #333);\n    font-size: 14px;\n    line-height: 1.5;\n  }\n\n  cifview-widget .control-button.density-level {\n    width: 40px;\n    min-width: 40px;\n    padding: 2px;\n    flex-direction: column;\n    gap: 1px;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n    font-variant-numeric: tabular-nums;\n    white-space: nowrap;\n  }\n\n  cifview-widget .density-level .density-unit {\n    font-size: 8px;\n    line-height: 1;\n  }\n\n  cifview-widget .density-level .density-value {\n    font-size: 10px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button.density-level[aria-pressed=\"false\"] {\n    opacity: 0.55;\n    text-decoration: line-through;\n  }\n\n  cifview-widget .control-button.density-level.density-loading {\n    cursor: wait;\n  }\n\n  cifview-widget .density-level.density-loading .density-value {\n    animation: cifvis-density-loading-pulse 1s ease-in-out infinite alternate;\n  }\n\n  @keyframes cifvis-density-loading-pulse {\n    from { opacity: 0.35; }\n    to { opacity: 1; }\n  }\n\n  cifview-widget .button-container {\n    position: absolute;\n    top: 16px;\n    right: 16px;\n    display: flex;\n    gap: 8px;\n    z-index: 3;\n  }\n\n  cifview-widget .control-button {\n    width: 40px;\n    height: 40px;\n    border: none;\n    border-radius: var(--cifvis-button-radius, 8px);\n    background: var(--cifvis-button-bg, rgba(255, 255, 255, 0.9));\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 8px;\n    transition: all 0.2s ease;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  }\n\n  cifview-widget .control-button:hover {\n    background: var(--cifvis-button-hover-bg, #ffffff);\n    box-shadow: 0 4px 8px rgba(0,0,0,0.15);\n  }\n\n  cifview-widget .control-button.measurement-button {\n    position: relative;\n    flex-direction: column;\n    gap: 0;\n    color: var(--cifvis-caption-color, #333);\n    font-family: system-ui, sans-serif;\n  }\n\n  cifview-widget .measurement-button:disabled {\n    cursor: default;\n    opacity: 0.45;\n  }\n\n  cifview-widget .measurement-symbol {\n    font-size: 19px;\n    line-height: 17px;\n  }\n\n  cifview-widget .measurement-count {\n    font-size: 9px;\n    font-weight: 700;\n    line-height: 10px;\n  }\n\n  cifview-widget .atom-name {\n    cursor: default;\n    text-decoration: underline dotted;\n    text-underline-offset: 3px;\n  }\n\n  cifview-widget .measurement-caption {\n    display: inline-flex;\n    align-items: baseline;\n    gap: 4px;\n    margin-left: 4px;\n    border: 0;\n    border-bottom: 3px solid var(--cifvis-measurement-color);\n    border-radius: 0;\n    padding: 0;\n    background: transparent;\n    color: inherit;\n  }\n\n  cifview-widget .widget-measurement-results {\n    display: inline;\n  }\n\n  cifview-widget .measurement-dismiss {\n    border: 0;\n    padding: 0 2px;\n    background: transparent;\n    color: inherit;\n    cursor: pointer;\n    font-size: 17px;\n    line-height: 1;\n  }\n\n  cifview-widget .control-button svg {\n    width: 24px;\n    height: 24px;\n    filter: var(--cifvis-icon-filter, none);\n  }\n\n  /* Built-in dark theme. All selectors are wrapped in :where() so they have\n     zero specificity: any author rule or custom property set on the page\n     still wins. The dark values apply automatically with the OS/browser\n     color scheme, or via a .dark / .cifvis-dark ancestor or widget class;\n     .cifvis-light forces the light defaults back. The default button icons\n     are grayscale, so --cifvis-icon-filter inverts them for dark buttons -\n     set it to none when supplying colourful custom icons. */\n  @media (prefers-color-scheme: dark) {\n    :where(cifview-widget) {\n      --cifvis-bg: #1e1e2f;\n      --cifvis-caption-bg: #2a2a3d;\n      --cifvis-caption-border: #3a3a52;\n      --cifvis-caption-color: #e8e8f0;\n      --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n      --cifvis-button-hover-bg: #4a4a66;\n      --cifvis-icon-filter: invert(1) brightness(0.88);\n    }\n  }\n\n  :where(.dark cifview-widget, .cifvis-dark cifview-widget, cifview-widget.cifvis-dark) {\n    --cifvis-bg: #1e1e2f;\n    --cifvis-caption-bg: #2a2a3d;\n    --cifvis-caption-border: #3a3a52;\n    --cifvis-caption-color: #e8e8f0;\n    --cifvis-button-bg: rgba(58, 58, 82, 0.9);\n    --cifvis-button-hover-bg: #4a4a66;\n    --cifvis-icon-filter: invert(1) brightness(0.88);\n  }\n\n  :where(.cifvis-light cifview-widget, cifview-widget.cifvis-light) {\n    --cifvis-bg: #fafafa;\n    --cifvis-caption-bg: #ffffff;\n    --cifvis-caption-border: #eaeaea;\n    --cifvis-caption-color: #333;\n    --cifvis-button-bg: rgba(255, 255, 255, 0.9);\n    --cifvis-button-hover-bg: #ffffff;\n    --cifvis-icon-filter: none;\n  }\n", Rd = class extends HTMLElement {
 	static get observedAttributes() {
 		return [
 			"caption",
@@ -55495,13 +62710,13 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 	constructor() {
 		if (super(), !document.getElementById("cifview-styles")) {
 			let e = document.createElement("style");
-			e.id = "cifview-styles", e.textContent = Sd, document.head.appendChild(e);
+			e.id = "cifview-styles", e.textContent = Ld, document.head.appendChild(e);
 		}
-		this.viewer = null, this.baseCaption = "", this.selections = [], this.measurements = [], this.prepopulatedMeasurements = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = bd(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
+		this.viewer = null, this.baseCaption = "", this.selections = [], this.measurements = [], this.prepopulatedMeasurements = [], this.customIcons = null, this.userOptions = {}, this.scalarFieldDisplay = Fd(), this.defaultCaption = "Generated with <a href=\"https://github.com/Niolon/cifvis\">CifVis</a>.";
 	}
 	get icons() {
 		return {
-			...yd,
+			...Pd,
 			...this.customIcons
 		};
 	}
@@ -55512,7 +62727,7 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		let t = document.createElement("div");
 		t.className = "button-container", e.appendChild(t), this.buttonContainer = t;
 		let n = document.createElement("div");
-		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new id(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
+		n.className = "crystal-caption", n.innerHTML = this.baseCaption, this.appendChild(n), this.captionElement = n, this.viewer = new yd(e, this.userOptions), this.connectViewerEvents(), this.customIcons = this.parseCustomIcons(), await this.updateFilteredAtoms();
 		let r = this.getAttribute("src"), i = this.getAttribute("data"), a = this.resolveBlockSelector(this.getAttribute("block"));
 		r ? await this.loadFromUrl(r, a) : i && await this.loadFromString(i, a);
 	}
@@ -55520,10 +62735,10 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		return e ? /^\d+$/.test(e) ? Number(e) : e : 0;
 	}
 	connectViewerEvents() {
-		this.disconnectViewerEvents(), this.measurementControls = new vd(this.viewer, { onError: (e) => console.warn("Could not measure selected atoms:", e) }), this.stopMeasurementState = this.measurementControls.subscribe((e) => {
+		this.disconnectViewerEvents(), this.measurementControls = new Nd(this.viewer, { onError: (e) => console.warn("Could not measure selected atoms:", e) }), this.stopMeasurementState = this.measurementControls.subscribe((e) => {
 			this.measurements = e.measurements, this.updateCaption();
 		}), this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.((e) => {
-			this.scalarFieldDisplay = xd(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
+			this.scalarFieldDisplay = Id(this.scalarFieldDisplay, e), this.updateScalarFieldButton(), this.updateCaption();
 		}) ?? null, this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
 			this.prepopulateMeasurements(), this.setupButtons();
 		}) ?? null, this.stopSelectionUpdates = this.viewer.selections.onChange((e) => {
@@ -55681,7 +62896,7 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		i && (i.setAttribute("alt", r), i.setAttribute("role", "img"), i.setAttribute("aria-label", r));
 	}
 	getIcon(e, t) {
-		return e === "disorder" ? Bs(this.icons.disorder, t) : this.icons[e]?.[t] || "";
+		return e === "disorder" ? oc(this.icons.disorder, t) : this.icons[e]?.[t] || "";
 	}
 	async attributeChangedCallback(e, t, n) {
 		if (this.viewer) switch (e) {
@@ -55722,7 +62937,7 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 			case "options":
 				if (this.parseOptions(), this.parseInitialAtomLabels(), this.parseMeasurementsAttribute(), this.viewer) {
 					let e = this.querySelector(".crystal-container"), t = this.viewer.state.currentCifContent, n = this.viewer.state.currentCifBlock;
-					this.disconnectViewerEvents(), this.viewer.dispose(), this.measurements = [], this.viewer = new id(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.prepopulateMeasurements(), this.setupButtons(), this.updateCaption());
+					this.disconnectViewerEvents(), this.viewer.dispose(), this.measurements = [], this.viewer = new yd(e, this.userOptions), this.connectViewerEvents(), t && (await this.viewer.loadCIF(t, n ?? 0), this.prepopulateMeasurements(), this.setupButtons(), this.updateCaption());
 				}
 				break;
 			case "block": {
@@ -55799,7 +63014,7 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 		return e ? String(e).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
 	}
 	atomLabelHTML(e) {
-		let t = rr(e, this.viewer.options?.atomLabels?.subscriptNonElement);
+		let t = Cr(e, this.viewer.options?.atomLabels?.subscriptNonElement);
 		return this.sanitizeHTML(t.element) + (t.nonElement ? `<sub>${this.sanitizeHTML(t.nonElement)}</sub>` : "");
 	}
 	measurementAtomHTML(e, t, n) {
@@ -55829,7 +63044,7 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 				let t = "#" + e.color.toString(16).padStart(6, "0"), n = "";
 				if (e.type === "atom") n = `<span class="atom-name" data-atom-id="${this.sanitizeHTML(e.data.uniqueId)}">${this.atomLabelHTML(e.data.label)}</span>`;
 				else if (e.type === "bond") {
-					let t = er(e.data.bondLength, e.data.bondLengthSU), r = e.data.atom1Label, i = e.data.atom2Label;
+					let t = br(e.data.bondLength, e.data.bondLengthSU), r = e.data.atom1Label, i = e.data.atom2Label;
 					n = `${this.atomLabelHTML(r)}-${this.atomLabelHTML(i)}: ${t} Å`;
 				} else if (e.type === "hbond") {
 					let t = e.data.donorAtomLabel, r = e.data.acceptorAtomLabel;
@@ -55854,9 +63069,9 @@ var Sd = "\n  cifview-widget {\n    display: flex;\n    flex-direction: column;\
 //#endregion
 //#region src/index.js
 if (typeof window < "u" && window.customElements) try {
-	window.customElements.define("cifview-widget", Cd);
+	window.customElements.define("cifview-widget", Rd);
 } catch (e) {
 	e.message.includes("already been defined") || console.warn("Failed to register cifview-widget:", e);
 }
 //#endregion
-export { $c as AtomLabelFilter, Za as BOHR_TO_ANGSTROM, el as BondGenerator, nl as BondGeometryFixer, xe as CIF, Cd as CifViewWidget, U as CrystalStructure, id as CrystalViewer, tn as DEFAULT_CONTOUR_LINE_OPTIONS, Qt as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, en as DEFAULT_ISOSURFACE_OPTIONS, $t as DEFAULT_SCALAR_FIELD_OPTIONS, Yc as DisorderFilter, Jc as HydrogenFilter, tl as IsolatedHydrogenFixer, vd as MeasurementControls, Ln as ORTEP3JsStructure, Hi as ScalarFieldGrid, Xc as SymmetryGrower, Pu as ThreeContourLineLayer, cu as ThreeIsosurfaceLayer, z as UAnisoADP, ld as ViewerInteractionCoupling, rr as atomLabelParts, Xa as calculateDifferenceDensityMap, ii as calculateIAMStructureFactors, Oo as calculatePlanarContours, hs as connectedIsosurfaceRegions, ud as coupleViewerInteractions, za as createCifDifferenceDensityDataset, ri as createIAMStructureFactorCalculator, os as createIsosurfaces, js as createSymmetryAwareIsosurfaces, qr as evaluateCromerMann, ir as formatAtomLabel, fr as formatMeasurement, er as formatValueEsd, Vs as generateDisorderGroupIcon, Bs as getDisorderIcon, Ai as isSystematicAbsence, Qo as isosurfaceBounds, $o as isosurfaceResolution, zr as lookupAnomalousDispersion, Kr as lookupCromerMann, dr as measureAtoms, pr as measurementAction, Ii as mergeReflectionIntensities, oo as parseCube, Va as parseDifferenceDensitySource, Li as readReflectionIntensities, Co as resolveContourPlane, zs as tryToFixCifBlock };
+export { ml as AtomLabelFilter, vo as BOHR_TO_ANGSTROM, hl as BondGenerator, _l as BondGeometryFixer, xe as CIF, Rd as CifViewWidget, U as CrystalStructure, yd as CrystalViewer, bn as DEFAULT_CONTOUR_LINE_OPTIONS, _n as DEFAULT_DIFFERENCE_DENSITY_OPTIONS, yn as DEFAULT_ISOSURFACE_OPTIONS, vn as DEFAULT_SCALAR_FIELD_OPTIONS, ul as DisorderFilter, ll as HydrogenFilter, gl as IsolatedHydrogenFixer, Nd as MeasurementControls, rr as ORTEP3JsStructure, ca as ScalarFieldGrid, dl as SymmetryGrower, Yu as ThreeContourLineLayer, Cu as ThreeIsosurfaceLayer, rt as UAnisoADP, wd as ViewerInteractionCoupling, Cr as atomLabelParts, _o as calculateDifferenceDensityMap, wi as calculateIAMStructureFactors, Jo as calculatePlanarContours, Fs as connectedIsosurfaceRegions, Td as coupleViewerInteractions, ao as createCifDifferenceDensityDataset, Ci as createIAMStructureFactorCalculator, Es as createIsosurfaces, Zs as createSymmetryAwareIsosurfaces, pi as evaluateCromerMann, wr as formatAtomLabel, Mr as formatMeasurement, br as formatValueEsd, sc as generateDisorderGroupIcon, oc as getDisorderIcon, Xi as isSystematicAbsence, vs as isosurfaceBounds, ys as isosurfaceResolution, ai as lookupAnomalousDispersion, fi as lookupCromerMann, jr as measureAtoms, Nr as measurementAction, na as mergeReflectionIntensities, Do as parseCube, so as parseDifferenceDensitySource, ra as readReflectionIntensities, Uo as resolveContourPlane, ac as tryToFixCifBlock };
