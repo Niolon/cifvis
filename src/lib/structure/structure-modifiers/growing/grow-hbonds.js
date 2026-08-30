@@ -444,7 +444,7 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
 
     const addAtomImage = (atomId) => {
         if (finalAtomIds.has(atomId)) {
-            return resolveAtomImage(atomId);
+            return resolveSpecialPosition(atomId);
         }
         const atom = resolveAtomImage(atomId);
         if (!atom) {
@@ -456,12 +456,12 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
             if (positionAtomId !== atomId) {
                 grownSpecialPositionAtoms.set(atomId, positionAtomId);
             }
-            return atomImageCache.get(positionAtomId) || atom;
+            return positionAtomId;
         }
         finalAtoms.push(atom);
         finalAtomIds.add(atomId);
         finalAtomIdsByPosition.set(atomPositionKey, atomId);
-        return atom;
+        return atomId;
     };
     const finalBondIds = new Set(finalBonds.map(bond =>
         [resolveSpecialPosition(bond.atom1Id), resolveSpecialPosition(bond.atom2Id)].sort().join('|'),
@@ -472,12 +472,30 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
     const reciprocalHBondPositions = new Set();
     const transformedExternalHBonds = [];
     const addFinalHBond = hBond => {
-        addAtomImage(hBond.donorAtomId);
-        addAtomImage(hBond.hydrogenAtomId);
-        addAtomImage(hBond.acceptorAtomId);
-        const identifier = `${hBond.donorAtomId}|${hBond.hydrogenAtomId}|${hBond.acceptorAtomId}`;
+        const donorAtomId = addAtomImage(hBond.donorAtomId) || hBond.donorAtomId;
+        const hydrogenAtomId = addAtomImage(hBond.hydrogenAtomId) || hBond.hydrogenAtomId;
+        const acceptorAtomId = addAtomImage(hBond.acceptorAtomId) || hBond.acceptorAtomId;
+        const canonicalHBond = donorAtomId === hBond.donorAtomId
+            && hydrogenAtomId === hBond.hydrogenAtomId
+            && acceptorAtomId === hBond.acceptorAtomId
+            ? hBond
+            : new HBond(
+                donorAtomId,
+                hydrogenAtomId,
+                acceptorAtomId,
+                hBond.donorHydrogenDistance,
+                hBond.donorHydrogenDistanceSU,
+                hBond.acceptorHydrogenDistance,
+                hBond.acceptorHydrogenDistanceSU,
+                hBond.donorAcceptorDistance,
+                hBond.donorAcceptorDistanceSU,
+                hBond.hBondAngle,
+                hBond.hBondAngleSU,
+                '.',
+            );
+        const identifier = `${donorAtomId}|${hydrogenAtomId}|${acceptorAtomId}`;
         if (!finalHBondIds.has(identifier)) {
-            finalHBonds.push(hBond);
+            finalHBonds.push(canonicalHBond);
             finalHBondIds.add(identifier);
         }
     };
