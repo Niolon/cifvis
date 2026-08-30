@@ -292,6 +292,10 @@ export class CellSymmetry {
         
         // Cache for combineSymmetryCodes results
         this._combineSymmetryCodesCache = new Map();
+        // Relative bond/H-bond normalization repeatedly asks for the inverse of the
+        // same small set of endpoint codes. Keep those alongside the composition
+        // caches instead of redoing the matrix inversion and operation lookup per row.
+        this._invertPositionCodeCache = new Map();
         // The complete-code cache above cannot help a periodic walk very much:
         // every new lattice image has a distinct `op_abc` code. Cache the
         // operation-pair part separately, then apply the integer translations
@@ -473,6 +477,14 @@ export class CellSymmetry {
      * @throws {Error} If no matching inverse operation exists in the symmetry group
      */
     invertPositionCode(positionCode) {
+        const cacheKey = String(positionCode);
+        const cached = this._invertPositionCodeCache.get(cacheKey);
+        if (cached !== undefined) {
+            if (cached instanceof Error) {
+                throw cached;
+            }
+            return cached;
+        }
         const { symOp, transVector } = this.parsePositionCode(positionCode);
         const totalTranslation = [
             transVector[0] + symOp.transVector[0],
@@ -503,14 +515,20 @@ export class CellSymmetry {
 
                 const symOpId = Array.from(this.operationIds.entries())
                     .find(([, operationIndex]) => operationIndex === index)?.[0];
-                return encodePositionCode(
+                const inverseCode = encodePositionCode(
                     symOpId,
                     remainderVector.map(value => Math.round(value)),
                 );
+                this._invertPositionCodeCache.set(cacheKey, inverseCode);
+                return inverseCode;
             }
         }
 
-        throw new Error(`No inverse symmetry operation found for position code: ${positionCode}`);
+        const error = new Error(
+            `No inverse symmetry operation found for position code: ${positionCode}`,
+        );
+        this._invertPositionCodeCache.set(cacheKey, error);
+        throw error;
     }
 
     /**

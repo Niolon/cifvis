@@ -22,6 +22,25 @@ function normalizeAtomId(atomId, symmetry = '1_555') {
 }
 
 /**
+ * Expresses a target endpoint relative to an origin endpoint. The shared CellSymmetry
+ * instance supplies cached inversion and composition, including lattice translations.
+ * @param {object|null} symmetry - CellSymmetry, or null for the legacy call path
+ * @param {string} originCode - Normalized absolute origin code, or '.'
+ * @param {string} targetCode - Normalized absolute target code, or '.'
+ * @param {string} identityCode - File-specific identity position code
+ * @returns {string} Relative target code, or '.' when it is identity
+ */
+function relativeEndpointCode(symmetry, originCode, targetCode, identityCode) {
+    if (!symmetry || originCode === '.') {
+        return targetCode;
+    }
+    const absoluteTarget = targetCode === '.' ? identityCode : targetCode;
+    const inverseOrigin = symmetry.invertPositionCode(originCode);
+    const relativeTarget = symmetry.combineSymmetryCodes(inverseOrigin, absoluteTarget);
+    return relativeTarget === identityCode ? '.' : relativeTarget;
+}
+
+/**
  * Represents a covalent bond between atoms in a crystal structure.
  */
 export class Bond {
@@ -57,11 +76,15 @@ export class Bond {
      * Creates a Bond from CIF data
      * @param {CifBlock} cifBlock - Parsed CIF data block
      * @param {number} bondIndex - Index in _geom_bond loop
-     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
+     * @param {string|object} [symmetryOrIdentity] - CellSymmetry used to normalize two-ended
+     *  symmetry references, or the identity operation ID for backwards compatibility
      * @returns {Bond} New bond instance
      */
-    static fromCIF(cifBlock, bondIndex, identitySymOpId = '1') {
+    static fromCIF(cifBlock, bondIndex, symmetryOrIdentity = '1') {
         const bondLoop = cifBlock.get('_geom_bond');
+        const symmetry = typeof symmetryOrIdentity === 'object' ? symmetryOrIdentity : null;
+        const identitySymOpId = symmetry?.identitySymOpId
+            ?? (typeof symmetryOrIdentity === 'string' ? symmetryOrIdentity : '1');
 
         let siteSymmetry2 = bondLoop.getIndex(
             ['_geom_bond.site_symmetry_2', '_geom_bond_site_symmetry_2'],
@@ -75,11 +98,24 @@ export class Bond {
             false,
         );
 
-        if (siteSymmetry1 && siteSymmetry1 === siteSymmetry2) {
+        const normalizedSymmetry1 = normalizeSiteSymmetry(
+            siteSymmetry1 === false ? '.' : siteSymmetry1,
+        );
+        siteSymmetry2 = normalizeSiteSymmetry(siteSymmetry2);
+
+        // CIF bond rows may place both endpoints outside the asymmetric unit. Internally
+        // atom 1 is always the identity image, so express endpoint 2 relative to it:
+        // S1(A)--S2(B) becomes A--(S1^-1 o S2)(B). CellSymmetry owns the inverse and
+        // composition caches; routing through it also handles centring translations and
+        // files whose identity operation is not numbered 1.
+        if (symmetry && normalizedSymmetry1 !== '.') {
+            siteSymmetry2 = relativeEndpointCode(
+                symmetry, normalizedSymmetry1, siteSymmetry2, `${identitySymOpId}_555`,
+            );
+        } else if (normalizedSymmetry1 !== '.' && normalizedSymmetry1 === siteSymmetry2) {
+            // Legacy no-CellSymmetry call path: retain the previously-supported equal-code case.
             siteSymmetry2 = '.';
         }
-
-        siteSymmetry2 = normalizeSiteSymmetry(siteSymmetry2);
 
         const atom1Label = bondLoop.getIndex(
             ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
@@ -176,35 +212,67 @@ export class HBond {
      * Creates a HBond from CIF data
      * @param {CifBlock} cifBlock - Parsed CIF data block
      * @param {number} hBondIndex - Index in _geom_hbond loop
-     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
+     * @param {string|object} [symmetryOrIdentity] - CellSymmetry, or an identity operation ID
      * @returns {HBond} New hydrogen bond instance
      */
-    static fromCIF(cifBlock, hBondIndex, identitySymOpId = '1') {
+    static fromCIF(cifBlock, hBondIndex, symmetryOrIdentity = '1') {
         const hBondLoop = cifBlock.get('_geom_hbond');
-        const acceptorAtomSymmetry = hBondLoop.getIndex(
+        const symmetry = typeof symmetryOrIdentity === 'object' ? symmetryOrIdentity : null;
+        const identitySymOpId = symmetry?.identitySymOpId
+            ?? (typeof symmetryOrIdentity === 'string' ? symmetryOrIdentity : '1');
+        const identityCode = `${identitySymOpId}_555`;
+        const hBondHeaders = new Set(hBondLoop.getHeaders().map(header => header.toLowerCase()));
+        const hydrogenSymmetryNames = [
+            '_geom_hbond.site_symmetry_h', '_geom_hbond_site_symmetry_H',
+        ];
+        const donorAtomSymmetry = normalizeSiteSymmetry(hBondLoop.getIndex(
+            ['_geom_hbond.site_symmetry_d', '_geom_hbond_site_symmetry_D'], hBondIndex,
+            '.',
+        ));
+        // In conventional H-bond tables the H site follows its covalently bonded donor;
+        // many files therefore omit the H-symmetry column even when D is transformed.
+        // Preserve an explicit '.' when the column exists, but inherit D when it does not.
+        const hasHydrogenSymmetryColumn = hydrogenSymmetryNames.some(
+            name => hBondHeaders.has(name.toLowerCase()),
+        );
+        let hydrogenAtomSymmetry = hasHydrogenSymmetryColumn
+            ? normalizeSiteSymmetry(hBondLoop.getIndex(
+                hydrogenSymmetryNames, hBondIndex, '.',
+            ))
+            : donorAtomSymmetry;
+        let acceptorAtomSymmetry = normalizeSiteSymmetry(hBondLoop.getIndex(
             ['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex,
             '.',
+        ));
+
+        hydrogenAtomSymmetry = relativeEndpointCode(
+            symmetry, donorAtomSymmetry, hydrogenAtomSymmetry, identityCode,
+        );
+        acceptorAtomSymmetry = relativeEndpointCode(
+            symmetry, donorAtomSymmetry, acceptorAtomSymmetry, identityCode,
         );
 
         const donorLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
             hBondIndex,
         );
-        const identityCode = `${identitySymOpId}_555`;
         const donorId = `${donorLabel}|${identityCode}`;
 
         const hydrogenLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_h', '_geom_hbond_atom_site_label_H'],
             hBondIndex,
         );
-        const hydrogenId = `${hydrogenLabel}|${identityCode}`;
+        const hydrogenId = `${hydrogenLabel}|${
+            hydrogenAtomSymmetry === '.' ? identityCode : hydrogenAtomSymmetry
+        }`;
 
         const acceptorLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_a', '_geom_hbond_atom_site_label_A'],
             hBondIndex,
         );
-        const acceptorSymmetry = normalizeSiteSymmetry(acceptorAtomSymmetry);
-        const acceptorId = `${acceptorLabel}|${acceptorSymmetry === '.' ? identityCode : acceptorSymmetry}`;
+        const acceptorId = `${acceptorLabel}|${
+            acceptorAtomSymmetry === '.' ? identityCode : acceptorAtomSymmetry
+        }`;
 
         return new HBond(
             donorId,
@@ -218,7 +286,7 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.distance_da_su', '_geom_hbond_distance_DA_su'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha', '_geom_hbond_angle_DHA'], hBondIndex, NaN),
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
-            acceptorSymmetry,
+            acceptorAtomSymmetry,
         );
     }
 }
@@ -294,43 +362,44 @@ export class BondsFactory {
      * Creates bonds from CIF data
      * @param {object} cifBlock - CIF data block to parse
      * @param {Set<string>} atomLabels - Set of valid atom labels
-     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
+     * @param {string|object} [symmetryOrIdentity] - CellSymmetry, or an identity operation ID
      * @returns {Array<Bond>} Array of created bonds
      */
-    static createBonds(cifBlock, atomLabels, identitySymOpId = '1') {
-        try {
-            const bondLoop = cifBlock.get('_geom_bond');
-            const nBonds = bondLoop.get(['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1']).length;
-            const bonds = [];
-
-            for (let i = 0; i < nBonds; i++) {
-                const atom1Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
-                    i,
-                );
-                const atom2Label = bondLoop.getIndex(
-                    ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
-                    i,
-                );
-
-                if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
-                    bonds.push(Bond.fromCIF(cifBlock, i, identitySymOpId));
-                }
-            }
-            return bonds;
-        } catch {
+    static createBonds(cifBlock, atomLabels, symmetryOrIdentity = '1') {
+        const bondLoop = cifBlock.get('_geom_bond', false);
+        if (!bondLoop) {
             return [];
         }
+        const nBonds = bondLoop.get(
+            ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
+        ).length;
+        const bonds = [];
+
+        for (let i = 0; i < nBonds; i++) {
+            const atom1Label = bondLoop.getIndex(
+                ['_geom_bond.atom_site_label_1', '_geom_bond_atom_site_label_1'],
+                i,
+            );
+            const atom2Label = bondLoop.getIndex(
+                ['_geom_bond.atom_site_label_2', '_geom_bond_atom_site_label_2'],
+                i,
+            );
+
+            if (BondsFactory.isValidBondPair(atom1Label, atom2Label, atomLabels)) {
+                bonds.push(Bond.fromCIF(cifBlock, i, symmetryOrIdentity));
+            }
+        }
+        return bonds;
     }
 
     /**
      * Creates hydrogen bonds from CIF data
      * @param {CifBlock} cifBlock - CIF data block to parse
      * @param {Set<string>} atomLabels - Set of valid atom labels
-     * @param {string} [identitySymOpId] - CIF symmetry-operation ID for the identity
+     * @param {string|object} [symmetryOrIdentity] - CellSymmetry, or an identity operation ID
      * @returns {HBond[]} Array of created hydrogen bonds
      */
-    static createHBonds(cifBlock, atomLabels, identitySymOpId = '1') {
+    static createHBonds(cifBlock, atomLabels, symmetryOrIdentity = '1') {
         const hbondLoop = cifBlock.get('_geom_hbond', false);
         if (!hbondLoop) {
             return [];
@@ -357,7 +426,7 @@ export class BondsFactory {
             );
 
             if (BondsFactory.isValidHBondTriplet(donorLabel, hydrogenLabel, acceptorLabel, atomLabels)) {
-                hBonds.push(HBond.fromCIF(cifBlock, i, identitySymOpId));
+                hBonds.push(HBond.fromCIF(cifBlock, i, symmetryOrIdentity));
             }
         }
 
@@ -440,6 +509,19 @@ export class BondsFactory {
                         `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
                     `non-existent atom(s): ${missingAtoms.join(', ')}`,
                 );
+            }
+
+            const hydrogenSymmetry = hbond.hydrogenAtomId.split('|')[1];
+            if (hydrogenSymmetry) {
+                try {
+                    symmetry.parsePositionCode(hydrogenSymmetry);
+                } catch {
+                    result.addSymmetryError(
+                        `Invalid symmetry in H-bond hydrogen: ${hbond.donorAtomLabel} - `
+                        + `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, `
+                        + `invalid symmetry operation: ${hydrogenSymmetry}`,
+                    );
+                }
             }
 
             if (hbond.acceptorAtomSymmetry && hbond.acceptorAtomSymmetry !== '.') {

@@ -40,6 +40,84 @@ C1 O1 1.5 0.002 ?
         expect(bond2.atom2SiteSymmetry).toBe('.');
 
     });
+
+    test('normalizes two recorded endpoint symmetries through CellSymmetry caches', () => {
+        const cifText = `
+data_test
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_1
+_geom_bond_site_symmetry_2
+C1 O1 1.5 2_555 .
+C2 O2 1.5 2_555 .
+C3 O3 1.5 2_555 2_555
+`;
+        const symmetry = new CellSymmetry(
+            'P -1', 2,
+            [new SymmetryOperation('x,y,z'), new SymmetryOperation('-x,-y,-z')],
+        );
+        const block = new CIF(cifText).getBlock(0);
+
+        const first = Bond.fromCIF(block, 0, symmetry);
+        const second = Bond.fromCIF(block, 1, symmetry);
+        const sameImage = Bond.fromCIF(block, 2, symmetry);
+
+        expect(first.atom1Id).toBe('C1|1_555');
+        expect(first.atom2Id).toBe('O1|2_555');
+        expect(first.atom2SiteSymmetry).toBe('2_555');
+        expect(second.atom2SiteSymmetry).toBe('2_555');
+        expect(sameImage.atom2Id).toBe('O3|1_555');
+        expect(sameImage.atom2SiteSymmetry).toBe('.');
+        expect(symmetry._invertPositionCodeCache.size).toBe(1);
+        expect(symmetry._combineOperationCache.size).toBe(2);
+        expect(symmetry._combineSymmetryCodesCache.size).toBe(2);
+    });
+
+    test('normalizes endpoint lattice translations relative to site 1', () => {
+        const cifText = `
+data_test
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_1
+_geom_bond_site_symmetry_2
+C1 O1 1.5 1_655 1_555
+`;
+        const symmetry = new CellSymmetry('P 1', 1, [new SymmetryOperation('x,y,z')]);
+
+        const bond = Bond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+
+        expect(bond.atom1Id).toBe('C1|1_555');
+        expect(bond.atom2Id).toBe('O1|1_455');
+        expect(bond.atom2SiteSymmetry).toBe('1_455');
+    });
+
+    test('uses the file identity ID when operation 1 is not identity', () => {
+        const cifText = `
+data_test
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_1
+_geom_bond_site_symmetry_2
+C1 O1 1.5 7_555 .
+`;
+        const symmetry = new CellSymmetry(
+            'P -1', 2,
+            [new SymmetryOperation('-x,-y,-z'), new SymmetryOperation('x,y,z')],
+            new Map([['7', 0], ['9', 1]]),
+        );
+
+        const bond = Bond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+
+        expect(bond.atom1Id).toBe('C1|9_555');
+        expect(bond.atom2Id).toBe('O1|7_555');
+        expect(bond.atom2SiteSymmetry).toBe('7_555');
+    });
 });
 
 describe('HBond', () => {
@@ -87,6 +165,122 @@ O1 H2 O2 1.0 2.0 2.8 175 2
         expect(hBond3.acceptorAtomSymmetry).toBe('2_555');
         expect(hBond3.acceptorAtomId).toBe('O2|2_555');
 
+    });
+
+    test('normalizes donor, hydrogen, and acceptor symmetries through shared caches', () => {
+        const cifText = `
+data_test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+_geom_hbond_site_symmetry_D
+_geom_hbond_site_symmetry_H
+_geom_hbond_site_symmetry_A
+O1 H1 O2 1.0 2.0 2.8 175 2_555 2_555 .
+O3 H3 O4 1.0 2.0 2.8 175 2_555 2_555 .
+`;
+        const symmetry = new CellSymmetry(
+            'P -1', 2,
+            [new SymmetryOperation('x,y,z'), new SymmetryOperation('-x,-y,-z')],
+        );
+        const block = new CIF(cifText).getBlock(0);
+
+        const first = HBond.fromCIF(block, 0, symmetry);
+        const second = HBond.fromCIF(block, 1, symmetry);
+
+        expect(first.donorAtomId).toBe('O1|1_555');
+        expect(first.hydrogenAtomId).toBe('H1|1_555');
+        expect(first.acceptorAtomId).toBe('O2|2_555');
+        expect(first.acceptorAtomSymmetry).toBe('2_555');
+        expect(second.hydrogenAtomId).toBe('H3|1_555');
+        expect(second.acceptorAtomId).toBe('O4|2_555');
+        expect(symmetry._invertPositionCodeCache.size).toBe(1);
+        expect(symmetry._combineOperationCache.size).toBe(2);
+        expect(symmetry._combineSymmetryCodesCache.size).toBe(2);
+    });
+
+    test('normalizes H-bond endpoint translations relative to the donor', () => {
+        const cifText = `
+data_test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+_geom_hbond_site_symmetry_D
+_geom_hbond_site_symmetry_H
+_geom_hbond_site_symmetry_A
+O1 H1 O2 1.0 2.0 2.8 175 1_655 1_655 1_555
+`;
+        const symmetry = new CellSymmetry('P 1', 1, [new SymmetryOperation('x,y,z')]);
+
+        const hBond = HBond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+
+        expect(hBond.donorAtomId).toBe('O1|1_555');
+        expect(hBond.hydrogenAtomId).toBe('H1|1_555');
+        expect(hBond.acceptorAtomId).toBe('O2|1_455');
+        expect(hBond.acceptorAtomSymmetry).toBe('1_455');
+    });
+
+    test('an absent hydrogen-symmetry column inherits donor symmetry', () => {
+        const cifText = `
+data_test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_site_symmetry_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_site_symmetry_A
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+O1 2_555 H1 O2 2_555 1.0 2.0 2.8 175
+`;
+        const symmetry = new CellSymmetry(
+            'P -1', 2,
+            [new SymmetryOperation('x,y,z'), new SymmetryOperation('-x,-y,-z')],
+        );
+
+        const hBond = HBond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+
+        expect(hBond.donorAtomId).toBe('O1|1_555');
+        expect(hBond.hydrogenAtomId).toBe('H1|1_555');
+        expect(hBond.acceptorAtomId).toBe('O2|1_555');
+        expect(hBond.acceptorAtomSymmetry).toBe('.');
+    });
+
+    test('an explicit identity hydrogen symmetry remains distinct from an absent column', () => {
+        const cifText = `
+data_test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_site_symmetry_D
+_geom_hbond_site_symmetry_H
+_geom_hbond_site_symmetry_A
+_geom_hbond_distance_DH
+_geom_hbond_distance_HA
+_geom_hbond_distance_DA
+_geom_hbond_angle_DHA
+O1 H1 O2 1_655 . 1_655 1.0 2.0 2.8 175
+`;
+        const symmetry = new CellSymmetry('P 1', 1, [new SymmetryOperation('x,y,z')]);
+
+        const hBond = HBond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+
+        expect(hBond.donorAtomId).toBe('O1|1_555');
+        expect(hBond.hydrogenAtomId).toBe('H1|1_455');
+        expect(hBond.acceptorAtomId).toBe('O2|1_555');
     });
 });
 
