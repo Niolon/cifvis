@@ -139,7 +139,11 @@ function startServer() {
         const server = createServer((request, response) => {
             const url = new URL(request.url, 'http://localhost');
             if (url.pathname === '/') {
-                const bundleLabel = url.searchParams.get('bundle') ?? Object.keys(bundleEntries)[0];
+                const defaultBundleLabel = Object.keys(bundleEntries)[0];
+                const requestedBundleLabel = url.searchParams.get('bundle');
+                const bundleLabel = requestedBundleLabel && Object.hasOwn(bundleEntries, requestedBundleLabel)
+                    ? requestedBundleLabel
+                    : defaultBundleLabel;
                 const bundlePath = `/bundle/${bundleLabel}.js`;
                 response.writeHead(200, { 'Content-Type': 'text/html' });
                 response.end(html.replace('__BUNDLE_PATH__', bundlePath));
