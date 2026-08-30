@@ -46,7 +46,7 @@ let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" vie
 <rect width="1280" height="900" fill="${colors.background}"/>
 <style>text{font-family:Inter,system-ui,sans-serif;fill:${colors.ink}}.title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:${colors.muted}}.label{font-size:16px;font-weight:650}.small{font-size:13px;fill:${colors.muted}}.inside{font-size:13px;font-weight:650;fill:white}.lane{font-size:12px;font-weight:650;fill:${colors.muted}}</style>
 <text class="title" x="54" y="48">Browser-only density synchronization</text>
-<text class="sub" x="54" y="76">Fresh Chromium contexts with Uiso-vector Fcalc; every position comes from the page or density worker. Each structure has its own time scale.</text>`;
+<text class="sub" x="54" y="76">Fresh Chromium contexts with prewarmed workers and Uiso-vector Fcalc; every position comes from the page or density worker. Each structure has its own time scale.</text>`;
 
 [
     ['Startup', colors.startup, 255], ['HKL', colors.hkl, 355],
@@ -132,9 +132,16 @@ results.forEach((row, index) => {
     const modelX = 255 + modelPosted * factor;
     const readyX = 255 + prepReady * factor;
     const mapX = 255 + mapReceived * factor;
-    svg += `<line x1="${modelX}" y1="${mainY + 32}" x2="${modelX}" y2="${workerY}" stroke="${colors.ink}" stroke-width="2"/><text class="small" x="${modelX + 6}" y="${mainY + 52}">model posted</text>`;
-    svg += `<line x1="${readyX}" y1="${workerY - 7}" x2="${readyX}" y2="${workerY + 39}" stroke="${colors.join}" stroke-width="2"/><text class="small" x="${readyX + 6}" y="${workerY - 10}">${workerIdle > 0 ? `worker idle ${workerIdle.toFixed(1)} ms` : `model waited ${modelWait.toFixed(1)} ms`} · join ${joinDelay.toFixed(1)} ms</text>`;
-    svg += `<line x1="${mapX}" y1="${workerY}" x2="${mapX}" y2="${mainY + 32}" stroke="${colors.surface}" stroke-width="2" stroke-dasharray="4 3"/><text class="small" x="${mapX - 6}" y="${mainY + 52}" text-anchor="end">map returned</text>`;
+    const synchronizationLabel = workerIdle > 0
+        ? `model posted · worker idle ${workerIdle.toFixed(1)} ms · join ${joinDelay.toFixed(1)} ms`
+        : `model posted · model waited ${modelWait.toFixed(1)} ms · join ${joinDelay.toFixed(1)} ms`;
+    svg += `<line x1="${modelX}" y1="${mainY + 32}" x2="${modelX}" y2="${workerY}" stroke="${colors.ink}" stroke-width="2"/>`;
+    svg += `<line x1="${readyX}" y1="${workerY - 7}" x2="${readyX}" y2="${workerY + 39}" stroke="${colors.join}" stroke-width="2"/>`;
+    svg += `<text class="small" x="${Math.min(modelX, readyX) + 6}" y="${mainY + 52}">${synchronizationLabel}</text>`;
+    svg += `<line x1="${mapX}" y1="${workerY}" x2="${mapX}" y2="${mainY + 32}" stroke="${colors.surface}" stroke-width="2" stroke-dasharray="4 3"/>`;
+    if (mapX - Math.min(modelX, readyX) > 350) {
+        svg += `<text class="small" x="${mapX - 6}" y="${mainY + 52}" text-anchor="end">map returned</text>`;
+    }
     svg += `<text class="label" x="1210" y="${top + 174}" text-anchor="end">${end.toFixed(1)} ms to applied surface</text>`;
 });
 

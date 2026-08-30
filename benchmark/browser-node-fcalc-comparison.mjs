@@ -22,6 +22,7 @@ const cifPaths = process.argv.slice(3);
 const TWO_PI = 2 * Math.PI;
 const REPETITIONS = 3;
 const DWF_MODE = process.env.DWF_MODE ?? 'direct';
+const PREWARM_WORKER = process.env.PREWARM_WORKER === 'true';
 
 function median(values) {
     const sorted = [...values].sort((first, second) => first - second);
@@ -108,15 +109,24 @@ function prepareCase(path) {
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
 import * as CifVis from '/bundle.js';
-window.runCase = async (cifText, dwfMode) => {
+window.runCase = async (cifText, dwfMode, prewarmWorker) => {
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
     scalarField: {useWorker: true},
+    differenceDensity: prewarmWorker
+      ? {autoLoad: true, iam: {dwfMode}}
+      : {autoLoad: false},
     isosurface: {progressiveSteps: [1], visible: false},
   });
+  if (prewarmWorker) {
+    const deadline = performance.now() + 5000;
+    while (viewer.scalarFieldWorkerReadyEpochMs === null && performance.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+  }
   const started = performance.now();
-  const structure = await viewer.loadCIF(cifText, 0, {
+  const structure = await viewer.loadCIF(cifText, 0, prewarmWorker ? {} : {
     differenceDensity: {progressiveSteps: [1], visible: false, iam: {dwfMode}},
   });
   const density = structure.differenceDensity ? await structure.differenceDensity : structure;
@@ -169,8 +179,13 @@ try {
             const page = await context.newPage();
             await page.goto(`http://127.0.0.1:${port}/`);
             browserRuns.push(await page.evaluate(
-                ({ text, dwfMode }) => window.runCase(text, dwfMode),
-                { text: prepared.combinedText, dwfMode: DWF_MODE },
+                ({ text, dwfMode, prewarmWorker }) =>
+                    window.runCase(text, dwfMode, prewarmWorker),
+                {
+                    text: prepared.combinedText,
+                    dwfMode: DWF_MODE,
+                    prewarmWorker: PREWARM_WORKER,
+                },
             ));
             await context.close();
         }
@@ -275,5 +290,9 @@ try {
     await browser.close();
     await new Promise(resolvePromise => server.close(resolvePromise));
 }
-writeFileSync(output, `${JSON.stringify({ generatedAt: new Date().toISOString(), results }, null, 2)}\n`);
+writeFileSync(output, `${JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    prewarmWorker: PREWARM_WORKER,
+    results,
+}, null, 2)}\n`);
 console.log(JSON.stringify({ output, results }, null, 2));
