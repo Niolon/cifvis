@@ -52,7 +52,8 @@
     "bench:browser-density-consistency": "node benchmark/browser-node-fcalc-comparison.mjs",
     "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs",
     "bench:browser-density-structure-impact": "node benchmark/browser-density-structure-impact.mjs",
-    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs"
+    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs",
+    "bench:bundle-startup": "node benchmark/bundle-startup.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",
