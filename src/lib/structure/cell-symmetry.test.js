@@ -697,7 +697,8 @@ _space_group_name_Hall '-P 2ac'
         });
 
         test('accepts a full monoclinic Hermann-Mauguin name', () => {
-            const cifText = "data_test\n_space_group_name_H-M_full 'P 1 21/c 1'";
+            const cifText = `data_test
+_space_group_name_H-M_full 'P 1 21/c 1'`;
             const sym = CellSymmetry.fromCIF(new CIF(cifText).getBlock(0));
 
             expect(sym.spaceGroupNumber).toBe(14);
