@@ -163,7 +163,7 @@ function identityCode(structure) {
 }
 
 function normalizedCode(value, structure) {
-    const normalized = normalizeSiteSymmetry(value);
+    const normalized = normalizeSiteSymmetry(value, structure.symmetry.operationIds);
     return normalized === '.' ? identityCode(structure) : normalized;
 }
 

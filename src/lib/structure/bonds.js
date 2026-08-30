@@ -100,18 +100,26 @@ export class Bond {
 
         const normalizedSymmetry1 = normalizeSiteSymmetry(
             siteSymmetry1 === false ? '.' : siteSymmetry1,
+            symmetry?.operationIds,
         );
-        siteSymmetry2 = normalizeSiteSymmetry(siteSymmetry2);
+        siteSymmetry2 = normalizeSiteSymmetry(siteSymmetry2, symmetry?.operationIds);
 
         // CIF bond rows may place both endpoints outside the asymmetric unit. Internally
         // atom 1 is always the identity image, so express endpoint 2 relative to it:
         // S1(A)--S2(B) becomes A--(S1^-1 o S2)(B). CellSymmetry owns the inverse and
         // composition caches; routing through it also handles centring translations and
         // files whose identity operation is not numbered 1.
+        let symmetryNormalizationError = null;
         if (symmetry && normalizedSymmetry1 !== '.') {
-            siteSymmetry2 = relativeEndpointCode(
-                symmetry, normalizedSymmetry1, siteSymmetry2, `${identitySymOpId}_555`,
-            );
+            try {
+                siteSymmetry2 = relativeEndpointCode(
+                    symmetry, normalizedSymmetry1, siteSymmetry2, `${identitySymOpId}_555`,
+                );
+            } catch (error) {
+                // Keep the row intact so validation and campaign post-processing can
+                // report the offending endpoint instead of losing the whole structure.
+                symmetryNormalizationError = error;
+            }
         } else if (normalizedSymmetry1 !== '.' && normalizedSymmetry1 === siteSymmetry2) {
             // Legacy no-CellSymmetry call path: retain the previously-supported equal-code case.
             siteSymmetry2 = '.';
@@ -135,13 +143,16 @@ export class Bond {
         // If symmetry is identity ('.'), use 1_555, otherwise use the symmetry code
         const atom2Id = `${atom2Label}|${atom2Symmetry === '.' ? identityCode : atom2Symmetry}`;
 
-        return new Bond(
+        const bond = new Bond(
             atom1Id,
             atom2Id,
             bondLoop.getIndex(['_geom_bond.distance', '_geom_bond_distance'], bondIndex),
             bondLoop.getIndex(['_geom_bond.distance_su', '_geom_bond_distance_su'], bondIndex, NaN),
             atom2Symmetry,
         );
+        bond.atom1SiteSymmetry = normalizedSymmetry1;
+        bond.symmetryNormalizationError = symmetryNormalizationError;
+        return bond;
     }
 }
 
@@ -228,7 +239,7 @@ export class HBond {
         const donorAtomSymmetry = normalizeSiteSymmetry(hBondLoop.getIndex(
             ['_geom_hbond.site_symmetry_d', '_geom_hbond_site_symmetry_D'], hBondIndex,
             '.',
-        ));
+        ), symmetry?.operationIds);
         // In conventional H-bond tables the H site follows its covalently bonded donor;
         // many files therefore omit the H-symmetry column even when D is transformed.
         // Preserve an explicit '.' when the column exists, but inherit D when it does not.
@@ -238,19 +249,28 @@ export class HBond {
         let hydrogenAtomSymmetry = hasHydrogenSymmetryColumn
             ? normalizeSiteSymmetry(hBondLoop.getIndex(
                 hydrogenSymmetryNames, hBondIndex, '.',
-            ))
+            ), symmetry?.operationIds)
             : donorAtomSymmetry;
         let acceptorAtomSymmetry = normalizeSiteSymmetry(hBondLoop.getIndex(
             ['_geom_hbond.site_symmetry_a', '_geom_hbond_site_symmetry_A'], hBondIndex,
             '.',
-        ));
+        ), symmetry?.operationIds);
 
-        hydrogenAtomSymmetry = relativeEndpointCode(
-            symmetry, donorAtomSymmetry, hydrogenAtomSymmetry, identityCode,
-        );
-        acceptorAtomSymmetry = relativeEndpointCode(
-            symmetry, donorAtomSymmetry, acceptorAtomSymmetry, identityCode,
-        );
+        const symmetryNormalizationErrors = [];
+        try {
+            hydrogenAtomSymmetry = relativeEndpointCode(
+                symmetry, donorAtomSymmetry, hydrogenAtomSymmetry, identityCode,
+            );
+        } catch (error) {
+            symmetryNormalizationErrors.push({ endpoint: 'hydrogen', error });
+        }
+        try {
+            acceptorAtomSymmetry = relativeEndpointCode(
+                symmetry, donorAtomSymmetry, acceptorAtomSymmetry, identityCode,
+            );
+        } catch (error) {
+            symmetryNormalizationErrors.push({ endpoint: 'acceptor', error });
+        }
 
         const donorLabel = hBondLoop.getIndex(
             ['_geom_hbond.atom_site_label_d', '_geom_hbond_atom_site_label_D'],
@@ -274,7 +294,7 @@ export class HBond {
             acceptorAtomSymmetry === '.' ? identityCode : acceptorAtomSymmetry
         }`;
 
-        return new HBond(
+        const hBond = new HBond(
             donorId,
             hydrogenId,
             acceptorId,
@@ -288,6 +308,9 @@ export class HBond {
             hBondLoop.getIndex(['_geom_hbond.angle_dha_su', '_geom_hbond_angle_DHA_su'], hBondIndex, NaN),
             acceptorAtomSymmetry,
         );
+        hBond.donorAtomSymmetry = donorAtomSymmetry;
+        hBond.symmetryNormalizationErrors = symmetryNormalizationErrors;
+        return hBond;
     }
 }
 
@@ -463,15 +486,35 @@ export class BondsFactory {
                 );
             }
 
+            let endpointSymmetryInvalid = false;
+            if (bond.atom1SiteSymmetry && bond.atom1SiteSymmetry !== '.') {
+                try {
+                    symmetry.parsePositionCode(bond.atom1SiteSymmetry);
+                } catch {
+                    endpointSymmetryInvalid = true;
+                    result.addSymmetryError(
+                        `Invalid symmetry at bond site 1: ${bond.atom1Label} - ${bond.atom2Label}, ` +
+                        `invalid symmetry operation: ${bond.atom1SiteSymmetry}`,
+                    );
+                }
+            }
+
             if (bond.atom2SiteSymmetry && bond.atom2SiteSymmetry !== '.') {
                 try {
                     symmetry.parsePositionCode(bond.atom2SiteSymmetry);
                 } catch {
+                    endpointSymmetryInvalid = true;
                     result.addSymmetryError(
                         `Invalid symmetry in bond: ${bond.atom1Label} - ${bond.atom2Label}, ` +
                         `invalid symmetry operation: ${bond.atom2SiteSymmetry}`,
                     );
                 }
+            }
+            if (bond.symmetryNormalizationError && !endpointSymmetryInvalid) {
+                result.addSymmetryError(
+                    `Could not normalize bond endpoint symmetries: ${bond.atom1Label} - ` +
+                    `${bond.atom2Label}: ${bond.symmetryNormalizationError.message}`,
+                );
             }
         }
         return result;
@@ -511,11 +554,26 @@ export class BondsFactory {
                 );
             }
 
+            let endpointSymmetryInvalid = false;
+            if (hbond.donorAtomSymmetry && hbond.donorAtomSymmetry !== '.') {
+                try {
+                    symmetry.parsePositionCode(hbond.donorAtomSymmetry);
+                } catch {
+                    endpointSymmetryInvalid = true;
+                    result.addSymmetryError(
+                        `Invalid symmetry at H-bond donor: ${hbond.donorAtomLabel} - `
+                        + `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, `
+                        + `invalid symmetry operation: ${hbond.donorAtomSymmetry}`,
+                    );
+                }
+            }
+
             const hydrogenSymmetry = hbond.hydrogenAtomId.split('|')[1];
             if (hydrogenSymmetry) {
                 try {
                     symmetry.parsePositionCode(hydrogenSymmetry);
                 } catch {
+                    endpointSymmetryInvalid = true;
                     result.addSymmetryError(
                         `Invalid symmetry in H-bond hydrogen: ${hbond.donorAtomLabel} - `
                         + `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, `
@@ -528,10 +586,20 @@ export class BondsFactory {
                 try {
                     symmetry.parsePositionCode(hbond.acceptorAtomSymmetry);
                 } catch {
+                    endpointSymmetryInvalid = true;
                     result.addSymmetryError(
                         `Invalid symmetry in H-bond: ${hbond.donorAtomLabel} - ` +
                         `${hbond.hydrogenAtomLabel} - ${hbond.acceptorAtomLabel}, ` +
                         `invalid symmetry operation: ${hbond.acceptorAtomSymmetry}`,
+                    );
+                }
+            }
+            if (hbond.symmetryNormalizationErrors?.length && !endpointSymmetryInvalid) {
+                for (const { endpoint, error } of hbond.symmetryNormalizationErrors) {
+                    result.addSymmetryError(
+                        `Could not normalize H-bond ${endpoint} symmetry: `
+                        + `${hbond.donorAtomLabel} - ${hbond.hydrogenAtomLabel} - `
+                        + `${hbond.acceptorAtomLabel}: ${error.message}`,
                     );
                 }
             }

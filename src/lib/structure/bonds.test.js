@@ -118,6 +118,30 @@ C1 O1 1.5 7_555 .
         expect(bond.atom2Id).toBe('O1|7_555');
         expect(bond.atom2SiteSymmetry).toBe('7_555');
     });
+
+    test('retains an invalid site-1 symmetry for row-level validation', () => {
+        const cifText = `
+data_test
+loop_
+_geom_bond_atom_site_label_1
+_geom_bond_atom_site_label_2
+_geom_bond_distance
+_geom_bond_site_symmetry_1
+_geom_bond_site_symmetry_2
+C1 O1 1.5 9_555 .
+`;
+        const symmetry = new CellSymmetry('P 1', 1, [new SymmetryOperation('x,y,z')]);
+
+        const bond = Bond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+        const result = BondsFactory.validateBonds(bond ? [bond] : [], [
+            new Atom('C1', 'C', new FractPosition(0, 0, 0)),
+            new Atom('O1', 'O', new FractPosition(0, 0, 0)),
+        ], symmetry);
+
+        expect(result.symmetryErrors).toContainEqual(expect.stringContaining(
+            'Invalid symmetry at bond site 1',
+        ));
+    });
 });
 
 describe('HBond', () => {
@@ -281,6 +305,32 @@ O1 H1 O2 1_655 . 1_655 1.0 2.0 2.8 175
         expect(hBond.donorAtomId).toBe('O1|1_555');
         expect(hBond.hydrogenAtomId).toBe('H1|1_455');
         expect(hBond.acceptorAtomId).toBe('O2|1_555');
+    });
+
+    test('retains an invalid donor symmetry for row-level validation', () => {
+        const cifText = `
+data_test
+loop_
+_geom_hbond_atom_site_label_D
+_geom_hbond_atom_site_label_H
+_geom_hbond_atom_site_label_A
+_geom_hbond_site_symmetry_D
+_geom_hbond_site_symmetry_H
+_geom_hbond_site_symmetry_A
+O1 H1 O2 9_555 . .
+`;
+        const symmetry = new CellSymmetry('P 1', 1, [new SymmetryOperation('x,y,z')]);
+
+        const hBond = HBond.fromCIF(new CIF(cifText).getBlock(0), 0, symmetry);
+        const result = BondsFactory.validateHBonds([hBond], [
+            new Atom('O1', 'O', new FractPosition(0, 0, 0)),
+            new Atom('H1', 'H', new FractPosition(0, 0, 0)),
+            new Atom('O2', 'O', new FractPosition(0, 0, 0)),
+        ], symmetry);
+
+        expect(result.symmetryErrors).toContainEqual(expect.stringContaining(
+            'Invalid symmetry at H-bond donor',
+        ));
     });
 });
 
