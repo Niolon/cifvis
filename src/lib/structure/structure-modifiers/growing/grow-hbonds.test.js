@@ -109,6 +109,24 @@ describe('growExternalHBonds', () => {
         }));
     });
 
+    test('resolves a symmetry-transformed hydrogen endpoint through the shared symmetry engine', () => {
+        const structure = MockStructure.createDefault({ hasHydrogens: true })
+            .addHBond('O1', 'H1', 'N1', '1_655')
+            .build();
+        const external = structure.hBonds.at(-1);
+        external.hydrogenAtomId = 'H1|2_666';
+
+        const grown = growExternalHBonds(structure);
+
+        expect(grown.atoms.some(atom => atom.uniqueId === 'H1|2_666')).toBe(true);
+        expect(grown.hBonds).toContainEqual(expect.objectContaining({
+            donorAtomId: 'O1|1_555',
+            hydrogenAtomId: 'H1|2_666',
+            acceptorAtomId: 'N1|1_655',
+        }));
+        expect(structure.symmetry._combineSymmetryCodesCache.size).toBeGreaterThan(0);
+    });
+
     test('does not duplicate a reciprocal interaction for explicit identity symmetry', () => {
         const structure = MockStructure.createDefault({ hasHydrogens: true })
             .addHBond('O1', 'H1', 'N1', '1_555')
