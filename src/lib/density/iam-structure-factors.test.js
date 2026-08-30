@@ -194,8 +194,18 @@ describe('IAM structure factors', () => {
                 [-1, 0, 1].flatMap(k => [-1, 0, 1].map(l => [h, k, l]))),
         ];
         const scalar = calculator.calculate(reflections);
-        const direct = calculator.calculatePrepared(reflections, { phaseMode: 'direct' });
-        const tables = calculator.calculatePrepared(reflections, { phaseMode: 'tables' });
+        const direct = calculator.calculatePrepared(reflections, {
+            phaseMode: 'direct',
+            dwfMode: 'direct',
+        });
+        const tables = calculator.calculatePrepared(reflections, {
+            phaseMode: 'tables',
+            dwfMode: 'direct',
+        });
+        const uisoVectors = calculator.calculatePrepared(reflections, {
+            phaseMode: 'tables',
+            dwfMode: 'uiso-vectors',
+        });
 
         for (let index = 0; index < reflections.length; index++) {
             expect(direct.real[index]).toBeCloseTo(scalar[index].real, 11);
@@ -203,6 +213,9 @@ describe('IAM structure factors', () => {
             expect(tables.real[index]).toBeCloseTo(scalar[index].real, 11);
             expect(tables.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
             expect(tables.fSquared[index]).toBeCloseTo(scalar[index].amplitude ** 2, 10);
+            expect(uisoVectors.real[index]).toBe(tables.real[index]);
+            expect(uisoVectors.imaginary[index]).toBe(tables.imaginary[index]);
+            expect(uisoVectors.fSquared[index]).toBe(tables.fSquared[index]);
         }
         expect([...tables.h.slice(0, 4)]).toEqual([0, 1, -4, 2]);
         expect(tables.diagnostics).toMatchObject({
@@ -213,10 +226,34 @@ describe('IAM structure factors', () => {
             scatteringModelCount: 1,
             displacementModelCount: 1,
             dwfExpEvaluationCount: 62,
+            noAdpExpandedAtomCount: 0,
+            uisoExpandedAtomCount: 2,
+            uaniExpandedAtomCount: 0,
+            uniqueUisoCount: 1,
+            uniqueReciprocalUaniTensorCount: 0,
             cromerMannExpEvaluationCount: 124,
+        });
+        expect(uisoVectors.diagnostics).toMatchObject({
+            dwfMode: 'uiso-vectors',
+            dwfExpEvaluationCount: 31,
+            uisoDwfExpEvaluationCount: 31,
+            uaniDwfExpEvaluationCount: 0,
         });
         expect(tables.diagnostics.phaseTrigEvaluationCount)
             .toBeLessThan(direct.diagnostics.phaseTrigEvaluationCount);
+    });
+
+    test('bypasses Uiso vector allocation when there is no model reuse', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif({ uiso: 0.04 }));
+        const result = calculator.calculatePrepared([[1, 0, 0], [2, 0, 0]]);
+
+        expect(result.diagnostics).toMatchObject({
+            dwfMode: 'uiso-vectors',
+            dwfVectorReuseEnabled: false,
+            uisoExpandedAtomCount: 1,
+            uniqueUisoCount: 1,
+            uisoDwfExpEvaluationCount: 2,
+        });
     });
 
     test('prepared calculation rejects non-integral reflection indices', () => {

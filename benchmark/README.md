@@ -7,6 +7,8 @@ regressions in the library:
 - `labels.mjs`: atom-label layout and draw-call behaviour;
 - `iam.mjs`: scalar, prepared-direct, and separable-phase IAM structure-factor calculation;
 - `iam-cod.mjs`: the same three IAM kernels over a stratified real-reflection COD sample;
+- `fcalc-dwf-cod.mjs`: direct Debye–Waller evaluation versus exact shared Uiso
+  reflection vectors over a frozen, stratified real-reflection COD cohort;
 - `contour-lines.mjs`: contour sampling and extraction;
 - `difference-density-symmetry.mjs`: direct versus symmetry-aware density surfaces;
 - `surface-extractor.mjs`: Three.js versus CifVis typed-array polygonization across

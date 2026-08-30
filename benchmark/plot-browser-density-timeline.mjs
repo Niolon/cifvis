@@ -12,7 +12,8 @@ const percentiles = ['p25', 'p50', 'p95', 'p99'];
 const colors = {
     background: '#f7f8fb', ink: '#172033', muted: '#5e687a', wait: '#edf0f5',
     startup: '#9ca7b7', cif: '#8d75c7', model: '#ba68a8', display: '#d5a23f',
-    hkl: '#7a8799', join: '#e7bf61', dataset: '#3f72af', fft: '#48a9a6',
+    hkl: '#7a8799', join: '#e7bf61', dataset: '#6b8fbd', iam: '#5a8bc2',
+    fcalc: '#3f72af', fft: '#48a9a6',
     surface: '#f28e63', transfer: '#f3c4ad',
 };
 
@@ -63,6 +64,11 @@ results.forEach((row, index) => {
     const mapPosted = t.workerMapPostedMs;
     const mapReceived = t.mapReceivedMs;
     const datasetEnd = Math.min(mapPosted, calculationStarted + row.browserDatasetPreparationMs);
+    const iamModelMs = row.browserIamModelBuildMs ?? 0;
+    const fcalcMs = row.browserFcalcMs ?? 0;
+    const datasetOtherMs = Math.max(0, row.browserDatasetPreparationMs - iamModelMs - fcalcMs);
+    const datasetOtherEnd = Math.min(datasetEnd, calculationStarted + datasetOtherMs);
+    const iamEnd = Math.min(datasetEnd, datasetOtherEnd + iamModelMs);
     const workerIdle = Math.max(0, modelPosted - prepReady);
     const modelWait = Math.max(0, prepReady - modelPosted);
     const joinDelay = Math.max(0, calculationStarted - Math.max(modelPosted, prepReady));
@@ -85,7 +91,9 @@ results.forEach((row, index) => {
         svg += segment(prepReady, modelPosted, workerY, factor, colors.wait, 'Idle for model');
     }
     svg += segment(Math.max(modelPosted, prepReady), calculationStarted, workerY, factor, colors.join, 'Join delay');
-    svg += segment(calculationStarted, datasetEnd, workerY, factor, colors.dataset, 'Dataset + IAM/Fcalc');
+    svg += segment(calculationStarted, datasetOtherEnd, workerY, factor, colors.dataset, 'Dataset other*');
+    svg += segment(datasetOtherEnd, iamEnd, workerY, factor, colors.iam, 'IAM model');
+    svg += segment(iamEnd, datasetEnd, workerY, factor, colors.fcalc, 'Fcalc');
     svg += segment(datasetEnd, mapPosted, workerY, factor, colors.fft, 'FFT/map');
     svg += segment(mapPosted, mapReceived, workerY, factor, colors.transfer, 'Transfer');
 
@@ -98,7 +106,8 @@ results.forEach((row, index) => {
     svg += `<text class="label" x="1210" y="${top + 174}" text-anchor="end">${end.toFixed(1)} ms to applied surface</text>`;
 });
 
-svg += '<text class="small" x="54" y="888">Worker idle is time after HKL preparation while waiting for the model. Model wait is the opposite: the model was posted first. Join is dispatch latency after both inputs were ready.</text></svg>';
+svg += '<text class="small" x="54" y="874">Worker idle is time after HKL preparation while waiting for the model. Model wait is the opposite; join is dispatch latency after both inputs were ready.</text>';
+svg += '<text class="small" x="54" y="892">* Dataset other combines setup and final assembly surrounding the separately timed IAM-model and Fcalc kernels.</text></svg>';
 writeFileSync(output, svg);
 writeFileSync(dataOutput, `${JSON.stringify({
     generatedAt: source.generatedAt,

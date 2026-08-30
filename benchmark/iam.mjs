@@ -54,8 +54,8 @@ if (loop) {
 // Warm the JIT independently without warming the measured calculator itself.
 const warmupCalculator = createIAMStructureFactorCalculator(cifText);
 warmupCalculator.calculate(reflections);
-warmupCalculator.calculatePrepared(reflections, { phaseMode: 'direct' });
-warmupCalculator.calculatePrepared(reflections, { phaseMode: 'tables' });
+warmupCalculator.calculatePrepared(reflections, { phaseMode: 'direct', dwfMode: 'direct' });
+warmupCalculator.calculatePrepared(reflections, { phaseMode: 'tables', dwfMode: 'direct' });
 
 const buildStart = performance.now();
 const calculator = createIAMStructureFactorCalculator(cifText);
@@ -82,9 +82,9 @@ function measure(calculation) {
 }
 const scalar = measure(() => calculator.calculate(reflections));
 const preparedDirect = measure(() =>
-    calculator.calculatePrepared(reflections, { phaseMode: 'direct' }));
+    calculator.calculatePrepared(reflections, { phaseMode: 'direct', dwfMode: 'direct' }));
 const preparedTables = measure(() =>
-    calculator.calculatePrepared(reflections, { phaseMode: 'tables' }));
+    calculator.calculatePrepared(reflections, { phaseMode: 'tables', dwfMode: 'direct' }));
 
 let comparison = {};
 if (cifFSquared) {

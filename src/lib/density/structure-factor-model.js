@@ -428,9 +428,29 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         .filter(modelAtom => isNpdAdp(modelAtom.atom.adp, cell))
         .map(modelAtom => modelAtom.atom.label);
     const displacementModels = new Set();
+    const isotropicDisplacementModels = new Map();
+    const reciprocalAnisotropicModels = new Set();
+    let noAdpExpandedAtomCount = 0;
+    let uisoExpandedAtomCount = 0;
+    let uaniExpandedAtomCount = 0;
     for (const scatteringModel of scatteringModels) {
         for (const atom of scatteringModel.atoms) {
             displacementModels.add(JSON.stringify(atom.displacement));
+            if (!atom.displacement) {
+                noAdpExpandedAtomCount++;
+            } else if (atom.displacement.isotropic !== undefined) {
+                uisoExpandedAtomCount++;
+                let displacementModel = isotropicDisplacementModels.get(atom.displacement.isotropic);
+                if (displacementModel === undefined) {
+                    displacementModel = { index: isotropicDisplacementModels.size, atomCount: 0 };
+                    isotropicDisplacementModels.set(atom.displacement.isotropic, displacementModel);
+                }
+                displacementModel.atomCount++;
+                atom.displacement.isotropicModelIndex = displacementModel.index;
+            } else {
+                uaniExpandedAtomCount++;
+                reciprocalAnisotropicModels.add(JSON.stringify(atom.displacement.reciprocalQuadratic));
+            }
         }
     }
 
@@ -466,6 +486,10 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         if (!['direct', 'tables'].includes(phaseMode)) {
             throw new Error('Prepared structure-factor phaseMode must be "direct" or "tables"');
         }
+        const dwfMode = options.dwfMode ?? 'uiso-vectors';
+        if (!['direct', 'uiso-vectors'].includes(dwfMode)) {
+            throw new Error('Prepared structure-factor dwfMode must be "direct" or "uiso-vectors"');
+        }
         const reflectionPreparationStart = performance.now();
         const prepared = prepareReflectionArrays(reflections, reciprocalTransform);
         const reflectionPreparationMs = performance.now() - reflectionPreparationStart;
@@ -486,15 +510,43 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         const scatteringPreparationMs = performance.now() - scatteringPreparationStart;
         const real = new Float64Array(reflectionCount);
         const imaginary = new Float64Array(reflectionCount);
+        const dwfPreparationStart = performance.now();
+        const sharedIsotropicModelCount = [...isotropicDisplacementModels.values()]
+            .filter(model => model.atomCount > 1).length;
+        const singletonIsotropicAtomCount = [...isotropicDisplacementModels.values()]
+            .filter(model => model.atomCount === 1).length;
+        const useIsotropicDwfVectors = dwfMode === 'uiso-vectors' && sharedIsotropicModelCount > 0;
+        const isotropicDwfVectors = useIsotropicDwfVectors
+            ? [...isotropicDisplacementModels].map(([isotropic, model]) => {
+                if (model.atomCount === 1) {
+                    return null;
+                }
+                const values = new Float64Array(reflectionCount);
+                for (let reflectionIndex = 0; reflectionIndex < reflectionCount; reflectionIndex++) {
+                    values[reflectionIndex] = Math.exp(
+                        DEBYE_WALLER_SCALE * isotropic *
+                        prepared.reciprocalLengthSquared[reflectionIndex],
+                    );
+                }
+                return values;
+            })
+            : null;
+        const dwfPreparationMs = performance.now() - dwfPreparationStart;
         let phaseTablePreparationMs = 0;
         let accumulationMs = 0;
         let phaseTrigEvaluationCount = 0;
-        let dwfExpEvaluationCount = 0;
+        let dwfExpEvaluationCount = useIsotropicDwfVectors
+            ? sharedIsotropicModelCount * reflectionCount
+            : 0;
 
         for (let modelIndex = 0; modelIndex < scatteringModels.length; modelIndex++) {
             const model = scatteringModels[modelIndex];
             const modelScattering = scattering[modelIndex];
             for (const atom of model.atoms) {
+                const isotropicDwf = isotropicDwfVectors &&
+                    atom.displacement?.isotropicModelIndex !== undefined
+                    ? isotropicDwfVectors[atom.displacement.isotropicModelIndex]
+                    : null;
                 let tables = null;
                 if (phaseMode === 'tables') {
                     const phasePreparationStart = performance.now();
@@ -511,7 +563,9 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                     phaseTrigEvaluationCount += 2 * reflectionCount;
                 }
                 if (atom.displacement) {
-                    dwfExpEvaluationCount += reflectionCount;
+                    dwfExpEvaluationCount += isotropicDwf
+                        ? 0
+                        : reflectionCount;
                 }
                 const accumulationStart = performance.now();
                 for (let reflectionIndex = 0; reflectionIndex < reflectionCount; reflectionIndex++) {
@@ -538,11 +592,13 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                         phaseReal = Math.cos(phase);
                         phaseImaginary = Math.sin(phase);
                     }
-                    const scale = atom.occupancy * preparedDisplacementFactor(
-                        atom.displacement,
-                        prepared,
-                        reflectionIndex,
-                    );
+                    const scale = atom.occupancy * (isotropicDwf
+                        ? isotropicDwf[reflectionIndex]
+                        : preparedDisplacementFactor(
+                            atom.displacement,
+                            prepared,
+                            reflectionIndex,
+                        ));
                     if (modelScattering.realOnly) {
                         const amplitude = scale * modelScattering.real[reflectionIndex];
                         real[reflectionIndex] += amplitude * phaseReal;
@@ -586,6 +642,10 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                 prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
             )
             : 0;
+        const dwfWorkBytes = isotropicDwfVectors?.reduce(
+            (sum, values) => sum + (values?.byteLength ?? 0),
+            0,
+        ) ?? 0;
         return {
             h: prepared.h,
             k: prepared.k,
@@ -596,20 +656,33 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             diagnostics: {
                 backend: 'prepared-soa',
                 phaseMode,
+                dwfMode,
+                dwfVectorReuseEnabled: useIsotropicDwfVectors,
                 reflectionPreparationMs,
                 scatteringPreparationMs,
+                dwfPreparationMs,
                 phaseTablePreparationMs,
                 accumulationMs,
                 reflectionCount,
                 expandedAtomCount,
                 scatteringModelCount: scatteringModels.length,
                 displacementModelCount: displacementModels.size,
+                noAdpExpandedAtomCount,
+                uisoExpandedAtomCount,
+                uaniExpandedAtomCount,
+                uniqueUisoCount: isotropicDisplacementModels.size,
+                sharedUisoModelCount: sharedIsotropicModelCount,
+                uniqueReciprocalUaniTensorCount: reciprocalAnisotropicModels.size,
+                uisoDwfExpEvaluationCount: useIsotropicDwfVectors
+                    ? (sharedIsotropicModelCount + singletonIsotropicAtomCount) * reflectionCount
+                    : uisoExpandedAtomCount * reflectionCount,
+                uaniDwfExpEvaluationCount: uaniExpandedAtomCount * reflectionCount,
                 phaseTrigEvaluationCount,
                 dwfExpEvaluationCount,
                 cromerMannExpEvaluationCount,
                 outputBytes,
                 workBufferBytes: reflectionWorkspaceBytes +
-                    scatteringWorkspaceBytes + phaseTableWorkBytes,
+                    scatteringWorkspaceBytes + phaseTableWorkBytes + dwfWorkBytes,
             },
         };
     }
@@ -636,6 +709,11 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             symmetryOperationCount: transforms.length,
             scatteringModelCount: scatteringModels.length,
             displacementModelCount: displacementModels.size,
+            noAdpExpandedAtomCount,
+            uisoExpandedAtomCount,
+            uaniExpandedAtomCount,
+            uniqueUisoCount: isotropicDisplacementModels.size,
+            uniqueReciprocalUaniTensorCount: reciprocalAnisotropicModels.size,
             sourceCounts,
             npdAdpCount: npdAdpLabels.length,
             npdAdpLabels,

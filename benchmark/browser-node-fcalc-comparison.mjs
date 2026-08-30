@@ -21,6 +21,7 @@ const output = resolve(process.argv[2] ?? '/tmp/browser-node-fcalc-comparison.js
 const cifPaths = process.argv.slice(3);
 const TWO_PI = 2 * Math.PI;
 const REPETITIONS = 3;
+const DWF_MODE = process.env.DWF_MODE ?? 'direct';
 
 function median(values) {
     const sorted = [...values].sort((first, second) => first - second);
@@ -94,6 +95,7 @@ function prepareCase(path) {
             coordinateCifText: combinedText,
             coordinateCifBlock: 0,
             structureModel,
+            iam: { dwfMode: DWF_MODE },
         }));
     return {
         codId: basename(path, '.cif'),
@@ -106,7 +108,7 @@ function prepareCase(path) {
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
 import * as CifVis from '/bundle.js';
-window.runCase = async cifText => {
+window.runCase = async (cifText, dwfMode) => {
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
@@ -115,7 +117,7 @@ window.runCase = async cifText => {
   });
   const started = performance.now();
   const structure = await viewer.loadCIF(cifText, 0, {
-    differenceDensity: {progressiveSteps: [1], visible: false},
+    differenceDensity: {progressiveSteps: [1], visible: false, iam: {dwfMode}},
   });
   const density = structure.differenceDensity ? await structure.differenceDensity : structure;
   const wallMs = performance.now() - started;
@@ -166,17 +168,28 @@ try {
             const context = await browser.newContext({ viewport: { width: 900, height: 700 } });
             const page = await context.newPage();
             await page.goto(`http://127.0.0.1:${port}/`);
-            browserRuns.push(await page.evaluate(text => window.runCase(text), prepared.combinedText));
+            browserRuns.push(await page.evaluate(
+                ({ text, dwfMode }) => window.runCase(text, dwfMode),
+                { text: prepared.combinedText, dwfMode: DWF_MODE },
+            ));
             await context.close();
         }
         const metric = select => median(browserRuns.map(select));
         results.push({
             codId: prepared.codId,
+            dwfMode: DWF_MODE,
             reflectionCount: prepared.reflectionCount,
             nodeIamModelBuildMs: prepared.nodeIamModelBuildMs,
             nodeFcalcMs: prepared.nodeFcalcMs,
             browserIamModelBuildMs: metric(run => run.density.iam?.modelBuildTimeMs),
             browserFcalcMs: metric(run => run.density.iam?.calculation?.timeMs),
+            browserDwfDiagnostics: Object.fromEntries([
+                'dwfMode', 'dwfVectorReuseEnabled', 'dwfPreparationMs', 'noAdpExpandedAtomCount',
+                'uisoExpandedAtomCount', 'uaniExpandedAtomCount', 'uniqueUisoCount',
+                'uniqueReciprocalUaniTensorCount', 'uisoDwfExpEvaluationCount',
+                'uaniDwfExpEvaluationCount', 'dwfExpEvaluationCount', 'workBufferBytes',
+            ].map(name => [name, metric(run => run.density.iam?.calculation?.[name] ??
+                run.density.iam?.calculation?.diagnostics?.[name])])),
             browserReflectionPreparationMs:
                 metric(run => run.density.workerReflectionPreparationTimeMs),
             browserReflectionStages: Object.fromEntries([

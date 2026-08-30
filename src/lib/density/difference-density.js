@@ -550,7 +550,9 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     );
     const iamModelBuildTimeMs = now() - iamModelStarted;
     const iamCalculationStarted = now();
-    const calculated = calculator.calculatePrepared(observed.reflections);
+    const calculated = calculator.calculatePrepared(observed.reflections, {
+        dwfMode: iamOptions.dwfMode,
+    });
     const iamCalculationTimeMs = now() - iamCalculationStarted;
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
     const coordinateBlock = typeof coordinateCifBlock === 'number'

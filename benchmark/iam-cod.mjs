@@ -134,16 +134,16 @@ for (let fileIndex = 0; fileIndex < sampling.files.length; fileIndex++) {
             includeAnomalous: false,
         });
         calculator.calculate(reflections);
-        calculator.calculatePrepared(reflections, { phaseMode: 'direct' });
-        calculator.calculatePrepared(reflections, { phaseMode: 'tables' });
+        calculator.calculatePrepared(reflections, { phaseMode: 'direct', dwfMode: 'direct' });
+        calculator.calculatePrepared(reflections, { phaseMode: 'tables', dwfMode: 'direct' });
         const scalar = time(() => calculator.calculate(reflections), options.iterations);
         const direct = time(() => calculator.calculatePrepared(
             reflections,
-            { phaseMode: 'direct' },
+            { phaseMode: 'direct', dwfMode: 'direct' },
         ), options.iterations);
         const tables = time(() => calculator.calculatePrepared(
             reflections,
-            { phaseMode: 'tables' },
+            { phaseMode: 'tables', dwfMode: 'direct' },
         ), options.iterations);
         const timings = [
             ['scalar', scalar.milliseconds],
