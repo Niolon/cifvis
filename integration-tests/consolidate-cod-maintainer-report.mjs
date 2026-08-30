@@ -4,7 +4,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CIF } from '../src/index.nobrowser.js';
-import { lookupSpaceGroup } from '../src/lib/structure/space-group-lookup.js';
+import {
+    lookupSpaceGroup, lookupSpaceGroupCandidates,
+} from '../src/lib/structure/space-group-lookup.js';
 import { parseCSV } from './postprocess-cod-symmetry-report.mjs';
 
 const MANUAL_REVIEW_CODES = new Map([
@@ -32,8 +34,7 @@ function escapeCSV(value) {
     return `"${singleLine.replace(/"/g, '""')}"`;
 }
 
-function hasExplicitSymmetryOperations(filePath) {
-    const block = new CIF(readFileSync(filePath, 'utf8')).getBlock(0);
+function hasExplicitSymmetryOperations(block) {
     const direct = block.get([
         '_space_group_symop.operation_xyz',
         '_space_group_symop_operation_xyz',
@@ -67,16 +68,46 @@ function firstBlockValue(block, names) {
     return value === false ? null : value;
 }
 
-function lookupDeclaredSpaceGroup(number, name, hall) {
-    let entry = lookupSpaceGroup({ number, name }) || lookupSpaceGroup({ name: hall });
-    if (!entry && name) {
-        const compact = String(name).replace(/\s+/gu, '');
-        const fullMonoclinic = compact.match(/^([PABCIFR])1(.+)1$/iu);
-        if (fullMonoclinic) {
-            entry = lookupSpaceGroup({ name: `${fullMonoclinic[1]}${fullMonoclinic[2]}` });
-        }
+function uniqueOperationSet(candidates, number) {
+    const numberText = String(number ?? '').trim();
+    const parsedNumber = /^\d+$/u.test(numberText) ? Number(numberText) : null;
+    const matching = parsedNumber === null
+        ? candidates
+        : candidates.filter(entry => entry.number === parsedNumber);
+    return matching.length > 0
+        && new Set(matching.map(entry => entry.operations.join(';'))).size === 1;
+}
+
+export function assessSymmetryDeclaration(block) {
+    if (hasExplicitSymmetryOperations(block)) {
+        return { status: 'explicit_operations', entry: null };
     }
-    return entry;
+    const number = firstBlockValue(block, [
+        '_space_group.it_number', '_space_group.IT_number',
+        '_space_group_it_number', '_space_group_IT_number',
+        '_symmetry.int_tables_number', '_symmetry_Int_Tables_number',
+    ]);
+    const name = firstBlockValue(block, [
+        '_space_group.name_h-m_alt', '_symmetry_space_group_name_H-M',
+        '_space_group_name_H-M_alt',
+    ]);
+    const fullName = firstBlockValue(block, [
+        '_space_group.name_H-M_full', '_space_group_name_H-M_full',
+    ]);
+    const hall = firstBlockValue(block, [
+        '_space_group.name_Hall', '_space_group_name_Hall',
+        '_symmetry_space_group_name_Hall',
+    ]);
+    const entry = lookupSpaceGroup({ number, name, fullName, hall });
+    const unambiguous = (hall && uniqueOperationSet(lookupSpaceGroupCandidates(hall), number))
+        || (fullName && uniqueOperationSet(lookupSpaceGroupCandidates(fullName), number));
+    return {
+        status: unambiguous
+            ? 'reconstructed_unambiguous_setting'
+            : 'reconstructed_ambiguous_setting',
+        entry,
+        declarations: { number, name, full_name: fullName, hall },
+    };
 }
 
 function geometrySymmetryCodes(block) {
@@ -98,22 +129,11 @@ function geometrySymmetryCodes(block) {
 
 function assessImplicitSymmetryReferences(filePath, message) {
     const block = new CIF(readFileSync(filePath, 'utf8')).getBlock(0);
-    if (hasExplicitSymmetryOperations(filePath)) {
-        return { status: 'explicit_operation_list_or_value' };
+    const declaration = assessSymmetryDeclaration(block);
+    if (declaration.status === 'explicit_operations') {
+        return { status: 'explicit_operations' };
     }
-    const number = firstBlockValue(block, [
-        '_space_group.it_number', '_space_group_IT_number',
-        '_symmetry.int_tables_number', '_symmetry_Int_Tables_number',
-    ]);
-    const name = firstBlockValue(block, [
-        '_space_group.name_h-m_alt', '_space_group_name_H-M_alt',
-        '_space_group.name_H-M_full', '_symmetry_space_group_name_H-M',
-    ]);
-    const hall = firstBlockValue(block, [
-        '_space_group.name_Hall', '_space_group_name_Hall',
-        '_symmetry_space_group_name_Hall',
-    ]);
-    const entry = lookupDeclaredSpaceGroup(number, name, hall);
+    const { entry } = declaration;
     const positionCodes = [...message.matchAll(/invalid symmetry operation:\s*([^,\s]+)/giu)]
         .map(match => match[1]);
     const rawPositionCodes = geometrySymmetryCodes(block);
@@ -128,7 +148,9 @@ function assessImplicitSymmetryReferences(filePath, message) {
     if (malformedCodes.length > 0 || idsOutsideGroup.length > 0) {
         return {
             status: 'invalid_against_iucr_id_rules_or_declared_group',
-            declared_group: entry?.symbol_cif || name || hall || null,
+            symmetry_source: declaration.status,
+            declared_group: entry?.symbol_cif || declaration.declarations.full_name
+                || declaration.declarations.name || declaration.declarations.hall || null,
             operation_count: entry?.operations.length ?? null,
             referenced_ids: ids,
             malformed_codes: malformedCodes,
@@ -139,7 +161,9 @@ function assessImplicitSymmetryReferences(filePath, message) {
         status: entry && ids.length > 0
             ? 'plausible_implicit_international_tables_sequence'
             : 'implicit_sequence_not_assessable',
-        declared_group: entry?.symbol_cif || name || hall || null,
+        symmetry_source: declaration.status,
+        declared_group: entry?.symbol_cif || declaration.declarations.full_name
+            || declaration.declarations.name || declaration.declarations.hall || null,
         operation_count: entry?.operations.length ?? null,
         referenced_ids: ids,
         note: 'IUCr defines identity as ID 1 and IDs as references to the operation loop, but '
@@ -209,15 +233,16 @@ export function main(argv = process.argv.slice(2)) {
     const duplicateEvidence = groupByCodId(readCSV(duplicateCsvPath).map(convertDuplicateEvidence));
     const priorAudit = JSON.parse(readFileSync(priorAuditPath, 'utf8'));
     const pathByCodId = new Map(reportRows.map(row => [row.cod_id, row.file_path]));
-    const explicitSymmetryCache = new Map();
+    const symmetryDeclarationCache = new Map();
     const excluded = [];
     const structures = [];
 
-    const explicitSymmetry = (codId, filePath) => {
-        if (!explicitSymmetryCache.has(codId)) {
-            explicitSymmetryCache.set(codId, hasExplicitSymmetryOperations(filePath));
+    const symmetryDeclaration = (codId, filePath) => {
+        if (!symmetryDeclarationCache.has(codId)) {
+            const block = new CIF(readFileSync(filePath, 'utf8')).getBlock(0);
+            symmetryDeclarationCache.set(codId, assessSymmetryDeclaration(block));
         }
-        return explicitSymmetryCache.get(codId);
+        return symmetryDeclarationCache.get(codId);
     };
 
     for (const sourceStructure of maintainer.structures) {
@@ -225,13 +250,17 @@ export function main(argv = process.argv.slice(2)) {
         const structure = { cod_id: sourceStructure.cod_id, file_path: filePath, issues: [] };
         for (const sourceIssue of sourceStructure.issues) {
             let exclusionReason = MANUAL_REVIEW_CODES.get(sourceIssue.code) || null;
-            if (sourceIssue.code === 'cell_symmetry_mismatch' && filePath
-                && !explicitSymmetry(sourceStructure.cod_id, filePath)) {
-                exclusionReason = 'Mismatch depends on symmetry operations reconstructed by cifvis.';
+            const declaration = filePath
+                ? symmetryDeclaration(sourceStructure.cod_id, filePath)
+                : null;
+            if (sourceIssue.code === 'cell_symmetry_mismatch' && declaration
+                && declaration.status === 'reconstructed_ambiguous_setting') {
+                exclusionReason = 'Mismatch depends on a reconstructed space-group setting that '
+                    + 'is not uniquely established by a Hall or full Hermann–Mauguin declaration.';
             }
             if ((sourceIssue.code === 'bond_invalid_symmetry'
                 || sourceIssue.code === 'hbond_invalid_symmetry') && filePath
-                && !explicitSymmetry(sourceStructure.cod_id, filePath)) {
+                && declaration.status !== 'explicit_operations') {
                 const assessment = assessImplicitSymmetryReferences(filePath, sourceIssue.message);
                 if (assessment.status !== 'invalid_against_iucr_id_rules_or_declared_group') {
                     exclusionReason = 'Reference uses a plausible but undeclared operation sequence; '
@@ -250,6 +279,17 @@ export function main(argv = process.argv.slice(2)) {
             }
 
             const issue = { ...sourceIssue };
+            if (declaration) {
+                issue.symmetry_source = declaration.status;
+                if (declaration.entry) {
+                    issue.resolved_space_group = {
+                        number: declaration.entry.number,
+                        symbol: declaration.entry.universal_h_m,
+                        hall: declaration.entry.hall_symbol,
+                        setting: declaration.entry.setting,
+                    };
+                }
+            }
             if (sourceIssue.implicit_symmetry_assessment?.status
                 === 'invalid_against_iucr_id_rules_or_declared_group') {
                 issue.verification = 'The referenced operation ID is negative, malformed, or exceeds '
@@ -287,7 +327,8 @@ export function main(argv = process.argv.slice(2)) {
             duplicate_labels: 'Atom-site labels were compared before and after the cifvis fixer; '
                 + 'only source-CIF duplicates are included.',
             conservative_filter: 'Unclassified cifvis errors, unsupported/non-structural entries, '
-                + 'and conclusions depending on reconstructed symmetry operations are excluded.',
+                + 'and conclusions depending on an ambiguous reconstructed setting are excluded. '
+                + 'Hall or unambiguous full H-M declarations establish a usable operation set.',
             hbond_geometry_limit: 'H-bond distance consistency was not tested in this campaign; '
                 + 'only direct missing-atom and malformed/unknown-symmetry findings are included.',
         },
@@ -297,7 +338,7 @@ export function main(argv = process.argv.slice(2)) {
 
     const csvHeaders = [
         'cod_id', 'file_path', 'issue_code', 'message', 'persists_after_auto_fix',
-        'evidence_type', 'evidence_json',
+        'symmetry_source', 'resolved_space_group_json', 'evidence_type', 'evidence_json',
     ];
     const csv = [csvHeaders.map(escapeCSV).join(',')];
     for (const structure of structures) {
@@ -310,6 +351,10 @@ export function main(argv = process.argv.slice(2)) {
                     issue_code: issue.code,
                     message: issue.message,
                     persists_after_auto_fix: issue.persists_after_auto_fix,
+                    symmetry_source: issue.symmetry_source || '',
+                    resolved_space_group_json: issue.resolved_space_group
+                        ? JSON.stringify(issue.resolved_space_group)
+                        : '',
                     evidence_type: item
                         ? (issue.code === 'duplicate_atom_site_label' ? 'duplicate_label_group' : 'bond')
                         : 'structure_issue',
@@ -326,6 +371,12 @@ export function main(argv = process.argv.slice(2)) {
     );
     const audit = {
         included: consolidated.summary,
+        included_by_symmetry_source: Object.fromEntries(
+            [...Map.groupBy(
+                structures.flatMap(structure => structure.issues),
+                issue => issue.symmetry_source || 'not_applicable',
+            )].map(([source, issues]) => [source, issues.length]).sort(),
+        ),
         excluded_from_cod_handoff: {
             issue_count: excluded.length,
             structure_count: new Set(excluded.map(item => item.cod_id)).size,

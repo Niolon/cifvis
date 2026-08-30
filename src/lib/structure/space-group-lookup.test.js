@@ -1,4 +1,4 @@
-import { lookupSpaceGroup } from './space-group-lookup.js';
+import { lookupSpaceGroup, lookupSpaceGroupCandidates } from './space-group-lookup.js';
 
 describe('lookupSpaceGroup', () => {
     test('looks up by number', () => {
@@ -56,5 +56,18 @@ describe('lookupSpaceGroup', () => {
             expect(entry).not.toBeNull();
             expect(entry.operations.length).toBeGreaterThan(0);
         }
+    });
+
+    test('exposes all candidates when a name does not determine one setting', () => {
+        const candidates = lookupSpaceGroupCandidates('P n n n');
+
+        expect(candidates.length).toBeGreaterThan(1);
+        expect(new Set(candidates.map(entry => entry.hall_symbol)).size).toBeGreaterThan(1);
+    });
+
+    test('recognizes a Hall declaration as one operation set', () => {
+        const candidates = lookupSpaceGroupCandidates('-P 2ac');
+
+        expect(new Set(candidates.map(entry => entry.operations.join(';'))).size).toBe(1);
     });
 });

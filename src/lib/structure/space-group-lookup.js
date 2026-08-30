@@ -16,6 +16,7 @@ function normalizeSymbol(symbol) {
 // information to select alternative axes and origin choices.
 const byNumber = new Map();
 const byName = new Map();
+const candidatesByName = new Map();
 for (const entry of SPACE_GROUP_TABLE) {
     if (entry.is_standard || !byNumber.has(entry.number)) {
         byNumber.set(entry.number, entry);
@@ -27,10 +28,29 @@ for (const entry of SPACE_GROUP_TABLE) {
         entry.universal_h_m,
     ]) {
         const key = normalizeSymbol(symbol);
+        const candidates = candidatesByName.get(key) || [];
+        if (!candidates.includes(entry)) {
+            candidates.push(entry);
+            candidatesByName.set(key, candidates);
+        }
         if (!byName.has(key)) {
             byName.set(key, entry);
         }
     }
+}
+
+/**
+ * Returns every tabulated setting matching a declared symbol. This is useful
+ * when a caller must distinguish an unambiguous setting declaration from a
+ * name shared by multiple operation sets.
+ * @param {string} symbol - Hall or Hermann-Mauguin symbol
+ * @returns {object[]} Matching table entries
+ */
+export function lookupSpaceGroupCandidates(symbol) {
+    if (!symbol || symbol === 'Unknown') {
+        return [];
+    }
+    return [...(candidatesByName.get(normalizeSymbol(symbol)) || [])];
 }
 
 /**
