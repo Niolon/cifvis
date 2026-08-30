@@ -24,8 +24,10 @@ regressions in the library:
   consistency runs. `analyze-browser-density-consistency.mjs` reports every named main
   thread and worker component separately, including run-to-run spread.
 - `browser-density-structure-impact.mjs`: paired browser comparison of structure-display
-  time with difference density disabled or running concurrently. Both modes receive the
-  same reflection-bearing CIF; timing stops at the molecular-scene-ready milestone.
+  time with no worker, an idle worker, early reflection parsing with density deferred,
+  or fully concurrent density work. It also accepts `CIFVIS_BUNDLES` for balanced
+  production-bundle comparisons. Every variant receives the same reflection-bearing
+  CIF and timing stops at the molecular-scene-ready milestone.
 
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.

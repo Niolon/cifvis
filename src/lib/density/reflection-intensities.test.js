@@ -11,6 +11,7 @@ import {
 import {
     canonicalReflectionIndex,
     canonicalReflectionIndexLegacy,
+    compiledReciprocalSymmetryKernel,
     isGeneralPositionSystematicAbsence,
     isGeneralPositionSystematicAbsenceLegacy,
 } from './reciprocal-symmetry.js';
@@ -33,6 +34,23 @@ ${reflections}
 const P21_OPERATIONS = ['\'x,y,z\'', '\'-x,y+1/2,-z\''];
 
 describe('reflection intensity input', () => {
+    test('rejects malformed non-crystallographic rotation coefficients explicitly', () => {
+        const symmetry = {
+            symmetryOperations: [{
+                rotMatrix: [
+                    [1, 0.034, 0],
+                    [0, 1, 0],
+                    [0, 0, 1],
+                ],
+                transVector: [0, 0, 0],
+            }],
+        };
+
+        expect(() => compiledReciprocalSymmetryKernel(symmetry)).toThrow(
+            /non-integral reciprocal rotation/u,
+        );
+    });
+
     test('matches the legacy canonical orbit scan and merger on randomized observations', () => {
         const symmetry = new CellSymmetry('P212121', 19, [
             'x,y,z',

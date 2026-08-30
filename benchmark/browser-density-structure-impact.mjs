@@ -13,11 +13,22 @@ import { readCodStructure } from './lib/cod-sample.mjs';
 import * as math from '../src/lib/math-lite.js';
 
 const repository = resolve(import.meta.dirname, '..');
-const bundle = join(repository, 'dist/cifvis.alldeps.js');
+const bundle = resolve(process.env.CIFVIS_BUNDLE ?? join(repository, 'dist/cifvis.alldeps.js'));
+const bundleEntries = process.env.CIFVIS_BUNDLES
+    ? Object.fromEntries(process.env.CIFVIS_BUNDLES.split(',').map(entry => {
+        const separator = entry.indexOf('=');
+        return [entry.slice(0, separator), resolve(entry.slice(separator + 1))];
+    }))
+    : { candidate: bundle };
 const output = resolve(process.argv[2] ?? '/tmp/browser-density-structure-impact-50.json');
 const cohortInput = resolve(process.argv[3] ?? '/tmp/browser-density-consistency-50.json');
-const repetitions = Number.parseInt(process.env.REPETITIONS ?? '3', 10);
+const repetitions = Number.parseInt(process.env.REPETITIONS ?? '5', 10);
+const warmupRepetitions = Number.parseInt(process.env.WARMUP_REPETITIONS ?? '1', 10);
 const dwfMode = process.env.DWF_MODE ?? 'uiso-vectors';
+const modes = (process.env.MODES ??
+    'disabled,idle-worker,deferred-density,active-density').split(',');
+const bundleComparison = Object.keys(bundleEntries).length > 1;
+const variants = bundleComparison ? Object.keys(bundleEntries) : modes;
 
 function reciprocalMatrix(cell) {
     const result = math.transpose(math.inv(cell.fractToCartMatrix));
@@ -82,32 +93,47 @@ function combinedCif(path) {
 }
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
-import * as CifVis from '/bundle.js';
+import * as CifVis from '__BUNDLE_PATH__';
 const waitForWorker = async viewer => {
   const deadline = performance.now() + 5000;
   while (viewer.scalarFieldWorkerReadyEpochMs === null && performance.now() < deadline) {
     await new Promise(resolve => setTimeout(resolve, 1));
   }
 };
-window.runStructureOnly = async (cifText, densityActive, dwfMode) => {
+window.runStructureOnly = async (cifText, mode, dwfMode) => {
+  const workerConfigured = mode !== 'disabled';
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
     scalarField: {useWorker: true},
-    differenceDensity: densityActive
+    differenceDensity: workerConfigured
       ? {autoLoad: true, iam: {dwfMode}}
       : {autoLoad: false},
     isosurface: {progressiveSteps: [1], visible: false},
   });
-  if (densityActive) await waitForWorker(viewer);
+  if (workerConfigured) await waitForWorker(viewer);
+  let finishDeferredDensity = null;
+  if (mode === 'deferred-density') {
+    viewer.loadDifferenceDensity = () => new Promise(resolve => {
+      finishDeferredDensity = resolve;
+    });
+  }
   const started = performance.now();
-  const structure = await viewer.loadCIF(cifText, 0);
+  const structure = await viewer.loadCIF(cifText, 0,
+    mode === 'idle-worker' ? {differenceDensity: false} : {});
   const structureWallMs = performance.now() - started;
   const timings = {...(structure.browserTimings ?? {})};
   const pendingDensity = structure.differenceDensity ?? null;
   viewer.dispose();
+  finishDeferredDensity?.({success: false, cancelled: true});
   if (pendingDensity) await pendingDensity;
-  return {success: structure.success, structureWallMs, timings};
+  return {
+    success: structure.success,
+    structureWallMs,
+    timings,
+    workerConfigured,
+    reflectionsPreparedByStructureDisplay: Number.isFinite(timings.reflectionsPreparedMs),
+  };
 };
 </script></body></html>`;
 
@@ -116,11 +142,20 @@ function startServer() {
         const server = createServer((request, response) => {
             const url = new URL(request.url, 'http://localhost');
             if (url.pathname === '/') {
+                const bundleLabel = url.searchParams.get('bundle') ?? Object.keys(bundleEntries)[0];
+                const bundlePath = `/bundle/${bundleLabel}.js`;
                 response.writeHead(200, { 'Content-Type': 'text/html' });
-                response.end(html);
-            } else if (url.pathname === '/bundle.js') {
+                response.end(html.replace('__BUNDLE_PATH__', bundlePath));
+            } else if (url.pathname.startsWith('/bundle/')) {
+                const bundleLabel = url.pathname.slice('/bundle/'.length, -'.js'.length);
+                const selectedBundle = bundleEntries[bundleLabel];
+                if (!selectedBundle) {
+                    response.writeHead(404);
+                    response.end();
+                    return;
+                }
                 response.writeHead(200, { 'Content-Type': 'application/javascript' });
-                response.end(readFileSync(bundle));
+                response.end(readFileSync(selectedBundle));
             } else if (url.pathname.startsWith('/assets/')) {
                 response.writeHead(200, { 'Content-Type': 'application/javascript' });
                 response.end(readFileSync(join(repository, 'dist', url.pathname)));
@@ -147,25 +182,31 @@ const results = cases.map(entry => ({
     codId: entry.codId,
     path: entry.path,
     reflectionCount: entry.reflectionCount,
-    runs: { disabled: [], active: [] },
+    runs: Object.fromEntries(variants.map(variant => [variant, []])),
 }));
 try {
-    for (let repetition = 0; repetition < repetitions; repetition++) {
+    const totalRepetitions = warmupRepetitions + repetitions;
+    for (let repetition = 0; repetition < totalRepetitions; repetition++) {
         for (let caseIndex = 0; caseIndex < cases.length; caseIndex++) {
             const entry = cases[caseIndex];
-            const modes = (repetition + caseIndex) % 2 === 0
-                ? ['disabled', 'active']
-                : ['active', 'disabled'];
-            for (const mode of modes) {
+            const variantOffset = (repetition + caseIndex) % variants.length;
+            const orderedVariants = [
+                ...variants.slice(variantOffset), ...variants.slice(0, variantOffset),
+            ];
+            for (const variant of orderedVariants) {
                 const context = await browser.newContext({ viewport: { width: 900, height: 700 } });
                 const page = await context.newPage();
-                await page.goto(`http://127.0.0.1:${port}/`);
+                const bundleLabel = bundleComparison ? variant : Object.keys(bundleEntries)[0];
+                const selectedMode = bundleComparison ? 'disabled' : variant;
+                await page.goto(`http://127.0.0.1:${port}/?bundle=${bundleLabel}`);
                 const run = await page.evaluate(
-                    ({ text, densityActive, selectedDwfMode }) =>
-                        window.runStructureOnly(text, densityActive, selectedDwfMode),
-                    { text: entry.text, densityActive: mode === 'active', selectedDwfMode: dwfMode },
+                    ({ text, selectedMode, selectedDwfMode }) =>
+                        window.runStructureOnly(text, selectedMode, selectedDwfMode),
+                    { text: entry.text, selectedMode, selectedDwfMode: dwfMode },
                 );
-                results[caseIndex].runs[mode].push(run);
+                if (repetition >= warmupRepetitions) {
+                    results[caseIndex].runs[variant].push(run);
+                }
                 await context.close();
             }
         }
@@ -176,11 +217,22 @@ try {
 }
 writeFileSync(output, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
+    bundle,
+    bundleEntries,
+    bundleComparison,
     cohortInput,
     repetitions,
+    warmupRepetitions,
     dwfMode,
+    modes: variants,
     endpoint: 'structureSceneReady',
-    densityActiveWorker: 'prewarmed',
+    workers: 'prewarmed-outside-timer-when-configured',
     results,
 }, null, 2)}\n`);
-console.log(JSON.stringify({ output, structureCount: results.length, repetitions }, null, 2));
+console.log(JSON.stringify({
+    output,
+    structureCount: results.length,
+    repetitions,
+    warmupRepetitions,
+    modes: variants,
+}, null, 2));

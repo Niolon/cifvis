@@ -1,4 +1,4 @@
-import { readFileSync, appendFileSync, writeFileSync } from 'fs';
+import { readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -238,6 +238,7 @@ async function main() {
     
     const resolvedPath = resolve(targetDir);
     const logFiles = getLogFilenames(startIndex, endIndex);
+    mkdirSync(logsDir, { recursive: true });
     
     console.log(`Starting ORTEP testing in directory: ${resolvedPath}`);
     console.log(`Processing files from index ${startIndex} to ${endIndex}`);

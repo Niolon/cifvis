@@ -17,7 +17,7 @@ import { parseCsv } from './lib/csv.mjs';
 import * as math from '../src/lib/math-lite.js';
 
 const repository = resolve(import.meta.dirname, '..');
-const bundle = join(repository, 'dist/cifvis.alldeps.js');
+const bundle = resolve(process.env.CIFVIS_BUNDLE ?? join(repository, 'dist/cifvis.alldeps.js'));
 const output = resolve(process.argv[2] ?? '/tmp/browser-node-fcalc-comparison.json');
 const TWO_PI = 2 * Math.PI;
 const REPETITIONS = Number.parseInt(process.env.REPETITIONS ?? '3', 10);
@@ -302,6 +302,11 @@ try {
         const metric = select => median(browserRuns.map(select));
         results.push({
             codId: prepared.codId,
+            success: browserRuns.every(run => run.structure.success && run.density.success),
+            errors: browserRuns.flatMap(run => [
+                run.structure.success ? null : run.structure.error,
+                run.density.success ? null : run.density.error,
+            ]).filter(Boolean),
             path: prepared.path,
             representativeQuantile: prepared.representativeQuantile ?? null,
             representativeTargetRank: prepared.representativeTargetRank ?? null,
@@ -403,6 +408,10 @@ try {
             browserWorkerElapsedMs: metric(run => run.density.workerElapsedTimeMs),
             browserWallMs: metric(run => run.wallMs),
             browserRuns: browserRuns.map(run => ({
+                structureSuccess: run.structure.success,
+                densitySuccess: run.density.success,
+                structureError: run.structure.error ?? null,
+                densityError: run.density.error ?? null,
                 iamModelBuildMs: run.density.iam?.modelBuildTimeMs,
                 fcalcMs: run.density.iam?.calculation?.timeMs,
                 reflectionPreparationMs: run.density.workerReflectionPreparationTimeMs,
@@ -475,6 +484,7 @@ try {
 }
 writeFileSync(output, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
+    bundle,
     prewarmWorker: PREWARM_WORKER,
     surfaceMode: SURFACE_MODE,
     useSymmetry: USE_SYMMETRY,
