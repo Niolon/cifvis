@@ -523,7 +523,7 @@ describe('GeometryMaterialCache', () => {
         test('disposes all geometries', () => {
             cache.dispose();
 
-            // We should have 5 geometries: atom, adpRing, adpRingSet, bond, and hbond
+            // The disabled centroid mode does not allocate its cap geometry.
             expect(disposeSpy).toHaveBeenCalledTimes(5);
         });
 

@@ -351,6 +351,23 @@ export const descriptions = {
     'bondColor': 'Default color for bonds.',
     'bondColorRoughness': 'Roughness of bond material (0&ndash;1).',
     'bondColorMetalness': 'Metalness of bond material (0&ndash;1).',
+    'collapseMetalRingBonds': 'Replaces qualifying displayed metal&ndash;ring atom bonds with one ' +
+        'presentation-only dashed, round-capped interaction to the ring centroid.',
+    'metalRingCentroidOptions.centerElements': 'Elements eligible to act as coordination centres. ' +
+        'The default contains supported metals; add metalloids explicitly when required.',
+    'metalRingCentroidOptions.ringElements': 'Elements permitted in a candidate ligand ring.',
+    'metalRingCentroidOptions.minRingSize': 'Smallest candidate ligand-ring size.',
+    'metalRingCentroidOptions.maxRingSize': 'Largest candidate ligand-ring size.',
+    'metalRingCentroidOptions.minBondedAtoms': 'Minimum number of ring atoms already bonded to the centre.',
+    'metalRingCentroidOptions.minRingCoverage': 'Minimum fraction of ring atoms already bonded to the centre.',
+    'metalRingCentroidOptions.requireGeometryCheck': 'Requires the centre to lie over the ring and ' +
+        'the centre&ndash;ring distances to be coherent.',
+    'metalRingCentroidOptions.maxLateralDisplacementRatio': 'Largest accepted in-plane displacement ' +
+        'from the centroid, divided by the mean ring radius.',
+    'metalRingCentroidOptions.maxDistanceSpreadRatio': 'Largest accepted centre&ndash;ring distance ' +
+        'range divided by the mean centre&ndash;ring distance.',
+    'metalRingCentroidOptions.dashSegmentLength': 'Approximate dash-plus-gap period in &Aring;.',
+    'metalRingCentroidOptions.dashFraction': 'Fraction of each period occupied by a rounded dash.',
 
     // Hydrogen bonds
     'hbondRadius': 'Radius of hydrogen bond cylinders.',
