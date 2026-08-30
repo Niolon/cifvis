@@ -176,4 +176,19 @@ describe('symmetry-aware isosurfaces', () => {
         expect(warm.userData.fieldSampleCount).toBe(0);
         expect(warm.userData.surfaceSamplingTimeMs).toBe(0);
     });
+
+    test('does not let an empty cache bypass the cold symmetry cost guard', () => {
+        const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
+        const cache = new SymmetryRegionSurfaceCache();
+        const group = createSymmetryAwareIsosurfaces(
+            densityMap(),
+            structure,
+            { ...surfaceOptions, resolution: 8, surfaceExtractor: 'cifvis' },
+            cache,
+        );
+
+        expect(group.userData.symmetryUsed).toBe(false);
+        expect(group.userData.symmetryDeclinedForCost).toBe(true);
+        expect(cache.entries.size).toBe(0);
+    });
 });

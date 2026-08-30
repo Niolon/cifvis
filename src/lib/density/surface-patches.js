@@ -411,15 +411,21 @@ export function createPatchCachedIsosurfaces(field, structure, options, cache) {
     if (!(Number.isFinite(spacing) && spacing > 0)) {
         throw new Error('Isosurface grid spacing must be positive');
     }
+    const planningStarted = performance.now();
     const dimensions = surfacePatchDimensions(field, spacing, structure.cell);
     cache.configureSamples(dimensions);
+    const surfacePatchPlanningTimeMs = performance.now() - planningStarted;
+    const maskStarted = performance.now();
     cache.configureSurfaceMask(field, dimensions, level);
+    const surfacePatchMaskTimeMs = performance.now() - maskStarted;
+    const cellSelectionStarted = performance.now();
     const cells = cellKeysNearAtoms(
         structure,
         dimensions,
         options.radius,
         cache.surfaceCellIndices,
     );
+    const surfacePatchCellSelectionTimeMs = performance.now() - cellSelectionStarted;
     const matrix = structure.cell.fractToCartMatrix.toArray();
     const positions = { positive: [], negative: [] };
     const prefix = `${dimensions.join('x')}@${level.toPrecision(12)}`;
@@ -427,6 +433,7 @@ export function createPatchCachedIsosurfaces(field, structure, options, cache) {
     let cacheHitCellCount = 0;
     let cacheMissCellCount = 0;
     let generatedCellCount = 0;
+    const extractionStarted = performance.now();
     for (const { lower, atoms } of cells.values()) {
         const normalized = lower.map((value, axis) => wrap(value, dimensions[axis]));
         const shift = lower.map((value, axis) => (value - normalized[axis]) / dimensions[axis]);
@@ -453,7 +460,9 @@ export function createPatchCachedIsosurfaces(field, structure, options, cache) {
             positions.negative, patch.negative, shift, matrix, atoms, options.radius ** 2,
         );
     }
+    const surfacePatchExtractionTimeMs = performance.now() - extractionStarted;
     const sign = options.sign ?? field.surfaceSign ?? 'both';
+    const geometryStarted = performance.now();
     const group = new THREE.Group();
     group.name = 'Isosurface';
     group.visible = options.visible !== false;
@@ -465,6 +474,8 @@ export function createPatchCachedIsosurfaces(field, structure, options, cache) {
     }
     const positivePolygonCount = positions.positive.length / 9;
     const negativePolygonCount = positions.negative.length / 9;
+    const surfaceGeometryTimeMs = performance.now() - geometryStarted;
+    const surfaceTotalTimeMs = performance.now() - started;
     group.userData = {
         selectable: false,
         type: 'isosurface',
@@ -489,9 +500,15 @@ export function createPatchCachedIsosurfaces(field, structure, options, cache) {
         reusedCellCount: cacheHitCellCount,
         patchCacheBytes: cache.bytes,
         patchCacheEvictionCount: cache.evictions - initialEvictions,
-        surfaceAssemblyTimeMs: performance.now() - started,
-        generationTimeMs: performance.now() - started,
-        marchingCubesTimeMs: performance.now() - started,
+        surfacePatchPlanningTimeMs,
+        surfacePatchMaskTimeMs,
+        surfacePatchCellSelectionTimeMs,
+        surfacePatchExtractionTimeMs,
+        surfaceGeometryTimeMs,
+        surfaceTotalTimeMs,
+        surfaceAssemblyTimeMs: surfaceTotalTimeMs,
+        generationTimeMs: surfaceTotalTimeMs,
+        marchingCubesTimeMs: surfaceTotalTimeMs,
         polygonizationTimeMs: 0,
         openClipping: true,
     };

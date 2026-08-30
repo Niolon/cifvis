@@ -112,7 +112,7 @@ results.forEach((row, index) => {
     if (sceneReady < mapReceived) {
         svg += segment(sceneReady, mapReceived, mainY, factor, colors.wait, 'Structure visible · waiting for map');
     }
-    svg += segment(mapReceived, end, mainY, factor, colors.surface, 'Install map + surface');
+    svg += segment(mapReceived, end, mainY, factor, colors.surface, 'Build/install surface');
 
     svg += segment(rawPosted, prepStarted, workerY, factor, colors.startup, 'Worker/module startup');
     svg += segment(prepStarted, prepReady, workerY, factor, colors.hkl, 'HKL parse/merge');

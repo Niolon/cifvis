@@ -29,6 +29,10 @@ export class SymmetryRegionSurfaceCache {
         return entry.value;
     }
 
+    has(key) {
+        return this.entries.has(key);
+    }
+
     set(key, value) {
         const bytes = Object.values(value.geometry.attributes).reduce(
             (sum, attribute) => sum + attribute.array.byteLength,
@@ -569,21 +573,37 @@ export function createSymmetryAwareIsosurfaces(
     // the whole cell would - and then still owes the transform and stitch for every
     // copy. Both costs are known here, before any marching cubes runs, so compare them
     // and take the cheaper route rather than assuming the reuse wins.
-    const regionSampleCost = plans.reduce((planSum, plan) => planSum + plan.classes.reduce(
-        (classSum, regionClass) => classSum + regionResolutionFor(
-            structure, regionClass.representative, usedOptions.radius,
-            globalResolution, globalSpacing,
-        ) ** 3,
-        0,
-    ), 0);
+    let regionSampleCost = 0;
+    let uncachedRegionSampleCost = 0;
+    for (const plan of plans) {
+        for (const regionClass of plan.classes) {
+            const resolution = regionResolutionFor(
+                structure, regionClass.representative, usedOptions.radius,
+                globalResolution, globalSpacing,
+            );
+            const sampleCost = resolution ** 3;
+            regionSampleCost += sampleCost;
+            const cacheKey = regionCacheKey(
+                regionClass.representative,
+                plan.sign,
+                level,
+                resolution,
+                usedOptions,
+            );
+            if (!regionCache?.has(cacheKey)) {
+                uncachedRegionSampleCost += sampleCost;
+            }
+        }
+    }
     const directSampleCost = globalResolution ** 3;
-    if (!regionCache && regionSampleCost > directSampleCost * SYMMETRY_SAMPLE_COST_BUDGET) {
+    if (uncachedRegionSampleCost > directSampleCost * SYMMETRY_SAMPLE_COST_BUDGET) {
         const group = createIsosurfaces(field, structure, usedOptions);
         for (const plan of plans) {
             group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
         }
         group.userData.symmetryDeclinedForCost = true;
         group.userData.symmetryRegionSampleCost = regionSampleCost;
+        group.userData.symmetryUncachedRegionSampleCost = uncachedRegionSampleCost;
         group.userData.symmetryDirectSampleCost = directSampleCost;
         return group;
     }

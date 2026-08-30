@@ -23,6 +23,8 @@ const TWO_PI = 2 * Math.PI;
 const REPETITIONS = 3;
 const DWF_MODE = process.env.DWF_MODE ?? 'direct';
 const PREWARM_WORKER = process.env.PREWARM_WORKER === 'true';
+const SURFACE_MODE = process.env.SURFACE_MODE ?? 'legacy';
+const USE_SYMMETRY = process.env.USE_SYMMETRY !== 'false';
 
 function median(values) {
     const sorted = [...values].sort((first, second) => first - second);
@@ -109,7 +111,7 @@ function prepareCase(path) {
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
 import * as CifVis from '/bundle.js';
-window.runCase = async (cifText, dwfMode, prewarmWorker) => {
+window.runCase = async (cifText, dwfMode, prewarmWorker, surfaceMode, useSymmetry) => {
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
@@ -117,7 +119,12 @@ window.runCase = async (cifText, dwfMode, prewarmWorker) => {
     differenceDensity: prewarmWorker
       ? {autoLoad: true, iam: {dwfMode}}
       : {autoLoad: false},
-    isosurface: {progressiveSteps: [1], visible: false},
+    isosurface: {
+      progressiveSteps: [1],
+      visible: false,
+      generationMode: surfaceMode,
+      useSymmetry,
+    },
   });
   if (prewarmWorker) {
     const deadline = performance.now() + 5000;
@@ -179,12 +186,20 @@ try {
             const page = await context.newPage();
             await page.goto(`http://127.0.0.1:${port}/`);
             browserRuns.push(await page.evaluate(
-                ({ text, dwfMode, prewarmWorker }) =>
-                    window.runCase(text, dwfMode, prewarmWorker),
+                ({ text, dwfMode, prewarmWorker, surfaceMode, useSymmetry }) =>
+                    window.runCase(
+                        text,
+                        dwfMode,
+                        prewarmWorker,
+                        surfaceMode,
+                        useSymmetry,
+                    ),
                 {
                     text: prepared.combinedText,
                     dwfMode: DWF_MODE,
                     prewarmWorker: PREWARM_WORKER,
+                    surfaceMode: SURFACE_MODE,
+                    useSymmetry: USE_SYMMETRY,
                 },
             ));
             await context.close();
@@ -236,6 +251,23 @@ try {
                 'reflectionsPreparedMs', 'workerCalculationStartedMs',
                 'workerMapPostedMs', 'mapReceivedMs', 'densityAppliedMs',
             ].map(name => [name, metric(run => run.structure.browserTimings?.[name])])),
+            browserApplicationStages: Object.fromEntries([
+                'mapPayloadReconstructionTimeMs', 'mainThreadApplyTimeMs',
+                'mainThreadApplyTotalTimeMs', 'mainThreadValidationTimeMs',
+                'mainThreadFieldStoreTimeMs', 'mainThreadDisplayStateTimeMs',
+                'mainThreadRenderRequestTimeMs', 'mainThreadUpdateNotificationTimeMs',
+            ].map(name => [name, metric(run => run.density[name])])),
+            browserSurfaceStages: Object.fromEntries([
+                'surfaceTotalTimeMs', 'surfaceBoundsTimeMs', 'surfaceMaskTimeMs',
+                'surfaceSamplingTimeMs', 'surfaceClassificationTimeMs',
+                'surfaceAllocationTimeMs', 'surfaceInterpolationTimeMs',
+                'surfaceGeometryTimeMs', 'surfaceWireframeTimeMs',
+                'surfaceSymmetryAssemblyTimeMs', 'surfacePatchPlanningTimeMs',
+                'surfacePatchMaskTimeMs', 'surfacePatchCellSelectionTimeMs',
+                'surfacePatchExtractionTimeMs',
+                'surfaceAssemblyTimeMs', 'polygonCount', 'generatedCellCount',
+                'reusedCellCount', 'fieldSampleCount', 'allocatedGeometryBytes',
+            ].map(name => [name, metric(run => run.density[name])])),
             browserDatasetPreparationMs:
                 metric(run => run.density.workerDatasetPreparationTimeMs),
             browserDatasetStages: Object.fromEntries([
@@ -265,6 +297,23 @@ try {
                 workerWaitForModelMs: run.density.workerWaitForModelMs,
                 workerJoinDelayMs: run.density.workerJoinDelayMs,
                 browserTimings: run.structure.browserTimings,
+                applicationStages: Object.fromEntries([
+                    'mapPayloadReconstructionTimeMs', 'mainThreadApplyTimeMs',
+                    'mainThreadApplyTotalTimeMs', 'mainThreadValidationTimeMs',
+                    'mainThreadFieldStoreTimeMs', 'mainThreadDisplayStateTimeMs',
+                    'mainThreadRenderRequestTimeMs', 'mainThreadUpdateNotificationTimeMs',
+                ].map(name => [name, run.density[name]])),
+                surfaceStages: Object.fromEntries([
+                    'surfaceTotalTimeMs', 'surfaceBoundsTimeMs', 'surfaceMaskTimeMs',
+                    'surfaceSamplingTimeMs', 'surfaceClassificationTimeMs',
+                    'surfaceAllocationTimeMs', 'surfaceInterpolationTimeMs',
+                    'surfaceGeometryTimeMs', 'surfaceWireframeTimeMs',
+                    'surfaceSymmetryAssemblyTimeMs', 'surfacePatchPlanningTimeMs',
+                    'surfacePatchMaskTimeMs', 'surfacePatchCellSelectionTimeMs',
+                    'surfacePatchExtractionTimeMs',
+                    'surfaceAssemblyTimeMs', 'polygonCount', 'generatedCellCount',
+                    'reusedCellCount', 'fieldSampleCount', 'allocatedGeometryBytes',
+                ].map(name => [name, run.density[name]])),
                 datasetPreparationMs: run.density.workerDatasetPreparationTimeMs,
                 datasetStages: Object.fromEntries([
                     'datasetSelfDescriptionDetectionMs',
@@ -293,6 +342,8 @@ try {
 writeFileSync(output, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
     prewarmWorker: PREWARM_WORKER,
+    surfaceMode: SURFACE_MODE,
+    useSymmetry: USE_SYMMETRY,
     results,
 }, null, 2)}\n`);
 console.log(JSON.stringify({ output, results }, null, 2));

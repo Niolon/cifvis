@@ -239,11 +239,14 @@ describe('isosurfaces', () => {
         layer.setField(densityMap);
         layer.setStructure(structureAt(0.5));
         const cold = layer.rebuild();
+        const coldGroup = layer.group;
         layer.setOptions({ positiveColor: '#123456', opacity: 0.8 });
         const recolored = layer.rebuild();
 
-        expect(cold.regionCacheMissCount).toBeGreaterThan(0);
-        expect(recolored.regionCacheHitCount).toBeGreaterThan(0);
+        expect(cold.surfaceTotalTimeMs).toBeGreaterThanOrEqual(0);
+        expect(recolored.appearanceCacheHitCount).toBeGreaterThan(0);
+        expect(recolored.surfaceTotalTimeMs).toBe(0);
+        expect(layer.group).toBe(coldGroup);
         const positive = layer.group.children.find(child => child.userData.sign === 'positive');
         expect(`#${positive.material.color.getHexString()}`).toBe('#123456');
         expect(positive.material.opacity).toBe(0.8);

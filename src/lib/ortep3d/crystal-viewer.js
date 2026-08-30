@@ -56,6 +56,10 @@ const SURFACE_EXTRACTION_STATISTICS = [
     'surfaceWireframeTimeMs',
     'surfaceSymmetryAssemblyTimeMs',
     'surfaceTotalTimeMs',
+    'surfacePatchPlanningTimeMs',
+    'surfacePatchMaskTimeMs',
+    'surfacePatchCellSelectionTimeMs',
+    'surfacePatchExtractionTimeMs',
     'surfaceLatticeNodeCount',
     'surfaceLatticeCellCount',
     'candidateCellCount',
@@ -1450,6 +1454,9 @@ export class CrystalViewer {
 
                 try {
                     const updateReceivedEpochMs = performance.timeOrigin + performance.now();
+                    const payloadReconstructionStarted = this.options.debug
+                        ? performance.now()
+                        : null;
                     if (this.scalarFieldLoadTimings) {
                         this.scalarFieldLoadTimings.workerCalculationStartedMs =
                             message.calculationStartedEpochMs -
@@ -1463,19 +1470,27 @@ export class CrystalViewer {
                     const field = message.map
                         ? this.scalarFieldFromPayload(message.map)
                         : this.state.scalarField;
+                    const mapPayloadReconstructionTimeMs = this.options.debug
+                        ? performance.now() - payloadReconstructionStarted
+                        : null;
                     if (!field) {
                         throw new Error('Density worker requested surface refinement before providing a grid');
                     }
-                    this.applyProgressiveScalarField(field, message);
+                    const applicationDiagnostics = this.applyProgressiveScalarField(field, message);
                     if (this.scalarFieldLoadTimings) {
                         this.scalarFieldLoadTimings.densityAppliedMs =
                             performance.timeOrigin + performance.now() -
                             this.scalarFieldLoadTimings.loadStartedEpochMs;
+                        this.scalarFieldLoadTimings.mapPayloadReconstructionTimeMs =
+                            mapPayloadReconstructionTimeMs;
+                        Object.assign(this.scalarFieldLoadTimings, applicationDiagnostics);
                     }
                     if (message.final) {
                         const result = {
                             ...this.scalarFieldResult(field),
                             ...(this.options.debug ? {
+                                mapPayloadReconstructionTimeMs,
+                                ...applicationDiagnostics,
                                 workerReflectionPreparationTimeMs:
                                     message.reflectionPreparationTimeMs,
                                 workerIdleAfterReflectionPreparationMs:
@@ -2004,28 +2019,52 @@ export class CrystalViewer {
      * Applies one progressive map and emits its update signal.
      * @param {ScalarFieldGrid} field - Current scalar grid.
      * @param {object} message - Progressive step metadata.
+     * @returns {object} Debug-only application timing diagnostics.
      */
     applyProgressiveScalarField(field, message) {
         const debugTimings = this.options.debug === true;
         const applyStarted = debugTimings ? performance.now() : null;
+        const validationStarted = debugTimings ? performance.now() : null;
         this.validateScalarFieldCell(field.cell, this.state.baseStructure.cell,
             field.sourceType === 'cube' ? 'Cube' : 'FCF');
+        const mainThreadValidationTimeMs = debugTimings
+            ? performance.now() - validationStarted
+            : null;
         const resolutionFraction = message.surfaceResolutionFraction ?? 1;
         const contours = message.contours?.displayVersion === this.state.contourDisplayVersion
             ? message.contours
             : null;
+        const fieldStoreStarted = debugTimings ? performance.now() : null;
         const { index, surfaceStatistics } = this.storeProgressiveScalarField(
             field,
             resolutionFraction,
             contours,
         );
+        const mainThreadFieldStoreTimeMs = debugTimings
+            ? performance.now() - fieldStoreStarted
+            : null;
+        const displayStateStarted = debugTimings ? performance.now() : null;
         const display = this.scalarFieldDisplayState();
-        const mainThreadApplyTimeMs = debugTimings ? performance.now() - applyStarted : null;
+        const mainThreadDisplayStateTimeMs = debugTimings
+            ? performance.now() - displayStateStarted
+            : null;
+        const renderRequestStarted = debugTimings ? performance.now() : null;
         this.requestRender();
+        const mainThreadRenderRequestTimeMs = debugTimings
+            ? performance.now() - renderRequestStarted
+            : null;
+        const mainThreadApplyTimeMs = debugTimings ? performance.now() - applyStarted : null;
+        const updateNotificationStarted = debugTimings ? performance.now() : null;
         this.notifyScalarFieldUpdate({
             type: 'update',
             ...message,
-            ...(debugTimings ? { mainThreadApplyTimeMs } : {}),
+            ...(debugTimings ? {
+                mainThreadApplyTimeMs,
+                mainThreadValidationTimeMs,
+                mainThreadFieldStoreTimeMs,
+                mainThreadDisplayStateTimeMs,
+                mainThreadRenderRequestTimeMs,
+            } : {}),
             progress: (message.stepIndex + 1) / message.totalSteps,
             resolutionFraction: field.resolutionFraction,
             gridOversampling: field.gridOversampling,
@@ -2125,6 +2164,20 @@ export class CrystalViewer {
             loadedFieldIndex: index,
             ...display,
         });
+        if (!debugTimings) {
+            return {};
+        }
+        const mainThreadUpdateNotificationTimeMs =
+            performance.now() - updateNotificationStarted;
+        return {
+            mainThreadApplyTimeMs,
+            mainThreadApplyTotalTimeMs: performance.now() - applyStarted,
+            mainThreadValidationTimeMs,
+            mainThreadFieldStoreTimeMs,
+            mainThreadDisplayStateTimeMs,
+            mainThreadRenderRequestTimeMs,
+            mainThreadUpdateNotificationTimeMs,
+        };
     }
 
     /**
