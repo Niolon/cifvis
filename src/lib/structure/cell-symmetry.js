@@ -576,15 +576,33 @@ export class CellSymmetry {
     }
 
     static fromCIF(cifBlock) {
-        const spaceGroupName = cifBlock.get(
+        const alternativeSpaceGroupName = cifBlock.get(
             [
                 '_space_group.name_h-m_alt',
-                '_space_group.name_H-M_full',
                 '_symmetry_space_group_name_H-M',
                 '_space_group_name_H-M_alt',
             ],
-            'Unknown',
+            false,
         );
+        const fullSpaceGroupName = cifBlock.get(
+            [
+                '_space_group.name_H-M_full',
+                '_space_group_name_H-M_full',
+            ],
+            false,
+        );
+        const hallSpaceGroupName = cifBlock.get(
+            [
+                '_space_group.name_Hall',
+                '_space_group_name_Hall',
+                '_symmetry_space_group_name_Hall',
+            ],
+            false,
+        );
+        const spaceGroupName = fullSpaceGroupName
+            || alternativeSpaceGroupName
+            || hallSpaceGroupName
+            || 'Unknown';
             
         const spaceGroupNumber = cifBlock.get(
             [
@@ -611,10 +629,17 @@ export class CellSymmetry {
 
         if (symopLoop && !(symopLoop instanceof CifLoop)) {
             // Single symmetry operation as string
+            const operationId = cifBlock.get([
+                '_space_group_symop.id',
+                '_space_group_symop_id',
+                '_symmetry_equiv.id',
+                '_symmetry_equiv_pos_site_id',
+            ], false);
             return new CellSymmetry(
                 spaceGroupName,
                 spaceGroupNumber,
                 [new SymmetryOperation(symopLoop)],
+                operationId === false ? null : new Map([[String(operationId), 0]]),
             );
         }
 
@@ -659,7 +684,12 @@ export class CellSymmetry {
         // space-group number or name using the standard-setting table. This is a
         // fallback only reached when the CIF provides no operations of its own, so
         // it never overrides operators actually present in the file.
-        const tableEntry = lookupSpaceGroup({ number: spaceGroupNumber, name: spaceGroupName });
+        const tableEntry = lookupSpaceGroup({
+            number: spaceGroupNumber,
+            name: alternativeSpaceGroupName,
+            fullName: fullSpaceGroupName,
+            hall: hallSpaceGroupName,
+        });
         if (tableEntry) {
             // The table gives R-centred groups on hexagonal axes, the International
             // Tables standard. A CIF may instead describe the same group on primitive
@@ -669,7 +699,7 @@ export class CellSymmetry {
             // so using them here silently distorts every symmetry image.
             let operations = tableEntry.operations;
             let setting = 'standard International Tables setting';
-            if (tableEntry.symbol_cif.trim().startsWith('R')) {
+            if (tableEntry.universal_h_m?.endsWith(':H')) {
                 let cell = null;
                 try {
                     cell = UnitCell.fromCIF(cifBlock);

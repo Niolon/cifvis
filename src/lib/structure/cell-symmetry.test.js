@@ -683,6 +683,27 @@ loop_
             expect(sym.symmetryOperations).toHaveLength(8);
         });
 
+        test('reconstructs the declared setting from a Hall symbol', () => {
+            const cifText = `data_test
+_space_group_IT_number 14
+_space_group_name_Hall '-P 2ac'
+`;
+            const sym = CellSymmetry.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(sym.spaceGroupNumber).toBe(14);
+            expect(sym.spaceGroupName).toBe('-P 2ac');
+            expect(sym.symmetryOperations[1].toSymmetryString())
+                .toBe('1/2-x,-y,1/2+z');
+        });
+
+        test('accepts a full monoclinic Hermann-Mauguin name', () => {
+            const cifText = "data_test\n_space_group_name_H-M_full 'P 1 21/c 1'";
+            const sym = CellSymmetry.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect(sym.spaceGroupNumber).toBe(14);
+            expect(sym.symmetryOperations).toHaveLength(4);
+        });
+
         test('matches space group name irrespective of spacing and case', () => {
             const cifText = 'data_test\n_symmetry_space_group_name_H-M \'P21/C\'';
             const cif = new CIF(cifText);
@@ -752,6 +773,17 @@ b2 -x,-y,z`;
             expect(transformed.position.x).toBeCloseTo(-1.5);
             expect(transformed.position.y).toBeCloseTo(-0.5);
             expect(transformed.position.z).toBeCloseTo(1.5);  // 0.5 + 1
+        });
+
+        test('preserves an explicit ID for a scalar symmetry operation', () => {
+            const cifText = `data_test
+_space_group_symop_id 7
+_space_group_symop_operation_xyz x,y,z
+`;
+            const symmetry = CellSymmetry.fromCIF(new CIF(cifText).getBlock(0));
+
+            expect([...symmetry.operationIds.entries()]).toEqual([['7', 0]]);
+            expect(symmetry.identitySymOpId).toBe('7');
         });
     
         test('falls back to sequential IDs when none provided', () => {
