@@ -1,12 +1,19 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { CellSymmetry, SymmetryOperation } from '../structure/cell-symmetry.js';
 import {
     isSystematicAbsence,
     mergeReflectionIntensities,
+    mergeReflectionIntensitiesLegacy,
     readReflectionIntensities,
 } from './reflection-intensities.js';
+import {
+    canonicalReflectionIndex,
+    canonicalReflectionIndexLegacy,
+    compiledReciprocalSymmetryKernel,
+    isGeneralPositionSystematicAbsence,
+    isGeneralPositionSystematicAbsenceLegacy,
+} from './reciprocal-symmetry.js';
 
 function cifWithReflections(reflections, operations = ['\'x,y,z\'']) {
     return `data_test
@@ -26,6 +33,118 @@ ${reflections}
 const P21_OPERATIONS = ['\'x,y,z\'', '\'-x,y+1/2,-z\''];
 
 describe('reflection intensity input', () => {
+    test('rejects malformed non-crystallographic rotation coefficients explicitly', () => {
+        const symmetry = {
+            symmetryOperations: [{
+                rotMatrix: [
+                    [1, 0.034, 0],
+                    [0, 1, 0],
+                    [0, 0, 1],
+                ],
+                transVector: [0, 0, 0],
+            }],
+        };
+
+        expect(() => compiledReciprocalSymmetryKernel(symmetry)).toThrow(
+            /non-integral reciprocal rotation/u,
+        );
+    });
+
+    test('matches the legacy canonical orbit scan and merger on randomized observations', () => {
+        const symmetry = new CellSymmetry('P212121', 19, [
+            'x,y,z',
+            '-x+1/2,-y,z+1/2',
+            'x+1/2,-y+1/2,-z',
+            '-x,y+1/2,-z+1/2',
+        ].map(operation => new SymmetryOperation(operation)));
+        let state = 0x5eed1234;
+        const random = () => {
+            state = (1664525 * state + 1013904223) >>> 0;
+            return state / 0x100000000;
+        };
+        const observations = Array.from({ length: 600 }, (_, index) => ({
+            h: Math.floor(random() * 17) - 8,
+            k: Math.floor(random() * 15) - 7,
+            l: Math.floor(random() * 13) - 6,
+            intensity: random() * 1000 - 50,
+            sigma: index % 17 === 0 ? null : index % 23 === 0 ? 0 : random() * 8 + 0.1,
+        }));
+
+        for (const mergeFriedel of [false, true]) {
+            for (const reflection of observations.slice(0, 100)) {
+                expect(canonicalReflectionIndex(
+                    reflection.h, reflection.k, reflection.l, symmetry, mergeFriedel,
+                )).toEqual(canonicalReflectionIndexLegacy(
+                    reflection.h, reflection.k, reflection.l, symmetry, mergeFriedel,
+                ));
+            }
+            for (const removeSystematicAbsences of [false, true]) {
+                const options = { mergeFriedel, removeSystematicAbsences };
+                expect(mergeReflectionIntensities(observations, symmetry, options)).toEqual(
+                    mergeReflectionIntensitiesLegacy(observations, symmetry, options),
+                );
+            }
+        }
+    });
+
+    test('emits detailed preparation diagnostics only in debug mode', () => {
+        const cif = cifWithReflections(`loop_
+ _diffrn_refln_index_h
+ _diffrn_refln_index_k
+ _diffrn_refln_index_l
+ _diffrn_refln_intensity_net
+ _diffrn_refln_intensity_u
+ 1 0 0 12 2
+ -1 0 0 14 3
+`);
+        const normal = readReflectionIntensities(cif);
+        const debug = readReflectionIntensities(cif, 0, { debug: true });
+
+        expect(normal).not.toHaveProperty('diagnostics');
+        expect(debug.diagnostics).toMatchObject({
+            rawReflectionCount: 2,
+            validReflectionCount: 2,
+            invalidReflectionCount: 0,
+            distinctInputHklCount: 2,
+            mergedReflectionCount: 1,
+            symmetryOperationCount: 1,
+            canonicalCacheMissCount: 2,
+        });
+        expect(debug.diagnostics.reflectionPreparationTotalMs).toBeGreaterThanOrEqual(0);
+    });
+
+    test('matches legacy absence phase sums across representative crystal systems', () => {
+        const operationSets = [
+            ['x,y,z'],
+            ['x,y,z', '-x,-y,-z'],
+            ['x,y,z', '-x,y+1/2,-z'],
+            ['x,y,z', '-x+1/2,-y,z+1/2', 'x+1/2,-y+1/2,-z', '-x,y+1/2,-z+1/2'],
+            ['x,y,z', '-y,x,z', '-x,-y,z', 'y,-x,z'],
+            ['x,y,z', '-y,x-y,z', '-x+y,-x,z'],
+            ['x,y,z', 'x-y,x,z', '-y,x-y,z'],
+            ['x,y,z', 'z,x,y', 'y,z,x'],
+        ];
+        for (const [setIndex, operations] of operationSets.entries()) {
+            const symmetry = new CellSymmetry(`test-${setIndex}`, 0, operations.map(operation =>
+                new SymmetryOperation(operation),
+            ));
+            for (let h = -5; h <= 5; h++) {
+                for (let k = -4; k <= 4; k++) {
+                    for (let l = -3; l <= 3; l++) {
+                        expect(isGeneralPositionSystematicAbsence(h, k, l, symmetry)).toBe(
+                            isGeneralPositionSystematicAbsenceLegacy(h, k, l, symmetry),
+                        );
+                        for (const mergeFriedel of [false, true]) {
+                            expect(canonicalReflectionIndex(h, k, l, symmetry, mergeFriedel)).toEqual(
+                                canonicalReflectionIndexLegacy(h, k, l, symmetry, mergeFriedel),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     test('continues past an unrelated _refln loop to a usable later block', () => {
         const text = `${cifWithReflections(`loop_
  _refln_index_h

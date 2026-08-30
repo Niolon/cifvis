@@ -1442,6 +1442,7 @@ export class ORTEP3JsStructure {
      * @param {object} [options] - Visualization options, extends defaults from structure-settings.js
      */
     constructor(crystalStructure, options = {}) {
+        const constructorStarted = performance.now();
         const safeOptions = options || {};
 
         // Handle deep merging of elementProperties
@@ -1462,15 +1463,21 @@ export class ORTEP3JsStructure {
         };
 
         this.crystalStructure = crystalStructure;
+        const cacheStarted = performance.now();
         this.cache = new GeometryMaterialCache(this.options);
+        const cacheSetupTimeMs = performance.now() - cacheStarted;
 
         this.createStructure();
+        this.timings.optionsSetupTimeMs = cacheStarted - constructorStarted;
+        this.timings.cacheSetupTimeMs = cacheSetupTimeMs;
+        this.timings.constructorTimeMs = performance.now() - constructorStarted;
     }
     /**
      * Creates 3D representations of atoms, bonds and H-bonds.
      * @private
      */
     createStructure() {
+        const structureStarted = performance.now();
         this.atoms3D = [];
         this.bonds3D = [];
         this.hBonds3D = [];
@@ -1504,6 +1511,7 @@ export class ORTEP3JsStructure {
             this.options.renderStyle !== 'solid-3d';
 
         // Create atoms
+        const atomsStarted = performance.now();
         if (requiresCameraDependentSubgeometry) {
             // Cutout/2D styles toggle sub-geometry visibility per frame based
             // on camera direction, which isn't a good fit for instancing, so
@@ -1732,7 +1740,9 @@ export class ORTEP3JsStructure {
             this.atomPools = atomPools;
             this.ringPools = ringPools;
         }
+        const atomCreationTimeMs = performance.now() - atomsStarted;
 
+        const bondsStarted = performance.now();
         const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d' ||
             this.options.adpRepresentation === 'rmsd-peanut';
         const getRenderedAtom = trimBondsToSurfaces ?
@@ -1824,8 +1834,10 @@ export class ORTEP3JsStructure {
             }
             this.bondPool?.finalize();
         }
+        const bondCreationTimeMs = performance.now() - bondsStarted;
 
         // Handle hydrogen bonds
+        const hydrogenBondsStarted = performance.now();
         // Only draw h-bonds where all atoms are present in the current structure
         const drawnHBonds = this.crystalStructure.hBonds
             .filter(hBond => {
@@ -1870,6 +1882,14 @@ export class ORTEP3JsStructure {
             this.hBonds3D.push(new ORTEPHBond(hbond, this.hbondPool, segmentMatrices));
         }
         this.hbondPool?.finalize();
+        this.timings = {
+            structurePreparationTimeMs: atomsStarted - structureStarted,
+            atomCreationTimeMs,
+            bondCreationTimeMs,
+            hydrogenBondCreationTimeMs: performance.now() - hydrogenBondsStarted,
+            structureCreationTimeMs: performance.now() - structureStarted,
+            groupAssemblyTimeMs: 0,
+        };
     }
 
     /**
@@ -1877,6 +1897,7 @@ export class ORTEP3JsStructure {
      * @returns {THREE.Group} Group containing all structure objects ready for rendering
      */
     getGroup() {
+        const started = performance.now();
         const group = new THREE.Group();
 
         if (this.atomPools) {
@@ -1947,6 +1968,7 @@ export class ORTEP3JsStructure {
             };
         });
 
+        this.timings.groupAssemblyTimeMs += performance.now() - started;
         return group;
     }
 

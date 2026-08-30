@@ -22,8 +22,12 @@ jsdoc-out/
 cod/
 integration-tests/logs/
 
-# benchmark output
-benchmark/results.csv
+# Benchmark outputs (scripts and curated summaries remain tracked)
+benchmark/*.csv
+benchmark/*.png
+benchmark/*.svg
+benchmark/browser-*.json
+benchmark/density-synchronization-*.json
 
 # Development environment
 .env
@@ -63,4 +67,3 @@ coverage/
 .vite/
 *.local
 .nvmrc
-benchmark/density-pipeline-cod.csv

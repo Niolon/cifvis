@@ -61,6 +61,8 @@ export const descriptions = {
     'renderMode': 'Rendering mode, either <code>constant</code> (render continuously) or ' +
         '<code>onDemand</code> (render only when needed; call <code>viewer.requestRender()</code> ' +
         'after external state changes).',
+    'debug': 'Expose detailed main-thread, density-worker, FFT, and surface performance timings ' +
+        'in scalar-field events and completed density results. Disabled by default.',
     'renderStyle': 'Rendering style: <code>solid-3d</code> (interactive, full ellipsoids), ' +
         '<code>cutout-3d</code> (interactive, camera-facing cutaway octant), or ' +
         '<code>cutout-2d</code> (publication-style, always cutaway). See ' +
@@ -264,7 +266,8 @@ export const descriptions = {
     'isosurface.useSymmetry': 'Reuses meshes for exactly symmetry-equivalent disconnected regions; ' +
         'intersecting masks remain one field to avoid seams.',
     'isosurface.progressiveSteps': 'Ordered surface-resolution fractions emitted after the map is ' +
-        'available; 1 is always included.',
+        'available; 1 is always included. The default renders the final surface directly; add ' +
+        'fractions such as 0.5 or 0.75 to opt into preview redraws for unusually slow workloads.',
     'isosurface.visible': 'Initial density-surface visibility. Changing only this option toggles ' +
         'the retained meshes without recalculation.',
     'isosurface.sigmaLevel': 'Positive and negative contour magnitude in map standard deviations.',
@@ -281,6 +284,8 @@ export const descriptions = {
     'isosurface.opacity': 'Surface opacity.',
     'isosurface.wireframe': 'Draws density surfaces as wireframes.',
     'isosurface.maxPolyCount': 'Maximum marching-cubes polygon allocation per generated field.',
+    'isosurface.surfaceCacheMaxBytes': 'Maximum CPU memory retained for the active field&#39;s ' +
+        'symmetry-region surface cache.',
 
     // Density: contourLines
     'contourLines.enabled': 'Replaces the 3D isosurface with line-only contours on a plane. It ' +

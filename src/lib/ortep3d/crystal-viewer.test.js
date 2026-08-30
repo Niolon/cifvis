@@ -896,6 +896,40 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(viewer.loadDifferenceDensity).not.toHaveBeenCalled();
     });
 
+    test('reports structure-only load milestones in debug mode', async () => {
+        const viewer = {
+            state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
+            options: {
+                debug: true,
+                fixCifErrors: false,
+                differenceDensity: { autoLoad: false },
+            },
+            cancelScalarFieldLoad: vi.fn(),
+            isosurfaceLayer: { clear: vi.fn() },
+            contourLineLayer: { clear: vi.fn() },
+            notifyScalarFieldUpdate: vi.fn(),
+            loadStructure: vi.fn(async structure => {
+                viewer.state.baseStructure = structure;
+            }),
+        };
+
+        const result = await CrystalViewer.prototype.loadCIF.call(
+            viewer,
+            MINIMAL_CIF_WITH_STRUCTURE,
+        );
+
+        expect(result).toMatchObject({
+            success: true,
+            browserTimings: {
+                loadStartedEpochMs: expect.any(Number),
+                cifParsedMs: expect.any(Number),
+                structureReadyMs: expect.any(Number),
+                structureModelReadyMs: expect.any(Number),
+                structureSceneReadyMs: expect.any(Number),
+            },
+        });
+    });
+
     test('installs the structure before scheduling automatic density work', async () => {
         const order = [];
         const viewer = {
@@ -929,6 +963,161 @@ describe('CrystalViewer progressive difference-density events', () => {
         expect(order).toEqual(['structure', 'density']);
     });
 
+    test('prepares reflections before parsing finishes and starts density before scene construction', async () => {
+        const order = [];
+        class FakeWorker {
+            constructor() {
+                order.push('worker-created');
+            }
+
+            postMessage(message) {
+                order.push(message.type);
+            }
+
+            addEventListener() {}
+
+            terminate() {}
+        }
+        vi.stubGlobal('Worker', FakeWorker);
+        try {
+            const viewer = {
+                state: { scalarField: null, scalarFields: [], activeScalarFieldIndex: -1 },
+                options: {
+                    fixCifErrors: false,
+                    differenceDensity: { autoLoad: true },
+                    contourLines: { enabled: false },
+                },
+                defaultDifferenceDensityOptions: { reflections: {}, iam: {} },
+                defaultScalarFieldOptions: { useWorker: true },
+                scalarFieldPreparationSequence: 0,
+                scalarFieldPreparationId: null,
+                scalarFieldWorker: null,
+                ensureScalarFieldWorker() {
+                    return CrystalViewer.prototype.ensureScalarFieldWorker.call(this);
+                },
+                cancelScalarFieldLoad: vi.fn(),
+                isosurfaceLayer: { clear: vi.fn() },
+                contourLineLayer: { clear: vi.fn() },
+                notifyScalarFieldUpdate: vi.fn(),
+                loadStructure: vi.fn(async structure => {
+                    order.push('structure');
+                    viewer.state.baseStructure = structure;
+                }),
+                loadDifferenceDensity: vi.fn(() => {
+                    order.push('density-start');
+                    return Promise.resolve({ success: true });
+                }),
+            };
+
+            const result = await CrystalViewer.prototype.loadCIF.call(
+                viewer,
+                MINIMAL_CIF_WITH_STRUCTURE,
+            );
+
+            expect(result).toMatchObject({ success: true, differenceDensityStarted: true });
+            expect(order).toEqual([
+                'worker-created',
+                'prepare-difference-density-reflections',
+                'density-start',
+                'structure',
+            ]);
+            expect(await result.differenceDensity).toEqual({ success: true });
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    test('retains a completed worker and destroys it only for cancellation or disposal', () => {
+        class FakeWorker {
+            constructor() {
+                this.listeners = new Map();
+                this.terminate = vi.fn();
+            }
+
+            addEventListener(type, listener) {
+                this.listeners.set(type, listener);
+            }
+
+            emit(type, data) {
+                this.listeners.get(type)?.({ data });
+            }
+        }
+        vi.stubGlobal('Worker', FakeWorker);
+        try {
+            const viewer = {
+                scalarFieldWorker: null,
+                scalarFieldWorkerConstructedEpochMs: null,
+                scalarFieldWorkerReadyEpochMs: null,
+                scalarFieldPreparationId: null,
+                scalarFieldPendingResolve: vi.fn(),
+                scalarFieldLoadTimings: null,
+                destroyScalarFieldWorker(selectedWorker) {
+                    return CrystalViewer.prototype.destroyScalarFieldWorker.call(
+                        this,
+                        selectedWorker,
+                    );
+                },
+            };
+            const worker = CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer);
+            expect(CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer)).toBe(worker);
+
+            worker.emit('message', { type: 'ready', epochMs: 123 });
+            expect(viewer.scalarFieldWorkerReadyEpochMs).toBe(123);
+
+            CrystalViewer.prototype.finishScalarFieldLoad.call(viewer, worker);
+            expect(viewer.scalarFieldWorker).toBe(worker);
+            expect(worker.terminate).not.toHaveBeenCalled();
+
+            CrystalViewer.prototype.destroyScalarFieldWorker.call(viewer, worker);
+            expect(worker.terminate).toHaveBeenCalledOnce();
+            expect(viewer.scalarFieldWorker).toBeNull();
+
+            const failedPrewarm = CrystalViewer.prototype.ensureScalarFieldWorker.call(viewer);
+            failedPrewarm.emit('error', new Error('module failed'));
+            expect(failedPrewarm.terminate).toHaveBeenCalledOnce();
+            expect(viewer.scalarFieldWorker).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    test('keeps an idle warm worker but terminates an active worker when cancelled', () => {
+        const worker = { terminate: vi.fn() };
+        const viewer = {
+            scalarFieldWorker: worker,
+            scalarFieldWorkerConstructedEpochMs: 1,
+            scalarFieldWorkerReadyEpochMs: 2,
+            scalarFieldPreparationId: null,
+            scalarFieldPendingResolve: null,
+            scalarFieldMainThreadLoadId: null,
+            scalarFieldLoadSequence: 7,
+            notifyScalarFieldUpdate: vi.fn(),
+            scalarFieldDisplayState: vi.fn(() => ({})),
+            destroyScalarFieldWorker(selectedWorker) {
+                return CrystalViewer.prototype.destroyScalarFieldWorker.call(this, selectedWorker);
+            },
+        };
+
+        CrystalViewer.prototype.cancelScalarFieldLoad.call(viewer, 'idle');
+        expect(worker.terminate).not.toHaveBeenCalled();
+        expect(viewer.scalarFieldWorker).toBe(worker);
+
+        const resolve = vi.fn();
+        viewer.scalarFieldPreparationId = 11;
+        viewer.scalarFieldPendingResolve = resolve;
+        CrystalViewer.prototype.cancelScalarFieldLoad.call(viewer, 'replaced');
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        expect(viewer.scalarFieldWorker).toBeNull();
+        expect(resolve).toHaveBeenCalledWith({
+            success: false,
+            cancelled: true,
+            error: 'replaced',
+        });
+        expect(viewer.notifyScalarFieldUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'cancelled', loadId: 7, error: 'replaced' }),
+        );
+    });
+
     test('subscribes and unsubscribes update listeners', () => {
         const viewer = { scalarFieldUpdateCallbacks: new Set() };
         const updates = [];
@@ -942,6 +1131,36 @@ describe('CrystalViewer progressive difference-density events', () => {
         CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, { type: 'update', stepIndex: 1 });
 
         expect(updates).toEqual([{ type: 'update', stepIndex: 0 }]);
+    });
+
+    test('exposes performance timings only in debug mode', () => {
+        const updates = [];
+        const viewer = {
+            options: { debug: false },
+            scalarFieldUpdateCallbacks: new Set([update => updates.push(update)]),
+        };
+        const update = {
+            type: 'update',
+            progress: 1,
+            fftTotalTimeMs: 12,
+            workerElapsedTimeMs: 20,
+            iam: {
+                method: 'iam',
+                modelBuildTimeMs: 2,
+                calculation: { reflectionCount: 10, timeMs: 5 },
+            },
+        };
+
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, update);
+        expect(updates[0]).toEqual({
+            type: 'update',
+            progress: 1,
+            iam: { method: 'iam', calculation: { reflectionCount: 10 } },
+        });
+
+        viewer.options.debug = true;
+        CrystalViewer.prototype.notifyScalarFieldUpdate.call(viewer, update);
+        expect(updates[1]).toBe(update);
     });
 
     test('normalizes progressive steps and always includes the final surface resolution', () => {

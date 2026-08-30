@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -176,6 +175,70 @@ describe('IAM structure factors', () => {
         expect(result[1].real).toBeCloseTo(0, 12);
         expect(result[1].imaginary).toBeCloseTo(10, 12);
         expect(result[1].phase).toBeCloseTo(90, 12);
+    });
+
+    test('prepared phase-table kernel reproduces scalar coefficients', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif({
+            position: '0.125 0.25 0.375',
+            uiso: 0.04,
+            inversion: true,
+            typeRows: CIF_TYPE_FACTORS,
+        }));
+        const reflections = [
+            [0, 0, 0],
+            { h: 1, k: -2, l: 3 },
+            [-4, 2, 1],
+            [2, 1, -3],
+            ...[-1, 0, 1].flatMap(h =>
+                [-1, 0, 1].flatMap(k => [-1, 0, 1].map(l => [h, k, l]))),
+        ];
+        const scalar = calculator.calculate(reflections);
+        const prepared = calculator.calculatePrepared(reflections);
+
+        for (let index = 0; index < reflections.length; index++) {
+            expect(prepared.real[index]).toBeCloseTo(scalar[index].real, 11);
+            expect(prepared.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
+            expect(prepared.fSquared[index]).toBeCloseTo(scalar[index].amplitude ** 2, 10);
+        }
+        expect([...prepared.h.slice(0, 4)]).toEqual([0, 1, -4, 2]);
+        expect(prepared.diagnostics).toMatchObject({
+            backend: 'prepared-soa',
+            phaseMode: 'tables',
+            dwfMode: 'uiso-vectors',
+            reflectionCount: 31,
+            expandedAtomCount: 2,
+            scatteringModelCount: 1,
+            displacementModelCount: 1,
+            dwfExpEvaluationCount: 31,
+            noAdpExpandedAtomCount: 0,
+            uisoExpandedAtomCount: 2,
+            uaniExpandedAtomCount: 0,
+            uniqueUisoCount: 1,
+            uniqueReciprocalUaniTensorCount: 0,
+            cromerMannExpEvaluationCount: 124,
+        });
+        expect(prepared.diagnostics).toMatchObject({
+            uisoDwfExpEvaluationCount: 31,
+            uaniDwfExpEvaluationCount: 0,
+        });
+    });
+
+    test('bypasses Uiso vector allocation when there is no model reuse', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif({ uiso: 0.04 }));
+        const result = calculator.calculatePrepared([[1, 0, 0], [2, 0, 0]]);
+
+        expect(result.diagnostics).toMatchObject({
+            dwfMode: 'uiso-vectors',
+            dwfVectorReuseEnabled: false,
+            uisoExpandedAtomCount: 1,
+            uniqueUisoCount: 1,
+            uisoDwfExpEvaluationCount: 2,
+        });
+    });
+
+    test('prepared calculation rejects non-integral reflection indices', () => {
+        const calculator = createIAMStructureFactorCalculator(modelCif());
+        expect(() => calculator.calculatePrepared([[0.5, 0, 0]])).toThrow(/32-bit integers/);
     });
 
     test('uses the same atom sum as the anomalous-only correction', () => {

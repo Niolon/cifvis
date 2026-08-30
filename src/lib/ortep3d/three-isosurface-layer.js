@@ -1,5 +1,17 @@
 import { isosurfaceResolution } from '../density/isosurface.js';
-import { createSymmetryAwareIsosurfaces } from '../density/symmetry-isosurface.js';
+import {
+    createSymmetryAwareIsosurfaces,
+    SymmetryRegionSurfaceCache,
+} from '../density/symmetry-isosurface.js';
+
+const APPEARANCE_OPTIONS = new Set([
+    'positiveColor',
+    'negativeColor',
+    'deformationPositiveColor',
+    'deformationNegativeColor',
+    'opacity',
+    'visible',
+]);
 
 /**
  * Three.js adapter for displaying a generic scalar field. It owns the generated
@@ -14,19 +26,36 @@ export class ThreeIsosurfaceLayer {
         this.structure = null;
         this.group = null;
         this.resolutionFraction = 1;
+        this.regionCache = new SymmetryRegionSurfaceCache(options.surfaceCacheMaxBytes);
+        this.appearanceOnlyUpdate = false;
     }
 
     setField(field, resolutionFraction = 1) {
+        if (field !== this.field) {
+            this.regionCache.clear();
+            this.appearanceOnlyUpdate = false;
+        }
         this.field = field;
         this.resolutionFraction = resolutionFraction;
     }
 
     setStructure(structure) {
+        if (structure !== this.structure) {
+            this.appearanceOnlyUpdate = false;
+        }
         this.structure = structure;
     }
 
     setOptions(options = {}) {
+        const changedOptions = Object.entries(options).filter(
+            ([name, value]) => this.options[name] !== value,
+        );
+        this.appearanceOnlyUpdate = Boolean(this.group) && changedOptions.length > 0 &&
+            changedOptions.every(([name]) => APPEARANCE_OPTIONS.has(name));
         this.options = { ...this.options, ...options };
+        if (options.surfaceCacheMaxBytes !== undefined) {
+            this.regionCache.maxBytes = Math.max(0, Number(options.surfaceCacheMaxBytes) || 0);
+        }
     }
 
     /**
@@ -34,6 +63,17 @@ export class ThreeIsosurfaceLayer {
      * @returns {object|null} Generated surface statistics, or null without input.
      */
     rebuild() {
+        if (this.appearanceOnlyUpdate && this.group) {
+            this.appearanceOnlyUpdate = false;
+            this.updateAppearance();
+            this.group.userData.appearanceCacheHitCount =
+                (this.group.userData.appearanceCacheHitCount ?? 0) + 1;
+            return {
+                ...this.group.userData,
+                surfaceTotalTimeMs: 0,
+                generationTimeMs: 0,
+            };
+        }
         this.clearMesh();
         if (!this.field || !this.structure) {
             return null;
@@ -45,21 +85,53 @@ export class ThreeIsosurfaceLayer {
                 negativeColor: this.options.deformationNegativeColor,
             }
             : {};
+        const generationOptions = {
+            ...this.options,
+            ...fieldColors,
+            gridSpacing: this.options.gridSpacing / this.resolutionFraction,
+            resolution: Math.max(
+                8,
+                Math.round(finalResolution * this.resolutionFraction),
+            ),
+        };
         this.group = createSymmetryAwareIsosurfaces(
             this.field,
             this.structure,
-            {
-                ...this.options,
-                ...fieldColors,
-                resolution: Math.max(
-                    8,
-                    Math.round(finalResolution * this.resolutionFraction),
-                ),
-            },
+            generationOptions,
+            this.regionCache,
         );
         this.group.visible = this.options.visible !== false;
         this.parent.add(this.group);
         return this.group.userData;
+    }
+
+    /** Updates colors, opacity, and visibility without rebuilding CPU geometry. */
+    updateAppearance() {
+        const deformation = this.field?.fieldKind === 'deformation-density';
+        this.group.visible = this.options.visible !== false;
+        this.group.traverse(object => {
+            const sign = object.userData?.sign;
+            if (!sign || !object.material) {
+                return;
+            }
+            const color = deformation
+                ? sign === 'positive'
+                    ? this.options.deformationPositiveColor
+                    : this.options.deformationNegativeColor
+                : sign === 'positive'
+                    ? this.options.positiveColor
+                    : this.options.negativeColor;
+            const materials = Array.isArray(object.material)
+                ? object.material
+                : [object.material];
+            for (const material of materials) {
+                material.color?.set(color);
+                material.opacity = this.options.opacity;
+                material.transparent = this.options.opacity < 1;
+                material.depthWrite = this.options.opacity >= 1;
+                material.needsUpdate = true;
+            }
+        });
     }
 
     /** Removes only the generated mesh while retaining field and structure. */
@@ -77,8 +149,10 @@ export class ThreeIsosurfaceLayer {
 
     clear() {
         this.clearMesh();
+        this.regionCache.clear();
         this.field = null;
         this.resolutionFraction = 1;
+        this.appearanceOnlyUpdate = false;
     }
 
     setVisible(visible) {

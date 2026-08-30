@@ -152,6 +152,11 @@
       "default": "\"onDemand\""
     },
     {
+      "path": "debug",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
       "path": "renderStyle",
       "type": "String",
       "default": "\"solid-3d\""
@@ -323,7 +328,7 @@
     {
       "path": "isosurface.progressiveSteps",
       "type": "Array",
-      "default": "[0.5, 0.75, 1]"
+      "default": "[1]"
     },
     {
       "path": "isosurface.visible",
@@ -394,6 +399,11 @@
       "path": "isosurface.maxPolyCount",
       "type": "Number",
       "default": "100000"
+    },
+    {
+      "path": "isosurface.surfaceCacheMaxBytes",
+      "type": "Number",
+      "default": "67108864"
     },
     {
       "path": "contourLines.enabled",

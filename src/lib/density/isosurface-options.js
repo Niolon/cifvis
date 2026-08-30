@@ -1,6 +1,9 @@
 export const DEFAULT_ISOSURFACE_OPTIONS = Object.freeze({
     useSymmetry: true,
-    progressiveSteps: Object.freeze([0.5, 0.75, 1]),
+    // The frozen 5,000-structure COD campaign found the final CifVis surface
+    // below 100 ms in 99.9% of valid cases. Avoid unconditional preview work;
+    // applications may still opt into fractional redraws for unusual workloads.
+    progressiveSteps: Object.freeze([1]),
     visible: true,
     sigmaLevel: 3,
     radius: 1.5,
@@ -15,4 +18,5 @@ export const DEFAULT_ISOSURFACE_OPTIONS = Object.freeze({
     opacity: 0.55,
     wireframe: true,
     maxPolyCount: 100000,
+    surfaceCacheMaxBytes: 64 * 1024 * 1024,
 });

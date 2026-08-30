@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- local test fixture helper */
 import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
@@ -64,6 +63,25 @@ describe('isosurfaces', () => {
 
         expect(group.children.every(child => child.isMesh)).toBe(true);
         expect(group.children.every(child => !child.material.wireframe)).toBe(true);
+    });
+
+    test('uses the sparse typed-array extractor with detailed cold-stage statistics', () => {
+        const group = createIsosurfaces(densityMap, structureAt(0.5), {
+            resolution: 16,
+            radius: 2,
+            sigmaLevel: 1,
+            wireframe: false,
+        });
+
+        expect(group.children.every(child => child.isMesh)).toBe(true);
+        expect(group.userData.surfaceExtractor).toBe('cifvis');
+        expect(group.userData.atomDistanceTestCount).toBe(0);
+        expect(group.userData.fieldSampleCount)
+            .toBeLessThanOrEqual(group.userData.surfaceLatticeNodeCount);
+        expect(group.userData.activeCellCount).toBeGreaterThan(0);
+        expect(group.userData.polygonCount).toBeGreaterThan(0);
+        expect(group.userData.surfaceTotalTimeMs).toBeGreaterThanOrEqual(0);
+        expect(group.userData.allocatedGeometryBytes).toBeGreaterThan(0);
     });
 
     test('honours a Cube map absolute level and positive-only surface', () => {
@@ -153,5 +171,29 @@ describe('isosurfaces', () => {
         expect(colors).toEqual({ positive: '#4FC3F7', negative: '#FF9800' });
         expect(colors.positive).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.positiveColor);
         expect(colors.negative).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.negativeColor);
+    });
+
+    test('retains cached CPU geometry across appearance-only changes', () => {
+        const layer = new ThreeIsosurfaceLayer(new THREE.Group(), {
+            ...DEFAULT_ISOSURFACE_OPTIONS,
+            resolution: 8,
+            radius: 1.5,
+            sigmaLevel: 1,
+            maxPolyCount: 2000,
+        });
+        layer.setField(densityMap);
+        layer.setStructure(structureAt(0.5));
+        const cold = layer.rebuild();
+        const coldGroup = layer.group;
+        layer.setOptions({ positiveColor: '#123456', opacity: 0.8 });
+        const recolored = layer.rebuild();
+
+        expect(cold.surfaceTotalTimeMs).toBeGreaterThanOrEqual(0);
+        expect(recolored.appearanceCacheHitCount).toBeGreaterThan(0);
+        expect(recolored.surfaceTotalTimeMs).toBe(0);
+        expect(layer.group).toBe(coldGroup);
+        const positive = layer.group.children.find(child => child.userData.sign === 'positive');
+        expect(`#${positive.material.color.getHexString()}`).toBe('#123456');
+        expect(positive.material.opacity).toBe(0.8);
     });
 });

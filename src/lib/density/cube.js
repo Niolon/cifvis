@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- private parsing helpers */
 import { UnitCell } from '../structure/crystal.js';
 import * as math from '../math-lite.js';
 import { ScalarFieldGrid } from './scalar-field.js';

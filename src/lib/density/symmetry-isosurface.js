@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- private geometry helpers */
 import * as THREE from 'three';
 import * as math from '../math-lite.js';
 import {
@@ -9,6 +8,63 @@ import {
 } from './isosurface.js';
 
 const POSITION_TOLERANCE_ANGSTROM = 1e-4;
+
+/** Bounded CPU-side cache of canonical symmetry-region triangulations. */
+export class SymmetryRegionSurfaceCache {
+    constructor(maxBytes = 64 * 1024 * 1024) {
+        this.maxBytes = Math.max(0, Number(maxBytes) || 0);
+        this.entries = new Map();
+        this.bytes = 0;
+        this.evictions = 0;
+    }
+
+    get(key) {
+        const entry = this.entries.get(key);
+        if (!entry) {
+            return null;
+        }
+        this.entries.delete(key);
+        this.entries.set(key, entry);
+        return entry.value;
+    }
+
+    has(key) {
+        return this.entries.has(key);
+    }
+
+    set(key, value) {
+        const bytes = Object.values(value.geometry.attributes).reduce(
+            (sum, attribute) => sum + attribute.array.byteLength,
+            0,
+        );
+        if (bytes > this.maxBytes || this.maxBytes === 0) {
+            return;
+        }
+        while (this.bytes + bytes > this.maxBytes && this.entries.size > 0) {
+            const oldest = this.entries.keys().next().value;
+            const removed = this.entries.get(oldest);
+            this.entries.delete(oldest);
+            this.bytes -= removed.bytes;
+            removed.value.geometry.dispose();
+            this.evictions++;
+        }
+        const stored = {
+            geometry: value.geometry.clone(),
+            matrix: value.matrix.clone(),
+        };
+        this.entries.set(key, { value: stored, bytes });
+        this.bytes += bytes;
+    }
+
+    clear() {
+        for (const { value } of this.entries.values()) {
+            value.geometry.dispose();
+        }
+        this.entries.clear();
+        this.bytes = 0;
+        this.evictions = 0;
+    }
+}
 
 /** @returns {number[]} Cartesian coordinates for a fractional point. */
 function cartesianCoordinates(matrix, position) {
@@ -127,6 +183,44 @@ function regionSignature(region) {
     return region.atoms.map(atom =>
         `${atom.label}\u0000${atom.atomType}\u0000${atom.disorderGroup}`,
     ).sort().join('\u0001');
+}
+
+/**
+ *
+ */
+function regionCacheKey(region, sign, level, resolution, options) {
+    const atoms = region.atoms.map(atom => [
+        atom.label,
+        atom.atomType,
+        Number(atom.disorderGroup),
+        Math.round(atom.position.x * 1e8),
+        Math.round(atom.position.y * 1e8),
+        Math.round(atom.position.z * 1e8),
+    ].join(':')).sort().join('|');
+    return [
+        sign,
+        level.toPrecision(12),
+        resolution,
+        Number(options.radius).toPrecision(8),
+        'cifvis',
+        atoms,
+    ].join(';');
+}
+
+/** @returns {THREE.Material} Fresh appearance for cached CPU geometry. */
+function regionMaterial(sign, options) {
+    const Material = options.wireframe ? THREE.MeshBasicMaterial : THREE.MeshStandardMaterial;
+    const settings = {
+        color: sign === 'positive' ? options.positiveColor : options.negativeColor,
+        transparent: options.opacity < 1,
+        opacity: options.opacity,
+        side: THREE.DoubleSide,
+        depthWrite: options.opacity >= 1,
+    };
+    if (!options.wireframe) {
+        Object.assign(settings, { roughness: 0.35, metalness: 0 });
+    }
+    return new Material(settings);
 }
 
 /** @returns {boolean} Whether two atoms represent the same asymmetric site. */
@@ -423,15 +517,17 @@ function regionResolutionFor(structure, region, radius, globalResolution, global
 /**
  * Creates positive and negative isosurfaces while reusing symmetry-equivalent regions.
  * Falls back to the direct isosurface path when symmetry reuse is disabled or unavailable.
- * @param {ScalarFieldGrid} field - Periodic scalar field to contour.
- * @param {CrystalStructure} structure - Structure defining atoms, cell, and symmetry.
+ * @param {object} field - Periodic scalar field to contour.
+ * @param {object} structure - Structure defining atoms, cell, and symmetry.
  * @param {object} [options] - Isosurface display and symmetry-generation options.
+ * @param {SymmetryRegionSurfaceCache|null} [regionCache] - Active-field CPU geometry cache.
  * @returns {THREE.Group} Renderable isosurface group with generation statistics.
  */
 export function createSymmetryAwareIsosurfaces(
     field,
     structure,
     options = {},
+    regionCache = null,
 ) {
     const usedOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, ...options };
     if (usedOptions.useSymmetry === false || !structure?.atoms?.length) {
@@ -463,7 +559,7 @@ export function createSymmetryAwareIsosurfaces(
     const displayedRegionCount = plans.reduce((sum, plan) => sum + plan.regions.length, 0);
     const generatedRegionCount = plans.reduce((sum, plan) => sum + plan.classes.length, 0);
     const reusedRegionCount = displayedRegionCount - generatedRegionCount;
-    if (reusedRegionCount === 0) {
+    if (reusedRegionCount === 0 && !regionCache) {
         const group = createIsosurfaces(field, structure, usedOptions);
         for (const plan of plans) {
             group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
@@ -477,21 +573,37 @@ export function createSymmetryAwareIsosurfaces(
     // the whole cell would - and then still owes the transform and stitch for every
     // copy. Both costs are known here, before any marching cubes runs, so compare them
     // and take the cheaper route rather than assuming the reuse wins.
-    const regionSampleCost = plans.reduce((planSum, plan) => planSum + plan.classes.reduce(
-        (classSum, regionClass) => classSum + regionResolutionFor(
-            structure, regionClass.representative, usedOptions.radius,
-            globalResolution, globalSpacing,
-        ) ** 3,
-        0,
-    ), 0);
+    let regionSampleCost = 0;
+    let uncachedRegionSampleCost = 0;
+    for (const plan of plans) {
+        for (const regionClass of plan.classes) {
+            const resolution = regionResolutionFor(
+                structure, regionClass.representative, usedOptions.radius,
+                globalResolution, globalSpacing,
+            );
+            const sampleCost = resolution ** 3;
+            regionSampleCost += sampleCost;
+            const cacheKey = regionCacheKey(
+                regionClass.representative,
+                plan.sign,
+                level,
+                resolution,
+                usedOptions,
+            );
+            if (!regionCache?.has(cacheKey)) {
+                uncachedRegionSampleCost += sampleCost;
+            }
+        }
+    }
     const directSampleCost = globalResolution ** 3;
-    if (regionSampleCost > directSampleCost * SYMMETRY_SAMPLE_COST_BUDGET) {
+    if (uncachedRegionSampleCost > directSampleCost * SYMMETRY_SAMPLE_COST_BUDGET) {
         const group = createIsosurfaces(field, structure, usedOptions);
         for (const plan of plans) {
             group.userData[`${plan.sign}DisplayedRegionCount`] = plan.regions.length;
         }
         group.userData.symmetryDeclinedForCost = true;
         group.userData.symmetryRegionSampleCost = regionSampleCost;
+        group.userData.symmetryUncachedRegionSampleCost = uncachedRegionSampleCost;
         group.userData.symmetryDirectSampleCost = directSampleCost;
         return group;
     }
@@ -505,6 +617,35 @@ export function createSymmetryAwareIsosurfaces(
     let polygonizationTimeMs = 0;
     let marchingCubesTimeMs = 0;
     let improperTransformCount = 0;
+    let regionCacheHitCount = 0;
+    let regionCacheMissCount = 0;
+    let surfaceWireframeTimeMs = 0;
+    const surfaceStageStatistics = Object.fromEntries([
+        'surfaceBoundsTimeMs',
+        'surfaceMaskTimeMs',
+        'surfaceSamplingTimeMs',
+        'surfaceClassificationTimeMs',
+        'surfaceAllocationTimeMs',
+        'surfaceInterpolationTimeMs',
+        'surfaceGeometryTimeMs',
+        'surfaceLatticeNodeCount',
+        'surfaceLatticeCellCount',
+        'candidateCellCount',
+        'activeCellCount',
+        'activeRowCount',
+        'fieldSampleCount',
+        'activeNodeCount',
+        'allowedNodeCount',
+        'candidateNodeCount',
+        'generatedVertexCount',
+        'generatedLineSegmentCount',
+        'allocatedGeometryBytes',
+        'atomDistanceTestCount',
+        'threeMarchingCubesTimeMs',
+    ].map(key => [key, 0]));
+    let numericalExtractionTimeMs = 0;
+    let surfaceSamplingBackend = null;
+    const initialCacheEvictions = regionCache?.evictions ?? 0;
     const surfacePatches = { positive: [], negative: [] };
     const surfaceMaterials = { positive: [], negative: [] };
     plans.forEach(plan => {
@@ -524,32 +665,56 @@ export function createSymmetryAwareIsosurfaces(
                     ),
                 ),
             );
-            const regionStarted = performance.now();
-            const canonicalGroup = createIsosurfaces(
-                field,
-                representativeStructure,
-                {
-                    ...usedOptions,
-                    resolution: regionResolution,
-                    maxPolyCount: regionMaxPolyCount,
-                    sign: plan.sign,
-                    // Region patches must stay triangulated for stitching; the
-                    // final stitched mesh is converted to line edges below.
-                    keepTriangles: true,
-                },
+            const cacheKey = regionCacheKey(
+                regionClass.representative, plan.sign, level, regionResolution, usedOptions,
             );
-            marchingCubesTimeMs += performance.now() - regionStarted;
-            polygonizationTimeMs += canonicalGroup.userData.polygonizationTimeMs;
-
-            const canonicalSurface = canonicalGroup.children[0];
-            const geometryData = {
-                regular: compactGeometry(canonicalSurface.geometry),
-                mirrored: null,
-                material: canonicalSurface.material,
-                matrix: canonicalSurface.matrix.clone(),
-            };
+            const cached = regionCache?.get(cacheKey);
+            let geometryData;
+            if (cached) {
+                regionCacheHitCount++;
+                geometryData = {
+                    regular: cached.geometry.clone(),
+                    mirrored: null,
+                    material: regionMaterial(plan.sign, usedOptions),
+                    matrix: cached.matrix.clone(),
+                };
+            } else {
+                regionCacheMissCount++;
+                const regionStarted = performance.now();
+                const canonicalGroup = createIsosurfaces(
+                    field,
+                    representativeStructure,
+                    {
+                        ...usedOptions,
+                        resolution: regionResolution,
+                        maxPolyCount: regionMaxPolyCount,
+                        sign: plan.sign,
+                        // Region patches must stay triangulated for stitching; the
+                        // final stitched mesh is converted to line edges below.
+                        keepTriangles: true,
+                    },
+                );
+                marchingCubesTimeMs += performance.now() - regionStarted;
+                polygonizationTimeMs += canonicalGroup.userData.polygonizationTimeMs;
+                numericalExtractionTimeMs += canonicalGroup.userData.surfaceTotalTimeMs ?? 0;
+                surfaceSamplingBackend ??= canonicalGroup.userData.surfaceSamplingBackend ?? null;
+                for (const key of Object.keys(surfaceStageStatistics)) {
+                    surfaceStageStatistics[key] += canonicalGroup.userData[key] ?? 0;
+                }
+                const canonicalSurface = canonicalGroup.children[0];
+                geometryData = {
+                    regular: compactGeometry(canonicalSurface.geometry),
+                    mirrored: null,
+                    material: canonicalSurface.material,
+                    matrix: canonicalSurface.matrix.clone(),
+                };
+                canonicalSurface.geometry.dispose();
+                regionCache?.set(cacheKey, {
+                    geometry: geometryData.regular,
+                    matrix: geometryData.matrix,
+                });
+            }
             surfaceMaterials[plan.sign].push(geometryData.material);
-            canonicalSurface.geometry.dispose();
 
             regionClass.copies.forEach(copy => {
                 const transform = cartesianTransform(structure.cell, copy.transform);
@@ -586,7 +751,11 @@ export function createSymmetryAwareIsosurfaces(
         surface.name = `${sign === 'positive' ? 'Positive' : 'Negative'}Isosurface`;
         surface.userData = { selectable: false, type: 'isosurface', sign };
         if (usedOptions.wireframe) {
+            const wireframeStarted = performance.now();
             const lines = wireframeFromSurface(surface, material.color, usedOptions.opacity);
+            surfaceWireframeTimeMs += performance.now() - wireframeStarted;
+            surfaceStageStatistics.generatedLineSegmentCount +=
+                lines.geometry.getAttribute('position')?.count / 2 || 0;
             surface.geometry.dispose();
             material.dispose();
             group.add(lines);
@@ -600,6 +769,7 @@ export function createSymmetryAwareIsosurfaces(
         }
     }
     const stitchTimeMs = performance.now() - stitchingStarted;
+    const surfaceTotalTimeMs = performance.now() - started;
 
     group.userData = {
         selectable: false,
@@ -630,7 +800,23 @@ export function createSymmetryAwareIsosurfaces(
         symmetryPlanningTimeMs: planningTimeMs,
         polygonizationTimeMs,
         marchingCubesTimeMs,
-        generationTimeMs: performance.now() - started,
+        generationTimeMs: surfaceTotalTimeMs,
+        regionCacheHitCount,
+        regionCacheMissCount,
+        regionCacheBytes: regionCache?.bytes ?? 0,
+        regionCacheEvictionCount: (regionCache?.evictions ?? 0) - initialCacheEvictions,
+        ...surfaceStageStatistics,
+        surfaceExtractor: 'cifvis',
+        surfaceSamplingBackend,
+        surfaceNodeTraversal: 'active-list',
+        surfaceNodeStencil: true,
+        surfaceWireframeTimeMs,
+        surfaceSymmetryAssemblyTimeMs: Math.max(
+            0, surfaceTotalTimeMs - numericalExtractionTimeMs,
+        ),
+        surfaceTotalTimeMs,
+        positiveTriangleCount: positivePolygonCount,
+        negativeTriangleCount: negativePolygonCount,
     };
     return group;
 }

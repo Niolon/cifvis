@@ -5,6 +5,7 @@ import {
     parseDifferenceDensityDataset,
     parseDifferenceDensitySource,
 } from './difference-density.js';
+import { readReflectionIntensities } from './reflection-intensities.js';
 
 const P1_FCF = `data_test
 loop_
@@ -29,6 +30,16 @@ loop_
 const MULTI_RESOLUTION_FCF = P1_FCF.replace(
     ' 1 0 0 4 1 0\n',
     ' 1 0 0 4 1 0\n 4 0 0 9 1 0\n',
+);
+
+const THREE_DIMENSIONAL_FCF = P1_FCF.replace(
+    ' 1 0 0 4 1 0\n',
+    ` 1 0 0 4 1 17
+ 0 1 0 9 1 43
+ 0 0 2 16 2 81
+ 1 1 1 25 2 129
+ 2 -1 1 36 3 211
+`,
 );
 
 const CUSTOM_COEFFICIENT_FCF = `data_custom
@@ -184,13 +195,27 @@ describe('difference-density scalar fields', () => {
         expect(map.reflectionCount).toBe(1);
         expect(map.fieldKind).toBe('difference-density');
         expect(map.coefficientCount).toBe(2);
-        expect(map.dimensions).toEqual([4, 2, 2]);
+        expect(map.dimensions).toEqual([3, 2, 2]);
         expect(map.sample(0, 0, 0)).toBeCloseTo(2, 6);
-        expect(map.sample(0.25, 0, 0)).toBeCloseTo(0, 6);
-        expect(map.sample(0.5, 0, 0)).toBeCloseTo(-2, 6);
+        expect(map.sample(1 / 3, 0, 0)).toBeCloseTo(-1, 6);
+        expect(map.sample(2 / 3, 0, 0)).toBeCloseTo(-1, 6);
         expect(map.sigma).toBeCloseTo(Math.sqrt(2), 6);
         expect(map.mean).toBeCloseTo(0, 12);
         expect(map.maxImaginary).toBeCloseTo(0, 12);
+        for (const key of [
+            'fftGridPlanningTimeMs',
+            'fftHermitianValidationTimeMs',
+            'fftAllocationTimeMs',
+            'fftCoefficientPlacementTimeMs',
+            'fftTransformTimeMs',
+            'fftStatisticsTimeMs',
+            'fftTotalTimeMs',
+            'densityCoefficientSelectionTimeMs',
+            'densityMapAssemblyTimeMs',
+            'densityMapTotalTimeMs',
+        ]) {
+            expect(map[key]).toBeGreaterThanOrEqual(0);
+        }
         expect(map.symmetryOperations).toEqual([{
             rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
             translation: [0, 0, 0],
@@ -210,8 +235,8 @@ describe('difference-density scalar fields', () => {
         const refined = calculateDifferenceDensityMap(dataset, 1);
         const direct = mapFromFcf(MULTI_RESOLUTION_FCF);
 
-        expect(rough.dimensions).toEqual([4, 2, 2]);
-        expect(refined.dimensions).toEqual([16, 2, 2]);
+        expect(rough.dimensions).toEqual([3, 2, 2]);
+        expect(refined.dimensions).toEqual([9, 2, 2]);
         expect(rough.coefficientCount).toBe(2);
         expect(refined.coefficientCount).toBe(4);
         expect(refined.values).toEqual(direct.values);
@@ -223,12 +248,22 @@ describe('difference-density scalar fields', () => {
         const regular = calculateDifferenceDensityMap(dataset, 1, 1);
         const oversampled = calculateDifferenceDensityMap(dataset, 1, 2);
 
-        expect(oversampled.dimensions).toEqual(regular.dimensions.map(size => size * 2));
+        expect(oversampled.dimensions).toEqual([6, 2, 2]);
         expect(oversampled.coefficientCount).toBe(regular.coefficientCount);
-        for (const fractionalX of [0, 0.25, 0.5, 0.75]) {
+        for (const fractionalX of [0, 1 / 3, 2 / 3]) {
             expect(oversampled.sample(fractionalX, 0, 0))
                 .toBeCloseTo(regular.sample(fractionalX, 0, 0), 6);
         }
+    });
+
+    test('uses the Hermitian transform on an odd mixed-radix 3-D grid', () => {
+        const dataset = parseDifferenceDensityDataset(THREE_DIMENSIONAL_FCF);
+        const real = calculateDifferenceDensityMap(dataset, 1, 1);
+
+        expect(real.dimensions).toEqual([5, 3, 5]);
+        expect(real.realTransform).toBe(true);
+        expect(real.hermitianResidual).toBe(0);
+        expect(real.storedCoefficientCount).toBeLessThan(real.coefficientCount);
     });
 
     test('constructs a scaled IAM-phased Fo-Fc map from a reflection CIF', () => {
@@ -265,6 +300,70 @@ describe('difference-density scalar fields', () => {
             0,
             { inputMode: 'fcf' },
         )).toThrow(/phase_calc/);
+    });
+
+    test('reuses observations parsed and symmetry-merged before IAM preparation', () => {
+        const preparedObservations = readReflectionIntensities(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { mergeFriedel: true },
+        );
+        const staged = createCifDifferenceDensityDataset(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            { preparedObservations },
+        );
+        const direct = createCifDifferenceDensityDataset(CIF_WITH_OBSERVED_INTENSITIES);
+
+        expect(staged.observations).toEqual(direct.observations);
+        expect(staged.intensityScale).toBeCloseTo(direct.intensityScale, 12);
+        expect([...staged.coefficients]).toEqual([...direct.coefficients]);
+    });
+
+    test('bypasses automatic coefficient probing for a prepared IAM source', () => {
+        const observations = readReflectionIntensities(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            {
+                resolveDifferenceDensityInputMode: true,
+                differenceDensityInputMode: 'auto',
+            },
+        );
+        const dataset = parseDifferenceDensitySource(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            {
+                debugTimings: true,
+                preparedSource: {
+                    mode: observations.metadata.resolvedDifferenceDensityInputMode,
+                    observations,
+                },
+            },
+        );
+
+        expect(observations.metadata.resolvedDifferenceDensityInputMode).toBe('cif-iam');
+        expect(dataset.sourceType).toBe('cif-iam');
+        expect(dataset.datasetPreparationTimings).toMatchObject({
+            datasetSelfDescriptionDetectionMs: 0,
+            datasetExplicitCoefficientAttemptMs: 0,
+        });
+    });
+
+    test('retains explicit FCF precedence for a prepared mixed source', () => {
+        const observations = readReflectionIntensities(P1_FCF, 0, {
+            resolveDifferenceDensityInputMode: true,
+            differenceDensityInputMode: 'auto',
+        });
+        const dataset = parseDifferenceDensitySource(P1_FCF, 0, {
+            preparedSource: {
+                mode: observations.metadata.resolvedDifferenceDensityInputMode,
+                observations,
+            },
+        });
+
+        expect(observations.metadata.resolvedDifferenceDensityInputMode).toBe('fcf');
+        expect(dataset.sourceType).toBe('fcf');
+        expect(dataset.coefficientMode).toBe('fo-fc-common-phase');
     });
 
     test('does not hide malformed advertised FCF coefficients behind IAM fallback', () => {

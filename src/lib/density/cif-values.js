@@ -1,5 +1,8 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- compact shared CIF helpers */
-/** Converts a CIF/configuration value to a finite number or null. */
+/**
+ * Converts a CIF/configuration value to a finite number or null.
+ * @param {unknown} value - CIF scalar or configured value.
+ * @returns {number|null} Finite numeric value.
+ */
 export function finiteNumber(value) {
     if (value === null || value === undefined || value === false || value === '.' || value === '?') {
         return null;
@@ -8,7 +11,12 @@ export function finiteNumber(value) {
     return Number.isFinite(number) ? number : null;
 }
 
-/** Returns the first loop found under any supported category spelling. */
+/**
+ * Returns the first loop found under any supported category spelling.
+ * @param {object} block - Parsed CIF block.
+ * @param {string|string[]} names - Candidate category names.
+ * @returns {object|null} First matching CIF loop.
+ */
 export function optionalLoop(block, names) {
     for (const name of typeof names === 'string' ? [names] : names) {
         try {
@@ -23,7 +31,13 @@ export function optionalLoop(block, names) {
     return null;
 }
 
-/** Returns a loop column or a caller-provided fallback. */
+/**
+ * Returns a loop column or a caller-provided fallback.
+ * @param {object|null} loop - Parsed CIF loop.
+ * @param {string|string[]} names - Candidate column names.
+ * @param {unknown} defaultValue - Value returned for a missing column.
+ * @returns {unknown} Column values or the fallback.
+ */
 export function loopColumn(loop, names, defaultValue = null) {
     if (!loop) {
         return defaultValue;
@@ -35,7 +49,12 @@ export function loopColumn(loop, names, defaultValue = null) {
     }
 }
 
-/** Returns the first finite scalar found under any dictionary spelling. */
+/**
+ * Returns the first finite scalar found under any dictionary spelling.
+ * @param {object} block - Parsed CIF block.
+ * @param {string[]} names - Candidate scalar names.
+ * @returns {number|null} First finite value.
+ */
 export function numericScalar(block, names) {
     for (const name of names) {
         try {
@@ -50,7 +69,12 @@ export function numericScalar(block, names) {
     return null;
 }
 
-/** Returns the first non-empty text value under any dictionary spelling. */
+/**
+ * Returns the first non-empty text value under any dictionary spelling.
+ * @param {object} block - Parsed CIF block.
+ * @param {string[]} names - Candidate scalar names.
+ * @returns {string|null} First non-empty value.
+ */
 export function textScalar(block, names) {
     for (const name of names) {
         try {

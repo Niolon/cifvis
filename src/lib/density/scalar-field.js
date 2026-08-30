@@ -88,6 +88,17 @@ export class ScalarFieldGrid {
     }
 
     /**
+     * @param {number} ix - Fractional-grid x index.
+     * @param {number} iy - Fractional-grid y index.
+     * @param {number} iz - Fractional-grid z index.
+     * @returns {number} One stored grid-node value.
+     */
+    valueAtIndex(ix, iy, iz) {
+        const [nx, ny, nz] = this.dimensions;
+        return this.values[(wrapIndex(iz, nz) * ny + wrapIndex(iy, ny)) * nx + wrapIndex(ix, nx)];
+    }
+
+    /**
      * Trilinearly samples the field at crystallographic fractional coordinates.
      * Values are stored with x varying fastest, followed by y and z.
      * @param {number} x - Fractional x coordinate.
@@ -121,7 +132,7 @@ export class ScalarFieldGrid {
             const usedX = periodic ? wrapIndex(ix, nx) : Math.min(nx - 1, ix);
             const usedY = periodic ? wrapIndex(iy, ny) : Math.min(ny - 1, iy);
             const usedZ = periodic ? wrapIndex(iz, nz) : Math.min(nz - 1, iz);
-            return this.values[(usedZ * ny + usedY) * nx + usedX];
+            return this.valueAtIndex(usedX, usedY, usedZ);
         };
         const lerp = (first, second, amount) => first + (second - first) * amount;
         const x00 = lerp(valueAt(lower[0], lower[1], lower[2]),
@@ -190,12 +201,11 @@ export class ScalarFieldGrid {
             if (usedY < 0 || usedZ < 0) {
                 return 0;
             }
-            const rowStart = (usedZ * ny + usedY) * nx;
             return cubicInterpolate(
-                x0 < 0 ? 0 : this.values[rowStart + x0],
-                x1 < 0 ? 0 : this.values[rowStart + x1],
-                x2 < 0 ? 0 : this.values[rowStart + x2],
-                x3 < 0 ? 0 : this.values[rowStart + x3],
+                x0 < 0 ? 0 : this.valueAtIndex(x0, usedY, usedZ),
+                x1 < 0 ? 0 : this.valueAtIndex(x1, usedY, usedZ),
+                x2 < 0 ? 0 : this.valueAtIndex(x2, usedY, usedZ),
+                x3 < 0 ? 0 : this.valueAtIndex(x3, usedY, usedZ),
                 fractionX,
             );
         };

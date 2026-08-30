@@ -1,0 +1,53 @@
+{
+  "date": "2026-08-29",
+  "seed": 20260829,
+  "sampleSize": 1000,
+  "populationSize": 59216,
+  "successful": 999,
+  "inputFailures": 1,
+  "iterationsPerStructure": 1,
+  "timingMilliseconds": {
+    "scalar": { "p50": 41.166911, "p90": 189.100893, "p95": 282.707094, "p99": 701.916805 },
+    "preparedDirect": { "p50": 39.373182, "p90": 162.340154, "p95": 257.366879, "p99": 615.428319 },
+    "preparedTables": { "p50": 29.488873, "p90": 126.734557, "p95": 198.877113, "p99": 462.496152 }
+  },
+  "speedupOverScalar": {
+    "preparedDirect": { "p50": 1.076172, "p90": 1.231544, "p95": 1.354602, "p99": 1.884336 },
+    "preparedTables": { "p50": 1.433611, "p90": 1.675323, "p95": 1.838637, "p99": 2.700175 }
+  },
+  "speedupOverPreparedDirect": {
+    "preparedTables": { "p50": 1.329661, "p90": 1.501266, "p95": 1.623424, "p99": 2.082459 }
+  },
+  "singlePassBestModeCounts": {
+    "scalar": 21,
+    "preparedDirect": 31,
+    "preparedTables": 947
+  },
+  "medianPreparedTableSpeedupByExpandedAtomQuartile": {
+    "bounds": [100, 152, 248],
+    "small": 1.408481,
+    "medium": 1.418635,
+    "large": 1.444808,
+    "veryLarge": 1.461447
+  },
+  "medianPreparedTableSpeedupByReflectionQuartile": {
+    "bounds": [2297, 3301, 4906],
+    "small": 1.413520,
+    "medium": 1.432619,
+    "large": 1.430317,
+    "veryLarge": 1.462626
+  },
+  "medianPreparedTableSpeedupBySymmetryOperationBucket": {
+    "atMost2": 1.397262,
+    "3To4": 1.455083,
+    "moreThan4": 1.432965
+  },
+  "maximumAbsoluteComplexComponentError": 8.704474201422117e-12,
+  "maximumRelativeComplexComponentError": 8.704474201422117e-12,
+  "crossoverAudit": {
+    "method": "The 21 worst non-empty apparent table losses were rerun for seven iterations with rotated mode order and compared by median.",
+    "preparedTablesWon": 21,
+    "preparedTableSpeedupRange": [1.186812, 1.533760],
+    "conclusion": "The single-pass exceptions were timing noise; no atom, reflection, or symmetry crossover justifies an adaptive production mode."
+  }
+}

@@ -35,7 +35,7 @@ export function shelxlExtinctionAmplitudeFactor(
  * @param {object} cell - Unit cell used by the reflections.
  * @param {number|null} modelWavelength - Wavelength selected by the IAM model.
  * @param {object[]} reflections - Merged observed reflection indices.
- * @param {object[]} calculated - Matching IAM structure factors.
+ * @param {object|object[]} calculated - Matching prepared or compatibility IAM factors.
  * @param {boolean|number|object} option - Auto/disabled or configured correction.
  * @returns {{factors:number[], metadata:object}} Per-reflection amplitude factors and metadata.
  */
@@ -106,7 +106,8 @@ export function createShelxlExtinctionCorrection(
     if (!(wavelength > 0)) {
         throw new Error('SHELXL extinction correction requires a positive radiation wavelength');
     }
-    if (reflections.length !== calculated.length) {
+    const calculatedCount = calculated.fSquared?.length ?? calculated.length;
+    if (reflections.length !== calculatedCount) {
         throw new Error('Extinction correction requires matching observed and calculated reflections');
     }
 
@@ -117,7 +118,7 @@ export function createShelxlExtinctionCorrection(
             [reflection.h, reflection.k, reflection.l],
         ));
         return shelxlExtinctionAmplitudeFactor(
-            calculated[index].amplitude ** 2,
+            calculated.fSquared?.[index] ?? calculated[index].amplitude ** 2,
             reciprocalLength,
             coefficient,
             wavelength,

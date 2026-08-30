@@ -61,7 +61,7 @@ function groupFor(path) {
         return 'display-modes';
     }
     if (
-        ['renderMode', 'renderStyle', 'adpRepresentation', 'fixCifErrors',
+        ['renderMode', 'renderStyle', 'adpRepresentation', 'debug', 'fixCifErrors',
             'sealCutoutCavity'].includes(path) ||
         path.startsWith('plot2D')
     ) {

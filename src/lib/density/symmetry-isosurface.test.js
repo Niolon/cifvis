@@ -1,10 +1,10 @@
-/* eslint-disable jsdoc/require-param -- local test fixtures */
 import { describe, expect, test } from 'vitest';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { FractPosition } from '../structure/position.js';
 import {
     connectedIsosurfaceRegions,
     createSymmetryAwareIsosurfaces,
+    SymmetryRegionSurfaceCache,
 } from './symmetry-isosurface.js';
 
 const identity = {
@@ -159,5 +159,35 @@ describe('symmetry-aware isosurfaces', () => {
         expect(symmetryGroup.userData.marchingCubesTimeMs).toBeGreaterThanOrEqual(0);
         expect(directGroup.userData.generationTimeMs).toBeGreaterThanOrEqual(0);
         expect(directGroup.userData.polygonizationTimeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    test('does not invoke the CifVis numerical extractor on a region-cache hit', () => {
+        const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
+        const cache = new SymmetryRegionSurfaceCache();
+        const options = { ...surfaceOptions };
+        const cold = createSymmetryAwareIsosurfaces(densityMap(), structure, options, cache);
+        const warm = createSymmetryAwareIsosurfaces(densityMap(), structure, options, cache);
+
+        expect(cold.userData.regionCacheMissCount).toBeGreaterThan(0);
+        expect(cold.userData.fieldSampleCount).toBeGreaterThan(0);
+        expect(warm.userData.regionCacheHitCount).toBeGreaterThan(0);
+        expect(warm.userData.regionCacheMissCount).toBe(0);
+        expect(warm.userData.fieldSampleCount).toBe(0);
+        expect(warm.userData.surfaceSamplingTimeMs).toBe(0);
+    });
+
+    test('does not let an empty cache bypass the cold symmetry cost guard', () => {
+        const structure = structureAt([0.2, 0.5, 0.5], [0.8, 0.5, 0.5]);
+        const cache = new SymmetryRegionSurfaceCache();
+        const group = createSymmetryAwareIsosurfaces(
+            densityMap(),
+            structure,
+            { ...surfaceOptions, resolution: 8 },
+            cache,
+        );
+
+        expect(group.userData.symmetryUsed).toBe(false);
+        expect(group.userData.symmetryDeclinedForCost).toBe(true);
+        expect(cache.entries.size).toBe(0);
     });
 });

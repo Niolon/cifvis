@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-07-18T12:39:40.574Z",
-  "sampleSize": 4963,
+  "generatedAt": "2026-08-29T20:38:45.024Z",
+  "sampleSize": 4968,
   "requestedSampleSize": 5000,
-  "codPopulationSize": 524186,
+  "codPopulationSize": 534824,
   "fileSizeRangeBytes": [
     698,
-    62005699
+    62005722
   ],
   "samplingSeed": 20260718,
   "samplingMethod": "one deterministic random CIF per equal-probability file-size stratum",
   "dMin": 0.9,
-  "processorSpeedStart": 152311.90431766276,
-  "processorSpeedEnd": 159538.3428348969,
+  "processorSpeedStart": 113780.55031480294,
+  "processorSpeedEnd": 125799.5135660585,
   "workPerUnit": {
-    "fcalcWorkPerUnit": 10.12892660391215,
-    "densityWorkPerUnit": 0.7011008854602637,
-    "surfaceWorkPerUnit": 21.234372277261546,
+    "fcalcWorkPerUnit": 10.00917364547918,
+    "densityWorkPerUnit": 2.2904345304732234,
+    "surfaceWorkPerUnit": 5.20237934028699,
     "logLinear": {
       "fcalc": {
         "features": [
@@ -24,10 +24,10 @@
           "scatteringModelCount"
         ],
         "coefficients": [
-          3.0443460680078127,
-          0.9587889555835086,
-          0.9308050422574241,
-          0.004958893912671858
+          2.942002003465922,
+          0.9589862296616951,
+          0.9465429082865326,
+          0.01295281197647697
         ],
         "target": "log(fcalcMs * processorSpeed)",
         "fit": "Huber IRLS in log space"
@@ -38,9 +38,9 @@
           "coefficientCount"
         ],
         "coefficients": [
-          2.362437592916569,
-          0.9560057085974132,
-          0.06659658742222799
+          3.4180789620619207,
+          0.7443721381193735,
+          0.30741629116445196
         ],
         "target": "log(densityMs * processorSpeed)",
         "fit": "Huber IRLS in log space"
@@ -55,13 +55,13 @@
           "cellVolume"
         ],
         "coefficients": [
-          7.523724083469407,
-          1.6987668722877436,
-          -0.029335781200520574,
-          0.2570676893296555,
-          0.8079604952437587,
-          -0.3459908742136234,
-          0.05960077461770705
+          8.801661864093699,
+          1.4662830317963522,
+          0,
+          0.12847017984035158,
+          0.19961459654169703,
+          -0.0028803549222814473,
+          -0.16022390097752032
         ],
         "target": "log(surfaceWallMs * processorSpeed)",
         "fit": "Huber IRLS in log space"
@@ -77,59 +77,59 @@
     100,
     200
   ],
+  "maximumPreviewBudgetMs": 750,
   "progressiveFractionModel": "(estimated preview redraw ms / final estimated ms)^(1/3)",
+  "progressSignalIntervalMs": 150,
   "estimatorVersion": 2,
   "validation": {
-    "observationCount": 994,
+    "observationCount": 997,
     "split": "sampleIndex modulo 5 equals zero",
     "legacy": {
       "fcalc": {
-        "medianAbsolutePercentageError": 8.555856785644286,
-        "meanAbsolutePercentageError": 12.231258188415522,
-        "p90AbsolutePercentageError": 26.9883380880537
+        "medianAbsolutePercentageError": 9.136188544868844,
+        "meanAbsolutePercentageError": 15.281639207793338,
+        "p90AbsolutePercentageError": 38.112121978379584
       },
       "density": {
-        "medianAbsolutePercentageError": 10.347026226307374,
-        "meanAbsolutePercentageError": 14.108499857743627,
-        "p90AbsolutePercentageError": 30.81113596169204
+        "medianAbsolutePercentageError": 21.017892018841785,
+        "meanAbsolutePercentageError": 25.580322824271057,
+        "p90AbsolutePercentageError": 49.712859571623596
       },
       "surface": {
-        "medianAbsolutePercentageError": 30.578298338170555,
-        "meanAbsolutePercentageError": 35.832279273466796,
-        "p90AbsolutePercentageError": 69.44847600444439
+        "medianAbsolutePercentageError": 22.045711205162334,
+        "meanAbsolutePercentageError": 27.846080626223234,
+        "p90AbsolutePercentageError": 58.14878356790146
       },
       "total": {
-        "medianAbsolutePercentageError": 24.175416386608845,
-        "meanAbsolutePercentageError": 28.280197023725652,
-        "p90AbsolutePercentageError": 54.2630312582418
+        "medianAbsolutePercentageError": 11.341932152819462,
+        "meanAbsolutePercentageError": 16.580851586312264,
+        "p90AbsolutePercentageError": 37.46080817607401
       }
     },
     "logLinear": {
       "fcalc": {
-        "medianAbsolutePercentageError": 8.444699032677589,
-        "meanAbsolutePercentageError": 12.464954925742058,
-        "p90AbsolutePercentageError": 28.370507246373695
+        "medianAbsolutePercentageError": 9.337413009265871,
+        "meanAbsolutePercentageError": 15.300999798638143,
+        "p90AbsolutePercentageError": 39.73820729590237
       },
       "density": {
-        "medianAbsolutePercentageError": 8.406332328859884,
-        "meanAbsolutePercentageError": 12.47350297000358,
-        "p90AbsolutePercentageError": 28.01511382016697
+        "medianAbsolutePercentageError": 18.998764895359123,
+        "meanAbsolutePercentageError": 23.243481222337596,
+        "p90AbsolutePercentageError": 47.00078826582305
       },
       "surface": {
-        "medianAbsolutePercentageError": 21.4275168111863,
-        "meanAbsolutePercentageError": 26.84976792108767,
-        "p90AbsolutePercentageError": 55.855164325075265
+        "medianAbsolutePercentageError": 18.42913293404597,
+        "meanAbsolutePercentageError": 23.564042587323563,
+        "p90AbsolutePercentageError": 49.02040165920163
       },
       "total": {
-        "medianAbsolutePercentageError": 17.026120269657827,
-        "meanAbsolutePercentageError": 20.97615582001369,
-        "p90AbsolutePercentageError": 41.717695650816836
+        "medianAbsolutePercentageError": 10.253501990592275,
+        "meanAbsolutePercentageError": 14.935957364982952,
+        "p90AbsolutePercentageError": 34.15980078381434
       }
     }
   },
   "minimumPreviewTotalMs": 300,
-  "maximumPreviewBudgetMs": 750,
   "maximumPreviewSteps": 5,
-  "maximumPreviewOverheadFraction": 0.5,
-  "progressSignalIntervalMs": 150
+  "maximumPreviewOverheadFraction": 0.5
 }

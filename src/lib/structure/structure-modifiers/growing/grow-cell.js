@@ -166,7 +166,7 @@ function isWithinUnitCell(atom, tolerance = 1e-6) {
 /**
  * Creates a unique key for atom position to detect duplicates/special positions.
  * @param {Atom} atom - Atom to create key for
- * @param {UnitCell|null} [cell] - Unit cell used to derive a physical merge tolerance
+ * @param {object|null} [cell] - Unit cell used to derive a physical merge tolerance
  * @returns {string} Position key
  */
 function getAtomPositionKey(atom, cell = null) {
