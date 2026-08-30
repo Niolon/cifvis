@@ -1,7 +1,11 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact numerical planning helpers */
 
 const AXES = [0, 1, 2];
 
+/**
+ * Finds the smallest power-of-two FFT length at least two and not below a bound.
+ * @param {number} value - Minimum length.
+ * @returns {number} Power-of-two length.
+ */
 export function nextPowerOfTwo(value) {
     let result = 1;
     while (result < value) {
@@ -10,6 +14,11 @@ export function nextPowerOfTwo(value) {
     return Math.max(2, result);
 }
 
+/**
+ * Tests whether an integer factors entirely into radices 2, 3, and 5.
+ * @param {number} value - Candidate FFT length.
+ * @returns {boolean} Whether the mixed-radix kernel supports the length.
+ */
 export function isSmooth235(value) {
     let remaining = Math.max(1, Math.round(value));
     for (const factor of [2, 3, 5]) {
@@ -20,6 +29,12 @@ export function isSmooth235(value) {
     return remaining === 1;
 }
 
+/**
+ * Finds the smallest supported FFT length divisible by a symmetry denominator.
+ * @param {number} value - Minimum length.
+ * @param {number} divisor - Required screw/glide denominator multiple.
+ * @returns {number} Compatible 2/3/5-smooth length.
+ */
 export function nextSmooth235(value, divisor = 1) {
     const required = Math.max(2, Math.ceil(value));
     const usedDivisor = Math.max(1, Math.round(divisor));

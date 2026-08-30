@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { CellSymmetry, SymmetryOperation } from '../structure/cell-symmetry.js';

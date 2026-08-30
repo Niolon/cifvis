@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- compact private vector helpers */
 import * as math from '../math-lite.js';
 import { DEFAULT_CONTOUR_LINE_OPTIONS } from './contour-line-options.js';
 

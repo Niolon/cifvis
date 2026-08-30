@@ -1,11 +1,16 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- compact reciprocal helpers */
 import * as math from '../math-lite.js';
 
 const TWO_PI = 2 * Math.PI;
 const SYMMETRY_KERNELS = new WeakMap();
 const COMPILED_SYMMETRY_KERNELS = new WeakMap();
 
-/** Multiplies and validates an integral Miller-index transform. */
+/**
+ * Multiplies and validates an integral Miller-index transform.
+ * @param {number[][]} matrix - Reciprocal-space rotation matrix.
+ * @param {number[]} reflection - Miller index [h,k,l].
+ * @param {number} tolerance - Integrality tolerance.
+ * @returns {number[]} Integral transformed index.
+ */
 export function multiplyReflectionIndex(matrix, reflection, tolerance = 1e-6) {
     return matrix.map(row => {
         const value = row[0] * reflection[0] + row[1] * reflection[1] + row[2] * reflection[2];
@@ -17,7 +22,11 @@ export function multiplyReflectionIndex(matrix, reflection, tolerance = 1e-6) {
     });
 }
 
-/** Cached direct/reciprocal representations of every space-group operation. */
+/**
+ * Returns cached direct/reciprocal representations of all symmetry operations.
+ * @param {object} symmetry - CellSymmetry instance used as the cache identity.
+ * @returns {object[]} Operation kernels retaining exact fractional translations.
+ */
 export function reciprocalSymmetryKernel(symmetry) {
     let kernel = SYMMETRY_KERNELS.get(symmetry);
     if (!kernel) {
@@ -92,7 +101,11 @@ function compileAbsencePhases(operations) {
     return { denominator, translationNumerators, rootReal, rootImaginary };
 }
 
-/** Flat numeric symmetry data for allocation-free reflection preparation. */
+/**
+ * Compiles symmetry into flat integer rotations and rational phase tables.
+ * @param {object} symmetry - CellSymmetry instance used as the cache identity.
+ * @returns {object} Allocation-free reciprocal-symmetry kernel with shared scratch.
+ */
 export function compiledReciprocalSymmetryKernel(symmetry) {
     let compiled = COMPILED_SYMMETRY_KERNELS.get(symmetry);
     if (compiled) {
@@ -136,7 +149,12 @@ export function compiledReciprocalSymmetryKernel(symmetry) {
     return compiled;
 }
 
-/** Lexicographic Miller-index comparison. */
+/**
+ * Compares Miller indices lexicographically in h, k, l order.
+ * @param {number[]} first - First Miller index.
+ * @param {number[]} second - Second Miller index.
+ * @returns {number} Negative, zero, or positive ordering value.
+ */
 export function compareReflectionIndices(first, second) {
     for (let index = 0; index < 3; index++) {
         if (first[index] !== second[index]) {
@@ -146,7 +164,15 @@ export function compareReflectionIndices(first, second) {
     return 0;
 }
 
-/** Canonical representative of a reciprocal-space symmetry orbit. */
+/**
+ * Finds an orbit representative using the reference object implementation.
+ * @param {number} h - Miller h.
+ * @param {number} k - Miller k.
+ * @param {number} l - Miller l.
+ * @param {object} symmetry - Full space-group symmetry.
+ * @param {boolean} mergeFriedel - Whether Friedel inversion belongs to the orbit.
+ * @returns {number[]} Lexicographically minimal [h,k,l].
+ */
 export function canonicalReflectionIndexLegacy(h, k, l, symmetry, mergeFriedel = true) {
     const equivalents = reciprocalSymmetryKernel(symmetry).map(operation =>
         multiplyReflectionIndex(operation.reciprocalRotation, [h, k, l]),
@@ -158,7 +184,15 @@ export function canonicalReflectionIndexLegacy(h, k, l, symmetry, mergeFriedel =
     return equivalents[0];
 }
 
-/** Canonical representative found by a scalar lexicographic minimum scan. */
+/**
+ * Finds an orbit representative without allocating equivalent-index arrays.
+ * @param {number} h - Miller h.
+ * @param {number} k - Miller k.
+ * @param {number} l - Miller l.
+ * @param {object} symmetry - Full space-group symmetry.
+ * @param {boolean} mergeFriedel - Whether Friedel inversion belongs to the orbit.
+ * @returns {number[]} Lexicographically minimal [h,k,l].
+ */
 export function canonicalReflectionIndex(h, k, l, symmetry, mergeFriedel = true) {
     const kernel = compiledReciprocalSymmetryKernel(symmetry);
     const rotations = kernel.reciprocalRotations;
@@ -190,7 +224,15 @@ export function canonicalReflectionIndex(h, k, l, symmetry, mergeFriedel = true)
     return [bestH === 0 ? 0 : bestH, bestK === 0 ? 0 : bestK, bestL === 0 ? 0 : bestL];
 }
 
-/** Tests the general-position phase sum for a systematic absence. */
+/**
+ * Tests systematic absence with the reference complex phase-sum implementation.
+ * @param {number} h - Miller h.
+ * @param {number} k - Miller k.
+ * @param {number} l - Miller l.
+ * @param {object} symmetry - Full space-group symmetry.
+ * @param {number} tolerance - Complex phase-sum tolerance.
+ * @returns {boolean} Whether all transformed-index phase sums vanish.
+ */
 export function isGeneralPositionSystematicAbsenceLegacy(h, k, l, symmetry, tolerance = 1e-8) {
     if (h === 0 && k === 0 && l === 0) {
         return false;
@@ -215,7 +257,16 @@ export function isGeneralPositionSystematicAbsenceLegacy(h, k, l, symmetry, tole
     return [...sums.values()].every(sum => Math.hypot(sum.real, sum.imaginary) <= tolerance);
 }
 
-/** Allocation-free general-position phase-sum absence test. */
+/**
+ * Tests systematic absence with compiled rational phases and shared scratch.
+ * This function is not re-entrant for the same symmetry kernel.
+ * @param {number} h - Miller h.
+ * @param {number} k - Miller k.
+ * @param {number} l - Miller l.
+ * @param {object} symmetry - Full space-group symmetry.
+ * @param {number} tolerance - Complex phase-sum tolerance.
+ * @returns {boolean} Whether all transformed-index phase sums vanish.
+ */
 export function isGeneralPositionSystematicAbsence(h, k, l, symmetry, tolerance = 1e-8) {
     if (h === 0 && k === 0 && l === 0) {
         return false;

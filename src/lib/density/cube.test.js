@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact Cube fixture builder */
 import { describe, expect, test } from 'vitest';
 import {
     BOHR_TO_ANGSTROM,

@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {

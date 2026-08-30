@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc, jsdoc/require-param -- compact model helpers */
 import { CIF } from '../read-cif/base.js';
 import { Atom, UnitCell } from '../structure/crystal.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
@@ -221,6 +220,8 @@ function isNpdAdp(adp, cell) {
  * Captures the already constructed/repaired coordinate model for worker use.
  * Occupancies remain sourced from the atom-site loop because display Atom
  * objects intentionally do not carry refinement-only site metadata.
+ * @param {object} structure - Finished, repaired crystal structure.
+ * @param {object} block - Coordinate CIF block supplying occupancies.
  * @returns {object} Structured-clone-safe structure-factor input.
  */
 export function createStructureFactorModelInput(structure, block) {

@@ -1,11 +1,16 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- compact cell helpers */
 /** Shared tolerances for matching coordinate and reflection unit cells. */
 export const CELL_MATCH_TOLERANCES = Object.freeze({
     relativeLength: 1e-3,
     angleDegrees: 0.05,
 });
 
-/** Tests whether two unit cells describe the same reflection lattice. */
+/**
+ * Tests whether two unit cells describe the same reflection lattice.
+ * @param {object} first - Cell to validate.
+ * @param {object} second - Reference cell.
+ * @param {object} tolerances - Relative length and absolute degree tolerances.
+ * @returns {boolean} Whether every cell parameter agrees.
+ */
 export function cellsMatch(first, second, tolerances = CELL_MATCH_TOLERANCES) {
     for (const parameter of ['a', 'b', 'c']) {
         const scale = Math.max(Math.abs(second[parameter]), 1);
@@ -21,7 +26,13 @@ export function cellsMatch(first, second, tolerances = CELL_MATCH_TOLERANCES) {
     return true;
 }
 
-/** Throws an informative mismatch error naming the first differing parameter. */
+/**
+ * Throws an informative mismatch error naming the first differing parameter.
+ * @param {object} first - Cell to validate.
+ * @param {object} second - Reference cell.
+ * @param {string} label - Source label used in the error.
+ * @returns {void}
+ */
 export function assertCellsMatch(first, second, label = 'Reflection') {
     for (const parameter of ['a', 'b', 'c']) {
         const scale = Math.max(Math.abs(second[parameter]), 1);

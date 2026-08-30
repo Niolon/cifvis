@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- hot numerical kernels */
 
 const mixedPlanCache = new Map();
 const radix2PlanCache = new Map();
@@ -12,10 +11,19 @@ function now() {
     return globalThis.performance?.now?.() ?? Date.now();
 }
 
+/**
+ * @param {number} length - Candidate transform length.
+ * @returns {boolean} Whether radix-2 supports the length.
+ */
 export function isPowerOfTwo(length) {
     return Number.isInteger(length) && length > 0 && (length & (length - 1)) === 0;
 }
 
+/**
+ * Factors an FFT length into supported radices and an unsupported remainder.
+ * @param {number} length - Transform length.
+ * @returns {{exponents:object, remaining:number}} Radix exponents and remainder.
+ */
 export function factorization235(length) {
     let remaining = length;
     const exponents = { 2: 0, 3: 0, 5: 0 };
@@ -153,6 +161,11 @@ function mixedRadixRecursive(
     }
 }
 
+/**
+ * Allocates reusable twiddles and scratch buffers for one 2/3/5-smooth length.
+ * @param {number} length - Transform length.
+ * @returns {object} Mutable plan; do not use concurrently for two FFT lines.
+ */
 export function createMixedRadixPlan(length) {
     let remaining = length;
     for (const factor of [2, 3, 5]) {
@@ -189,6 +202,11 @@ export function createMixedRadixPlan(length) {
     };
 }
 
+/**
+ * Precomputes bit reversal and stage roots for a power-of-two length.
+ * @param {number} length - Transform length.
+ * @returns {object} Immutable radix-2 plan.
+ */
 export function createRadix2Plan(length) {
     if (!isPowerOfTwo(length) || length < 2) {
         throw new Error(`Radix-2 FFT length must be a power of two: ${length}`);
@@ -214,6 +232,12 @@ export function createRadix2Plan(length) {
     return { length, bitReversal, stages };
 }
 
+/**
+ * Resolves automatic per-axis selection, preferring radix-2 for power-of-two lines.
+ * @param {number} length - Axis length.
+ * @param {string} requested - Requested kernel or `auto`.
+ * @returns {string} `radix-2` or `mixed-radix`.
+ */
 export function resolveAxisKernel(length, requested = 'auto') {
     if (!['auto', 'mixed-radix', 'radix-2'].includes(requested)) {
         throw new Error('FFT axis kernel must be "auto", "mixed-radix", or "radix-2"');
@@ -227,6 +251,12 @@ export function resolveAxisKernel(length, requested = 'auto') {
     return requested;
 }
 
+/**
+ * Returns a process-cached plan for one axis length.
+ * @param {number} length - Axis length.
+ * @param {string} requestedKernel - Requested kernel or `auto`.
+ * @returns {object} Kernel, plan, cache status, and setup time.
+ */
 export function getFftPlan(length, requestedKernel = 'auto') {
     const kernel = resolveAxisKernel(length, requestedKernel);
     const cache = kernel === 'radix-2' ? radix2PlanCache : mixedPlanCache;
@@ -243,6 +273,7 @@ export function getFftPlan(length, requestedKernel = 'auto') {
     return { kernel, plan, cacheHit: false, setupTimeMs };
 }
 
+/** Clears reusable FFT plans, primarily for deterministic measurement. */
 export function clearFftPlanCache() {
     mixedPlanCache.clear();
     radix2PlanCache.clear();
@@ -270,6 +301,15 @@ export function fftLineWorkBytes(length, backend = 'mixed-radix') {
     return lineBytes + planElements * Float64Array.BYTES_PER_ELEMENT;
 }
 
+/**
+ * Transforms split complex arrays in place with the unnormalized forward sign.
+ * The inverse is normalized by the line length.
+ * @param {Float64Array} real - Real line, mutated in place.
+ * @param {Float64Array} imaginary - Imaginary line, mutated in place.
+ * @param {object} plan - Exclusive reusable mixed-radix plan.
+ * @param {boolean} inverse - Whether to apply the normalized inverse transform.
+ * @returns {void}
+ */
 export function mixedRadixFftLine(real, imaginary, plan, inverse = false) {
     if (real.length !== plan.length || imaginary.length !== plan.length) {
         throw new Error('FFT line and plan lengths must match');
@@ -287,6 +327,14 @@ export function mixedRadixFftLine(real, imaginary, plan, inverse = false) {
     }
 }
 
+/**
+ * Transforms split complex arrays in place with the unnormalized forward sign.
+ * @param {Float64Array} real - Real line, mutated in place.
+ * @param {Float64Array} imaginary - Imaginary line, mutated in place.
+ * @param {boolean} inverse - Whether to apply the normalized inverse transform.
+ * @param {object|null} suppliedPlan - Reusable plan or null to use the cache.
+ * @returns {void}
+ */
 export function radix2FftLine(real, imaginary, inverse = false, suppliedPlan = null) {
     const length = real.length;
     const plan = suppliedPlan ?? getFftPlan(length, 'radix-2').plan;

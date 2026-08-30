@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { evaluateCromerMann, lookupCromerMann } from './cromer-mann.js';
 import { lookupAnomalousDispersion } from './anomalous-dispersion.js';
 import { createStructureFactorModel } from './structure-factor-model.js';

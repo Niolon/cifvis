@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc, jsdoc/require-param, jsdoc/require-returns -- hot kernels */
 import { edgeTable, triTable } from 'three/addons/objects/MarchingCubes.js';
 
 const CORNERS = [
@@ -78,6 +77,9 @@ function prepareAxisMapping(field, lattice, axis) {
 /**
  * Prepares direct typed-array interpolation only for ordinary regular grids.
  * An own data property is required so symmetry-orbit getters are never touched.
+ * @param {object} field - Scalar grid with x-fastest typed-array storage.
+ * @param {object} lattice - Rectangular fractional surface lattice.
+ * @returns {object|null} Prepared axis maps, or null for a non-regular field.
  */
 export function prepareRegularSurfaceSampler(field, lattice) {
     const valuesProperty = Object.getOwnPropertyDescriptor(field, 'values');
@@ -94,6 +96,15 @@ export function prepareRegularSurfaceSampler(field, lattice) {
     };
 }
 
+/**
+ * Trilinearly samples selected lattice nodes into a caller-owned x-fastest buffer.
+ * @param {object} prepared - Regular sampler returned by prepareRegularSurfaceSampler().
+ * @param {object} lattice - Surface lattice matching the prepared axis maps.
+ * @param {Uint32Array} activeNodeIndices - Flattened node indices to sample.
+ * @param {number} count - Used prefix length of activeNodeIndices.
+ * @param {Float32Array} output - Full lattice-node buffer mutated in place.
+ * @returns {void}
+ */
 export function samplePreparedSurfaceNodes(prepared, lattice, activeNodeIndices, count, output) {
     const [surfaceNx, surfaceNy] = lattice.dimensions;
     const surfacePlane = surfaceNx * surfaceNy;
@@ -138,7 +149,15 @@ export function samplePreparedSurfaceNodes(prepared, lattice, activeNodeIndices,
     }
 }
 
-/** Samples only nodes adjacent to active cells, sharing every node evaluation. */
+/**
+ * Samples only nodes adjacent to active cells, sharing every node evaluation.
+ * @param {object} lattice - Rectangular fractional surface lattice.
+ * @param {Uint8Array} activeCellMask - X-fastest mask over lattice cells.
+ * @param {object} field - Scalar field sampled in fractional coordinates.
+ * @param {number|null} activeCount - Known active-cell count, or null to count it.
+ * @param {object} options - Sampling backend, traversal, and allowed-node mask.
+ * @returns {object} Shared node values, active indices, counts, and timings.
+ */
 export function sampleActiveCellNodes(
     lattice,
     activeCellMask,
@@ -356,18 +375,30 @@ function writeSignPositions(lattice, samples, classified, level, sign, positions
 /**
  * Extracts positive and negative non-indexed surfaces in a shared typed-array
  * traversal. Returned positions are fractional coordinates.
+ * @param {object} options - Extraction inputs and traversal settings.
+ * @param {object} options.lattice - Rectangular fractional lattice.
+ * @param {Uint8Array} options.activeCellMask - Cells eligible for contouring.
+ * @param {number} options.activeCellCount - Number of eligible cells.
+ * @param {object} options.field - Periodic scalar field.
+ * @param {number} options.level - Positive absolute contour level.
+ * @param {string} [options.signs] - `positive`, `negative`, or `both`.
+ * @param {string} [options.samplingMode] - Prepared or generic sampling selection.
+ * @param {string} [options.nodeTraversal] - Active-list or full-scan traversal.
+ * @param {Uint8Array|null} [options.allowedNodeMask] - Conservative clipping stencil.
+ * @returns {object} Fractional positions, triangle counts, and stage diagnostics.
  */
-export function extractMarchingCubes({
-    lattice,
-    activeCellMask,
-    activeCellCount,
-    field,
-    level,
-    signs = 'both',
-    samplingMode = 'auto',
-    nodeTraversal = 'active-list',
-    allowedNodeMask = null,
-}) {
+export function extractMarchingCubes(options) {
+    const {
+        lattice,
+        activeCellMask,
+        activeCellCount,
+        field,
+        level,
+        signs = 'both',
+        samplingMode = 'auto',
+        nodeTraversal = 'active-list',
+        allowedNodeMask = null,
+    } = options;
     const started = now();
     const samples = sampleActiveCellNodes(
         lattice,

@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- private numerical helpers keep compact documentation */
 import { CIF } from '../read-cif/base.js';
 import { UnitCell } from '../structure/crystal.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
@@ -903,7 +902,12 @@ function storedGridStatistics(values, maxImaginary = 0, prepared = null) {
     };
 }
 
-/** @returns {object} Maximum coefficient mismatch from F(-h)=conj(F(h)). */
+/**
+ * Measures the Hermitian invariant F(-h)=conj(F(h)) before selecting the real transform.
+ * @param {Map} coefficients - Complex coefficients keyed by signed Miller index.
+ * @param {boolean} friedelImplicit - Whether absent mates are logically implied.
+ * @returns {{absolute:number, relative:number}} Largest residual and scale-normalized residual.
+ */
 function hermitianResidual(coefficients, friedelImplicit = false) {
     if (friedelImplicit) {
         return { absolute: 0, relative: 0 };
@@ -922,7 +926,17 @@ function hermitianResidual(coefficients, friedelImplicit = false) {
     return { absolute: maximum, relative: maximum / Math.max(scale, Number.EPSILON) };
 }
 
-/** @returns {object} Full complex-to-complex production or legacy Fourier transform. */
+/**
+ * Executes the correctness fallback on full x-fastest split-complex storage.
+ * It uses the crystallographic forward sign exp(-2πih·x), normalizes by cell
+ * volume rather than grid size, and returns Float32 density values.
+ * @param {Map} coefficients - Complex reciprocal coefficients.
+ * @param {object} cell - Unit cell defining the density normalization volume.
+ * @param {number[]} dimensions - Full [nx,ny,nz] periodic dimensions.
+ * @param {string} axisKernel - Per-axis FFT kernel selection.
+ * @param {object} planMetadata - Grid compatibility and Friedel metadata.
+ * @returns {object} Scalar values, statistics, allocation data, and FFT diagnostics.
+ */
 function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMetadata) {
     const allocationStarted = now();
     const [nx, ny] = dimensions;
@@ -992,7 +1006,17 @@ function complexFourierGrid(coefficients, cell, dimensions, axisKernel, planMeta
     };
 }
 
-/** @returns {object} Half-spectrum complex-to-real transform for Hermitian coefficients. */
+/**
+ * Transforms a nonnegative-h half-spectrum and reconstructs its conjugate x axis per line.
+ * Y and z remain complex transforms; final density is Float32 and volume-normalized.
+ * @param {Map} coefficients - Hermitian reciprocal coefficients.
+ * @param {object} cell - Unit cell defining the density normalization volume.
+ * @param {number[]} dimensions - Full [nx,ny,nz] periodic dimensions.
+ * @param {string} axisKernel - Per-axis FFT kernel selection.
+ * @param {object} planMetadata - Grid compatibility and implicit-Friedel metadata.
+ * @param {object} residual - Prevalidated Hermitian residual.
+ * @returns {object} Scalar values, statistics, allocation data, and FFT diagnostics.
+ */
 function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMetadata, residual) {
     const [nx, ny, nz] = dimensions;
     const halfX = Math.floor(nx / 2) + 1;
@@ -1117,7 +1141,16 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
     };
 }
 
-/** @returns {object} Difference density and statistics on a periodic FFT grid. */
+/**
+ * Plans and evaluates the production periodic Fourier grid.
+ * Hermitian data use half-spectrum storage; invalid conjugacy falls back to the
+ * full complex transform without changing sign, normalization, or output type.
+ * @param {Map} coefficients - Complex reciprocal coefficients.
+ * @param {object} cell - Unit cell associated with the coefficients.
+ * @param {number} gridOversampling - Minimum real-space oversampling factor.
+ * @param {object} options - Symmetry operations and implicit-Friedel metadata.
+ * @returns {object} Density values and numerical/backend diagnostics.
+ */
 function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
     const totalStarted = now();
     const gridPlanner = 'smooth';
@@ -1378,14 +1411,12 @@ export function parseDifferenceDensityDataset(
  * @param {object} dataset - Result of parseDifferenceDensityDataset().
  * @param {number} [resolutionFraction] - Fraction of the maximum reciprocal resolution.
  * @param {number} [gridOversampling] - Real-space FFT grid oversampling factor.
- * @param {object} [options] - FFT backend and real/symmetry-reduced transform controls.
  * @returns {ScalarFieldGrid} Periodic difference-density grid.
  */
 export function calculateDifferenceDensityMap(
     dataset,
     resolutionFraction = 1,
     gridOversampling = 1,
-    options = {},
 ) {
     const mapStarted = now();
     if (!(Number.isFinite(resolutionFraction) && resolutionFraction > 0 && resolutionFraction <= 1)) {
@@ -1415,7 +1446,6 @@ export function calculateDifferenceDensityMap(
         throw new Error('Difference-density grid oversampling must be at least 1');
     }
     const grid = fourierGrid(coefficients, dataset.cell, gridOversampling, {
-        ...options,
         symmetryOperations: dataset.symmetryOperations,
         friedelImplicit: dataset.friedelImplicit,
     });

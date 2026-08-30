@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact numerical fixtures */
 import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
 import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';

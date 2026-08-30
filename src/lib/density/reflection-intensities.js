@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import { CIF } from '../read-cif/base.js';
 import { CellSymmetry } from '../structure/cell-symmetry.js';
 import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';

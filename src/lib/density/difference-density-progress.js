@@ -1,8 +1,13 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- compact progression helpers */
 import { calculateDifferenceDensityMap } from './difference-density.js';
 import { normalizeIsosurfaceSteps } from './isosurface-progress.js';
 
-/** Creates the shared worker/main-thread map-refinement schedule. */
+/**
+ * Creates the shared worker/main-thread map-refinement schedule.
+ * A map is recomputed only when a stage changes FFT oversampling.
+ * @param {object} dataset - Prepared difference-density coefficients.
+ * @param {object} options - Resolution, oversampling, and progressive steps.
+ * @returns {{steps:number[], mapAt:function(number):object}} Stateful progression.
+ */
 export function createDifferenceDensityProgression(dataset, options = {}) {
     const steps = normalizeIsosurfaceSteps(options.steps);
     const reciprocalResolution = Number(options.reciprocalResolution) || 1;

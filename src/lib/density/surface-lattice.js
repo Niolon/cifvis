@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact numerical surface helpers */
 
 function cross(first, second) {
     return [
@@ -107,6 +106,13 @@ function createAtomStencil(lattice, radius) {
     return { dx, dy, dz, count, radius: stencilRadius };
 }
 
+/**
+ * Creates a conservative Cartesian-radius stencil over lattice cells.
+ * The radius includes a cell-diagonal pad so clipping cannot remove a crossing.
+ * @param {object} lattice - Planned surface lattice.
+ * @param {number} radius - Nominal atom cutoff in Angstrom.
+ * @returns {object} Integer offsets grouped in split typed arrays.
+ */
 export function createAtomCellStencil(lattice, radius) {
     return createAtomStencil(lattice, radius);
 }

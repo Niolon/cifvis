@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns -- private geometry helpers */
 import * as THREE from 'three';
 import * as math from '../math-lite.js';
 import {
@@ -521,6 +520,7 @@ function regionResolutionFor(structure, region, radius, globalResolution, global
  * @param {object} field - Periodic scalar field to contour.
  * @param {object} structure - Structure defining atoms, cell, and symmetry.
  * @param {object} [options] - Isosurface display and symmetry-generation options.
+ * @param {SymmetryRegionSurfaceCache|null} [regionCache] - Active-field CPU geometry cache.
  * @returns {THREE.Group} Renderable isosurface group with generation statistics.
  */
 export function createSymmetryAwareIsosurfaces(

@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- compact numerical fixtures */
 import { describe, expect, test } from 'vitest';
 import { UnitCell } from '../structure/crystal.js';
 import {

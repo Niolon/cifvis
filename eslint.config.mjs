@@ -71,6 +71,24 @@ export default [
         },
     },
     {
+        files: ['src/lib/density/**/*.js'],
+        rules: {
+            // Require complete module-boundary documentation without forcing
+            // boilerplate on every trivial local numerical helper.
+            'jsdoc/require-jsdoc': ['warn', {
+                'publicOnly': true,
+                'require': {
+                    'FunctionDeclaration': true,
+                    'ClassDeclaration': true,
+                },
+            }],
+            'jsdoc/require-param': ['warn', {
+                'contexts': ['ExportNamedDeclaration > FunctionDeclaration'],
+            }],
+            'jsdoc/require-returns': ['warn', { 'publicOnly': true }],
+        },
+    },
+    {
         files: ['**/*.test.js', '**/*.spec.js'],
         plugins: {
             vitest,

@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- local test fixtures */
 import { describe, expect, test } from 'vitest';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
 import { FractPosition } from '../structure/position.js';

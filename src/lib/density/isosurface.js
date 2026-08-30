@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- private rendering helpers keep compact documentation */
 import * as THREE from 'three';
 import * as math from '../math-lite.js';
 import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';

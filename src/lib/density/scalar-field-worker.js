@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc */
 import {
     parseDifferenceDensitySource,
 } from './difference-density.js';

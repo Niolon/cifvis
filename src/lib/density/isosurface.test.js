@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param -- local test fixture helper */
 import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
 import { Atom, CrystalStructure, UnitCell } from '../structure/crystal.js';
