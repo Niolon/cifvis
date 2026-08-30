@@ -523,10 +523,24 @@ function fitObservedIntensityScale(
  * @returns {object} Difference-density dataset.
  */
 export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options = {}) {
+    const debugTimings = options.debugTimings === true;
+    const datasetStarted = debugTimings ? now() : null;
+    let stageStarted = datasetStarted;
+    const stageTime = () => {
+        if (!debugTimings) {
+            return null;
+        }
+        const completed = now();
+        const elapsed = completed - stageStarted;
+        stageStarted = completed;
+        return elapsed;
+    };
     const cif = new CIF(cifText);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
+    const datasetSourceSetupMs = stageTime();
     const cell = UnitCell.fromCIF(block);
     const symmetry = CellSymmetry.fromCIF(block);
+    const datasetCellSymmetrySetupMs = stageTime();
     // Difference-electron densities default to normal scattering. If anomalous
     // IAM terms are explicitly requested, retain unmerged Friedel observations
     // unless the caller deliberately selects another policy.
@@ -540,6 +554,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     // worker pipeline; ordinary callers retain the single-stage API.
     const observed = options.preparedObservations ??
         readReflectionIntensities(cifText, cifBlock, reflectionOptions);
+    const datasetObservationSetupMs = stageTime();
     const coordinateCifText = options.coordinateCifText ?? cifText;
     const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
     const iamModelStarted = now();
@@ -549,22 +564,28 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         { ...iamOptions, expectedCell: cell, structureModel: options.structureModel },
     );
     const iamModelBuildTimeMs = now() - iamModelStarted;
+    const datasetIamModelBuildMs = stageTime();
     const iamCalculationStarted = now();
     const calculated = calculator.calculatePrepared(observed.reflections, {
         dwfMode: iamOptions.dwfMode,
     });
     const iamCalculationTimeMs = now() - iamCalculationStarted;
+    const datasetFcalcMs = stageTime();
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
     const coordinateBlock = typeof coordinateCifBlock === 'number'
         ? coordinateCif.getBlock(coordinateCifBlock)
         : coordinateCif.getBlockByName(coordinateCifBlock);
+    const datasetCoordinateSetupMs = stageTime();
     const requestedSolventMask = options.solventMaskCorrection ?? 'auto';
     if (![true, false, 'auto'].includes(requestedSolventMask)) {
         throw new Error('solventMaskCorrection must be "auto", true, or false');
     }
     const fab = requestedSolventMask !== false ? readShelxFabCorrections(coordinateBlock) : null;
+    const datasetSolventMaskDiscoveryDecodeMs = stageTime();
     let maskCorrectedCalculated = calculated;
     let solventMaskAppliedCount = 0;
+    let datasetSolventMaskSymmetryExpansionMs = 0;
+    let datasetSolventMaskCopyApplicationMs = 0;
     if (fab) {
         const maskCoefficients = expandReflectionCoefficients(
             fab.h,
@@ -574,6 +595,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             symmetry,
             false,
         );
+        const maskExpansionCompletedMs = stageTime();
         maskCorrectedCalculated = {
             ...calculated,
             real: calculated.real.slice(),
@@ -595,6 +617,8 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             maskCorrectedCalculated.imaginary[index] = imaginary;
             maskCorrectedCalculated.fSquared[index] = real ** 2 + imaginary ** 2;
         }
+        datasetSolventMaskSymmetryExpansionMs = maskExpansionCompletedMs;
+        datasetSolventMaskCopyApplicationMs = stageTime();
     } else if (requestedSolventMask === true) {
         throw new Error('solventMaskCorrection was requested but no _shelx_fab_file was found');
     }
@@ -606,6 +630,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         appliedReflectionCount: solventMaskAppliedCount,
         ...readSolventMaskVoidSummary(coordinateBlock),
     };
+    const datasetSolventMaskMetadataMs = stageTime();
     const requestedExtinction = options.extinctionCorrection ?? 'auto';
     if (!['auto', true, false].includes(requestedExtinction) &&
         typeof requestedExtinction !== 'number' &&
@@ -629,12 +654,14 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     if (embeddedFcfAlreadyCorrected) {
         extinction.metadata.reason = 'embedded-fcf-already-corrected';
     }
+    const datasetExtinctionMs = stageTime();
     const fitted = fitObservedIntensityScale(
         observed.reflections,
         maskCorrectedCalculated,
         options.intensityScale,
         extinction.factors,
     );
+    const datasetScaleFitMs = stageTime();
     let negativeIntensityCount = 0;
     let scaleResidualNumerator = 0;
     let scaleResidualDenominator = 0;
@@ -664,8 +691,26 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const h = observed.reflections.map(reflection => reflection.h);
     const k = observed.reflections.map(reflection => reflection.k);
     const l = observed.reflections.map(reflection => reflection.l);
+    const datasetCoefficientInputSetupMs = stageTime();
     const coefficients = expandReflectionCoefficients(h, k, l, coefficientAt, symmetry, true, true);
-    return finalizeDifferenceDensityDataset({
+    const datasetCoefficientExpansionMs = stageTime();
+    const datasetPreparationTimings = debugTimings ? {
+        datasetSourceSetupMs,
+        datasetCellSymmetrySetupMs,
+        datasetObservationSetupMs,
+        datasetIamModelBuildMs,
+        datasetFcalcMs,
+        datasetCoordinateSetupMs,
+        datasetSolventMaskDiscoveryDecodeMs,
+        datasetSolventMaskSymmetryExpansionMs,
+        datasetSolventMaskCopyApplicationMs,
+        datasetSolventMaskMetadataMs,
+        datasetExtinctionMs,
+        datasetScaleFitMs,
+        datasetCoefficientInputSetupMs,
+        datasetCoefficientExpansionMs,
+    } : undefined;
+    const result = finalizeDifferenceDensityDataset({
         cell,
         coefficients,
         reflectionCount: observed.reflections.length,
@@ -695,6 +740,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             },
         },
         solventMaskCorrection,
+        datasetPreparationTimings,
         reflectionPolicy: {
             mergeFriedel: observed.metadata.mergeFriedel,
             includeAnomalous: calculator.metadata.includeAnomalous,
@@ -702,6 +748,12 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         extinctionCorrection: extinction.metadata,
         friedelImplicit: true,
     }, symmetry);
+    if (debugTimings) {
+        result.datasetPreparationTimings.datasetFinalizationMs = stageTime();
+        result.datasetPreparationTimings.datasetInstrumentedTotalMs =
+            now() - datasetStarted;
+    }
+    return result;
 }
 
 /** @returns {object|null} Self-described cifvis custom coefficient columns. */
@@ -745,13 +797,34 @@ function selfDescribedCoefficientColumns(text, blockSelector) {
  * @returns {object} Difference-density dataset.
  */
 export function parseDifferenceDensitySource(text, block = 0, options = {}) {
+    const debugTimings = options.debugTimings === true;
+    const sourceDispatchStarted = debugTimings ? now() : null;
     const inputMode = options.inputMode ?? 'auto';
     if (!['auto', 'fcf', 'cif-iam'].includes(inputMode)) {
         throw new Error('Difference-density inputMode must be "auto", "fcf", or "cif-iam"');
     }
+    if (options.preparedSource?.mode === 'cif-iam') {
+        const dataset = createCifDifferenceDensityDataset(text, block, {
+            ...options,
+            preparedObservations: options.preparedSource.observations,
+        });
+        if (debugTimings) {
+            Object.assign(dataset.datasetPreparationTimings, {
+                datasetSelfDescriptionDetectionMs: 0,
+                datasetExplicitCoefficientAttemptMs: 0,
+                datasetSourceDispatchTotalMs: now() - sourceDispatchStarted,
+            });
+        }
+        return dataset;
+    }
     const coefficientColumns = options.coefficientColumns ??
         selfDescribedCoefficientColumns(text, block);
+    const datasetSelfDescriptionDetectionMs = debugTimings
+        ? now() - sourceDispatchStarted
+        : null;
+    let datasetExplicitCoefficientAttemptMs = 0;
     if (inputMode !== 'cif-iam') {
+        const coefficientAttemptStarted = debugTimings ? now() : null;
         try {
             return parseDifferenceDensityDataset(
                 text,
@@ -760,6 +833,9 @@ export function parseDifferenceDensitySource(text, block = 0, options = {}) {
                 options.anomalousDispersion ?? null,
             );
         } catch (error) {
+            if (debugTimings) {
+                datasetExplicitCoefficientAttemptMs = now() - coefficientAttemptStarted;
+            }
             if (
                 inputMode === 'fcf' || coefficientColumns ||
                 !(error instanceof UnsupportedCoefficientSourceError)
@@ -768,7 +844,15 @@ export function parseDifferenceDensitySource(text, block = 0, options = {}) {
             }
         }
     }
-    return createCifDifferenceDensityDataset(text, block, options);
+    const dataset = createCifDifferenceDensityDataset(text, block, options);
+    if (debugTimings) {
+        Object.assign(dataset.datasetPreparationTimings, {
+            datasetSelfDescriptionDetectionMs,
+            datasetExplicitCoefficientAttemptMs,
+            datasetSourceDispatchTotalMs: now() - sourceDispatchStarted,
+        });
+    }
+    return dataset;
 }
 
 /** @returns {number} Unit-cell volume in cubic Angstrom. */

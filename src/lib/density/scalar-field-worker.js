@@ -28,6 +28,9 @@ function prepareReflectionSource(message) {
             reflectionOptions.mergeFriedel = iamOptions.includeAnomalous === false;
         }
         reflectionOptions.debug = debugTimings;
+        reflectionOptions.resolveDifferenceDensityInputMode = true;
+        reflectionOptions.differenceDensityInputMode = message.inputMode;
+        reflectionOptions.differenceDensityCoefficientColumns = message.coefficientColumns;
         const observed = readReflectionIntensities(
             message.fcfText,
             message.fcfBlock,
@@ -37,6 +40,7 @@ function prepareReflectionSource(message) {
         const completedEpochMs = debugTimings ? performance.timeOrigin + completed : null;
         preparedReflectionSources.set(message.preparationId, {
             observed,
+            resolvedInputMode: observed.metadata.resolvedDifferenceDensityInputMode,
             preparationTimeMs: debugTimings ? completed - started : null,
             started,
             startedEpochMs,
@@ -105,7 +109,11 @@ async function calculateDifferenceDensityProgressively(message) {
             message.fcfBlock,
             {
                 ...message.datasetOptions,
-                preparedObservations: prepared?.observed,
+                preparedSource: prepared ? {
+                    mode: prepared.resolvedInputMode,
+                    observations: prepared.observed,
+                } : null,
+                debugTimings,
             },
         );
         const datasetPreparationTimeMs = debugTimings
@@ -154,6 +162,7 @@ async function calculateDifferenceDensityProgressively(message) {
                 ...(debugTimings ? {
                     computeTimeMs: mapTimeMs,
                     datasetPreparationTimeMs,
+                    datasetPreparationTimings: dataset.datasetPreparationTimings,
                     reflectionPreparationTimeMs: prepared?.preparationTimeMs ?? 0,
                     reflectionDiagnostics: prepared?.observed.diagnostics,
                     ...prepared?.observed.diagnostics,

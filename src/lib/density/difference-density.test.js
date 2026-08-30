@@ -349,6 +349,52 @@ describe('difference-density scalar fields', () => {
         expect([...staged.coefficients]).toEqual([...direct.coefficients]);
     });
 
+    test('bypasses automatic coefficient probing for a prepared IAM source', () => {
+        const observations = readReflectionIntensities(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            {
+                resolveDifferenceDensityInputMode: true,
+                differenceDensityInputMode: 'auto',
+            },
+        );
+        const dataset = parseDifferenceDensitySource(
+            CIF_WITH_OBSERVED_INTENSITIES,
+            0,
+            {
+                debugTimings: true,
+                preparedSource: {
+                    mode: observations.metadata.resolvedDifferenceDensityInputMode,
+                    observations,
+                },
+            },
+        );
+
+        expect(observations.metadata.resolvedDifferenceDensityInputMode).toBe('cif-iam');
+        expect(dataset.sourceType).toBe('cif-iam');
+        expect(dataset.datasetPreparationTimings).toMatchObject({
+            datasetSelfDescriptionDetectionMs: 0,
+            datasetExplicitCoefficientAttemptMs: 0,
+        });
+    });
+
+    test('retains explicit FCF precedence for a prepared mixed source', () => {
+        const observations = readReflectionIntensities(P1_FCF, 0, {
+            resolveDifferenceDensityInputMode: true,
+            differenceDensityInputMode: 'auto',
+        });
+        const dataset = parseDifferenceDensitySource(P1_FCF, 0, {
+            preparedSource: {
+                mode: observations.metadata.resolvedDifferenceDensityInputMode,
+                observations,
+            },
+        });
+
+        expect(observations.metadata.resolvedDifferenceDensityInputMode).toBe('fcf');
+        expect(dataset.sourceType).toBe('fcf');
+        expect(dataset.coefficientMode).toBe('fo-fc-common-phase');
+    });
+
     test('does not hide malformed advertised FCF coefficients behind IAM fallback', () => {
         const malformed = CIF_WITH_OBSERVED_INTENSITIES.replace(
             ' _refln_F_squared_sigma\n',

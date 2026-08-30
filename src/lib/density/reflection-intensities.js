@@ -270,6 +270,42 @@ function embeddedReflectionLoops(block) {
     return result;
 }
 
+function resolvedDifferenceDensityInputMode(block, options) {
+    const requested = options.differenceDensityInputMode ?? 'auto';
+    if (requested !== 'auto') {
+        return requested;
+    }
+    if (options.differenceDensityCoefficientColumns) {
+        return 'fcf';
+    }
+    const selfDescription = [
+        '_cifvis_difference_density_loop',
+        '_cifvis_difference_density_h',
+        '_cifvis_difference_density_k',
+        '_cifvis_difference_density_l',
+        '_cifvis_difference_density_a',
+        '_cifvis_difference_density_b',
+    ].map(name => block.get(name, false));
+    if (selfDescription.every(value => typeof value === 'string' && value.length > 0)) {
+        return 'fcf';
+    }
+    const loop = optionalLoop(block, '_refln');
+    if (!loop) {
+        return 'cif-iam';
+    }
+    const hasColumn = names => loopColumn(loop, names, null) !== null;
+    const hasPhase = hasColumn(['_refln.phase_calc', '_refln_phase_calc']);
+    const hasMeasured = hasColumn([
+        '_refln.F_squared_meas', '_refln_F_squared_meas',
+        '_refln.F_meas', '_refln_F_meas',
+    ]);
+    const hasCalculated = hasColumn([
+        '_refln.F_calc', '_refln_F_calc',
+        '_refln.F_squared_calc', '_refln_F_squared_calc',
+    ]);
+    return hasPhase && hasMeasured && hasCalculated ? 'fcf' : 'cif-iam';
+}
+
 /**
  * Tests whether the general-position phase sum is zero for a reflection.
  * @param {number} h - Miller h.
@@ -642,6 +678,9 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
     const cif = new CIF(cifText);
     const selectedBlock = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const blocks = blockOrder(cif, selectedBlock);
+    const resolvedInputMode = options.resolveDifferenceDensityInputMode === true
+        ? resolvedDifferenceDensityInputMode(selectedBlock, options)
+        : null;
     if (debug) {
         diagnostics.reflectionSourceParseMs += now() - sourceParseStarted;
     }
@@ -670,6 +709,9 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
                 invalidCount: parsed.invalidCount,
                 systematicAbsenceCount: 0,
                 mergeFriedel: null,
+                ...(resolvedInputMode ? {
+                    resolvedDifferenceDensityInputMode: resolvedInputMode,
+                } : {}),
             },
             ...(debug ? { diagnostics } : {}),
         };
@@ -785,6 +827,9 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
             invalidCount: parsed.invalidCount,
             systematicAbsenceCount: merged.systematicAbsenceCount,
             mergeFriedel: options.mergeFriedel !== false,
+            ...(resolvedInputMode ? {
+                resolvedDifferenceDensityInputMode: resolvedInputMode,
+            } : {}),
         },
         ...(debug ? { diagnostics } : {}),
     };

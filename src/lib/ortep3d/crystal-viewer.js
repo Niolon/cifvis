@@ -1104,6 +1104,8 @@ export class CrystalViewer {
                 fcfBlock: cifBlock,
                 reflections: requestedDifferenceOptions.reflections,
                 iam: requestedDifferenceOptions.iam,
+                inputMode: requestedDifferenceOptions.inputMode,
+                coefficientColumns: requestedDifferenceOptions.coefficientColumns,
             });
             markLoadTime('rawCifPostedMs');
         }
@@ -1467,6 +1469,7 @@ export class CrystalViewer {
                                     message.modelPostedAfterReflectionStartMs,
                                 workerDatasetPreparationTimeMs:
                                     message.datasetPreparationTimeMs,
+                                ...message.datasetPreparationTimings,
                                 workerProgressionSetupTimeMs:
                                     message.progressionSetupTimeMs,
                                 workerComputeTimeMs: message.computeTimeMs,

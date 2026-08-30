@@ -13,7 +13,7 @@ const colors = {
     background: '#f7f8fb', ink: '#172033', muted: '#5e687a', wait: '#edf0f5',
     startup: '#9ca7b7', cif: '#8d75c7', model: '#ba68a8', display: '#d5a23f',
     hkl: '#7a8799', join: '#e7bf61', dataset: '#6b8fbd', iam: '#5a8bc2',
-    fcalc: '#3f72af', fft: '#48a9a6',
+    fcalc: '#3f72af', corrections: '#8f78b5', coefficients: '#73599b', fft: '#48a9a6',
     surface: '#f28e63', transfer: '#f3c4ad',
 };
 
@@ -46,7 +46,17 @@ let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" vie
 <rect width="1280" height="900" fill="${colors.background}"/>
 <style>text{font-family:Inter,system-ui,sans-serif;fill:${colors.ink}}.title{font-size:27px;font-weight:700}.sub{font-size:15px;fill:${colors.muted}}.label{font-size:16px;font-weight:650}.small{font-size:13px;fill:${colors.muted}}.inside{font-size:13px;font-weight:650;fill:white}.lane{font-size:12px;font-weight:650;fill:${colors.muted}}</style>
 <text class="title" x="54" y="48">Browser-only density synchronization</text>
-<text class="sub" x="54" y="76">Fresh Chromium contexts; every position uses timestamps captured in the page or its density worker. Each structure has its own time scale.</text>`;
+<text class="sub" x="54" y="76">Fresh Chromium contexts with Uiso-vector Fcalc; every position comes from the page or density worker. Each structure has its own time scale.</text>`;
+
+[
+    ['Startup', colors.startup, 255], ['HKL', colors.hkl, 355],
+    ['Join', colors.join, 435], ['Dataset setup', colors.dataset, 515],
+    ['IAM model', colors.iam, 650], ['Fcalc', colors.fcalc, 760],
+    ['Coefficients', colors.coefficients, 845], ['FFT/map', colors.fft, 970],
+    ['Surface', colors.surface, 1070],
+].forEach(([label, color, x]) => {
+    svg += `<rect x="${x}" y="88" width="13" height="13" fill="${color}"/><text class="small" x="${x + 19}" y="99">${label}</text>`;
+});
 
 results.forEach((row, index) => {
     const top = 112 + index * 190;
@@ -67,8 +77,27 @@ results.forEach((row, index) => {
     const iamModelMs = row.browserIamModelBuildMs ?? 0;
     const fcalcMs = row.browserFcalcMs ?? 0;
     const datasetOtherMs = Math.max(0, row.browserDatasetPreparationMs - iamModelMs - fcalcMs);
-    const datasetOtherEnd = Math.min(datasetEnd, calculationStarted + datasetOtherMs);
-    const iamEnd = Math.min(datasetEnd, datasetOtherEnd + iamModelMs);
+    const stages = row.browserDatasetStages ?? {};
+    const rawSetupMs = (stages.datasetSourceSetupMs ?? 0) +
+        (stages.datasetCellSymmetrySetupMs ?? 0) +
+        (stages.datasetObservationSetupMs ?? 0);
+    const rawCorrectionMs = (stages.datasetCoordinateSetupMs ?? 0) +
+        (stages.datasetSolventMaskDiscoveryDecodeMs ?? 0) +
+        (stages.datasetSolventMaskSymmetryExpansionMs ?? 0) +
+        (stages.datasetSolventMaskCopyApplicationMs ?? 0) +
+        (stages.datasetSolventMaskMetadataMs ?? 0) + (stages.datasetExtinctionMs ?? 0) +
+        (stages.datasetScaleFitMs ?? 0);
+    const rawCoefficientMs = (stages.datasetCoefficientInputSetupMs ?? 0) +
+        (stages.datasetCoefficientExpansionMs ?? 0) + (stages.datasetFinalizationMs ?? 0);
+    const measuredOtherMs = rawSetupMs + rawCorrectionMs + rawCoefficientMs;
+    const otherScale = measuredOtherMs > 0 ? datasetOtherMs / measuredOtherMs : 0;
+    const setupMs = rawSetupMs * otherScale;
+    const correctionMs = rawCorrectionMs * otherScale;
+    const coefficientMs = rawCoefficientMs * otherScale;
+    const setupEnd = Math.min(datasetEnd, calculationStarted + setupMs);
+    const iamEnd = Math.min(datasetEnd, setupEnd + iamModelMs);
+    const fcalcEnd = Math.min(datasetEnd, iamEnd + fcalcMs);
+    const correctionEnd = Math.min(datasetEnd, fcalcEnd + correctionMs);
     const workerIdle = Math.max(0, modelPosted - prepReady);
     const modelWait = Math.max(0, prepReady - modelPosted);
     const joinDelay = Math.max(0, calculationStarted - Math.max(modelPosted, prepReady));
@@ -91,9 +120,12 @@ results.forEach((row, index) => {
         svg += segment(prepReady, modelPosted, workerY, factor, colors.wait, 'Idle for model');
     }
     svg += segment(Math.max(modelPosted, prepReady), calculationStarted, workerY, factor, colors.join, 'Join delay');
-    svg += segment(calculationStarted, datasetOtherEnd, workerY, factor, colors.dataset, 'Dataset other*');
-    svg += segment(datasetOtherEnd, iamEnd, workerY, factor, colors.iam, 'IAM model');
-    svg += segment(iamEnd, datasetEnd, workerY, factor, colors.fcalc, 'Fcalc');
+    svg += segment(calculationStarted, setupEnd, workerY, factor, colors.dataset, 'Dataset setup');
+    svg += segment(setupEnd, iamEnd, workerY, factor, colors.iam, 'IAM model');
+    svg += segment(iamEnd, fcalcEnd, workerY, factor, colors.fcalc, 'Fcalc');
+    svg += segment(fcalcEnd, correctionEnd, workerY, factor, colors.corrections, 'Corrections');
+    svg += segment(correctionEnd, Math.min(datasetEnd, correctionEnd + coefficientMs),
+        workerY, factor, colors.coefficients, 'Coefficients');
     svg += segment(datasetEnd, mapPosted, workerY, factor, colors.fft, 'FFT/map');
     svg += segment(mapPosted, mapReceived, workerY, factor, colors.transfer, 'Transfer');
 
@@ -107,7 +139,7 @@ results.forEach((row, index) => {
 });
 
 svg += '<text class="small" x="54" y="874">Worker idle is time after HKL preparation while waiting for the model. Model wait is the opposite; join is dispatch latency after both inputs were ready.</text>';
-svg += '<text class="small" x="54" y="892">* Dataset other combines setup and final assembly surrounding the separately timed IAM-model and Fcalc kernels.</text></svg>';
+svg += '<text class="small" x="54" y="892">Dataset substage medians are normalized to the measured dataset total so independently selected medians fit the lane exactly.</text></svg>';
 writeFileSync(output, svg);
 writeFileSync(dataOutput, `${JSON.stringify({
     generatedAt: source.generatedAt,
