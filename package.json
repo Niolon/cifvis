@@ -32,6 +32,7 @@
     "test:database-ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh",
     "test:browser-measurement-hover": "node integration-tests/measurement-hover-playwright.mjs",
     "test:database-collect-problem-cifs": "bash ./integration-tests/collect-problem-structures.sh",
+    "report:cod-maintainer": "node integration-tests/generate-cod-report.mjs",
     "build:deployment": "node scripts/deploy.mjs --prepare-only",
     "clean:deployment": "node scripts/deploy.mjs --clean",
     "deploy": "node scripts/deploy.mjs",
@@ -51,7 +52,8 @@
     "bench:browser-density-consistency": "node benchmark/browser-node-fcalc-comparison.mjs",
     "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs",
     "bench:browser-density-structure-impact": "node benchmark/browser-density-structure-impact.mjs",
-    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs"
+    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs",
+    "bench:bundle-startup": "node benchmark/bundle-startup.mjs"
   },
   "keywords": [],
   "author": "Paul Niklas Ruth",

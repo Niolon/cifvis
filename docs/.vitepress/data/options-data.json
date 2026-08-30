@@ -546,6 +546,71 @@
       "path": "bondColorMetalness",
       "type": "Number",
       "default": "0.1"
+    },
+    {
+      "path": "collapseMetalRingBonds",
+      "type": "Boolean",
+      "default": "false"
+    },
+    {
+      "path": "metalRingCentroidOptions.centreElements",
+      "type": "Array",
+      "default": "[\"Li\", \"Be\", \"Na\", \"Mg\", \"Al\", \"K\", \"Ca\", \"Sc\", \"Ti\", \"V\", \"Cr\", \"Mn\", \"Fe\", \"Co\", \"Ni\", \"Cu\", \"Zn\", \"Ga\", \"Rb\", \"Sr\", \"Y\", \"Zr\", \"Nb\", \"Mo\", \"Tc\", \"Ru\", \"Rh\", \"Pd\", \"Ag\", \"Cd\", \"In\", \"Sn\", \"Cs\", \"Ba\", \"La\", \"Ce\", \"Pr\", \"Nd\", \"Pm\", \"Sm\", \"Eu\", \"Gd\", \"Tb\", \"Dy\", \"Ho\", \"Er\", \"Tm\", \"Yb\", \"Lu\", \"Hf\", \"Ta\", \"W\", \"Re\", \"Os\", \"Ir\", \"Pt\", \"Au\", \"Hg\", \"Tl\", \"Pb\", \"Bi\", \"Po\", \"Fr\", \"Ra\", \"Ac\", \"Th\", \"Pa\", \"U\", \"Np\", \"Pu\", \"Am\", \"Cm\", \"Bk\", \"Cf\"]"
+    },
+    {
+      "path": "metalRingCentroidOptions.ringElements",
+      "type": "Array",
+      "default": "[\"B\", \"C\", \"N\", \"O\", \"P\", \"S\"]"
+    },
+    {
+      "path": "metalRingCentroidOptions.minRingSize",
+      "type": "Number",
+      "default": "5"
+    },
+    {
+      "path": "metalRingCentroidOptions.maxRingSize",
+      "type": "Number",
+      "default": "8"
+    },
+    {
+      "path": "metalRingCentroidOptions.minBondedAtoms",
+      "type": "Number",
+      "default": "3"
+    },
+    {
+      "path": "metalRingCentroidOptions.minRingCoverage",
+      "type": "Number",
+      "default": "0.5"
+    },
+    {
+      "path": "metalRingCentroidOptions.requireGeometryCheck",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "metalRingCentroidOptions.maxRingPlanarityRatio",
+      "type": "Number",
+      "default": "0.15"
+    },
+    {
+      "path": "metalRingCentroidOptions.maxLateralDisplacementRatio",
+      "type": "Number",
+      "default": "0.75"
+    },
+    {
+      "path": "metalRingCentroidOptions.maxDistanceSpreadRatio",
+      "type": "Number",
+      "default": "0.35"
+    },
+    {
+      "path": "metalRingCentroidOptions.dashSegmentLength",
+      "type": "Number",
+      "default": "0.3"
+    },
+    {
+      "path": "metalRingCentroidOptions.dashFraction",
+      "type": "Number",
+      "default": "0.6"
     }
   ],
   "atom-labels": [

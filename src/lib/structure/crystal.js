@@ -148,8 +148,8 @@ export class CrystalStructure {
         });
 
         const atomLabels = new Set(atoms.map(atom => atom.label));
-        const bonds = BondsFactory.createBonds(cifBlock, atomLabels, identitySymOpId);
-        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels, identitySymOpId);
+        const bonds = BondsFactory.createBonds(cifBlock, atomLabels, symmetry);
+        const hBonds = BondsFactory.createHBonds(cifBlock, atomLabels, symmetry);
 
         // A symmetry operation has to be an isometry of the cell it is declared with;
         // whether it is depends on the cell, so an operation and a cell can each be

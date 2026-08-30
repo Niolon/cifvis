@@ -26,6 +26,7 @@ import { assertCellsMatch } from '../density/cell-matching.js';
 import { ThreeIsosurfaceLayer } from './three-isosurface-layer.js';
 import { ThreeContourLineLayer } from './three-contour-line-layer.js';
 import { measureAtoms } from '../structure/measurements.js';
+import { validateMetalRingCentroidOptions } from './metal-ring-centroids.js';
 
 import {
     VALID_ADP_REPRESENTATIONS,
@@ -657,6 +658,15 @@ export class CrystalViewer {
      * @throws {Error} If a rendering enum contains an unsupported value
      */
     constructor(container, options = {}) {
+        if (options.collapseMetalRingBonds !== undefined &&
+            typeof options.collapseMetalRingBonds !== 'boolean') {
+            throw new Error('collapseMetalRingBonds must be a boolean');
+        }
+        const metalRingCentroidOptions = {
+            ...defaultSettings.metalRingCentroidOptions,
+            ...(options.metalRingCentroidOptions || {}),
+        };
+        validateMetalRingCentroidOptions(metalRingCentroidOptions);
         if (options.debug !== undefined && typeof options.debug !== 'boolean') {
             throw new Error('debug must be a boolean');
         }
@@ -809,6 +819,9 @@ export class CrystalViewer {
             bondColor: options.bondColor || defaultSettings.bondColor,
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
+            collapseMetalRingBonds: options.collapseMetalRingBonds ??
+                defaultSettings.collapseMetalRingBonds,
+            metalRingCentroidOptions,
             bondGrowTolerance: options.bondGrowTolerance ?? defaultSettings.bondGrowTolerance,
             hbondRadius: options.hbondRadius ?? defaultSettings.hbondRadius,
             hbondColor: options.hbondColor || defaultSettings.hbondColor,

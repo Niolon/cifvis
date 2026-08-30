@@ -11,6 +11,11 @@ import {
 } from '../structure/adp.js';
 import { CrystalStructure, UnitCell, Atom } from '../structure/crystal.js';
 import { liftColorLuminance, paletteLuminanceLift, paletteLuminanceScale, scaleColorLuminance } from './color-utils.js';
+import {
+    findMetalRingCentroidInteractions,
+    layoutCentroidDashes,
+    validateMetalRingCentroidOptions,
+} from './metal-ring-centroids.js';
 
 const OCTANT_SIGNS = [
     [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
@@ -750,6 +755,30 @@ export class InstancedPool {
 }
 
 /**
+ * Additional material pass over an existing instance pool. Geometry and the
+ * instance-matrix GPU buffer are shared; only the material and draw call differ.
+ */
+class SharedInstancedPass {
+    /**
+     * @param {InstancedPool} sourcePool - Visible pool supplying geometry and transforms
+     * @param {THREE.Material} material - Material for the additional pass
+     */
+    constructor(sourcePool, material) {
+        this.sourcePool = sourcePool;
+        this.mesh = new THREE.InstancedMesh(
+            sourcePool.mesh.geometry, material, sourcePool.mesh.count,
+        );
+        this.mesh.instanceMatrix = sourcePool.mesh.instanceMatrix;
+        this.mesh.userData = { selectable: false };
+    }
+
+    finalize() {
+        this.mesh.boundingSphere = this.sourcePool.mesh.boundingSphere;
+        this.mesh.boundingBox = this.sourcePool.mesh.boundingBox;
+    }
+}
+
+/**
  * Instanced PEANUT pool with a per-instance normalized eigenvalue shape.
  * The wrapper geometry references the shared sphere's vertex/index attributes;
  * only the three-float instance attribute and instance matrices are pool-owned.
@@ -873,6 +902,48 @@ export function calcBondTransform(position1, position2) {
         .setPosition(
             position1.clone().add(position2).multiplyScalar(0.5),
         );
+}
+
+/**
+ * Builds cylinder and sphere transforms for a line of round-capped dashes.
+ * @param {THREE.Vector3} start - Visible interaction start point
+ * @param {THREE.Vector3} end - Ring centroid endpoint
+ * @param {object} options - Dash layout options
+ * @param {number} radius - Capsule radius
+ * @returns {{bodies:object[], caps:object[]}} Instancing transforms and colour positions
+ */
+export function computeCentroidDashTransforms(start, end, options, radius) {
+    const direction = end.clone().sub(start);
+    const totalLength = direction.length();
+    if (!(totalLength > 0)) {
+        return { bodies: [], caps: [] };
+    }
+    direction.divideScalar(totalLength);
+    const bodies = [];
+    const caps = [];
+    for (const interval of layoutCentroidDashes(
+        totalLength, options.dashSegmentLength, options.dashFraction,
+    )) {
+        const dashLength = interval.end - interval.start;
+        const midpointFraction = (interval.start + interval.end) / (2 * totalLength);
+        if (dashLength <= 2 * radius) {
+            const midpoint = start.clone().addScaledVector(direction, (interval.start + interval.end) / 2);
+            const scale = dashLength / (2 * radius);
+            caps.push({
+                matrix: new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(midpoint),
+                midpointFraction,
+            });
+            continue;
+        }
+        const firstCentre = start.clone().addScaledVector(direction, interval.start + radius);
+        const secondCentre = start.clone().addScaledVector(direction, interval.end - radius);
+        bodies.push({ matrix: calcBondTransform(firstCentre, secondCentre), midpointFraction });
+        caps.push(
+            { matrix: new THREE.Matrix4().makeTranslation(...firstCentre), midpointFraction },
+            { matrix: new THREE.Matrix4().makeTranslation(...secondCentre), midpointFraction },
+        );
+    }
+    return { bodies, caps };
 }
 
 /**
@@ -1025,6 +1096,13 @@ export class GeometryMaterialCache {
             1,
             true,
         );
+        if (this.options.collapseMetalRingBonds) {
+            this.geometries.centroidCap = new THREE.SphereGeometry(
+                this.options.bondRadius,
+                this.options.bondSections,
+                Math.max(6, Math.ceil(this.options.bondSections / 2)),
+            );
+        }
 
         // H-bond geometry
         this.geometries.hbond = new THREE.CylinderGeometry(
@@ -1459,8 +1537,16 @@ export class ORTEP3JsStructure {
         this.options = {
             ...defaultSettings,
             ...safeOptions,
+            metalRingCentroidOptions: {
+                ...defaultSettings.metalRingCentroidOptions,
+                ...(safeOptions.metalRingCentroidOptions || {}),
+            },
             elementProperties: mergedElementProperties,
         };
+        if (typeof this.options.collapseMetalRingBonds !== 'boolean') {
+            throw new TypeError('collapseMetalRingBonds must be boolean');
+        }
+        validateMetalRingCentroidOptions(this.options.metalRingCentroidOptions);
 
         this.crystalStructure = crystalStructure;
         const cacheStarted = performance.now();
@@ -1481,6 +1567,7 @@ export class ORTEP3JsStructure {
         this.atoms3D = [];
         this.bonds3D = [];
         this.hBonds3D = [];
+        this.centroidInteractions = [];
 
         const atomIds = new Set();
         const atomsById = new Map();
@@ -1750,12 +1837,55 @@ export class ORTEP3JsStructure {
 
         // Handle regular bonds
         // Only draw bonds where both atoms are present in the current structure
-        const drawnBonds = this.crystalStructure.bonds
+        let drawnBonds = this.crystalStructure.bonds
             .filter(bond => {
                 const atom1Present = atomIds.has(bond.atom1Id);
                 const atom2Present = atomIds.has(bond.atom2Id);
                 return atom1Present && atom2Present;
             });
+
+        if (this.options.collapseMetalRingBonds) {
+            const plan = findMetalRingCentroidInteractions(
+                this.crystalStructure, drawnBonds, this.options.metalRingCentroidOptions,
+            );
+            this.centroidInteractions = plan.interactions;
+            drawnBonds = drawnBonds.filter(bond => !plan.suppressedBonds.has(bond));
+        }
+
+        // Prepare all transient centroid instances before allocating the fixed-size
+        // regular-bond pool, allowing identical cylinder bodies to share that draw call.
+        const centroidPieces = [];
+        for (const interaction of this.centroidInteractions) {
+            const atomPosition = getCartesianPosition(interaction.centreAtom.uniqueId).clone();
+            const centroid = new THREE.Vector3(...interaction.centroid);
+            const direction = centroid.clone().sub(atomPosition);
+            const renderedCentre = renderedAtomsById.get(interaction.centreAtom.uniqueId);
+            if (renderedCentre && direction.lengthSq() > 0) {
+                const unitDirection = direction.clone().normalize();
+                const trim = renderedCentre.getSurfaceDistanceAlong(unitDirection);
+                if (Number.isFinite(trim) && trim > 0 && trim < direction.length()) {
+                    atomPosition.addScaledVector(unitDirection, trim);
+                }
+            }
+            const transforms = computeCentroidDashTransforms(
+                atomPosition, centroid, this.options.metalRingCentroidOptions, this.options.bondRadius,
+            );
+            const ringColour = interaction.ringAtoms.reduce(
+                (sum, atom) => sum.add(this.cache.getAtomMaterials(atom.atomType)[0].color),
+                new THREE.Color(0, 0, 0),
+            ).multiplyScalar(1 / interaction.ringAtoms.length);
+            const centreColour = this.cache.getAtomMaterials(interaction.centreAtom.atomType)[0].color;
+            const colourFor = piece => this.options.bondColorMode === 'split' &&
+                this.options.renderStyle !== 'cutout-2d'
+                ? (piece.midpointFraction <= 0.5 ? centreColour : ringColour) : null;
+            centroidPieces.push({ interaction, transforms, colourFor });
+        }
+        const centroidBodyCount = centroidPieces.reduce(
+            (sum, item) => sum + item.transforms.bodies.length, 0,
+        );
+        const centroidCapCount = centroidPieces.reduce(
+            (sum, item) => sum + item.transforms.caps.length, 0,
+        );
 
         if (this.options.renderStyle === 'cutout-2d') {
             // The 2D publication style needs per-bond open/closed material
@@ -1823,16 +1953,63 @@ export class ORTEP3JsStructure {
                 }
             }
 
-            this.bondPool = bondMatricesByBond.length > 0 ? new InstancedPool(
+            const regularBondInstanceCount = bondMatricesByBond.length * (splitBondColors ? 2 : 1);
+            const combinedBondInstanceCount = regularBondInstanceCount + centroidBodyCount;
+            this.bondPool = combinedBondInstanceCount > 0 ? new InstancedPool(
                 this.cache.geometries.bond,
                 this.cache.materials.bond,
-                bondMatricesByBond.length * (splitBondColors ? 2 : 1),
+                combinedBondInstanceCount,
             ) : null;
 
             for (const [bond, matrix, colors] of bondMatricesByBond) {
                 this.bonds3D.push(new ORTEPBondInstance(bond, this.bondPool, matrix, colors));
             }
+            for (const item of centroidPieces) {
+                item.transforms.bodies.forEach(piece =>
+                    this.bondPool.register(piece.matrix, item.colourFor(piece)));
+            }
+            this.centroidBodyPool = centroidBodyCount ? this.bondPool : null;
+            this.centroidBodiesShareBondPool = centroidBodyCount > 0;
             this.bondPool?.finalize();
+        }
+
+        // Ring-centroid interactions remain presentation-only and non-selectable.
+        if (this.options.renderStyle === 'cutout-2d' && centroidBodyCount) {
+            this.centroidBodyPool = new InstancedPool(
+                this.cache.geometries.bond, this.cache.materials.bond, centroidBodyCount,
+            );
+            for (const item of centroidPieces) {
+                item.transforms.bodies.forEach(piece =>
+                    this.centroidBodyPool.register(piece.matrix));
+            }
+        }
+        this.centroidCapPool = centroidCapCount ? new InstancedPool(
+            this.cache.geometries.centroidCap, this.cache.materials.bond, centroidCapCount,
+        ) : null;
+        for (const item of centroidPieces) {
+            item.transforms.caps.forEach(piece =>
+                this.centroidCapPool.register(piece.matrix, item.colourFor(piece)));
+        }
+        const centroidOutlineMaterial = this.options.renderStyle === 'cutout-2d' &&
+            this.options.plot2DBondOutlineWidth > 0
+            ? this.cache.materials.bondDepthOutline : null;
+        this.centroidOutlineBodyPool = centroidOutlineMaterial && this.centroidBodyPool
+            ? new SharedInstancedPass(this.centroidBodyPool, centroidOutlineMaterial) : null;
+        this.centroidOutlineCapPool = centroidOutlineMaterial && this.centroidCapPool
+            ? new SharedInstancedPass(this.centroidCapPool, centroidOutlineMaterial) : null;
+        for (const pool of [
+            this.centroidBodyPool, this.centroidCapPool,
+            this.centroidOutlineBodyPool, this.centroidOutlineCapPool,
+        ]) {
+            if (!pool || pool === this.bondPool) {
+                continue;
+            }
+            pool.mesh.userData = {
+                selectable: false,
+                type: 'ring-centroid-interactions',
+                interactions: this.centroidInteractions,
+            };
+            pool.finalize?.();
         }
         const bondCreationTimeMs = performance.now() - bondsStarted;
 
@@ -1930,6 +2107,17 @@ export class ORTEP3JsStructure {
         for (const bond3D of this.bonds3D) {
             markAsBond(bond3D);
             group.add(bond3D);
+        }
+
+        for (const pool of [
+            this.centroidBodyPool, this.centroidCapPool,
+            this.centroidOutlineBodyPool, this.centroidOutlineCapPool,
+        ]) {
+            if (!pool || pool === this.bondPool) {
+                continue;
+            }
+            pool.mesh.renderOrder = BOND_RENDER_ORDER;
+            group.add(pool.mesh);
         }
 
         if (this.hbondPool) {

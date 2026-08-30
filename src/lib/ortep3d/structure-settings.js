@@ -1,4 +1,5 @@
 import { COVALENT_RADII, FALLBACK_RADII } from '../structure/covalent-radii.js';
+import { DEFAULT_METAL_RING_CENTROID_OPTIONS } from './metal-ring-centroids.js';
 
 const elementColors = {
     'H': { 'atomColor': '#ffffff', 'ringColor': '#000000' },
@@ -350,6 +351,12 @@ export default {
     'bondColor': '#666666',
     'bondColorRoughness': 0.3,
     'bondColorMetalness': 0.1,
+    'collapseMetalRingBonds': false,
+    'metalRingCentroidOptions': {
+        ...DEFAULT_METAL_RING_CENTROID_OPTIONS,
+        centreElements: [...DEFAULT_METAL_RING_CENTROID_OPTIONS.centreElements],
+        ringElements: [...DEFAULT_METAL_RING_CENTROID_OPTIONS.ringElements],
+    },
 
     // Hydrogen bond visualisation settings
     'hbondRadius': 0.04,         

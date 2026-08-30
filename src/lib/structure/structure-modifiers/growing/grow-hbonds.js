@@ -353,7 +353,6 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
         return grownSpecialPositionAtoms.get(resolvedStartingId) ||
             grownSpecialPositionAtoms.get(atomId) || resolvedStartingId;
     };
-    const atomsById = new Map(structure.atoms.map(atom => [atom.uniqueId, atom]));
     const atomsByLabel = new Map();
     const groupByAtomId = new Map();
     const groupByAtomLabel = new Map();
@@ -419,6 +418,51 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
         `${atom.label}|${coordinateKey(atom.position)}`,
         atom.uniqueId,
     ]));
+    const atomImageCache = new Map(structure.atoms.map(atom => [atom.uniqueId, atom]));
+
+    /**
+     * Resolves a symmetry-qualified atom ID from its asymmetric-unit atom. This
+     * deliberately uses CellSymmetry.applySymmetry(), so operation parsing and
+     * composition remain on the same cached symmetry engine as group growth.
+     * @param {string} atomId - Symmetry-qualified atom ID
+     * @returns {object|null} Existing or transformed atom
+     */
+    const resolveAtomImage = (atomId) => {
+        if (atomImageCache.has(atomId)) {
+            return atomImageCache.get(atomId);
+        }
+        const [label, positionCode] = atomId.split('|');
+        const sourceAtom = atomsByLabel.get(label);
+        if (!sourceAtom || !positionCode) {
+            return null;
+        }
+        const transformedAtom = structure.symmetry.applySymmetry(positionCode, [sourceAtom])[0];
+        transformedAtom.appliedSymmetry = AppliedSymmetry.fromString(positionCode);
+        atomImageCache.set(atomId, transformedAtom);
+        return transformedAtom;
+    };
+
+    const addAtomImage = (atomId) => {
+        if (finalAtomIds.has(atomId)) {
+            return resolveSpecialPosition(atomId);
+        }
+        const atom = resolveAtomImage(atomId);
+        if (!atom) {
+            return null;
+        }
+        const atomPositionKey = `${atom.label}|${coordinateKey(atom.position)}`;
+        const positionAtomId = finalAtomIdsByPosition.get(atomPositionKey);
+        if (positionAtomId) {
+            if (positionAtomId !== atomId) {
+                grownSpecialPositionAtoms.set(atomId, positionAtomId);
+            }
+            return positionAtomId;
+        }
+        finalAtoms.push(atom);
+        finalAtomIds.add(atomId);
+        finalAtomIdsByPosition.set(atomPositionKey, atomId);
+        return atomId;
+    };
     const finalBondIds = new Set(finalBonds.map(bond =>
         [resolveSpecialPosition(bond.atom1Id), resolveSpecialPosition(bond.atom2Id)].sort().join('|'),
     ));
@@ -428,9 +472,30 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
     const reciprocalHBondPositions = new Set();
     const transformedExternalHBonds = [];
     const addFinalHBond = hBond => {
-        const identifier = `${hBond.donorAtomId}|${hBond.hydrogenAtomId}|${hBond.acceptorAtomId}`;
+        const donorAtomId = addAtomImage(hBond.donorAtomId) || hBond.donorAtomId;
+        const hydrogenAtomId = addAtomImage(hBond.hydrogenAtomId) || hBond.hydrogenAtomId;
+        const acceptorAtomId = addAtomImage(hBond.acceptorAtomId) || hBond.acceptorAtomId;
+        const canonicalHBond = donorAtomId === hBond.donorAtomId
+            && hydrogenAtomId === hBond.hydrogenAtomId
+            && acceptorAtomId === hBond.acceptorAtomId
+            ? hBond
+            : new HBond(
+                donorAtomId,
+                hydrogenAtomId,
+                acceptorAtomId,
+                hBond.donorHydrogenDistance,
+                hBond.donorHydrogenDistanceSU,
+                hBond.acceptorHydrogenDistance,
+                hBond.acceptorHydrogenDistanceSU,
+                hBond.donorAcceptorDistance,
+                hBond.donorAcceptorDistanceSU,
+                hBond.hBondAngle,
+                hBond.hBondAngleSU,
+                '.',
+            );
+        const identifier = `${donorAtomId}|${hydrogenAtomId}|${acceptorAtomId}`;
         if (!finalHBondIds.has(identifier)) {
-            finalHBonds.push(hBond);
+            finalHBonds.push(canonicalHBond);
             finalHBondIds.add(identifier);
         }
     };
@@ -611,8 +676,8 @@ export function growExternalHBonds(structure, specialPositionAtoms = new Map()) 
         }
         const acceptorAtom = atomsByLabel.get(acceptorBaseLabel);
         const equivalentAcceptorCodes = equivalentPositionCodes(structure, acceptorAtom, symOpLabel);
-        const donorAtom = atomsById.get(hBond.donorAtomId);
-        const hydrogenAtom = atomsById.get(hBond.hydrogenAtomId);
+        const donorAtom = resolveAtomImage(hBond.donorAtomId);
+        const hydrogenAtom = resolveAtomImage(hBond.hydrogenAtomId);
         if (!donorAtom || !hydrogenAtom) {
             throw new Error(
                 'Cannot grow reciprocal H-bond: donor or hydrogen atom of '

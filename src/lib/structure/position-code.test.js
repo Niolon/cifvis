@@ -9,6 +9,9 @@ describe('position-code', () => {
         expect(normalizeSiteSymmetry(2)).toBe('2_555');
         expect(normalizeSiteSymmetry('2')).toBe('2_555');
         expect(normalizeSiteSymmetry('2_655')).toBe('2_655');
+        expect(normalizeSiteSymmetry('2555', new Map([['1', 0], ['2', 1]])))
+            .toBe('2_555');
+        expect(normalizeSiteSymmetry('2555', new Map([['2555', 0]]))).toBe('2555_555');
         expect(normalizeSiteSymmetry('?')).toBe('.');
         expect(normalizeSiteSymmetry('.')).toBe('.');
     });

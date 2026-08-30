@@ -14,7 +14,7 @@ import {
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
-const logsDir = join(scriptDir, 'logs');
+const logsDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || join(scriptDir, 'logs'));
 const chunkLogsDir = join(logsDir, 'modifiers-chunked');
 
 /**
@@ -519,6 +519,11 @@ async function testCIFFile(filePath) {
                         stats.errors.CrystalStructure.total++;
                         stats.errors.CrystalStructureFixed.total++;
                         stats.errors.CrystalStructure.placeholderCoordinates++;
+                        logMessage(
+                            `Structure Error in Fixed structure ${filePath}: `
+                            + 'Structure has only placeholder coordinates',
+                            config.errorLogFile,
+                        );
                         results.errors.push('Structure has only placeholder coordinates');
                         return results;
                     }
@@ -526,6 +531,10 @@ async function testCIFFile(filePath) {
                     stats.errors.CrystalStructure.total++;
                     stats.errors.CrystalStructureFixed.total++;
                     stats.errors.CrystalStructure.noValidAtoms++;
+                    logMessage(
+                        `Structure Error in Fixed structure ${filePath}: ${error.message}`,
+                        config.errorLogFile,
+                    );
                     results.errors.push(`Structure Error: ${error.message}`);
                     return results;
                 }

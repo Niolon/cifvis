@@ -2,9 +2,11 @@
  * Normalizes a CIF site-symmetry value without resolving the operation ID.
  * Bare operation IDs use the conventional zero-translation suffix.
  * @param {string|number|null|undefined} value - CIF site-symmetry value
+ * @param {Map<string, number>|Set<string>|null} [operationIds] - Available operation IDs,
+ *  used to disambiguate legacy compact codes such as 2555 (operation 2, translation 555)
  * @returns {string} Normalized symmetry code or '.' for no external symmetry
  */
-export function normalizeSiteSymmetry(value) {
+export function normalizeSiteSymmetry(value, operationIds = null) {
     if (value === null || value === undefined || value === '.' || value === '?') {
         return '.';
     }
@@ -13,7 +15,19 @@ export function normalizeSiteSymmetry(value) {
     if (code === '' || code === '.' || code === '?') {
         return '.';
     }
-    return code.includes('_') ? code : `${code}_555`;
+    if (code.includes('_')) {
+        return code;
+    }
+
+    const hasOperationId = id => operationIds instanceof Map
+        ? operationIds.has(id)
+        : operationIds instanceof Set && operationIds.has(id);
+    const compact = code.match(/^(\d+)(\d{3})$/);
+    if (compact && operationIds && !hasOperationId(code) && hasOperationId(compact[1])) {
+        return `${compact[1]}_${compact[2]}`;
+    }
+
+    return `${code}_555`;
 }
 
 /**

@@ -47,7 +47,7 @@ describe('toRhombohedralSetting', () => {
     });
 
     test('every R group reduces to exactly a third of its hexagonal operators', () => {
-        for (const entry of SPACE_GROUP_TABLE.filter(e => e.symbol_cif.trim().startsWith('R'))) {
+        for (const entry of SPACE_GROUP_TABLE.filter(e => e.universal_h_m?.endsWith(':H'))) {
             const operations = toRhombohedralSetting(entry.operations);
             expect(operations).toHaveLength(entry.operations.length / 3);
         }

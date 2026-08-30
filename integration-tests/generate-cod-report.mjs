@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname, basename } from 'path';
+import { join, dirname, basename, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const logsDir = join(scriptDir, 'logs');
+const logsDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || join(scriptDir, 'logs'));
 
 /**
  * Categorizes a "Structure Error" message body into a human-readable, COD-actionable
@@ -15,12 +15,15 @@ const logsDir = join(scriptDir, 'logs');
  * @param {string} message - The error message body (without the "Structure Error in <path>: " prefix)
  * @returns {string[]} One or more category labels this message falls under
  */
-function classifyStructureError(message) {
+export function classifyStructureError(message) {
     if (message.includes('Unit cell parameter entries missing in CIF')) {
         return ['Missing unit cell parameters'];
     }
     if (message === 'The cif file contains no valid atoms.') {
         return ['No valid atoms'];
+    }
+    if (message === 'Structure has only placeholder coordinates') {
+        return ['Atom sites have placeholder coordinates only'];
     }
     if (message.includes(', but no atom_site_aniso loop was found')) {
         return ['Anisotropic ADP: atom_site_aniso loop missing'];
@@ -70,7 +73,7 @@ function classifyStructureError(message) {
  * @returns {Array<{timestamp: string, kind: string, persistsAfterFix: boolean, filePath: string,
  *  detail: string}>} Parsed entries
  */
-function parseErrorLog(logPath) {
+export function parseErrorLog(logPath) {
     const rawLines = readFileSync(logPath, 'utf8').split('\n');
     const raw = [];
     for (const line of rawLines) {
@@ -120,7 +123,7 @@ function codIdFor(filePath) {
  * @returns {{actionable: Map<string, object[]>, informational: Map<string, object[]>, cifvisInternal: object[]}}
  *  Categorized report data
  */
-function buildReport(entries) {
+export function buildReport(entries) {
     const actionable = new Map();
     const informational = new Map();
     const cifvisInternal = [];
@@ -138,12 +141,16 @@ function buildReport(entries) {
         if (entry.kind === 'CIF Error') {
             addTo(actionable, 'CIF cannot be parsed at all', {
                 codId, filePath: entry.filePath, detail: entry.detail,
+                persistsAfterFix: entry.persistsAfterFix,
             });
             continue;
         }
 
         if (entry.kind === 'CifParsing Error') {
-            cifvisInternal.push({ codId, filePath: entry.filePath, detail: entry.detail });
+            cifvisInternal.push({
+                codId, filePath: entry.filePath, detail: entry.detail,
+                persistsAfterFix: entry.persistsAfterFix,
+            });
             continue;
         }
 
@@ -151,6 +158,7 @@ function buildReport(entries) {
             // Legacy path; createConnectivity throws directly now, so this should stay empty.
             addTo(actionable, 'Connectivity error (legacy path)', {
                 codId, filePath: entry.filePath, detail: entry.detail,
+                persistsAfterFix: entry.persistsAfterFix,
             });
             continue;
         }
@@ -159,6 +167,7 @@ function buildReport(entries) {
             for (const label of classifyStructureError(entry.detail)) {
                 addTo(actionable, entry.persistsAfterFix ? `${label} (persists after auto-fix)` : label, {
                     codId, filePath: entry.filePath, detail: entry.detail,
+                    persistsAfterFix: entry.persistsAfterFix,
                 });
             }
             continue;
@@ -170,10 +179,12 @@ function buildReport(entries) {
             if (message.includes('createConnectivity exceeded the iteration limit')) {
                 addTo(informational, 'Extended/periodic framework structure (fragment growth not applicable)', {
                     codId, filePath: entry.filePath, detail: modeLine,
+                    persistsAfterFix: entry.persistsAfterFix,
                 });
             } else {
                 addTo(actionable, 'Structure modifier failed to apply', {
                     codId, filePath: entry.filePath, detail: `${modeLine} -- ${message}`,
+                    persistsAfterFix: entry.persistsAfterFix,
                 });
             }
         }
@@ -262,7 +273,7 @@ const CATEGORY_NOTES = new Map([
  * @param {string} message - Raw error detail
  * @returns {string} Cleaned, single-line, length-capped detail for display
  */
-function cleanDetailForDisplay(message) {
+export function cleanDetailForDisplay(message) {
     const cleaned = message
         .replace(/Unknown atom label\(s\)\. Known labels are[\s\S]*?(?=Non-existent|Invalid|$)/g, '')
         .replace(/Unknown symmetry ID\(s\) or String format\.[\s\S]*?(?=Non-existent|Invalid|$)/g, '')
@@ -272,6 +283,114 @@ function cleanDetailForDisplay(message) {
     return cleaned.length > MAX_DETAIL_LENGTH
         ? `${cleaned.slice(0, MAX_DETAIL_LENGTH)}... (truncated, see CSV for full detail)`
         : cleaned;
+}
+
+const CATEGORY_CODES = new Map([
+    ['CIF cannot be parsed at all', 'cif_parse_error'],
+    ['Missing unit cell parameters', 'missing_unit_cell_parameters'],
+    ['No valid atoms', 'no_valid_atoms'],
+    ['Atom sites have placeholder coordinates only', 'placeholder_atom_coordinates'],
+    ['Anisotropic ADP: atom_site_aniso loop missing', 'missing_anisotropic_adp_table'],
+    ['Anisotropic ADP: atom missing from atom_site_aniso table', 'missing_anisotropic_adp_row'],
+    ['Atom label does not indicate a recognisable element', 'unrecognised_element_label'],
+    ['Empty atom label', 'empty_atom_label'],
+    ['Duplicate _atom_site_label (the same label names more than one site)', 'duplicate_atom_site_label'],
+    ['Symmetry operations are not isometries of the unit cell in the same file', 'cell_symmetry_mismatch'],
+    ['Bond length disagrees with the coordinates and symmetry code in the same file', 'bond_geometry_mismatch'],
+    ['Bond references a non-existent atom', 'bond_missing_atom'],
+    ['Bond has an invalid/unparseable symmetry code', 'bond_invalid_symmetry'],
+    ['H-bond references a non-existent atom', 'hbond_missing_atom'],
+    ['H-bond has an invalid/unparseable symmetry code', 'hbond_invalid_symmetry'],
+    ['Bond/H-bond creation error (unspecified)', 'bond_creation_error'],
+    ['Connectivity error (legacy path)', 'connectivity_error'],
+    ['Structure modifier failed to apply', 'structure_modifier_error'],
+    ['Other/unclassified structure error', 'structure_error'],
+]);
+
+/**
+ * Returns a stable code for a report category. The human label may carry the
+ * "persists after auto-fix" suffix, but persistence is a separate JSON field.
+ * @param {string} category - Human-readable report category
+ * @returns {string} Stable machine-readable issue code
+ */
+function issueCodeFor(category) {
+    const baseCategory = category.replace(/ \(persists after auto-fix\)$/, '');
+    return CATEGORY_CODES.get(baseCategory) || 'structure_error';
+}
+
+/**
+ * Produces the compact evidence text intended for database maintainers. It removes
+ * validator context such as the complete list of valid atom labels, while retaining
+ * the offending labels, symmetry codes, cell values, and bond distances.
+ * @param {string} detail - User-facing error detail
+ * @returns {string} Compact, single-line maintainer detail
+ */
+export function conciseMaintainerDetail(detail) {
+    const compact = cleanDetailForDisplay(detail)
+        .replace(/\.\.\. \(truncated, see CSV for full detail\)$/, '')
+        .trim();
+    return compact.length > 800 ? `${compact.slice(0, 797)}...` : compact;
+}
+
+/**
+ * Formats actionable findings as one JSON object per COD structure. Duplicate pre-fix
+ * and post-fix messages are collapsed, with the post-fix finding taking precedence.
+ * @param {{actionable: Map<string, object[]>}} report - Categorized report
+ * @param {number|string} totalFilesProcessed - Corpus size from the run
+ * @returns {string} Pretty-printed JSON
+ */
+export function formatMaintainerJSON(report, totalFilesProcessed) {
+    const structures = new Map();
+
+    for (const [category, items] of sortedByCount(report.actionable)) {
+        const baseCategory = category.replace(/ \(persists after auto-fix\)$/, '');
+        const code = issueCodeFor(category);
+        for (const item of items) {
+            if (!structures.has(item.codId)) {
+                structures.set(item.codId, new Map());
+            }
+            const message = conciseMaintainerDetail(item.detail) || baseCategory;
+            const issueKey = `${code}\u0000${message}`;
+            const issues = structures.get(item.codId);
+            const existing = issues.get(issueKey);
+            const persistsAfterFix = Boolean(item.persistsAfterFix)
+                || category.endsWith(' (persists after auto-fix)');
+            if (!existing || persistsAfterFix) {
+                issues.set(issueKey, {
+                    code,
+                    message,
+                    persists_after_auto_fix: persistsAfterFix,
+                });
+            }
+        }
+    }
+
+    const structureRows = [...structures.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+        .map(([codId, issues]) => ({
+            cod_id: codId,
+            issues: [...issues.values()].sort((a, b) => a.code.localeCompare(b.code)),
+        }));
+    const byIssueCode = {};
+    let issueCount = 0;
+    for (const structure of structureRows) {
+        for (const issue of structure.issues) {
+            issueCount++;
+            byIssueCode[issue.code] = (byIssueCode[issue.code] || 0) + 1;
+        }
+    }
+
+    return JSON.stringify({
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        source: { files_processed: totalFilesProcessed },
+        summary: {
+            structure_count: structureRows.length,
+            issue_count: issueCount,
+            by_issue_code: Object.fromEntries(Object.entries(byIssueCode).sort()),
+        },
+        structures: structureRows,
+    }, null, 2) + '\n';
 }
 
 /**
@@ -427,10 +546,11 @@ function formatCSV(report) {
  * counted in stats.json; the "pre-fix (auto-fixed away)" note in the report accounts for
  * that gap instead of silently under-reporting.
  */
-function main() {
+export function main() {
     const errorLogPath = process.argv[2] || join(logsDir, 'modifier-test-errors.log');
     const verboseLogPath = process.argv[3] || join(logsDir, 'modifier-test-verbose.log');
-    const statsPath = join(logsDir, 'modifier-test-stats.json');
+    const outputDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || dirname(errorLogPath));
+    const statsPath = process.argv[4] || join(outputDir, 'modifier-test-stats.json');
 
     if (!existsSync(errorLogPath)) {
         console.error(`No error log found at ${errorLogPath}`);
@@ -452,13 +572,18 @@ function main() {
 
     const markdown = formatMarkdown(report, totalFilesProcessed, stats);
     const csv = formatCSV(report);
+    const maintainerJson = formatMaintainerJSON(report, totalFilesProcessed);
 
-    writeFileSync(join(logsDir, 'cod-data-quality-report.md'), markdown);
-    writeFileSync(join(logsDir, 'cod-data-quality-report.csv'), csv);
+    writeFileSync(join(outputDir, 'cod-data-quality-report.md'), markdown);
+    writeFileSync(join(outputDir, 'cod-data-quality-report.csv'), csv);
+    writeFileSync(join(outputDir, 'cod-maintainer-issues.json'), maintainerJson);
 
     console.log(`Parsed ${entries.length} log entries.`);
-    console.log(`Wrote ${join(logsDir, 'cod-data-quality-report.md')}`);
-    console.log(`Wrote ${join(logsDir, 'cod-data-quality-report.csv')}`);
+    console.log(`Wrote ${join(outputDir, 'cod-data-quality-report.md')}`);
+    console.log(`Wrote ${join(outputDir, 'cod-data-quality-report.csv')}`);
+    console.log(`Wrote ${join(outputDir, 'cod-maintainer-issues.json')}`);
 }
 
-main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main();
+}

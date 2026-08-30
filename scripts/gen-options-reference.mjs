@@ -70,7 +70,8 @@ function groupFor(path) {
     if (path.startsWith('hbond')) {
         return 'hydrogen-bonds';
     }
-    if (path.startsWith('bond')) {
+    if (path.startsWith('bond') || path === 'collapseMetalRingBonds' ||
+        path.startsWith('metalRingCentroidOptions')) {
         return 'bonds';
     }
     if (path.startsWith('atom') || path.startsWith('peanut') || path === 'ellipsoidProbability') {

@@ -2,9 +2,7 @@ import { SPACE_GROUP_TABLE } from './space-group-table.js';
 
 /**
  * Normalizes a Hermann-Mauguin space-group symbol for tolerant matching by
- * removing all whitespace and underscores and lower-casing the result. This
- * collapses the various CIF spellings of the same symbol (e.g. "P 21/c",
- * "P21/c", "P 1 21/c 1") onto a common key.
+ * removing all whitespace and underscores and lower-casing the result.
  * @param {string} symbol - Space-group symbol in any spacing/case
  * @returns {string} Normalized symbol key
  */
@@ -12,14 +10,29 @@ function normalizeSymbol(symbol) {
     return String(symbol).replace(/[\s_]+/g, '').toLowerCase();
 }
 
-// Index by number and by normalized name for O(1) lookup. Both the CIF-style
-// and short Hermann-Mauguin symbols are registered so either spelling matches.
+// Index by number and by normalized name for O(1) lookup. A space-group number
+// identifies a type, not a setting, so the number index deliberately contains
+// only the standard setting. Hall and universal H-M symbols retain enough
+// information to select alternative axes and origin choices.
 const byNumber = new Map();
 const byName = new Map();
+const candidatesByName = new Map();
 for (const entry of SPACE_GROUP_TABLE) {
-    byNumber.set(entry.number, entry);
-    for (const symbol of [entry.symbol_cif, entry.symbol_hm_short, entry.hall_symbol]) {
+    if (entry.is_standard || !byNumber.has(entry.number)) {
+        byNumber.set(entry.number, entry);
+    }
+    for (const symbol of [
+        entry.symbol_cif,
+        entry.symbol_hm_short,
+        entry.hall_symbol,
+        entry.universal_h_m,
+    ]) {
         const key = normalizeSymbol(symbol);
+        const candidates = candidatesByName.get(key) || [];
+        if (!candidates.includes(entry)) {
+            candidates.push(entry);
+            candidatesByName.set(key, candidates);
+        }
         if (!byName.has(key)) {
             byName.set(key, entry);
         }
@@ -27,9 +40,24 @@ for (const entry of SPACE_GROUP_TABLE) {
 }
 
 /**
+ * Returns every tabulated setting matching a declared symbol. This is useful
+ * when a caller must distinguish an unambiguous setting declaration from a
+ * name shared by multiple operation sets.
+ * @param {string} symbol - Hall or Hermann-Mauguin symbol
+ * @returns {object[]} Matching table entries
+ */
+export function lookupSpaceGroupCandidates(symbol) {
+    if (!symbol || symbol === 'Unknown') {
+        return [];
+    }
+    return [...(candidatesByName.get(normalizeSymbol(symbol)) || [])];
+}
+
+/**
  * Looks up the standard-setting general-position operators for a space group by
- * its International Tables number and/or Hermann-Mauguin name. The number is
- * tried first because it is unambiguous; the name is used only as a fallback.
+ * its Hall symbol, full/alternative Hermann-Mauguin name, and/or International
+ * Tables number. Setting-specific symbols are preferred when they agree with
+ * the declared group type; the number selects the standard setting otherwise.
  *
  * The returned operators assume the standard International Tables setting (see
  * space-group-table.js). They must only be used when a CIF omits its own
@@ -37,21 +65,27 @@ for (const entry of SPACE_GROUP_TABLE) {
  * @param {object} options - Lookup keys
  * @param {number|string} [options.number] - Space-group IT number
  * @param {string} [options.name] - Hermann-Mauguin symbol in any spacing/case
+ * @param {string} [options.fullName] - Full or universal Hermann-Mauguin symbol
+ * @param {string} [options.hall] - Hall symbol
  * @returns {?{number: number, symbol_cif: string, symbol_hm_short: string,
  *  operations: string[]}} Matching table entry, or null if no match is found
  */
-export function lookupSpaceGroup({ number, name } = {}) {
-    const parsedNumber = typeof number === 'string' ? parseInt(number, 10) : number;
-    if (Number.isInteger(parsedNumber) && byNumber.has(parsedNumber)) {
-        return byNumber.get(parsedNumber);
-    }
+export function lookupSpaceGroup({ number, name, fullName, hall } = {}) {
+    const numberText = typeof number === 'string' ? number.trim() : number;
+    const parsedNumber = typeof numberText === 'string' && /^\d+$/.test(numberText)
+        ? Number(numberText)
+        : numberText;
+    const numberedEntry = Number.isInteger(parsedNumber) ? byNumber.get(parsedNumber) : null;
 
-    if (name && name !== 'Unknown') {
-        const entry = byName.get(normalizeSymbol(name));
-        if (entry) {
+    for (const symbol of [hall, fullName, name]) {
+        if (!symbol || symbol === 'Unknown') {
+            continue;
+        }
+        const entry = byName.get(normalizeSymbol(symbol));
+        if (entry && (!numberedEntry || entry.number === parsedNumber)) {
             return entry;
         }
     }
 
-    return null;
+    return numberedEntry || null;
 }
