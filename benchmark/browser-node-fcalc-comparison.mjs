@@ -21,9 +21,7 @@ const bundle = resolve(process.env.CIFVIS_BUNDLE ?? join(repository, 'dist/cifvi
 const output = resolve(process.argv[2] ?? '/tmp/browser-node-fcalc-comparison.json');
 const TWO_PI = 2 * Math.PI;
 const REPETITIONS = Number.parseInt(process.env.REPETITIONS ?? '3', 10);
-const DWF_MODE = process.env.DWF_MODE ?? 'direct';
 const PREWARM_WORKER = process.env.PREWARM_WORKER === 'true';
-const SURFACE_MODE = process.env.SURFACE_MODE ?? 'legacy';
 const USE_SYMMETRY = process.env.USE_SYMMETRY !== 'false';
 
 function parseArguments(args) {
@@ -166,7 +164,6 @@ function prepareCase(selection) {
             coordinateCifText: combinedText,
             coordinateCifBlock: 0,
             structureModel,
-            iam: { dwfMode: DWF_MODE },
         }));
     return {
         ...selection,
@@ -206,18 +203,15 @@ function prepareRepresentative(selection) {
 
 const html = `<!doctype html><html><body><div id="viewer"></div><script type="module">
 import * as CifVis from '/bundle.js';
-window.runCase = async (cifText, dwfMode, prewarmWorker, surfaceMode, useSymmetry) => {
+window.runCase = async (cifText, prewarmWorker, useSymmetry) => {
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
     scalarField: {useWorker: true},
-    differenceDensity: prewarmWorker
-      ? {autoLoad: true, iam: {dwfMode}}
-      : {autoLoad: false},
+    differenceDensity: {autoLoad: prewarmWorker},
     isosurface: {
       progressiveSteps: [1],
       visible: false,
-      generationMode: surfaceMode,
       useSymmetry,
     },
   });
@@ -229,7 +223,7 @@ window.runCase = async (cifText, dwfMode, prewarmWorker, surfaceMode, useSymmetr
   }
   const started = performance.now();
   const structure = await viewer.loadCIF(cifText, 0, prewarmWorker ? {} : {
-    differenceDensity: {progressiveSteps: [1], visible: false, iam: {dwfMode}},
+    differenceDensity: {progressiveSteps: [1], visible: false},
   });
   const density = structure.differenceDensity ? await structure.differenceDensity : structure;
   const wallMs = performance.now() - started;
@@ -281,19 +275,11 @@ try {
             const page = await context.newPage();
             await page.goto(`http://127.0.0.1:${port}/`);
             browserRuns.push(await page.evaluate(
-                ({ text, dwfMode, prewarmWorker, surfaceMode, useSymmetry }) =>
-                    window.runCase(
-                        text,
-                        dwfMode,
-                        prewarmWorker,
-                        surfaceMode,
-                        useSymmetry,
-                    ),
+                ({ text, prewarmWorker, useSymmetry }) =>
+                    window.runCase(text, prewarmWorker, useSymmetry),
                 {
                     text: prepared.combinedText,
-                    dwfMode: DWF_MODE,
                     prewarmWorker: PREWARM_WORKER,
-                    surfaceMode: SURFACE_MODE,
                     useSymmetry: USE_SYMMETRY,
                 },
             ));
@@ -317,7 +303,6 @@ try {
             censusMetric: prepared.censusMetric ?? null,
             censusMetricValue: prepared.censusMetricValue ?? null,
             censusStructure: prepared.censusStructure ?? null,
-            dwfMode: DWF_MODE,
             reflectionCount: prepared.reflectionCount,
             nodeIamModelBuildMs: prepared.nodeIamModelBuildMs,
             nodeFcalcMs: prepared.nodeFcalcMs,
@@ -486,7 +471,6 @@ writeFileSync(output, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
     bundle,
     prewarmWorker: PREWARM_WORKER,
-    surfaceMode: SURFACE_MODE,
     useSymmetry: USE_SYMMETRY,
     repetitions: REPETITIONS,
     representativeSelection: benchmarkOptions.representativeCsv ? {

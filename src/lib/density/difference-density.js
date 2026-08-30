@@ -8,7 +8,7 @@ import { createIAMStructureFactorCalculator } from './iam-structure-factors.js';
 import { readReflectionIntensities } from './reflection-intensities.js';
 import { createShelxlExtinctionCorrection } from './extinction-correction.js';
 import { multiplyReflectionIndex, reciprocalSymmetryKernel } from './reciprocal-symmetry.js';
-import { quotientScalarFieldBySymmetry, ScalarFieldGrid } from './scalar-field.js';
+import { ScalarFieldGrid } from './scalar-field.js';
 import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 import { planFourierDimensions } from './fft-grid.js';
 import {
@@ -566,9 +566,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const iamModelBuildTimeMs = now() - iamModelStarted;
     const datasetIamModelBuildMs = stageTime();
     const iamCalculationStarted = now();
-    const calculated = calculator.calculatePrepared(observed.reflections, {
-        dwfMode: iamOptions.dwfMode,
-    });
+    const calculated = calculator.calculatePrepared(observed.reflections);
     const iamCalculationTimeMs = now() - iamCalculationStarted;
     const datasetFcalcMs = stageTime();
     const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
@@ -1122,23 +1120,8 @@ function hermitianFourierGrid(coefficients, cell, dimensions, axisKernel, planMe
 /** @returns {object} Difference density and statistics on a periodic FFT grid. */
 function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
     const totalStarted = now();
-    const requestedBackend = options.fftBackend ?? 'auto';
-    if (!['auto', 'mixed-radix', 'radix-2'].includes(requestedBackend)) {
-        throw new Error('Difference-density fftBackend must be "auto", "mixed-radix", or "radix-2"');
-    }
-    const requestedPlanner = requestedBackend === 'auto'
-        ? options.fftGridPlanner ?? 'auto'
-        : requestedBackend === 'radix-2' ? 'radix-2' : 'smooth';
-    const axisKernel = requestedBackend === 'auto'
-        ? options.fftAxisKernel ?? 'auto'
-        : requestedBackend;
-    if (!['auto', 'smooth', 'radix-2'].includes(requestedPlanner)) {
-        throw new Error('Difference-density fftGridPlanner must be "auto", "smooth", or "radix-2"');
-    }
-    if (!['auto', 'mixed-radix', 'radix-2'].includes(axisKernel)) {
-        throw new Error('Difference-density fftAxisKernel must be "auto", "mixed-radix", or "radix-2"');
-    }
-    const gridPlanner = requestedPlanner === 'auto' ? 'smooth' : requestedPlanner;
+    const gridPlanner = 'smooth';
+    const axisKernel = 'auto';
     const planningStarted = now();
     const plan = planFourierDimensions(coefficients, gridOversampling, {
         backend: gridPlanner === 'radix-2' ? 'radix-2' : 'mixed-radix',
@@ -1146,22 +1129,19 @@ function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
     });
     const gridPlanningTimeMs = now() - planningStarted;
     plan.gridPlanner = gridPlanner;
-    const useReal = options.realTransform !== false;
     plan.friedelImplicit = options.friedelImplicit === true;
     const hermitianStarted = now();
-    const residual = useReal ? hermitianResidual(coefficients, plan.friedelImplicit) : null;
+    const residual = hermitianResidual(coefficients, plan.friedelImplicit);
     const hermitianValidationTimeMs = now() - hermitianStarted;
     let result;
-    if (useReal && residual.relative <= 1e-10) {
+    if (residual.relative <= 1e-10) {
         result = hermitianFourierGrid(
             coefficients, cell, plan.dimensions, axisKernel, plan, residual,
         );
     } else {
         result = complexFourierGrid(coefficients, cell, plan.dimensions, axisKernel, plan);
-        if (useReal) {
-            result.fftFallbackReason = 'non-hermitian-coefficients';
-            result.hermitianResidual = residual.relative;
-        }
+        result.fftFallbackReason = 'non-hermitian-coefficients';
+        result.hermitianResidual = residual.relative;
     }
     result.fftGridPlanningTimeMs = gridPlanningTimeMs;
     result.fftHermitianValidationTimeMs = hermitianValidationTimeMs;
@@ -1434,12 +1414,6 @@ export function calculateDifferenceDensityMap(
     if (!(Number.isFinite(gridOversampling) && gridOversampling >= 1)) {
         throw new Error('Difference-density grid oversampling must be at least 1');
     }
-    if (typeof options.realTransform !== 'boolean' && options.realTransform !== undefined) {
-        throw new Error('Difference-density realTransform must be a boolean');
-    }
-    if (![false, true, 'auto', undefined].includes(options.symmetryReducedFft)) {
-        throw new Error('Difference-density symmetryReducedFft must be false, true, or "auto"');
-    }
     const grid = fourierGrid(coefficients, dataset.cell, gridOversampling, {
         ...options,
         symmetryOperations: dataset.symmetryOperations,
@@ -1453,8 +1427,6 @@ export function calculateDifferenceDensityMap(
         }
     }
     const logicalCoefficientCount = coefficients.size + nonOriginCoefficientCount;
-    const symmetryReductionRequested = options.symmetryReducedFft === true ||
-        options.symmetryReducedFft === 'auto';
     const map = new ScalarFieldGrid(dataset.cell, grid.dimensions, grid.values, {
         reflectionCount: dataset.reflectionCount,
         coefficientCount: dataset.friedelImplicit ? logicalCoefficientCount : coefficients.size,
@@ -1512,20 +1484,9 @@ export function calculateDifferenceDensityMap(
         fftAllocatedBytes: grid.allocatedBytes,
         fftWorkBufferBytes: grid.workBufferBytes,
         symmetryCompatibleGrid: grid.symmetryCompatibleGrid,
-        fftFallbackReason: grid.fftFallbackReason ?? grid.gridFallbackReason ??
-            (symmetryReductionRequested ? 'symmetry-reduced-fft-not-supported' : null),
-        symmetryReducedFft: false,
+        fftFallbackReason: grid.fftFallbackReason ?? grid.gridFallbackReason ?? null,
     });
     map.densityMapAssemblyTimeMs = now() - mapAssemblyStarted;
     map.densityMapTotalTimeMs = now() - mapStarted;
-    if (options.symmetryReducedFft !== true) {
-        return map;
-    }
-    const reduction = quotientScalarFieldBySymmetry(map);
-    if (!reduction.field) {
-        map.fftFallbackReason = reduction.fallbackReason;
-        return map;
-    }
-    reduction.field.fftFallbackReason = 'symmetry-reduced-fft-kernel-not-implemented';
-    return reduction.field;
+    return map;
 }

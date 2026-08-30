@@ -3,10 +3,6 @@ import {
     createSymmetryAwareIsosurfaces,
     SymmetryRegionSurfaceCache,
 } from '../density/symmetry-isosurface.js';
-import {
-    createPatchCachedIsosurfaces,
-    SurfacePatchCache,
-} from '../density/surface-patches.js';
 
 const APPEARANCE_OPTIONS = new Set([
     'positiveColor',
@@ -30,14 +26,12 @@ export class ThreeIsosurfaceLayer {
         this.structure = null;
         this.group = null;
         this.resolutionFraction = 1;
-        this.patchCache = new SurfacePatchCache(options.patchCacheMaxBytes);
-        this.regionCache = new SymmetryRegionSurfaceCache(options.patchCacheMaxBytes);
+        this.regionCache = new SymmetryRegionSurfaceCache(options.surfaceCacheMaxBytes);
         this.appearanceOnlyUpdate = false;
     }
 
     setField(field, resolutionFraction = 1) {
         if (field !== this.field) {
-            this.patchCache.clear();
             this.regionCache.clear();
             this.appearanceOnlyUpdate = false;
         }
@@ -59,9 +53,8 @@ export class ThreeIsosurfaceLayer {
         this.appearanceOnlyUpdate = Boolean(this.group) && changedOptions.length > 0 &&
             changedOptions.every(([name]) => APPEARANCE_OPTIONS.has(name));
         this.options = { ...this.options, ...options };
-        if (options.patchCacheMaxBytes !== undefined) {
-            this.patchCache.maxBytes = Math.max(0, Number(options.patchCacheMaxBytes) || 0);
-            this.regionCache.maxBytes = this.patchCache.maxBytes;
+        if (options.surfaceCacheMaxBytes !== undefined) {
+            this.regionCache.maxBytes = Math.max(0, Number(options.surfaceCacheMaxBytes) || 0);
         }
     }
 
@@ -85,9 +78,6 @@ export class ThreeIsosurfaceLayer {
         if (!this.field || !this.structure) {
             return null;
         }
-        if (!['legacy', 'patch-cache'].includes(this.options.generationMode)) {
-            throw new Error('Isosurface generationMode must be "patch-cache" or "legacy"');
-        }
         const finalResolution = isosurfaceResolution(this.structure, this.options);
         const fieldColors = this.field.fieldKind === 'deformation-density'
             ? {
@@ -104,19 +94,12 @@ export class ThreeIsosurfaceLayer {
                 Math.round(finalResolution * this.resolutionFraction),
             ),
         };
-        this.group = this.options.generationMode === 'legacy'
-            ? createSymmetryAwareIsosurfaces(
-                this.field,
-                this.structure,
-                generationOptions,
-                this.regionCache,
-            )
-            : createPatchCachedIsosurfaces(
-                this.field,
-                this.structure,
-                generationOptions,
-                this.patchCache,
-            );
+        this.group = createSymmetryAwareIsosurfaces(
+            this.field,
+            this.structure,
+            generationOptions,
+            this.regionCache,
+        );
         this.group.visible = this.options.visible !== false;
         this.parent.add(this.group);
         return this.group.userData;
@@ -166,7 +149,6 @@ export class ThreeIsosurfaceLayer {
 
     clear() {
         this.clearMesh();
-        this.patchCache.clear();
         this.regionCache.clear();
         this.field = null;
         this.resolutionFraction = 1;

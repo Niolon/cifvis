@@ -203,7 +203,7 @@ function regionCacheKey(region, sign, level, resolution, options) {
         level.toPrecision(12),
         resolution,
         Number(options.radius).toPrecision(8),
-        options.surfaceExtractor ?? 'three-marching-cubes',
+        'cifvis',
         atoms,
     ].join(';');
 }
@@ -806,11 +806,10 @@ export function createSymmetryAwareIsosurfaces(
         regionCacheBytes: regionCache?.bytes ?? 0,
         regionCacheEvictionCount: (regionCache?.evictions ?? 0) - initialCacheEvictions,
         ...surfaceStageStatistics,
-        surfaceExtractor: usedOptions.surfaceExtractor,
+        surfaceExtractor: 'cifvis',
         surfaceSamplingBackend,
-        surfaceNodeTraversal: usedOptions.surfaceNodeTraversal ?? null,
-        surfaceNodeStencil: usedOptions.surfaceExtractor === 'cifvis' &&
-            usedOptions.surfaceNodeStencil !== false,
+        surfaceNodeTraversal: 'active-list',
+        surfaceNodeStencil: true,
         surfaceWireframeTimeMs,
         surfaceSymmetryAssemblyTimeMs: Math.max(
             0, surfaceTotalTimeMs - numericalExtractionTimeMs,

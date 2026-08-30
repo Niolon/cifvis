@@ -481,15 +481,9 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
         return { real, imaginary };
     }
 
-    function calculatePrepared(reflections, options = {}) {
-        const phaseMode = options.phaseMode ?? 'tables';
-        if (!['direct', 'tables'].includes(phaseMode)) {
-            throw new Error('Prepared structure-factor phaseMode must be "direct" or "tables"');
-        }
-        const dwfMode = options.dwfMode ?? 'uiso-vectors';
-        if (!['direct', 'uiso-vectors'].includes(dwfMode)) {
-            throw new Error('Prepared structure-factor dwfMode must be "direct" or "uiso-vectors"');
-        }
+    function calculatePrepared(reflections) {
+        const phaseMode = 'tables';
+        const dwfMode = 'uiso-vectors';
         const reflectionPreparationStart = performance.now();
         const prepared = prepareReflectionArrays(reflections, reciprocalTransform);
         const reflectionPreparationMs = performance.now() - reflectionPreparationStart;
@@ -515,7 +509,7 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             .filter(model => model.atomCount > 1).length;
         const singletonIsotropicAtomCount = [...isotropicDisplacementModels.values()]
             .filter(model => model.atomCount === 1).length;
-        const useIsotropicDwfVectors = dwfMode === 'uiso-vectors' && sharedIsotropicModelCount > 0;
+        const useIsotropicDwfVectors = sharedIsotropicModelCount > 0;
         const isotropicDwfVectors = useIsotropicDwfVectors
             ? [...isotropicDisplacementModels].map(([isotropic, model]) => {
                 if (model.atomCount === 1) {
@@ -547,21 +541,16 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                     atom.displacement?.isotropicModelIndex !== undefined
                     ? isotropicDwfVectors[atom.displacement.isotropicModelIndex]
                     : null;
-                let tables = null;
-                if (phaseMode === 'tables') {
-                    const phasePreparationStart = performance.now();
-                    tables = {
-                        x: phaseAxisTable(atom.position[0], prepared.uniqueH),
-                        y: phaseAxisTable(atom.position[1], prepared.uniqueK),
-                        z: phaseAxisTable(atom.position[2], prepared.uniqueL),
-                    };
-                    phaseTablePreparationMs += performance.now() - phasePreparationStart;
-                    phaseTrigEvaluationCount += 2 * (
-                        prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
-                    );
-                } else {
-                    phaseTrigEvaluationCount += 2 * reflectionCount;
-                }
+                const phasePreparationStart = performance.now();
+                const tables = {
+                    x: phaseAxisTable(atom.position[0], prepared.uniqueH),
+                    y: phaseAxisTable(atom.position[1], prepared.uniqueK),
+                    z: phaseAxisTable(atom.position[2], prepared.uniqueL),
+                };
+                phaseTablePreparationMs += performance.now() - phasePreparationStart;
+                phaseTrigEvaluationCount += 2 * (
+                    prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
+                );
                 if (atom.displacement) {
                     dwfExpEvaluationCount += isotropicDwf
                         ? 0
@@ -569,29 +558,17 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
                 }
                 const accumulationStart = performance.now();
                 for (let reflectionIndex = 0; reflectionIndex < reflectionCount; reflectionIndex++) {
-                    let phaseReal;
-                    let phaseImaginary;
-                    if (tables) {
-                        const hOffset = 2 * prepared.hTableIndex[reflectionIndex];
-                        const kOffset = 2 * prepared.kTableIndex[reflectionIndex];
-                        const lOffset = 2 * prepared.lTableIndex[reflectionIndex];
-                        const xyReal = tables.x[hOffset] * tables.y[kOffset] -
-                            tables.x[hOffset + 1] * tables.y[kOffset + 1];
-                        const xyImaginary = tables.x[hOffset] * tables.y[kOffset + 1] +
-                            tables.x[hOffset + 1] * tables.y[kOffset];
-                        phaseReal = xyReal * tables.z[lOffset] -
-                            xyImaginary * tables.z[lOffset + 1];
-                        phaseImaginary = xyReal * tables.z[lOffset + 1] +
-                            xyImaginary * tables.z[lOffset];
-                    } else {
-                        const phase = TWO_PI * (
-                            prepared.h[reflectionIndex] * atom.position[0] +
-                            prepared.k[reflectionIndex] * atom.position[1] +
-                            prepared.l[reflectionIndex] * atom.position[2]
-                        );
-                        phaseReal = Math.cos(phase);
-                        phaseImaginary = Math.sin(phase);
-                    }
+                    const hOffset = 2 * prepared.hTableIndex[reflectionIndex];
+                    const kOffset = 2 * prepared.kTableIndex[reflectionIndex];
+                    const lOffset = 2 * prepared.lTableIndex[reflectionIndex];
+                    const xyReal = tables.x[hOffset] * tables.y[kOffset] -
+                        tables.x[hOffset + 1] * tables.y[kOffset + 1];
+                    const xyImaginary = tables.x[hOffset] * tables.y[kOffset + 1] +
+                        tables.x[hOffset + 1] * tables.y[kOffset];
+                    const phaseReal = xyReal * tables.z[lOffset] -
+                        xyImaginary * tables.z[lOffset + 1];
+                    const phaseImaginary = xyReal * tables.z[lOffset + 1] +
+                        xyImaginary * tables.z[lOffset];
                     const scale = atom.occupancy * (isotropicDwf
                         ? isotropicDwf[reflectionIndex]
                         : preparedDisplacementFactor(
@@ -637,11 +614,9 @@ export function createStructureFactorModel(cifText, cifBlock = 0, options = {}) 
             (sum, model) => sum + model.real.byteLength + model.imaginary.byteLength,
             0,
         );
-        const phaseTableWorkBytes = phaseMode === 'tables'
-            ? 2 * Float64Array.BYTES_PER_ELEMENT * (
-                prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
-            )
-            : 0;
+        const phaseTableWorkBytes = 2 * Float64Array.BYTES_PER_ELEMENT * (
+            prepared.uniqueH.length + prepared.uniqueK.length + prepared.uniqueL.length
+        );
         const dwfWorkBytes = isotropicDwfVectors?.reduce(
             (sum, values) => sum + (values?.byteLength ?? 0),
             0,

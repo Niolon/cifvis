@@ -178,7 +178,7 @@ describe('IAM structure factors', () => {
         expect(result[1].phase).toBeCloseTo(90, 12);
     });
 
-    test('prepared direct and separable-phase kernels reproduce scalar coefficients', () => {
+    test('prepared phase-table kernel reproduces scalar coefficients', () => {
         const calculator = createIAMStructureFactorCalculator(modelCif({
             position: '0.125 0.25 0.375',
             uiso: 0.04,
@@ -194,38 +194,23 @@ describe('IAM structure factors', () => {
                 [-1, 0, 1].flatMap(k => [-1, 0, 1].map(l => [h, k, l]))),
         ];
         const scalar = calculator.calculate(reflections);
-        const direct = calculator.calculatePrepared(reflections, {
-            phaseMode: 'direct',
-            dwfMode: 'direct',
-        });
-        const tables = calculator.calculatePrepared(reflections, {
-            phaseMode: 'tables',
-            dwfMode: 'direct',
-        });
-        const uisoVectors = calculator.calculatePrepared(reflections, {
-            phaseMode: 'tables',
-            dwfMode: 'uiso-vectors',
-        });
+        const prepared = calculator.calculatePrepared(reflections);
 
         for (let index = 0; index < reflections.length; index++) {
-            expect(direct.real[index]).toBeCloseTo(scalar[index].real, 11);
-            expect(direct.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
-            expect(tables.real[index]).toBeCloseTo(scalar[index].real, 11);
-            expect(tables.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
-            expect(tables.fSquared[index]).toBeCloseTo(scalar[index].amplitude ** 2, 10);
-            expect(uisoVectors.real[index]).toBe(tables.real[index]);
-            expect(uisoVectors.imaginary[index]).toBe(tables.imaginary[index]);
-            expect(uisoVectors.fSquared[index]).toBe(tables.fSquared[index]);
+            expect(prepared.real[index]).toBeCloseTo(scalar[index].real, 11);
+            expect(prepared.imaginary[index]).toBeCloseTo(scalar[index].imaginary, 11);
+            expect(prepared.fSquared[index]).toBeCloseTo(scalar[index].amplitude ** 2, 10);
         }
-        expect([...tables.h.slice(0, 4)]).toEqual([0, 1, -4, 2]);
-        expect(tables.diagnostics).toMatchObject({
+        expect([...prepared.h.slice(0, 4)]).toEqual([0, 1, -4, 2]);
+        expect(prepared.diagnostics).toMatchObject({
             backend: 'prepared-soa',
             phaseMode: 'tables',
+            dwfMode: 'uiso-vectors',
             reflectionCount: 31,
             expandedAtomCount: 2,
             scatteringModelCount: 1,
             displacementModelCount: 1,
-            dwfExpEvaluationCount: 62,
+            dwfExpEvaluationCount: 31,
             noAdpExpandedAtomCount: 0,
             uisoExpandedAtomCount: 2,
             uaniExpandedAtomCount: 0,
@@ -233,14 +218,10 @@ describe('IAM structure factors', () => {
             uniqueReciprocalUaniTensorCount: 0,
             cromerMannExpEvaluationCount: 124,
         });
-        expect(uisoVectors.diagnostics).toMatchObject({
-            dwfMode: 'uiso-vectors',
-            dwfExpEvaluationCount: 31,
+        expect(prepared.diagnostics).toMatchObject({
             uisoDwfExpEvaluationCount: 31,
             uaniDwfExpEvaluationCount: 0,
         });
-        expect(tables.diagnostics.phaseTrigEvaluationCount)
-            .toBeLessThan(direct.diagnostics.phaseTrigEvaluationCount);
     });
 
     test('bypasses Uiso vector allocation when there is no model reuse', () => {

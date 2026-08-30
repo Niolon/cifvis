@@ -125,11 +125,6 @@ async function calculateDifferenceDensityProgressively(message) {
             reciprocalResolution: message.reciprocalResolution,
             initialGridOversampling: message.initialGridOversampling,
             gridOversampling: message.gridOversampling,
-            fftBackend: message.fftBackend,
-            fftGridPlanner: message.fftGridPlanner,
-            fftAxisKernel: message.fftAxisKernel,
-            realTransform: message.realTransform,
-            symmetryReducedFft: message.symmetryReducedFft,
         });
         const progressionSetupTimeMs = debugTimings
             ? performance.now() - progressionStarted

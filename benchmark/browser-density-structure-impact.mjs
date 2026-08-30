@@ -24,7 +24,6 @@ const output = resolve(process.argv[2] ?? '/tmp/browser-density-structure-impact
 const cohortInput = resolve(process.argv[3] ?? '/tmp/browser-density-consistency-50.json');
 const repetitions = Number.parseInt(process.env.REPETITIONS ?? '5', 10);
 const warmupRepetitions = Number.parseInt(process.env.WARMUP_REPETITIONS ?? '1', 10);
-const dwfMode = process.env.DWF_MODE ?? 'uiso-vectors';
 const modes = (process.env.MODES ??
     'disabled,idle-worker,deferred-density,active-density').split(',');
 const bundleComparison = Object.keys(bundleEntries).length > 1;
@@ -100,15 +99,13 @@ const waitForWorker = async viewer => {
     await new Promise(resolve => setTimeout(resolve, 1));
   }
 };
-window.runStructureOnly = async (cifText, mode, dwfMode) => {
+window.runStructureOnly = async (cifText, mode) => {
   const workerConfigured = mode !== 'disabled';
   const viewer = new CifVis.CrystalViewer(document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
     scalarField: {useWorker: true},
-    differenceDensity: workerConfigured
-      ? {autoLoad: true, iam: {dwfMode}}
-      : {autoLoad: false},
+    differenceDensity: {autoLoad: workerConfigured},
     isosurface: {progressiveSteps: [1], visible: false},
   });
   if (workerConfigured) await waitForWorker(viewer);
@@ -200,9 +197,8 @@ try {
                 const selectedMode = bundleComparison ? 'disabled' : variant;
                 await page.goto(`http://127.0.0.1:${port}/?bundle=${bundleLabel}`);
                 const run = await page.evaluate(
-                    ({ text, selectedMode, selectedDwfMode }) =>
-                        window.runStructureOnly(text, selectedMode, selectedDwfMode),
-                    { text: entry.text, selectedMode, selectedDwfMode: dwfMode },
+                    ({ text, selectedMode }) => window.runStructureOnly(text, selectedMode),
+                    { text: entry.text, selectedMode },
                 );
                 if (repetition >= warmupRepetitions) {
                     results[caseIndex].runs[variant].push(run);
@@ -223,7 +219,6 @@ writeFileSync(output, `${JSON.stringify({
     cohortInput,
     repetitions,
     warmupRepetitions,
-    dwfMode,
     modes: variants,
     endpoint: 'structureSceneReady',
     workers: 'prewarmed-outside-timer-when-configured',

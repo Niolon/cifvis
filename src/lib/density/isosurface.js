@@ -1,6 +1,5 @@
 /* eslint-disable jsdoc/require-param -- private rendering helpers keep compact documentation */
 import * as THREE from 'three';
-import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 import * as math from '../math-lite.js';
 import { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
 import { extractMarchingCubes } from './isosurface-extractor.js';
@@ -12,15 +11,6 @@ import {
 } from './surface-lattice.js';
 
 export { DEFAULT_ISOSURFACE_OPTIONS } from './isosurface-options.js';
-
-/** @returns {number[]} Cartesian coordinates for a fractional point. */
-function cartesianCoordinates(matrix, x, y, z) {
-    return [
-        matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
-        matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
-        matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z,
-    ];
-}
 
 /**
  * Calculates the fractional region needed to cover the displayed atoms plus
@@ -85,30 +75,6 @@ export function isosurfaceResolution(structure, options = {}) {
     return Math.min(maximumResolution, Math.max(minimumResolution, resolutionForSpacing));
 }
 
-/** @returns {THREE.Matrix4} Transform from marching-cube coordinates to Cartesian coordinates. */
-function createFractionalToCartesianMatrix(cell, bounds) {
-    const matrix = cell.fractToCartMatrix.toArray();
-    const span = bounds.maximum.map((value, index) => value - bounds.minimum[index]);
-    const centre = bounds.minimum.map((value, index) => value + span[index] / 2);
-    const translation = cartesianCoordinates(matrix, ...centre);
-
-    return new THREE.Matrix4().set(
-        matrix[0][0] * span[0] / 2,
-        matrix[0][1] * span[1] / 2,
-        matrix[0][2] * span[2] / 2,
-        translation[0],
-        matrix[1][0] * span[0] / 2,
-        matrix[1][1] * span[1] / 2,
-        matrix[1][2] * span[2] / 2,
-        translation[1],
-        matrix[2][0] * span[0] / 2,
-        matrix[2][1] * span[1] / 2,
-        matrix[2][2] * span[2] / 2,
-        translation[2],
-        0, 0, 0, 1,
-    );
-}
-
 /** @returns {THREE.Matrix4} Transform from fractional to Cartesian coordinates. */
 function createCellMatrix(cell) {
     const matrix = cell.fractToCartMatrix.toArray();
@@ -118,22 +84,6 @@ function createCellMatrix(cell) {
         matrix[2][0], matrix[2][1], matrix[2][2], 0,
         0, 0, 0, 1,
     );
-}
-
-/** @returns {boolean} Whether a sample lies inside the atom clipping mask. */
-function isNearDisplayedAtom(cartesian, atomCoordinates, radiusSquared, counters = null) {
-    for (const atom of atomCoordinates) {
-        if (counters) {
-            counters.atomDistanceTestCount++;
-        }
-        const dx = cartesian[0] - atom[0];
-        const dy = cartesian[1] - atom[1];
-        const dz = cartesian[2] - atom[2];
-        if (dx * dx + dy * dy + dz * dz <= radiusSquared) {
-            return true;
-        }
-    }
-    return false;
 }
 
 /** @returns {THREE.Material} Surface material matching the established renderer. */
@@ -225,19 +175,6 @@ function trimToDrawRange(geometry) {
     return trimmed;
 }
 
-/** @returns {MarchingCubes} Configured scalar-field surface. */
-function createSurface(resolution, material, maxPolyCount, name, level) {
-    const surface = new MarchingCubes(resolution, material, false, false, maxPolyCount);
-    surface.name = name;
-    surface.isolation = level;
-    surface.userData = {
-        selectable: false,
-        type: 'isosurface',
-        sign: name.includes('Positive') ? 'positive' : 'negative',
-    };
-    return surface;
-}
-
 /** @returns {THREE.Group} Typed-array CifVis extraction adapted to Three.js. */
 function createCifvisIsosurfaces(
     field,
@@ -253,10 +190,8 @@ function createCifvisIsosurfaces(
     const resolution = Math.max(8, Math.round(usedOptions.resolution));
     const lattice = planSurfaceLattice(structure.cell, bounds, resolution);
     const stencil = createAtomCellStencil(lattice, usedOptions.radius);
-    const useNodeStencil = usedOptions.surfaceNodeStencil !== false;
-    const atomStencils = useNodeStencil
-        ? applyAtomSurfaceStencils(lattice, structure.atoms ?? [], stencil)
-        : null;
+    const useNodeStencil = true;
+    const atomStencils = applyAtomSurfaceStencils(lattice, structure.atoms ?? [], stencil);
     const applied = atomStencils
         ? {
             mask: atomStencils.cellMask,
@@ -279,8 +214,8 @@ function createCifvisIsosurfaces(
         field,
         level,
         signs: sign,
-        samplingMode: usedOptions.surfaceSamplingMode ?? 'auto',
-        nodeTraversal: usedOptions.surfaceNodeTraversal ?? 'active-list',
+        samplingMode: 'auto',
+        nodeTraversal: 'active-list',
         allowedNodeMask: allowedNodes?.mask ?? null,
     });
 
@@ -407,7 +342,6 @@ function createCifvisIsosurfaces(
 export function createIsosurfaces(field, structure, options = {}) {
     const generationStarted = performance.now();
     const usedOptions = { ...DEFAULT_ISOSURFACE_OPTIONS, ...options };
-    const resolution = Math.max(8, Math.round(usedOptions.resolution));
     const level = usedOptions.level ?? field.defaultLevel ??
         usedOptions.sigmaLevel * field.sigma;
     if (!(Number.isFinite(level) && level > 0)) {
@@ -424,217 +358,14 @@ export function createIsosurfaces(field, structure, options = {}) {
     if (!['positive', 'negative', 'both'].includes(sign)) {
         throw new Error('Isosurface sign must be "positive", "negative", or "both"');
     }
-    const renderPositive = sign !== 'negative';
-    const renderNegative = sign !== 'positive';
-    if (!['three-marching-cubes', 'cifvis'].includes(usedOptions.surfaceExtractor)) {
-        throw new Error(
-            'Isosurface surfaceExtractor must be "three-marching-cubes" or "cifvis"',
-        );
-    }
-    if (usedOptions.surfaceExtractor === 'cifvis') {
-        return createCifvisIsosurfaces(
-            field,
-            structure,
-            usedOptions,
-            bounds,
-            level,
-            sign,
-            boundsTimeMs,
-            generationStarted,
-        );
-    }
-    const allocationStarted = performance.now();
-    const positiveMaterial = surfaceMaterial(usedOptions, usedOptions.positiveColor);
-    const negativeMaterial = surfaceMaterial(usedOptions, usedOptions.negativeColor);
-    const positive = renderPositive ? createSurface(
-        resolution,
-        positiveMaterial,
-        usedOptions.maxPolyCount,
-        'PositiveIsosurface',
-        level,
-    ) : null;
-    const negative = renderNegative ? createSurface(
-        resolution,
-        negativeMaterial,
-        usedOptions.maxPolyCount,
-        'NegativeIsosurface',
-        level,
-    ) : null;
-    if (!positive) {
-        positiveMaterial.dispose();
-    }
-    if (!negative) {
-        negativeMaterial.dispose();
-    }
-    const surfaceAllocationTimeMs = performance.now() - allocationStarted;
-
-    const span = bounds.maximum.map((value, index) => value - bounds.minimum[index]);
-    const half = resolution / 2;
-    const cellMatrix = structure.cell.fractToCartMatrix.toArray();
-    const atomCoordinates = structure.atoms.map(atom => cartesianCoordinates(
-        cellMatrix,
-        atom.position.x,
-        atom.position.y,
-        atom.position.z,
-    ));
-    const radiusSquared = usedOptions.radius ** 2;
-    const nodeMask = new Uint8Array(resolution ** 3);
-    const counters = { atomDistanceTestCount: 0 };
-
-    const maskStarted = performance.now();
-    for (let z = 0; z < resolution; z++) {
-        const fractionalZ = bounds.minimum[2] + ((z - half) / half + 1) * span[2] / 2;
-        for (let y = 0; y < resolution; y++) {
-            const fractionalY = bounds.minimum[1] + ((y - half) / half + 1) * span[1] / 2;
-            const offset = (z * resolution + y) * resolution;
-            for (let x = 0; x < resolution; x++) {
-                const fractionalX = bounds.minimum[0] + ((x - half) / half + 1) * span[0] / 2;
-                const cartesian = cartesianCoordinates(cellMatrix, fractionalX, fractionalY, fractionalZ);
-                if (isNearDisplayedAtom(
-                    cartesian, atomCoordinates, radiusSquared, counters,
-                )) {
-                    nodeMask[offset + x] = 1;
-                }
-            }
-        }
-    }
-    const surfaceMaskTimeMs = performance.now() - maskStarted;
-
-    const samplingStarted = performance.now();
-    let fieldSampleCount = 0;
-    for (let z = 0; z < resolution; z++) {
-        const fractionalZ = bounds.minimum[2] + ((z - half) / half + 1) * span[2] / 2;
-        for (let y = 0; y < resolution; y++) {
-            const fractionalY = bounds.minimum[1] + ((y - half) / half + 1) * span[1] / 2;
-            const offset = (z * resolution + y) * resolution;
-            for (let x = 0; x < resolution; x++) {
-                if (!nodeMask[offset + x]) {
-                    continue;
-                }
-                const fractionalX = bounds.minimum[0] + ((x - half) / half + 1) * span[0] / 2;
-                const value = field.sample(fractionalX, fractionalY, fractionalZ);
-                fieldSampleCount++;
-                if (positive) {
-                    positive.field[offset + x] = value;
-                }
-                if (negative) {
-                    negative.field[offset + x] = -value;
-                }
-            }
-        }
-    }
-    const surfaceSamplingTimeMs = performance.now() - samplingStarted;
-
-    const classificationStarted = performance.now();
-    const cellResolution = resolution - 1;
-    let activeCellCount = 0;
-    let activeRowCount = 0;
-    for (let z = 0; z < cellResolution; z++) {
-        for (let y = 0; y < cellResolution; y++) {
-            let rowActive = false;
-            for (let x = 0; x < cellResolution; x++) {
-                const node = (z * resolution + y) * resolution + x;
-                const active = nodeMask[node] || nodeMask[node + 1] ||
-                    nodeMask[node + resolution] || nodeMask[node + resolution + 1] ||
-                    nodeMask[node + resolution ** 2] || nodeMask[node + resolution ** 2 + 1] ||
-                    nodeMask[node + resolution ** 2 + resolution] ||
-                    nodeMask[node + resolution ** 2 + resolution + 1];
-                if (active) {
-                    activeCellCount++;
-                    rowActive = true;
-                }
-            }
-            activeRowCount += Number(rowActive);
-        }
-    }
-    const surfaceClassificationTimeMs = performance.now() - classificationStarted;
-
-    const polygonizationStarted = performance.now();
-    positive?.update();
-    negative?.update();
-    const polygonizationTimeMs = performance.now() - polygonizationStarted;
-    const positivePolygonCount = positive ? positive.geometry.drawRange.count / 3 : 0;
-    const negativePolygonCount = negative ? negative.geometry.drawRange.count / 3 : 0;
-    const geometryStarted = performance.now();
-    const transformation = createFractionalToCartesianMatrix(structure.cell, bounds);
-    const surfaces = [positive, negative].filter(Boolean);
-    for (const surface of surfaces) {
-        surface.matrix.copy(transformation);
-        surface.matrixAutoUpdate = false;
-    }
-
-    const group = new THREE.Group();
-    group.name = 'Isosurface';
-    group.visible = usedOptions.visible;
-    const surfaceGeometryTimeMs = performance.now() - geometryStarted;
-    const generatedVertexCount = surfaces.reduce(
-        (sum, surface) => sum + surface.geometry.drawRange.count, 0,
-    );
-    const allocatedGeometryBytes = surfaces.reduce((sum, surface) =>
-        sum + Object.values(surface.geometry.attributes).reduce(
-            (attributeSum, attribute) => attributeSum + attribute.array.byteLength, 0,
-        ), 0);
-    const wireframeStarted = performance.now();
-    let generatedLineSegmentCount = 0;
-    const renderedSurfaces = usedOptions.wireframe && !usedOptions.keepTriangles
-        ? surfaces.map(surface => {
-            const lines = wireframeFromSurface(surface, surface.material.color, usedOptions.opacity);
-            generatedLineSegmentCount += lines.geometry.getAttribute('position')?.count / 2 || 0;
-            surface.geometry.dispose();
-            surface.material.dispose();
-            return lines;
-        })
-        : surfaces;
-    const surfaceWireframeTimeMs = performance.now() - wireframeStarted;
-    group.add(...renderedSurfaces);
-    const surfaceTotalTimeMs = performance.now() - generationStarted;
-    group.userData = {
-        selectable: false,
-        type: 'isosurface',
+    return createCifvisIsosurfaces(
+        field,
+        structure,
+        usedOptions,
         bounds,
         level,
-        sigmaLevel: Number.isFinite(field.sigma) && field.sigma !== 0
-            ? level / field.sigma
-            : null,
-        resolution,
-        positivePolygonCount,
-        negativePolygonCount,
-        polygonCount: positivePolygonCount + negativePolygonCount,
-        symmetryUsed: false,
-        displayedRegionCount: 1,
-        generatedRegionCount: 1,
-        reusedRegionCount: 0,
-        marchingCubesPassCount: surfaces.length,
-        stitched: false,
-        stitchTimeMs: 0,
-        removedDuplicateTriangleCount: 0,
-        polygonizationTimeMs,
-        marchingCubesTimeMs: surfaceTotalTimeMs,
-        generationTimeMs: surfaceTotalTimeMs,
-        surfaceExtractor: 'three-marching-cubes',
-        surfaceBoundsTimeMs: boundsTimeMs,
-        surfaceMaskTimeMs,
-        surfaceSamplingTimeMs,
-        surfaceClassificationTimeMs,
-        surfaceAllocationTimeMs,
-        surfaceInterpolationTimeMs: polygonizationTimeMs,
-        surfaceGeometryTimeMs,
-        surfaceWireframeTimeMs,
-        surfaceSymmetryAssemblyTimeMs: 0,
-        surfaceTotalTimeMs,
-        surfaceLatticeNodeCount: resolution ** 3,
-        surfaceLatticeCellCount: cellResolution ** 3,
-        candidateCellCount: cellResolution ** 3,
-        activeCellCount,
-        activeRowCount,
-        fieldSampleCount,
-        positiveTriangleCount: positivePolygonCount,
-        negativeTriangleCount: negativePolygonCount,
-        generatedVertexCount,
-        generatedLineSegmentCount,
-        allocatedGeometryBytes,
-        atomDistanceTestCount: counters.atomDistanceTestCount,
-        threeMarchingCubesTimeMs: polygonizationTimeMs,
-    };
-    return group;
+        sign,
+        boundsTimeMs,
+        generationStarted,
+    );
 }

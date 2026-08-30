@@ -17,7 +17,6 @@ const bundleName = process.env.CIFVIS_BUNDLE ?? 'cifvis.alldeps.js';
 const bundle = join(repository, 'dist', bundleName);
 const output = resolve(process.argv[2] ?? '/tmp/browser-worker-lifecycle.json');
 const cifPaths = process.argv.slice(3);
-const DWF_MODE = process.env.DWF_MODE ?? 'uiso-vectors';
 const REPETITIONS = Number.parseInt(process.env.REPETITIONS ?? '3', 10);
 
 function reciprocalMatrix(cell) {
@@ -85,12 +84,12 @@ const html = `<!doctype html><html><head>
 <script type="importmap">{"imports":{"three":"/three.js"}}</script>
 </head><body><div id="viewer"></div><script type="module">
 import * as CifVis from '/bundle.js';
-const makeViewer = (prewarm, dwfMode) => new CifVis.CrystalViewer(
+const makeViewer = prewarm => new CifVis.CrystalViewer(
   document.getElementById('viewer'), {
     debug: true,
     renderMode: 'onDemand',
     scalarField: {useWorker: true},
-    differenceDensity: prewarm ? {autoLoad: true, iam: {dwfMode}} : {autoLoad: false},
+    differenceDensity: {autoLoad: prewarm},
     isosurface: {progressiveSteps: [1], visible: false},
   });
 const waitReady = async viewer => {
@@ -99,20 +98,20 @@ const waitReady = async viewer => {
     await new Promise(resolve => setTimeout(resolve, 1));
   }
 };
-window.runLifecycle = async (cases, mode, dwfMode) => {
+window.runLifecycle = async (cases, mode) => {
   const persistent = mode.includes('persistent');
   const prewarm = mode.includes('prewarm');
-  let viewer = persistent ? makeViewer(prewarm, dwfMode) : null;
+  let viewer = persistent ? makeViewer(prewarm) : null;
   if (viewer && prewarm) await waitReady(viewer);
   const runs = [];
   for (const entry of cases) {
     if (!viewer) {
-      viewer = makeViewer(prewarm, dwfMode);
+      viewer = makeViewer(prewarm);
       if (prewarm) await waitReady(viewer);
     }
     const started = performance.now();
     const structure = await viewer.loadCIF(entry.text, 0, prewarm ? {} : {
-      differenceDensity: {progressiveSteps: [1], visible: false, iam: {dwfMode}},
+      differenceDensity: {progressiveSteps: [1], visible: false},
     });
     const density = structure.differenceDensity ? await structure.differenceDensity : structure;
     const timings = structure.browserTimings ?? {};
@@ -203,9 +202,8 @@ try {
             await page.goto(`http://127.0.0.1:${port}/`);
             await page.waitForFunction(() => typeof window.runLifecycle === 'function');
             results[mode].push(await page.evaluate(
-                ({ entries, selectedMode, dwfMode }) =>
-                    window.runLifecycle(entries, selectedMode, dwfMode),
-                { entries: cases, selectedMode: mode, dwfMode: DWF_MODE },
+                ({ entries, selectedMode }) => window.runLifecycle(entries, selectedMode),
+                { entries: cases, selectedMode: mode },
             ));
             await context.close();
         }
@@ -217,7 +215,6 @@ try {
 writeFileSync(output, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
     bundleName,
-    dwfMode: DWF_MODE,
     repetitions: REPETITIONS,
     cases: cases.map(({ codId, reflectionCount }) => ({ codId, reflectionCount })),
     results,

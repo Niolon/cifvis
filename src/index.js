@@ -15,11 +15,7 @@ export { DEFAULT_ISOSURFACE_OPTIONS } from './lib/density/isosurface-options.js'
 export { DEFAULT_CONTOUR_LINE_OPTIONS } from './lib/density/contour-line-options.js';
 export { DEFAULT_SCALAR_FIELD_OPTIONS } from './lib/density/scalar-field-options.js';
 export { BOHR_TO_ANGSTROM, parseCube } from './lib/density/cube.js';
-export {
-    quotientScalarFieldBySymmetry,
-    ScalarFieldGrid,
-    SymmetryReducedScalarFieldGrid,
-} from './lib/density/scalar-field.js';
+export { ScalarFieldGrid } from './lib/density/scalar-field.js';
 export { calculatePlanarContours, resolveContourPlane } from './lib/density/plane-contours.js';
 export {
     createIsosurfaces,

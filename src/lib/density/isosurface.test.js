@@ -71,7 +71,6 @@ describe('isosurfaces', () => {
             resolution: 16,
             radius: 2,
             sigmaLevel: 1,
-            surfaceExtractor: 'cifvis',
             wireframe: false,
         });
 
@@ -84,30 +83,6 @@ describe('isosurfaces', () => {
         expect(group.userData.polygonCount).toBeGreaterThan(0);
         expect(group.userData.surfaceTotalTimeMs).toBeGreaterThanOrEqual(0);
         expect(group.userData.allocatedGeometryBytes).toBeGreaterThan(0);
-    });
-
-    test('reports attributable named stages for the Three.js reference path', () => {
-        const group = createIsosurfaces(densityMap, structureAt(0.5), {
-            resolution: 16,
-            radius: 2,
-            sigmaLevel: 1,
-            surfaceExtractor: 'three-marching-cubes',
-        });
-        const namedTime = [
-            'surfaceBoundsTimeMs',
-            'surfaceMaskTimeMs',
-            'surfaceSamplingTimeMs',
-            'surfaceClassificationTimeMs',
-            'surfaceAllocationTimeMs',
-            'surfaceInterpolationTimeMs',
-            'surfaceGeometryTimeMs',
-            'surfaceWireframeTimeMs',
-        ].reduce((sum, key) => sum + group.userData[key], 0);
-
-        expect(group.userData.surfaceExtractor).toBe('three-marching-cubes');
-        expect(group.userData.atomDistanceTestCount).toBeGreaterThan(0);
-        expect(group.userData.threeMarchingCubesTimeMs).toBeGreaterThanOrEqual(0);
-        expect(namedTime / group.userData.surfaceTotalTimeMs).toBeGreaterThan(0.8);
     });
 
     test('honours a Cube map absolute level and positive-only surface', () => {
@@ -197,35 +172,6 @@ describe('isosurfaces', () => {
         expect(colors).toEqual({ positive: '#4FC3F7', negative: '#FF9800' });
         expect(colors.positive).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.positiveColor);
         expect(colors.negative).not.toBe(DEFAULT_ISOSURFACE_OPTIONS.negativeColor);
-    });
-
-    test('reuses fixed-lattice patches across displayed expansion changes', () => {
-        const parent = new THREE.Group();
-        const layer = new ThreeIsosurfaceLayer(parent, {
-            ...DEFAULT_ISOSURFACE_OPTIONS,
-            generationMode: 'patch-cache',
-            gridSpacing: 1,
-            radius: 2,
-            sigmaLevel: 1,
-        });
-        layer.setField(densityMap);
-        layer.setStructure(structureAt(0.2));
-        const first = layer.rebuild();
-        layer.setStructure(new CrystalStructure(
-            structureAt(0.2).cell,
-            [
-                ...structureAt(0.2).atoms,
-                new Atom('C2', 'C', new FractPosition(1.2, 0.5, 0.5)),
-            ],
-            [],
-            [],
-            null,
-        ));
-        const expanded = layer.rebuild();
-
-        expect(first.cacheMissCellCount).toBeGreaterThan(0);
-        expect(expanded.cacheHitCellCount).toBeGreaterThan(0);
-        expect(expanded.patchCacheBytes).toBeGreaterThan(0);
     });
 
     test('retains cached CPU geometry across appearance-only changes', () => {

@@ -646,19 +646,13 @@ export function mergeReflectionIntensitiesPrepared(input, symmetry, options = {}
 }
 
 /**
- * Selects the production prepared merger, with a legacy validation backend.
+ * Merges reflections through the prepared structure-of-arrays implementation.
  * @param {object[]|object} reflections - Object rows or typed observations.
  * @param {CellSymmetry} symmetry - Full space-group operations.
  * @param {object} options - Merging options.
  * @returns {{reflections:object[], systematicAbsenceCount:number}} Merge result.
  */
 export function mergeReflectionIntensities(reflections, symmetry, options = {}) {
-    if (options.mergeBackend === 'legacy') {
-        const input = reflections?.h instanceof Int32Array
-            ? materializeObservations(reflections)
-            : reflections;
-        return mergeReflectionIntensitiesLegacy(input, symmetry, options);
-    }
     return mergeReflectionIntensitiesPrepared(reflections, symmetry, options);
 }
 

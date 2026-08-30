@@ -316,31 +316,6 @@
       "default": "2"
     },
     {
-      "path": "differenceDensity.fftBackend",
-      "type": "String",
-      "default": "\"auto\""
-    },
-    {
-      "path": "differenceDensity.fftGridPlanner",
-      "type": "String",
-      "default": "\"auto\""
-    },
-    {
-      "path": "differenceDensity.fftAxisKernel",
-      "type": "String",
-      "default": "\"auto\""
-    },
-    {
-      "path": "differenceDensity.realTransform",
-      "type": "Boolean",
-      "default": "true"
-    },
-    {
-      "path": "differenceDensity.symmetryReducedFft",
-      "type": "Boolean",
-      "default": "false"
-    },
-    {
       "path": "scalarField.useWorker",
       "type": "Boolean",
       "default": "true"
@@ -426,17 +401,7 @@
       "default": "100000"
     },
     {
-      "path": "isosurface.generationMode",
-      "type": "String",
-      "default": "\"legacy\""
-    },
-    {
-      "path": "isosurface.surfaceExtractor",
-      "type": "String",
-      "default": "\"cifvis\""
-    },
-    {
-      "path": "isosurface.patchCacheMaxBytes",
+      "path": "isosurface.surfaceCacheMaxBytes",
       "type": "Number",
       "default": "67108864"
     },

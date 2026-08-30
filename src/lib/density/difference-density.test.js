@@ -32,11 +32,6 @@ const MULTI_RESOLUTION_FCF = P1_FCF.replace(
     ' 1 0 0 4 1 0\n 4 0 0 9 1 0\n',
 );
 
-const P_MINUS_ONE_FCF = P1_FCF.replace(
-    ' \'x,y,z\'\n',
-    ' \'x,y,z\'\n \'-x,-y,-z\'\n',
-);
-
 const THREE_DIMENSIONAL_FCF = P1_FCF.replace(
     ' 1 0 0 4 1 0\n',
     ` 1 0 0 4 1 17
@@ -261,38 +256,14 @@ describe('difference-density scalar fields', () => {
         }
     });
 
-    test('matches the full complex transform on an odd mixed-radix 3-D grid', () => {
+    test('uses the Hermitian transform on an odd mixed-radix 3-D grid', () => {
         const dataset = parseDifferenceDensityDataset(THREE_DIMENSIONAL_FCF);
-        const real = calculateDifferenceDensityMap(dataset, 1, 1, {
-            fftBackend: 'mixed-radix',
-            realTransform: true,
-        });
-        const complex = calculateDifferenceDensityMap(dataset, 1, 1, {
-            fftBackend: 'mixed-radix',
-            realTransform: false,
-        });
+        const real = calculateDifferenceDensityMap(dataset, 1, 1);
 
         expect(real.dimensions).toEqual([5, 3, 5]);
-        expect(real.values).toEqual(complex.values);
         expect(real.realTransform).toBe(true);
         expect(real.hermitianResidual).toBe(0);
         expect(real.storedCoefficientCount).toBeLessThan(real.coefficientCount);
-        expect(real.fftAllocatedBytes).toBeLessThan(complex.fftAllocatedBytes);
-    });
-
-    test('gates symmetry-quotiented storage behind the explicit experimental option', () => {
-        const dataset = parseDifferenceDensityDataset(P_MINUS_ONE_FCF);
-        const ordinary = calculateDifferenceDensityMap(dataset, 1, 1);
-        const reduced = calculateDifferenceDensityMap(dataset, 1, 1, {
-            symmetryReducedFft: true,
-        });
-
-        expect(ordinary.storageMode).toBeUndefined();
-        expect(reduced.storageMode).toBe('symmetry-orbits');
-        expect(reduced.symmetryReducedStorage).toBe(true);
-        expect(reduced.symmetryReducedFft).toBe(false);
-        expect(reduced.fftFallbackReason).toBe('symmetry-reduced-fft-kernel-not-implemented');
-        expect(reduced.values).toEqual(ordinary.values);
     });
 
     test('constructs a scaled IAM-phased Fo-Fc map from a reflection CIF', () => {

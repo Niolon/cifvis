@@ -87,16 +87,19 @@ success/error status so failed loads cannot be mistaken for fast results.
 
 ## Bundle-size exception
 
-The performance and correctness gates pass, but the planned 5% bundle-growth target is
-not met. The all-dependencies ESM gzip grows from 470.01 to 504.76 KiB (+7.4%); the
-standard ESM gzip grows from 275.18 to 299.97 KiB (+9.0%), and the split worker grows
-from 189.69 to 223.79 KiB uncompressed (+18.0%). This is an explicit merge exception
-for the new FFT kernels, extractor, cache paths and diagnostics. Further code splitting
-is follow-up work because these synchronous runtime-selectable paths cannot be removed
-without reducing the shipped feature set.
+After the campaign selected its winners, the comparison-only runtime paths were removed
+from production. The all-dependencies ESM gzip is now 494.19 KiB (+5.1% from 470.01),
+the standard ESM gzip is 289.84 KiB (+5.3% from 275.18), and the split worker is
+217.81 KiB uncompressed (+14.8% from 189.69). This saves 10.57 KiB, 10.13 KiB and
+5.98 KiB respectively from the initially validated candidate while retaining its
+production algorithms and numerical fallbacks. The remaining small ESM overage and
+worker growth are the explicit merge exception for the new FFT, reflection-preparation,
+IAM and diagnostic implementation.
 
 ## Merge assessment
 
 Correctness, structure-only performance, density performance, memory, surface, worker
 lifecycle, build and lint gates pass. The current density scheduling remains intentional
-and opt-in. The only acceptance exception requiring conscious sign-off is bundle size.
+and opt-in. Comparison-only FFT, FFT-ASU, IAM, reflection-merger, Three.js extractor and
+patch-cache selectors are not part of the shipped API. The only acceptance exception
+requiring conscious sign-off is the remaining bundle size.
