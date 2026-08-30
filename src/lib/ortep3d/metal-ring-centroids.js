@@ -1,7 +1,7 @@
 import { chemicalBonds } from '../structure/bond-classification.js';
 import { eigs } from '../math-lite.js';
 
-export const DEFAULT_METAL_CENTER_ELEMENTS = [
+export const DEFAULT_METAL_CENTRE_ELEMENTS = [
     'Li', 'Be', 'Na', 'Mg', 'Al', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni',
     'Cu', 'Zn', 'Ga', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag',
     'Cd', 'In', 'Sn', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb',
@@ -11,7 +11,7 @@ export const DEFAULT_METAL_CENTER_ELEMENTS = [
 ];
 
 export const DEFAULT_METAL_RING_CENTROID_OPTIONS = {
-    centerElements: DEFAULT_METAL_CENTER_ELEMENTS,
+    centreElements: DEFAULT_METAL_CENTRE_ELEMENTS,
     ringElements: ['B', 'C', 'N', 'O', 'P', 'S'],
     minRingSize: 5,
     maxRingSize: 8,
@@ -30,7 +30,7 @@ export const DEFAULT_METAL_RING_CENTROID_OPTIONS = {
  * @returns {void}
  */
 export function validateMetalRingCentroidOptions(options) {
-    for (const name of ['centerElements', 'ringElements']) {
+    for (const name of ['centreElements', 'ringElements']) {
         if (!Array.isArray(options[name]) || options[name].length === 0 ||
             options[name].some(value => typeof value !== 'string' || value.length === 0)) {
             throw new TypeError(`metalRingCentroidOptions.${name} must be a non-empty string array`);
@@ -65,7 +65,11 @@ export function validateMetalRingCentroidOptions(options) {
     }
 }
 
-// Canonicalize rotations and traversal direction for deterministic deduplication.
+/**
+ * Canonicalises rotations and traversal direction for deterministic cycle deduplication.
+ * @param {string[]} ids - Atom IDs in cycle traversal order
+ * @returns {string} Canonical cycle identifier
+ */
 function canonicalCycle(ids) {
     const variants = [];
     for (const ordered of [ids, [...ids].reverse()]) {
@@ -77,6 +81,12 @@ function canonicalCycle(ids) {
     return variants[0];
 }
 
+/**
+ * Tests whether a cycle contains no edge between non-consecutive vertices.
+ * @param {string[]} cycle - Atom IDs in cycle traversal order
+ * @param {Map<string, Set<string>>} adjacency - Ligand graph adjacency
+ * @returns {boolean} Whether the cycle is chordless
+ */
 function isChordless(cycle, adjacency) {
     const n = cycle.length;
     for (let i = 0; i < n; i++) {
@@ -122,6 +132,12 @@ export function findChordlessCycles(adjacency, starts, minSize, maxSize) {
     return [...cycles.entries()].map(([key, atoms]) => ({ key, atoms }));
 }
 
+/**
+ * Converts an atom position to a compact Cartesian coordinate tuple.
+ * @param {object} atom - Structure atom
+ * @param {object} cell - Unit cell used for coordinate conversion
+ * @returns {number[]} Cartesian x, y, and z coordinates
+ */
 function cartesian(atom, cell) {
     const point = atom.position.toCartesian(cell);
     return [point.x, point.y, point.z];
@@ -129,10 +145,18 @@ function cartesian(atom, cell) {
 
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-function geometryFor(center, ringAtoms, cell) {
-    const centerPoint = cartesian(center, cell);
+/**
+ * Computes centroid and coordination-geometry metrics for a candidate ring.
+ * @param {object} centre - Candidate centre atom
+ * @param {object[]} ringAtoms - Atoms forming the ligand ring
+ * @param {object} cell - Unit cell used for coordinate conversion
+ * @returns {?{centroid:number[], lateralDisplacementRatio:number,
+ *     distanceSpreadRatio:number}} Candidate geometry, or null for degenerate input
+ */
+function geometryFor(centre, ringAtoms, cell) {
+    const centrePoint = cartesian(centre, cell);
     const points = ringAtoms.map(atom => cartesian(atom, cell));
-    if ([...centerPoint, ...points.flat()].some(value => !Number.isFinite(value))) {
+    if ([...centrePoint, ...points.flat()].some(value => !Number.isFinite(value))) {
         return null;
     }
     const centroid = [0, 1, 2].map(axis =>
@@ -146,14 +170,14 @@ function geometryFor(center, ringAtoms, cell) {
         return null;
     }
     const normal = eigen.eigenvectors[0].vector.toArray();
-    const centerOffset = centerPoint.map((value, axis) => value - centroid[axis]);
-    const normalDistance = centerOffset.reduce((sum, value, axis) => sum + value * normal[axis], 0);
-    const lateral = Math.hypot(...centerOffset.map((value, axis) => value - normalDistance * normal[axis]));
+    const centreOffset = centrePoint.map((value, axis) => value - centroid[axis]);
+    const normalDistance = centreOffset.reduce((sum, value, axis) => sum + value * normal[axis], 0);
+    const lateral = Math.hypot(...centreOffset.map((value, axis) => value - normalDistance * normal[axis]));
     const meanRadius = offsets.reduce((sum, offset) => sum + Math.hypot(...offset), 0) / offsets.length;
     if (!(meanRadius > 0)) {
         return null;
     }
-    const distances = points.map(point => distance(centerPoint, point));
+    const distances = points.map(point => distance(centrePoint, point));
     const meanDistance = distances.reduce((sum, value) => sum + value, 0) / distances.length;
     if (!(meanDistance > 0)) {
         return null;
@@ -165,6 +189,11 @@ function geometryFor(center, ringAtoms, cell) {
     };
 }
 
+/**
+ * Produces an orientation-independent identifier for a bond's endpoints.
+ * @param {object} bond - Bond whose endpoints are identified
+ * @returns {string} Canonical endpoint identifier
+ */
 function endpointKey(bond) {
     return [bond.atom1Id, bond.atom2Id].sort().join('\u0000');
 }
@@ -178,7 +207,7 @@ function endpointKey(bond) {
  */
 export function findMetalRingCentroidInteractions(structure, drawableBonds, options) {
     const atomsById = new Map(structure.atoms.map(atom => [atom.uniqueId, atom]));
-    const centerElements = new Set(options.centerElements);
+    const centreElements = new Set(options.centreElements);
     const ringElements = new Set(options.ringElements);
     const adjacency = new Map();
     const addEdge = (first, second) => {
@@ -200,14 +229,14 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
     }
 
     const contacts = new Map();
-    const addContact = (center, ligand, bond) => {
-        if (!centerElements.has(center.atomType) || !ringElements.has(ligand.atomType)) {
+    const addContact = (centre, ligand, bond) => {
+        if (!centreElements.has(centre.atomType) || !ringElements.has(ligand.atomType)) {
             return;
         }
-        if (!contacts.has(center.uniqueId)) {
-            contacts.set(center.uniqueId, []);
+        if (!contacts.has(centre.uniqueId)) {
+            contacts.set(centre.uniqueId, []);
         }
-        contacts.get(center.uniqueId).push({ ligandId: ligand.uniqueId, bond });
+        contacts.get(centre.uniqueId).push({ ligandId: ligand.uniqueId, bond });
     };
     for (const bond of drawableBonds) {
         const first = atomsById.get(bond.atom1Id);
@@ -220,21 +249,21 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
     }
 
     const candidates = [];
-    for (const [centerId, centerContacts] of contacts) {
-        const centerAtom = atomsById.get(centerId);
-        const starts = new Set(centerContacts.map(contact => contact.ligandId));
+    for (const [centreId, centreContacts] of contacts) {
+        const centreAtom = atomsById.get(centreId);
+        const starts = new Set(centreContacts.map(contact => contact.ligandId));
         for (const cycle of findChordlessCycles(
             adjacency, starts, options.minRingSize, options.maxRingSize,
         )) {
             const ringSet = new Set(cycle.atoms);
-            const relevant = centerContacts.filter(contact => ringSet.has(contact.ligandId));
+            const relevant = centreContacts.filter(contact => ringSet.has(contact.ligandId));
             const bondedIds = [...new Set(relevant.map(contact => contact.ligandId))];
             const coverage = bondedIds.length / cycle.atoms.length;
             if (bondedIds.length < options.minBondedAtoms || coverage < options.minRingCoverage) {
                 continue;
             }
             const ringAtoms = cycle.atoms.map(id => atomsById.get(id));
-            const geometry = geometryFor(centerAtom, ringAtoms, structure.cell);
+            const geometry = geometryFor(centreAtom, ringAtoms, structure.cell);
             if (!geometry) {
                 continue;
             }
@@ -245,7 +274,7 @@ export function findMetalRingCentroidInteractions(structure, drawableBonds, opti
                 continue;
             }
             candidates.push({
-                type: 'ring-centroid-bond', centerAtom, ringAtoms,
+                type: 'ring-centroid-bond', centreAtom, ringAtoms,
                 originalBondedAtoms: bondedIds.map(id => atomsById.get(id)),
                 originalBonds: relevant.map(contact => contact.bond),
                 centroid: geometry.centroid, coverage, bondedAtomCount: bondedIds.length,

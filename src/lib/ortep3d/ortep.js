@@ -935,12 +935,12 @@ export function computeCentroidDashTransforms(start, end, options, radius) {
             });
             continue;
         }
-        const firstCenter = start.clone().addScaledVector(direction, interval.start + radius);
-        const secondCenter = start.clone().addScaledVector(direction, interval.end - radius);
-        bodies.push({ matrix: calcBondTransform(firstCenter, secondCenter), midpointFraction });
+        const firstCentre = start.clone().addScaledVector(direction, interval.start + radius);
+        const secondCentre = start.clone().addScaledVector(direction, interval.end - radius);
+        bodies.push({ matrix: calcBondTransform(firstCentre, secondCentre), midpointFraction });
         caps.push(
-            { matrix: new THREE.Matrix4().makeTranslation(...firstCenter), midpointFraction },
-            { matrix: new THREE.Matrix4().makeTranslation(...secondCenter), midpointFraction },
+            { matrix: new THREE.Matrix4().makeTranslation(...firstCentre), midpointFraction },
+            { matrix: new THREE.Matrix4().makeTranslation(...secondCentre), midpointFraction },
         );
     }
     return { bodies, caps };
@@ -1856,13 +1856,13 @@ export class ORTEP3JsStructure {
         // regular-bond pool, allowing identical cylinder bodies to share that draw call.
         const centroidPieces = [];
         for (const interaction of this.centroidInteractions) {
-            const atomPosition = getCartesianPosition(interaction.centerAtom.uniqueId).clone();
+            const atomPosition = getCartesianPosition(interaction.centreAtom.uniqueId).clone();
             const centroid = new THREE.Vector3(...interaction.centroid);
             const direction = centroid.clone().sub(atomPosition);
-            const renderedCenter = renderedAtomsById.get(interaction.centerAtom.uniqueId);
-            if (renderedCenter && direction.lengthSq() > 0) {
+            const renderedCentre = renderedAtomsById.get(interaction.centreAtom.uniqueId);
+            if (renderedCentre && direction.lengthSq() > 0) {
                 const unitDirection = direction.clone().normalize();
-                const trim = renderedCenter.getSurfaceDistanceAlong(unitDirection);
+                const trim = renderedCentre.getSurfaceDistanceAlong(unitDirection);
                 if (Number.isFinite(trim) && trim > 0 && trim < direction.length()) {
                     atomPosition.addScaledVector(unitDirection, trim);
                 }
@@ -1870,15 +1870,15 @@ export class ORTEP3JsStructure {
             const transforms = computeCentroidDashTransforms(
                 atomPosition, centroid, this.options.metalRingCentroidOptions, this.options.bondRadius,
             );
-            const ringColor = interaction.ringAtoms.reduce(
+            const ringColour = interaction.ringAtoms.reduce(
                 (sum, atom) => sum.add(this.cache.getAtomMaterials(atom.atomType)[0].color),
                 new THREE.Color(0, 0, 0),
             ).multiplyScalar(1 / interaction.ringAtoms.length);
-            const centerColor = this.cache.getAtomMaterials(interaction.centerAtom.atomType)[0].color;
-            const colorFor = piece => this.options.bondColorMode === 'split' &&
+            const centreColour = this.cache.getAtomMaterials(interaction.centreAtom.atomType)[0].color;
+            const colourFor = piece => this.options.bondColorMode === 'split' &&
                 this.options.renderStyle !== 'cutout-2d'
-                ? (piece.midpointFraction <= 0.5 ? centerColor : ringColor) : null;
-            centroidPieces.push({ interaction, transforms, colorFor });
+                ? (piece.midpointFraction <= 0.5 ? centreColour : ringColour) : null;
+            centroidPieces.push({ interaction, transforms, colourFor });
         }
         const centroidBodyCount = centroidPieces.reduce(
             (sum, item) => sum + item.transforms.bodies.length, 0,
@@ -1966,7 +1966,7 @@ export class ORTEP3JsStructure {
             }
             for (const item of centroidPieces) {
                 item.transforms.bodies.forEach(piece =>
-                    this.bondPool.register(piece.matrix, item.colorFor(piece)));
+                    this.bondPool.register(piece.matrix, item.colourFor(piece)));
             }
             this.centroidBodyPool = centroidBodyCount ? this.bondPool : null;
             this.centroidBodiesShareBondPool = centroidBodyCount > 0;
@@ -1988,7 +1988,7 @@ export class ORTEP3JsStructure {
         ) : null;
         for (const item of centroidPieces) {
             item.transforms.caps.forEach(piece =>
-                this.centroidCapPool.register(piece.matrix, item.colorFor(piece)));
+                this.centroidCapPool.register(piece.matrix, item.colourFor(piece)));
         }
         const centroidOutlineMaterial = this.options.renderStyle === 'cutout-2d' &&
             this.options.plot2DBondOutlineWidth > 0

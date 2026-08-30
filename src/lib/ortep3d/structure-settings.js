@@ -354,7 +354,7 @@ export default {
     'collapseMetalRingBonds': false,
     'metalRingCentroidOptions': {
         ...DEFAULT_METAL_RING_CENTROID_OPTIONS,
-        centerElements: [...DEFAULT_METAL_RING_CENTROID_OPTIONS.centerElements],
+        centreElements: [...DEFAULT_METAL_RING_CENTROID_OPTIONS.centreElements],
         ringElements: [...DEFAULT_METAL_RING_CENTROID_OPTIONS.ringElements],
     },
 

@@ -8,6 +8,13 @@ import {
 } from './metal-ring-centroids.js';
 import { computeCentroidDashTransforms, ORTEP3JsStructure } from './ortep.js';
 
+/**
+ * Creates a minimal atom test double with Cartesian coordinates.
+ * @param {string} label - Atom label
+ * @param {string} atomType - Chemical element symbol
+ * @param {number[]} xyz - Cartesian coordinates
+ * @returns {object} Atom test double
+ */
 function atom(label, atomType, xyz) {
     const point = Object.assign([...xyz], { x: xyz[0], y: xyz[1], z: xyz[2] });
     return {
@@ -18,12 +25,20 @@ function atom(label, atomType, xyz) {
     };
 }
 
-function polygonStructure({ size = 5, contacts = [0, 1, 2, 3, 4], center = [0, 0, 1.5] } = {}) {
+/**
+ * Creates a planar carbon ring and a metal centre with selected contacts.
+ * @param {object} [config] - Fixture configuration
+ * @param {number} [config.size] - Number of ring atoms; defaults to five
+ * @param {number[]} [config.contacts] - Ring indices bonded to the centre
+ * @param {number[]} [config.centre] - Cartesian centre coordinates
+ * @returns {{structure: object, metalBonds: Bond[]}} Structure fixture and centre bonds
+ */
+function polygonStructure({ size = 5, contacts = [0, 1, 2, 3, 4], centre = [0, 0, 1.5] } = {}) {
     const ring = Array.from({ length: size }, (_, index) => {
         const angle = 2 * Math.PI * index / size;
         return atom(`C${index + 1}`, 'C', [Math.cos(angle), Math.sin(angle), 0]);
     });
-    const metal = atom('Fe1', 'Fe', center);
+    const metal = atom('Fe1', 'Fe', centre);
     const ringBonds = ring.map((current, index) =>
         new Bond(current.uniqueId, ring[(index + 1) % size].uniqueId, 1.4));
     const metalBonds = contacts.map(index =>
@@ -59,7 +74,7 @@ describe('metal-ring centroid detection', () => {
             .toHaveLength(1);
 
         const displaced = polygonStructure({
-            size: 6, contacts: [0, 1, 2, 4], center: [2, 0, 1.5],
+            size: 6, contacts: [0, 1, 2, 4], centre: [2, 0, 1.5],
         }).structure;
         expect(findMetalRingCentroidInteractions(displaced, displaced.bonds, options()).interactions)
             .toHaveLength(0);

@@ -353,8 +353,11 @@ export const descriptions = {
     'bondColorMetalness': 'Metalness of bond material (0&ndash;1).',
     'collapseMetalRingBonds': 'Replaces qualifying displayed metal&ndash;ring atom bonds with one ' +
         'presentation-only dashed, round-capped interaction to the ring centroid.',
-    'metalRingCentroidOptions.centerElements': 'Elements eligible to act as coordination centres. ' +
-        'The default contains supported metals; add metalloids explicitly when required.',
+    'metalRingCentroidOptions.centreElements': {
+        default: 'supported metals up to and including Cf',
+        description: 'Elements eligible to act as coordination centres. The default contains ' +
+            'supported metals up to and including Cf; add metalloids explicitly when required.',
+    },
     'metalRingCentroidOptions.ringElements': 'Elements permitted in a candidate ligand ring.',
     'metalRingCentroidOptions.minRingSize': 'Smallest candidate ligand-ring size.',
     'metalRingCentroidOptions.maxRingSize': 'Largest candidate ligand-ring size.',
