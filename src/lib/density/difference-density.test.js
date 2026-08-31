@@ -243,6 +243,31 @@ describe('difference-density scalar fields', () => {
         expect(refined.sigma).toBe(direct.sigma);
     });
 
+    test('uses the coordinate CIF cell for explicit coefficients when the reflection cell is absent', () => {
+        const reflectionWithoutCell = P1_FCF.replace(
+            /^_cell_(?:length_[abc]|angle_(?:alpha|beta|gamma)) .*\n/gm,
+            '',
+        );
+
+        const dataset = parseDifferenceDensitySource(reflectionWithoutCell, 0, {
+            coordinateCifText: P1_FCF,
+            coordinateCifBlock: 0,
+        });
+
+        expect(dataset.sourceType).toBe('fcf');
+        expect(dataset.cellSource).toBe('coordinate-fallback');
+        expect(dataset.cell.a).toBe(1);
+    });
+
+    test('rejects an explicit reflection cell that disagrees with the coordinate CIF', () => {
+        const wrongCoordinateCell = P1_FCF.replace('_cell_length_a 1', '_cell_length_a 2');
+
+        expect(() => parseDifferenceDensitySource(P1_FCF, 0, {
+            coordinateCifText: wrongCoordinateCell,
+            coordinateCifBlock: 0,
+        })).toThrow('Reflection unit cell does not match the structure (a)');
+    });
+
     test('oversamples a fixed reciprocal map without changing its density', () => {
         const dataset = parseDifferenceDensityDataset(P1_FCF);
         const regular = calculateDifferenceDensityMap(dataset, 1, 1);

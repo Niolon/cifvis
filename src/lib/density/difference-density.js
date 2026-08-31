@@ -10,6 +10,7 @@ import { multiplyReflectionIndex, reciprocalSymmetryKernel } from './reciprocal-
 import { ScalarFieldGrid } from './scalar-field.js';
 import { finiteNumber, loopColumn, optionalLoop } from './cif-values.js';
 import { planFourierDimensions } from './fft-grid.js';
+import { assertCellsMatch } from './cell-matching.js';
 import {
     factorization235,
     fftLineWorkBytes,
@@ -555,7 +556,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
         }
         if (coordinateCifText === cifText && coordinateCifBlock === cifBlock) {
             throw new Error(
-                `Reflection CIF does not contain a complete unit cell and no separate coordinate CIF ` +
+                'Reflection CIF does not contain a complete unit cell and no separate coordinate CIF ' +
                 `was supplied: ${reflectionCellError.message}`,
                 { cause: reflectionCellError },
             );
@@ -565,7 +566,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             cellSource = 'coordinate-fallback';
         } catch (coordinateCellError) {
             throw new Error(
-                `Reflection CIF does not contain a complete unit cell and the coordinate CIF fallback ` +
+                'Reflection CIF does not contain a complete unit cell and the coordinate CIF fallback ' +
                 `could not provide one: ${coordinateCellError.message}`,
                 { cause: coordinateCellError },
             );
@@ -867,6 +868,7 @@ export function parseDifferenceDensitySource(text, block = 0, options = {}) {
                 block,
                 coefficientColumns,
                 options.anomalousDispersion ?? null,
+                options,
             );
         } catch (error) {
             if (debugTimings) {
@@ -1228,6 +1230,7 @@ function fourierGrid(coefficients, cell, gridOversampling = 1, options = {}) {
  * @param {number|string} [cifBlock] - FCF block index or name.
  * @param {object|null} [coefficientColumns] - Custom Fourier coefficient columns.
  * @param {boolean|object|null} [anomalousDispersion] - Anomalous correction and coordinate CIF.
+ * @param {object} [options] - Dataset options, including an optional coordinate CIF cell fallback.
  * @returns {object} Parsed progressive-density dataset.
  */
 export function parseDifferenceDensityDataset(
@@ -1235,13 +1238,54 @@ export function parseDifferenceDensityDataset(
     cifBlock = 0,
     coefficientColumns = null,
     anomalousDispersion = null,
+    options = {},
 ) {
     // Custom coefficient loops may live in a full coordinate CIF whose cell
     // parameters carry standard uncertainties. Keep normal CIF SU splitting
     // so UnitCell receives numeric values rather than strings such as 5.9(1).
     const cif = new CIF(fcfText);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
-    const cell = UnitCell.fromCIF(block);
+    let cell;
+    let cellSource = 'reflection';
+    const coordinateCifText = options.coordinateCifText;
+    const hasCoordinateFallback = typeof coordinateCifText === 'string' &&
+        coordinateCifText.length > 0;
+    let coordinateCell = null;
+    const getCoordinateCell = () => {
+        if (!hasCoordinateFallback) {
+            return null;
+        }
+        if (coordinateCell === null) {
+            const coordinateCif = coordinateCifText === fcfText ? cif : new CIF(coordinateCifText);
+            const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
+            const coordinateBlock = typeof coordinateCifBlock === 'number'
+                ? coordinateCif.getBlock(coordinateCifBlock)
+                : coordinateCif.getBlockByName(coordinateCifBlock);
+            coordinateCell = UnitCell.fromCIF(coordinateBlock);
+        }
+        return coordinateCell;
+    };
+    try {
+        cell = UnitCell.fromCIF(block);
+    } catch (reflectionCellError) {
+        if (!/Unit cell parameter entries missing in CIF/.test(reflectionCellError.message) ||
+            !hasCoordinateFallback) {
+            throw reflectionCellError;
+        }
+        try {
+            cell = getCoordinateCell();
+            cellSource = 'coordinate-fallback';
+        } catch (coordinateCellError) {
+            throw new Error(
+                'Reflection CIF does not contain a complete unit cell and the coordinate CIF fallback ' +
+                `could not provide one: ${coordinateCellError.message}`,
+                { cause: coordinateCellError },
+            );
+        }
+    }
+    if (cellSource === 'reflection' && hasCoordinateFallback) {
+        assertCellsMatch(cell, getCoordinateCell(), 'Reflection');
+    }
     const symmetry = CellSymmetry.fromCIF(block);
     let loop;
     try {
@@ -1440,6 +1484,7 @@ export function parseDifferenceDensityDataset(
         omitF000,
         anomalousDispersion: anomalousMetadata,
         sourceType: 'fcf',
+        cellSource,
         fieldKind: coefficientColumns ? 'deformation-density' : 'difference-density',
         friedelImplicit: true,
     }, symmetry);
