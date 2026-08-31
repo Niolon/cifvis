@@ -203,6 +203,7 @@ const LABEL_OVERRIDES = {
     'atomCutawayHysteresis': 'Cutaway direction hysteresis',
     'bondGrowTolerance': 'Bond detection tolerance (Å)',
     'bondColorMode': 'Bond colour source',
+    'collapseMetalRingBonds': 'Collapse metal-aromatic ring bonds',
     'selection.mode': 'Selection mode',
     'selection.markerMult': 'Atom marker size ×',
     'selection.bondMarkerMult': 'Bond marker size ×',

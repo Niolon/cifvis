@@ -87,6 +87,8 @@ describe('labels', () => {
         expect(humanizeLabel('renderStyle')).toBe('Render style');
         expect(humanizeLabel('adpRepresentation')).toBe('ADP representation');
         expect(humanizeLabel('hydrogenMode')).toBe('Hydrogen display');
+        expect(humanizeLabel('collapseMetalRingBonds'))
+            .toBe('Collapse metal-aromatic ring bonds');
     });
 
     test('strips HTML from descriptions', () => {
