@@ -175,7 +175,8 @@ function readShelxFabCorrections(block) {
     const imaginary = [];
     for (const line of text.split('\n')) {
         const fields = line.trim().split(/\s+/).map(Number);
-        if (fields.length < 5 || fields.slice(0, 5).some(value => !Number.isFinite(value))) {
+        if (fields.length < 5 || fields.slice(0, 5).some(value => !Number.isFinite(value)) ||
+            !fields.slice(0, 3).every(Number.isInteger)) {
             continue;
         }
         const [hv, kv, lv, a, b] = fields;
@@ -537,7 +538,39 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const cif = new CIF(cifText);
     const block = typeof cifBlock === 'number' ? cif.getBlock(cifBlock) : cif.getBlockByName(cifBlock);
     const datasetSourceSetupMs = stageTime();
-    const cell = UnitCell.fromCIF(block);
+    const coordinateCifText = options.coordinateCifText ?? cifText;
+    const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
+    const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
+    const coordinateBlock = typeof coordinateCifBlock === 'number'
+        ? coordinateCif.getBlock(coordinateCifBlock)
+        : coordinateCif.getBlockByName(coordinateCifBlock);
+    const datasetCoordinateSetupMs = stageTime();
+    let cell;
+    let cellSource = 'reflection';
+    try {
+        cell = UnitCell.fromCIF(block);
+    } catch (reflectionCellError) {
+        if (!/Unit cell parameter entries missing in CIF/.test(reflectionCellError.message)) {
+            throw reflectionCellError;
+        }
+        if (coordinateCifText === cifText && coordinateCifBlock === cifBlock) {
+            throw new Error(
+                `Reflection CIF does not contain a complete unit cell and no separate coordinate CIF ` +
+                `was supplied: ${reflectionCellError.message}`,
+                { cause: reflectionCellError },
+            );
+        }
+        try {
+            cell = UnitCell.fromCIF(coordinateBlock);
+            cellSource = 'coordinate-fallback';
+        } catch (coordinateCellError) {
+            throw new Error(
+                `Reflection CIF does not contain a complete unit cell and the coordinate CIF fallback ` +
+                `could not provide one: ${coordinateCellError.message}`,
+                { cause: coordinateCellError },
+            );
+        }
+    }
     const symmetry = CellSymmetry.fromCIF(block);
     const datasetCellSymmetrySetupMs = stageTime();
     // Difference-electron densities default to normal scattering. If anomalous
@@ -553,9 +586,13 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     // worker pipeline; ordinary callers retain the single-stage API.
     const observed = options.preparedObservations ??
         readReflectionIntensities(cifText, cifBlock, reflectionOptions);
+    if (observed.reflections.length === 0) {
+        throw new Error(
+            'Difference density was not created because the reflection source contains no usable ' +
+            'observed intensities. Check the reflection value/sigma columns and missing-value markers.',
+        );
+    }
     const datasetObservationSetupMs = stageTime();
-    const coordinateCifText = options.coordinateCifText ?? cifText;
-    const coordinateCifBlock = options.coordinateCifBlock ?? cifBlock;
     const iamModelStarted = now();
     const calculator = createIAMStructureFactorCalculator(
         coordinateCifText,
@@ -566,13 +603,14 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
     const datasetIamModelBuildMs = stageTime();
     const iamCalculationStarted = now();
     const calculated = calculator.calculatePrepared(observed.reflections);
+    if (calculated.diagnostics.expandedAtomCount === 0) {
+        throw new Error(
+            'Difference density was not created because the coordinate CIF contains no usable atom sites ' +
+            'for the IAM structure-factor calculation.',
+        );
+    }
     const iamCalculationTimeMs = now() - iamCalculationStarted;
     const datasetFcalcMs = stageTime();
-    const coordinateCif = coordinateCifText === cifText ? cif : new CIF(coordinateCifText);
-    const coordinateBlock = typeof coordinateCifBlock === 'number'
-        ? coordinateCif.getBlock(coordinateCifBlock)
-        : coordinateCif.getBlockByName(coordinateCifBlock);
-    const datasetCoordinateSetupMs = stageTime();
     const requestedSolventMask = options.solventMaskCorrection ?? 'auto';
     if (![true, false, 'auto'].includes(requestedSolventMask)) {
         throw new Error('solventMaskCorrection must be "auto", true, or false');
@@ -719,6 +757,7 @@ export function createCifDifferenceDensityDataset(cifText, cifBlock = 0, options
             source: 'iam',
         },
         sourceType: 'cif-iam',
+        cellSource,
         fieldKind: 'difference-density',
         intensityScale: fitted.scale,
         intensityScaleExplicit: fitted.explicit,

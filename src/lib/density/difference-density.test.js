@@ -413,6 +413,28 @@ describe('difference-density scalar fields', () => {
         expect(map.extinctionCorrection).toEqual(corrected.extinctionCorrection);
     });
 
+    test('explains how to handle an invalid reported extinction coefficient', () => {
+        const invalid = CIF_WITH_SHELXL_EXTINCTION.replace(
+            '_refine_ls_extinction_coef 0.0323',
+            '_refine_ls_extinction_coef -0.0323',
+        );
+
+        expect(() => createCifDifferenceDensityDataset(invalid)).toThrow(
+            /Difference density was not created.*negative SHELXL extinction coefficient.*extinctionCorrection: false/s,
+        );
+    });
+
+    test('explains how to handle a wavelength range used with extinction metadata', () => {
+        const wavelengthRange = CIF_WITH_SHELXL_EXTINCTION.replace(
+            '_diffrn_radiation_wavelength 0.71073',
+            '_diffrn_radiation_wavelength 0.48-7.0',
+        );
+
+        expect(() => createCifDifferenceDensityDataset(wavelengthRange)).toThrow(
+            /Difference density was not created.*"0.48-7.0".*representative wavelength.*extinctionCorrection: false/s,
+        );
+    });
+
     test('does not correct final embedded FCF observations a second time', () => {
         const dataset = createCifDifferenceDensityDataset(
             CIF_WITH_EXTINCTION_CORRECTED_EMBEDDED_FCF,
@@ -554,6 +576,78 @@ describe('difference-density scalar fields', () => {
         });
         expect(corrected.intensityScale).not.toBe(uncorrected.intensityScale);
         expect(corrected.scaleR1).not.toBe(uncorrected.scaleR1);
+    });
+
+    test('uses the coordinate CIF cell when the reflection CIF omits cell parameters', () => {
+        const reflectionWithoutCell = CIF_WITH_OBSERVED_INTENSITIES.replace(
+            /^_cell_(?:length_[abc]|angle_(?:alpha|beta|gamma)) .*\n/gm,
+            '',
+        );
+
+        const dataset = createCifDifferenceDensityDataset(reflectionWithoutCell, 0, {
+            coordinateCifText: CIF_WITH_OBSERVED_INTENSITIES,
+            coordinateCifBlock: 0,
+        });
+
+        expect(dataset.cellSource).toBe('coordinate-fallback');
+        expect(dataset.cell.a).toBe(10);
+        expect(dataset.reflectionCount).toBe(2);
+        expect(dataset.coefficients.size).toBeGreaterThan(0);
+    });
+
+    test('explains when the coordinate CIF has no atoms for IAM Fcalc', () => {
+        const atomless = CIF_WITH_OBSERVED_INTENSITIES.replace(
+            ' C1 C 0 0 0 1 0',
+            ' . . . . . . .',
+        );
+
+        expect(() => createCifDifferenceDensityDataset(atomless)).toThrow(
+            /Difference density was not created because the coordinate CIF contains no usable atom sites/,
+        );
+    });
+
+    test('explains when reflection value and sigma columns yield no observations', () => {
+        const missingSigmas = CIF_WITH_OBSERVED_INTENSITIES
+            .replace(' 1 0 0 100 2', ' 1 0 0 100 ?')
+            .replace(' 2 0 0 25 1', ' 2 0 0 25 ?');
+
+        expect(() => createCifDifferenceDensityDataset(missingSigmas)).toThrow(
+            /No usable reflection intensities.*Difference density requires finite observed values/s,
+        );
+    });
+
+    test('reports missing reflection and coordinate cells with their roles', () => {
+        const withoutCell = CIF_WITH_OBSERVED_INTENSITIES.replace(
+            /^_cell_(?:length_[abc]|angle_(?:alpha|beta|gamma)) .*\n/gm,
+            '',
+        );
+
+        expect(() => createCifDifferenceDensityDataset(withoutCell)).toThrow(
+            /Reflection CIF does not contain a complete unit cell and no separate coordinate CIF was supplied/,
+        );
+    });
+
+    test('ignores non-reflection numeric tables embedded after SHELXL FAB records', () => {
+        const withEmbeddedPlatonTable = CIF_WITH_SOLVENT_MASK.replace(
+            '2 0 0 -0.5 0.25',
+            `2 0 0 -0.5 0.25
+# SQUEEZE metadata included in some COD FAB fields
+loop_
+_platon_squeeze_void_nr
+_platon_squeeze_void_average_x
+_platon_squeeze_void_average_y
+_platon_squeeze_void_average_z
+_platon_squeeze_void_volume
+_platon_squeeze_void_count_electrons
+1 0.250 0.250 0.823 118 29`,
+        );
+
+        const dataset = createCifDifferenceDensityDataset(withEmbeddedPlatonTable);
+
+        expect(dataset.solventMaskCorrection).toMatchObject({
+            fabReflectionCount: 2,
+            appliedReflectionCount: 2,
+        });
     });
 
     test('surfaces _smtbx_masks_void summary alongside the FAB correction', () => {

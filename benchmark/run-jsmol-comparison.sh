@@ -10,6 +10,7 @@ SAMPLE_FILE=${JSMOL_SAMPLE_FILE:?set JSMOL_SAMPLE_FILE to the generated campaign
 CHROME_PATH=${CHROME_PATH:-/run/current-system/sw/bin/google-chrome-stable}
 DRIVER_DIR="$HARNESS_DIR/benchmark-driver"
 DATABASE="$HARNESS_DIR/db.sqlite3"
+JSMOL_PROPERTIES="$HARNESS_DIR/static/js/jsmol/j2s/Jmol.properties"
 SQLITE_COMPAT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/sqlite-cli.py"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_PID=''
@@ -29,6 +30,7 @@ for required in \
     "$DRIVER_DIR/run-benchmark.mjs" \
     "$DRIVER_DIR/export-csv.mjs" \
     "$HARNESS_DIR/static/js/jsmol/JSmol.min.js" \
+    "$JSMOL_PROPERTIES" \
     "$SAMPLE_FILE" \
     "$SQLITE_COMPAT"; do
     [[ -e "$required" ]] || { echo "Missing comparison dependency: $required" >&2; exit 2; }
@@ -46,6 +48,7 @@ export PATH="$MAMBA_ENV/bin:$PATH"
     git -C "$HARNESS_DIR" status --short
     echo "harness_status_end"
     echo "sample_sha256=$(sha256sum "$SAMPLE_FILE" | cut -d' ' -f1)"
+    sed -n 's/^Jmol\.___JmolVersion="\([^"]*\)".*/jsmol_version=\1/p' "$JSMOL_PROPERTIES"
     sha256sum \
         "$DRIVER_DIR/run-benchmark.mjs" \
         "$DRIVER_DIR/export-csv.mjs" \
