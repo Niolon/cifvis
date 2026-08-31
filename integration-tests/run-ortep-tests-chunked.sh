@@ -83,7 +83,8 @@ done
 
 # Calculate final percentages
 if [ $TOTAL_PROCESSED -gt 0 ]; then
-    SUCCESS_PERCENT=$(echo "scale=1; $TOTAL_SUCCESSFUL * 100 / $TOTAL_PROCESSED" | bc)
+    SUCCESS_PERCENT=$(awk -v successful="$TOTAL_SUCCESSFUL" -v total="$TOTAL_PROCESSED" \
+        'BEGIN { printf "%.1f", successful * 100 / total }')
 else
     SUCCESS_PERCENT="0.0"
 fi
