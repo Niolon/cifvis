@@ -612,7 +612,7 @@ describe('difference-density scalar fields', () => {
             .replace(' 2 0 0 25 1', ' 2 0 0 25 ?');
 
         expect(() => createCifDifferenceDensityDataset(missingSigmas)).toThrow(
-            /No usable reflection intensities.*Difference density requires finite observed values/s,
+            /Difference density was not created.*no usable observed intensities.*value\/sigma columns/s,
         );
     });
 
