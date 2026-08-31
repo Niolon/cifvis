@@ -84,12 +84,12 @@ done
 [[ "$ready" -eq 1 ]] || { echo "Django harness did not become ready" >&2; exit 1; }
 
 cd "$DRIVER_DIR"
-NUM_BROWSERS=1 PAGES_PER_BROWSER=1 SAMPLE_FILE="$SAMPLE_FILE" \
+NUM_BROWSERS=1 PAGES_PER_BROWSER=1 LOADING_METHODS=preloaded SAMPLE_FILE="$SAMPLE_FILE" \
     SQLITE3_PATH="$SQLITE_COMPAT" node run-benchmark.mjs
 DB_PATH="$DATABASE" SQLITE3_PATH="$SQLITE_COMPAT" \
     node export-csv.mjs "$OUTPUT_DIR/jsmol-comparison.csv"
 cp "$DATABASE" "$OUTPUT_DIR/jsmol-comparison.sqlite3"
 cd "$REPO_ROOT"
-node benchmark/summarize-jsmol-comparison.mjs \
+JSMOL_LOADING_METHODS=preloaded node benchmark/summarize-jsmol-comparison.mjs \
     "$OUTPUT_DIR/jsmol-comparison.csv" "$SAMPLE_FILE" \
     "$OUTPUT_DIR/jsmol-comparison-summary.json"

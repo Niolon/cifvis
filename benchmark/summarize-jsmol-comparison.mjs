@@ -86,7 +86,8 @@ const rows = records.filter(record => record.some(Boolean)).map(record =>
 const sampleFiles = readFileSync(resolve(sampleArg), 'utf8').trim().split('\n')
     .filter(Boolean).map(line => line.split('\t')[0]);
 const libraries = ['CifVis', 'JSMol'];
-const methods = ['disk', 'preloaded'];
+const methods = (process.env.JSMOL_LOADING_METHODS || 'disk,preloaded').split(',')
+    .map(method => method.trim()).filter(Boolean);
 const present = new Set(rows.map(row => `${row.library}|${row.filename}|${row.loading_method}`));
 
 const timings = {};
