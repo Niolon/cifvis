@@ -203,6 +203,9 @@ const LABEL_OVERRIDES = {
     'atomCutawayHysteresis': 'Cutaway direction hysteresis',
     'bondGrowTolerance': 'Bond detection tolerance (Å)',
     'bondColorMode': 'Bond colour source',
+    'bondDisorderColorsEnabled': 'Use disorder PART colours in 3D',
+    'bondColorPart1': 'PART 1 bond colour',
+    'bondColorPart2Plus': 'PART 2+ bond colour',
     'collapseMetalRingBonds': 'Collapse metal-aromatic ring bonds',
     'selection.mode': 'Selection mode',
     'selection.markerMult': 'Atom marker size ×',
@@ -415,7 +418,15 @@ const CURATED_GROUPS = [
     },
     {
         id: 'bonds', title: 'Bonds', source: ['bonds'], stripPrefixes: ['bond'],
-        first: ['bondRadius', 'bondColor', 'bondColorMode'],
+        first: [
+            'bondRadius', 'bondColor', 'bondColorMode', 'bondColorRoughness',
+            'bondColorMetalness', 'bondSections', 'bondGrowTolerance',
+            'bondDisorderColorsEnabled', 'bondColorPart1', 'bondColorPart2Plus',
+        ],
+        dividers: {
+            'bondDisorderColorsEnabled': 'Disorder bonds',
+            'collapseMetalRingBonds': 'Metal–aromatic ring bonds',
+        },
     },
     {
         id: 'hbonds', title: 'Hydrogen bonds', source: ['hydrogen-bonds'], stripPrefixes: ['hbond'],

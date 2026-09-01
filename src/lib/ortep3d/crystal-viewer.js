@@ -662,6 +662,10 @@ export class CrystalViewer {
             typeof options.collapseMetalRingBonds !== 'boolean') {
             throw new Error('collapseMetalRingBonds must be a boolean');
         }
+        if (options.bondDisorderColorsEnabled !== undefined &&
+            typeof options.bondDisorderColorsEnabled !== 'boolean') {
+            throw new Error('bondDisorderColorsEnabled must be a boolean');
+        }
         const metalRingCentroidOptions = {
             ...defaultSettings.metalRingCentroidOptions,
             ...(options.metalRingCentroidOptions || {}),
@@ -817,6 +821,10 @@ export class CrystalViewer {
             bondSections: options.bondSections || defaultSettings.bondSections,
             bondColorMode: options.bondColorMode ?? defaultSettings.bondColorMode,
             bondColor: options.bondColor || defaultSettings.bondColor,
+            bondDisorderColorsEnabled: options.bondDisorderColorsEnabled ??
+                defaultSettings.bondDisorderColorsEnabled,
+            bondColorPart1: options.bondColorPart1 || defaultSettings.bondColorPart1,
+            bondColorPart2Plus: options.bondColorPart2Plus || defaultSettings.bondColorPart2Plus,
             bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
             bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
             collapseMetalRingBonds: options.collapseMetalRingBonds ??

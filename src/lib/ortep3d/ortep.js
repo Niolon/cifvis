@@ -1108,10 +1108,10 @@ export class GeometryMaterialCache {
         this.geometries.hbond = new THREE.CylinderGeometry(
             this.options.hbondRadius,
             this.options.hbondRadius,
-            0.98,
+            1,
             this.options.bondSections,
             1,
-            true,
+            false,
         );
     }
 
@@ -1148,7 +1148,9 @@ export class GeometryMaterialCache {
 
         // Base bond material
         this.materials.bond = new THREE.MeshStandardMaterial({
-            color: this.options.bondColorMode === 'split' ? 0xffffff : this.options.bondColor,
+            // Every 3D bond receives an instance colour so disorder-specific
+            // colours and element-split colours can coexist in one draw call.
+            color: 0xffffff,
             roughness: this.options.bondColorRoughness,
             metalness: this.options.bondColorMetalness,
         });
@@ -1546,6 +1548,9 @@ export class ORTEP3JsStructure {
         if (typeof this.options.collapseMetalRingBonds !== 'boolean') {
             throw new TypeError('collapseMetalRingBonds must be boolean');
         }
+        if (typeof this.options.bondDisorderColorsEnabled !== 'boolean') {
+            throw new TypeError('bondDisorderColorsEnabled must be boolean');
+        }
         validateMetalRingCentroidOptions(this.options.metalRingCentroidOptions);
 
         this.crystalStructure = crystalStructure;
@@ -1832,8 +1837,8 @@ export class ORTEP3JsStructure {
         const bondsStarted = performance.now();
         const trimBondsToSurfaces = this.options.renderStyle !== 'solid-3d' ||
             this.options.adpRepresentation === 'rmsd-peanut';
-        const getRenderedAtom = trimBondsToSurfaces ?
-            atomId => renderedAtomsById.get(atomId) : null;
+        const getRenderedAtom = atomId => renderedAtomsById.get(atomId);
+        const getRenderedBondAtom = trimBondsToSurfaces ? getRenderedAtom : null;
 
         // Handle regular bonds
         // Only draw bonds where both atoms are present in the current structure
@@ -1851,6 +1856,14 @@ export class ORTEP3JsStructure {
             this.centroidInteractions = plan.interactions;
             drawnBonds = drawnBonds.filter(bond => !plan.suppressedBonds.has(bond));
         }
+
+        const displayedDisorderGroups = new Set(
+            [...atomsById.values()].map(atom => Number(atom.disorderGroup) || 0),
+        );
+        const bothDisorderPartsDisplayed = displayedDisorderGroups.has(1) &&
+            [...displayedDisorderGroups].some(group => group > 1);
+        const distinguishDisorderBondColors = bothDisorderPartsDisplayed &&
+            this.options.bondDisorderColorsEnabled;
 
         // Prepare all transient centroid instances before allocating the fixed-size
         // regular-bond pool, allowing identical cylinder bodies to share that draw call.
@@ -1875,9 +1888,10 @@ export class ORTEP3JsStructure {
                 new THREE.Color(0, 0, 0),
             ).multiplyScalar(1 / interaction.ringAtoms.length);
             const centreColour = this.cache.getAtomMaterials(interaction.centreAtom.atomType)[0].color;
+            const uniformBondColour = new THREE.Color(this.options.bondColor);
             const colourFor = piece => this.options.bondColorMode === 'split' &&
                 this.options.renderStyle !== 'cutout-2d'
-                ? (piece.midpointFraction <= 0.5 ? centreColour : ringColour) : null;
+                ? (piece.midpointFraction <= 0.5 ? centreColour : ringColour) : uniformBondColour;
             centroidPieces.push({ interaction, transforms, colourFor });
         }
         const centroidBodyCount = centroidPieces.reduce(
@@ -1895,7 +1909,11 @@ export class ORTEP3JsStructure {
                 try {
                     const atom1 = atomsById.get(bond.atom1Id);
                     const atom2 = atomsById.get(bond.atom2Id);
-                    const isOpenDisorderBond = [atom1, atom2].some(atom => Number(atom.disorderGroup) > 1);
+                    const disorderGroup = Math.max(
+                        Number(atom1?.disorderGroup) || 0,
+                        Number(atom2?.disorderGroup) || 0,
+                    );
+                    const isOpenDisorderBond = bothDisorderPartsDisplayed && disorderGroup > 1;
                     this.bonds3D.push(new ORTEPBond(
                         bond,
                         this.crystalStructure,
@@ -1903,7 +1921,7 @@ export class ORTEP3JsStructure {
                         isOpenDisorderBond ?
                             this.cache.materials.openBond : this.cache.materials.bond,
                         getCartesianPosition,
-                        getRenderedAtom,
+                        getRenderedBondAtom,
                         isOpenDisorderBond ? {
                             outlineMaterial: this.cache.materials.openBondOutline,
                             innerScale: this.options.plot2DOpenBondInnerScale,
@@ -1928,6 +1946,9 @@ export class ORTEP3JsStructure {
             const bondMatricesByBond = [];
             const splitBondColors = this.options.bondColorMode === 'split';
             const atomColorsById = splitBondColors ? new Map() : null;
+            const uniformBondColor = new THREE.Color(this.options.bondColor);
+            const part1BondColor = new THREE.Color(this.options.bondColorPart1);
+            const part2PlusBondColor = new THREE.Color(this.options.bondColorPart2Plus);
             if (atomColorsById) {
                 for (const [atomId, atom] of atomsById) {
                     atomColorsById.set(atomId, this.cache.getAtomMaterials(atom.atomType)[0].color);
@@ -1939,12 +1960,18 @@ export class ORTEP3JsStructure {
                         bond,
                         this.crystalStructure,
                         getCartesianPosition,
-                        getRenderedAtom,
+                        getRenderedBondAtom,
+                    );
+                    const disorderGroup = Math.max(
+                        Number(atomsById.get(bond.atom1Id)?.disorderGroup) || 0,
+                        Number(atomsById.get(bond.atom2Id)?.disorderGroup) || 0,
                     );
                     const colors = atomColorsById ? [
                         atomColorsById.get(bond.atom1Id),
                         atomColorsById.get(bond.atom2Id),
-                    ] : null;
+                    ] : distinguishDisorderBondColors && disorderGroup > 1 ? part2PlusBondColor :
+                        distinguishDisorderBondColors && disorderGroup === 1 ?
+                            part1BondColor : uniformBondColor;
                     bondMatricesByBond.push([bond, matrix, colors]);
                 } catch (e) {
                     if (e.message !== 'Error in ORTEP Bond Creation. Trying to create a zero length bond.') {
@@ -1953,7 +1980,9 @@ export class ORTEP3JsStructure {
                 }
             }
 
-            const regularBondInstanceCount = bondMatricesByBond.length * (splitBondColors ? 2 : 1);
+            const regularBondInstanceCount = bondMatricesByBond.reduce(
+                (count, [, , colors]) => count + (Array.isArray(colors) ? 2 : 1), 0,
+            );
             const combinedBondInstanceCount = regularBondInstanceCount + centroidBodyCount;
             this.bondPool = combinedBondInstanceCount > 0 ? new InstancedPool(
                 this.cache.geometries.bond,
@@ -3529,7 +3558,7 @@ export class ORTEPBondInstance extends PooledSelectableObject {
      * @param {Bond} bond - Bond data
      * @param {InstancedPool} pool - Shared pool for all regular bonds
      * @param {THREE.Matrix4} matrix - Precomputed bond transform
-     * @param {THREE.Color[]|null} [colors] - Optional atom colours for the two bond halves
+     * @param {THREE.Color|THREE.Color[]|null} [colors] - One bond colour, or atom colours for two halves
      */
     constructor(bond, pool, matrix, colors = null) {
         super();
@@ -3552,9 +3581,10 @@ export class ORTEPBondInstance extends PooledSelectableObject {
         // correct only by accident before the first rotation, when matrixWorld
         // was still untouched identity.
         this.fullMatrix = matrix;
-        const segmentMatrices = colors ? ORTEPBondInstance.computeSplitMatrices(matrix) : [matrix];
+        const splitColors = Array.isArray(colors) ? colors : null;
+        const segmentMatrices = splitColors ? ORTEPBondInstance.computeSplitMatrices(matrix) : [matrix];
         this.segments = segmentMatrices.map((segmentMatrix, index) => {
-            const segmentColor = colors?.[index] || null;
+            const segmentColor = splitColors?.[index] || colors || null;
             return {
                 pool,
                 matrix: segmentMatrix,
@@ -3632,13 +3662,18 @@ export class ORTEPHBond extends PooledSelectableObject {
         }
 
         const totalLength = hydrogenPosition.distanceTo(acceptorPosition);
-        const numSegments = Math.max(1, Math.floor(totalLength / targetSegmentLength));
-        const segmentLength = totalLength / numSegments;
-        const dashLength = segmentLength * dashFraction;
+        const numSegments = Math.max(1, Math.round(totalLength / targetSegmentLength));
+        // Treat both atom surfaces like the metal-side endpoint of a centroid
+        // interaction: reserve one full gap before the first dash and after the
+        // last, with identical gaps between dashes. Scaling the period this way
+        // preserves the requested solid/gap ratio while fitting the available span.
+        const period = totalLength / (numSegments + 1 - dashFraction);
+        const dashLength = period * dashFraction;
+        const gapLength = period - dashLength;
 
         const matrices = [];
         for (let i = 0; i < numSegments; i++) {
-            const startFraction = i / numSegments;
+            const startFraction = (gapLength + i * period) / totalLength;
             const endFraction = startFraction + (dashLength / totalLength);
 
             const segStart = new THREE.Vector3().lerpVectors(hydrogenPosition, acceptorPosition, startFraction);

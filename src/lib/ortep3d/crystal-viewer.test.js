@@ -89,6 +89,12 @@ describe('CrystalViewer rendering option validation', () => {
         );
     });
 
+    test('rejects a non-boolean disorder bond colour toggle before initializing WebGL', () => {
+        expect(() => new CrystalViewer({}, { bondDisorderColorsEnabled: 'yes' })).toThrow(
+            'bondDisorderColorsEnabled must be a boolean',
+        );
+    });
+
     test('rejects invalid atom-label callout placement before initializing WebGL', () => {
         expect(() => new CrystalViewer({}, {
             atomLabels: { calloutPlacement: 'corners' },

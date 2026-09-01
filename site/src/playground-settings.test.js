@@ -72,6 +72,21 @@ describe('settings schema', () => {
         expect(elements.elements).toContain('Fe');
         expect(elements.elementKeys.map((k) => k.key)).toEqual(['radius', 'atomColor', 'ringColor']);
     });
+
+    test('separates disorder and metal-aromatic controls within the bond section', () => {
+        const bonds = schema.find((group) => group.id === 'bonds');
+        const disorderDividerIndex = bonds.rows.findIndex(
+            row => row.divider && row.label === 'Disorder bonds',
+        );
+        const metalDividerIndex = bonds.rows.findIndex(
+            row => row.divider && row.label === 'Metal–aromatic ring bonds',
+        );
+
+        expect(disorderDividerIndex).toBeGreaterThan(0);
+        expect(bonds.rows[disorderDividerIndex + 1].path).toBe('bondDisorderColorsEnabled');
+        expect(metalDividerIndex).toBeGreaterThan(disorderDividerIndex);
+        expect(bonds.rows[metalDividerIndex + 1].path).toBe('collapseMetalRingBonds');
+    });
 });
 
 describe('labels', () => {
@@ -89,6 +104,10 @@ describe('labels', () => {
         expect(humanizeLabel('hydrogenMode')).toBe('Hydrogen display');
         expect(humanizeLabel('collapseMetalRingBonds'))
             .toBe('Collapse metal-aromatic ring bonds');
+        expect(humanizeLabel('bondDisorderColorsEnabled'))
+            .toBe('Use disorder PART colours in 3D');
+        expect(humanizeLabel('bondColorPart1')).toBe('PART 1 bond colour');
+        expect(humanizeLabel('bondColorPart2Plus')).toBe('PART 2+ bond colour');
     });
 
     test('strips HTML from descriptions', () => {

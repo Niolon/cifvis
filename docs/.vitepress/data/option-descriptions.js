@@ -345,6 +345,10 @@ export const descriptions = {
         'radii for bond generation (capped at 0.40 &Aring; for s-block element pairs, even if set ' +
         'higher).',
     'bondRadius': 'Radius of bond cylinders.',
+    'bondDisorderColorsEnabled': 'Uses separate PART 1 and PART 2+ bond colours in 3D when ' +
+        'both disorder parts are displayed. Element-split colouring takes precedence.',
+    'bondColorPart1': 'Optional 3D colour for bonds connected to a disorder PART 1 atom.',
+    'bondColorPart2Plus': 'Optional 3D colour for bonds connected to a disorder PART 2 or higher atom.',
     'bondSections': 'Number of sections in bond cylinders.',
     'bondColorMode': '<code>uniform</code> uses <code>bondColor</code>; <code>split</code> colors ' +
         'each 3D bond half like its connected atom. The split mode remains one instanced draw call.',

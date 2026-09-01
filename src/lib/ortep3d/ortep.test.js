@@ -145,6 +145,7 @@ describe('GeometryMaterialCache', () => {
             expect(cache.geometries.adpRingSet).toBeInstanceOf(THREE.BufferGeometry);
             expect(cache.geometries.bond).toBeInstanceOf(THREE.BufferGeometry);
             expect(cache.geometries.hbond).toBeInstanceOf(THREE.BufferGeometry);
+            expect(cache.geometries.hbond.parameters.openEnded).toBe(false);
         });
 
         test('adpRingSet vertex count is three times the single ring', () => {
@@ -202,11 +203,9 @@ describe('GeometryMaterialCache', () => {
             expect(cache.materials.hbond.color).toBeDefined();
         });
 
-        test('keeps the configured uniform bond color by default', () => {
+        test('uses a white base material for per-instance bond colours', () => {
             expect(cache.options.bondColorMode).toBe('uniform');
-            expect(cache.materials.bond.color.getHexString()).toBe(
-                new THREE.Color(defaultSettings.bondColor).getHexString(),
-            );
+            expect(cache.materials.bond.color.getHex()).toBe(0xffffff);
         });
 
         test('uses a white base material so split instance colors are unchanged', () => {
@@ -358,6 +357,7 @@ describe('GeometryMaterialCache', () => {
             expect(oxygenHatch.userData.plot2DHatch.color.getHexString())
                 .toBe(oxygenRing.color.getHexString());
             expect(plotCache.materials.bond.color.getHexString()).toBe('000000');
+            expect(plotCache.materials.part1Bond).toBeUndefined();
             expect(plotCache.materials.openBond.color.getHexString()).toBe('ffffff');
             expect(plotCache.materials.openBond.transparent).toBe(false);
             expect(plotCache.materials.openBond.depthWrite).toBe(true);
@@ -630,11 +630,141 @@ describe('ORTEP3JsStructure', () => {
             expect(structure.hBonds3D).toHaveLength(1);
         });
 
-        test('keeps one uncolored instance per bond in the default uniform mode', () => {
+        test('keeps hydrogen-bond dashes clear of both atom surfaces in solid 3D', () => {
+            expect(structure.options.renderStyle).toBe('solid-3d');
+            const hbond = structure.hBonds3D[0];
+            const hydrogen = structure.atoms3D.find(atom => atom.userData.atomData.label === 'H1');
+            const acceptor = structure.atoms3D.find(atom => atom.userData.atomData.label === 'C1');
+            const hydrogenPosition = new THREE.Vector3(...mockCrystalStructure.getAtomById('H1')
+                .position.toCartesian(mockCrystalStructure.cell));
+            const acceptorPosition = new THREE.Vector3(...mockCrystalStructure.getAtomById('C1')
+                .position.toCartesian(mockCrystalStructure.cell));
+            const direction = acceptorPosition.clone().sub(hydrogenPosition).normalize();
+            const totalLength = hydrogenPosition.distanceTo(acceptorPosition);
+            const intervals = hbond.segments.map(segment => {
+                const centre = new THREE.Vector3();
+                const scale = new THREE.Vector3();
+                segment.matrix.decompose(centre, new THREE.Quaternion(), scale);
+                const midpoint = centre.clone().sub(hydrogenPosition).dot(direction);
+                return { start: midpoint - scale.y / 2, end: midpoint + scale.y / 2 };
+            });
+            const startClearance = intervals[0].start - hydrogen.getSurfaceDistanceAlong(direction);
+            const endClearance = totalLength - intervals.at(-1).end -
+                acceptor.getSurfaceDistanceAlong(direction.clone().negate());
+
+            expect(startClearance).toBeGreaterThan(0);
+            expect(endClearance).toBeGreaterThan(0);
+            expect(startClearance).toBeCloseTo(endClearance);
+        });
+
+        test('keeps one uniformly coloured instance per bond in the default mode', () => {
             expect(structure.options.bondColorMode).toBe('uniform');
             expect(structure.bondPool.mesh.count).toBe(1);
-            expect(structure.bondPool.mesh.instanceColor).toBeNull();
+            expect(structure.bondPool.mesh.instanceColor).toBeTruthy();
             expect(structure.bonds3D[0].segments).toHaveLength(1);
+            const color = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, color);
+            expect(color.getHexString()).toBe(
+                new THREE.Color(defaultSettings.bondColor).getHexString(),
+            );
+        });
+
+        test('uses distinct uniform colours when the disorder-colour toggle is enabled', () => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C0', 'C', new FractPosition(0, 0, 0)),
+                new Atom('C00', 'C', new FractPosition(0.1, 0, 0)),
+                new Atom('C1', 'C', new FractPosition(0.2, 0, 0), null, 1),
+                new Atom('C2', 'C', new FractPosition(0.3, 0, 0), null, 2),
+            ];
+            const bonds = [
+                new Bond('C0', 'C00'),
+                new Bond('C0', 'C1'),
+                new Bond('C0', 'C2'),
+            ];
+            structure = new ORTEP3JsStructure(new CrystalStructure(cell, atoms, bonds), {
+                bondDisorderColorsEnabled: true,
+            });
+            const expected = [
+                defaultSettings.bondColor,
+                defaultSettings.bondColorPart1,
+                defaultSettings.bondColorPart2Plus,
+            ];
+
+            expected.forEach((value, index) => {
+                const color = new THREE.Color();
+                structure.bondPool.mesh.getColorAt(index, color);
+                expect(color.getHexString()).toBe(new THREE.Color(value).getHexString());
+            });
+        });
+
+        test('uses the normal bond colour for both parts when disorder colours are disabled', () => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C0', 'C', new FractPosition(0, 0, 0)),
+                new Atom('C1', 'C', new FractPosition(0.1, 0, 0), null, 1),
+                new Atom('C2', 'C', new FractPosition(0.2, 0, 0), null, 2),
+            ];
+            structure = new ORTEP3JsStructure(new CrystalStructure(cell, atoms, [
+                new Bond('C0', 'C1'),
+                new Bond('C0', 'C2'),
+            ]), { bondDisorderColorsEnabled: false });
+
+            expect(structure.options.bondDisorderColorsEnabled).toBe(false);
+            for (let index = 0; index < structure.bondPool.mesh.count; index++) {
+                const color = new THREE.Color();
+                structure.bondPool.mesh.getColorAt(index, color);
+                expect(color.getHexString()).toBe(
+                    new THREE.Color(defaultSettings.bondColor).getHexString(),
+                );
+            }
+        });
+
+        test.each([
+            ['PART 1', 1],
+            ['PART 2+', 2],
+        ])('uses the normal bond colour when only %s is displayed', (_label, disorderGroup) => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C0', 'C', new FractPosition(0, 0, 0)),
+                new Atom('CX', 'C', new FractPosition(0.1, 0, 0), null, disorderGroup),
+            ];
+            structure = new ORTEP3JsStructure(
+                new CrystalStructure(cell, atoms, [new Bond('C0', 'CX')]),
+            );
+            const color = new THREE.Color();
+            structure.bondPool.mesh.getColorAt(0, color);
+
+            expect(color.getHexString()).toBe(
+                new THREE.Color(defaultSettings.bondColor).getHexString(),
+            );
+        });
+
+        test('element-split colours take precedence over disorder PART colours', () => {
+            structure.dispose();
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const atoms = [
+                new Atom('C0', 'C', new FractPosition(0, 0, 0)),
+                new Atom('O1', 'O', new FractPosition(0.1, 0, 0), null, 1),
+                new Atom('N2', 'N', new FractPosition(0.2, 0, 0), null, 2),
+            ];
+            const bonds = [new Bond('C0', 'O1'), new Bond('C0', 'N2')];
+            structure = new ORTEP3JsStructure(new CrystalStructure(cell, atoms, bonds), {
+                bondColorMode: 'split',
+                bondDisorderColorsEnabled: true,
+            });
+            const expected = ['C', 'O', 'C', 'N'].map(
+                element => defaultSettings.elementProperties[element].atomColor,
+            );
+
+            expected.forEach((value, index) => {
+                const color = new THREE.Color();
+                structure.bondPool.mesh.getColorAt(index, color);
+                expect(color.getHexString()).toBe(new THREE.Color(value).getHexString());
+            });
         });
 
         test('renders split bonds as two atom-colored halves in one instanced pool', () => {
@@ -791,7 +921,7 @@ describe('ORTEP3JsStructure', () => {
             expect(structure.bonds3D[0].material).toBeInstanceOf(THREE.MeshBasicMaterial);
         });
 
-        test('renders PART 2 bonds with opaque white centres in the 2D plot', () => {
+        test('colours PART 1 and opens PART 2+ bonds when both are displayed in 2D', () => {
             structure.dispose();
             const cell = new UnitCell(10, 10, 10, 90, 90, 90);
             const atoms = [
@@ -870,6 +1000,31 @@ describe('ORTEP3JsStructure', () => {
                 (1 - closedBond.bondDepthOutline.scale.y) / 2;
             expect(endpointInset).toBeCloseTo(defaultSettings.bondRadius);
         });
+
+        test.each([
+            ['PART 1', 1],
+            ['PART 2+', 2],
+        ])('renders %s bonds like PART 0 when it is the only disorder part displayed in 2D',
+            (_label, disorderGroup) => {
+                structure.dispose();
+                const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+                const adp = () => new UAnisoADP(0.01, 0.01, 0.01, 0, 0, 0);
+                const atoms = [
+                    new Atom('C0', 'C', new FractPosition(0, 0, 0), adp()),
+                    new Atom('CX', 'C', new FractPosition(0.25, 0, 0), adp(), disorderGroup),
+                ];
+                structure = new ORTEP3JsStructure(
+                    new CrystalStructure(cell, atoms, [new Bond('C0', 'CX')]),
+                    { renderStyle: 'cutout-2d' },
+                );
+                const [bond] = structure.bonds3D;
+
+                expect(bond.material.color.getHexString()).toBe('000000');
+                expect(bond.userData.isOpenDisorderBond).toBe(false);
+                expect(bond.openBondOutline).toBeUndefined();
+                expect(bond.scale.x).toBeCloseTo(1);
+                expect(bond.scale.z).toBeCloseTo(1);
+            });
     });
 
     afterEach(() => {
@@ -2513,7 +2668,7 @@ describe('ORTEPHBond', () => {
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
         const acceptorPos = new THREE.Vector3(...mockAcceptor.position.toCartesian(mockUnitCell));
         const totalLength = hydrogenPos.distanceTo(acceptorPos);
-        const expectedSegments = Math.max(1, Math.floor(totalLength / targetSegmentLength));
+        const expectedSegments = Math.max(1, Math.round(totalLength / targetSegmentLength));
 
         expect(hbond.segments.length).toBe(expectedSegments);
     });
@@ -2526,7 +2681,7 @@ describe('ORTEPHBond', () => {
         const { hbond } = buildHBond(0.3, 0.6, null, atomId => renderedAtoms.get(atomId));
 
         // The untrimmed 1.0 Å span produces three segments; trimming it to
-        // 0.7 Å leaves two.
+        // 0.7 Å leaves two with the nearest-period layout.
         expect(hbond.segments).toHaveLength(2);
     });
 
@@ -2564,15 +2719,38 @@ describe('ORTEPHBond', () => {
         const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
         const acceptorPos = new THREE.Vector3(...mockAcceptor.position.toCartesian(mockUnitCell));
         const totalLength = hydrogenPos.distanceTo(acceptorPos);
-        const numSegments = Math.max(1, Math.floor(totalLength / targetSegmentLength));
-        const segmentLength = totalLength / numSegments;
-        const expectedDashLength = segmentLength * dashFraction;
+        const numSegments = Math.max(1, Math.round(totalLength / targetSegmentLength));
+        const period = totalLength / (numSegments + 1 - dashFraction);
+        const expectedDashLength = period * dashFraction;
 
         hbond.segments.forEach(segment => {
             const scale = new THREE.Vector3();
             segment.matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
             expect(scale.y).toBeCloseTo(expectedDashLength);
         });
+    });
+
+    test('leaves equal gaps at both atom surfaces and between dashes', () => {
+        const { hbond } = buildHBond(0.3, 0.6);
+        const hydrogenPos = new THREE.Vector3(...mockHydrogen.position.toCartesian(mockUnitCell));
+        const acceptorPos = new THREE.Vector3(...mockAcceptor.position.toCartesian(mockUnitCell));
+        const direction = acceptorPos.clone().sub(hydrogenPos).normalize();
+        const totalLength = hydrogenPos.distanceTo(acceptorPos);
+        const intervals = hbond.segments.map(segment => {
+            const centre = new THREE.Vector3();
+            const scale = new THREE.Vector3();
+            segment.matrix.decompose(centre, new THREE.Quaternion(), scale);
+            const midpoint = centre.clone().sub(hydrogenPos).dot(direction);
+            return { start: midpoint - scale.y / 2, end: midpoint + scale.y / 2 };
+        });
+        const gaps = [
+            intervals[0].start,
+            ...intervals.slice(1).map((interval, index) => interval.start - intervals[index].end),
+            totalLength - intervals.at(-1).end,
+        ];
+
+        expect(gaps[0]).toBeGreaterThan(0);
+        gaps.forEach(gap => expect(gap).toBeCloseTo(gaps[0]));
     });
 
     test('creates correctly scaled selection markers for all segments', () => {
