@@ -9,7 +9,7 @@ import {
 } from './modes.js';
 import { MockStructure } from './base.test.js';
 import { growFragment } from './growing/grow-fragment.js';
-import { growCell } from './growing/grow-cell.js';
+import { addPackingBorderComponents, growCell } from './growing/grow-cell.js';
 import { growExternalHBonds, reconcileHBondsByGeometry } from './growing/grow-hbonds.js';
 
 describe('HydrogenFilter', () => {
@@ -211,6 +211,7 @@ describe('SymmetryGrower', () => {
             const grower = new SymmetryGrower();
             expect(grower.mode).toBe(SymmetryGrower.MODES.NONE);
             expect(grower.filterName).toBe('SymmetryGrower');
+            expect(grower.packingCutoff).toBe(1.001);
         });
 
         test('initializes with specified mode', () => {
@@ -355,9 +356,27 @@ describe('SymmetryGrower', () => {
             const result = grower.apply(structure);
 
             // Compare with direct growCell call
-            const expected = growCell(structure);
+            const expected = growCell(structure, true, null, 1.001);
             expect(result.atoms.length).toBe(expected.atoms.length);
             expect(result.bonds.length).toBe(expected.bonds.length);
+        });
+
+        test('applies the default packing cutoff along all three axes', () => {
+            const cell = new UnitCell(10, 10, 10, 90, 90, 90);
+            const symmetry = new CellSymmetry('P1', 1, [new SymmetryOperation('x,y,z')]);
+            const origin = new CrystalStructure(
+                cell, [new Atom('C1', 'C', new FractPosition(0, 0, 0))], [], [], symmetry,
+            );
+
+            const result = new SymmetryGrower(SymmetryGrower.MODES.CELL).apply(origin);
+            const positions = result.atoms.map(atom =>
+                [atom.position.x, atom.position.y, atom.position.z].join(','),
+            ).sort();
+
+            expect(positions).toEqual([
+                '0,0,0', '0,0,1', '0,1,0', '0,1,1',
+                '1,0,0', '1,0,1', '1,1,0', '1,1,1',
+            ]);
         });
 
         test('combines fragment and HBonds growth in FRAGMENT_HBONDS mode', () => {
@@ -439,7 +458,9 @@ describe('SymmetryGrower', () => {
 
             const { grownStructure, specialPositionAtoms } = growFragment(structure);
             const expected = reconcileHBondsByGeometry(
-                growCell(grownStructure, false, specialPositionAtoms),
+                addPackingBorderComponents(
+                    growCell(grownStructure, false, specialPositionAtoms), 1.001,
+                ),
             );
             expect(result.atoms).toHaveLength(expected.atoms.length);
             expect(result.bonds).toHaveLength(expected.bonds.length);

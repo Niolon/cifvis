@@ -107,10 +107,10 @@ export const descriptions = {
         '<code>group&lt;rank&gt;of&lt;total&gt;</code> value.',
     'symmetryMode': '<code>none</code>, <code>hbonds</code>, <code>fragment</code>, ' +
         '<code>fragment-hbonds</code>, <code>cell</code>, or <code>fragment-cell</code>.',
-    'packingCutoff': '<code>1</code> (default) shows the canonical, Z-correct unit cell. A value ' +
-        'above <code>1</code> (e.g. <code>1.001</code>) additionally duplicates atoms sitting ' +
-        'within that margin of a low cell face onto the matching high face(s), for a "closed" ' +
-        'packing diagram with atoms on every face, edge and corner. The duplicates are unbonded.',
+    'packingCutoff': '<code>1.001</code> (default) closes the unit cell independently along all ' +
+        'three fractional axes, duplicating atoms near low faces onto matching high faces and ' +
+        'including the required edge and corner combinations. Set <code>1</code> for the canonical, ' +
+        'Z-correct <code>[0,1)</code> cell.',
 
     // Atom labels
     'atomLabels.show': {

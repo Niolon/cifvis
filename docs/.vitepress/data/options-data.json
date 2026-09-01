@@ -256,7 +256,7 @@
     {
       "path": "packingCutoff",
       "type": "Number",
-      "default": "1"
+      "default": "1.001"
     }
   ],
   "density": [

@@ -902,8 +902,8 @@ export function growCell(
             finalAtomsByUniqueId.set(atom.uniqueId, atom);
         }
     }
-    let finalAtoms = Array.from(finalAtomsByUniqueId.values());
-    let finalBonds = [
+    const finalAtoms = Array.from(finalAtomsByUniqueId.values());
+    const finalBonds = [
         ...(!moveAtomsInsideCell ? structure.bonds.map(bond => new Bond(
             bond.atom1Id,
             bond.atom2Id,
@@ -930,7 +930,7 @@ export function growCell(
         )) : []),
         ...grownAtomsGroups.flatMap(group => group.internalHBonds),
     ];
-    let finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
+    const finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
 
     /**
      * Adds a lattice translation to an atom ID's position code.
@@ -1091,23 +1091,6 @@ export function growCell(
             }
         });
     });
-
-    // In ordinary cell mode, add the optional closed-cell border copies before
-    // filtering bonds. At this point finalBonds still contains the chemically
-    // correct periodic links whose wrapped endpoints would otherwise be removed
-    // as long display bonds, so the helper can reconnect them to the new copies.
-    if (moveAtomsInsideCell && packingCutoff > 1) {
-        const packedStructure = addPackingBorderAtoms(new CrystalStructure(
-            structure.cell,
-            finalAtoms,
-            finalBonds,
-            finalHBonds,
-            structure.symmetry,
-        ), packingCutoff, structure.bonds);
-        finalAtoms = packedStructure.atoms;
-        finalBonds = packedStructure.bonds;
-        finalAtomLabels = new Set(finalAtoms.map(atom => atom.uniqueId));
-    }
 
     const finalAtomsById = new Map(finalAtoms.map(atom => [atom.uniqueId, atom]));
     const cartesianPositions = new Map();
@@ -1277,20 +1260,30 @@ export function growCell(
         }
     }
 
-    // Border-copy bonds are selected before component centring. A later
-    // duplicate collapse can remap an endpoint onto a different periodic image,
-    // so validate those reconstructed cell-mode bonds once more against their
-    // final displayed coordinates. Leave the canonical cutoff path untouched.
-    const centredAtomsById = moveAtomsInsideCell && packingCutoff > 1
-        ? new Map(centredAtoms.map(atom => [atom.uniqueId, atom]))
+    // Add closed-cell face, edge and corner copies only after component centring.
+    // Creating them earlier lets the centring/deduplication pass shift isolated
+    // border copies back onto their canonical atoms. Original periodic bond
+    // records remain available to reconnect compatible copied endpoints.
+    const centredStructure = new CrystalStructure(
+        structure.cell,
+        centredAtoms,
+        centredBonds,
+        centredHBonds,
+        structure.symmetry,
+    );
+    const packedStructure = moveAtomsInsideCell && packingCutoff > 1
+        ? addPackingBorderAtoms(centredStructure, packingCutoff, structure.bonds)
+        : centredStructure;
+    const packedAtomsById = moveAtomsInsideCell && packingCutoff > 1
+        ? new Map(packedStructure.atoms.map(atom => [atom.uniqueId, atom]))
         : null;
-    const finalCentredBonds = moveAtomsInsideCell && packingCutoff > 1
-        ? centredBonds.filter(bond => {
+    const packedBonds = moveAtomsInsideCell && packingCutoff > 1
+        ? packedStructure.bonds.filter(bond => {
             if (!Number.isFinite(bond.bondLength) || bond.bondLength > MAX_DISPLAYED_BOND_LENGTH) {
                 return false;
             }
-            const atom1 = centredAtomsById.get(bond.atom1Id);
-            const atom2 = centredAtomsById.get(bond.atom2Id);
+            const atom1 = packedAtomsById.get(bond.atom1Id);
+            const atom2 = packedAtomsById.get(bond.atom2Id);
             if (!atom1 || !atom2) {
                 return false;
             }
@@ -1303,13 +1296,13 @@ export function growCell(
             );
             return Math.abs(length - bond.bondLength) <= Math.max(0.15, bond.bondLength * 0.1);
         })
-        : centredBonds;
+        : packedStructure.bonds;
 
     return new CrystalStructure(
         structure.cell,
-        centredAtoms,
-        finalCentredBonds,
-        centredHBonds,
+        packedStructure.atoms,
+        packedBonds,
+        packedStructure.hBonds,
         structure.symmetry,
     );
 }

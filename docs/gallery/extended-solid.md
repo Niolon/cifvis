@@ -44,12 +44,12 @@ console.log(grown.atoms.length);
 
 ### Atoms on the cell border
 
-By default the `cell` modes use a **packing cutoff** of `1.0`: the canonical unit cell, where
-every atom has a single, Z-correct copy in `[0, 1)`. Raising the cutoff slightly (e.g. `1.001`)
-additionally duplicates atoms that sit within that margin of a low cell face — 0, an edge, or a
-corner — onto the matching high face(s), for a "closed" packing diagram with atoms visible on
-every side of the box. Bonds are added only when a copied endpoint reproduces the reported bond
-length, so wrapped across-cell lines are not drawn. In `fragment-cell` mode, the same cutoff adds
+By default the `cell` modes use a **packing cutoff** of `1.001`. This duplicates atoms near each
+low cell face onto the matching high face, independently along all three fractional axes; the
+corresponding edge and corner combinations produce a closed packing diagram with atoms visible on
+every side of the box. Set the cutoff to `1.0` for the canonical unit cell, where every atom has a
+single, Z-correct copy in `[0, 1)`. Bonds are added only when a copied endpoint reproduces the
+reported bond length, so wrapped across-cell lines are not drawn. In `fragment-cell` mode, the same cutoff adds
 complete covalently connected fragments whose centroids enter the extended box rather than
 individual near-face atoms. Z is no longer exact once extra copies are included.
 
@@ -59,14 +59,14 @@ individual near-face atoms. Z is no longer exact once extra copies are included.
 <cifview-widget
     src="CaF2.cif"
     symmetry-mode="cell"
-    options='{"packingCutoff": 1.001}'>
+    options='{"packingCutoff": 1.0}'>
 </cifview-widget>
 ```
 
 ```js [Library (JS)]
-const viewer = new CrystalViewer(container, { symmetryMode: 'cell', packingCutoff: 1.001 });
+const viewer = new CrystalViewer(container, { symmetryMode: 'cell', packingCutoff: 1.0 });
 
-// Or directly: new SymmetryGrower('cell', 1.001).apply(structure);
+// Or directly: new SymmetryGrower('cell', 1.0).apply(structure);
 ```
 
 :::

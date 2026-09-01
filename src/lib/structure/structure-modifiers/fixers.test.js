@@ -602,10 +602,10 @@ describe('BondGenerator', () => {
             expect(perceived.bonds.every(bond => bond.atom2SiteSymmetry !== '.')).toBe(true);
             expect(perceived.bonds.every(bond => bond.atom1Id === 'Na1|1_555')).toBe(true);
 
-            // After cell growth the partner Cl atoms are materialised, so the bonds
-            // become renderable (both endpoints present).
+            // After closed-cell growth the partner Cl atoms and all face/edge/corner
+            // copies are materialised, so the bonds become renderable.
             const grown = new SymmetryGrower('cell').apply(perceived);
-            expect(grown.atoms).toHaveLength(8);
+            expect(grown.atoms).toHaveLength(27);
             const atomIds = new Set(grown.atoms.map(atom => atom.uniqueId));
             const renderable = grown.bonds.filter(
                 bond => atomIds.has(bond.atom1Id) && atomIds.has(bond.atom2Id),
