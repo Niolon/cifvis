@@ -33,7 +33,7 @@ For filters whose mode change alters the structure's extent (`symmetry`,
 `HydrogenFilter`, `DisorderFilter`, `SymmetryGrower`, `AtomLabelFilter`, and
 `BondGenerator` are all exported from the package root, so you can filter a
 `CrystalStructure` directly — useful for batch processing or non-visual tooling (they
-also work in Node via `cifvis/nobrowser`):
+also work in Node via `cifvis/core`):
 
 ```js
 import { CIF, CrystalStructure, SymmetryGrower } from 'cifvis';

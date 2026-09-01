@@ -1,7 +1,8 @@
 // Measures pure cold-start cost: one file, one fresh process, no JIT warmup.
 // This approximates "first structure a user sees after loading the page".
 import { readFileSync } from 'fs';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+import { CIF, CrystalStructure } from '../src/core.js';
+import { ORTEP3JsStructure } from '../src/experimental.js';
 
 const filePath = process.argv[2];
 const t0 = performance.now();

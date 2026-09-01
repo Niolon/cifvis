@@ -250,6 +250,65 @@ function definedOptions(options) {
 }
 
 /**
+ * Clones arrays and plain objects used in viewer options.
+ * @param {unknown} value - Option value
+ * @returns {unknown} Detached option value
+ */
+function cloneOptionValue(value) {
+    if (Array.isArray(value)) {
+        return value.map(cloneOptionValue);
+    }
+    if (value && Object.getPrototypeOf(value) === Object.prototype) {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, child]) => [key, cloneOptionValue(child)]),
+        );
+    }
+    return value;
+}
+
+/**
+ * Resolves partial viewer options against the one canonical default object.
+ * Returned nested values are detached so viewer state cannot mutate the public defaults.
+ * @param {object} options - Partial viewer options
+ * @param {object} metalRingCentroidOptions - Validated centroid options
+ * @returns {object} Resolved mutable viewer options
+ */
+export function resolveViewerOptions(options, metalRingCentroidOptions) {
+    const resolved = {
+        ...cloneOptionValue(defaultSettings),
+        ...cloneOptionValue(definedOptions(options)),
+    };
+    const nestedGroups = [
+        'camera',
+        'selection',
+        'measurement',
+        'interaction',
+        'atomLabels',
+        'elementProperties',
+        'cell',
+        'differenceDensity',
+        'scalarField',
+        'isosurface',
+        'contourLines',
+    ];
+    for (const group of nestedGroups) {
+        resolved[group] = {
+            ...cloneOptionValue(defaultSettings[group]),
+            ...cloneOptionValue(definedOptions(options[group] || {})),
+        };
+    }
+    resolved.atomLabels.text = {
+        ...cloneOptionValue(defaultSettings.atomLabels.text),
+        ...cloneOptionValue(definedOptions(options.atomLabels?.text || {})),
+    };
+    const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
+    resolved.camera.initialPosition = initialPosition.isVector3 ?
+        initialPosition.clone() : new THREE.Vector3(...initialPosition);
+    resolved.metalRingCentroidOptions = cloneOptionValue(metalRingCentroidOptions);
+    return resolved;
+}
+
+/**
  * Selects options belonging to one public option group.
  * @param {object} options - Flat per-load options.
  * @param {object} defaults - Default values defining the group keys.
@@ -765,129 +824,8 @@ export class CrystalViewer {
             }
         }
         validateAtomLabelOptions(options.atomLabels || {});
-        const atomLabelOptions = definedOptions(options.atomLabels || {});
-
         this.container = container;
-        const initialPosition = options.camera?.initialPosition ?? defaultSettings.camera.initialPosition;
-        this.options = {
-            camera: {
-                ...defaultSettings.camera,
-                ...(options.camera || {}),
-                initialPosition: initialPosition.isVector3 ?
-                    initialPosition.clone() : new THREE.Vector3(...initialPosition),
-            },
-            selection: {
-                ...defaultSettings.selection,
-                ...(options.selection || {}),
-            },
-            measurement: {
-                ...defaultSettings.measurement,
-                ...(options.measurement || {}),
-            },
-            interaction: {
-                ...defaultSettings.interaction,
-                ...(options.interaction || {}),
-            },
-            atomLabels: {
-                ...defaultSettings.atomLabels,
-                ...atomLabelOptions,
-                text: {
-                    ...defaultSettings.atomLabels.text,
-                    ...(atomLabelOptions.text || {}),
-                },
-            },
-            ellipsoidProbability: options.ellipsoidProbability ?? defaultSettings.ellipsoidProbability,
-            peanutScale: options.peanutScale ?? defaultSettings.peanutScale,
-            peanutMeridianCount: options.peanutMeridianCount ??
-                defaultSettings.peanutMeridianCount,
-            peanutLatitudeIntervals: options.peanutLatitudeIntervals ??
-                defaultSettings.peanutLatitudeIntervals,
-            peanutGridPoleAxis: options.peanutGridPoleAxis ?? defaultSettings.peanutGridPoleAxis,
-            peanutGridLineWidth: options.peanutGridLineWidth ??
-                defaultSettings.peanutGridLineWidth,
-            peanutDetail: options.peanutDetail ?? defaultSettings.peanutDetail,
-            atomDetail: options.atomDetail || defaultSettings.atomDetail,
-            atomCutawayHysteresis: options.atomCutawayHysteresis ?? defaultSettings.atomCutawayHysteresis,
-            atomCutawayStripeCount: options.atomCutawayStripeCount ??
-                defaultSettings.atomCutawayStripeCount,
-            atomCutawayStripeWidth: options.atomCutawayStripeWidth ??
-                defaultSettings.atomCutawayStripeWidth,
-            atomColorRoughness: options.atomColorRoughness || defaultSettings.atomColorRoughness,
-            atomColorMetalness: options.atomColorMetalness || defaultSettings.atomColorMetalness,
-            atomADPRingWidthFactor: options.atomADPRingWidthFactor || defaultSettings.atomADPRingWidthFactor,
-            atomADPRingHeight: options.atomADPRingHeight || defaultSettings.atomADPRingHeight,
-            atomADPRingSections: options.atomADPRingSections || defaultSettings.atomADPRingSections,
-            bondRadius: options.bondRadius || defaultSettings.bondRadius,
-            bondSections: options.bondSections || defaultSettings.bondSections,
-            bondColorMode: options.bondColorMode ?? defaultSettings.bondColorMode,
-            bondColor: options.bondColor || defaultSettings.bondColor,
-            bondDisorderColorsEnabled: options.bondDisorderColorsEnabled ??
-                defaultSettings.bondDisorderColorsEnabled,
-            bondColorPart1: options.bondColorPart1 || defaultSettings.bondColorPart1,
-            bondColorPart2Plus: options.bondColorPart2Plus || defaultSettings.bondColorPart2Plus,
-            bondColorRoughness: options.bondColorRoughness || defaultSettings.bondColorRoughness,
-            bondColorMetalness: options.bondColorMetalness || defaultSettings.bondColorMetalness,
-            collapseMetalRingBonds: options.collapseMetalRingBonds ??
-                defaultSettings.collapseMetalRingBonds,
-            metalRingCentroidOptions,
-            bondGrowTolerance: options.bondGrowTolerance ?? defaultSettings.bondGrowTolerance,
-            hbondRadius: options.hbondRadius ?? defaultSettings.hbondRadius,
-            hbondColor: options.hbondColor || defaultSettings.hbondColor,
-            hbondColorRoughness: options.hbondColorRoughness ?? defaultSettings.hbondColorRoughness,
-            hbondColorMetalness: options.hbondColorMetalness ?? defaultSettings.hbondColorMetalness,
-            hbondDashSegmentLength: options.hbondDashSegmentLength ?? defaultSettings.hbondDashSegmentLength,
-            hbondDashFraction: options.hbondDashFraction ?? defaultSettings.hbondDashFraction,
-            elementProperties: {
-                ...defaultSettings.elementProperties,
-                ...options.elementProperties,
-            },
-            hydrogenMode: options.hydrogenMode || defaultSettings.hydrogenMode,
-            disorderMode: options.disorderMode || defaultSettings.disorderMode,
-            symmetryMode: options.symmetryMode || defaultSettings.symmetryMode,
-            packingCutoff: options.packingCutoff ?? defaultSettings.packingCutoff,
-            renderMode: options.renderMode || defaultSettings.renderMode,
-            debug: options.debug ?? defaultSettings.debug,
-            renderStyle: options.renderStyle || defaultSettings.renderStyle,
-            adpRepresentation: options.adpRepresentation || defaultSettings.adpRepresentation,
-            plot2DBackground: options.plot2DBackground || defaultSettings.plot2DBackground,
-            plot2DAtomColor: options.plot2DAtomColor || defaultSettings.plot2DAtomColor,
-            plot2DLineColor: options.plot2DLineColor || defaultSettings.plot2DLineColor,
-            plot2DBondColor: options.plot2DBondColor || defaultSettings.plot2DBondColor,
-            plot2DBondOutlineColor: options.plot2DBondOutlineColor ||
-                defaultSettings.plot2DBondOutlineColor,
-            plot2DBondOutlineWidth: options.plot2DBondOutlineWidth ??
-                defaultSettings.plot2DBondOutlineWidth,
-            plot2DColorLuminanceCeiling: options.plot2DColorLuminanceCeiling ??
-                defaultSettings.plot2DColorLuminanceCeiling,
-            plot2DColorLuminanceFloor: options.plot2DColorLuminanceFloor ??
-                defaultSettings.plot2DColorLuminanceFloor,
-            plot2DOpenBondInnerScale: options.plot2DOpenBondInnerScale ??
-                defaultSettings.plot2DOpenBondInnerScale,
-            plot2DStripeCount: options.plot2DStripeCount ?? defaultSettings.plot2DStripeCount,
-            plot2DStripeWidth: options.plot2DStripeWidth ?? defaultSettings.plot2DStripeWidth,
-            plot2DOutlineWidth: options.plot2DOutlineWidth ?? defaultSettings.plot2DOutlineWidth,
-            fixCifErrors: options.fixCifErrors || defaultSettings.fixCifErrors,
-            cell: {
-                ...defaultSettings.cell,
-                ...options.cell,
-            },
-            differenceDensity: {
-                ...defaultSettings.differenceDensity,
-                ...definedOptions(options.differenceDensity || {}),
-            },
-            scalarField: {
-                ...defaultSettings.scalarField,
-                ...definedOptions(options.scalarField || {}),
-            },
-            isosurface: {
-                ...defaultSettings.isosurface,
-                ...definedOptions(options.isosurface || {}),
-            },
-            contourLines: {
-                ...defaultSettings.contourLines,
-                ...definedOptions(options.contourLines || {}),
-            },
-        };
+        this.options = resolveViewerOptions(options, metalRingCentroidOptions);
 
         this.state = {
             isDragging: false,

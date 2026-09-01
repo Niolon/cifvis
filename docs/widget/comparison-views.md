@@ -10,7 +10,7 @@ directions update the peer:
 <ComparisonDemo />
 
 ```js
-import { coupleViewerInteractions } from 'cifvis';
+import { coupleViewerInteractions } from 'cifvis/experimental';
 
 const coupling = coupleViewerInteractions(leftWidget, rightWidget);
 await coupling.synchronizeFrom(leftWidget); // modes, molecular origin/orientation, and absolute framing

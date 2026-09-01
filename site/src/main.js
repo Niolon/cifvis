@@ -1,7 +1,7 @@
 import { CIF, CrystalViewer } from '../../src';
 import { atomLabelParts, formatValueEsd } from '../../src';
 import { measurementAction } from '../../src';
-import { getDisorderIcon } from '../../src';
+import { getDisorderIcon } from '../../src/experimental.js';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 import {
     createScalarFieldDisplayState,

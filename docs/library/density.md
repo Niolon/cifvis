@@ -196,7 +196,7 @@ orbitals, potentials, and future scalar fields out of the Fo−Fc-specific API.
 
 ## Advanced: the numerical toolbox
 
-The package root and `cifvis/nobrowser` export the lower-level building blocks the
+The `cifvis/density` entry exports the supported lower-level building blocks the
 pipeline is made of, so batch tooling and research code can use them without a viewer.
 All of them carry full JSDoc (`npm run docs`):
 

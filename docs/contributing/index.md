@@ -57,19 +57,22 @@ read-cif ─┬─► structure ──► structure-modifiers ──┐
 drive CIF parsing → filters → rendering end to end. When you change the public shape of
 any of those lower layers, check this file.
 
-### Two entry points
+### Public entry points
 
-`package.json`'s `exports` map exposes two entry points:
+`package.json`'s `exports` map exposes intentionally separate stability boundaries:
 
 | Entry | Purpose |
 |---|---|
-| `cifvis` → `src/index.js` | Browser entry. Exports everything, and registers `<cifview-widget>` as a custom element. |
-| `cifvis/nobrowser` → `src/index.nobrowser.js` | Same core exports, including CIF/structure APIs, Filters, map calculation, IAM, anomalous lookup, and reflection readers, but `CrystalViewer`/`CifViewWidget` are stubs that throw — safe to import in Node/SSR/test environments with no `window`. |
+| `cifvis` → `src/index.js` | Stable browser-facing API with no custom-element registration side effect. |
+| `cifvis/core` → `src/core.js` | Stable browser-independent crystallographic API. |
+| `cifvis/density` → `src/density.js` | Supported numerical density API. |
+| `cifvis/experimental` → `src/experimental.js` | Low-level APIs without a semver stability promise. |
+| `cifvis/widget/register` → `src/widget/register.js` | Explicit, idempotent widget registration. |
 
-The core (`read-cif`, `structure`, `structure-modifiers`, `fix-cif`, the numerical
-density modules, `ORTEP3JsStructure`, and `formatValueEsd`) is deliberately DOM-free by
-construction — only `CrystalViewer` (canvas/WebGL) and `CifViewWidget` (custom element)
-need a browser.
+The stable core (`read-cif`, `structure`, `structure-modifiers`, `fix-cif`, measurements,
+and formatting) is deliberately DOM-free. Density numerics have their own supported
+entry, while Three.js adapters are experimental. `CrystalViewer`, `CifViewWidget`, and
+widget registration require a browser.
 
 ## The playground
 

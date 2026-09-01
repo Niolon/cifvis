@@ -45,7 +45,7 @@ npm install cifvis
 <cifview-widget src="structure.cif" caption="Crystal Structure"></cifview-widget>
 
 <script type="module">
-  import { CifViewWidget } from 'cifvis';
+  import 'cifvis/widget/register';
 </script>
 ```
 
@@ -63,7 +63,7 @@ See the [widget docs](https://niolon.github.io/cifvis/docs/widget/getting-starte
 </script>
 ```
 
-The package also exports `CIF`, `CrystalStructure`, `ORTEP3JsStructure`, `formatValueEsd`, and `coupleViewerInteractions`. See the [library docs](https://niolon.github.io/cifvis/docs/library/getting-started.html) for the full API, density maps, and coupled viewers.
+The stable root also exports `CIF`, `CrystalStructure`, formatting and measurement helpers, and structure Filters. Numerical APIs live at `cifvis/density`; low-level Three.js integrations live at `cifvis/experimental`. See the [library docs](https://niolon.github.io/cifvis/docs/library/getting-started.html) for details.
 
 ## Development
 

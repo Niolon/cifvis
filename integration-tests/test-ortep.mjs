@@ -2,7 +2,8 @@ import { readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+import { CIF, CrystalStructure } from '../src/core.js';
+import { ORTEP3JsStructure } from '../src/experimental.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));

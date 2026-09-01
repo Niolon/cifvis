@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
-} from '../src/index.nobrowser.js';
+} from '../src/core.js';
 import { repairBondGeometry } from '../src/lib/structure/structure-modifiers/bond-geometry.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 import {

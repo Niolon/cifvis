@@ -11,7 +11,7 @@ const structure = CrystalStructure.fromCIF(new CIF(cifText).getBlock(0));
 ```
 
 The structure model knows nothing about rendering — it is DOM- and Three.js-free, so it
-works in Node just as well as in the browser (import from `cifvis/nobrowser` in
+works in Node just as well as in the browser (import from `cifvis/core` in
 environments without a `window`).
 
 ## Filters: how the displayed structure is derived

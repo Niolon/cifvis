@@ -23,9 +23,13 @@ export default defineConfig({
     vite: {
         plugins: [generateSvgIconsPlugin()],
         resolve: {
-            alias: {
-                cifvis: resolve(projectRoot, 'src/index.js'),
-            },
+            alias: [
+                { find: 'cifvis/widget/register', replacement: resolve(projectRoot, 'src/widget/register.js') },
+                { find: 'cifvis/experimental', replacement: resolve(projectRoot, 'src/experimental.js') },
+                { find: 'cifvis/density', replacement: resolve(projectRoot, 'src/density.js') },
+                { find: 'cifvis/core', replacement: resolve(projectRoot, 'src/core.js') },
+                { find: /^cifvis$/, replacement: resolve(projectRoot, 'src/index.js') },
+            ],
         },
     },
 

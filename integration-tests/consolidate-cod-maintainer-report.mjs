@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CIF } from '../src/index.nobrowser.js';
+import { CIF } from '../src/core.js';
 import {
     lookupSpaceGroup, lookupSpaceGroupCandidates,
 } from '../src/lib/structure/space-group-lookup.js';

@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CIF, tryToFixCifBlock } from '../src/index.nobrowser.js';
+import { CIF, tryToFixCifBlock } from '../src/core.js';
 import { parseCSV } from './postprocess-cod-symmetry-report.mjs';
 
 const DUPLICATE_CATEGORY_PREFIX = 'Duplicate _atom_site_label';

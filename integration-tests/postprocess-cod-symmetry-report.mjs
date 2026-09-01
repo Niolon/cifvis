@@ -7,7 +7,7 @@ import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     CIF, CrystalStructure, tryToFixCifBlock,
-} from '../src/index.nobrowser.js';
+} from '../src/core.js';
 import { BondsFactory } from '../src/lib/structure/bonds.js';
 import {
     decodePositionCode, encodePositionCode, normalizeSiteSymmetry,

@@ -7,7 +7,12 @@ Adding a crystal structure visualization to your webpage is as simple as includi
 CifVis library and adding the `<cifview-widget>` element:
 
 ```html
-<script type="module" src="https://niolon.github.io/cifvis/dist/cifvis.alldeps.js"></script>
+<script type="module">
+import { CifViewWidget } from 'https://niolon.github.io/cifvis/dist/cifvis.alldeps.js';
+if (!customElements.get('cifview-widget')) {
+    customElements.define('cifview-widget', CifViewWidget);
+}
+</script>
 
 <cifview-widget
     src="path/to/structure.cif"
@@ -17,8 +22,14 @@ CifVis library and adding the `<cifview-widget>` element:
 
 Consider uploading the library to your own webserver if you are after something
 persistent. If you use a bundler, install [`cifvis` from npm](../library/getting-started.md)
-instead and `import { CifViewWidget } from 'cifvis'` — the import registers the custom
-element.
+and explicitly register the element once in your application entry point:
+
+```js
+import 'cifvis/widget/register';
+```
+
+Importing `CifViewWidget` from `cifvis` only provides the class and does not modify the
+custom-element registry.
 
 This section covers the `<cifview-widget>` component specifically. For the lower-level
 JS library (parsing CIF files, driving `CrystalViewer` directly, and using Filters), see

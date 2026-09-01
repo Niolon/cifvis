@@ -6,12 +6,17 @@ CifVis is available on npm; installing it into a project is as simple as:
 npm install cifvis
 ```
 
-Three.js is the only runtime dependency. Two entry points are exposed:
+Three.js is the only runtime dependency. The package exposes deliberately scoped entry points:
 
 | Entry | Purpose |
 |---|---|
-| `cifvis` | Browser entry. Exports everything, and registers `<cifview-widget>` as a custom element. |
-| `cifvis/nobrowser` | Same core exports (CIF/structure APIs, Filters, density calculation, IAM, reflection readers), but `CrystalViewer`/`CifViewWidget` are stubs that throw — safe to import in Node/SSR/test environments with no `window`. |
+| `cifvis` | Stable browser-facing viewer, widget, structure, measurement, formatting, and Filter API. It has no registration side effect. |
+| `cifvis/core` | Stable browser-independent CIF, structure, measurement, formatting, repair, and Filter API. |
+| `cifvis/density` | Supported numerical density, reflection, scalar-field, contour, and isosurface API. |
+| `cifvis/experimental` | Unstable low-level Three.js integration APIs that may change before or after 1.0. |
+| `cifvis/widget/register` | Browser-only side effect that registers `<cifview-widget>` idempotently. |
+
+The former `cifvis/nobrowser` entry has been removed; use `cifvis/core` instead.
 
 ## A minimal viewer
 

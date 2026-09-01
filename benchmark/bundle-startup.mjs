@@ -123,7 +123,7 @@ function main() {
             space_group_lookup: coldImport(
                 'src/lib/structure/space-group-lookup.js', options.runs,
             ),
-            public_nobrowser_entry: coldImport('src/index.nobrowser.js', options.runs),
+            public_core_entry: coldImport('src/core.js', options.runs),
         },
         builds: [
             measureBuild({

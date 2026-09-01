@@ -1,10 +1,3 @@
-// Export only non-DOM functionality
-export { CIF } from './lib/read-cif/base.js';
-export { CrystalStructure } from './lib/structure/crystal.js';
-export { UAnisoADP } from './lib/structure/adp.js';
-export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
-export { atomLabelParts, formatAtomLabel, formatValueEsd } from './lib/formatting.js';
-export { measureAtoms, formatMeasurement, measurementAction } from './lib/structure/measurements.js';
 export {
     calculateDifferenceDensityMap,
     createCifDifferenceDensityDataset,
@@ -26,8 +19,6 @@ export {
     connectedIsosurfaceRegions,
     createSymmetryAwareIsosurfaces,
 } from './lib/density/symmetry-isosurface.js';
-export { ThreeIsosurfaceLayer } from './lib/ortep3d/three-isosurface-layer.js';
-export { ThreeContourLineLayer } from './lib/ortep3d/three-contour-line-layer.js';
 export { lookupAnomalousDispersion } from './lib/density/anomalous-dispersion.js';
 export {
     calculateIAMStructureFactors,
@@ -40,22 +31,3 @@ export {
     mergeReflectionIntensities,
     readReflectionIntensities,
 } from './lib/density/reflection-intensities.js';
-export { tryToFixCifBlock } from './lib/fix-cif/base.js';
-export { 
-    HydrogenFilter, DisorderFilter, SymmetryGrower, 
-} from './lib/structure/structure-modifiers/modes.js';
-export {
-    AtomLabelFilter, BondGenerator, BondGeometryFixer, IsolatedHydrogenFixer,
-} from './lib/structure/structure-modifiers/fixers.js';
-// Stub DOM-dependent features
-export class CrystalViewer {
-    constructor() {
-        throw new Error('CrystalViewer is not available in non-DOM environments');
-    }
-}
-
-export class CifViewWidget {
-    constructor() {
-        throw new Error('CifViewWidget is not available in non-DOM environments');
-    }
-}
