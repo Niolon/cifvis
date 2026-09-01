@@ -64,6 +64,7 @@ export default defineConfig({
                     { text: 'Loading data', link: '/widget/loading-data' },
                     { text: 'Display options', link: '/widget/display-options' },
                     { text: 'Measurements', link: '/widget/measurements' },
+                    { text: 'Events and state', link: '/widget/events' },
                     { text: 'Density maps', link: '/widget/density' },
                     { text: 'Filtered atoms', link: '/widget/filtered-atoms' },
                     { text: 'Comparison views', link: '/widget/comparison-views' },

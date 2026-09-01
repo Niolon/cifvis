@@ -61,5 +61,6 @@ hover that result to reveal its geometry, or use its × control to remove it. Se
 - [Loading data](./loading-data.md) — `src` vs `data`, picking a block
 - [Display options](./display-options.md) — modes, render styles, symmetry growing
 - [Measurements](./measurements.md) — interactive and prepopulated measurements
+- [Events and state](./events.md) — loading state and DOM events for embedding applications
 - [Attributes reference](./attributes-reference.md) — every widget attribute
 - [Styling](./styling.md) — theming the widget with CSS custom properties

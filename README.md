@@ -50,6 +50,8 @@ npm install cifvis
 ```
 
 See the [widget docs](https://niolon.github.io/cifvis/docs/widget/getting-started.html) for attributes, options, and styling.
+Embedding applications can observe loading, errors, selections, measurements, view
+changes, and density updates through the widget's documented DOM events.
 
 ### Library
 

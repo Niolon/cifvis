@@ -44,6 +44,7 @@ describe('CifViewWidget', () => {
     let mockCrystalViewer;
     let mockSelectionCallback;
     let mockDensityCallback;
+    let mockViewCallback;
     let mockFetch;
 
     test('uses kebab-case for every public widget attribute', () => {
@@ -144,7 +145,16 @@ describe('CifViewWidget', () => {
             }),
             controls: {
                 handleResize: vi.fn(),
+                onInteraction: vi.fn(callback => {
+                    mockViewCallback = callback;
+                    return vi.fn();
+                }),
             },
+            getViewState: vi.fn(() => ({
+                rotation: { convention: 'external-xyz-cartesian', x: 1, y: 2, z: 3 },
+                camera: { type: 'orthographic', viewSize: 4, zoomScale: 1 },
+                locks: { rotation: false, zoom: false },
+            })),
             dispose: vi.fn(),
             modifiers: {
                 missingbonds: new BondGenerator(),
@@ -163,6 +173,7 @@ describe('CifViewWidget', () => {
             selectionCallbacks.forEach(callback => callback(selections));
         };
         mockDensityCallback = null;
+        mockViewCallback = null;
         mockCrystalViewer.onScalarFieldUpdate.mockImplementation(callback => {
             mockDensityCallback = callback;
             return vi.fn();
@@ -201,6 +212,94 @@ describe('CifViewWidget', () => {
         expect(widget.selections).toEqual([]);
         expect(widget.customIcons).toBeNull();
         expect(CrystalViewer).toHaveBeenCalled();
+        expect(widget.loading).toBe(false);
+        expect(widget.error).toBeNull();
+        expect(widget.structure).toBe(mockCrystalViewer.state.baseStructure);
+    });
+
+    test('publishes observable loading and successful load state', async () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        const loadingEvents = [];
+        const loadEvents = [];
+        widget.addEventListener('cifvis-loading-change', event => loadingEvents.push(event));
+        widget.addEventListener('cifvis-load', event => loadEvents.push(event));
+
+        const load = widget.loadFromString('data_structure', 'main');
+        expect(widget.loading).toBe(true);
+        expect(widget.getAttribute('aria-busy')).toBe('true');
+        await load;
+
+        expect(widget.loading).toBe(false);
+        expect(widget.error).toBeNull();
+        expect(widget.getAttribute('aria-busy')).toBe('false');
+        expect(loadingEvents.map(event => event.detail.loading)).toEqual([true, false]);
+        expect(loadEvents).toHaveLength(1);
+        expect(loadEvents[0].bubbles).toBe(true);
+        expect(loadEvents[0].composed).toBe(true);
+        expect(loadEvents[0].detail).toMatchObject({
+            source: 'data',
+            block: 'main',
+            structure: mockCrystalViewer.state.baseStructure,
+            result: { success: true },
+        });
+    });
+
+    test('publishes load errors and retains the observable error', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        const errors = [];
+        widget.addEventListener('cifvis-error', event => errors.push(event.detail));
+        mockCrystalViewer.loadCIF.mockResolvedValueOnce({ success: false, error: 'Invalid structure' });
+
+        const result = await widget.loadFromString('data_bad');
+
+        expect(result).toEqual({ success: false, error: 'Invalid structure' });
+        expect(widget.loading).toBe(false);
+        expect(widget.error).toBeInstanceOf(Error);
+        expect(widget.error.message).toBe('Invalid structure');
+        expect(errors).toEqual([expect.objectContaining({
+            source: 'data',
+            message: 'Invalid structure',
+            error: widget.error,
+        })]);
+        consoleSpy.mockRestore();
+    });
+
+    test('bridges viewer selection, measurement, view, and density updates to DOM events', () => {
+        const widget = document.createElement('cifview-widget');
+        document.body.appendChild(widget);
+        const received = {};
+        for (const type of [
+            'cifvis-selection-change',
+            'cifvis-measurement-change',
+            'cifvis-view-change',
+            'cifvis-density-change',
+        ]) {
+            widget.addEventListener(type, event => {
+                received[type] = event.detail;
+            });
+        }
+        const selection = { type: 'atom', color: 0xff0000, data: { uniqueId: 'C1', label: 'C1' } };
+
+        mockSelectionCallback([selection]);
+        widget.measurementControls.measureSelected();
+        mockViewCallback({ type: 'interaction-state', isDragging: true, isPanning: false });
+        expect(received['cifvis-view-change']).toBeUndefined();
+        mockViewCallback({ type: 'camera', state: { zoomScale: 2 } });
+        mockDensityCallback({ type: 'complete', fieldCount: 1, activeFieldIndex: 0 });
+
+        expect(received['cifvis-selection-change'].selections).toEqual([selection]);
+        expect(received['cifvis-measurement-change'].measurements).toHaveLength(1);
+        expect(received['cifvis-view-change']).toEqual({
+            interaction: { type: 'camera', state: { zoomScale: 2 } },
+            viewState: mockCrystalViewer.getViewState(),
+        });
+        expect(received['cifvis-density-change']).toMatchObject({
+            update: { type: 'complete', fieldCount: 1, activeFieldIndex: 0 },
+            state: { fieldCount: 1, activeFieldIndex: 0 },
+        });
     });
 
     test('loads structure from URL', async () => {

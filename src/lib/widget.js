@@ -238,7 +238,25 @@ export class CifViewWidget extends HTMLElement {
         this.customIcons = null;
         this.userOptions = {};
         this.scalarFieldDisplay = createScalarFieldDisplayState();
+        this._loading = false;
+        this._error = null;
+        this._loadSequence = 0;
         this.defaultCaption = 'Generated with <a href="https://github.com/Niolon/cifvis">CifVis</a>.';
+    }
+
+    /** @returns {boolean} Whether the widget is currently loading a structure. */
+    get loading() {
+        return this._loading;
+    }
+
+    /** @returns {Error|null} The most recent structure-loading error. */
+    get error() {
+        return this._error;
+    }
+
+    /** @returns {import('./structure/crystal.js').CrystalStructure|null} The loaded structure. */
+    get structure() {
+        return this.viewer?.state?.baseStructure ?? null;
     }
 
     get icons() {
@@ -246,6 +264,7 @@ export class CifViewWidget extends HTMLElement {
     }
 
     async connectedCallback() {
+        this.setAttribute('aria-busy', String(this._loading));
         this.baseCaption = this.getAttribute('caption') || this.defaultCaption;
         
         // Parse options before creating the viewer
@@ -310,6 +329,12 @@ export class CifViewWidget extends HTMLElement {
             this.measurements = state.measurements;
             this.updateCaption();
         });
+        this.stopWidgetMeasurementUpdates = this.viewer.onMeasurementChange?.(measurements => {
+            this.emitWidgetEvent('cifvis-measurement-change', {
+                ...this.measurementControls.getState(),
+                measurements: [...measurements],
+            });
+        }) ?? null;
         this.stopScalarFieldUpdates = this.viewer.onScalarFieldUpdate?.(update => {
             this.scalarFieldDisplay = reduceScalarFieldDisplayState(
                 this.scalarFieldDisplay,
@@ -317,14 +342,30 @@ export class CifViewWidget extends HTMLElement {
             );
             this.updateScalarFieldButton();
             this.updateCaption();
+            this.emitWidgetEvent('cifvis-density-change', {
+                update,
+                state: { ...this.scalarFieldDisplay },
+            });
         }) ?? null;
         this.stopModifierModeUpdates = this.viewer.onModifierModeChange?.(() => {
             this.prepopulateMeasurements();
             this.setupButtons();
         }) ?? null;
         this.stopSelectionUpdates = this.viewer.selections.onChange(selections => {
-            this.selections = selections;
+            this.selections = [...selections];
             this.updateCaption();
+            this.emitWidgetEvent('cifvis-selection-change', {
+                selections: [...this.selections],
+            });
+        }) ?? null;
+        this.stopViewUpdates = this.viewer.controls.onInteraction?.(interaction => {
+            if (interaction.type === 'interaction-state') {
+                return;
+            }
+            this.emitWidgetEvent('cifvis-view-change', {
+                interaction,
+                viewState: this.viewer.getViewState?.() ?? null,
+            });
         }) ?? null;
     }
 
@@ -333,6 +374,8 @@ export class CifViewWidget extends HTMLElement {
         this.stopScalarFieldUpdates?.();
         this.stopModifierModeUpdates?.();
         this.stopSelectionUpdates?.();
+        this.stopViewUpdates?.();
+        this.stopWidgetMeasurementUpdates?.();
         this.stopMeasurementState?.();
         this.stopMeasurementResults?.();
         this.stopMeasurementAction?.();
@@ -340,10 +383,39 @@ export class CifViewWidget extends HTMLElement {
         this.stopScalarFieldUpdates = null;
         this.stopModifierModeUpdates = null;
         this.stopSelectionUpdates = null;
+        this.stopViewUpdates = null;
+        this.stopWidgetMeasurementUpdates = null;
         this.stopMeasurementState = null;
         this.stopMeasurementResults = null;
         this.stopMeasurementAction = null;
         this.measurementControls = null;
+    }
+
+    /**
+     * Dispatches a public widget event across embedding boundaries.
+     * @param {string} type - DOM event name
+     * @param {object} detail - Stable event payload
+     */
+    emitWidgetEvent(type, detail) {
+        this.dispatchEvent(new CustomEvent(type, {
+            bubbles: true,
+            composed: true,
+            detail,
+        }));
+    }
+
+    /**
+     * Updates observable loading state and announces transitions.
+     * @param {boolean} loading - New loading state
+     * @param {object} context - Load source metadata
+     */
+    setLoadingState(loading, context = {}) {
+        if (this._loading === loading) {
+            return;
+        }
+        this._loading = loading;
+        this.setAttribute('aria-busy', String(loading));
+        this.emitWidgetEvent('cifvis-loading-change', { loading, ...context });
     }
 
     parseOptions() {
@@ -752,24 +824,22 @@ export class CifViewWidget extends HTMLElement {
 
                     // Reload structure if we already had one
                     if (currentCifContent) {
-                        await this.viewer.loadCIF(currentCifContent, currentCifBlock ?? 0);
-                        this.prepopulateMeasurements();
-                        this.setupButtons();
-                        this.updateCaption();
+                        const block = currentCifBlock ?? 0;
+                        await this.runStructureLoad(
+                            () => this.viewer.loadCIF(currentCifContent, block),
+                            { source: 'options', block },
+                        );
                     }
                 }
                 break;
             case 'block': {
                 const cifText = this.viewer.state.currentCifContent;
                 if (cifText) {
-                    this.resetLoadState();
-                    const result = await this.viewer.loadCIF(cifText, this.resolveBlockSelector(newValue));
-                    if (result.success) {
-                        this.prepopulateMeasurements();
-                        this.setupButtons();
-                    } else {
-                        this.createErrorDiv(new Error(result.error));
-                    }
+                    const block = this.resolveBlockSelector(newValue);
+                    await this.runStructureLoad(
+                        () => this.viewer.loadCIF(cifText, block),
+                        { source: 'block', block },
+                    );
                 }
                 break;
             }
@@ -797,13 +867,52 @@ export class CifViewWidget extends HTMLElement {
      */
     resetLoadState() {
         this.clearErrorDiv();
+        this._error = null;
         this.baseCaption = this.getAttribute('caption') || this.defaultCaption;
         this.updateCaption();
     }
 
-    async loadFromUrl(url, blockSelector = 0) {
+    /**
+     * Runs one observable structure load and normalizes its lifecycle events.
+     * @param {function(): Promise<object>} operation - Viewer load operation
+     * @param {object} context - Source and block metadata
+     * @returns {Promise<object>} Viewer-compatible load result
+     */
+    async runStructureLoad(operation, context) {
+        const loadId = ++this._loadSequence;
         this.resetLoadState();
+        this.setLoadingState(true, context);
         try {
+            const result = await operation();
+            if (!result?.success) {
+                throw new Error(result?.error || 'Unknown Error');
+            }
+            if (loadId !== this._loadSequence) {
+                return { ...result, cancelled: true };
+            }
+            this.prepopulateMeasurements();
+            this.setupButtons();
+            this.updateCaption();
+            this.setLoadingState(false, context);
+            this.emitWidgetEvent('cifvis-load', {
+                ...context,
+                structure: this.structure,
+                result,
+            });
+            return result;
+        } catch (cause) {
+            const error = cause instanceof Error ? cause : new Error(String(cause));
+            if (loadId !== this._loadSequence) {
+                return { success: false, cancelled: true, error: error.message };
+            }
+            this.setLoadingState(false, context);
+            this.createErrorDiv(error, context);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async loadFromUrl(url, blockSelector = 0) {
+        return this.runStructureLoad(async () => {
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -820,40 +929,25 @@ export class CifViewWidget extends HTMLElement {
             if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
                 throw new Error('Received no or invalid content for src.');
             }
-
-            const result = await this.viewer.loadCIF(text, blockSelector);
-
-            if (result.success) {
-                this.prepopulateMeasurements();
-                this.setupButtons();  // Setup buttons after loading
-                this.updateCaption();
-            } else {
-                throw new Error(result.error ||'Unknown Error');
-            }
-        } catch (error) {
-            this.createErrorDiv(error);
-        }
+            return this.viewer.loadCIF(text, blockSelector);
+        }, { source: 'url', url, block: blockSelector });
     }
 
     async loadFromString(data, blockSelector = 0) {
-        this.resetLoadState();
-        try {
-            const result = await this.viewer.loadCIF(data, blockSelector);
-
-            if (result.success) {
-                this.prepopulateMeasurements();
-                this.setupButtons();  // Setup buttons after loading
-                this.updateCaption();
-            } else {
-                throw new Error(result.error || 'Unknown Error');
-            }
-        } catch (error) {
-            this.createErrorDiv(error);
-        }
+        return this.runStructureLoad(
+            () => this.viewer.loadCIF(data, blockSelector),
+            { source: 'data', block: blockSelector },
+        );
     }
 
-    createErrorDiv(error) {
+    createErrorDiv(error, context = {}) {
         console.error('Error loading structure:', error);
+        this._error = error;
+        this.emitWidgetEvent('cifvis-error', {
+            ...context,
+            error,
+            message: error.message,
+        });
 
         // Sanitize error message
         const sanitizedMessage = this.sanitizeHTML(error.message);
@@ -1057,6 +1151,9 @@ export class CifViewWidget extends HTMLElement {
     }
 
     disconnectedCallback() {
+        this._loadSequence += 1;
+        this._loading = false;
+        this.setAttribute('aria-busy', 'false');
         this.disconnectViewerEvents();
         if (this.viewer) {
             this.viewer.dispose();
