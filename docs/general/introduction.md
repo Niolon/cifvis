@@ -50,8 +50,14 @@ backed by [`viewer.captureImage()`](../library/crystal-viewer.md) in the library
 
 To open a hosted CIF directly, pass its percent-encoded HTTP(S) URL as
 `?from-url=…`, for example
-`?from-url=https%3A%2F%2Fexample.org%2Fstructures%2Fsample.cif`. The source server must
-allow cross-origin browser requests (CORS) when it is on another origin.
+`?from-url=https%3A%2F%2Fexample.org%2Fstructures%2Fsample.cif`.
+
+::: warning Cross-origin URLs require CORS
+The remote server must return an `Access-Control-Allow-Origin` response header that permits
+the playground origin. A URL opening successfully in its own browser tab does not imply that
+JavaScript on the playground can read it. If the server does not permit CORS, download the CIF
+and load it with the playground's Upload button instead.
+:::
 
 ## License and citation
 

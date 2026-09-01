@@ -41,6 +41,26 @@ export function resolvePlaygroundFromUrl(search, baseUrl) {
 }
 
 /**
+ * Builds an actionable browser-fetch error for an external playground source.
+ * A rejected cross-origin fetch cannot reliably distinguish CORS from network
+ * failure, so the message identifies CORS as the usual cause rather than certainty.
+ * @param {{url:string, fileName:string}} source - Resolved external CIF source.
+ * @param {string} pageUrl - Current playground URL.
+ * @returns {string} User-facing failure message.
+ */
+export function externalCifFetchErrorMessage(source, pageUrl) {
+    const sourceUrl = new URL(source.url);
+    const page = new URL(pageUrl);
+    if (sourceUrl.origin !== page.origin) {
+        return `Could not fetch ${source.fileName} from ${sourceUrl.host}. ` +
+            'The browser blocked or could not reach this cross-origin URL. This is usually a CORS ' +
+            'restriction: the source server must send an Access-Control-Allow-Origin header. ' +
+            'Download the CIF and use the Upload button, or use a CORS-enabled source.';
+    }
+    return `Could not fetch ${source.fileName}. Check that the URL is reachable.`;
+}
+
+/**
  * Returns the data names advertised by one block without parsing loop values.
  * @param {object} block - Lazy CIF block.
  * @returns {Array<string>} CIF data names.

@@ -9,6 +9,7 @@ import {
 } from '../../src/lib/density/scalar-field-display-state.js';
 import {
     classifyPlaygroundCif,
+    externalCifFetchErrorMessage,
     hasSupportedReflectionData,
     resolvePlaygroundFromUrl,
 } from './playground-cif-routing.js';
@@ -770,8 +771,23 @@ async function loadInitialStructure() {
     try {
         const externalSource = resolvePlaygroundFromUrl(window.location.search, window.location.href);
         if (externalSource) {
-            updateStatus(`Loading ${externalSource.fileName}...`, 'info');
-            const response = await fetch(externalSource.url);
+            const crossOrigin = new URL(externalSource.url).origin !== window.location.origin;
+            updateStatus(
+                `Loading ${externalSource.fileName}...${crossOrigin ?
+                    ' The source server must allow cross-origin (CORS) access.' : ''}`,
+                'info',
+            );
+            let response;
+            try {
+                response = await fetch(externalSource.url);
+            } catch (error) {
+                console.error('External CIF fetch failed:', error);
+                updateStatus(
+                    externalCifFetchErrorMessage(externalSource, window.location.href),
+                    'error',
+                );
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
