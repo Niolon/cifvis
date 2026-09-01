@@ -1,3 +1,5 @@
+// @ts-check
+
 import { CifViewWidget } from '../lib/widget.js';
 
 const tagName = 'cifview-widget';

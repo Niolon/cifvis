@@ -18,6 +18,13 @@ Three.js is the only runtime dependency. The package exposes deliberately scoped
 
 The former `cifvis/nobrowser` entry has been removed; use `cifvis/core` instead.
 
+## TypeScript and editor support
+
+Every package entry point ships generated TypeScript declarations derived from the
+JavaScript source and its JSDoc. Import CifVis normally from JavaScript or TypeScript;
+editors and TypeScript resolve the matching declaration through the package export map.
+The runtime source remains JavaScript.
+
 ## A minimal viewer
 
 ```html

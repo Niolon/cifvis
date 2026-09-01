@@ -364,8 +364,9 @@ const viewerOptions = {
 
 /**
  * Recursively freezes a default option value.
- * @param {unknown} value - Value to freeze
- * @returns {unknown} The frozen value
+ * @template T
+ * @param {T} value - Value to freeze
+ * @returns {Readonly<T>} The frozen value
  */
 function deepFreeze(value) {
     if (value === null || typeof value !== 'object') {

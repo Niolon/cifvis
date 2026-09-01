@@ -3,13 +3,34 @@
   "version": "0.9.5",
   "description": "",
   "main": "./src/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
   "exports": {
-    ".": "./src/index.js",
-    "./core": "./src/core.js",
-    "./density": "./src/density.js",
-    "./experimental": "./src/experimental.js",
-    "./widget/register": "./src/widget/register.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./src/core.js",
+      "default": "./src/core.js"
+    },
+    "./density": {
+      "types": "./dist/density.d.ts",
+      "import": "./src/density.js",
+      "default": "./src/density.js"
+    },
+    "./experimental": {
+      "types": "./dist/experimental.d.ts",
+      "import": "./src/experimental.js",
+      "default": "./src/experimental.js"
+    },
+    "./widget/register": {
+      "types": "./dist/widget/register.d.ts",
+      "import": "./src/widget/register.js",
+      "default": "./src/widget/register.js"
+    }
   },
   "files": [
     "dist",
@@ -22,7 +43,8 @@
     "generate:deformation-cif": "node scripts/create-deformation-density-cif.mjs",
     "prebuild": "npm run generate-svg-icons",
     "dev": "vite --config vite/vite.config.mjs serve ./site",
-    "build": "vite build --config vite/vite.config.mjs",
+    "build": "vite build --config vite/vite.config.mjs && npm run build:types",
+    "build:types": "tsc -p tsconfig.types.json",
     "build:alldeps": "vite build --config vite/vite.alldeps.config.mjs",
     "build:site": "vite build --config vite/vite.site.config.mjs",
     "prepublishOnly": "npm run build",
@@ -30,6 +52,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:types": "npm run build:types && tsc -p tsconfig.types-test.json",
     "pretest:browser": "npm run generate-svg-icons && npm run build:alldeps",
     "test:browser": "node --test integration-tests/browser/contracts.test.mjs && npm run test:browser-measurement-hover",
     "test:database-modifiers": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs",
@@ -64,6 +87,7 @@
   "author": "Paul Niklas Ruth",
   "license": "MPL-2.0",
   "dependencies": {
+    "@types/three": "^0.185.4",
     "three": "^0.185.1"
   },
   "overrides": {
@@ -85,6 +109,7 @@
     "jsdom": "^29.1.1",
     "mathjs": "^15.2.0",
     "playwright-core": "^1.61.1",
+    "typescript": "^6.0.3",
     "vite": "^8.1.4",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.10"

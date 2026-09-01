@@ -2374,7 +2374,7 @@ export class ORTEPAtom extends ORTEPObject {
      * Creates visual marker for selection of atoms.
      * @param {number} color - Selection color in hex format
      * @param {object} options - Selection options containing visualization parameters
-     * @returns {THREE.Mesh} Selection marker mesh
+     * @returns {THREE.Object3D} Selection marker object
      */
     createSelectionMarker(color, options) {
         const outlineMesh = new THREE.Mesh(
@@ -3015,7 +3015,7 @@ export class ORTEPAtomInstance extends PooledSelectableObject {
      * Creates visual marker for selection of atoms.
      * @param {number} color - Selection color in hex format
      * @param {object} options - Selection options containing visualization parameters
-     * @returns {THREE.Mesh} Selection marker mesh
+     * @returns {THREE.Object3D} Selection marker object
      */
     createSelectionMarker(color, options) {
         const segment = this.segments[0];

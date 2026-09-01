@@ -1,3 +1,5 @@
+// @ts-check
+
 export { ORTEP3JsStructure } from './lib/ortep3d/ortep.js';
 export {
     ViewerInteractionCoupling,

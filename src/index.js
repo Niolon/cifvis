@@ -1,3 +1,5 @@
+// @ts-check
+
 export * from './public-core.js';
 
 export { CrystalViewer } from './lib/ortep3d/crystal-viewer.js';

@@ -93,16 +93,37 @@ describe('public package boundaries', () => {
         ].sort());
     });
 
-    test('removes nobrowser and declares every supported subpath', async () => {
+    test('removes nobrowser and declares runtime and type entry points', async () => {
         const packagePath = resolve(process.cwd(), 'package.json');
         const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
         expect(packageJson.exports).toEqual({
-            '.': './src/index.js',
-            './core': './src/core.js',
-            './density': './src/density.js',
-            './experimental': './src/experimental.js',
-            './widget/register': './src/widget/register.js',
+            '.': {
+                types: './dist/index.d.ts',
+                import: './src/index.js',
+                default: './src/index.js',
+            },
+            './core': {
+                types: './dist/core.d.ts',
+                import: './src/core.js',
+                default: './src/core.js',
+            },
+            './density': {
+                types: './dist/density.d.ts',
+                import: './src/density.js',
+                default: './src/density.js',
+            },
+            './experimental': {
+                types: './dist/experimental.d.ts',
+                import: './src/experimental.js',
+                default: './src/experimental.js',
+            },
+            './widget/register': {
+                types: './dist/widget/register.d.ts',
+                import: './src/widget/register.js',
+                default: './src/widget/register.js',
+            },
         });
+        expect(packageJson.types).toBe('./dist/index.d.ts');
         expect(packageJson.exports['./nobrowser']).toBeUndefined();
     });
 

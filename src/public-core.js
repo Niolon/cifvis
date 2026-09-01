@@ -1,3 +1,5 @@
+// @ts-check
+
 export { CIF } from './lib/read-cif/base.js';
 export { CrystalStructure } from './lib/structure/crystal.js';
 export { UAnisoADP } from './lib/structure/adp.js';
