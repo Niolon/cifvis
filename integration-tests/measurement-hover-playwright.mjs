@@ -11,6 +11,7 @@ const screenshotRoot = process.env.CIFVIS_MEASUREMENT_SCREENSHOT ||
     '/tmp/cifvis-measurement-hover.png';
 const browserCandidates = [
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
+    chromium.executablePath(),
     '/run/current-system/sw/bin/google-chrome',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
@@ -130,7 +131,10 @@ try {
     }
     await page.goto(`http://127.0.0.1:${port}/`);
     const widgetStats = await page.evaluate(async () => {
-        await import('/cifvis.alldeps.js');
+        const { CifViewWidget } = await import('/cifvis.alldeps.js');
+        if (!customElements.get('cifview-widget')) {
+            customElements.define('cifview-widget', CifViewWidget);
+        }
         document.body.replaceChildren();
         const widget = document.createElement('cifview-widget');
         widget.setAttribute('src', '/urea.cif');

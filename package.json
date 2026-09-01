@@ -30,6 +30,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "pretest:browser": "npm run generate-svg-icons && npm run build:alldeps",
+    "test:browser": "node --test integration-tests/browser/contracts.test.mjs && npm run test:browser-measurement-hover",
     "test:database-modifiers": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs",
     "test:database-ortep": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs",
     "test:database-ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh",
