@@ -10,6 +10,37 @@ const SUPPORTED_REFLECTION_DATA = new RegExp([
 ].join('|'), 'i');
 
 /**
+ * Resolves the playground's optional external-CIF query parameter.
+ * @param {string} search - Location search string, including an optional leading `?`.
+ * @param {string} baseUrl - Current page URL used to resolve relative sources.
+ * @returns {{url:string, fileName:string}|null} Fetch URL and display/export filename.
+ * @throws {Error} When the source is malformed or does not use HTTP(S).
+ */
+export function resolvePlaygroundFromUrl(search, baseUrl) {
+    const value = new URLSearchParams(search).get('from-url');
+    if (!value) {
+        return null;
+    }
+    let url;
+    try {
+        url = new URL(value, baseUrl);
+    } catch {
+        throw new Error('The from-url parameter is not a valid URL.');
+    }
+    if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('The from-url parameter must use HTTP or HTTPS.');
+    }
+    const encodedName = url.pathname.split('/').filter(Boolean).at(-1) || 'external.cif';
+    let fileName = encodedName;
+    try {
+        fileName = decodeURIComponent(encodedName);
+    } catch {
+        // Keep the encoded path component when it contains malformed escapes.
+    }
+    return { url: url.href, fileName };
+}
+
+/**
  * Returns the data names advertised by one block without parsing loop values.
  * @param {object} block - Lazy CIF block.
  * @returns {Array<string>} CIF data names.

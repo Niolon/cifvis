@@ -48,6 +48,11 @@ be copied as a JSON object ready for `<cifview-widget options='…'>` or the
 current view (with atom labels and an optional transparent background) for figures —
 backed by [`viewer.captureImage()`](../library/crystal-viewer.md) in the library.
 
+To open a hosted CIF directly, pass its percent-encoded HTTP(S) URL as
+`?from-url=…`, for example
+`?from-url=https%3A%2F%2Fexample.org%2Fstructures%2Fsample.cif`. The source server must
+allow cross-origin browser requests (CORS) when it is on another origin.
+
 ## License and citation
 
 CifVis is written by Paul Niklas Ruth and released under the

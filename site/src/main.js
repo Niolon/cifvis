@@ -10,6 +10,7 @@ import {
 import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
+    resolvePlaygroundFromUrl,
 } from './playground-cif-routing.js';
 import { clearStoredOptions, loadStartingView, loadStoredOptions } from './playground-settings.js';
 import { initializeSettingsOverlay } from './settings-overlay.js';
@@ -767,6 +768,16 @@ initializeUI();
 /** Loads the playground's original disorder example, including density work if supported. */
 async function loadInitialStructure() {
     try {
+        const externalSource = resolvePlaygroundFromUrl(window.location.search, window.location.href);
+        if (externalSource) {
+            updateStatus(`Loading ${externalSource.fileName}...`, 'info');
+            const response = await fetch(externalSource.url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            await loadPlaygroundText(await response.text(), externalSource.fileName);
+            return;
+        }
         const baseUrl = import.meta.env.BASE_URL;
         const response = await fetch(`${baseUrl}cif/disorder.cif`);
         if (!response.ok) {
@@ -794,7 +805,10 @@ async function loadInitialStructure() {
         }
     } catch (error) {
         console.error('Error loading initial structure:', error);
-        updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');
+        const fromUrl = new URLSearchParams(window.location.search).has('from-url');
+        updateStatus(fromUrl
+            ? `Error loading CIF from URL: ${error.message}`
+            : 'Error loading initial structure. Try uploading your own CIF file.', 'error');
     }
 }
 

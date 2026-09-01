@@ -2,9 +2,41 @@ import { describe, expect, it } from 'vitest';
 import {
     classifyPlaygroundCif,
     hasSupportedReflectionData,
+    resolvePlaygroundFromUrl,
 } from './playground-cif-routing.js';
 
 describe('playground CIF routing', () => {
+    it('resolves an encoded external CIF URL and derives its filename', () => {
+        const source = 'https://example.org/structures/my structure.cif?download=1';
+        const result = resolvePlaygroundFromUrl(
+            `?from-url=${encodeURIComponent(source)}`,
+            'https://niolon.github.io/cifvis/',
+        );
+
+        expect(result).toEqual({
+            url: 'https://example.org/structures/my%20structure.cif?download=1',
+            fileName: 'my structure.cif',
+        });
+    });
+
+    it('resolves relative CIF sources against the playground URL', () => {
+        expect(resolvePlaygroundFromUrl(
+            '?from-url=examples/sample.cif',
+            'https://example.org/playground/',
+        )).toEqual({
+            url: 'https://example.org/playground/examples/sample.cif',
+            fileName: 'sample.cif',
+        });
+    });
+
+    it('returns null without from-url and rejects non-web protocols', () => {
+        expect(resolvePlaygroundFromUrl('?unrelated=yes', 'https://example.org/')).toBeNull();
+        expect(() => resolvePlaygroundFromUrl(
+            '?from-url=file%3A%2F%2F%2Ftmp%2Fstructure.cif',
+            'https://example.org/',
+        )).toThrow('must use HTTP or HTTPS');
+    });
+
     it('recognises a coordinate CIF as a structure load', () => {
         const cif = `data_structure
 loop_
