@@ -1,101 +1,125 @@
 {
   "name": "cifvis",
-  "version": "0.9.5",
-  "description": "",
-  "main": "./src/index.js",
-  "types": "./dist/index.d.ts",
+  "version": "0.9.7",
+  "description": "Browser-native JavaScript library and web component for visualising crystal structures from CIF files.",
+
+  "author": "Paul Niklas Ruth",
+  "license": "MPL-2.0",
+  "homepage": "https://niolon.github.io/cifvis/docs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Niolon/cifvis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Niolon/cifvis/issues"
+  },
+
+  "keywords": [
+    "crystallography",
+    "cif",
+    "crystal-structure",
+    "x-ray-crystallography",
+    "electron-density",
+    "difference-density",
+    "ortep",
+    "anisotropic-displacement-parameters",
+    "threejs",
+    "webgl",
+    "molecular-visualization"
+  ],
+
   "type": "module",
+  "main": "./dist/cifvis.js",
+  "types": "./dist/index.d.ts",
+
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.js",
-      "default": "./src/index.js"
+      "import": "./dist/cifvis.js",
+      "default": "./dist/cifvis.js"
     },
     "./core": {
       "types": "./dist/core.d.ts",
-      "import": "./src/core.js",
-      "default": "./src/core.js"
+      "import": "./dist/core.js",
+      "default": "./dist/core.js"
     },
     "./density": {
       "types": "./dist/density.d.ts",
-      "import": "./src/density.js",
-      "default": "./src/density.js"
+      "import": "./dist/density.js",
+      "default": "./dist/density.js"
     },
     "./experimental": {
       "types": "./dist/experimental.d.ts",
-      "import": "./src/experimental.js",
-      "default": "./src/experimental.js"
+      "import": "./dist/experimental.js",
+      "default": "./dist/experimental.js"
     },
     "./widget/register": {
       "types": "./dist/widget/register.d.ts",
-      "import": "./src/widget/register.js",
-      "default": "./src/widget/register.js"
+      "import": "./dist/widget/register.js",
+      "default": "./dist/widget/register.js"
     }
   },
+
   "files": [
     "dist",
     "src/lib/generated",
     "src",
     "LICENSE.md"
   ],
+
+  "sideEffects": [
+    "./dist/widget/register.js"
+  ],
+
+  "engines": {
+    "node": ">=22"
+  },
+
   "scripts": {
-    "generate-svg-icons": "node scripts/generate-svg-icons.js",
-    "generate:deformation-cif": "node scripts/create-deformation-density-cif.mjs",
-    "prebuild": "npm run generate-svg-icons",
     "dev": "vite --config vite/vite.config.mjs serve ./site",
-    "build": "vite build --config vite/vite.config.mjs && npm run build:types",
+
+    "prebuild": "npm run generate:icons",
+    "build": "vite build --config vite/vite.config.mjs && vite build --config vite/vite.umd.config.mjs && npm run build:types",
     "build:types": "tsc -p tsconfig.types.json",
     "build:alldeps": "vite build --config vite/vite.alldeps.config.mjs",
     "build:site": "vite build --config vite/vite.site.config.mjs",
-    "prepublishOnly": "npm run build",
-    "pretest": "npm run generate-svg-icons",
+    "build:deployment": "node scripts/deploy.mjs --prepare-only",
+    "clean:deployment": "node scripts/deploy.mjs --clean",
+
+    "pretest": "npm run generate:icons",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:types": "npm run build:types && tsc -p tsconfig.types-test.json",
-    "pretest:browser": "npm run generate-svg-icons && npm run build:alldeps",
-    "test:browser": "node --test integration-tests/browser/contracts.test.mjs && npm run test:browser-measurement-hover",
-    "test:database-modifiers": "node --expose-gc --max-old-space-size=8192 integration-tests/test-structure-modifiers.mjs",
-    "test:database-ortep": "node --expose-gc --max-old-space-size=8192 integration-tests/test-ortep.mjs",
-    "test:database-ortep-chunked": "bash ./integration-tests/run-ortep-tests-chunked.sh",
-    "test:browser-measurement-hover": "node integration-tests/measurement-hover-playwright.mjs",
-    "test:database-collect-problem-cifs": "bash ./integration-tests/collect-problem-structures.sh",
-    "report:cod-maintainer": "node integration-tests/generate-cod-report.mjs",
-    "build:deployment": "node scripts/deploy.mjs --prepare-only",
-    "clean:deployment": "node scripts/deploy.mjs --clean",
-    "deploy": "node scripts/deploy.mjs",
+    "pretest:browser": "npm run generate:icons && npm run build:alldeps",
+    "test:browser": "node --test integration-tests/browser/contracts.test.mjs && node integration-tests/measurement-hover-playwright.mjs",
+    "test:release": "npm run lint && npm test && npm run test:types && npm run docs:build && npm pack --dry-run",
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+
+    "generate:icons": "node scripts/generate-svg-icons.js",
+    "generate:options": "node scripts/gen-options-reference.mjs",
+    "tool:deformation-cif": "node scripts/create-deformation-density-cif.mjs",
+
     "docs": "jsdoc -c jsdoc.json",
-    "gen:options": "node scripts/gen-options-reference.mjs",
-    "docs:dev": "npm run generate-svg-icons && npm run gen:options && vitepress dev docs",
-    "docs:build": "npm run generate-svg-icons && npm run gen:options && vitepress build docs",
+    "docs:dev": "npm run generate:icons && npm run generate:options && vitepress dev docs",
+    "docs:build": "npm run generate:icons && npm run generate:options && vitepress build docs",
     "docs:preview": "vitepress preview docs",
+
     "bench": "node benchmark/speed.mjs",
-    "prebench:labels": "npm run build:alldeps",
-    "bench:labels": "node benchmark/labels.mjs",
-    "bench:density-symmetry": "node benchmark/difference-density-symmetry.mjs",
-    "bench:contours": "node benchmark/contour-lines.mjs",
-    "bench:surface-sampler": "node benchmark/surface-sampler.mjs",
-    "bench:browser-density-consistency": "node benchmark/browser-node-fcalc-comparison.mjs",
-    "bench:browser-density-consistency-analyze": "node benchmark/analyze-browser-density-consistency.mjs",
-    "bench:browser-density-structure-impact": "node benchmark/browser-density-structure-impact.mjs",
-    "bench:browser-density-structure-impact-analyze": "node benchmark/analyze-browser-density-structure-impact.mjs",
-    "bench:bundle-startup": "node benchmark/bundle-startup.mjs"
+
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run lint && npm test && npm run test:types && npm run docs:build",
+
+    "deploy": "node scripts/deploy.mjs"
   },
-  "keywords": [],
-  "author": "Paul Niklas Ruth",
-  "license": "MPL-2.0",
+
   "dependencies": {
     "@types/three": "^0.185.4",
     "three": "^0.185.1"
   },
-  "overrides": {
-    "vitepress": {
-      "@vitejs/plugin-vue": "^6.0.8",
-      "vite": "^6.4.3"
-    }
-  },
+
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@typescript-eslint/utils": "^8.64.0",
@@ -113,5 +137,12 @@
     "vite": "^8.1.4",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.10"
+  },
+
+  "overrides": {
+    "vitepress": {
+      "@vitejs/plugin-vue": "^6.0.8",
+      "vite": "^6.4.3"
+    }
   }
 }

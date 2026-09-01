@@ -2,8 +2,8 @@
  * @vi-environment jsdom
  */
 
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { glob, readFile } from 'node:fs/promises';
+import { extname, resolve } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 
 const coreNames = [
@@ -99,32 +99,52 @@ describe('public package boundaries', () => {
         expect(packageJson.exports).toEqual({
             '.': {
                 types: './dist/index.d.ts',
-                import: './src/index.js',
-                default: './src/index.js',
+                import: './dist/cifvis.js',
+                default: './dist/cifvis.js',
             },
             './core': {
                 types: './dist/core.d.ts',
-                import: './src/core.js',
-                default: './src/core.js',
+                import: './dist/core.js',
+                default: './dist/core.js',
             },
             './density': {
                 types: './dist/density.d.ts',
-                import: './src/density.js',
-                default: './src/density.js',
+                import: './dist/density.js',
+                default: './dist/density.js',
             },
             './experimental': {
                 types: './dist/experimental.d.ts',
-                import: './src/experimental.js',
-                default: './src/experimental.js',
+                import: './dist/experimental.js',
+                default: './dist/experimental.js',
             },
             './widget/register': {
                 types: './dist/widget/register.d.ts',
-                import: './src/widget/register.js',
-                default: './src/widget/register.js',
+                import: './dist/widget/register.js',
+                default: './dist/widget/register.js',
             },
         });
         expect(packageJson.types).toBe('./dist/index.d.ts');
+        expect(packageJson.sideEffects).toEqual(['./dist/widget/register.js']);
         expect(packageJson.exports['./nobrowser']).toBeUndefined();
+    });
+
+    test('uses native-ESM-compatible relative import specifiers', async () => {
+        const invalidSpecifiers = [];
+        for await (const filePath of glob('src/**/*.js')) {
+            if (filePath.endsWith('.test.js')) {
+                continue;
+            }
+            const source = await readFile(filePath, 'utf8');
+            const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]/g;
+            for (const match of source.matchAll(importPattern)) {
+                const specifier = match[1];
+                const pathWithoutQuery = specifier.split('?')[0];
+                if (specifier.startsWith('.') && !extname(pathWithoutQuery)) {
+                    invalidSpecifiers.push(`${filePath}: ${specifier}`);
+                }
+            }
+        }
+        expect(invalidSpecifiers).toEqual([]);
     });
 
     test('registers the widget explicitly and idempotently', async () => {

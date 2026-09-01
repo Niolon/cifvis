@@ -63,11 +63,11 @@ any of those lower layers, check this file.
 
 | Entry | Purpose |
 |---|---|
-| `cifvis` → `src/index.js` | Stable browser-facing API with no custom-element registration side effect. |
-| `cifvis/core` → `src/core.js` | Stable browser-independent crystallographic API. |
-| `cifvis/density` → `src/density.js` | Supported numerical density API. |
-| `cifvis/experimental` → `src/experimental.js` | Low-level APIs without a semver stability promise. |
-| `cifvis/widget/register` → `src/widget/register.js` | Explicit, idempotent widget registration. |
+| `cifvis` → `dist/cifvis.js` | Stable browser-facing API with no custom-element registration side effect. |
+| `cifvis/core` → `dist/core.js` | Stable browser-independent crystallographic API. |
+| `cifvis/density` → `dist/density.js` | Supported numerical density API. |
+| `cifvis/experimental` → `dist/experimental.js` | Low-level APIs without a semver stability promise. |
+| `cifvis/widget/register` → `dist/widget/register.js` | Explicit, idempotent widget registration. |
 
 The stable core (`read-cif`, `structure`, `structure-modifiers`, `fix-cif`, measurements,
 and formatting) is deliberately DOM-free. Density numerics have their own supported
