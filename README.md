@@ -73,11 +73,17 @@ The stable root also exports `CIF`, `CrystalStructure`, formatting and measureme
 npm install       # install dependencies
 npm run dev       # start development server
 npm test          # run unit tests
+npm run test:browser # run real-browser contract tests
+npm run test:cod -- /path/to/cod # run a deterministic external-COD correctness sample
+npm run bench -- structure.cif   # measure browser loading and rendering performance
 npm run build     # build for production
 npm run deploy    # build and publish the GitHub Pages deployment
 ```
 
-Additional benchmark and integration-test scripts are documented in the [contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
+COD testing is manual and requires a local mirror; it is not part of the normal unit or
+release test commands. Full-corpus runs, exact-file reproduction, output selection, and
+problem-CIF collection are documented in the
+[contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
 
 ## Browser support
 

@@ -4,9 +4,9 @@
 # then merges the per-chunk logs/stats back into the same top-level files
 # test-structure-modifiers.mjs itself would produce for an unchunked run.
 #
-# Usage: integration-tests/run-modifiers-tests-parallel.sh [COD_DIR] [WORKERS] [CHUNK_SIZE]
+# Usage: integration-tests/run-modifiers-tests-parallel.sh [COD_INPUT] [WORKERS] [CHUNK_SIZE]
 
-COD_DIR=${1:-"../cod"}
+COD_INPUT=${1:-"../cod"}
 WORKERS=${2:-12}
 CHUNK_SIZE=${3:-2000}
 NODE_ARGS="--expose-gc --max-old-space-size=4096"
@@ -21,9 +21,22 @@ if [ -d "$CHUNK_LOGS_DIR" ]; then
 fi
 mkdir -p "$CHUNK_LOGS_DIR"
 
-echo "Counting CIF files in $COD_DIR..."
-TOTAL_FILES=$(find "$COD_DIR" -name "*.cif" | wc -l)
+echo "Counting CIF files in $COD_INPUT..."
+if [ -d "$COD_INPUT" ]; then
+    TOTAL_FILES=$(find "$COD_INPUT" -name "*.cif" | wc -l)
+elif [ -f "$COD_INPUT" ] && [[ "$COD_INPUT" == *.cif ]]; then
+    TOTAL_FILES=1
+elif [ -f "$COD_INPUT" ]; then
+    TOTAL_FILES=$(awk 'NF && $1 !~ /^#/ { count++ } END { print count + 0 }' "$COD_INPUT")
+else
+    echo "COD input not found: $COD_INPUT" >&2
+    exit 2
+fi
 echo "Found $TOTAL_FILES CIF files"
+if [ "$TOTAL_FILES" -eq 0 ]; then
+    echo "No CIF files found in $COD_INPUT" >&2
+    exit 2
+fi
 
 NUM_CHUNKS=$(( (TOTAL_FILES + CHUNK_SIZE - 1) / CHUNK_SIZE ))
 echo "Will process in $NUM_CHUNKS chunks of $CHUNK_SIZE files each, $WORKERS at a time"
@@ -50,7 +63,7 @@ for ((i = 0; i < NUM_CHUNKS; i++)); do
     done
 
     echo "Launching chunk $((i + 1))/$NUM_CHUNKS (files $START-$END)"
-    node $NODE_ARGS integration-tests/test-structure-modifiers.mjs "$COD_DIR" "$START" "$END" \
+    node $NODE_ARGS integration-tests/test-structure-modifiers.mjs "$COD_INPUT" "$START" "$END" \
         > "$CHUNK_LOGS_DIR/stdout-$START-$END.log" 2>&1 &
     ACTIVE_JOBS=$((ACTIVE_JOBS + 1))
 done

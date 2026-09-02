@@ -23,6 +23,10 @@ regressions in the library:
 The `lib/` directory holds shared sampling, statistics, and browser-harness utilities
 used by these benchmarks and by workspace analysis scripts.
 
+Correctness testing across COD is exposed separately through `npm run test:cod`. It
+reuses the deterministic sampling helper but does not mix browser timings or performance
+thresholds into modifier and ORTEP findings.
+
 For a paper campaign, run `../run-paper-campaign.sh` from the workspace root. It writes
 the complete integration logs, timing CSVs, selected COD identifiers, environment
 provenance, per-stage status, and `cod-maintainer-issues.json` into a new dated

@@ -93,6 +93,7 @@
     "test:types": "npm run build:types && tsc -p tsconfig.types-test.json",
     "pretest:browser": "npm run generate:icons && npm run build:alldeps",
     "test:browser": "node --test integration-tests/browser/contracts.test.mjs && node integration-tests/measurement-hover-playwright.mjs",
+    "test:cod": "node integration-tests/run-cod.mjs",
     "test:release": "npm run lint && npm test && npm run test:types && npm run docs:build && npm pack --dry-run",
 
     "lint": "eslint .",

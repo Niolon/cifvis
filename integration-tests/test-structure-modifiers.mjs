@@ -1,5 +1,4 @@
 import { readFileSync, appendFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -11,6 +10,7 @@ import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 import {
     checkCifBasis, checkGrownBonds, formatBondConsistencyReport,
 } from './lib/bond-consistency.mjs';
+import { resolveCodInput } from './lib/cod-input.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -736,25 +736,6 @@ async function processBatch(files, startIndex) {
 }
 
 /**
- * Recursively finds all CIF files in a directory and its subdirectories.
- * @param {string} dir - The directory to search in.
- * @returns {Promise<Array<string>>} Promise resolving to an array of CIF file paths.
- */
-async function findCIFFiles(dir) {
-    const entries = await readdir(dir, { withFileTypes: true });
-    const files = await Promise.all(entries.map(async (entry) => {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            return findCIFFiles(fullPath);
-        } else if (entry.name.toLowerCase().endsWith('.cif')) {
-            return [fullPath];
-        }
-        return [];
-    }));
-    return files.flat();
-}
-
-/**
  * Main function that executes the testing process.
  * Finds all CIF files in the specified directory, processes them in batches,
  * and generates summary statistics.
@@ -780,11 +761,12 @@ async function main() {
     }
 
     const startTime = Date.now();
-    const targetDir = process.argv[2] || './cod';
-    const resolvedPath = resolve(targetDir);
+    const target = process.argv[2] || './cod';
+    const input = resolveCodInput(target);
+    const resolvedPath = input.target;
 
-    console.log(`Starting CIF testing in directory: ${resolvedPath}`);
-    logMessage(`Starting CIF testing in directory: ${resolvedPath}`);
+    console.log(`Starting CIF testing from: ${resolvedPath}`);
+    logMessage(`Starting CIF testing from: ${resolvedPath}`);
 
     try {
         // Clear log files
@@ -796,14 +778,16 @@ async function main() {
             }
         });
 
-        let files = await findCIFFiles(resolvedPath);
+        let files = input.files.map(file => file.path);
         console.log(`Found ${files.length} CIF files`);
         logMessage(`Found ${files.length} CIF files`);
 
-        const beforeExclusion = files.length;
-        files = filterKnownBad(files);
-        console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
-        logMessage(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+        if (input.kind === 'directory') {
+            const beforeExclusion = files.length;
+            files = filterKnownBad(files, { codDir: resolvedPath });
+            console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+            logMessage(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+        }
 
         if (isChunk) {
             files = files.slice(startIndex, endIndex);
@@ -836,5 +820,8 @@ async function main() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    main().catch(console.error);
+    main().catch(error => {
+        console.error(error);
+        process.exitCode = 1;
+    });
 }

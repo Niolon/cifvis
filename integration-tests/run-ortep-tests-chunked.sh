@@ -3,7 +3,7 @@ set -uo pipefail
 
 # Configuration
 CHUNK_SIZE=2000
-COD_DIR=${1:-"../cod"}  # Use first argument as COD directory or default to ../cod
+COD_INPUT=${1:-"../cod"}  # Directory, CIF, or file manifest
 RESUME=${2:-}
 NODE_ARGS="--expose-gc --max-old-space-size=8192"
 BASE_LOGS_DIR="${CIFVIS_INTEGRATION_LOG_DIR:-integration-tests/logs}"
@@ -29,9 +29,22 @@ fi
 mkdir -p "$CHUNK_LOGS_DIR"
 
 # Count total CIF files
-echo "Counting CIF files in $COD_DIR..."
-TOTAL_FILES=$(find "$COD_DIR" -name "*.cif" | wc -l)
+echo "Counting CIF files in $COD_INPUT..."
+if [ -d "$COD_INPUT" ]; then
+    TOTAL_FILES=$(find "$COD_INPUT" -name "*.cif" | wc -l)
+elif [ -f "$COD_INPUT" ] && [[ "$COD_INPUT" == *.cif ]]; then
+    TOTAL_FILES=1
+elif [ -f "$COD_INPUT" ]; then
+    TOTAL_FILES=$(awk 'NF && $1 !~ /^#/ { count++ } END { print count + 0 }' "$COD_INPUT")
+else
+    echo "COD input not found: $COD_INPUT" >&2
+    exit 2
+fi
 echo "Found $TOTAL_FILES CIF files"
+if [ "$TOTAL_FILES" -eq 0 ]; then
+    echo "No CIF files found in $COD_INPUT" >&2
+    exit 2
+fi
 
 # Calculate number of chunks needed
 NUM_CHUNKS=$(( (TOTAL_FILES + CHUNK_SIZE - 1) / CHUNK_SIZE ))
@@ -61,7 +74,7 @@ for ((i=0; i<NUM_CHUNKS; i++)); do
         echo "Skipping completed chunk $START-$END"
     else
         # Run test script for this chunk.
-        if ! node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_DIR" $START $END; then
+        if ! node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_INPUT" $START $END; then
             echo "Chunk $START-$END failed." >&2
             FAILED_CHUNKS=$((FAILED_CHUNKS + 1))
             continue

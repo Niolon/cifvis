@@ -1,10 +1,10 @@
 import { readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
-import { readdir } from 'fs/promises';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { CIF, CrystalStructure } from '../src/core.js';
 import { ORTEP3JsStructure } from '../src/experimental.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
+import { resolveCodInput } from './lib/cod-input.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const baseLogsDir = resolve(process.env.CIFVIS_INTEGRATION_LOG_DIR || join(scriptDir, 'logs'));
@@ -184,25 +184,6 @@ async function processBatch(files, startIndex, logFiles) {
 }
 
 /**
- * Recursively finds all CIF files in a directory and its subdirectories
- * @param {string} dir - Directory to search for CIF files
- * @returns {Promise<string[]>} Array of paths to CIF files
- */
-async function findCIFFiles(dir) {
-    const entries = await readdir(dir, { withFileTypes: true });
-    const files = await Promise.all(entries.map(async (entry) => {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            return findCIFFiles(fullPath);
-        } else if (entry.name.toLowerCase().endsWith('.cif')) {
-            return [fullPath];
-        }
-        return [];
-    }));
-    return files.flat().sort();
-}
-
-/**
  * Writes a summary of the test results to the summary log file
  * @param {boolean} isInterim - Whether this is an interim summary (true) or final summary (false)
  * @param {object} logFiles - Object containing paths to log files
@@ -234,15 +215,16 @@ async function main() {
     const startTime = Date.now();
     
     // Parse command line arguments
-    const targetDir = process.argv[2] || './cod';
+    const target = process.argv[2] || './cod';
     const startIndex = parseInt(process.argv[3]) || 0;
     const endIndex = parseInt(process.argv[4]) || Infinity;
     
-    const resolvedPath = resolve(targetDir);
+    const input = resolveCodInput(target);
+    const resolvedPath = input.target;
     const logFiles = getLogFilenames(startIndex, endIndex);
     mkdirSync(logsDir, { recursive: true });
     
-    console.log(`Starting ORTEP testing in directory: ${resolvedPath}`);
+    console.log(`Starting ORTEP testing from: ${resolvedPath}`);
     console.log(`Processing files from index ${startIndex} to ${endIndex}`);
 
     try {
@@ -256,14 +238,16 @@ async function main() {
         });
 
         // Find and sort all CIF files
-        let files = await findCIFFiles(resolvedPath);
+        let files = input.files.map(file => file.path);
         console.log(`Found ${files.length} CIF files total`);
 
-        // Skip files already known (from COD's own manual-checks logs, or
-        // prior runs of this test) to be problematic
-        const beforeExclusion = files.length;
-        files = filterKnownBad(files);
-        console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+        // Directory mode retains the legacy known-bad filtering. Explicit CIFs
+        // and manifests are exact reproduction inputs and run as supplied.
+        if (input.kind === 'directory') {
+            const beforeExclusion = files.length;
+            files = filterKnownBad(files, { codDir: resolvedPath });
+            console.log(`Skipping ${beforeExclusion - files.length} known-bad files, ${files.length} remaining`);
+        }
 
         // Slice to requested range
         files = files.slice(startIndex, endIndex);
@@ -283,10 +267,14 @@ async function main() {
 
     } catch (error) {
         console.error('Fatal error:', error);
+        throw error;
     }
 }
 
 // Execute if run directly
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    main().catch(console.error);
+    main().catch(error => {
+        console.error(error);
+        process.exitCode = 1;
+    });
 }
