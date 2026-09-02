@@ -570,9 +570,8 @@ async function testCIFFile(filePath) {
             if (basisCheck.mismatched.length > 0) {
                 stats.bondConsistency.structuresWithUnsoundBasis++;
                 stats.bondConsistency.unsoundBasisBonds += basisCheck.mismatched.length;
-                // A depositor-side defect, not a cifvis one: report it as a Structure
-                // Error so generate-cod-report.mjs picks it up as a COD data-quality
-                // category. The maintainer log below stays reserved for findings cifvis
+                // A depositor-side defect, not a cifvis one: retain it in the raw error
+                // log. The bond-consistency log below stays reserved for findings cifvis
                 // itself introduced.
                 logMessage(
                     `Structure Error in ${filePath}: Bond lengths inconsistent with the`

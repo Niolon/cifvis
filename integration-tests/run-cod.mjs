@@ -181,15 +181,14 @@ export async function runCod(options, { execute = executeCommand } = {}) {
             clearArtifacts([
                 join(options.outputDirectory, 'modifier-test-stats.json'),
                 join(options.outputDirectory, 'modifier-test-summary.log'),
+                join(options.outputDirectory, 'modifier-test-errors.log'),
+                join(options.outputDirectory, 'modifier-test-bond-consistency.log'),
             ]);
             await execute('bash', ['integration-tests/run-modifiers-tests-parallel.sh', manifestPath], childOptions);
             metadata.stages.modifiers = validateModifierResults(
                 options.outputDirectory,
                 metadata.selection.selectedCount,
             );
-            clearArtifacts(reportArtifactPaths(options.outputDirectory));
-            await execute('node', ['integration-tests/generate-cod-report.mjs'], childOptions);
-            validateReportArtifacts(options.outputDirectory);
             writeMetadata(metadataPath, metadata);
         }
 
@@ -300,6 +299,8 @@ function validateModifierResults(outputDirectory, selectedCount) {
     requireArtifacts('Modifier stage', [
         statsPath,
         join(outputDirectory, 'modifier-test-summary.log'),
+        join(outputDirectory, 'modifier-test-errors.log'),
+        join(outputDirectory, 'modifier-test-bond-consistency.log'),
     ]);
     const stats = JSON.parse(readFileSync(statsPath, 'utf8'));
     if (stats.totalFiles !== selectedCount) {
@@ -320,7 +321,6 @@ function validateModifierResults(outputDirectory, selectedCount) {
         bondConsistencyFindings: stats.bondConsistency?.soundBasis?.runsWithInconsistentBonds ?? 0,
         slowFiles: stats.timing?.slowFiles ?? 0,
         summary: join(outputDirectory, 'modifier-test-summary.log'),
-        report: join(outputDirectory, 'cod-data-quality-report.md'),
     };
 }
 
@@ -356,23 +356,6 @@ function validateOrtepResults(outputDirectory, selectedCount) {
         summary: summaryPath,
         errors: join(outputDirectory, 'final-ortep-errors.log'),
     };
-}
-
-/** @param {string} outputDirectory - Run artifact directory. */
-function validateReportArtifacts(outputDirectory) {
-    requireArtifacts('COD report', reportArtifactPaths(outputDirectory));
-}
-
-/**
- * @param {string} outputDirectory - Run artifact directory
- * @returns {string[]} Required generated report paths
- */
-function reportArtifactPaths(outputDirectory) {
-    return [
-        join(outputDirectory, 'cod-data-quality-report.md'),
-        join(outputDirectory, 'cod-data-quality-report.csv'),
-        join(outputDirectory, 'cod-maintainer-issues.json'),
-    ];
 }
 
 /** @param {string[]} paths - Exact stale artifacts to remove before a stage. */
@@ -445,7 +428,6 @@ function printSummary(metadata) {
         console.log(`  Bond consistency findings: ${stage.bondConsistencyFindings}`);
         console.log(`  Slow cases: ${stage.slowFiles}`);
         console.log(`  Modifier summary: ${stage.summary}`);
-        console.log(`  COD report: ${stage.report}`);
     }
     if (metadata.stages.ortep.status === 'completed') {
         const stage = metadata.stages.ortep;

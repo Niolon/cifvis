@@ -177,6 +177,8 @@ describe('COD command interface', () => {
                     bondConsistency: { soundBasis: { runsWithInconsistentBonds: 3 } },
                 }));
                 writeFileSync(join(outputDirectory, 'modifier-test-summary.log'), 'summary');
+                writeFileSync(join(outputDirectory, 'modifier-test-errors.log'), 'findings');
+                writeFileSync(join(outputDirectory, 'modifier-test-bond-consistency.log'), 'findings');
             }
         };
 
@@ -220,10 +222,8 @@ describe('COD command interface', () => {
                     bondConsistency: { soundBasis: { runsWithInconsistentBonds: 3 } },
                 }));
                 writeFileSync(join(outputDirectory, 'modifier-test-summary.log'), 'summary');
-            } else if (args[0].endsWith('generate-cod-report.mjs')) {
-                writeFileSync(join(outputDirectory, 'cod-data-quality-report.md'), 'report');
-                writeFileSync(join(outputDirectory, 'cod-data-quality-report.csv'), 'report');
-                writeFileSync(join(outputDirectory, 'cod-maintainer-issues.json'), '{}');
+                writeFileSync(join(outputDirectory, 'modifier-test-errors.log'), 'findings');
+                writeFileSync(join(outputDirectory, 'modifier-test-bond-consistency.log'), 'findings');
             }
         };
 
@@ -234,6 +234,7 @@ describe('COD command interface', () => {
             connectivityFindings: 2,
             bondConsistencyFindings: 3,
         });
+        expect(metadata.stages.modifiers).not.toHaveProperty('report');
     });
 
     test('runs both existing engines and problem collection on one CIF', () => {
@@ -255,7 +256,9 @@ describe('COD command interface', () => {
         expect(metadata.stages.ortep.processed).toBe(1);
         expect(existsSync(join(outputDirectory, 'modifier-test-summary.log'))).toBe(true);
         expect(existsSync(join(outputDirectory, 'final-ortep-summary.log'))).toBe(true);
-        expect(existsSync(join(outputDirectory, 'cod-data-quality-report.md'))).toBe(true);
         expect(existsSync(join(outputDirectory, 'problem_cifs'))).toBe(true);
+        expect(existsSync(join(outputDirectory, 'cod-data-quality-report.md'))).toBe(false);
+        expect(existsSync(join(outputDirectory, 'cod-data-quality-report.csv'))).toBe(false);
+        expect(existsSync(join(outputDirectory, 'cod-maintainer-issues.json'))).toBe(false);
     }, 70000);
 });

@@ -82,7 +82,7 @@ npm run deploy    # build and publish the GitHub Pages deployment
 
 COD testing is manual and requires a local mirror; it is not part of the normal unit or
 release test commands. Full-corpus runs, exact-file reproduction, output selection, and
-problem-CIF collection are documented in the
+raw finding logs and problem-CIF collection are documented in the
 [contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
 
 ## Browser support

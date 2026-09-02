@@ -144,8 +144,15 @@ Directory runs exclude entries identified by the COD mirror's own manual-check l
 Single CIF and file-list inputs are exact reproduction inputs and are not filtered.
 Per-structure findings are reported without failing the command; missing artifacts,
 crashed chunks, and accounting discrepancies do fail it. Each output directory contains
-the selected `cod-manifest.txt`, provenance and stage status in `cod-run.json`, the
-existing modifier and ORTEP summaries, and the generated COD data-quality reports.
+the selected `cod-manifest.txt`, provenance and stage status in `cod-run.json`, and the
+raw correctness artifacts:
+
+- `modifier-test-stats.json`
+- `modifier-test-summary.log`
+- `modifier-test-errors.log`
+- `modifier-test-bond-consistency.log`
+- `final-ortep-summary.log`
+- `final-ortep-errors.log`
 
 To copy the problematic structures named by a run into its `problem_cifs/` directory:
 
