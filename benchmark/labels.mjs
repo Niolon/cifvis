@@ -3,8 +3,8 @@
 // shipped in site/public/cif, so the default is self-contained.
 //
 // Usage:
-//   npm run bench:labels
-//   npm run bench:labels -- path/to/file-or-directory --mode maximum-coverage
+//   node benchmark/labels.mjs
+//   node benchmark/labels.mjs path/to/file-or-directory --mode maximum-coverage
 //
 // Options:
 //   --mode <mode>       auto-omit, quality-omit, performance-omit, or maximum-coverage

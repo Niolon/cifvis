@@ -3,7 +3,7 @@
 A JavaScript library and web component for visualising crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the CIF. Everything &mdash; CIF parsing, structure construction, and display &mdash; runs locally in the browser; there is no server component.
 
 - **Try it:** [interactive viewer](https://niolon.github.io/cifvis/) &mdash; load your own CIF.
-- **Add it to your site:** [interactive widget walkthrough](https://niolon.github.io/cifvis/docs/widget-usage.html).
+- **Add it to your site:** [interactive widget walkthrough](https://niolon.github.io/cifvis/docs/widget/getting-started.html).
 
 ## Features
 
