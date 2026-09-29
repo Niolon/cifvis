@@ -3,7 +3,8 @@ set -uo pipefail
 
 # Configuration
 CHUNK_SIZE=2000
-COD_DIR=${1:-"../cod"}  # Use first argument as COD directory or default to ../cod
+COD_INPUT=${1:-"../cod"}  # Directory, CIF, or file manifest
+RESUME=${2:-}
 NODE_ARGS="--expose-gc --max-old-space-size=8192"
 BASE_LOGS_DIR="${CIFVIS_INTEGRATION_LOG_DIR:-integration-tests/logs}"
 CHUNK_LOGS_DIR="$BASE_LOGS_DIR/ortep-chunked"
@@ -13,17 +14,37 @@ FINAL_ERRORS="$BASE_LOGS_DIR/final-ortep-errors.log"
 # Create base logs directory if it doesn't exist
 mkdir -p "$BASE_LOGS_DIR"
 
-# Handle ortep-chunked directory
-if [ -d "$CHUNK_LOGS_DIR" ]; then
+# Handle ortep-chunked directory. In resume mode, a completed chunk is
+# identified by its final summary file and is never rerun.
+if [ "$RESUME" = "--resume" ]; then
+    if [ ! -d "$CHUNK_LOGS_DIR" ]; then
+        echo "Cannot resume: no existing chunk log directory at $CHUNK_LOGS_DIR" >&2
+        exit 2
+    fi
+    echo "Resuming from completed chunk summaries in $CHUNK_LOGS_DIR..."
+elif [ -d "$CHUNK_LOGS_DIR" ]; then
     echo "Cleaning existing ortep-chunked directory..."
     rm -rf "$CHUNK_LOGS_DIR"
 fi
 mkdir -p "$CHUNK_LOGS_DIR"
 
 # Count total CIF files
-echo "Counting CIF files in $COD_DIR..."
-TOTAL_FILES=$(find "$COD_DIR" -name "*.cif" | wc -l)
+echo "Counting CIF files in $COD_INPUT..."
+if [ -d "$COD_INPUT" ]; then
+    TOTAL_FILES=$(find "$COD_INPUT" -name "*.cif" | wc -l)
+elif [ -f "$COD_INPUT" ] && [[ "$COD_INPUT" == *.cif ]]; then
+    TOTAL_FILES=1
+elif [ -f "$COD_INPUT" ]; then
+    TOTAL_FILES=$(awk 'NF && $1 !~ /^#/ { count++ } END { print count + 0 }' "$COD_INPUT")
+else
+    echo "COD input not found: $COD_INPUT" >&2
+    exit 2
+fi
 echo "Found $TOTAL_FILES CIF files"
+if [ "$TOTAL_FILES" -eq 0 ]; then
+    echo "No CIF files found in $COD_INPUT" >&2
+    exit 2
+fi
 
 # Calculate number of chunks needed
 NUM_CHUNKS=$(( (TOTAL_FILES + CHUNK_SIZE - 1) / CHUNK_SIZE ))
@@ -45,25 +66,28 @@ FAILED_CHUNKS=0
 for ((i=0; i<NUM_CHUNKS; i++)); do
     START=$((i * CHUNK_SIZE))
     END=$((START + CHUNK_SIZE))
+    SUMMARY_FILE="$CHUNK_LOGS_DIR/ortep-test-summary-$START-$END.log"
+    ERROR_FILE="$CHUNK_LOGS_DIR/ortep-test-errors-$START-$END.log"
     
     echo "Processing chunk $((i+1))/$NUM_CHUNKS (files $START to $END)"
-    
-    # Run test script for this chunk
-    if ! node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_DIR" $START $END; then
-        echo "Chunk $START-$END failed." >&2
-        FAILED_CHUNKS=$((FAILED_CHUNKS + 1))
-        continue
+    if [ "$RESUME" = "--resume" ] && [ -f "$SUMMARY_FILE" ]; then
+        echo "Skipping completed chunk $START-$END"
+    else
+        # Run test script for this chunk.
+        if ! node $NODE_ARGS integration-tests/test-ortep.mjs "$COD_INPUT" $START $END; then
+            echo "Chunk $START-$END failed." >&2
+            FAILED_CHUNKS=$((FAILED_CHUNKS + 1))
+            continue
+        fi
     fi
     
     # Append errors to final error file
-    ERROR_FILE="$CHUNK_LOGS_DIR/ortep-test-errors-$START-$END.log"
     if [ -f "$ERROR_FILE" ]; then
         echo -e "\n=== Errors from files $START-$END ===\n" >> "$FINAL_ERRORS"
         cat "$ERROR_FILE" >> "$FINAL_ERRORS"
     fi
     
     # Extract statistics from this chunk's summary
-    SUMMARY_FILE="$CHUNK_LOGS_DIR/ortep-test-summary-$START-$END.log"
     if [ -f "$SUMMARY_FILE" ]; then
         # Extract numbers using grep and sed
         PROCESSED=$(grep "Total files processed:" "$SUMMARY_FILE" | grep -o '[0-9]*')
@@ -83,7 +107,8 @@ done
 
 # Calculate final percentages
 if [ $TOTAL_PROCESSED -gt 0 ]; then
-    SUCCESS_PERCENT=$(echo "scale=1; $TOTAL_SUCCESSFUL * 100 / $TOTAL_PROCESSED" | bc)
+    SUCCESS_PERCENT=$(awk -v successful="$TOTAL_SUCCESSFUL" -v total="$TOTAL_PROCESSED" \
+        'BEGIN { printf "%.1f", successful * 100 / total }')
 else
     SUCCESS_PERCENT="0.0"
 fi

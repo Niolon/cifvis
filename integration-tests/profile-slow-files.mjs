@@ -10,7 +10,7 @@ import { join, resolve } from 'path';
 import {
     CIF, CrystalStructure, tryToFixCifBlock,
     HydrogenFilter, DisorderFilter, SymmetryGrower,
-} from '../src/index.nobrowser.js';
+} from '../src/core.js';
 import { filterKnownBad } from './lib/known-bad-cifs.mjs';
 
 const SLOW_THRESHOLD_MS = 1000;

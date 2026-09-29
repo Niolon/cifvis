@@ -789,7 +789,11 @@ export function readReflectionIntensities(cifText, cifBlock = 0, options = {}) {
         diagnostics.reflectionSourceDiscoveryMs += now() - rawDiscoveryStarted;
     }
     if (!parsed) {
-        throw new Error(`No usable reflection intensities found for source "${requestedSource}"`);
+        throw new Error(
+            `No usable reflection intensities were found for source "${requestedSource}". ` +
+            'Difference density requires finite observed values; check the reflection value and sigma ' +
+            'columns, their missing-value markers, and the selected reflection source.',
+        );
     }
 
     const symmetryStarted = debug ? now() : 0;

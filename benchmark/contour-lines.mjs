@@ -19,7 +19,7 @@ const cifPath = process.argv[2];
 const cubePath = process.argv[3];
 const runCount = Math.max(1, Number(process.argv[4]) || 7);
 if (!cifPath || !cubePath) {
-    throw new Error('Usage: npm run bench:contours -- structure.cif field.cube [runs]');
+    throw new Error('Usage: node benchmark/contour-lines.mjs structure.cif field.cube [runs]');
 }
 
 /** @returns {number} Median of numeric observations. */

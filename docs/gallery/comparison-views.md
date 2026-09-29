@@ -20,7 +20,7 @@ or teaching pages contrasting displacement-ellipsoid conventions.
 </cifview-widget>
 
 <script type="module">
-    import { coupleViewerInteractions } from 'cifvis';
+    import { coupleViewerInteractions } from 'cifvis/experimental';
 
     const widgets = [document.getElementById('left'), document.getElementById('right')];
     // Widgets initialize asynchronously — wait for their structures.
@@ -33,7 +33,8 @@ or teaching pages contrasting displacement-ellipsoid conventions.
 ```
 
 ```js [Library (JS)]
-import { CrystalViewer, coupleViewerInteractions } from 'cifvis';
+import { CrystalViewer } from 'cifvis';
+import { coupleViewerInteractions } from 'cifvis/experimental';
 
 const left = new CrystalViewer(leftContainer, { renderStyle: 'solid-3d' });
 const right = new CrystalViewer(rightContainer, { renderStyle: 'cutout-3d' });

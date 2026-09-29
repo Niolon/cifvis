@@ -4,9 +4,11 @@ Hydrogen, disorder, and symmetry modes plus the complete molecular transform, pa
 and camera reset can be coupled across any mixture of `CrystalViewer` and initialized
 `<cifview-widget>` instances. Inputs are batched per animation frame and every peer
 renders only once for that batch; semantic mode changes rebuild each peer at most once.
+The coupling API currently lives in `cifvis/experimental` and may evolve independently
+of the stable root API.
 
 ```js
-import { coupleViewerInteractions } from 'cifvis';
+import { coupleViewerInteractions } from 'cifvis/experimental';
 
 const coupling = coupleViewerInteractions(leftViewer, rightViewer, thirdWidget);
 

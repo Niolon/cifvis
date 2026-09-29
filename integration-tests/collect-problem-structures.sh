@@ -1,11 +1,21 @@
 #!/bin/bash
 
+# The positional directory matches `test:cod --out`; environment/default
+# fallbacks keep direct use compatible with existing workflows.
+LOGS_DIR=${1:-"${CIFVIS_INTEGRATION_LOG_DIR:-integration-tests/logs}"}
+if [ -z "$LOGS_DIR" ] || [ "$LOGS_DIR" = "/" ]; then
+    echo "Refusing unsafe logs directory: $LOGS_DIR" >&2
+    exit 2
+fi
+
 # Create or empty the problem_cifs directory
-PROBLEM_DIR="integration-tests/logs/problem_cifs"
+PROBLEM_DIR="$LOGS_DIR/problem_cifs"
 rm -rf "$PROBLEM_DIR"
 mkdir -p "$PROBLEM_DIR"
 
-# Process final-ortep-errors.log
+# Process final-ortep-errors.log when the ORTEP stage was included.
+ORTEP_LOG="$LOGS_DIR/final-ortep-errors.log"
+if [[ -f "$ORTEP_LOG" ]]; then
 while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ $line =~ "Failed ORTEP generation for "(.*)$ ]]; then
         # Store the filepath for next line processing
@@ -20,9 +30,12 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         basename="${filename%.cif}"
         cp "$current_file" "$PROBLEM_DIR/inferelemerr_$basename.cif"
     fi
-done < "integration-tests/logs/final-ortep-errors.log"
+done < "$ORTEP_LOG"
+fi
 
-# Process modifier-test-errors.log
+# Process modifier-test-errors.log when the modifier stage was included.
+MODIFIER_LOG="$LOGS_DIR/modifier-test-errors.log"
+if [[ -f "$MODIFIER_LOG" ]]; then
 while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ $line =~ "CIF Error in "(/[^\"]+\.cif) ]]; then
         filepath="${BASH_REMATCH[1]}"
@@ -45,14 +58,15 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         basename="${filename%.cif}"
         cp "$filepath" "$PROBLEM_DIR/connerr_$basename.cif"
     fi
-done < "integration-tests/logs/modifier-test-errors.log"
+done < "$MODIFIER_LOG"
+fi
 
 # Process modifier-test-bond-consistency.log. This log holds only findings that the
 # source CIF does not account for - a structure that verifies against its own
 # coordinates but still grows into bonds of the wrong length, or bonds naming an atom
 # that was never materialised. These are cifvis's own defects, so unlike the other
 # categories the aim is to drive this set to empty.
-BOND_LOG="integration-tests/logs/modifier-test-bond-consistency.log"
+BOND_LOG="$LOGS_DIR/modifier-test-bond-consistency.log"
 if [[ -f "$BOND_LOG" ]]; then
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ $line =~ "Bond consistency in "(/[^\"]+\.cif) ]]; then

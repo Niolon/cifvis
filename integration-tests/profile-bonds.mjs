@@ -4,7 +4,8 @@
 // _geom_bond loop or not, to quantify the cost of on-the-fly bond generation.
 import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+import { CIF, CrystalStructure } from '../src/core.js';
+import { ORTEP3JsStructure } from '../src/experimental.js';
 import {
     HydrogenFilter, DisorderFilter, SymmetryGrower,
 } from '../src/lib/structure/structure-modifiers/modes.js';

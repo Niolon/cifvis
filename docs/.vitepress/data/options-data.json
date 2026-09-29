@@ -256,7 +256,7 @@
     {
       "path": "packingCutoff",
       "type": "Number",
-      "default": "1"
+      "default": "1.001"
     }
   ],
   "density": [
@@ -536,6 +536,21 @@
       "path": "bondColor",
       "type": "Color",
       "default": "\"#666666\""
+    },
+    {
+      "path": "bondDisorderColorsEnabled",
+      "type": "Boolean",
+      "default": "true"
+    },
+    {
+      "path": "bondColorPart1",
+      "type": "Color",
+      "default": "\"#333333\""
+    },
+    {
+      "path": "bondColorPart2Plus",
+      "type": "Color",
+      "default": "\"#CCCCCC\""
     },
     {
       "path": "bondColorRoughness",

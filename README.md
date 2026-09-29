@@ -3,7 +3,7 @@
 A JavaScript library and web component for visualising crystal structures from CIF files, powered by Three.js. Atoms, bonds and hydrogen bonds are displayed as entered in the CIF. Everything &mdash; CIF parsing, structure construction, and display &mdash; runs locally in the browser; there is no server component.
 
 - **Try it:** [interactive viewer](https://niolon.github.io/cifvis/) &mdash; load your own CIF.
-- **Add it to your site:** [interactive widget walkthrough](https://niolon.github.io/cifvis/docs/widget-usage.html).
+- **Add it to your site:** [interactive widget walkthrough](https://niolon.github.io/cifvis/docs/widget/getting-started.html).
 
 ## Features
 
@@ -45,11 +45,13 @@ npm install cifvis
 <cifview-widget src="structure.cif" caption="Crystal Structure"></cifview-widget>
 
 <script type="module">
-  import { CifViewWidget } from 'cifvis';
+  import 'cifvis/widget/register';
 </script>
 ```
 
 See the [widget docs](https://niolon.github.io/cifvis/docs/widget/getting-started.html) for attributes, options, and styling.
+Embedding applications can observe loading, errors, selections, measurements, view
+changes, and density updates through the widget's documented DOM events.
 
 ### Library
 
@@ -63,7 +65,7 @@ See the [widget docs](https://niolon.github.io/cifvis/docs/widget/getting-starte
 </script>
 ```
 
-The package also exports `CIF`, `CrystalStructure`, `ORTEP3JsStructure`, `formatValueEsd`, and `coupleViewerInteractions`. See the [library docs](https://niolon.github.io/cifvis/docs/library/getting-started.html) for the full API, density maps, and coupled viewers.
+The stable root also exports `CIF`, `CrystalStructure`, formatting and measurement helpers, and structure Filters. Numerical APIs live at `cifvis/density`; low-level Three.js integrations live at `cifvis/experimental`. See the [library docs](https://niolon.github.io/cifvis/docs/library/getting-started.html) for details.
 
 ## Development
 
@@ -71,11 +73,17 @@ The package also exports `CIF`, `CrystalStructure`, `ORTEP3JsStructure`, `format
 npm install       # install dependencies
 npm run dev       # start development server
 npm test          # run unit tests
+npm run test:browser # run real-browser contract tests
+npm run test:cod -- /path/to/cod # run a deterministic external-COD correctness sample
+npm run bench -- structure.cif   # measure browser loading and rendering performance
 npm run build     # build for production
 npm run deploy    # build and publish the GitHub Pages deployment
 ```
 
-Additional benchmark and integration-test scripts are documented in the [contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
+COD testing is manual and requires a local mirror; it is not part of the normal unit or
+release test commands. Full-corpus runs, exact-file reproduction, output selection, and
+raw finding logs and problem-CIF collection are documented in the
+[contributing guide](https://niolon.github.io/cifvis/docs/contributing/).
 
 ## Browser support
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { UnitCell } from '../structure/crystal';
+import { UnitCell } from '../structure/crystal.js';
 
 /**
  * Creates a 3D arrow visualization using a cylinder shaft and cone head.

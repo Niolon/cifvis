@@ -107,10 +107,10 @@ export const descriptions = {
         '<code>group&lt;rank&gt;of&lt;total&gt;</code> value.',
     'symmetryMode': '<code>none</code>, <code>hbonds</code>, <code>fragment</code>, ' +
         '<code>fragment-hbonds</code>, <code>cell</code>, or <code>fragment-cell</code>.',
-    'packingCutoff': '<code>1</code> (default) shows the canonical, Z-correct unit cell. A value ' +
-        'above <code>1</code> (e.g. <code>1.001</code>) additionally duplicates atoms sitting ' +
-        'within that margin of a low cell face onto the matching high face(s), for a "closed" ' +
-        'packing diagram with atoms on every face, edge and corner. The duplicates are unbonded.',
+    'packingCutoff': '<code>1.001</code> (default) closes the unit cell independently along all ' +
+        'three fractional axes, duplicating atoms near low faces onto matching high faces and ' +
+        'including the required edge and corner combinations. Set <code>1</code> for the canonical, ' +
+        'Z-correct <code>[0,1)</code> cell.',
 
     // Atom labels
     'atomLabels.show': {
@@ -345,6 +345,10 @@ export const descriptions = {
         'radii for bond generation (capped at 0.40 &Aring; for s-block element pairs, even if set ' +
         'higher).',
     'bondRadius': 'Radius of bond cylinders.',
+    'bondDisorderColorsEnabled': 'Uses separate PART 1 and PART 2+ bond colours in 3D when ' +
+        'both disorder parts are displayed. Element-split colouring takes precedence.',
+    'bondColorPart1': 'Optional 3D colour for bonds connected to a disorder PART 1 atom.',
+    'bondColorPart2Plus': 'Optional 3D colour for bonds connected to a disorder PART 2 or higher atom.',
     'bondSections': 'Number of sections in bond cylinders.',
     'bondColorMode': '<code>uniform</code> uses <code>bondColor</code>; <code>split</code> colors ' +
         'each 3D bond half like its connected atom. The split mode remains one instanced draw call.',

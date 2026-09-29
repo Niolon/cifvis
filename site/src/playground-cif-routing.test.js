@@ -1,10 +1,66 @@
 import { describe, expect, it } from 'vitest';
 import {
     classifyPlaygroundCif,
+    externalCifFetchErrorMessage,
     hasSupportedReflectionData,
+    resolvePlaygroundFromUrl,
 } from './playground-cif-routing.js';
 
 describe('playground CIF routing', () => {
+    it('resolves an encoded external CIF URL and derives its filename', () => {
+        const source = 'https://example.org/structures/my structure.cif?download=1';
+        const result = resolvePlaygroundFromUrl(
+            `?from-url=${encodeURIComponent(source)}`,
+            'https://niolon.github.io/cifvis/',
+        );
+
+        expect(result).toEqual({
+            url: 'https://example.org/structures/my%20structure.cif?download=1',
+            fileName: 'my structure.cif',
+        });
+    });
+
+    it('resolves relative CIF sources against the playground URL', () => {
+        expect(resolvePlaygroundFromUrl(
+            '?from-url=examples/sample.cif',
+            'https://example.org/playground/',
+        )).toEqual({
+            url: 'https://example.org/playground/examples/sample.cif',
+            fileName: 'sample.cif',
+        });
+    });
+
+    it('returns null without from-url and rejects non-web protocols', () => {
+        expect(resolvePlaygroundFromUrl('?unrelated=yes', 'https://example.org/')).toBeNull();
+        expect(() => resolvePlaygroundFromUrl(
+            '?from-url=file%3A%2F%2F%2Ftmp%2Fstructure.cif',
+            'https://example.org/',
+        )).toThrow('must use HTTP or HTTPS');
+    });
+
+    it('clearly signposts likely CORS failures for cross-origin sources', () => {
+        const message = externalCifFetchErrorMessage({
+            url: 'https://crystallography.net/cod/1100509.cif',
+            fileName: '1100509.cif',
+        }, 'http://localhost:5173/');
+
+        expect(message).toContain('crystallography.net');
+        expect(message).toContain('cross-origin');
+        expect(message).toContain('CORS');
+        expect(message).toContain('Access-Control-Allow-Origin');
+        expect(message).toContain('Upload button');
+    });
+
+    it('does not blame CORS for a same-origin fetch failure', () => {
+        const message = externalCifFetchErrorMessage({
+            url: 'http://localhost:5173/cif/missing.cif',
+            fileName: 'missing.cif',
+        }, 'http://localhost:5173/');
+
+        expect(message).toContain('Check that the URL is reachable');
+        expect(message).not.toContain('CORS');
+    });
+
     it('recognises a coordinate CIF as a structure load', () => {
         const cif = `data_structure
 loop_

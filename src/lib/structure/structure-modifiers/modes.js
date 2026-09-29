@@ -299,10 +299,10 @@ export class SymmetryGrower extends BaseFilter {
      * Creates a new symmetry grower
      * @param {SymmetryGrower.MODES} [mode] - Initial mode for growing symmetry
      * @param {number} [packingCutoff] - Upper fractional bound for cell membership in the cell modes.
-     *  1.0 (default) wraps far-face atoms in for a correct Z; a slightly larger value (e.g. 1.001)
-     *  keeps atoms sitting on the upper cell border.
+     *  1.001 (default) closes all three pairs of cell faces; 1.0 wraps far-face atoms in
+     *  for a canonical, Z-correct cell.
      */
-    constructor(mode = SymmetryGrower.MODES.NONE, packingCutoff = 1) {
+    constructor(mode = SymmetryGrower.MODES.NONE, packingCutoff = 1.001) {
         super(SymmetryGrower.MODES, mode, 'SymmetryGrower', SymmetryGrower.PREFERRED_FALLBACK_ORDER);
         this.packingCutoff = packingCutoff;
     }

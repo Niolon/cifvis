@@ -7,14 +7,20 @@
 // tooling (e.g. the browser-based cifvis/JSMol comparison) read from the
 // same generated list so COD data-quality problems are identified once, not
 // rediscovered by every consumer.
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const CACHE_FILE = resolve(
-    process.env.CIFVIS_KNOWN_BAD_CACHE_FILE || join(scriptDir, '..', 'logs', 'known-bad-cifs.txt'),
-);
+const DEFAULT_CACHE_FILE = resolve(join(scriptDir, '..', 'logs', 'known-bad-cifs.txt'));
+
+/**
+ * @param {string} [cacheFile] - Explicit cache location
+ * @returns {string} Resolved cache location
+ */
+function resolveCacheFile(cacheFile) {
+    return resolve(cacheFile || process.env.CIFVIS_KNOWN_BAD_CACHE_FILE || DEFAULT_CACHE_FILE);
+}
 
 // COD mirrors conventionally keep these under <codDir>/manual-checks/. Not
 // every mirror ships them (e.g. a partial or differently-assembled COD
@@ -55,16 +61,23 @@ function extractCifFilenames(path) {
  * Rebuilds the known-bad-cifs cache from COD's manual-checks logs.
  * @param {string} [codDir] - Root of the COD mirror; defaults to the COD_DIR
  *  env var, falling back to /home/niklas/cod/cif
+ * @param {object} [options] - Cache options
+ * @param {string} [options.cacheFile] - Cache file to write
  * @returns {Set<string>} Filenames (e.g. "1000006.cif") considered known-bad
  */
-export function buildKnownBadCifs(codDir = process.env.COD_DIR || '/home/niklas/cod/cif') {
+export function buildKnownBadCifs(
+    codDir = process.env.COD_DIR || '/home/niklas/cod/cif',
+    { cacheFile } = {},
+) {
     const excluded = new Set();
     for (const logPath of manualCheckLogPaths(codDir)) {
         for (const filename of extractCifFilenames(logPath)) {
             excluded.add(filename);
         }
     }
-    writeFileSync(CACHE_FILE, [...excluded].sort().join('\n') + '\n');
+    const resolvedCacheFile = resolveCacheFile(cacheFile);
+    mkdirSync(dirname(resolvedCacheFile), { recursive: true });
+    writeFileSync(resolvedCacheFile, [...excluded].sort().join('\n') + '\n');
     return excluded;
 }
 
@@ -75,13 +88,15 @@ export function buildKnownBadCifs(codDir = process.env.COD_DIR || '/home/niklas/
  * @param {object} [options] - Options
  * @param {boolean} [options.forceRebuild] - Rebuild from source logs even if a cache file exists
  * @param {string} [options.codDir] - Forwarded to buildKnownBadCifs when rebuilding
+ * @param {string} [options.cacheFile] - Cache file to read or write
  * @returns {Set<string>} Filenames (e.g. "1000006.cif") considered known-bad
  */
-export function loadKnownBadCifs({ forceRebuild = false, codDir } = {}) {
-    if (!forceRebuild && existsSync(CACHE_FILE)) {
-        return new Set(readFileSync(CACHE_FILE, 'utf8').trim().split('\n').filter(Boolean));
+export function loadKnownBadCifs({ forceRebuild = false, codDir, cacheFile } = {}) {
+    const resolvedCacheFile = resolveCacheFile(cacheFile);
+    if (!forceRebuild && existsSync(resolvedCacheFile)) {
+        return new Set(readFileSync(resolvedCacheFile, 'utf8').trim().split('\n').filter(Boolean));
     }
-    return buildKnownBadCifs(codDir);
+    return buildKnownBadCifs(codDir, { cacheFile: resolvedCacheFile });
 }
 
 /**
@@ -97,5 +112,5 @@ export function filterKnownBad(filePaths, options) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const codDir = process.argv[2] || process.env.COD_DIR;
     const excluded = buildKnownBadCifs(codDir);
-    console.log(`Wrote ${excluded.size} known-bad COD filenames to ${CACHE_FILE}`);
+    console.log(`Wrote ${excluded.size} known-bad COD filenames to ${resolveCacheFile()}`);
 }

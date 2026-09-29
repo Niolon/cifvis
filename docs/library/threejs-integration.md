@@ -6,9 +6,13 @@ geometry, `ORTEP3JsStructure` is the layer underneath `CrystalViewer` that does 
 that — it turns a `CrystalStructure` into a plain `THREE.Group` of atoms, bonds, and
 hydrogen bonds, with no scene/camera/renderer of its own.
 
+This low-level integration is exported from `cifvis/experimental` and does not yet carry
+the stable API guarantee of the root and `cifvis/core` entry points.
+
 ```js
 import * as THREE from 'three';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from 'cifvis';
+import { CIF, CrystalStructure } from 'cifvis/core';
+import { ORTEP3JsStructure } from 'cifvis/experimental';
 
 const cif = new CIF(cifText);
 const structure = CrystalStructure.fromCIF(cif.getBlock(0));

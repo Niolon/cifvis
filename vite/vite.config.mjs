@@ -6,18 +6,17 @@ export default defineConfig({
     plugins: [generateSvgIconsPlugin()],
     build: {
         lib: {
-            entry: resolve(__dirname, '../src/index.js'),
-            name: 'CifVis',
-            fileName: 'cifvis',
+            entry: {
+                cifvis: resolve(__dirname, '../src/index.js'),
+                core: resolve(__dirname, '../src/core.js'),
+                density: resolve(__dirname, '../src/density.js'),
+                experimental: resolve(__dirname, '../src/experimental.js'),
+                'widget/register': resolve(__dirname, '../src/widget/register.js'),
+            },
+            formats: ['es'],
         },
         rollupOptions: {
-            external: ['three', 'mathjs'],
-            output: {
-                globals: {
-                    three: 'THREE',
-                    mathjs: 'math',
-                },
-            },
+            external: ['three'],
         },
     },
 });

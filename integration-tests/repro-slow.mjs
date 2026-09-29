@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { CIF, CrystalStructure, SymmetryGrower } from '../src/index.nobrowser.js';
+import { CIF, CrystalStructure, SymmetryGrower } from '../src/core.js';
 
 const filePath = process.argv[2];
 const content = readFileSync(filePath, 'utf8');

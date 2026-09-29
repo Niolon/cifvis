@@ -48,6 +48,17 @@ be copied as a JSON object ready for `<cifview-widget options='…'>` or the
 current view (with atom labels and an optional transparent background) for figures —
 backed by [`viewer.captureImage()`](../library/crystal-viewer.md) in the library.
 
+To open a hosted CIF directly, pass its percent-encoded HTTP(S) URL as
+`?from-url=…`, for example
+`?from-url=https%3A%2F%2Fexample.org%2Fstructures%2Fsample.cif`.
+
+::: warning Cross-origin URLs require CORS
+The remote server must return an `Access-Control-Allow-Origin` response header that permits
+the playground origin. A URL opening successfully in its own browser tab does not imply that
+JavaScript on the playground can read it. If the server does not permit CORS, download the CIF
+and load it with the playground's Upload button instead.
+:::
+
 ## License and citation
 
 CifVis is written by Paul Niklas Ruth and released under the

@@ -1,7 +1,7 @@
 import { CIF, CrystalViewer } from '../../src';
 import { atomLabelParts, formatValueEsd } from '../../src';
 import { measurementAction } from '../../src';
-import { getDisorderIcon } from '../../src';
+import { getDisorderIcon } from '../../src/experimental.js';
 import { SVG_ICONS } from '../../src/lib/generated/svg-icons.js';
 import {
     createScalarFieldDisplayState,
@@ -9,7 +9,9 @@ import {
 } from '../../src/lib/density/scalar-field-display-state.js';
 import {
     classifyPlaygroundCif,
+    externalCifFetchErrorMessage,
     hasSupportedReflectionData,
+    resolvePlaygroundFromUrl,
 } from './playground-cif-routing.js';
 import { clearStoredOptions, loadStartingView, loadStoredOptions } from './playground-settings.js';
 import { initializeSettingsOverlay } from './settings-overlay.js';
@@ -767,6 +769,31 @@ initializeUI();
 /** Loads the playground's original disorder example, including density work if supported. */
 async function loadInitialStructure() {
     try {
+        const externalSource = resolvePlaygroundFromUrl(window.location.search, window.location.href);
+        if (externalSource) {
+            const crossOrigin = new URL(externalSource.url).origin !== window.location.origin;
+            updateStatus(
+                `Loading ${externalSource.fileName}...${crossOrigin ?
+                    ' The source server must allow cross-origin (CORS) access.' : ''}`,
+                'info',
+            );
+            let response;
+            try {
+                response = await fetch(externalSource.url);
+            } catch (error) {
+                console.error('External CIF fetch failed:', error);
+                updateStatus(
+                    externalCifFetchErrorMessage(externalSource, window.location.href),
+                    'error',
+                );
+                return;
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            await loadPlaygroundText(await response.text(), externalSource.fileName);
+            return;
+        }
         const baseUrl = import.meta.env.BASE_URL;
         const response = await fetch(`${baseUrl}cif/disorder.cif`);
         if (!response.ok) {
@@ -794,7 +821,10 @@ async function loadInitialStructure() {
         }
     } catch (error) {
         console.error('Error loading initial structure:', error);
-        updateStatus('Error loading initial structure. Try uploading your own CIF file.', 'error');
+        const fromUrl = new URLSearchParams(window.location.search).has('from-url');
+        updateStatus(fromUrl
+            ? `Error loading CIF from URL: ${error.message}`
+            : 'Error loading initial structure. Try uploading your own CIF file.', 'error');
     }
 }
 

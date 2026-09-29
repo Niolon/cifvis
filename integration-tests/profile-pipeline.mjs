@@ -2,7 +2,8 @@
 // a random sample of real COD structures to find where time goes.
 import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
-import { CIF, CrystalStructure, ORTEP3JsStructure } from '../src/index.nobrowser.js';
+import { CIF, CrystalStructure } from '../src/core.js';
+import { ORTEP3JsStructure } from '../src/experimental.js';
 
 const COD_DIR = process.argv[3] || '/home/niklas/cod/cif';
 const SAMPLE_SIZE = parseInt(process.argv[4] || '300', 10);

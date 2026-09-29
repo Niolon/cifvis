@@ -78,7 +78,11 @@ export function createShelxlExtinctionCorrection(
         return noCorrection('not-reported');
     }
     if (coefficient < 0) {
-        throw new Error('SHELXL extinction coefficient must not be negative');
+        throw new Error(
+            `Difference density was not created because the ${source === 'cif' ? 'CIF reports' :
+                'configuration supplies'} a negative SHELXL extinction coefficient (${coefficient}). ` +
+            'Correct the coefficient or set extinctionCorrection: false to ignore the reported correction.',
+        );
     }
     if (coefficient === 0) {
         return noCorrection('zero-coefficient', { coefficient, source });
@@ -104,7 +108,18 @@ export function createShelxlExtinctionCorrection(
         : null;
     const wavelength = configuredWavelength ?? modelWavelength;
     if (!(wavelength > 0)) {
-        throw new Error('SHELXL extinction correction requires a positive radiation wavelength');
+        const reportedWavelength = textScalar(block, [
+            '_diffrn_radiation_wavelength.wavelength',
+            '_diffrn_radiation.wavelength',
+            '_diffrn_radiation_wavelength',
+        ]);
+        throw new Error(
+            'Difference density was not created because the reported SHELXL extinction correction ' +
+            `requires one positive radiation wavelength, but the CIF reports ${
+                reportedWavelength === null ? 'no usable wavelength' : `"${reportedWavelength}"`}. ` +
+            'Provide extinctionCorrection: { coefficient, wavelength } with a representative wavelength, ' +
+            'or set extinctionCorrection: false to ignore the reported correction.',
+        );
     }
     const calculatedCount = calculated.fSquared?.length ?? calculated.length;
     if (reflections.length !== calculatedCount) {
