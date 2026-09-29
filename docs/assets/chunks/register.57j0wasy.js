@@ -1,0 +1,1 @@
+import{CifViewWidget as i}from"./index.D413N_Y7.js";import"./three.module.Y-ql4QRg.js";const e="cifview-widget";if(!globalThis.customElements)throw new Error("cifvis/widget/register requires the browser Custom Elements API");globalThis.customElements.get(e)||globalThis.customElements.define(e,i);
